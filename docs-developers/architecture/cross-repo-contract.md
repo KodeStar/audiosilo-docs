@@ -995,10 +995,14 @@ both repos, with a test on each side.
   `GET /admin/audible/titles` gains `planned` and `contested` (`{library_id, path,
   with: [{asin, title}]}` or null); `audible.poll`'s params gain `template`
   (omitempty). Server migration `0065`, Bridge migration `0010` (the device
-  profile). Neither side's Audible wire has shipped (server v2.5.1, Bridge v0.5.0),
-  so there is no gate: **deploy the Bridge with the server** (an older Bridge
-  refuses the poll of an account with a placement template, `template` being
-  omitted only when `""`; an older server refuses the new title fields). Detail:
+  profile). **Server 2.6.0 and its accompanying new Bridge release must be
+  deployed together for Audible.** Server 2.5.1 and Bridge 0.5.0 predate this
+  wire format. An older Bridge's strict decoder refuses a poll with a placement
+  template (`template` is omitted only when `""`); an older server's strict
+  decoder refuses the new title fields. Older servers also lack the progress
+  feed needed by position sync below. Pairing or a heartbeat alone does not
+  prove compatibility, and there is no separate version gate on these payloads.
+  Use the actual paired release tags from the release notes. Detail:
   [Planned destinations](../bridge/audible.md#planned-destinations).
 - **Audible position sync (Phase 4c):** a third kind, `audible.sync` (feature
   `audible`; internal, quiet, deduped per account, promoting), params built by the

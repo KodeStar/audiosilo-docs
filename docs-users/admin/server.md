@@ -42,6 +42,11 @@ before anything is sent: the field says "Enter a whole number from 30 to
 (**Check for new versions**, **Look up community metadata** and each
 module's **Enable** switch) save the moment you flip them.
 
+If a card has unsaved changes, leaving its topic or the Settings page asks
+**Leave without saving?** **Cancel** keeps the draft; **Discard and leave**
+continues without saving it. Saving or resetting the card clears the warning.
+Reloading or closing the browser tab also warns while changes are unsaved.
+
 ### When a change takes effect
 
 Most settings apply the moment you save: the next request already uses
@@ -87,7 +92,9 @@ file's own value.
 ### General
 
 - **Server name** - shown in the apps when someone connects, on invites and in
-  this console's top bar. Leave it empty to be called "AudioSilo".
+  this console's top bar. With no name, apps and invites use **AudioSilo** and
+  the console uses the server's host or address. Set a name to make it easier
+  to recognize.
 - **Public address** - the address people use from outside your home, like
   `https://books.example.com`, used in invite links and QR codes. Leave it
   empty to use whatever address the browser used. See
@@ -194,7 +201,8 @@ book's ASIN or ISBN is sent, never file paths or who is listening. See
 [A book's page](../listening/book-page.md#about-this-book) for what listeners
 see.
 
-Matching a book in the admin console sends more, since its job is to find a
+From server 2.6.0, matching a book in the admin console sends the following
+details, since its job is to find a
 book that has no ASIN or ISBN yet: when you open **Match with community
 metadata** on a book, the book's tagged title, author and series, its length,
 narrators and language, any ASIN or ISBN (from its tags too, when it has neither
@@ -219,11 +227,12 @@ Library, for example) for the players' series rails and previous-book rows,
 and hands the players small copies. Only the image itself is asked for, and
 listeners' devices never contact those image hosts.
 
-With a [local copy](#keeping-a-local-copy) (once it is ready), the lookup,
-matching and the chapter checks are all answered on your server; only the
-cover images are still downloaded from their hosts (and, if you turned it on,
-the daily [report of unknown ASINs](#helping-complete-the-community-database)
-still goes to the metadata service).
+With a [local copy](#keeping-a-local-copy), lookups, matching and chapter checks
+use your server's copy when it is ready and can answer. If it is unavailable,
+does not support the request or fails, those requests can go to the online
+metadata service instead. Cover images still come from their hosts, and the
+daily [report of unknown ASINs](#helping-complete-the-community-database) goes to
+the metadata service if you turn it on.
 
 - Flipping the switch takes effect immediately for **everyone connected**, and
   the choice is remembered across restarts.
@@ -258,6 +267,11 @@ still goes to the metadata service).
   the community database doesn't know, so the community can add them. See
   [Helping complete the community database](#helping-complete-the-community-database)
   below for what it sends and what the line under it says.
+- Both the upcoming-release check and unknown-ASIN report need community
+  metadata enabled. While it is off, their controls explain that prerequisite;
+  turning it back on restores their saved choices. Report status refreshes
+  while this topic is open, so an asynchronous report can finish without a
+  page reload.
 - **Audible marketplace** in the **Matching** card is the store you buy from
   (United Kingdom, United States, Germany and so on). When a recording sells in
   several stores, a match takes this store's ASIN; with **No preference** it
@@ -336,16 +350,18 @@ report went:
   nothing new to send" when every ASIN is known or was sent recently.
 - "Last tried *when*: the metadata service doesn't take reports (it needs an
   https address and a service that accepts them)." An older service, or one
-  run with reports turned off, is then left alone for a week.
+  run with reports turned off, is then left alone for a week. Turning the
+  report off and on does not clear that wait.
 - In red, "Last report failed *when*; it's tried again tomorrow." The service
   didn't answer or was too busy, or a lookup failed; any ASIN it didn't accept
   is sent again next time.
 
 #### Keeping a local copy
 
-Choose a local copy if you'd rather no book were looked up over the internet:
-it costs about 1.8 GB of disk and about 450 MB of download a day. Otherwise keep
-the default, which stores nothing.
+Choose a local copy to answer supported requests on your server and reduce
+online lookups: it costs about 1.8 GB of disk and about 450 MB of download a
+day. It can still fall back to the online service, as described below.
+Otherwise keep the default, which stores no full copy.
 
 The **Source** card has two choices:
 
@@ -353,11 +369,13 @@ The **Source** card has two choices:
   the book's ASIN or ISBN to the service, as described above, and matching
   sends what the match dialog needs.
 - **Keep a local copy.** The server downloads a copy of the whole community
-  database and answers every lookup from it, so **no book is looked up over
-  the internet**: not the "About this book" lookups, not the match dialog or
-  Match automatically, not the community chapter checks. Only the optional
-  [report of unknown ASINs](#helping-complete-the-community-database) still
-  goes out, if it is on.
+  database and uses it for "About this book", the match dialog, Match
+  automatically and community chapter checks. Requests the copy cannot
+  answer, including while it is not ready, can fall back to the online service
+  with the same identifiers or matching details. A book the ready copy says
+  it does not know does not by itself trigger an online retry. The optional
+  [report of unknown ASINs](#helping-complete-the-community-database) also
+  goes out if it is on, but its identifier checks wait for the local copy.
 
 What a local copy costs:
 

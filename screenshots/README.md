@@ -55,6 +55,15 @@ No private data in them: a scratch server's name and sample books only. A
 placeholder fills in for a missing one, as for any other shot, and
 only `placeholders.mjs --force device` overwrites them (restore from git).
 
+For the 2.6.0 watch refresh, keep the simulator model, display scale and system
+text size consistent across the series, and record those settings with the
+capture evidence. Check the home screen on both a 40 mm and a standard-size
+watch: keep the clock clear, include the **On this watch** link and put an
+actual ready local book behind it. Capture Continue listening and the local
+book list as separate states. Keep phone card and watch account shots on the
+same sample account; use two distinct sample addresses for same-name servers.
+Simulator captures document layout, not phone-off or interruption behavior.
+
 The `phone-` filename prefix caps a shot at 320px (`custom.css`). Watch shots are
 capped by page, not by name, since most are under Docusaurus's 10 KB limit and
 inlined as data URIs with no filename to match.

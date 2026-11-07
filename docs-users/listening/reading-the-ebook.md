@@ -72,6 +72,9 @@ Following the narration needs a server on version 2.6.0 or later and, on a phone
 ![The reader following the narration of The Call of the Wild: the sentence being read is highlighted](/img/screenshots/web-player/reader-readalong.png)
 
 - **Start the book playing** (or load it in the player and pause), then press **Read the ebook**. Once the reader has opened the book, a **Follow narration** button appears at the foot of the page.
+- **Play** or **Pause** in the reader's top bar controls that same book. The
+  control is only there while the player holds the book you're reading, so it
+  cannot pause a different book playing elsewhere in the app.
 - Press **Follow narration**: the reader turns to the sentence being read and highlights it, and turns the pages by itself as the narration goes on, through the chapters too. Pausing, skipping or changing the speed in the player moves the highlight with it.
 - **Tap a sentence** to move the audiobook to the start of that sentence (it plays on from there if it's playing).
 - **Turn the page yourself** and the reader stops following, so you can look back or ahead in peace; the button then says **Back to narration** (it sits below the page, never over the last line). A jump in the player (a skip, a chapter, the seek bar) brings it back too.
@@ -106,6 +109,10 @@ The note names the other device as your server knows it ("On another device" whe
 **Download the book** to read it with no connection. In the apps and the web player, [downloading a book](offline-downloads.md) saves its ebook beside the audio, and the reader then opens it from the device, connection or not. A downloaded book shows **Read the ebook** even while your server can't be reached.
 
 - A download can lack the ebook: it couldn't be saved (the server couldn't send it, say), or an older version of the app or web player made the download. The audio still plays offline, but reading needs a connection, as for a book you haven't downloaded. To read it offline, remove the download and download the book again.
+- In the apps, if the saved ebook cannot be read while you're online, the
+  reader can try the server's copy. Follow narration is offered only when the
+  read-along fits the copy actually opened; a map for a different ebook is
+  not used.
 - In the web player, the reader itself is kept for offline use when the player is installed in the browser, so a downloaded book opens offline even if you never opened the reader there while online.
 - Once a book is open, you can keep reading if the connection drops, downloaded or not: the whole ebook is already on the device.
 

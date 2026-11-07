@@ -50,9 +50,19 @@ contributions to the community, **Generate characters and recaps** and
 **Detect chapters** need 0.3.0; the one-command
 [ASR worker install](running-a-worker.md) and the worker downloads need
 **Bridge 0.4.0**; [making read-alongs](../admin/making-read-along.md) needs
-**Bridge 0.5.0**, the release that ships beside AudioSilo 2.5.1. The `:latest`
-tags below follow the newest release; to stay on one version, use its tag
-instead, such as `ghcr.io/kodestar/audiosilo-bridge:v0.5.0`. The console's
+**Bridge 0.5.0**, the release that ships beside AudioSilo 2.5.1.
+
+**For AudioSilo server 2.6.0, upgrade the server and the accompanying new Bridge
+release together before using Audible backups or listening-place sync.**
+Bridge 0.5.0 is the minimum for making read-alongs, not the version to use for
+2.6.0's new Audible jobs. An older Bridge or server can refuse those jobs or
+their results. See [Audible](../admin/audible.md).
+
+The `:latest` tags below follow the newest release. To pin a deployment, use
+the server and Bridge tags named in the 2.6.0 release notes, and the same Bridge
+version for its agent image. For a server kept on 2.5.1, the earlier pair is
+`ghcr.io/kodestar/audiosilo-server:2.5.1` with
+`ghcr.io/kodestar/audiosilo-bridge:v0.5.0` (and `v0.5.0-agent`). The console's
 [Settings > Bridge](../admin/bridge.md#online-offline-and-its-details) shows the
 version of the Bridge you have paired.
 

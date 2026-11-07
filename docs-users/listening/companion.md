@@ -27,6 +27,12 @@ Who's who and Story so far follow the book page's [spoiler rule](recaps-and-char
 
 The people you've met, the most recently met first, as the same cards as on the book's page: an initial, the name, other names they go by, when they first appear (*"From chapter 7"*, or *"Near the end"* when that falls past the book's last chapter) and their role. A character's description is written for the whole book and can give away later events, so it stays closed until you **tap the card**.
 
+Someone marked **Near the end** stays hidden while the book is unfinished,
+even in its last chapter. **Show anyway** reveals that card too, with its
+description still closed until you open it. The [admin console's character
+list](../admin/books.md#characters-and-recaps) shows the same label without
+the player's spoiler protection.
+
 ### Meeting someone new
 
 When the book plays on into a chapter that brings in people you hadn't met, they appear at the top of Who's who marked **Just met**, and a note says so wherever you are in the app: *"New in Who's who: Teft, Rock"*. Tap **Show** to open the player on Who's who. Jumping ahead, skipping or picking the book up again never brings it up, and nobody is announced twice in one listening session.

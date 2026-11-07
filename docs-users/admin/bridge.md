@@ -17,6 +17,12 @@ generating characters and recaps, and **Detect chapters** need it. The one-comma
 [making read-alongs](making-read-along.md) needs **Bridge 0.5.0** (see
 [Running a Bridge](../getting-started/running-a-bridge.md#which-bridge-version)).
 
+For **server 2.6.0**, install the new Bridge release that accompanies it and
+upgrade both together before using [Audible backups or listening-place
+sync](audible.md). Bridge 0.5.0 remains the minimum for making read-alongs;
+it does not supply the new Audible jobs' compatibility. Use the paired release
+tags from the 2.6.0 release notes when pinning images.
+
 :::info[What it does today]
 The Bridge is new. Today it
 [generates characters and recaps](generating-characters-and-recaps.md) for books

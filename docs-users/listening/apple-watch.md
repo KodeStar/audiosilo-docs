@@ -48,11 +48,18 @@ The card also says when the server can't serve a watch (*"Home can't prepare boo
 
 The watch shows up under [Signed-in devices](account.md#signed-in-devices) as **Apple Watch** with a watch icon, and a line such as *"AudioSilo 2.6.0 · Apple Watch · active now"*. The row says **Apple Watch** whatever you've called your watch.
 
+If two servers have the same name, the iPhone's account selector and Apple
+Watch card include a host or address to tell them apart. Check that address
+before setting up or replacing the watch's account.
+
 ## Choosing books
 
 ### On the watch: Continue listening
 
 **Continue listening**, on the watch's home screen, lists the books you've started and not finished, the most recent first, up to 10. Each has a **Download** button, and **Refresh** at the end of the list reads them again.
+
+**On this watch**, above Continue listening, opens the books already downloaded
+to the watch. Use that link to choose something ready to play offline.
 
 ![Continue listening on the watch: Three Parts by Bea Writer, 5% heard, with a Download button](/img/screenshots/watch/watch-continue-listening.png)
 
@@ -143,6 +150,11 @@ Tap **Play** on a downloaded book in Continue listening, or tap the book in **On
 ![Now playing on the watch: the chapter and book, a progress bar with the time heard and the time left, back 15, pause and forward 30](/img/screenshots/watch/watch-now-playing.png)
 
 The screen has the chapter, a bar with two figures beside it, **back 15 seconds**, play and pause, **forward 30 seconds**, and previous and next chapter. Below those: **Chapters**, **Speed** (0.8x to 2x; each book keeps its own) and the **Sleep timer** (15, 30, 45 or 60 minutes, or **End of chapter**). A book without chapters has no chapter buttons and no **Chapters**.
+
+If the watch says **The watch could not start its audio. Play again.** or
+**This book did not start playing. Play again.**, press Play to retry; the
+download is kept. Remove and download again only when it says the download
+cannot be read.
 
 The two figures are the time heard in the chapter and the time left in it. Both are in audio time, as on your phone, so they add up to the chapter's length at any speed. At any speed other than 1x, a small line under them says how long that will really take: *"59m left at 2×"*.
 

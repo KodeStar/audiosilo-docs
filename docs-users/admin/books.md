@@ -531,7 +531,12 @@ to offer yet.
    folders or what you typed. An ASIN or ISBN that matches scores 100%. The
    closest few are listed, however low they scored. Pick
    one and click **Compare fields**.
-4. If the book was recorded more than once, pick the right **Edition**. A
+4. If the book was recorded more than once, pick the right **Edition**, checking
+   its narrators and length against your files. **Choose an edition** means no
+   recording has been selected. When the community holds only a dramatization
+   and your book does not match that production, none is preselected: choose
+   it only if your files really are that recording. Changing the edition
+   updates the fields offered for comparison. A
    recording sold in several Audible stores has an ASIN in each; the match
    takes the one from your **Audible marketplace** (see
    [Community metadata](server.md#community-metadata)), and the list shows
@@ -574,17 +579,21 @@ If the catalogue can't be reached, or is too busy to answer in time, the
 dialog says "meta.audiosilo.app isn't answering" - try again in a minute.
 
 :::note[What matching sends]
-Opening the match dialog sends the book's tagged title, author and series, its
+On server **2.6.0**, opening the match dialog sends the book's tagged title, author and series, its
 length, narrators and language (or its library's, worked out on your server), its
 ASIN or ISBN (with neither, any in its tags), anything you type, and up to three of its folder names (the top folder, the
 folder holding the book, and the book's own folder or file name) to the metadata
 service. It sends nothing about your server or
 who listens. For a player's "About this book", the server sends only the ASIN
 or ISBN (see [Community metadata](server.md#community-metadata)). With a
-[local copy](server.md#keeping-a-local-copy) of the community metadata (once it
-is ready), none of this leaves your server; only the optional daily
+[local copy](server.md#keeping-a-local-copy) of the community metadata, matching
+and lookups use that copy when it is ready and can answer. If it is not ready,
+does not support the request or fails to answer, the server can send the same
+request to the online metadata service instead. Mirror mode therefore does
+not guarantee that these details stay on your server. The optional daily
 [report of unknown ASINs](server.md#helping-complete-the-community-database)
-still goes out, when you turn it on.
+also goes out when you turn it on; its checks wait for the local copy and do
+not fall back remotely.
 
 To show the candidates' covers, your server also downloads each cover image
 from wherever the catalogue keeps it (Audible's image servers or Open

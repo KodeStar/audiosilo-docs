@@ -118,6 +118,8 @@ what it found and apply it.
    Potter #2", so a series it removes is never a surprise. Fields you edited
    yourself are never replaced, and a series number is only set beside the
    series it belongs to.
+   In **Fill in matched books**, a row with no fields or cover to change under
+   the selected choice cannot be ticked and does not count toward **Apply**.
 4. Each book shows its path in the library (hover it for the whole path on
    disk) and, under an arrow, the community match: its title, authors,
    narrators and length, the series it belongs to with its position ("Series:
@@ -128,7 +130,8 @@ what it found and apply it.
    no ASIN or ISBN to attach, and matches whose recording is another length than
    the book, however well they scored. Those say so in both lengths ("Held for review: the book is 10h 34m
    long, this recording 7h 2m"), as the closest recording can be
-   another edition. A work that holds only a dramatization of the book is held too, unless:
+   another edition. **Another recording scores almost as well** explains a close
+   competing score. A work that holds only a dramatization of the book is held too, unless:
    - the book says it's a dramatization: its title, folder or narrator, or, from 2.6.0,
      its author (such as "Michael J. Sullivan - Graphic Audio") or a genre such as
      Radio Drama, Audio Drama or Hörspiel;
@@ -218,8 +221,13 @@ books at a time.
 
 From 2.6.0 a run against the community service is much faster, as it mostly asks
 once per book. A server with a [local copy](server.md#keeping-a-local-copy) answers
-from that copy once it is ready, so it has no round trips to wait on; until then,
-and whenever the copy runs into an error, its lookups go to the online service.
+from that copy when it is ready and supports the request, so it has no round
+trips to wait on. While the copy is unavailable, or when it cannot handle a
+request or runs into an error, matching and lookups can go to the online
+service with the same book details. Mirror mode does not guarantee local-only
+matching. The optional [unknown-ASIN report](server.md#helping-complete-the-community-database)
+is separate: its checks wait for the copy instead of falling back, and the
+report itself is sent remotely only when you enable it.
 
 If the service is only busy, the run waits and carries on. If it stays unreachable,
 the run stops by itself, and the card says "The last run stopped: the community
@@ -600,6 +608,10 @@ about that copy:
 | **Waiting** | "No local copy yet. The first download starts shortly." |
 | **Needs attention** | The copy still answers, but its last update failed, or it is newer than this version of AudioSilo understands. |
 | **Failed** | "The local copy couldn't be downloaded." There is no copy yet, so lookups go to the online service. |
+
+**Healthy** describes the copy's readiness. A particular matching or lookup
+request can still fall back to the online service if the copy cannot answer
+it, as described in [Matching every book at once](#matching-every-book-at-once).
 
 Under the row:
 

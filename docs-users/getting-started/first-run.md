@@ -67,6 +67,10 @@ Open the link and choose the **admin username** (it defaults to `admin`) and an 
 
 ![The --setup page: create your admin account](/img/screenshots/server/setup-wizard.png)
 
+If you opened `/admin` and reached a sign-in page before creating that account,
+follow **the setup link from the server log**. The ordinary sign-in page does
+not create the first admin.
+
 That is all this page asks. Once the account exists it says **Your account is ready** and hands you over to the admin console, where the books folder and everything else is set up:
 
 ![Your account is ready, with Continue setup](/img/screenshots/server/setup-wizard-done.png)

@@ -53,8 +53,9 @@ with no Bridge change, and **Phase 2d-2** its
 [discovery, follow by URL and OPML screens](podcasts.md#player-discovery-and-opml-phase-2d-2)
 (a CORS change on the server only). **Phase 3c-1** adds
 [read-along maps](readalong.md): `readalong.align` lines a book's ebook up with
-its narration, with no agent, and the server serves the map (the player's Text
-panel is Phase 3c-2, not built yet). **Phase 4a** adds [Audible accounts](audible.md):
+its narration, with no agent, and the server serves the map. **Phase 3c-2** adds
+the player's [Text tab and Follow narration](../frontend/reader.md), in server
+and player 2.6.0. **Phase 4a** adds [Audible accounts](audible.md):
 the Bridge signs in to Audible, lists what each account owns and matches it against
 a books library (`audible.poll`). **Phase 4b** [backs titles up](audible.md#backing-up-a-title-audibleimport)
 into the library (`audible.import`: download, DRM removal, a no-replace install,
@@ -183,7 +184,14 @@ A few rules hold across the seam:
 
 ## Compatibility
 
-Everything is additive. An older server has no Bridge routes and no `bridge` flag:
+**Server 2.6.0 and its accompanying new Bridge release must be deployed together
+for Audible backups and position sync.** The old strict decoders can reject new
+poll parameters or title fields, and older servers lack the progress feed used
+by sync. Use the actual paired tags from the release notes. Bridge 0.5.0 remains
+the minimum for `readalong.align`; it is not the Audible compatibility target.
+See [the Audible seam](../architecture/cross-repo-contract.md#16-the-bridge).
+
+An older server has no Bridge routes and no `bridge` flag:
 the Bridge's pairing gets a `404` (or `405`) and says the server is too old. The
 player's first Bridge UI (Phase 1a, admins only) is gated on the flag and the
 `sidecars` feature, so it never shows against an older server. Players shipped

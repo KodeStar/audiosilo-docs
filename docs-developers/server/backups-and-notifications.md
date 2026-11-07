@@ -227,6 +227,10 @@ kind. A nil `*Service` does nothing, so callers don't check.
 
 `notify.Kinds` lists them in this order, which is the order the console shows.
 
+Following a saved read-along needs a compatible player: [Text and Follow
+narration](../frontend/reader.md) require server and player 2.6.0 or later.
+Older players can still open the book, but cannot follow its read-along.
+
 A Bridge event is reported once per move, after the move has committed, on a
 context the request's end doesn't cancel. Its message names the book (its title,
 else its path, else its library): `bridge_job_finished` for a `sidecars.generate`
@@ -245,16 +249,16 @@ not) and for a `meta.correct` job `Corrections sent: <title>` ("The
 book's corrections went to the community for review. The book page links them."),
 and (Phase 3c) for a `readalong.align` job `Read-along made: <title> (N% lined
 up)` (the coverage rounded down to a whole percent, so 0.996 reads 99%; "It is
-saved with the book. Listeners can follow along once the player supports
-read-alongs.": from 2.5.1 it promises nothing before the player follows one,
-Phase 3c-2),
+saved with the book. Open the book in a compatible AudioSilo player to follow
+the text with the narration."),
 and any other kind `<kind> finished: <title>` ("The Bridge finished the job."; a
 `bridge.verify` job's is `Bridge check finished: <library>`, its book's title
 when it named one); in the bell only `sidecars.generate`, `sidecars.describe`,
 `chapters.detect` and `readalong.align` have titles of their own (`FINISHED_OWN` in
 `lib/server-events.ts`; a read-along's `Read-along made for <name>`, with `N% of
-the text lined up. Listeners can follow along once the player supports
-read-alongs.` under it), and every other kind, `sidecars.contribute` and
+the text lined up. Open the book in a compatible AudioSilo player to follow
+the text with the narration.` under it),
+and every other kind, `sidecars.contribute` and
 `meta.correct` included, reads `Bridge job finished: <name>` with the kind's
 name under it;
 `bridge_job_failed` reads `A Bridge job needs attention: <title>`

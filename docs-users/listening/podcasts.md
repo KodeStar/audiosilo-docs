@@ -244,14 +244,19 @@ s."* and goes on by itself.
 in the list to this library in the last hour and it couldn't be added, the import marks it **Couldn't add** straight away and
 doesn't send it to your server again, so a few dead feeds can't hold up the rest of the list.
 Once no entry is waiting for a batch, the import sends nothing more. When it finishes with
-entries that couldn't be added, it says *"Done. 2 shows couldn't be added. You can try each one
-again below."* in place of **All done.**
+entries that failed or were cancelled, it says *"Import finished. 2 shows weren't
+added. See their statuses below."* in place of **All done.** Cancelling every
+entry does not count as adding them successfully.
 
-**Try again on an entry.** An entry that says **Couldn't add** or **Cancelled** has its own
+**Try again on an entry.** A cancelled entry or a temporary failure offers
 **Try again**, which follows that one feed by its address, the same as
 [Feed address](#following-a-feed-by-its-address). That always asks your server again, even
 for a feed that failed a moment ago. The entry then reads **Following** or **Being added**;
 if the follow is refused, a note says why.
+
+A private/public feed conflict, an invalid feed address or an account refusal
+does not offer that retry: correct the address, sign-in or access problem
+first, following the reason under the entry.
 
 When some entries **Can't be added right now** (the part of your server that fetches podcasts
 is offline, say), the import doesn't keep retrying them by itself: the page says *"2 shows can't

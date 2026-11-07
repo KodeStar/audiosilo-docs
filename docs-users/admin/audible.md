@@ -43,6 +43,17 @@ screens: a book once backed up is an ordinary book of the library, which its
 listeners see as usual, and with [sync](#syncing-listening-places) on, a place from
 Audible reaches the listener like a place from another device.
 
+With no Bridge paired, the page offers **Pair a Bridge** and explains that it
+is needed to check accounts and back up books. Saved accounts and titles can
+still be managed. **Check now** and **Back up** wait until a paired Bridge has
+reported support for the relevant job; if support is missing, update the
+Bridge or wait for its first report. A paired Bridge that supports those jobs
+but is offline can still have work queued, to run when it reconnects.
+
+For server 2.6.0, upgrade the server and its accompanying Bridge release
+together before using Audible, as explained in
+[Which Bridge version](../getting-started/running-a-bridge.md#which-bridge-version).
+
 ## The Audible accounts card
 
 ![The Audible accounts card on Server > Settings > Bridge](/img/screenshots/admin/audible-accounts-card.png)

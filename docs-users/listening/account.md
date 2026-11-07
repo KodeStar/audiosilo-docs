@@ -14,6 +14,10 @@ Each server you're connected to has its own **account page**, covering your acco
 
 At the top: your name, a line like *"@sam · User on Hearthside · signed in on 3 devices"*, and your role (**User** or **Administrator**). A demo account is marked **Demo**.
 
+When two saved servers have the same name, their labels include a host or
+address, such as **AudioSilo (books.example.com)**. The account switcher and
+Apple Watch card use that distinction too.
+
 ## Password
 
 Accounts created by invite often start **without** a password - you signed in with a code, and that's fine day to day. The **Password** card says whether you have one (**Set** or **Not set**). Setting one is your **reliable way back in** on any device:
@@ -75,7 +79,7 @@ The list appears on servers new enough to show it.
 
 ## Listening sync
 
-On a recent server, the **Listening sync** card says whether what you listened to on this device has reached the server: **3 listens waiting to sync**, or *"Everything you listened to is on Home."*, and when this device last synced (*"Last synced 2 minutes ago"*). Listening waits here while you're offline and goes by itself when the server is reachable again; see [Listening on more than one device](playback.md#listening-on-more-than-one-device).
+On a recent server, the **Listening sync** card says whether what you listened to on this device has reached the server: **3 listens waiting to sync**, **1 listening event couldn't sync**, or both, and when this device last synced (*"Last synced 2 minutes ago"*). It says *"Everything you listened to is on Home."* only when nothing is waiting and nothing was rejected. Listening waits here while you're offline and goes by itself when the server is reachable again; see [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 
 If the server turns something down, it's listed under **Couldn't sync**, kept for 30 days: the book and what it was (*"The Way of Kings · 1:02:13 to 1:40:00"*, *"Marked finished"* or *"Marked not finished"*), and why:
 
