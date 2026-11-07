@@ -152,7 +152,7 @@ the text lined up ("99% of the text lined up"), and "the transcript was reused"
 when nothing had to be transcribed. With [notifications](notifications.md) on, you
 hear "Read-along made: *the book's title* (99% lined up)", and the console's bell
 says "Read-along made for *the book's title*": "99% of the text lined up.
-Listeners can follow along once the player supports read-alongs."
+Open the book in a compatible AudioSilo player to follow the text with the narration."
 
 ## How much lines up, and a poor match
 

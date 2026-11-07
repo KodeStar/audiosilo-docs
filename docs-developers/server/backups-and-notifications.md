@@ -227,10 +227,6 @@ kind. A nil `*Service` does nothing, so callers don't check.
 
 `notify.Kinds` lists them in this order, which is the order the console shows.
 
-Following a saved read-along needs a compatible player: [Text and Follow
-narration](../frontend/reader.md) require server and player 2.6.0 or later.
-Older players can still open the book, but cannot follow its read-along.
-
 A Bridge event is reported once per move, after the move has committed, on a
 context the request's end doesn't cancel. Its message names the book (its title,
 else its path, else its library): `bridge_job_finished` for a `sidecars.generate`
@@ -275,6 +271,10 @@ carries on; when the Bridge is signed in already, GitHub couldn't be reached to
 refresh its sign-in, so retry the job there once it can be), `core_needed`,
 `chapters_not_detected`; anything else "See the job in Settings > Bridge."). Both link to
 `/server?topic=bridge`. See [Characters and recaps](../bridge/generating.md#notifications).
+
+Following a saved read-along needs a compatible player: [Text and Follow
+narration](../frontend/reader.md) require server and player 2.6.0 or later.
+Older players can still open the book, but cannot follow its read-along.
 
 A `book_released` message reads `1 new release in your series` (`N new releases
 in your series`) with the titles one a line and `and N more` after the fifth,

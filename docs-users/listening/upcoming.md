@@ -17,7 +17,7 @@ Each book shows its cover from the community database, with its title, the serie
 
 Your server fetches the covers and passes them on, so your device never contacts the sites they come from.
 
-The shelf only appears once there's something in it. While your server hasn't checked yet, or when there's nothing coming up, Home simply doesn't show it.
+The shelf only appears once there's something in it. When there's nothing to show, whether your server hasn't found anything yet or nothing is coming up, Home simply doesn't show it.
 
 ## The Upcoming page
 
@@ -63,11 +63,12 @@ including when a new server first discovers the gaps in your series.
 
 ### Several servers
 
-If you're connected to more than one server, the shelf and the page combine all
-of them. A book shows once, even when two servers both lack it. **Not on
-Maya's Shelf** names the server that listed it, and tapping opens its series
-page there. The label describes that server's library: you may already have
-the book on another connected server.
+Every book carries a **Not on Maya's Shelf** line naming the server that listed
+it, even with one server. If you're connected to more than one server, the shelf
+and the page combine all of them, and a book shows once even when two servers
+both lack it. Tapping opens its series page on the server named. The label
+describes that server's library: you may already have the book on another
+connected server.
 
 ### When the page is empty
 
