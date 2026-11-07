@@ -49,8 +49,10 @@ JavaScript disabled.
 abridgement, runtime, release date, publisher and chapter count side by side.
 Follow a recording link to its detailed card. **Unknown** means the catalogue
 does not state that fact; a missing abridgement flag does not prove a recording
-is unabridged. Store links let you check a retailer, without claiming current
-availability or inferring a production format from a narrator or publisher.
+is unabridged. **None catalogued** means no chapters are recorded in the catalogue,
+not that the recording has no chapters. Store links let you check a retailer,
+without claiming current availability or inferring a production format from a
+narrator or publisher.
 
 ![Comparing the catalogued recordings of a book](/img/screenshots/meta/work-comparison.png)
 
@@ -138,8 +140,9 @@ identifiers (ASINs and ISBNs), and author names for books that don't match.
 Follow a series to see its new and upcoming books:
 
 1. Open the series page and press **Watch this series**.
-2. Tick **I have this** on each book you own. **Mark all as owned** ticks them
-   all.
+2. Tick **I have this** on each book you own. **Mark this page as owned** ticks
+   the books on the current page; **Clear ownership for this series** clears the
+   series' marks on every page.
 3. Open the [Watching page](https://meta.audiosilo.app/watching) (**Watching**
    in the header).
 
