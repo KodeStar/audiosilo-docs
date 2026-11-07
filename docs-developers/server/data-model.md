@@ -1323,7 +1323,8 @@ the `unknown_asin_report` key of [`server_state`](#server-state).
 - **`book_matches`** *(0069, LibraForge E6)* - PK `(library_id, path)`,
   `work_id`, `recording_id` (`''` for none), `how` (`auto` = a match run's
   confident item applied unasked, `accepted` = the match dialog or a review item
-  the admin included; a `CHECK`), `run_id` (the run that applied it), `set_by`
+  the admin included, kept when a refresh heals a merged work; a `CHECK`),
+  `run_id` (the run that applied it), `set_by`
   (the admin) and `set_at`. A book's recorded community match: the work an accept
   or an apply took, with or without an ASIN or ISBN. `run_id` and `set_by` have no
   foreign keys, as runs are pruned and the row outlives either. Written only by a
@@ -1335,7 +1336,8 @@ the `unknown_asin_report` key of [`server_state`](#server-state).
   is matched by this row alone: `catalog.matchedExpr` (`b.asin <> '' OR b.isbn
   <> '' OR EXISTS(book_matches ...)`) is the admin list's `matched` and its
   facet, Health's `unmatched` (so a match run's books), Activity's `identified`,
-  the suggested spelling of Health's `series_spellings`, and a refresh run's
+  the name `/series` and `/admin/series` give a series of several spellings
+  (`seriesName`), the suggested spelling of Health's `series_spellings`, and a refresh run's
   `MatchedBooks`. What needs an
   identifier tests `asin` / `isbn` itself: community chapters, the unknown-ASIN
   report, upcoming releases, a repick, the Bridge's estimate and the player's

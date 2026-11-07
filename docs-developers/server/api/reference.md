@@ -1148,7 +1148,7 @@ Same status codes as `/authors`.
 punctuation or spacing are one series ("He Who Fights With Monsters", "He Who
 Fights with Monsters" and "He Who Fights WIth Monsters"): one entry, its books,
 positions and length merged. Its `name` is the spelling its matched books (with
-an ASIN or ISBN) use most, else the one most of its books use, ties to the first
+an ASIN or ISBN, or from 2.6.0 a recorded community match) use most, else the one most of its books use, ties to the first
 alphabetically. Every series filter takes any spelling of the series it names
 (`/books?series=`, [`/series/books`](#get-apiv1librariesidseriesbooks), the
 admin [`/admin/books?series=`](#get-apiv1adminbooks)) and so does
@@ -6658,7 +6658,8 @@ book path).
   `book_matches` row, [data model](../data-model.md#durable-per-library-config-path-keyed-no-fk-to-books)):
   the `work_id` and `recording_id` (omitted for none) an accept or a match run's
   apply took, `how` (`"auto"`: a run's confident item applied unasked;
-  `"accepted"`: the match dialog, or a review item the admin included),
+  `"accepted"`: the match dialog, or a review item the admin included; a
+  refresh that heals a merged work keeps it),
   `matched_at`, and `web_url`, the work's page on the community site (omitted when
   no service is configured). Recorded whether or not the match gave the book an
   ASIN or ISBN; for a store listing with neither it is what makes the book
@@ -6693,7 +6694,7 @@ one request is applied in one transaction.
 | `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
 | `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`, else chapters a Bridge found in the narration when they fit). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included. `"generated"` is not a choice: `"files"` turns found chapters off and `"auto"` brings them back |
-| `match` | object | from 2.6.0: `{ "work_id", "recording_id"? }`, the community match the edit was taken from, recorded as the book's [`community_match`](#get-apiv1adminlibrariesidbook) (how `accepted`) in the edit's transaction. Needs `source: "community"`, and may come alone (no `set`): the console's dialog sends it with every accept, and alone for a book with no ASIN or ISBN whose pick isn't its recorded match. `{ "work_id": "" }` unlinks the book (below). One book at a time: the bulk edit refuses it |
+| `match` | object | from 2.6.0: `{ "work_id", "recording_id"? }`, the community match the edit was taken from, recorded as the book's [`community_match`](#get-apiv1adminlibrariesidbook) (how `accepted`) in the edit's transaction. Needs `source: "community"`, and may come alone (no `set`): the console's dialog sends it with every accept of ticked fields, and alone (after any ticked cover) for a book with no ASIN or ISBN whose pick isn't its recorded match; a cover-only accept of any other book sends none. `{ "work_id": "" }` unlinks the book (below). One book at a time: the bulk edit refuses it |
 
 **Unlinking** (from 2.6.0). `match: { "work_id": "" }`, from any edit (no
 `source` needed), removes the book's recorded match, every `source: "community"`
@@ -6988,11 +6989,13 @@ nothing changes until the run is **applied**. Applying writes community
 overrides (as [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) with
 `source: "community"` does) and, for a book with no cover, the community cover
 (as [`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity)), so
-every change is reversible. From 2.6.0 it also records each book's match (its
-[`community_match`](#get-apiv1adminlibrariesidbook), as the dialog's `match`
-does), under every scope, whenever the proposal's work or recording isn't the
-book's already: how `auto` for a confident item, `accepted` for an included review
-item. Admin only; every endpoint answers `404 code:
+every change is reversible. From 2.6.0 a `match` run's apply also records each
+book's match (its [`community_match`](#get-apiv1adminlibrariesidbook), as the
+dialog's `match` does), under every scope, whenever the proposal's work or
+recording isn't the book's already: how `auto` for a confident item, `accepted`
+for an included review item. A `refresh` only heals a match the book already has
+(a refresh by the recorded match, below; it keeps the `how`), and a `repick`
+records none. Admin only; every endpoint answers `404 code:
 "metadata_off"` while community metadata is off. One run works at a time
 (server-wide); the newest 10 runs are kept, with their books.
 
@@ -7255,7 +7258,8 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   `cover_failed`); an `applied` item can carry `cover_failed` when its fields
   went on but its cover couldn't be fetched. A match item an apply's
   stop cut short after its fields went in stays `""` with `detail`
-  `cover_pending`, so the next apply takes its cover.
+  `cover_pending`, so the next apply takes its cover (unless the book was
+  unlinked since: then it writes nothing, `nothing_to_change`).
 
 #### `POST /api/v1/admin/match-runs/{id}/apply`
 

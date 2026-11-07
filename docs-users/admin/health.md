@@ -100,8 +100,9 @@ what it found and apply it.
 3. Choose **What to write**:
    - **ASIN and ISBN only** marks each book matched, so players show its
      "About this book", and changes nothing else. A match with no ASIN or ISBN
-     to attach marks the book matched by recording the community work it is
-     (see [Books matched to a store listing](books.md#books-matched-to-a-store-listing)).
+     to attach marks the book matched by recording the community work it is,
+     though players can't show its "About this book" yet (see
+     [Books matched to a store listing](books.md#books-matched-to-a-store-listing)).
    - **Fill in what's missing** (the default) also fills every field the book
      has empty (narrator, series, published year, description), takes the
      community cover for a book with no cover at all, and
@@ -242,12 +243,13 @@ the rest is left to apply later from the same review.
 Some books the community holds as a store listing with no ASIN or ISBN (books
 sold outside Audible, for example). From 2.6.0 a match to one of them marks the
 book matched by recording the community work it is, so it leaves **Not matched**
-and later runs leave it alone. As nothing else names the edition, a run applies
+and later match runs leave it alone. As nothing else names the edition, a run applies
 such a match on its own only when all of these hold:
 
 - it scores 90% or more, at least 10 points ahead of the next candidate;
 - the community names the book's author in full and places the work at the
-  book's position in its series;
+  book's position in its series (so a book outside a series is never applied on
+  its own);
 - both lengths are known, and the recording's is within 2% of the book's (a
   narrator who reads it doesn't widen this).
 
