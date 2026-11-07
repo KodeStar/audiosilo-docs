@@ -63,8 +63,10 @@ JavaScript disabled.
 abridgement, runtime, release date, publisher and chapter count side by side.
 Follow a recording link to its detailed card. **Unknown** means the catalogue
 does not state that fact; a missing abridgement flag does not prove a recording
-is unabridged. Store links let you check a retailer, without claiming current
-availability or inferring a production format from a narrator or publisher.
+is unabridged. **None catalogued** means no chapters are recorded in the catalogue,
+not that the recording has no chapters. Store links let you check a retailer,
+without claiming current availability or inferring a production format from a
+narrator or publisher.
 
 ![Comparing the catalogued recordings of a book](/img/screenshots/meta/work-comparison.png)
 
@@ -215,8 +217,10 @@ it's worth keeping a [backup](#backing-up-your-watchlist).
 ## Marking what you own
 
 While you're watching a series, each volume in the list gains an **I have this**
-checkbox, and a line above the list keeps the count - "3 of 11 marked as yours" -
-with **Mark all as owned** and **Clear** beside it.
+checkbox, and a line above the list counts the volumes on the current page:
+"3 of 11 on this page marked as yours". **Mark this page as owned** marks only
+the volumes shown; **Clear ownership for this series** clears the series'
+ownership marks across every page.
 
 Every volume also shows its **release date**, at whatever precision the catalogue
 records: a full date where one is known ("20 Oct 2026"), otherwise just the month

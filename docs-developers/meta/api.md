@@ -779,7 +779,8 @@ omitted on an older artifact:
   It is omitted when the series has no variant ordering.
 
 `works` is sorted by the numeric start of each `position` string (so `"1-3.5"`
-sorts by 1). Paging here is **opt-in**: with no `?limit=` the whole member list is
+sorts by 1), then by the raw position string and work id to break ties
+deterministically. Paging here is **opt-in**: with no `?limit=` the whole member list is
 returned and the echoed `limit` is `0` (the player's series rail depends on getting
 the complete list). Pass `?limit=` - clamped to a maximum of **500** - with an
 optional `?offset=` to window it. `works_total` is always the unpaged member count,
@@ -1313,7 +1314,8 @@ check its access log for this route.
 ## HTML routes and sitemaps
 
 With `--site`, metaserve renders catalogue facts and embeds the entity payload
-before React hydrates. These are HTML routes, not additional JSON endpoints:
+before React hydrates. The repository's Dockerfile builds the site and Go binary
+into one image. These are HTML routes, not additional JSON endpoints:
 
 | Route | Content |
 |---|---|
@@ -1365,6 +1367,13 @@ returns **500** with `no-store`, never a successful blank entity page. A real
 missing record remains **404**. Spoiler bodies and aliases remain in the DOM
 inside closed native `details` elements, marked `data-nosnippet`; work tab
 panels stay mounted with `hidden` semantics.
+
+HTML page validators include an explicit internal renderer representation version
+in `pageIdentity`, alongside the page's shell name and bytes, site URL and available
+build revision. Bumping that version invalidates cached pages when Go-rendered
+HTML changes, including Docker and other builds without VCS metadata. This is
+cache invalidation, not a content-change date; reliable build stamping and entity
+revision tracking remain [follow-up work](https://github.com/KodeStar/audiosilo-meta/issues/2927).
 
 `/sitemap-index.xml` lists the static sitemap when present and the generated
 `/sitemaps/{family}-{shard}.xml` shards (up to 50,000 URLs each). Entity URLs
