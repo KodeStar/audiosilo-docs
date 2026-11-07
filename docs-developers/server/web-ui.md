@@ -441,9 +441,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `/admin/narrators` (merge suggestions applied as a bulk edit, with Undo) and
   `/admin/series` (community series gaps from the `GET /libraries/{id}/meta` of
   each series' first book with an ASIN or ISBN, `metaCandidate` /
-  `hasIdentifier`, as `/meta` is identifier-keyed; hidden when metadata is off;
-  "Match a book" only when that `/meta` found no match, or with no such book, when
-  no book of the series is matched). Each card then
+  `hasIdentifier`, as `/meta` is identifier-keyed; hidden when metadata is off).
+  The card offers "Match a book" when that `/meta` found no match or, when no
+  book has an ASIN or ISBN, when none of the series is matched. Each card then
   resolves its books with an ASIN or ISBN to community work ids through
   `POST /admin/books/works` (`useBookWorks`; `src/api/work-batch.ts` batches every
   card's books asked for in the same moment, up to 100, on the same
@@ -494,8 +494,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   match; the dialog starts from the book's `community_match` when the search lists
   it, and for a book with no ASIN or ISBN a pick other than its recorded match is
   itself something to accept: with nothing ticked the button reads "Match to this
-  work" and sends `match` alone (after a ticked cover, so a cover-only accept
-  records it too);
+  work" and sends `match` alone; a cover-only accept sends it after the cover,
+  so that records the match too;
   candidates' covers are thumbnails the server fetched, `POST /admin/meta/covers`,
   batched by URL in `src/api/cover-batch.ts`, since the CSP loads no other
   host's images; a ticked Cover row, ticked by default only for a book with no

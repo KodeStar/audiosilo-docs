@@ -6228,7 +6228,7 @@ is a `400` too (`too many format or codec values`).
 - `matched` - the book has an ASIN or ISBN, or a recorded community match (a store
   listing with neither, from 2.6.0): the same rule as the `matched` filter
   (`catalog.matchedExpr`). The player's `/meta` and the community chapter check find
-  a book by its ASIN or ISBN alone, so test those for them.
+  a book by its ASIN or ISBN alone, so check `asin` / `isbn` for those, not `matched`.
 - `abridged` - `true`, `false`, or `null` while nothing says (always present,
   unlike the player's `Book`, which omits it). `genres` and `tags` are `[]` for
   none.
@@ -6693,7 +6693,14 @@ one request is applied in one transaction.
 | `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
 | `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`, else chapters a Bridge found in the narration when they fit). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included. `"generated"` is not a choice: `"files"` turns found chapters off and `"auto"` brings them back |
-| `match` | object | from 2.6.0: `{ "work_id", "recording_id"? }`, the community match the edit was taken from, recorded as the book's [`community_match`](#get-apiv1adminlibrariesidbook) (how `accepted`) in the edit's transaction. Needs `source: "community"`, and may come alone (no `set`): the console's dialog sends it with every accept, and alone for a book with no ASIN or ISBN whose pick isn't its recorded match. `{ "work_id": "" }` **unlinks** the book, from any edit: its recorded match, every `source: "community"` value and its community cover go (as [clearing the community matches](#delete-apiv1admincommunity-matches) does for a library, before the rest of the edit applies), so it is `matched: false` again unless it has an ASIN or ISBN of its own; an admin's own edits and uploads stay. There is no undo. One book at a time: the bulk edit refuses it |
+| `match` | object | from 2.6.0: `{ "work_id", "recording_id"? }`, the community match the edit was taken from, recorded as the book's [`community_match`](#get-apiv1adminlibrariesidbook) (how `accepted`) in the edit's transaction. Needs `source: "community"`, and may come alone (no `set`): the console's dialog sends it with every accept, and alone for a book with no ASIN or ISBN whose pick isn't its recorded match. `{ "work_id": "" }` unlinks the book (below). One book at a time: the bulk edit refuses it |
+
+**Unlinking** (from 2.6.0). `match: { "work_id": "" }`, from any edit (no
+`source` needed), removes the book's recorded match, every `source: "community"`
+value and its community cover (as [clearing the community
+matches](#delete-apiv1admincommunity-matches) does for a library, before the rest
+of the edit applies), so it is `matched: false` again unless it has an ASIN or
+ISBN of its own. An admin's own edits and uploads stay. There is no undo.
 
 ```json
 {
@@ -7021,8 +7028,8 @@ nor an ISBN is looked up by its `community_match` alone (`meta.MatchQuery.WorkID
 the service's `works/{id}`, a retired slug's `301` followed online and in mirror
 mode), `found_by` `"work:<work id>"` or `"work:<work id>/<recording id>"`. Its
 recorded recording is kept while the work still lists it (else the likeliest by
-length, as for an identifier). Classified as an identifier's record is (`auto`
-unless its length is off, `review`). A work the community no longer has (`404`) is
+length, as for an identifier). It is classified as an identifier's record is:
+`auto`, or `review` when its length is off. A work the community no longer has (`404`) is
 `none` with `detail: "work_unknown"`, and the book keeps its match. The proposal
 may fill an ASIN or ISBN the recording gained since (dropped once the book has
 one of its own), and a merged work's new slug is a change by itself (the change's

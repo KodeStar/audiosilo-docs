@@ -582,11 +582,11 @@ dialog says "meta.audiosilo.app isn't answering" - try again in a minute.
 From 2.6.0 a match records which community work (and edition) the book is. For
 most books that only adds to the ASIN or ISBN the match writes. But the
 community holds some books as a store listing with no ASIN or ISBN, and for
-those the recorded match is what makes the book **Matched**: it leaves **Not
-matched** in [Library health](health.md#store-listings-with-no-asin-or-isbn),
-and [Match automatically](health.md#matching-every-book-at-once) leaves it
-alone. Accepting such a match in the dialog records it, whatever you tick
-(a cover alone included), and so does applying it from
+those the recorded match is what makes the book **Matched**: it no longer
+shows as **Not matched** in [Library health](health.md#store-listings-with-no-asin-or-isbn),
+and [Match automatically](health.md#matching-every-book-at-once) skips it.
+Accepting such a match in the dialog records it whatever you tick, and so does
+applying it from
 [Match automatically](health.md#store-listings-with-no-asin-or-isbn).
 
 For such a book the **Community metadata** card shows **Community work**, the

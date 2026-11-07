@@ -1327,7 +1327,7 @@ the `unknown_asin_report` key of [`server_state`](#server-state).
   (the admin) and `set_at`. A book's recorded community match: the work an accept
   or an apply took, with or without an ASIN or ISBN. `run_id` and `set_by` have no
   foreign keys, as runs are pruned and the row outlives either. Written only by a
-  community edit, in its own transaction (`catalog.BookEdit.Match`, a
+  community edit, in the edit's transaction (`catalog.BookEdit.Match`, a
   `catalog.MatchAnchor`; a bulk edit refuses one); an empty work id unlinks the
   book, which clears that one book's community values, cover and row as
   [clearing the community matches](api/reference.md#delete-apiv1admincommunity-matches)
@@ -1335,7 +1335,7 @@ the `unknown_asin_report` key of [`server_state`](#server-state).
   is matched by this row alone: `catalog.matchedExpr` (`b.asin <> '' OR b.isbn
   <> '' OR EXISTS(book_matches ...)`) is the admin list's `matched` and its
   facet, Health's `unmatched` (so a match run's books), Activity's `identified`,
-  the spelling Series spelled several ways suggests, and a refresh run's
+  the suggested spelling of Health's `series_spellings`, and a refresh run's
   `MatchedBooks`. What needs an
   identifier tests `asin` / `isbn` itself: community chapters, the unknown-ASIN
   report, upcoming releases, a repick, the Bridge's estimate and the player's
