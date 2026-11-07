@@ -998,6 +998,7 @@ produces an identical file. It stamps a `schema_version` into the artifact's
 | 10 | the `position_scales` table (the ruler a work's sidecars are numbered on) |
 | 11 | the store links: `recordings.link_audiobookguild` and `recordings.link_graphicaudio` (one column per store, not a table), which the API returns in the recording's `links` and as purchase links |
 | 12 | the `work_alternate_titles` table (`work_id, title, ord`), a work's alternate titles, which are also among the work's names in the search index |
+| 13 | the nullable `recordings.abridgement` column, which keeps whether the source stated the abridged flag (so a stated `false` reads as unabridged rather than unknown), and the indexes behind the bounded catalogue and chapter reads |
 
 `metaserve` returns characters, recaps, genres, the community description and the
 translation links inline on `GET /works/{id}` (`characters` / `recaps` /
@@ -1025,14 +1026,20 @@ older release. A missing table or column reads as "no data", never a 500:
 | position scales | 10 |
 | the store links | 11 |
 | alternate titles | 12 |
+| the recordings' abridgement | 13 |
 
-An artifact that *claims* any version from 5 to 12 but lacks what that version
+An artifact that *claims* any version from 5 to 13 but lacks what that version
 adds is refused when it is loaded, naming the claim, because the builder always
 writes the two together. For 7 that is the `translations` table or any of the
 series table's `language`, `ordering` and `ordering_of` columns; for 8, any of its
 columns or the `work_credits` and `recording_sources` tables; for 9, any of its
 columns or tables; for 10, the `position_scales` table; for 11, either store link
-column; for 12, the `work_alternate_titles` table.
+column; for 12, the `work_alternate_titles` table; for 13, the
+`recordings.abridgement` column.
+
+Below schema 13, only legacy `abridged: true` establishes abridgement; false
+remains unknown. Schema 13 retains explicit false as `unabridged` while an absent
+source flag remains unknown (see [recording fields](api.md#apiv1worksid)).
 
 The same versioning drives the [coverage endpoints](api.md#coverage-endpoints).
 They omit a dimension's count, rather than report it as a misleading zero, when

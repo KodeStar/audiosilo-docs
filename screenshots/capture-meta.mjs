@@ -5,9 +5,9 @@
 //   IMPORT_FIXTURE  library export dropped on /import (default: the vendored
 //                   fixtures/openaudible-books.json, synthetic data)
 //
-// The site is an Astro static export whose React islands fetch /api/v1 on the
-// CLIENT, so every wait here is content-based (a rendered element the island
-// produced), never a bare load event. Remote cover images may be slow or 404;
+// The site is an Astro static export with entity facts/payloads injected by
+// metaserve and React islands that reuse them. Waits here are content-based,
+// never a bare load event. Remote cover images may be slow or 404;
 // steps wait on text/layout and give images a short bounded settle rather than
 // blocking on them, so a missing cover never fails a shot.
 //
@@ -16,16 +16,17 @@
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
-import {sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
+import {sleep, shoot, wanted, DESKTOP_CONTEXT} from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BASE = (process.env.META_BASE || 'http://127.0.0.1:8795').replace(/\/$/, '');
 
-// The work referenced by the developer docs: two recordings (Jim Dale + Stephen
-// Fry), and a fully-populated community layer (characters + a story-so-far
+// The work referenced by the developer docs: several catalogued recordings,
+// and a populated community layer (characters + a story-so-far
 // recap), so the same book anchors both the work and characters shots.
 const WORK_ID = 'harry-potter-and-the-philosophers-stone';
 const SERIES_ID = 'harry-potter';
+const PERSON_ID = 'stephen-fry';
 // An OpenAudible books.json sample (synthetic ASINs, vendored here) that drives
 // the /import diff to a populated results view without matching real catalogue
 // entries.
@@ -46,6 +47,18 @@ const goto = (route) => page.goto(`${BASE}${route}`, {waitUntil: 'domcontentload
 // the nav until the hero scrolls away, so a bare combobox locator can land on
 // the covered one and its click never lands.
 const heroSearch = (pg) => pg.locator('input[role="combobox"][placeholder^="Search by title"]').first();
+
+// Keep watchlist setup when its dependent shot is selected. Unlike the shared
+// best-effort wrapper, a failed requested meta capture makes this script fail.
+async function step(name, fn) {
+  if (!wanted(`meta/${name}.png`) && !(name === 'series-watching' && wanted('meta/watching.png'))) return;
+  try {
+    await fn();
+  } catch (error) {
+    process.exitCode = 1;
+    console.error(`  ✗ ${name}: ${error.message}`);
+  }
+}
 
 // ── Home: search hero + stats band + latest additions ───────────────────────
 await step('home', async () => {
@@ -89,7 +102,7 @@ await step('search', async () => {
 
 // ── Work detail: cover, metadata, recordings ─────────────────────────────────
 await step('work', async () => {
-  await goto(`/work?id=${WORK_ID}`);
+  await goto(`/works/${WORK_ID}`);
   await page.getByRole('heading', {level: 1}).first().waitFor({state: 'visible', timeout: 20000});
   // Recordings are the client island's main payload; wait for a recording card
   // (the cards only render inside the Recordings section).
@@ -98,13 +111,37 @@ await step('work', async () => {
   await shoot(page, 'meta/work.png');
 });
 
+await step('browse', async () => {
+  await goto('/browse/works');
+  await page.getByRole('heading', {name: 'Audiobooks', exact: true}).waitFor();
+  await page.locator('main a[href^="/works/"]').first().waitFor();
+  await shoot(page, 'meta/browse.png');
+});
+
+await step('work-comparison', async () => {
+  await goto(`/works/${WORK_ID}`);
+  const comparison = page.locator('#recording-comparison');
+  await comparison.waitFor({state: 'visible', timeout: 20000});
+  await comparison.locator('tbody tr').first().waitFor();
+  await sleep(1000);
+  await comparison.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 90));
+  await shoot(page, 'meta/work-comparison.png');
+});
+
+await step('chapters', async () => {
+  await goto(`/works/${WORK_ID}/recordings/stephen-fry-2015/chapters`);
+  await page.getByRole('columnheader', {name: 'Duration', exact: true}).waitFor();
+  await page.locator('tbody tr').first().waitFor();
+  await shoot(page, 'meta/chapters.png');
+});
+
 // ── Characters: the community layer with one card opened ─────────────────────
 // Continues on the work page the previous step loaded (same book by design);
 // re-navigates only if that step failed partway, so one transient failure
 // cannot cost both shots.
 await step('characters', async () => {
-  if (!page.url().includes(`/work?id=${WORK_ID}`)) {
-    await goto(`/work?id=${WORK_ID}`);
+  if (new URL(page.url()).pathname !== `/works/${WORK_ID}`) {
+    await goto(`/works/${WORK_ID}`);
     await page.getByRole('heading', {level: 1}).first().waitFor({state: 'visible', timeout: 20000});
   }
   // The Characters tab only exists when the work has a characters sidecar.
@@ -112,12 +149,11 @@ await step('characters', async () => {
   await tab.waitFor({state: 'visible', timeout: 20000});
   await tab.click();
   await page.waitForSelector('#panel-characters article', {timeout: 15000});
-  // Open the first character card that has a description (its disclosure button
-  // starts collapsed) so the shot shows the spoiler-gated body revealed.
-  const disclosure = page.locator('#panel-characters button[aria-expanded="false"]').first();
+  // Open the native disclosure so the shot shows the spoiler body revealed.
+  const disclosure = page.locator('#panel-characters details:not([open]) summary').first();
   await disclosure.waitFor({state: 'visible', timeout: 10000});
   await disclosure.click();
-  await page.waitForSelector('#panel-characters p[id^="char-desc-"]', {timeout: 10000});
+  await page.waitForSelector('#panel-characters details[open] [data-nosnippet]', {timeout: 10000});
   // Bring the section (intro + grid + opened card) to the top of the viewport.
   await page.locator('#panel-characters').scrollIntoViewIfNeeded().catch(() => {});
   await sleep(1200);
@@ -126,12 +162,38 @@ await step('characters', async () => {
 
 // ── Series: the ordered list of volumes ──────────────────────────────────────
 await step('series', async () => {
-  await goto(`/series?id=${SERIES_ID}`);
+  await goto(`/series/${SERIES_ID}`);
   await page.getByRole('heading', {level: 1}).first().waitFor({state: 'visible', timeout: 20000});
   // Each volume is a work link in an ordered list; wait for the list to fill.
   await page.waitForSelector('ol li a[href^="/works/"]', {timeout: 20000});
   await sleep(1500); // thumbnail covers settle (bounded)
   await shoot(page, 'meta/series.png');
+});
+
+await step('series-listening-guide', async () => {
+  await goto(`/series/${SERIES_ID}`);
+  const guide = page.locator('#listening-guide');
+  const choices = guide.locator('select');
+  await choices.first().waitFor({state: 'visible', timeout: 20000});
+  for (let i = 0; i < Math.min(2, await choices.count()); i += 1) {
+    await choices.nth(i).selectOption({index: 1});
+  }
+  await guide.getByText('Chosen-list subtotal:', {exact: false}).waitFor();
+  await sleep(800);
+  // Full-cast credits can make continuity long. Frame the first work's actual
+  // alternatives and choice controls instead of the middle of that section.
+  await guide.locator(':scope > ol > li').first().evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 90));
+  await shoot(page, 'meta/series-listening-guide.png');
+});
+
+await step('person-recordings', async () => {
+  await goto(`/people/${PERSON_ID}`);
+  const credits = page.locator('#recording-credits');
+  await credits.getByRole('heading', {name: /Narrated recordings/}).waitFor({timeout: 20000});
+  await credits.locator('a[href*="#recording-"]').first().waitFor();
+  await credits.scrollIntoViewIfNeeded();
+  await sleep(800);
+  await shoot(page, 'meta/person-recordings.png');
 });
 
 // ── Series (watched): the Watch toggle + "I have this" marks ─────────────────

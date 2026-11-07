@@ -22,6 +22,13 @@ The search box on the home page finds **books, people and series** at once.
 Paste an ASIN or ISBN to jump straight to that recording. You don't need exact
 punctuation: "enders game" finds *Ender's Game*.
 
+**Browse** in the header, home page and footer opens directories of audiobooks,
+series, authors and narrators, character guides and recap guides. Each directory
+has ordinary links and pages of up to 50 entries, so you can explore without a
+search term.
+
+![The audiobook browse directory](/img/screenshots/meta/browse.png)
+
 ![Search results for a series query](/img/screenshots/meta/search.png)
 
 - A **book page** lists every recording of the book, with narrators, length,
@@ -29,9 +36,47 @@ punctuation: "enders game" finds *Ender's Game*.
 - A **series page** lists the books in reading order.
 - A **person page** lists everything an author or narrator is credited on.
 
+**Compare recordings** on a book page puts narrator, language,
+abridgement, runtime, release date, publisher and chapter count side by side.
+Follow a recording link to its detailed card. **Unknown** means the catalogue
+does not state that fact; a missing abridgement flag does not prove a recording
+is unabridged. Store links let you check a retailer, without claiming current
+availability or inferring a production format from a narrator or publisher.
+
+![Comparing the catalogued recordings of a book](/img/screenshots/meta/work-comparison.png)
+
+For a recording with chapters, **Browse chapter titles, starts and durations**
+opens its chapter directory, with up to 100 chapters per page. It also links
+back to the recording's card.
+
+![A recording's chapter titles, start times and durations](/img/screenshots/meta/chapters.png)
+
 ![A book page with its recordings](/img/screenshots/meta/work.png)
 
 ![A series page in reading order](/img/screenshots/meta/series.png)
+
+## Planning a series and following a narrator
+
+A series page's **Listening guide** follows its stated reading order, including
+decimal and range positions. It shows up to five catalogued recordings per work;
+when there are more, **Compare every recording** opens the book page. **No
+recording catalogued** describes a gap in this catalogue.
+
+Choose one recording per work to use the **Listening time planner**. Its subtotal
+adds only known runtimes for your explicit choices on the current page. Unchosen
+works, unknown runtimes, overlapping positions and entries on other pages keep a
+plan partial. Choices last while that page is open and do not carry between
+pages. Narrator continuity also counts only the displayed alternatives on this
+page; it does not promise the same narrator across the whole series.
+
+![A series listening guide with recording choices](/img/screenshots/meta/series-listening-guide.png)
+
+On a person page, **Narrated recordings** keeps separate versions of the same
+book as separate credits. The page groups its current 50-credit window by series
+and recording language, with links to the precise recording. Use the page links
+to see more credits; a group on one page is not a complete series discography.
+
+![A narrator's recording credits grouped by series and language](/img/screenshots/meta/person-recordings.png)
 
 ## Choosing languages
 
@@ -59,7 +104,8 @@ More detail is on the site's [languages page](https://meta.audiosilo.app/docs/la
 Where the community has written them, a book page has two extra tabs, the same
 ones the player shows (see [Recaps and characters in the player](../listening/recaps-and-characters.md)):
 
-- **Characters** - a card for each character. The description stays hidden
+- **Characters** - a card for each character. Its name, role and
+  first-appearance chapter are visible; the description and aliases stay hidden
   until you open the card.
 - **Story so far** - recaps, each labelled with the chapter it is safe to read
   after. Each stays closed until you open it, so nothing ahead is spoiled.
