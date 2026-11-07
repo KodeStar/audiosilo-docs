@@ -207,7 +207,7 @@ survivors, removes exactly the retired keys and modifies nothing, and opens
 `[steward] re-key retired work slugs`, labelled `data`, `bot-intake` and
 `bot-steward`, its body listing each old key, its survivor, the data release
 and any collision. From there it merges through the community gate like any
-other data pull request.
+other data pull request, except that no fix agent ever touches it (below).
 
 Once the re-key merges, the intake sweep rebases the blocked pull requests,
 `keys` passes on their new heads, and they merge on their first green head,
@@ -221,14 +221,19 @@ an unknown key or a collision stays blocked until that is settled.
 - **Unknown keys** are never touched.
 - **A chain** (a survivor that is itself retired) takes the one hop the log
   names; the next data release names the next hop.
-- At most `SYNC_STEWARD_MAX_ENTRIES / 2` renames go in one pull request (a
-  rename is two entries), the rest in the next once it has merged.
-- With `SYNC_STEWARD_MAX_ENTRIES` at 1 (under the two entries one rename is),
-  no re-key pull request is opened: `/status` says why, and the blocked pull
-  requests' comment says a person re-keys `main`.
-- **A flagged re-key pull request** never gets the delete-only fix, which would
-  delete prose already on `main`: it waits for a person, with one comment per
-  head and a line in `/status`. A rebuild from `main` (below) still proceeds.
+- At most half the smaller of `SYNC_STEWARD_MAX_ENTRIES` and
+  `SYNC_STEWARD_MERGE_MAX_ENTRIES` renames go in one pull request (a rename is
+  two entries), the rest in the next once it has merged.
+- When that smaller bound is under 2, no re-key pull request is opened:
+  `/status` says why and names the variable, and the blocked pull requests'
+  comment says a person re-keys `main`.
+- **No fix of any kind touches a re-key pull request**, since the delete-only
+  fix would delete prose already on `main`. An ai-verify flag, a required check
+  still red after its one re-run, a failed commit status, or a conflict the
+  steward cannot turn into a rebuild makes it wait for a person, with one
+  comment per head and cause and a line in `/status`. A `keys` failure that is
+  `main`'s waits on `main` as above, and a rebuild from `main` (below) still
+  proceeds.
 - It is idempotent: an open re-key pull request already carrying the renames
   due is left alone, and a different set rebuilds the branch from `main`. When
   `main` no longer holds any of its keys (a person's hand re-key landed first),
