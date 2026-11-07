@@ -32,6 +32,22 @@ straight to the exact recording. You don't need to get apostrophes right:
 Below the search box you'll find the latest additions and a running count of what
 the community has catalogued so far.
 
+**Browse** in the header, home page and footer opens directories of audiobooks,
+series, authors and narrators, character guides and recap guides. Each directory
+has its own **Search this directory** box and **All**, **A-Z**, **0-9** and
+**Other** links. Search and letter filters work together; **Clear filters**
+returns to the full directory. Entries are sorted by their displayed title or
+name as written. A-Z groups English initials, 0-9 groups
+numeric initials, and Other includes punctuation and other scripts.
+
+Pages hold up to 50 entries. Use the numbered links, **First** and **Last**, or
+enter a number in **Go to page** to jump directly through a large directory.
+Page links and jumps keep your search and letter filter; changing either filter
+starts again at page one. These controls and the catalogue links work with
+JavaScript disabled.
+
+![The series directory filtered to M, with search, letter filters and page navigation](/img/screenshots/meta/browse.png)
+
 ![Search results for a series query](/img/screenshots/meta/search.png)
 
 - A **book page** lists every catalogued narration of that title. Each recording
@@ -43,9 +59,49 @@ the community has catalogued so far.
   (including half-numbers like 2.5).
 - A **person page** collects everything a narrator or author is credited on.
 
+**Compare recordings** on a book page puts narrator, language,
+abridgement, runtime, release date, publisher and chapter count side by side.
+Follow a recording link to its detailed card. **Unknown** means the catalogue
+does not state that fact; a missing abridgement flag does not prove a recording
+is unabridged. **None catalogued** means no chapters are recorded in the catalogue,
+not that the recording has no chapters. Store links let you check a retailer,
+without claiming current availability or inferring a production format from a
+narrator or publisher.
+
+![Comparing the catalogued recordings of a book](/img/screenshots/meta/work-comparison.png)
+
+For a recording with chapters, **Browse chapter titles, starts and durations**
+opens its chapter directory, with up to 100 chapters per page. It also links
+back to the recording's card.
+
+![A recording's chapter titles, start times and durations](/img/screenshots/meta/chapters.png)
+
 ![A work page with its recordings](/img/screenshots/meta/work.png)
 
 ![A series page in reading order](/img/screenshots/meta/series.png)
+
+## Planning a series and following a narrator
+
+A series page's **Listening guide** follows its stated reading order, including
+decimal and range positions. It shows up to five catalogued recordings per work;
+when there are more, **Compare every recording** opens the book page. **No
+recording catalogued** describes a gap in this catalogue.
+
+Choose one recording per work to use the **Listening time planner**. Its subtotal
+adds only known runtimes for your explicit choices on the current page. Unchosen
+works, unknown runtimes, overlapping positions and entries on other pages keep a
+plan partial. Choices last while that page is open and do not carry between
+pages. Narrator continuity also counts only the displayed alternatives on this
+page; it does not promise the same narrator across the whole series.
+
+![A series listening guide with recording choices](/img/screenshots/meta/series-listening-guide.png)
+
+On a person page, **Narrated recordings** keeps separate versions of the same
+book as separate credits. The page groups its current 50-credit window by series
+and recording language, with links to the precise recording. Use the page links
+to see more credits; a group on one page is not a complete series discography.
+
+![A narrator's recording credits grouped by series and language](/img/screenshots/meta/person-recordings.png)
 
 ## Choosing languages
 
@@ -113,9 +169,9 @@ On a book page, two extra tabs appear once the community has written them - the
 same material the player shows on a book's page (see [Recaps and characters](../listening/recaps-and-characters.md)):
 
 - **Characters** - a card for each person in the book, written by readers in
-  their own words. A card's name, role and aliases are always visible, along with
-  the chapter where the character first appears; the description stays hidden
-  behind the card until you open it, so you choose when to read on.
+  their own words. A card's name, role and first-appearance chapter are visible;
+  its description and aliases stay inside a closed disclosure until you open it,
+  so you choose when to read on.
 - **Story so far** - short "what's happened up to here" recaps, each labelled
   with the chapter it is safe to read after. Every recap stays closed until you
   open it, so you can catch up to exactly where you've listened without spoiling
@@ -161,8 +217,10 @@ it's worth keeping a [backup](#backing-up-your-watchlist).
 ## Marking what you own
 
 While you're watching a series, each volume in the list gains an **I have this**
-checkbox, and a line above the list keeps the count - "3 of 11 marked as yours" -
-with **Mark all as owned** and **Clear** beside it.
+checkbox, and a line above the list counts the volumes on the current page:
+"3 of 11 on this page marked as yours". **Mark this page as owned** marks only
+the volumes shown; **Clear ownership for this series** clears the series'
+ownership marks across every page.
 
 Every volume also shows its **release date**, at whatever precision the catalogue
 records: a full date where one is known ("20 Oct 2026"), otherwise just the month
