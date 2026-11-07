@@ -747,6 +747,7 @@ expressive layer was added in later versions:
 | 9 | the LibriVox recording layer: `recordings.librivox_title`, `chapters.section_number`, and the `recording_credits` (`work_id, recording_id, person_id, role, ord`), `chapter_readers` (`work_id, recording_id, chapter_idx, person_id, ord`) and `recording_librivox_genres` (`work_id, recording_id, genre, ord`) tables, which the LibriVox-shaped feed answers its title, section numbers, translators, section readers and genres from, and `recording_sources.added_at` (each recording's own, so `works/latest?source=` orders by the source's recordings straight off its index) |
 | 10 | the `position_scales` table (the ruler a work's sidecars are numbered on) |
 | 11 | the store links: `recordings.link_audiobookguild` and `recordings.link_graphicaudio` (one column per store, not a table), which the API returns in the recording's `links` and as purchase links |
+| 12 | nullable `recordings.abridgement` preserves explicit abridgement presence; indexes support the bounded catalogue and chapter reads |
 
 `metaserve` returns characters, recaps, genres, the community description and
 the translation links inline on `GET /works/{id}` (`characters` / `recaps` /
@@ -761,14 +762,19 @@ recap summary below 3, genres below 4, redirects below 5, the description below 
 the languages layer below 7, the LibriVox layer below 8, the LibriVox recording
 layer below 9, position scales below 10 and the store links below 11, so a
 missing table or column reads as "no data", never a 500. An artifact that
-*claims* any version from 5 to 11 but lacks what that version adds (for 7: the
+*claims* any version from 5 to 12 but lacks what that version adds (for 7: the
 `translations` table or any of the series table's `language`, `ordering` and
 `ordering_of` columns; for 8: any of its columns or the `work_credits` and
 `recording_sources` tables; for 9: any of its columns or tables; for 10: the
-`position_scales` table; for 11: either store link column) is refused when it is
+`position_scales` table; for 11: either store link column; for 12: the
+`abridgement` column) is refused when it is
 loaded, naming the claim, because the builder always writes the two together. The same versioning drives the [coverage endpoints](api.md#coverage-endpoints), which omit a
 dimension's count rather than report it as a misleading zero when the artifact
 predates its table.
+
+Below schema 12, only legacy `abridged: true` establishes abridgement; false
+remains unknown. Schema 12 retains explicit false as `unabridged` while an absent
+source flag remains unknown (see [recording fields](api.md#apiv1worksid)).
 
 The opposite direction matters as much. Mirror-mode AudioSilo servers download
 the newest data release once a day and read it with the `pkg/query` their own
