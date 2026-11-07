@@ -69,7 +69,8 @@ leads nowhere:
 - **Playback** - **Plays directly** or **Needs transcoding** (for browsers, judged on the files as stored)
 - **Cover** - **Has cover** or **Missing cover**
 - **Community metadata** - **Matched** or **Not matched** (only when
-  community metadata is on)
+  community metadata is on). Matched means an ASIN or ISBN, or from 2.6.0 a
+  match to a [store listing](#books-matched-to-a-store-listing) without one
 - **Chapters** - **Has chapters** or **No chapters**
 - **Edited** - books with or without your edits
 - **Genre** and **Tag** - the 100 most common genres and tags among the books
@@ -152,7 +153,7 @@ with an ebook beside its audio also shows an **Ebook** chip there (see
 The buttons there are:
 
 - **Match with community metadata** (it reads **Compare with community** once
-  the book has an ASIN or ISBN) - see
+  the book is matched) - see
   [Matching with community metadata](#matching-with-community-metadata).
 - **Listen in player** - opens the book in the web player in a new tab,
   already signed in as you, so you can check how it sounds or test its
@@ -306,7 +307,8 @@ most of the recordings it knows. When
 each [matched](#matching-with-community-metadata) book (one with an ASIN or
 ISBN) against the chapter list of the exact recording it is matched to, and
 the **Community chapters** panel at the top of the Chapters card says what it
-found.
+found. A book [matched to a store listing](#books-matched-to-a-store-listing),
+with neither, isn't checked.
 
 :::note[Match the book first]
 An ASIN in the files' tags is only a
@@ -550,7 +552,9 @@ to offer yet.
    cover could be fetched), so art in your files, or a cover you uploaded, is
    kept unless you tick it.
 6. Click **Accept** (it says how many fields, for example "Accept 4 fields";
-   a ticked cover counts as one).
+   a ticked cover counts as one). For a book with no ASIN or ISBN, the match
+   itself is something to take: with nothing ticked the button reads **Match
+   to this work**, and matches the book without changing its fields.
 
 ![Matching a book with community metadata](/img/screenshots/admin/book-match.png)
 
@@ -572,6 +576,37 @@ couldn't be fetched.
 
 If the catalogue can't be reached, or is too busy to answer in time, the
 dialog says "meta.audiosilo.app isn't answering" - try again in a minute.
+
+### Books matched to a store listing
+
+From 2.6.0 a match records which community work (and edition) the book is. For
+most books that only adds to the ASIN or ISBN the match writes. But the
+community holds some books as a store listing with no ASIN or ISBN, and for
+those the recorded match is what makes the book **Matched**: it no longer
+shows as **Not matched** in [Library health](health.md#store-listings-with-no-asin-or-isbn),
+and [Match automatically](health.md#matching-every-book-at-once) skips it.
+Accepting such a match in the dialog records it whatever you tick, and so does
+applying it from
+[Match automatically](health.md#store-listings-with-no-asin-or-isbn).
+
+For such a book the **Community metadata** card shows **Community work**, the
+work's id, which opens its page on the community site, and says how and when it
+was matched: "No ASIN or ISBN: matched to its store listing by a bulk match 2
+days ago." or, for one you chose, "No ASIN or ISBN: matched to its store listing
+2 days ago." When you open the match dialog again, that work starts picked if the search
+finds it.
+
+**Unlink**, beside **Compare fields**, undoes the match. It asks first ("Unlink
+from the community work?"), as it takes away everything the match wrote: the
+community's values and cover go with it, the book shows as **Not matched**, and
+the next match run asks about it again. Your own edits stay. There is no undo;
+matching the book again brings the values back.
+
+Some things need an ASIN or ISBN, so they leave such a book out: the
+[community chapter check](#community-chapters), the community's places and
+gaps on the [Series](#series) page, **Suggest corrections**, and the players'
+community "About this book". The values the match wrote are the book's own, so
+they show everywhere.
 
 :::note[What matching sends]
 Opening the match dialog sends the book's tagged title, author and series, its
@@ -613,8 +648,8 @@ book generated before descriptions existed. See
 With the [Contributions module](server.md#modules) on and the Bridge signed in to
 GitHub (or given a GitHub token of your own), the card can have two more parts:
 
-- **Corrections**, on a matched book whose details you edited differently from the
-  community: **Suggest corrections** sends your values for review. See
+- **Corrections**, on a matched book with an ASIN or ISBN whose details you edited
+  differently from the community: **Suggest corrections** sends your values for review. See
   [Suggest corrections](bridge.md#suggest-corrections).
 - **Share with the community**, for characters and recaps generated with the
   results kept on this server: sends them for review without generating again.
@@ -699,10 +734,12 @@ own. On a big library this can take a while after the first scan.
 
 ![Library > Series](/img/screenshots/admin/series.png)
 
-With community metadata on, a series where one of your books is matched also
-shows the books you don't have, as dashed gaps, and says so: "You have 1, 2, 4
-of 5; missing 3, 5". A series none of whose books is matched yet says "Match a
-book of this series to see what's missing". With community metadata off, the
+With community metadata on, a series where one of your books has an ASIN or
+ISBN also shows the books you don't have, as dashed gaps, and says so: "You
+have 1, 2, 4 of 5; missing 3, 5". A series none of whose books is matched yet
+says "Match a book of this series to see what's missing". A series whose only
+matched books are [store listings](#books-matched-to-a-store-listing) shows
+neither, as the gaps are looked up by an ASIN or ISBN. With community metadata off, the
 page offers to turn it on.
 
 A gap whose book the community catalogue has a release date for shows that

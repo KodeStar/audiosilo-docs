@@ -50,7 +50,7 @@ below.
 | **One book split into disc folders** | A book ripped from CDs sits in one folder per disc (`CD1`, `CD2`, ...), so each disc reads as its own book. The row is the first disc, and says "*folder* reads as one book per disc folder". | **Join into one book** sets the folder holding the discs to **Always one book** ("Joining the discs of *folder*"). The library rescans, then they play as one book, with listening progress carried over. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
 | **Likely duplicates** | Copies of one book in the same library (and, when you ask, in other libraries). See [Duplicates](#duplicates). | A side-by-side comparison. |
 | **Missing covers** | No cover image in the book's folder and none inside its files. | **Upload a cover** opens the book's page, where **Change cover** adds one (see [Covers](books.md#covers)). |
-| **Not matched to community metadata** | The book has no ASIN or ISBN of its own, so community metadata can't find it. One in its tags doesn't count until a match applies (see [ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints)), so such a book is listed here too and its row says "No ASIN or ISBN". Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). To match the whole list at once, use **Match automatically** above it (see [Matching every book at once](#matching-every-book-at-once)). |
+| **Not matched to community metadata** | The book has no ASIN or ISBN of its own, so community metadata can't find it. One in its tags doesn't count until a match applies (see [ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints)), so such a book is listed here too and its row says "No ASIN or ISBN". From 2.6.0 a book [matched to a store listing](books.md#books-matched-to-a-store-listing) isn't listed. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). To match the whole list at once, use **Match automatically** above it (see [Matching every book at once](#matching-every-book-at-once)). |
 | **Series spelled several ways** | Books of one series that spell its name differently, for example "He Who Fights With Monsters" on some books and "He Who Fights with Monsters" on others. AudioSilo already shows them as one series; this is only about every book saying the same. See [Series spelled several ways](#series-spelled-several-ways). | **Use this spelling** sets one spelling on every book of the series. |
 | **Long books without chapters** | Books over two hours long with no chapter marks (or a single chapter). Listeners can play them but can't jump between chapters. When the book was checked against the community's chapter lists and they couldn't be used, a second line says why, for example "Community chapters: for another edition" or "Community chapters: cross from one file into the next. Merging the files would let them fit" (see [Community chapters](books.md#community-chapters)). | **Detect chapters**, while your [Bridge](bridge.md) is online and offers it: the Bridge transcribes the book and finds the chapters in the narration, with no agent cost (see [Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)). A book whose chapter source was chosen on its page says so instead. Otherwise, [match](books.md#matching-with-community-metadata) the book so its community chapters can be used (a book with no chapters of its own gets them automatically once they fit), add chapters to the file with your tagging tool, or ignore it. |
 | **More detailed chapters available** | The book has chapters, and the community has finer ones that fit this copy ("Has 34 chapters; the community's finer ones fit this copy"). Nothing changes until you use them. | **Use detailed chapters** switches the book to the community's chapters. Using them on the book's page does the same. Once you have chosen, the book stays off this list, even if you later switch it back to the file's chapters. |
@@ -99,7 +99,10 @@ what it found and apply it.
    (the catalogue didn't answer for them). Click **Review and apply**.
 3. Choose **What to write**:
    - **ASIN and ISBN only** marks each book matched, so players show its
-     "About this book", and changes nothing else.
+     "About this book", and changes nothing else. A match with no ASIN or ISBN
+     to attach marks the book matched by recording the community work it is,
+     though players can't show its "About this book" yet (see
+     [Books matched to a store listing](books.md#books-matched-to-a-store-listing)).
    - **Fill in what's missing** (the default) also fills every field the book
      has empty (narrator, series, published year, description), takes the
      community cover for a book with no cover at all, and
@@ -112,7 +115,8 @@ what it found and apply it.
      to what your files say. Series you typed yourself stay.
 
    Under each book the dialog says what your choice writes, for example "Sets
-   Narrator, Published, and ASIN". When your choice changes the book's series,
+   Narrator, Published, and ASIN". For a match with no ASIN or ISBN it ends with
+   "the community match" instead: that is what marks the book matched. When your choice changes the book's series,
    it shows them before and after, for example "Series: Harry Potter
    (Full-Cast Editions) #2; Harry Potter (Narrated by Stephen Fry) #2 → Harry
    Potter #2", so a series it removes is never a surprise. Fields you edited
@@ -125,8 +129,10 @@ what it found and apply it.
    book of a series, or to another series altogether, shows at a glance.
 5. **Confident** matches are ticked; untick any you don't want. **To review**
    lists matches that scored 60% to 89%, only just ahead of another work, or with
-   no ASIN or ISBN to attach, and matches whose recording is another length than
-   the book, however well they scored. Those say so in both lengths ("Held for review: the book is 10h 34m
+   no ASIN or ISBN to attach (unless they pass the
+   [firmer rule for store listings](#store-listings-with-no-asin-or-isbn)), and
+   matches whose recording is another length than the book, however well they
+   scored. Those say so in both lengths ("Held for review: the book is 10h 34m
    long, this recording 7h 2m"), as the closest recording can be
    another edition. A work that holds only a dramatization of the book is held too, unless:
    - the book says it's a dramatization: its title, folder or narrator, or, from 2.6.0,
@@ -170,7 +176,9 @@ recording's own credit names them, so it's the same production timed
 differently. A credit such as Full Cast, GraphicAudio, Various or Unknown names
 no one and doesn't count. An ASIN or ISBN from the book's tags that the
 community knows needs no lead: see
-[ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints). Whatever a
+[ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints). A match with no
+ASIN or ISBN to attach is confident only on firmer ground: see
+[Store listings with no ASIN or ISBN](#store-listings-with-no-asin-or-isbn). Whatever a
 run writes shows as a **Community** value on the book's page, and you can
 revert it like any other. To undo every community match at once and start
 again, use [Clear community matches](server.md#community-metadata) in Server
@@ -229,6 +237,25 @@ once the service is back. The same goes for turning community metadata off while
 run is still looking ("The last run stopped: community metadata was turned off.").
 Turned off while a run is applying, it stops as **Stop** does: what went in stays, and
 the rest is left to apply later from the same review.
+
+#### Store listings with no ASIN or ISBN
+
+Some books the community holds as a store listing with no ASIN or ISBN (books
+sold outside Audible, for example). From 2.6.0 a match to one of them marks the
+book matched by recording the community work it is, so it leaves **Not matched**
+and later match runs leave it alone. As nothing else names the edition, a run applies
+such a match on its own only when all of these hold:
+
+- it scores 90% or more, at least 10 points ahead of the next candidate;
+- the community names the book's author in full and places the work at the
+  book's position in its series (so a book outside a series is never applied on
+  its own);
+- both lengths are known, and the recording's is within 2% of the book's (a
+  narrator who reads it doesn't widen this).
+
+Any other such match goes to **To review**, where you can tick it. The book's
+page then shows the work it is matched to, and how and when (see
+[Books matched to a store listing](books.md#books-matched-to-a-store-listing)).
 
 #### Weak matches
 
@@ -347,7 +374,13 @@ typed, and a book matched again by hand since the run looked keeps that match.
 
 **Fill in matched books** looks up every book that already has an ASIN or
 ISBN, by that alone, and offers the community's details for it: title, series,
-narrator, description and cover. Use it for books that got an ASIN or ISBN
+narrator, description and cover. From 2.6.0 it also looks up each book
+[matched to a store listing](#store-listings-with-no-asin-or-isbn) by the
+community work it is matched to, following the work if the community merged or
+renamed it. If that work's recording has gained an ASIN or ISBN since, the review
+offers it too. If the community no longer has the work, the book is listed under
+**Not found** ("The community no longer has the work this book is matched to; the
+match is kept") and stays matched. Use it for books that got an ASIN or ISBN
 without their details (for example, from a run applied with **ASIN and ISBN
 only**), and to clean up books an earlier match gave too many
 series. Review and apply it as above, choosing **Fill in what's missing** or

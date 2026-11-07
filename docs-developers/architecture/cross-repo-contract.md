@@ -615,6 +615,14 @@ the primary order; the current player adds a per-family order toggle that its
 "previous books" list follows (see
 [Reading-order families](../server/api/reference.md#reading-order-families)).
 
+From 2.6.0 the server records each match by its work id (`book_matches`), so a
+store listing `metaserve` holds with no ASIN or ISBN counts as matched; a refresh
+looks such a book up by `works/{id}` (a retired slug's `301` followed). The rule a
+run applies one by is in the
+[reference](../server/api/reference.md#bulk-community-matching). The player's
+`/meta` stays identifier-keyed, so it shows no community content for such a book
+yet.
+
 The player-redesign bundle (Phase 1a) adds, all additive: `work.community_description`
 (the CC BY-SA description, apart from the CC0 `description`), `work.attribution`
 (present iff the work carries CC BY-SA content; **the server writes the legal

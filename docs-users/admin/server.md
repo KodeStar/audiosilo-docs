@@ -278,7 +278,8 @@ still goes to the metadata service).
   type the word it asks for. It removes the titles, authors, narrators, series,
   years, descriptions, ASINs, ISBNs and covers a community match wrote, whether
   you accepted it by hand or
-  [in bulk](health.md#matching-every-book-at-once), along with the match runs
+  [in bulk](health.md#matching-every-book-at-once), and the record of which
+  community work each book was matched to, along with the match runs
   and any review still waiting. Your own edits, the covers you uploaded and an
   ASIN or ISBN from a book's Audiobookshelf `metadata.json` stay. The books go
   back to what their tags and folders say and show under

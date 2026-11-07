@@ -1148,7 +1148,7 @@ Same status codes as `/authors`.
 punctuation or spacing are one series ("He Who Fights With Monsters", "He Who
 Fights with Monsters" and "He Who Fights WIth Monsters"): one entry, its books,
 positions and length merged. Its `name` is the spelling its matched books (with
-an ASIN or ISBN) use most, else the one most of its books use, ties to the first
+an ASIN or ISBN, or from 2.6.0 a recorded community match) use most, else the one most of its books use, ties to the first
 alphabetically. Every series filter takes any spelling of the series it names
 (`/books?series=`, [`/series/books`](#get-apiv1librariesidseriesbooks), the
 admin [`/admin/books?series=`](#get-apiv1adminbooks)) and so does
@@ -6123,7 +6123,7 @@ what the first does).
 | `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) and no file of it is in a container no browser plays (`.mka`), judged on the stored files: an MP3-in-`.mka` book the stream remuxes still counts as `false` here |
 | `has_cover` | `true`\|`false` | - | a sibling image, embedded art or a custom cover |
 | `has_chapters` | `true`\|`false` | - | **more than one** chapter (every single-part book has one) |
-| `matched` | `true`\|`false` | - | the book has an ASIN or an ISBN |
+| `matched` | `true`\|`false` | - | the book has an ASIN or an ISBN, or (from 2.6.0) a recorded community match without one (a `book_matches` row, see [`community_match`](#get-apiv1adminlibrariesidbook)) |
 | `edited` | `true`\|`false` | - | the book has a metadata edit, or a chapter-title edit on a chapter it still has (one on an index a rescan dropped is dormant and doesn't count) |
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
@@ -6225,7 +6225,10 @@ is a `400` too (`too many format or codec values`).
   `Book` has: a short token that moves when the cover art does, so a client can
   key cached thumbnails by it. Omitted for a book with no art identity yet. The
   duplicates groups' copies and the book page's `book` carry it too.
-- `matched` - the book has an ASIN or ISBN: the same rule as the `matched` filter.
+- `matched` - the book has an ASIN or ISBN, or a recorded community match (a store
+  listing with neither, from 2.6.0): the same rule as the `matched` filter
+  (`catalog.matchedExpr`). The player's `/meta` and the community chapter check find
+  a book by its ASIN or ISBN alone, so check `asin` / `isbn` for those, not `matched`.
 - `abridged` - `true`, `false`, or `null` while nothing says (always present,
   unlike the player's `Book`, which omits it). `genres` and `tags` are `[]` for
   none.
@@ -6334,7 +6337,7 @@ once).
 
 | Status | Meaning |
 |---|---|
-| `400` | `books is required`; `nothing to change`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 1000 books; `code: "invalid_override"` with `field` for a value that fails its rule (`field: "chapter_source"` for a source other than the three), or with `field: "chapters"` for any chapter edit (`chapter titles can only be edited one book at a time` - chapter indexes are per book) |
+| `400` | `books is required`; `nothing to change`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 1000 books; `code: "invalid_override"` with `field` for a value that fails its rule (`field: "chapter_source"` for a source other than the three), or with `field: "chapters"` for any chapter edit (`chapter titles can only be edited one book at a time` - chapter indexes are per book), or with `field: "match"` for a `match` (`a community match is recorded one book at a time`, an unlink included; from 2.6.0) |
 | `404` | `code: "book_not_found"` - one of the paths is not an indexed book (nothing was changed) |
 
 A field cannot be both set and reverted in one request (`invalid_override`).
@@ -6551,6 +6554,9 @@ book path).
   },
   "community_checking": false,
   "match_query": "The Martian: Classroom Edition Andy Weir",
+  "community_match": { "work_id": "the-martian", "recording_id": "the-martian-1", "how": "accepted",
+                       "matched_at": "2026-10-03T09:19:57Z",
+                       "web_url": "https://meta.audiosilo.app/work?id=the-martian" },
   "generated_description": { "text": "Mark Watney, a botanist on the third crewed mission to Mars, ...",
                              "generated_at": "2026-10-16T09:31:02Z" }
 }
@@ -6648,6 +6654,18 @@ book path).
   series alone for `Book XX`). It only fills the box: the match itself always
   sends the book's own facts, and `q` is what the admin then searches for.
   Always present (`""` for a book with nothing to say).
+- `community_match` - the book's recorded community match (from 2.6.0, the
+  `book_matches` row, [data model](../data-model.md#durable-per-library-config-path-keyed-no-fk-to-books)):
+  the `work_id` and `recording_id` (omitted for none) an accept or a match run's
+  apply took, `how` (`"auto"`: a run's confident item applied unasked;
+  `"accepted"`: the match dialog, or a review item the admin included; a
+  refresh that heals a merged work keeps it),
+  `matched_at`, and `web_url`, the work's page on the community site (omitted when
+  no service is configured). Recorded whether or not the match gave the book an
+  ASIN or ISBN; for a store listing with neither it is what makes the book
+  `matched`. The console's Community card shows it for a book with no ASIN or
+  ISBN, with Unlink. Omitted when the book has none (no backfill: a book matched
+  before 2.6.0 has none until it is matched again).
 - `generated_description` - the description the [Bridge](#the-bridge) generated
   for the book (its checked `.audiosilo/description.json`, Phase 1c), with
   `generated_at` the time `bridge.json`'s `description` object gives (omitted when
@@ -6676,6 +6694,14 @@ one request is applied in one transaction.
 | `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
 | `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`, else chapters a Bridge found in the narration when they fit). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included. `"generated"` is not a choice: `"files"` turns found chapters off and `"auto"` brings them back |
+| `match` | object | from 2.6.0: `{ "work_id", "recording_id"? }`, the community match the edit was taken from, recorded as the book's [`community_match`](#get-apiv1adminlibrariesidbook) (how `accepted`) in the edit's transaction. Needs `source: "community"`, and may come alone (no `set`): the console's dialog sends it with every accept of ticked fields, and alone (after any ticked cover) for a book with no ASIN or ISBN whose pick isn't its recorded match; a cover-only accept of any other book sends none. `{ "work_id": "" }` unlinks the book (below). One book at a time: the bulk edit refuses it |
+
+**Unlinking** (from 2.6.0). `match: { "work_id": "" }`, from any edit (no
+`source` needed), removes the book's recorded match, every `source: "community"`
+value and its community cover (as [clearing the community
+matches](#delete-apiv1admincommunity-matches) does for a library, before the rest
+of the edit applies), so it is `matched: false` again unless it has an ASIN or
+ISBN of its own. An admin's own edits and uploads stay. There is no undo.
 
 ```json
 {
@@ -6727,12 +6753,14 @@ afterwards is an ordinary revert, so it swaps back as above.
 `cover_path`), a value that fails its rule, a field both set and reverted, a
 series swap whose old main series can't be listed (`field: "series"`), a
 `source` other than the two above (`field: "source"`), a `chapter_source` other
-than the three above (`field: "chapter_source"`), and chapter problems
+than the three above (`field: "chapter_source"`), chapter problems
 (`field: "chapters"`: a chapter the book doesn't have, an empty title, one index
-both renamed and reverted).
+both renamed and reverted), and a `match` the server refuses (`field: "match"`:
+a work id without `source: "community"`, or an id over 200 characters or holding
+a control character). An unknown key inside `match` is `invalid request`.
 
 An edit is audited as `book.edit` (`chapter_source` in its details when
-sent). It also wakes the [community chapter checks](../community-chapters.md#when-a-book-is-checked),
+sent, and `match`, the work id, `""` for an unlink). It also wakes the [community chapter checks](../community-chapters.md#when-a-book-is-checked),
 so a newly set ASIN or ISBN is checked soon after.
 
 ### `POST /api/v1/admin/libraries/{id}/book/community-chapters`
@@ -6961,17 +6989,25 @@ nothing changes until the run is **applied**. Applying writes community
 overrides (as [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) with
 `source: "community"` does) and, for a book with no cover, the community cover
 (as [`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity)), so
-every change is reversible. Admin only; every endpoint answers `404 code:
+every change is reversible. From 2.6.0 a `match` run's apply also records each
+book's match (its [`community_match`](#get-apiv1adminlibrariesidbook), as the
+dialog's `match` does), under every scope, whenever the proposal's work or
+recording isn't the book's already: how `auto` for a confident item, `accepted`
+for an included review item. A `refresh` only heals a match the book already has
+(a refresh by the recorded match, below; it keeps the `how`), and a `repick`
+records none. Admin only; every endpoint answers `404 code:
 "metadata_off"` while community metadata is off. One run works at a time
 (server-wide); the newest 10 runs are kept, with their books.
 
-A run is a `match` run (the books with no ASIN or ISBN: the Health page's
-"Not matched", less those ignored there), a `repick` run (the books whose
+A run is a `match` run (the books not matched: no ASIN, no ISBN and, from 2.6.0,
+no recorded community match; the Health page's "Not matched", less those ignored
+there), a `repick` run (the books whose
 ASIN is a **community** override, never one from an Audiobookshelf
 `metadata.json`, an admin's edit or an enrichment write: each is looked up, and when its recording now sells
 in the preferred marketplace under another ASIN, that is offered) or a
-`refresh` run (every book with an ASIN or ISBN, whoever set it: each is looked
-up by its own identifier alone, the ISBN when the ASIN finds nothing, and the
+`refresh` run (every matched book: one with an ASIN or ISBN, whoever set it, is
+looked up by its own identifier alone, the ISBN when the ASIN finds nothing, and
+from 2.6.0 one with neither by its recorded community match, below; the
 record it names is the book, `auto` whatever its score unless its recording's
 length is more than 10% from the book's, which makes it `review` (from 2.6.0, 20%
 when the book's own narrator credit names a reader of that recording,
@@ -6982,7 +7018,7 @@ community doesn't know is `none` with `detail: "identifier_unknown"`, never a
 fuzzy match by title). A refresh fills in, or with `overwrite` replaces, the
 details an identifier alone didn't bring (an enrichment write, an `ids`
 apply), and cleans up the series an earlier match wrote (see the `overwrite`
-scope below); it never changes the identifier itself. Only books a scope would
+scope below); it never changes an identifier the book has. Only books a scope would
 change are recorded (a book already up to date leaves no item, as a repick
 records only books with a new ASIN), and each refresh proposal names the
 identifier it was found by (`proposal.found_by`, `"asin:<ASIN>"` or
@@ -6990,14 +7026,38 @@ identifier it was found by (`proposal.found_by`, `"asin:<ASIN>"` or
 2.4.0; a repick recorded earlier has none): applying it changes nothing on a
 book that no longer has that identifier (matched again since, by hand).
 
+**A refresh by the recorded match** (from 2.6.0). A book with neither an ASIN
+nor an ISBN is looked up by its `community_match` alone (`meta.MatchQuery.WorkID`:
+the service's `works/{id}`, a retired slug's `301` followed online and in mirror
+mode), `found_by` `"work:<work id>"` or `"work:<work id>/<recording id>"`. Its
+recorded recording is kept while the work still lists it (else the likeliest by
+length, as for an identifier). It is classified as an identifier's record is:
+`auto`, or `review` when its length is off. A work the community no longer has (`404`) is
+`none` with `detail: "work_unknown"`, and the book keeps its match. The proposal
+may fill an ASIN or ISBN the recording gained since (dropped once the book has
+one of its own), and a merged work's new slug is a change by itself (the change's
+`match`), healing the recorded match; a book matched by its own identifier with no
+recorded match never gets one from a refresh. Applying it is a no-op once the
+book was matched again since, to another work or recording.
+
 Each book's **outcome**:
 
 | Outcome | Meaning |
 |---|---|
-| `auto` | Confident (`matchrun.Classify`): the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN, and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition), or, from 2.6.0, within **20%** (`meta.NarratedRuntimeOff`) when the book's narrator reads it (`matchrun.narratorReads`: `reasons.narrator` is `full` and the proposed recording's own credit names one of the book's narrators, `meta.ReadBy`; a placeholder credit such as `Full Cast`, `GraphicAudio`, `Various` or `Unknown` never counts, `meta.PersonNarrator`, as it agrees with every recording carrying it). An identifier hit (`reasons.identifier`: in a match run always a tag hint) needs no lead, unless the next candidate is one too (`review`; a guard, as metaserve names one work per request today). So a wrong tag ASIN within 10% of the length is `auto`, and so, from 2.6.0, is one naming another edition of the right work when a recording of it within 10% takes its place (`meta.FitRecording`, [the dialog's rule](#get-apiv1adminlibrariesidbookmatch)). Applied unless the admin leaves it out. A repick's offers are all `auto`. |
+| `auto` | Confident (`matchrun.Classify`): the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN (from 2.6.0, one with neither on firmer ground: see below the table), and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition), or, from 2.6.0, within **20%** (`meta.NarratedRuntimeOff`) when the book's narrator reads it (`matchrun.narratorReads`: `reasons.narrator` is `full` and the proposed recording's own credit names one of the book's narrators, `meta.ReadBy`; a placeholder credit such as `Full Cast`, `GraphicAudio`, `Various` or `Unknown` never counts, `meta.PersonNarrator`, as it agrees with every recording carrying it). An identifier hit (`reasons.identifier`: in a match run always a tag hint) needs no lead, unless the next candidate is one too (`review`; a guard, as metaserve names one work per request today). So a wrong tag ASIN within 10% of the length is `auto`, and so, from 2.6.0, is one naming another edition of the right work when a recording of it within 10% takes its place (`meta.FitRecording`, [the dialog's rule](#get-apiv1adminlibrariesidbookmatch)). Applied unless the admin leaves it out. A repick's offers are all `auto`. |
 | `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's, or 20% when the book's narrator reads it (a match run's, as for `auto`, or a refresh's), carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. One whose work holds only dramatizations the book doesn't state it is, none of them the book's by length ([`default_recording_id`](#get-apiv1adminlibrariesidbookmatch), from 2.6.0), carries `detail: "dramatization_only"` (`DetailDramatizationOnly`) and no recording, so nothing is attached unasked. |
 | `none` | No candidate; or, in a match run, a best candidate scoring under **60** (`matchrun.ReviewFloor`) on metaserve's scale, with `detail: "weak_match"` (`DetailWeakMatch`), its `score` kept for the review's wording and its `proposal` empty (from 2.6.0). A candidate without `reasons` (an older metaserve's fallback search, on another scale) stays `review`. The match dialog has no such floor: it lists its candidates (up to 6) however low they scored. |
 | `error` | The service failed for this book (`detail: "metadata_unavailable"`). [Ten in a row](#what-a-run-asks-of-the-community-service) stop the run. |
+
+**A store listing with no ASIN or ISBN** (from 2.6.0, LibraForge E6,
+`matchrun.anchorFits`). Nothing else names its edition, so it is `auto` only when
+the best candidate scores **90** or more and a plain **10** points ahead (no
+identifier-hit lead), `metaserve`'s `reasons.author` is `full` and
+`reasons.series` is `position`, and both lengths are known with the recording
+within **2%** (`AnchorRuntimeOff`) of the book's (no narrator widening). Any
+other is `review`. Applying it records the match (`how: "auto"`), which is what
+makes the book matched. On the LibraForge benchmark this moved 186 books from
+review to confident, none of them wrong.
 
 Run **statuses**: `matching` → `ready` (waiting for review) → `applying` →
 `applied`; `cancelled` (stopped while matching), `failed` (stopped by itself:
@@ -7164,15 +7224,20 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   server, named by `asin_region`.
 - `book` is the book as it is now, with its `duration` in seconds (omitted when
   unknown); `gone: true` when nothing is indexed at the path any more.
-- `matched_since: true` (a match run only) when the book has an ASIN or ISBN now
-  that it didn't have when the run looked: matched since, by hand or otherwise.
+- `matched_since: true` (a match run only) when the book is matched now (an ASIN
+  or ISBN, or from 2.6.0 a recorded community match) and wasn't when the run
+  looked: matched since, by hand or otherwise.
   Its `changes` are empty, and an apply leaves it alone under any scope.
 - `changes` is what applying would write under each scope the run's mode takes
   (fields in display order, set or reverted, and whether the cover is taken),
   worked out against the book now by the same rules the apply uses, so the
-  review can't disagree with it. A `match` run's items carry `ids`, `fill` and
-  `overwrite`; a `refresh` run's `fill` and `overwrite` (it writes no
-  identifier); a `repick` run's only `ids` (its ASIN, whatever the scope). When a
+  review can't disagree with it. From 2.6.0 a change also carries `match: true`
+  (omitted otherwise) when applying records the book's community match (a new
+  match, or a refresh healing a merged work); the console lists it as "the
+  community match" when no ASIN or ISBN is written beside it. A `match` run's
+  items carry `ids`, `fill` and `overwrite`; a `refresh` run's `fill` and
+  `overwrite` (it writes no identifier the book has); a `repick` run's only `ids`
+  (its ASIN, whatever the scope). When a
   scope changes the book's series, its change also carries `series`: the book's
   series `from` (now) and `to` (after), each `[{ "name", "position", "position_end"? }]` with the
   main series first (`position` 0 = none; `position_end` a range's end), so a series it removes is visible:
@@ -7193,7 +7258,8 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   `cover_failed`); an `applied` item can carry `cover_failed` when its fields
   went on but its cover couldn't be fetched. A match item an apply's
   stop cut short after its fields went in stays `""` with `detail`
-  `cover_pending`, so the next apply takes its cover.
+  `cover_pending`, so the next apply takes its cover (unless the book was
+  unlinked since: then it writes nothing, `nothing_to_change`).
 
 #### `POST /api/v1/admin/match-runs/{id}/apply`
 
@@ -7205,7 +7271,7 @@ book gets, under each **scope**:
 
 | Scope | Writes |
 |---|---|
-| `ids` | The ASIN and ISBN, where the book has none. |
+| `ids` | The ASIN and ISBN, where the book has none (and, from 2.6.0, the recorded match). |
 | `fill` | Also every field the book has empty, and the community cover when it has no cover (a checked book with none, and no custom cover). Replaces only one thing the book has: a title that is the community's plus clutter (`matchrun.tidyTitle`, below). |
 | `overwrite` | Also every field whose value differs, as accepting the dialog's default ticks does; the cover only when it has none. The book's series are **replaced** by the community's for its recording (the [series rules](#series-rules)): a `series`, `series_index` or `more_series` value the community wrote earlier that it no longer offers (a series it deleted or merged, an edition or a translation) is reverted to what the files say. |
 
@@ -7240,7 +7306,7 @@ are the ones written. A repick writes its ASIN whatever the scope, and only whil
 the book's ASIN is still the community override it found and still the ASIN it
 looked up (`found_by`), so a book matched again by hand since, to another
 record, keeps that match; a refresh takes only
-`fill` or `overwrite` (`400` for `ids`, which would write nothing). Audited as
+`fill` or `overwrite` (`400` for `ids`: a refresh is for the details). Audited as
 `book.match_apply` (`run`, `books`, `scope`). Applying `ready` again after a
 stopped apply takes the rest.
 
@@ -7263,7 +7329,8 @@ Undoes the community matches so the books can be matched from fresh (Server >
 Settings > Community metadata > Danger zone). `?library_id=` limits it to one
 library; without it, every library. In one transaction it removes every
 `source: "community"` override (whether a match dialog or a run wrote it) and
-every community cover (one kept from the match dialog or by a run), rebuilds
+every community cover (one kept from the match dialog or by a run) and, from
+2.6.0, every recorded community match (`book_matches`), rebuilds
 each book's effective metadata and cover, and removes the match runs with their
 reviews: every run, or for one library its runs and its books' items in runs
 over every library. An admin's own edits and uploaded covers, the tags and
@@ -7275,7 +7342,7 @@ with community metadata off (and with no service configured).
 { "books": 128, "covers": 41, "runs": 3 }
 ```
 
-`books` counts the books that had a community value or cover, `covers` the
+`books` counts the books that had a community value, cover or recorded match, `covers` the
 community covers removed, `runs` the runs removed. Audited as
 `book.match_clear` with the same counts (target: the library's name, empty for
 every library).
@@ -8513,7 +8580,9 @@ and only the part inside the period counts.
   back.
 - `storage` - the collection now: total `bytes`, `by_library` (in library
   order), `by_format` and `by_codec` (`key: ""` = unknown).
-- `coverage` - books now, and how many have an ASIN or ISBN (`identified`),
+- `coverage` - books now, and how many are matched (`identified`: an ASIN or
+  ISBN, or from 2.6.0 a recorded community match, the `matched` rule; the console
+  words it "Matched to the community"),
   more than one chapter (`with_chapters`) and a cover (`with_cover`).
 - `inactive_users` - enabled, non-demo accounts with no authenticated request
   for 60 days (an account that never made one counts once it is that old;
