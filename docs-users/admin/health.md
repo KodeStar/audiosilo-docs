@@ -120,6 +120,8 @@ what it found and apply it.
    series it belongs to.
    In **Fill in matched books**, a row with no fields or cover to change under
    the selected choice cannot be ticked and does not count toward **Apply**.
+   When no books are selected, **Done** finishes the review without changing
+   any book, so you can start another kind of run.
 4. Each book shows its path in the library (hover it for the whole path on
    disk) and, under an arrow, the community match: its title, authors,
    narrators and length, the series it belongs to with its position ("Series:

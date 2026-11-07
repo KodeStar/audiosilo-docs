@@ -46,6 +46,8 @@ If a card has unsaved changes, leaving its topic or the Settings page asks
 **Leave without saving?** **Cancel** keeps the draft; **Discard and leave**
 continues without saving it. Saving or resetting the card clears the warning.
 Reloading or closing the browser tab also warns while changes are unsaved.
+If a background status check fails, the loaded settings and your drafts stay
+visible alongside the error; **Try again** refreshes the status.
 
 ### When a change takes effect
 
@@ -254,8 +256,9 @@ the metadata service if you turn it on.
   ([Upcoming releases](../listening/upcoming.md)). A calendar that fetches from
   the cloud, like Google Calendar, needs the **Public address** above to be a
   public HTTPS address with a trusted certificate. It asks the metadata service
-  only about series and books, never who is listening, and with a
-  [local copy](#keeping-a-local-copy) your server answers it itself. The switch
+  only about series and books, never who is listening. With a
+  [local copy](#keeping-a-local-copy), it uses the copy when it can answer and
+  can otherwise fall back to the online service. The switch
   works only while the lookup is on (it is greyed out otherwise). Under it, while
   the switch and the lookup are both on, the last check: "Not run yet" (the first check runs as soon as you switch it on,
   or about an hour after the server starts), "Last checked *when*: *N* series,
@@ -399,15 +402,13 @@ How it behaves:
   happening.
 - A book the copy doesn't know is **not** looked up online. If the server
   already had details for it, it keeps showing them rather than going blank.
-- The copy comes from GitHub, so the server contacts GitHub once a day instead
-  of the metadata service for each book (and lookups are quicker, since none
-  of them waits on the internet). The download carries nothing about your
-  books or listeners.
+- The copy comes from GitHub, which the server checks once a day. Requests
+  answered by the copy need no internet round trip; requests it cannot answer
+  can still go to the metadata service. The download carries nothing about
+  your books or listeners.
 - Cover images are not part of the copy: the server still downloads the
   community covers the players show from wherever the catalogue keeps them
   (only the image itself is asked for).
-- **Covers are not part of the copy:** book covers still come from their own
-  sites (Audible, Open Library, publishers) in both modes.
 - While the **Look up community metadata** switch is off, the copy isn't
   updated either, and turning it off stops an update that is downloading.
 - The copy isn't part of the server's [backups](backups.md), and doesn't need

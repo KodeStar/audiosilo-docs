@@ -498,8 +498,8 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 | `SYNC_MAX_ATTACHMENTS_PER_PR` | `300` | Cap on attached editions per pull request (editions of books the catalogue already holds; they never count as works). Editions over it wait for a later cycle. |
 | `SYNC_RESOLVE_ATTEMPTS` | `3` | Fix-mode resolver attempts per pull request, before the one drop-mode attempt and then exclusion. `0` goes straight to the drop attempt. |
 | `SYNC_RESOLVE_MAX_TOTAL` | `8` | Ceiling on resolver attempts per pull request across all findings; an attempt on a NEW finding is progress and does not count against `SYNC_RESOLVE_ATTEMPTS`. |
-| `SYNC_RESOLVE_MAX_TURNS` | `150` | Tool-loop budget for one resolver attempt, for either agent backend. |
-| `SYNC_RESOLVE_TIMEOUT` | `45m` | Wall-clock budget for one resolver attempt. |
+| `SYNC_RESOLVE_MAX_TURNS` | `150` | Tool-loop budget for one Claude resolver attempt. The Codex backend has no turn cap and is bounded by `SYNC_RESOLVE_TIMEOUT` alone. |
+| `SYNC_RESOLVE_TIMEOUT` | `45m` | Wall-clock budget for one resolver attempt, for either agent backend. |
 | `SYNC_STEWARD_MAX_TURNS` | `200` | Tool-loop budget for one [steward](steward.md) task when `SYNC_STEWARD=on`; separate from the resolver budget. |
 | `SYNC_STEWARD_TIMEOUT` | `60m` | Wall-clock budget for one steward task. |
 | `SYNC_VERIFY_REDISPATCHES` | `4` | Maximum `ai-verify.yml` re-dispatches per head after runs that failed without a verdict; then the pull request is recycled. |

@@ -7248,7 +7248,7 @@ stopped apply takes the rest.
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request`; `scope must be …` (also a scope the run's mode doesn't take: `ids` for a refresh); `code: "too_large"` - more than 20,000 ids in `include` or `exclude` |
+| `400` | `invalid request` (including a body over 1 MiB); `scope must be …` (also a scope the run's mode doesn't take: `ids` for a refresh); `code: "too_large"` - more than 20,000 ids in `include`. Exclusions are bounded by the body size, so an unchanged refresh can exclude every book in a large library. |
 | `404` | `no such match run` |
 | `409` | `code: "match_run_busy"` - a run is matching or applying; `code: "match_run_not_ready"` - this run isn't `ready` |
 

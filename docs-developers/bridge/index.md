@@ -191,8 +191,8 @@ by sync. Use the actual paired tags from the release notes. Bridge 0.5.0 remains
 the minimum for `readalong.align`; it is not the Audible compatibility target.
 See [the Audible seam](../architecture/cross-repo-contract.md#16-the-bridge).
 
-An older server has no Bridge routes and no `bridge` flag:
-the Bridge's pairing gets a `404` (or `405`) and says the server is too old. The
+Servers from before Bridge support have no Bridge routes and no `bridge` flag:
+pairing gets a `404` (or `405`) and says the server is too old. The
 player's first Bridge UI (Phase 1a, admins only) is gated on the flag and the
 `sidecars` feature, so it never shows against an older server. Players shipped
 before it never see the Bridge, but they do see generated characters and recaps
