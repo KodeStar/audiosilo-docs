@@ -518,18 +518,17 @@ release date. If the Bridge can't read the orders or the catalogue at a check, t
 check still finishes and lists the preorders it remembers, as it last saw them.
 
 :::note[Older preorders]
-Audible's order history only goes back about six months. A preorder ordered more
-than about six months before the Bridge first checks the account with preorder
-support (Bridge releases after 0.6.0) can't be found, so it isn't listed until it
-comes out; it then shows as **Available** like any other title. A preorder ordered
-later is remembered, however long it waits for release.
+Audible's order history only goes back about six months, so a preorder ordered
+longer ago than that when the Bridge (a release after 0.6.0) first checks the
+account can't be found. It isn't listed until it comes out, then shows as
+**Available** like any other title. A preorder ordered later is remembered, however
+long it waits for release.
 :::
 
 A **Preorder** can't be downloaded yet. **Back up** on one remembers it: the title
 shows **Backs up on release**, and the request is kept through restarts.
-**Destination...** works on a preorder as on any other title, and the row shows
-[where it would go](#where-a-title-would-go) once Audible's catalogue has
-described it.
+The row shows [where it would go](#where-a-title-would-go) once Audible's catalogue
+has described it.
 
 From the title's release date, the server checks the account **every hour**
 instead of every 6 hours. The first check that finds it **Available** backs it up:
