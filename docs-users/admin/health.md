@@ -169,6 +169,13 @@ what it found and apply it.
    ("Applying *N* of *M* matches"). **Stop** finishes the books in hand and
    leaves the rest to apply later from the same review.
 
+While any run is finding or applying matches, an individual book's **Unlink**
+is also refused: "A match run is working. Wait for it to finish, or stop it,
+then try again." This includes **Fill in matched books** and **Use *country*
+ASINs**. Wait for the run to finish, or click **Stop** and wait for it to finish
+stopping, then retry **Unlink** on the book's page. The refused attempt leaves
+its match and values in place.
+
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
 A match is confident when it scores 90% or more, at least 10 points ahead of
@@ -383,30 +390,47 @@ typed, and a book matched again by hand since the run looked keeps that match.
 #### Filling in books that are already matched
 
 **Fill in matched books** looks up every book that already has an ASIN or
-ISBN, by that alone, and offers the community's details for it: title, series,
-narrator, description and cover. From 2.6.0 it also looks up each book
-[matched to a store listing](#store-listings-with-no-asin-or-isbn) by the
-community work it is matched to, following the work if the community merged or
-renamed it. If that work's recording has gained an ASIN or ISBN since, the review
-offers it too. If the community no longer has the work, the book is listed under
-**Not found** ("The community no longer has the work this book is matched to; the
-match is kept") and stays matched. Use it for books that got an ASIN or ISBN
+ISBN, using the ASIN first and the ISBN if the ASIN is unknown, and offers the
+community's details for it: title, series, narrator, description and cover.
+From 2.6.0 it looks up a book with neither identifier by the community work it
+is matched to (see [store listings](#store-listings-with-no-asin-or-isbn)). It
+also tries that recorded work when the community knows none of the book's
+identifiers, unless you set an ASIN or ISBN yourself. Your own identifier takes
+precedence, so an unknown one leaves the book unchanged. Identifiers from the
+files or a community match still allow this lookup. The lookup follows the work
+if the community merged or renamed it.
+A known identifier takes precedence, even if it names another work. If a book
+with neither identifier is matched to a recording that has gained an ASIN or
+ISBN since, the review offers it too; existing identifiers stay as they are.
+If the recorded work is looked up but the community no longer has it, the book
+is listed under **Not found** ("The community no longer has the work this book
+is matched to; the match is kept") and stays matched. Use it for books that got an ASIN or ISBN
 without their details (for example, from a run applied with **ASIN and ISBN
 only**), and to clean up books an earlier match gave too many
 series. Review and apply it as above, choosing **Fill in what's missing** or
-**Use community values** (the ASIN and ISBN stay as they are, so **ASIN and
+**Use community values** (existing ASINs and ISBNs stay as they are, so **ASIN and
 ISBN only** isn't offered). Books that are already up to date aren't listed.
-A book whose ASIN or ISBN the community doesn't
-know is listed under **Not found** ("The community doesn't know this book's
-ASIN or ISBN"); it is never matched to another book by its title. A book whose
-recording is more than 10% off its length goes to **To review** (from 2.6.0, 20%
-when the book's narrator reads that recording, as in
+A book whose identifiers the community doesn't know, and which has no recorded
+community match, is listed under **Not found** ("The community doesn't know
+this book's ASIN or ISBN"). A refresh never searches for another book by title.
+A book whose recording is more than 10% off its length goes to **To review**
+(from 2.6.0, 20% when the book's narrator reads that recording, as in
 [a match](#matching-every-book-at-once)), so a book matched on its narrator's
 say-so is still kept up to date.
 
 To clean up series an earlier match added (every edition and reading order of
 a series, say), run **Fill in matched books** and apply it with **Use
 community values**: the review shows each book's series before and after.
+
+:::warning[Known issue in 2.6.0: use Unlink to remove a community match]
+Clearing or reverting an ASIN leaves the book's community match in place.
+If you reverted the ASIN or accepted the match with its ASIN unticked,
+**Fill in matched books** can write the community's ASIN back. To remove the
+match, use **Unlink** on the book's page before running another refresh (see
+[Books matched to a store listing](books.md#books-matched-to-a-store-listing)).
+The button appears only when the book has neither an ASIN nor an ISBN.
+A fix is planned; no release version is promised.
+:::
 
 ### Duplicates
 
@@ -436,7 +460,9 @@ check. Don't delete either until you know which is which:
   matched to the wrong recording, open it, click **Match**, and pick the
   recording that fits its length (the match dialog shows how far each one is
   off). If the community catalogue doesn't have that recording, clear the
-  book's ASIN on its page instead.
+  book's ASIN and, if present, ISBN on its page, then use **Unlink** to remove
+  any recorded community match (see the
+  [2.6.0 known issue](#filling-in-books-that-are-already-matched)).
 - If one copy is missing files, replace it with a complete copy.
 - If both are right (two editions that really share an identifier), click
   **They're different books**.

@@ -601,11 +601,29 @@ days ago." or, for one you chose, "No ASIN or ISBN: matched to its store listing
 2 days ago." When you open the match dialog again, that work starts picked if the search
 finds it.
 
-**Unlink**, beside **Compare fields**, undoes the match. It asks first ("Unlink
-from the community work?"), as it takes away everything the match wrote: the
-community's values and cover go with it, the book shows as **Not matched**, and
+Use **Unlink**, beside **Compare fields**, to remove the book's community match.
+It asks first ("Unlink from the community work?"), as it takes away everything
+the match wrote: the community's values and cover go with it, the book shows as
+**Not matched**, and
 the next match run asks about it again. Your own edits stay. There is no undo;
 matching the book again brings the values back.
+
+While any match run is finding or applying matches, **Unlink** is refused:
+"A match run is working. Wait for it to finish, or stop it, then try again."
+Wait for the run to finish, or use **Stop** on the
+[Health page](health.md#matching-every-book-at-once), then retry **Unlink** once
+the run has finished stopping. If a run is ever left stuck working, restart the
+server to release it, then try Unlink again. The refusal leaves the book's
+match and values in place.
+
+:::warning[Known issue in 2.6.0: a cleared ASIN can return]
+Clearing or reverting an ASIN leaves the book's community match in place.
+If you reverted the ASIN or accepted the match with its ASIN unticked,
+**Fill in matched books** can write the community's ASIN back. To remove the
+community match, use **Unlink** before running **Fill in matched books** again.
+The button appears only when the book has neither an ASIN nor an ISBN.
+A fix is planned; no release version is promised.
+:::
 
 Some things need an ASIN or ISBN, so they leave such a book out: the
 [community chapter check](#community-chapters), the community's places and
