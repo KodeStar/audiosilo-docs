@@ -148,7 +148,9 @@ Attempts back off - immediately, then 1 hour, 4 hours, 12 hours, then daily -
 and never end in a closure. A fix whose next verdict states a **new** finding
 is progress: the backoff stays at its first hour, and a verdict posted after the
 last attempt that states a new finding is fixed at once rather than waiting that
-hour out. Only the same finding again climbs the backoff. An item that has failed three times is listed as
+hour out. Only the same finding again climbs the backoff. A backoff holds only
+fix attempts, never a merge: a pull request whose head turns green merges
+whatever its backoff. An item that has failed three times is listed as
 **stuck** on the report with its last evidence, which is the signal to find out
 why and fix the cause.
 
@@ -160,16 +162,17 @@ descriptions), on the same terms and through that repository's own gate: the
 `keys`, `structure` and `verify` checks and `ai-verified` on the exact head. Two
 things differ. A community fix is **delete-only**: the agent has not read the
 book, so it may cut words, sentences or whole members the pull request added or
-changed, and never writes, rephrases or moves prose. And it triages no issues
-there: it writes no community prose from an issue, a contributor's pull request
-answers it.
+changed, and never writes, rephrases or moves prose. And it triages no
+community issues: a contributor's pull request answers them, never prose the
+steward writes.
 
 ### When `keys` fails because of `main`
 
-The `keys` check resolves **every** entry key in the tree against core's newest
-data release, not only the pull request's. When a core release retires a work
-slug the layer is keyed by (two duplicate works merged into one, say), `keys`
-fails on every open community pull request at once, whatever it changes.
+The `keys` check resolves **every** entry key in the tree, not only those the
+pull request touches, against core's newest data release. When a core release
+[retires](./data-model.md#slug-is-identity-the-file-is-only-storage) a work slug
+the layer is keyed by, `keys` fails on every open community pull request at
+once, whatever it changes.
 
 So once a failed `keys` check has had its one re-run, the steward reads the
 job's log before planning any fix. When the log is complete and every entry it
@@ -181,8 +184,7 @@ names is one the pull request did not add, remove or change, the pull request is
 - The pull request gets one comment (per head, and not again while nothing
   changed) naming each key and what becomes of it: the re-key pull request that
   renames it, "needs a person" for a collision, or "waits for the next data
-  release" for an **unknown** key (a work newer than the release, which is never
-  touched).
+  release" for an **unknown** key (a work newer than the release).
 - Its report line reads `blocked by main`.
 
 Anything less certain - a log the steward cannot parse, or a failing entry the
@@ -191,40 +193,38 @@ afresh.
 
 ### The re-key pull request
 
-The steward then re-keys `main` itself, mechanically, never with an agent. On
-its own branch, `steward/rekey-retired`, built from `main`'s tip, it renames
-each retired key the log names to the survivor the log gives: the entry's key
-and every member's `work` field, and nothing else (no prose changes). It runs
-`metafmt --write` and `metacheck --profile community`, checks that the change
-adds exactly the survivors, removes exactly the retired keys and modifies
-nothing, and opens `[steward] re-key retired work slugs`, labelled `data`, its
-body listing each old key, its survivor and the data release. From there it is
-an ordinary data pull request: it merges through the community gate like any
-other.
+The steward then re-keys `main` itself, mechanically, never with an agent. It
+builds the branch `steward/rekey-retired` from `main`'s tip and renames each
+retired key the log names to the survivor the log gives: the entry's key and
+every member's `work` field, nothing else. It runs `metafmt --write` and
+`metacheck --profile community`, checks that the change adds exactly the
+survivors, removes exactly the retired keys and modifies nothing, and opens
+`[steward] re-key retired work slugs`, labelled `data`, its body listing each
+old key, its survivor and the data release. From there it merges through the
+community gate like any other data pull request.
+
+Once the re-key merges, the intake sweep rebases the blocked pull requests,
+`keys` passes on their new heads, and they merge on their first green head,
+whatever their backoff, without a person.
 
 - **A collision** - a survivor that already has a community entry on `main` -
-  is left alone: merging the two entries is prose, so it is listed on the report
-  and in the blocked pull requests' comment for a person. The other renames still
-  go in.
+  is left for a person, since merging two entries is prose: it is listed on the
+  report and in the blocked pull requests' comment. The other renames still go
+  in.
 - **Unknown keys** are never touched.
 - **A chain** (a survivor that is itself retired) takes the one hop the log
-  names; the next data release reports the next.
+  names; the next data release names the next hop.
 - At most `SYNC_STEWARD_MAX_ENTRIES / 2` renames go in one pull request (a
-  rename is two entries), the rest in the next once it has merged. With a merge
-  bound (`SYNC_STEWARD_MERGE_MAX_ENTRIES`) below 2 no re-key pull request is
-  opened at all, and the report says why.
+  rename is two entries), the rest in the next once it has merged.
+- With a merge bound (`SYNC_STEWARD_MERGE_MAX_ENTRIES`) below 2, no re-key pull
+  request is opened, and the report says why.
 - **A flagged re-key pull request** never gets the delete-only fix, which would
   delete prose already on `main`: it waits for a person, with one comment per
   head and a line on the report.
 - It is idempotent: an open re-key pull request already carrying the renames
   due is left alone, and a different set rebuilds the branch from `main`. When
-  `main` no longer holds any of its keys (a person re-keyed by hand and that
-  landed first), or only collisions are left, it closes itself.
-
-Once the re-key merges, the intake sweep rebases the blocked pull requests,
-`keys` passes on their new heads, and they merge through the gate without a
-person. A backoff only holds fix attempts, never a merge, so even a pull request
-deep in backoff merges on its first green head.
+  `main` no longer holds any of its keys (a person's hand re-key landed first),
+  or only collisions are left, it closes itself.
 
 ## Issues
 
