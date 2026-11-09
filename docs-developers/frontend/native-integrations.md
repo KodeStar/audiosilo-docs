@@ -29,7 +29,7 @@ the users' [Availability](/users/listening/mobile-apps#availability).
 | Android Auto | `modules/audiosilo-player/android/.../AudiosiloPlayerService.kt`, `LibraryCallback.kt`, `CarBrowseTree.kt`, `CarSnapshot.kt`, `ArtworkProvider.kt`, `JsRuntime.kt`, `PlayerBridge.kt`, `PendingBookmarks.kt`, `CarConnectionMonitor.kt`, `ResumptionReceiver.kt`, `MediaItems.kt` |
 | CarPlay and the UIScene life cycle | `plugins/withCarPlay.js`; `modules/audiosilo-player/ios/AudiosiloScenes.swift`, `AudiosiloPhoneSceneDelegate.swift`, `AudiosiloCarPlaySceneDelegate.swift`, `AudiosiloCarSnapshot.swift`, `AudioEngine+CarPlay.swift` |
 | Tokens readable on a locked iPhone | `src/lib/secure-store.ts` |
-| Widgets and the Live Activity (iOS) | `src/widgets/`, `expo-widgets`, `plugins/withWidgetsNoPush.js`, `plugins/withXcode26SwiftUICoreFix.js`; their links open through `src/app/+native-intent.tsx` |
+| Widgets and the Live Activity (iOS) | `src/widgets/`, `expo-widgets`, `plugins/withXcode26SwiftUICoreFix.js`, `plugins/widgets-entitlements.test.ts`; their links open through `src/app/+native-intent.tsx` |
 
 The Apple Watch app is a Swift target of its own, with a WatchConnectivity module on the
 phone: [Apple Watch](apple-watch.md).
@@ -340,16 +340,20 @@ older binary) or the same as the queue's order, nothing changes. Otherwise:
 
 Declaring any scene in `UIApplicationSceneManifest` moves the **whole** iOS app to the
 UIScene life cycle (which the iOS 27 SDK will require anyway, TN3187), and from then on UIKit
-never shows a window the app delegate made. Expo SDK 56's template still creates its window
-and starts React Native in `didFinishLaunching`, so the config plugin:
+never shows a window the app delegate made. Expo SDK 58's template is already a scene app:
+its AppDelegate only builds the React Native factory, and its `SceneDelegate` makes the
+window and starts React Native. A CarPlay-first launch must park React Native in an
+off-screen window instead, and Expo's delegate always starts it itself, so the config plugin:
 
-1. writes the scene manifest: a phone scene (`UIWindowSceneSessionRoleApplication`,
+1. writes the scene manifest, replacing the template's (whose `SceneDelegate.swift` stays in
+   the project, unused): a phone scene (`UIWindowSceneSessionRoleApplication`,
    `AudiosiloPhoneSceneDelegate`) and a CarPlay scene
    (`CPTemplateApplicationSceneSessionRoleApplication`, `CPTemplateApplicationScene`,
    `AudiosiloCarPlaySceneDelegate`), with `UIApplicationSupportsMultipleScenes: false` (the
    two are different roles, so they coexist without it);
-2. rewrites the AppDelegate: the template's window creation and `startReactNative` become a
-   stored starter (`AudiosiloScenes.configure(start:mirrorWindow:)`). The template text is
+2. rewrites the AppDelegate: it adds a stored starter
+   (`AudiosiloScenes.configure(start:mirrorWindow:)`) right after
+   `reactNativeFactory = factory`. It adds no linking overrides (below). The template text is
    matched exactly and **any other text fails the prebuild** (a silent miss would ship a black
    screen). Mods of one kind run in reverse registration order, so no plugin that rewrites
    the AppDelegate may be listed after it (that plugin's edit would run first and break the
@@ -363,12 +367,21 @@ and starts React Native in `didFinishLaunching`, so the config plugin:
 its own window, with launch options rebuilt from `connectionOptions` (the cold-start pairing
 link: `Linking.getInitialURL()` reads only the launch options); a CarPlay-first launch (app
 not running, phone perhaps locked) into an off-screen parking window whose root view
-controller the phone scene adopts later. The phone scene delegate re-feeds URL contexts and
-user activities to the app delegate (`RCTLinkingManager`, expo-linking), as expo 57.0.23's
-`ExpoAppSceneDelegate` does, and the scene window is mirrored onto the app delegate's `window`
-(expo-system-ui reads it). Pairing deep links, cold and warm, are the regression to check
-after any change here; `plugins/withCarPlay.test.ts` runs the transforms over an SDK 56
-AppDelegate fixture.
+controller the phone scene adopts later. The scene window is mirrored onto the app delegate's
+`window` (expo-system-ui reads it).
+
+Links take two routes, as Expo SDK 58's own `ExpoAppSceneDelegate` does. The phone scene
+delegate (`AudiosiloPhoneSceneDelegate.swift`) forwards each URL context and user activity
+to the app delegate, where Expo's subscribers (expo-linking, expo-router) listen. It also
+hands each one to React Native's scene API (`RCTLinkingManager`
+`scene:openURLContexts:` / `scene:continueUserActivity:`), which sends JS its `url` event.
+Since React Native 0.88 the app-delegate `RCTLinkingManager` methods do nothing in an app
+with a scene manifest, so the AppDelegate linking overrides of the SDK 56 era are gone: with
+them alone, a link opened while the app runs (a pairing link, a widget, the Live Activity)
+would never reach JS. Pairing deep links, cold and warm, are the regression to check after
+any change here. `plugins/withCarPlay.test.ts` runs the transforms over the SDK 58
+AppDelegate fixture (`plugins/__fixtures__/app-delegate-sdk58.ts`) and pins the scene API
+calls in the Swift source.
 
 ### The templates (`AudiosiloCarPlaySceneDelegate.swift`)
 
@@ -422,13 +435,14 @@ on the next read (every token is read at launch). `deleteSecure` deletes both ho
 
 ## Widgets and the Live Activity (iOS)
 
-Through **`expo-widgets` 56.0.27** (iOS only; its Android side is a stub). The `app.json`
+Through **`expo-widgets` 58** (iOS only; its Android side is a stub). The `app.json`
 plugin entry names the extension `app.audiosilo.widget`, the App Group `group.app.audiosilo`
-and the `ContinueListening` widget (`systemSmall`, `systemMedium`). Two of our plugins are
-listed before it so they run after it: `withXcode26SwiftUICoreFix` (the extension links the
-same static pods) and `withWidgetsNoPush` (expo-widgets 56 adds `aps-environment`
-unconditionally; the app sends no push, so it is stripped, or every profile would need the
-Push Notifications capability).
+and the `ContinueListening` widget (`systemSmall`, `systemMedium`).
+`withXcode26SwiftUICoreFix` is listed before it so it runs after it (the extension links the
+same static pods). The app sends no push, so no target may carry `aps-environment`, or every
+profile would need the Push Notifications capability. expo-widgets 58 adds it only when
+asked, and `plugins/widgets-entitlements.test.ts` fails if it comes back (expo-widgets 56
+added it unconditionally, and a `withWidgetsNoPush` plugin stripped it).
 
 - `src/widgets/continue-listening.tsx` and `sleep-timer-activity.tsx` are `'widget'`
   functions: babel-preset-expo turns each into a source string the extension evaluates in its

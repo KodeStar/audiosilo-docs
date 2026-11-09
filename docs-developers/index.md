@@ -11,7 +11,7 @@ fully-typed read side over that contract.
 | Repo | Role | Stack |
 |---|---|---|
 | `audiosilo-server` | The **server** - source of truth for content and the API. JSON API + baked-in admin/connect UI; serves the web player at `/web`. Safe to expose to the internet. | Go 1.26, SQLite (pure-Go modernc by default; native C in the Docker image and the Linux release binaries), FTS5 |
-| `audiosilo-frontend` | The **player** - one codebase shipping to web PWA + iOS + Android. Read side of the product; its web export is served *by* the server at `/web`. | Expo SDK 56, React Native 0.85 (new architecture), React 19, Expo Router, Uniwind (Tailwind v4) |
+| `audiosilo-frontend` | The **player** - one codebase shipping to web PWA + iOS + Android. Read side of the product; its web export is served *by* the server at `/web`. | Expo SDK 58, React Native 0.88 (new architecture), React 19.3, Expo Router, Uniwind (Tailwind v4) |
 
 The optional **[Bridge](bridge/index.md)** (`audiosilo-bridge`)
 pairs with a server, writes to its libraries and runs the heavy jobs, so the

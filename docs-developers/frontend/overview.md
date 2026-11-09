@@ -14,7 +14,7 @@ content by `(library_id, rel_path)`, and owns exactly one hard problem:
 
 | Concern | Choice |
 |---|---|
-| Framework | **Expo SDK 56**, **React Native 0.85** (new architecture), **React 19** |
+| Framework | **Expo SDK 58**, **React Native 0.88** (new architecture), **React 19.3** |
 | Routing | **Expo Router** (file-based, routes live in `src/app/`): `NativeTabs` on iOS/Android, headless `expo-router/ui` Tabs on web - see [The shell](#the-shell-tabs-and-navigation) |
 | Styling | **Uniwind** (Tailwind v4) - `className` on core RN components, on every platform. Web player floor: Safari 16.4, Chrome 111, Firefox 128 (Tailwind v4's CSS) |
 | Design system | **Stacks** (`STYLEGUIDE.md`, authoritative): semantic light/dark tokens, Figtree / Bricolage Grotesque / JetBrains Mono, and **react-native-reusables** primitives (shadcn/ui for React Native on `@rn-primitives`) restyled to it - see [Styling conventions](#styling-conventions) |
@@ -100,8 +100,8 @@ targets/watch/      the Apple Watch app (Swift, not bundled by Metro): Core/ (Fo
                     only), Net/, Storage/, Phone/, Playback/, UI/
 watch-core/         SwiftPM package over targets/watch/Core, for its tests on the host
 plugins/            config plugins (CarPlay scenes, Cast, the watch scheme, the Xcode 26
-                    and widget fixes); withCarPlay, withCast, withWatchScheme and
-                    withWidgetsNoPush have jest tests
+                    fix); withCarPlay, withCast and withWatchScheme have jest tests, and
+                    widgets-entitlements.test.ts checks the widget's entitlements
 index.ts            the app entry (package.json main): registers the car's headless
                     task, then expo-router/entry
 public/             sw.js (service worker) + manifest.json (PWA), copied verbatim
@@ -401,7 +401,8 @@ web, a secure context with the Cache API).
 - **Cold deep link owner = Home.** A cold `/book/...` link, which every tab
   could own, is given to the alphabetically **first** tab group - which is why
   Downloads is `(offline)` and not `(downloads)`. `TAB_STACK_SETTINGS` (the
-  group-keyed `unstable_settings` of the array-group layout) inserts each tab's
+  group-keyed `unstable_settings` of the array-group layout: each tab's `anchor`,
+  which replaced `initialRouteName` in expo-router 58) inserts each tab's
   root underneath so back works, and `tabStackListeners` strips the link params
   React Navigation copies onto that root and its ancestors (otherwise back
   landed on `/?libraryId=1`). A root keeps only its own `rootParams`
@@ -417,6 +418,16 @@ web, a secure context with the Cache API).
   `src/lib/root-stack.ts`: `POP_TO_TOP` on that tab stack's key), which keeps
   the root's own params; a navigate to the root's href would push a second copy of
   the root, since a navigate is a push in this router.
+- **The navigation container is read through `src/lib/router-ref.ts`.**
+  expo-router 58 removed its global store, and its only public read is a hook. A
+  press handler, a startup path or a test that reads the state at call time
+  imports `navigationRef` from `@/lib/router-ref`, the one module that names the
+  deep `expo-router/build/global-state/navigationRef` path. An expo-router upgrade
+  checks that path first.
+- **Navigation at mount uses `useRouter()`.** Since expo-router 58 the
+  module-level `router` throws until the router has rendered once, so an effect or
+  guard that navigates on mount (`kids-route-guard.tsx`, the connect layout) takes
+  the hook's router. The module-level one is fine in press handlers.
 - **A tab root opened from elsewhere is popped to, not pushed.** `openYou` /
   `openJournal` (never `pushInShell`, which would push a second hub) close a root
   modal, pop the Me stack to its root (`popTabToRoot`) and then navigate;
@@ -425,7 +436,8 @@ web, a secure context with the Cache API).
 - **Web: `<TabSlot />` stays at a fixed ancestor path at every width**; only
   the sibling chrome toggles. Moving it between wrappers remounts every screen on
   a resize and jumps the URL to another tab.
-- **Native: never add or remove tabs at runtime.** `NativeTabs` can't; tablet
+- **Native: never add or remove tabs at runtime.** `NativeTabs` (from
+  `expo-router/native-tabs` since SDK 58) can't; tablet
   and desktop set `hidden` on the whole bar instead, so every tab's stack
   survives an iPad rotation or split view crossing 640.
 - **Route-driven side effects** (clearing the search query when leaving the
@@ -707,7 +719,7 @@ ones a contributor trips over first.
 These are the four failure modes that cost the most time on a fresh checkout.
 :::
 
-1. **Node 24 is required** (`.nvmrc` pins `24.16.0`). RN 0.85 needs ≥ 20.19.4,
+1. **Node 24 is required** (`.nvmrc` pins `24.16.0`). RN 0.88 needs ^22.13 || ^24.3,
    and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12) - an
    older system Node crashes as soon as a `.env` file exists. Run `nvm use`
    first.
