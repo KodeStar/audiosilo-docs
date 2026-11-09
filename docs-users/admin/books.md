@@ -570,7 +570,13 @@ Once a book is matched, AudioSilo also checks the community's chapter list for
 it (see [Community chapters](#community-chapters)).
 
 Accepted values are marked **Community** and are locked like your own edits;
-you can revert them the same way. If you have unsaved edits on the page, save
+you can revert them the same way. From 2.7.0, an ASIN or ISBN you leave unticked, or
+revert later, stays off:
+[Fill in matched books](health.md#filling-in-books-that-are-already-matched)
+doesn't write it back. For a book matched before 2.7.0, accept its match
+again with a field or the cover ticked, or [unlink](#unlinking-a-community-match)
+it and match it again.
+If you have unsaved edits on the page, save
 or discard them before matching.
 
 A cover you accept becomes the book's [custom cover](#covers). If it can't be
@@ -633,14 +639,6 @@ You see "A match run is working. Wait for it to finish, or stop it, then try
 again." Wait for the run, or click **Stop** on the
 [Health page](health.md#matching-every-book-at-once). Stop finishes the books
 in hand first. Try again once the run has stopped.
-
-:::warning[Known issue in 2.6.0: a cleared ASIN can return]
-Clearing or reverting an ASIN leaves the book's community match in place.
-If you reverted the ASIN or accepted the match with its ASIN unticked,
-**Fill in matched books** can write the community's ASIN back. To remove the
-community match, use **Unlink** before running **Fill in matched books** again.
-A fix is planned; no release version is promised.
-:::
 
 Some things need an ASIN or ISBN, so they leave such a book out: the
 [community chapter check](#community-chapters), the community's places and

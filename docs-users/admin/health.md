@@ -412,6 +412,10 @@ if the community merged or renamed it.
 A known identifier takes precedence, even if it names another work. If a book
 with neither identifier is matched to a recording that has gained an ASIN or
 ISBN since, the review offers it too; existing identifiers stay as they are.
+From 2.7.0 it doesn't offer an ASIN or ISBN you left unticked or removed. For
+a book matched before 2.7.0, this starts once you accept its match again with
+at least one field or the cover ticked, or unlink it and match it again (see
+[Unlinking a community match](books.md#unlinking-a-community-match)).
 If the recorded work is looked up but the community no longer has it, the book
 is listed under **Not found** ("The community no longer has the work this book
 is matched to; the match is kept") and stays matched. Use it for books that got an ASIN or ISBN
@@ -431,15 +435,6 @@ say-so is still kept up to date.
 To clean up series an earlier match added (every edition and reading order of
 a series, say), run **Fill in matched books** and apply it with **Use
 community values**: the review shows each book's series before and after.
-
-:::warning[Known issue in 2.6.0: use Unlink to remove a community match]
-Clearing or reverting an ASIN leaves the book's community match in place.
-If you reverted the ASIN or accepted the match with its ASIN unticked,
-**Fill in matched books** can write the community's ASIN back. To remove the
-match, use **Unlink** on the book's page before running another refresh (see
-[Unlinking a community match](books.md#unlinking-a-community-match)).
-A fix is planned; no release version is promised.
-:::
 
 ### Duplicates
 

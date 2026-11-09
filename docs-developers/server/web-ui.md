@@ -490,12 +490,15 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `Author; Series; Book NN` leaf, so the console never works this out
   itself; the ticked fields, ASIN and ISBN
   included, are accepted as one `PATCH …/book` with `source: "community"` and
-  `match: {work_id, recording_id}` (`acceptRequest`), which records the book's
-  match; the dialog starts from the book's `community_match` when the search lists
-  it, and for a book with no ASIN or ISBN a pick other than its recorded match is
-  itself something to accept: with nothing ticked the button reads "Match to this
-  work" and sends `match` alone; a cover-only accept sends it after the cover,
-  so that records the match too;
+  `match: {work_id, recording_id, asin, isbn}` (`acceptRequest`; from 2.7.0
+  `asin`/`isbn` are the identifiers the match offers, ticked or not), which
+  records the book's match; the dialog starts from the book's `community_match`
+  when the search lists it, and for a book with no ASIN or ISBN a pick other
+  than its recorded match is itself something to accept: with nothing ticked
+  the button reads "Match to this work" and sends `match` alone; a cover-only
+  accept sends it after the cover, so that records the match too, and from
+  2.7.0 so does a cover-only accept of the book's recorded match (work and
+  recording, `isRecorded`), recording its offered identifiers again;
   candidates' covers are thumbnails the server fetched, `POST /admin/meta/covers`,
   batched by URL in `src/api/cover-batch.ts`, since the CSP loads no other
   host's images; a ticked Cover row, ticked by default only for a book with no

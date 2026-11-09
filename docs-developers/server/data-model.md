@@ -1325,8 +1325,12 @@ the `unknown_asin_report` key of [`server_state`](#server-state).
   confident item applied unasked, `accepted` = the match dialog or a review item
   the admin included, kept when a refresh heals a merged work; a `CHECK`),
   `run_id` (the run that applied it), `set_by`
-  (the admin) and `set_at`. A book's recorded community match: the work an accept
-  or an apply took, with or without an ASIN or ISBN. `run_id` and `set_by` have no
+  (the admin) and `set_at`; from 0070 `offered_asin` and `offered_isbn` (the
+  identifiers the match offered, ticked or not, in the fields' stored form; `''`
+  for none). A book's recorded community match: the work an accept
+  or an apply took, with or without an ASIN or ISBN. A refresh never fills the
+  offered identifier back into a book with neither, so an unticked or reverted
+  ASIN stays off. `run_id` and `set_by` have no
   foreign keys, as runs are pruned and the row outlives either. Written only by a
   community edit, in the edit's transaction (`catalog.BookEdit.Match`, a
   `catalog.MatchAnchor`; a bulk edit refuses one); an empty work id unlinks the
@@ -1344,7 +1348,8 @@ the `unknown_asin_report` key of [`server_state`](#server-state).
   `/meta`. Moved with the book (`moveBookState`, as one set with its edits),
   copied from the first part on a join, kept through a rescan or rebuild, and
   dropped by `catalog.ClearCommunityMatches`. No backfill: a book matched before
-  0069 has no row until it is matched again.
+  0069 has no row until it is matched again, and a row from before 0070 offers
+  `''` (a refresh fills as before) until the book is matched again.
 - **`issue_ignores`** *(0017)* - PK `(library_id, path, kind)`, `created_by`
   (FK to `users`, `ON DELETE SET NULL`), `created_at`. An admin's "ignore this"
   on a Health issue; `kind` is one of `catalog.IssueKinds` (`scan_error`,
@@ -1590,6 +1595,7 @@ The migration history so far:
 | 0067 | `tag_hints` | [tag hints](#tag-hints): `books.tag_asin`, `tag_isbn` and `tag_language` (`TEXT NOT NULL DEFAULT ''`) and `books.hints_checked` (`INTEGER NOT NULL DEFAULT 0`, so the next scan reads each unchanged book's tags once) |
 | 0068 | `unknown_asin_reports` | the [unknown-ASIN report](#unknown-asin-reports)'s `unknown_asin_reports` table (`asin` primary key, `checked_at`, `unknown`, `sent_at`; `WITHOUT ROWID`), derived and naming no book. No data moves |
 | 0069 | `book_matches` | the [recorded community match](#durable-per-library-config-path-keyed-no-fk-to-books) `book_matches` (`library_id`, `path`, `work_id`, `recording_id`, `how` `auto`\|`accepted`, `run_id`, `set_by`, `set_at`; primary key `(library_id, path)`, `library_id` `ON DELETE CASCADE`). No data moves |
+| 0070 | `book_match_offered` | `book_matches.offered_asin` and `offered_isbn` (`TEXT NOT NULL DEFAULT ''`, server#330: the identifiers the [recorded community match](#durable-per-library-config-path-keyed-no-fk-to-books) offered) and `match_run_items.unchanged` (`TEXT NOT NULL DEFAULT ''`, server#332: the comma-separated scopes under which a refresh item had nothing to change when recorded; an apply under one leaves it out without reading the book again). No backfill: `''` behaves as before. No data moves |
 
 ## SQLite choices
 
