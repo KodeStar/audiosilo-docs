@@ -1044,6 +1044,37 @@ await step('book: generated description', async () => {
   await shoot(page, 'admin/book-description.png', {clip: around([await card.boundingBox()])});
 });
 
+// ── A recorded community match ──────────────────────────────────────────────
+// The Hound of the Baskervilles is matched as the match dialog does it (the first
+// candidate whose recording has an ASIN) and unlinked afterwards, so later shots
+// see it unmatched. Before the stand-in Bridge is paired: no Characters part.
+await step('book: recorded community match', async () => {
+  if (!wanted('admin/book-community-match.png')) return;
+  const book = await bookBy('Sir Arthur Conan Doyle', 'Hound of the Baskervilles');
+  if (!book) throw new Error('no seeded Hound of the Baskervilles');
+  const at = `/admin/libraries/${book.library_id}/book${pathQuery(book.path)}`;
+  const {candidates = []} = await api(token, 'GET', `/admin/libraries/${book.library_id}/book/match${pathQuery(book.path)}`);
+  const pick = candidates
+    .flatMap((c) => (c.recordings ?? []).filter((r) => r.asins?.length).map((r) => ({work: c.work_id, recording: r.id, asin: r.asins[0]})))
+    .at(0);
+  if (!pick) throw new Error('no candidate with an ASIN (is meta.audiosilo.app reachable?)');
+  await api(token, 'PATCH', at, {
+    source: 'community',
+    set: {asin: pick.asin},
+    match: {work_id: pick.work, recording_id: pick.recording},
+  });
+  try {
+    await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+    const card = page.locator('[aria-labelledby="community-title"]').first();
+    await card.getByRole('button', {name: 'Unlink'}).waitFor({timeout: 15000});
+    await card.scrollIntoViewIfNeeded();
+    await sleep(800);
+    await shoot(page, 'admin/book-community-match.png', {clip: around([await card.boundingBox()])});
+  } finally {
+    await api(token, 'PATCH', at, {match: {work_id: ''}});
+  }
+});
+
 // ── The Bridge: Settings > Bridge before and after pairing ──────────────────────
 // The Bridge is a separate program, so a stand-in plays its part here through
 // the server's own Bridge routes, as the real one would: it trades the code the
