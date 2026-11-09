@@ -247,11 +247,13 @@ is separate: its checks wait for the copy instead of falling back, and the
 report itself is sent remotely only when you enable it.
 
 If the service is only busy, the run waits and carries on. If it stays unreachable,
-the run stops by itself, and the card says "The last run stopped: the community
-metadata service didn't answer. Try again later." A run that stops this way has no
-review: nothing was changed, and what it had found so far is gone, so run it again
-once the service is back. The same goes for turning community metadata off while a
-run is still looking ("The last run stopped: community metadata was turned off.").
+the run stops early. From 2.7.0 it keeps what it found: the card says "This run
+stopped early" and how many books it checked. Review and apply those as usual. Once
+the service is back, run it again: the next run takes only the books this one didn't
+reach. (A run that stopped this way before 2.7.0 has no review.)
+
+Turning community metadata off while a run is still looking stops it with no review
+("The last run stopped: community metadata was turned off."), so run it again later.
 Turned off while a run is applying, it stops as **Stop** does: what went in stays, and
 the rest is left to apply later from the same review.
 
@@ -296,8 +298,9 @@ A match sends the hint when the book has no ASIN or ISBN of its own. A hint the
 community knows scores 100% and is confident whatever the next candidate scored,
 as long as its recording's length is within 10% of the book's (from 2.6.0, 20%
 when the book's narrator reads it). It goes to
-**To review** instead when the length doesn't fit, or when the next candidate was
-found by an identifier too.
+**To review** instead when the length doesn't fit, when the next candidate was
+found by an identifier too, or, from 2.7.0, when the book's title or series
+position doesn't agree with it: the tag may name another book.
 
 From 2.6.0, when the hint names a recording more than 10% off the book's length that
 none of the book's narrators reads, and the same work has another recording within
@@ -321,9 +324,9 @@ the next match trusts the tag like any hint it knows (see the warning below).
 Correct a tag you know is wrong, and it stops being reported after the next scan.
 
 :::warning[A wrong ASIN in a tag can apply the wrong book]
-Nothing else checks a hint. An ASIN in a tag that names another work of about the
-same length is confident, and ticked, like any other: it can apply the wrong
-book, or the right book's other recording. Look through **Confident** before you
+A tag that names another book with a similar title, or another recording of the
+right book, is confident and ticked like any other hint. So it can still apply the
+wrong book or the wrong recording. Look through **Confident** before you
 apply when your tags came from a source you don't trust. To undo one, revert the
 values on the book's page or use
 [Clear community matches](server.md#community-metadata). The next run will find
