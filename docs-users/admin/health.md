@@ -247,10 +247,10 @@ is separate: its checks wait for the copy instead of falling back, and the
 report itself is sent remotely only when you enable it.
 
 If the service is only busy, the run waits and carries on. If it stays unreachable,
-the run stops early. From 2.7.0 it keeps what it found: the card says "This run
+the run stops early but, from 2.7.0, keeps what it found. The card says "This run
 stopped early" and how many books it checked. Review and apply those as usual. Once
-the service is back, run it again: the next run takes only the books this one didn't
-reach. (A run that stopped this way before 2.7.0 has no review.)
+the service is back, run it again for the books it didn't reach. (Before 2.7.0 such
+a run had no review.)
 
 Turning community metadata off while a run is still looking stops it with no review
 ("The last run stopped: community metadata was turned off."), so run it again later.
@@ -300,7 +300,7 @@ as long as its recording's length is within 10% of the book's (from 2.6.0, 20%
 when the book's narrator reads it). It goes to
 **To review** instead when the length doesn't fit, when the next candidate was
 found by an identifier too, or, from 2.7.0, when the book's title or series
-position doesn't agree with it: the tag may name another book.
+position doesn't match. The tag may name another book.
 
 From 2.6.0, when the hint names a recording more than 10% off the book's length that
 none of the book's narrators reads, and the same work has another recording within
@@ -325,8 +325,8 @@ Correct a tag you know is wrong, and it stops being reported after the next scan
 
 :::warning[A wrong ASIN in a tag can apply the wrong book]
 A tag that names another book with a similar title, or another recording of the
-right book, is confident and ticked like any other hint. So it can still apply the
-wrong book or the wrong recording. Look through **Confident** before you
+right book, is confident and ticked like any other hint, so it can apply the
+wrong book or recording. Look through **Confident** before you
 apply when your tags came from a source you don't trust. To undo one, revert the
 values on the book's page or use
 [Clear community matches](server.md#community-metadata). The next run will find
