@@ -155,6 +155,52 @@ Rules that keep this maintainable:
 
 ## Writing style
 
+### User Guide readability rules
+
+The User Guide is read by people who just want to get something done. A user
+called an earlier version "word salad" because answers were buried in long,
+exhaustive pages. These rules keep it readable. Check every User Guide change
+against them.
+
+1. **Open with what it does and how to use it**, in 2-3 sentences. Say up front
+   if the feature needs an admin, a [Bridge](/users/getting-started/running-a-bridge)
+   or a particular app.
+2. **Short sentences, one idea per paragraph.** Aim for under 20 words a
+   sentence and split anything over 30. Keep paragraphs to 1-3 sentences.
+3. **Steps are numbered lists.** One action per step, UI labels in **bold**.
+4. **No internal names.** No phase or track names, issue or PR numbers,
+   decision ids, code identifiers, source paths or API routes. Config keys and
+   environment variables appear only where the reader has to type them.
+5. **Titles are tasks** ("Listen offline", "Back up your server"), not
+   components ("Offline downloads", "The companion"). Keep the file name, so the
+   URL stays stable.
+6. **Basics first, edge cases last.** The common path comes first. Rare cases
+   go in a short "Good to know" section at the end or in
+   [Troubleshooting](/users/troubleshooting).
+7. **No version history.** Describe what the product does now. Name a minimum
+   version only when the reader must update for something to work, in one line.
+8. **Describe the normal path, not every state.** Don't quote every label,
+   status and error message. Error messages belong in Troubleshooting.
+9. **Say it once.** Each fact lives on one page; other pages link to it.
+10. **Keep pages short.** Most pages stay under about 800 words. A page past
+    1,500 words is cut or split.
+11. **One Features page.** [Features](/users/features) lists every feature in
+    one line with a link. A new user-visible feature adds its line there in
+    the same change.
+
+**Cut, don't add.** When you update a page, look for something to remove as
+well. Accuracy still comes first: check behaviour in the source before you
+write it down.
+
+**Keep links working.** Other pages, the apps and the console link to User
+Guide pages and headings. When you rename a heading, keep its old anchor with
+an explicit id: `## Download a book {/* #downloading-a-book */}`. Moving or renaming a
+page file needs a redirect, so prefer changing only its `title:`.
+
+The Developer Docs follow rules 2, 3, 6, 7 and 9 too. They may name code.
+
+### Formatting
+
 - **Hyphens, not em dashes.** Use a spaced hyphen (`-`) or restructure the
   sentence; do not use the em dash character. A spaced hyphen reads fine
   mid-sentence, and em dashes also produce messy heading anchors. The one

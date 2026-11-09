@@ -48,6 +48,17 @@ Node 24 (workspace convention; `.nvmrc` in the sibling repos).
   one ships, search the whole tree for it.
 - **Audience separation**: no Go/TS symbols or source paths in the User Guide;
   the Developer Docs reference symbols/paths as inline code (not links).
+- **User Guide readability rules** (full list with reasons:
+  `docs-developers/contributing/documentation.md`, "User Guide readability
+  rules"). Check every User Guide change against them:
+  open each page with what the feature does and how to use it (2-3
+  sentences); short sentences (under ~20 words), one idea per paragraph;
+  steps as numbered lists; no internal names (phases, issue numbers, decision
+  ids, code identifiers); task titles ("Listen offline"), file names kept
+  stable; basics first, edge cases last; no version history; say each fact
+  once; most pages under ~800 words; every user-visible feature has one line
+  on `docs-users/features.md`. Cut, don't add. A renamed heading keeps its old
+  anchor (`## New title {/* #old-anchor */}`): the apps and console deep-link to them.
 - **Hyphens, not em dashes**: use `-` or restructure the sentence; do not use the
   em dash character (em dashes read as an AI tell and produce messy heading
   anchors). The sole exception is a code block that reproduces literal program
