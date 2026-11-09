@@ -169,12 +169,16 @@ what it found and apply it.
    ("Applying *N* of *M* matches"). **Stop** finishes the books in hand and
    leaves the rest to apply later from the same review.
 
-While any run is finding or applying matches, an individual book's **Unlink**
-is also refused: "A match run is working. Wait for it to finish, or stop it,
-then try again." This includes **Fill in matched books** and **Use *country*
-ASINs**. Wait for the run to finish, or click **Stop** and wait for it to finish
-stopping, then retry **Unlink** on the book's page. The refused attempt leaves
-its match and values in place.
+While a run is applying matches, you can't **Unlink** the books it covers: that
+library's books, or every book for a run over all libraries. This includes
+**Fill in matched books** and **Use *country* ASINs**. A run that is still
+finding matches doesn't block Unlink. See
+[Unlinking a community match](books.md#unlinking-a-community-match).
+
+If a run shows as matching or applying but makes no progress (after a server
+error, for example), click **Stop**. It ends at once and changes nothing more. A
+run stopped while applying can be applied again from the same review. Starting
+another run also releases a stuck run, and so does unlinking a book it covers.
 
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
@@ -427,8 +431,7 @@ Clearing or reverting an ASIN leaves the book's community match in place.
 If you reverted the ASIN or accepted the match with its ASIN unticked,
 **Fill in matched books** can write the community's ASIN back. To remove the
 match, use **Unlink** on the book's page before running another refresh (see
-[Books matched to a store listing](books.md#books-matched-to-a-store-listing)).
-The button appears only when the book has neither an ASIN nor an ISBN.
+[Unlinking a community match](books.md#unlinking-a-community-match)).
 A fix is planned; no release version is promised.
 :::
 

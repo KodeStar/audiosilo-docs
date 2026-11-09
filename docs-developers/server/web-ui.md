@@ -515,11 +515,16 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   and toasts. What the player does with the link is in
   [Connect and onboarding](../frontend/connect-and-addresses.md#a-link-that-names-a-book). `?match=1` opens the
   match dialog on arrival (Health's "Review match"); closing it drops the param.
-  The aside's Community card (`book-aside.tsx`) shows a book with no ASIN or ISBN
-  by its `community_match` (from 2.6.0): the work id linking `web_url`, how and
-  when ("matched to its store listing by a bulk match" for `auto`), and **Unlink**,
-  behind a `ConfirmDialog` (no undo), which sends `PATCH …/book {match: {work_id:
-  ""}}` and refreshes the issues.
+  The aside's Community card (`book-aside.tsx`) shows the book's `community_match`
+  whenever it has one (from 2.7.0; 2.6.0 showed it only with no ASIN or ISBN):
+  the work id linking `web_url`, the `recording_id` when set, how and when
+  (`howKey`: "No ASIN or ISBN: matched to its store listing ..." without an
+  identifier, "Matched by a bulk match ..." or "Matched ..." with one), and
+  **Unlink**, behind a `ConfirmDialog` (no undo), which sends
+  `PATCH …/book {match: {work_id: ""}}` and refreshes the issues. The confirm reads
+  `unlinkBodyKeeps` when the book keeps an identifier of its own (an ASIN or ISBN
+  not overridden by the community, or a community override over a scanned value),
+  so it still shows as matched.
   The Chapters card opens with the **Community chapters** panel
   (`features/book/community-chapters.tsx`; its words and its one action come
   from `communityState` in `book-model.ts`, a pure function of the page's

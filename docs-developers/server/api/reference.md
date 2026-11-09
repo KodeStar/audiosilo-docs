@@ -6665,8 +6665,8 @@ book path).
   `matched_at`, and `web_url`, the work's page on the community site (omitted when
   no service is configured). Recorded whether or not the match gave the book an
   ASIN or ISBN; for a store listing with neither it is what makes the book
-  `matched`. The console's Community card shows it for a book with no ASIN or
-  ISBN, with Unlink. Omitted when the book has none (no backfill: a book matched
+  `matched`. The console's Community card shows it, with Unlink, whenever it is
+  present (from 2.7.0; in 2.6.0 only for a book with no ASIN or ISBN). Omitted when the book has none (no backfill: a book matched
   before 2.6.0 has none until it is matched again).
 - `generated_description` - the description the [Bridge](#the-bridge) generated
   for the book (its checked `.audiosilo/description.json`, Phase 1c), with
@@ -6705,16 +6705,26 @@ matches](#delete-apiv1admincommunity-matches) does for a library, before the res
 of the edit applies), so it is `matched: false` again unless it has an ASIN or
 ISBN of its own. An admin's own edits and uploads stay. There is no undo.
 
-Only an explicitly empty `match.work_id` unlinks. A nonempty value containing
-only whitespace (including Unicode whitespace) is `400 invalid_override` with
-`field: "match"`; nothing in the request is written.
+Only an explicitly empty `match.work_id` unlinks. Both ids are trimmed at the
+ends of whitespace and other invisible characters (from 2.7.0: format characters
+such as U+200B, U+FEFF and U+2060, variation selectors, default-ignorables such
+as U+3164, and U+2800); interior ones are kept. A nonempty `work_id` that holds
+nothing else is `400 invalid_override` with `field: "match"`; nothing in the
+request is written. A `recording_id` that holds nothing else is stored as none.
 
-While any run is `matching` or `applying`, Unlink returns `409 match_run_busy`:
-"a match run is already working; stop it or wait for it to finish before
-unlinking". The status check and clear share the edit's writer transaction, so
-a refused Unlink also refuses any other edits in the request. Ordinary field
-edits remain allowed. After a stop request, Unlink stays blocked until the
-apply's workers finish, including cover writes; retry once the run has settled.
+Unlink returns `409 match_run_busy` only while a run that covers the book's
+library (or every library) is `applying` (from 2.7.0; in 2.6.0 any run that was
+`matching` or `applying`): "a match run is applying to this library; stop it or
+wait for it to finish before unlinking". A run that is only `matching`, or one
+over another library, doesn't block it: every apply checks each item against
+the book as it is then, and a community cover is written only to the book it
+was planned for (`cover_superseded`, see [the items](#get-apiv1adminmatch-runsiditems)).
+The status check and clear share the edit's writer transaction, so a refused
+Unlink also refuses any other edits in the request. Ordinary field edits remain
+allowed. After a stop request, Unlink stays blocked until the apply's workers
+finish, including cover writes. A run left marked `applying` with nothing behind
+it (its finishing write failed) is settled back to `ready` and the Unlink tried
+once more, so a stuck run never blocks it.
 
 ```json
 {
@@ -6757,7 +6767,7 @@ afterwards is an ordinary revert, so it swaps back as above.
 | `200` | the updated book page |
 | `400` | `nothing to change` (empty body); `invalid request` (malformed JSON or an unknown key); `code: "invalid_override"` with a `field` key for an edit the server refuses - see below |
 | `404` | `library not found`; `code: "book_not_found"` |
-| `409` | `code: "match_run_busy"` - Unlink while any run is `matching` or `applying`; the whole request is refused |
+| `409` | `code: "match_run_busy"` - Unlink while a run covering the book's library is `applying`; the whole request is refused |
 
 ```json
 { "error": "asin: must be 10 letters or digits", "code": "invalid_override", "field": "asin" }
@@ -7093,7 +7103,10 @@ Run **statuses**: `matching` → `ready` (waiting for review) → `applying` →
 `error` is `metadata_off` when community metadata was turned off,
 `metadata_unavailable` when the service kept failing, `internal`), and
 `interrupted` (the server stopped mid-match; a run stopped mid-apply goes back
-to `ready` at the next start, its applied books marked).
+to `ready` at the next start, its applied books marked). From 2.7.0 a run left
+marked `matching` or `applying` with nothing working on it (its finishing write
+failed) is settled the same way when a run starts or applies, on
+[Stop](#post-apiv1adminmatch-runsidcancel), and on an Unlink it blocks.
 
 #### What a run asks of the community service
 
@@ -7289,7 +7302,13 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   went on but its cover couldn't be fetched. A match item an apply's
   stop cut short after its fields went in stays `""` with `detail`
   `cover_pending`, so the next apply takes its cover (unless the book was
-  unlinked since: then it writes nothing, `nothing_to_change`).
+  unlinked since: then it writes nothing, `nothing_to_change`). From 2.7.0
+  `cover_superseded` means the cover was not written because the book changed
+  while it was fetched (a cover uploaded or found by a rescan, another match
+  accepted, an ASIN or ISBN edited, an Unlink): the write checks, in its own
+  transaction, that the book still has no cover, the recorded match and the
+  ASIN and ISBN the apply planned. It is final: `applied` when the item's fields
+  went in, else `skipped`.
 
 #### `POST /api/v1/admin/match-runs/{id}/apply`
 
@@ -7350,8 +7369,12 @@ stopped apply takes the rest.
 
 Stops the run while it works: matching stops (`cancelled`, nothing changed);
 applying stops after the books in hand (`ready` again, the rest still to
-apply). Turning community metadata off stops an apply the same way. `204`; `409 code: "match_run_not_running"` when it isn't working.
-Audited as `book.match_stop`.
+apply). Turning community metadata off stops an apply the same way. From 2.7.0
+a run still marked working with nothing behind it (its finishing write failed)
+is settled at once: `matching` becomes `interrupted`, `applying` becomes
+`ready`. `204`; `409 code: "match_run_not_running"` when it isn't marked
+working. Audited as `book.match_stop` (with `"orphan": true` for a settled stuck
+run).
 
 #### `DELETE /api/v1/admin/community-matches`
 
