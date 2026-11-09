@@ -196,7 +196,7 @@ The library's own Expo config plugin with the app's options, plus one Android
 addition. Listed in `app.json` **before** `./plugins/withCarPlay`: mods of one kind
 run in reverse registration order, so withCarPlay's exact match still sees Expo's
 AppDelegate template and the Cast edits land after it (`withCast.test.ts` runs both,
-in that order, over the SDK 56 AppDelegate fixture).
+in that order, over the SDK 58 AppDelegate fixture).
 
 - `receiverAppId: 'CC1AD845'`, `expandedController: false` (the app's own full
   player is the controller).

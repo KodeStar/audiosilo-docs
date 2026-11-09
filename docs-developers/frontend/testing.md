@@ -9,7 +9,7 @@ the code *testable* in the first place.
 
 ## The harness
 
-- **jest-expo** preset (Jest 29 runtime) - resolves and transforms React
+- **jest-expo** preset (Jest 30 runtime) - resolves and transforms React
   Native / Expo modules. Config lives in `jest.config.js`:
   - `moduleNameMapper` maps the `@/` alias to `src/` (and `@/assets/` to
     `assets/`);
@@ -235,14 +235,21 @@ and no link params left on `/` after back; and onboarding leaving exactly one
 `(app)` under the stack, both through `leaveOnboarding()` (`dismissTo`, not
 `replace`) and through `<LeaveOnboarding />` at render time.
 
-Two harness notes, both forced by RNTL 14:
+Harness notes, forced by RNTL 14 and expo-router 58:
 
-- **Read the router store, not `renderRouter`'s helpers.** RNTL 14 broke the
-  helpers `renderRouter` returns, so the suites read where the router is through
-  `routeInfo()` (expo-router's router store) and drive the global `router` inside
+- **Read the navigation container, not `renderRouter`'s helpers.** RNTL 14 broke
+  the helpers `renderRouter` returns, so the suites read where the router is
+  through `routeInfo()` (route info from `navigationRef` in `src/lib/router-ref.ts`;
+  expo-router 58 removed its global store) and drive the global `router` inside
   `nav(fn)`, an awaited `act` so each navigation commits before the assertion.
   `renderRouter` itself returns the async render's promise; await it.
-- **A cold start gets its own file.** The router store's previous segments leak
+- **Read a tab's stack, not `canGoBack()`.** Since expo-router 58 the tab
+  navigator's history keeps the first tab under a cold link into another tab, so
+  `canGoBack()` is true at a tab root. `tabStack(tab)`, `rootRoutes()` and
+  `stackRoutes(parent)` read the route names instead.
+- **The JS `Tabs` stand-in declares the five tabs** (`JsTabs`): since
+  expo-router 58 a tab navigator shows only the screens its layout declares.
+- **A cold start gets its own file.** The router's previous segments leak
   between renders in one file, which would make a cold deep link look warm - so
   the cold-link case and the cold-on-`/connect` case each live in a file of their
   own.
@@ -311,6 +318,13 @@ describe('secure-store (web)', () => {
 The same trick covers the web-vs-native branches in `book-queue` (auth headers
 on tracks) and reachability (browser online/offline listeners).
 
+### Suites that need a real DOM
+
+Name `@jest-environment ./src/testing/jsdom-environment.js` in the file's docblock,
+never plain `jsdom`. On Jest 30 the stock jsdom environment breaks under React
+Native's jest setup (it redefines `window`) and when clearing Expo's lazy globals
+after a test; the file fixes both and says how.
+
 ## What's covered today
 
 Co-located suites exist for:
@@ -321,7 +335,7 @@ Co-located suites exist for:
 | Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts`, `transcode.test.ts` (the web negotiation rules), `up-next-resolver.test.ts` (what plays next), `up-next-sources.test.ts`, `jump-undo.test.ts`, `time-left.test.ts`, `drift.test.ts`, `drift-controller.test.ts`, `last-interaction.test.ts`, `use-shake-to-extend.test.ts` (the burst detector and sensitivity tunings), `place-reconcile.test.ts` (a loaded book picks up another device's place), `engine-ticks.test.ts` (`engineTicker`), `service.native.test.ts` (the native bridge: the newer events, `load`'s `book` only on a binary that takes it), `store-adopt.test.ts` (`adoptLoaded`: no engine reload, saves under the adopted book, the floor is the adopted place, the service's book read again; in the engine's file order: the server's chapters in that order, streaming a file the download lacks, else a reload at the same file and in-file place), `effects.test.ts` (where Smart speed and Voice boost apply), `time-saved.test.ts`, `book-source.test.ts` (where a book plays and resumes from), `store-race.test.ts` (the bridge created once however many callers race; a remote move while a book loads is ignored) |
 | Downloads | `src/downloads/store.test.ts`, `offline-meta.test.ts`, `offline-companion.test.tsx` (a downloaded book's community data end to end, offline), `keep-ahead.test.ts`, `keep-ahead-controller.test.ts`, `failure.test.ts`, `downloads-view.test.ts`, `use-download-controls.test.ts`; `src/components/downloads/downloads-screen.test.tsx` |
 | Car and widgets | `src/car/car-model.test.ts` (the snapshot, item ids, play specs), `car-artwork.test.ts`, `car-controller.test.ts` (writes, play requests, bookmarks, a kept bookmark's file across a re-ordered download, adopting), `car-task.test.ts`; `src/widgets/widget-model.test.ts`, `widget-sync.ios.test.ts`; `src/lib/bootstrap.test.ts` (the shared launch steps) |
-| Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over an SDK 56 fixture, the default-on entitlement and its `AUDIOSILO_CARPLAY=0` opt-out), `plugins/withCast.test.ts` (the Cast options, the Android expanded controller, both plugins in `app.json` order over the SDK 56 AppDelegate), `plugins/withWidgetsNoPush.test.ts`, `plugins/withWatchScheme.test.ts` (finding the watch target, a scheme that builds only it), `plugins/build-properties.test.ts` (the `expo-build-properties` options: cleartext http and R8 on Android, React Native from source on iOS) |
+| Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over the SDK 58 fixture, the phone scene's `RCTLinkingManager` scene calls, the default-on entitlement and its `AUDIOSILO_CARPLAY=0` opt-out), `plugins/withCast.test.ts` (the Cast options, the Android expanded controller, both plugins in `app.json` order over the SDK 58 AppDelegate), `plugins/widgets-entitlements.test.ts` (no target carries `aps-environment`), `plugins/withWatchScheme.test.ts` (finding the watch target, a scheme that builds only it), `plugins/build-properties.test.ts` (the `expo-build-properties` options: cleartext http and R8 on Android, React Native from source on iOS) |
 | Apple Watch, the phone's side | `src/watch/watch-model.test.ts` (messages, visibility, expiry), `send.test.ts`, `use-watch.test.tsx`; `watch-rows.test.ts` and `watch-ledger.test.ts` (the Downloads section's rows and the ledger); `src/components/account/apple-watch-card.test.tsx`, `src/components/downloads/watch-section.test.tsx`. The watch's Core is Swift: [`npm run test:watch`](#the-watch-core) |
 | Cast | `src/cast/cast-media.test.ts` (the pure casting rules), `cast-token.test.ts`, `cast-prepare.test.ts`, `cast-service.test.ts`, `routed-service.test.ts` (the route switch), `cast-session.test.ts`, `cast-store.test.ts`, `cast-button-model.test.ts`, `cast-button.test.tsx`, `driver.native.test.ts`, `driver.web.test.ts` (one tab owns a session), `sdk-shapes.test.ts`, `web-sender.test.ts` |
 | Listening in the house | `src/components/house/house-model.test.ts`, `house-row.test.tsx`, `in-the-house-card.test.tsx`, `house-sharing-row.test.tsx`; `src/components/series/portrait.test.tsx` (the avatar and its ring); `src/api/hooks-household.test.tsx` (gating and polling) |
@@ -549,11 +563,13 @@ Before calling any change done:
 
 ```sh
 npx tsc --noEmit && npm run lint && npm run format && npm test
+# after a dependency change, also:
+npx expo install --check && node scripts/check-native-dupes.mjs
 ```
 
-CI (`.github/workflows/ci.yml`) gates all four on every PR/push - typecheck,
-ESLint, **prettier `--check`** (the `format` script; use
-`npx prettier --write .` to fix locally), and the Jest suite. CI reads the Node
+CI (`.github/workflows/ci.yml`) gates all of them on every PR/push: the Expo SDK
+pins, one copy of each native module, typecheck, ESLint, **prettier `--check`**
+(the `format` script; fix with `npx prettier --write .`) and the Jest suite. CI reads the Node
 version from `.nvmrc` (`24.16.0`) via `node-version-file`, and installs with a
 frozen `npm ci` - keep `package-lock.json` committed in sync after dependency
 changes. See [Gates and CI](../contributing/gates-and-ci.md) for the

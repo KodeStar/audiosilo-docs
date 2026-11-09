@@ -14,7 +14,7 @@ content by `(library_id, rel_path)`, and owns exactly one hard problem:
 
 | Concern | Choice |
 |---|---|
-| Framework | **Expo SDK 56**, **React Native 0.85** (new architecture), **React 19** |
+| Framework | **Expo SDK 58**, **React Native 0.88** (new architecture), **React 19.3** |
 | Routing | **Expo Router** (file-based, routes live in `src/app/`): `NativeTabs` on iOS/Android, headless `expo-router/ui` Tabs on web - see [The shell](#the-shell-tabs-and-navigation) |
 | Styling | **Uniwind** (Tailwind v4) - `className` on core RN components, on every platform. Web player floor: Safari 16.4, Chrome 111, Firefox 128 (Tailwind v4's CSS) |
 | Design system | **Stacks** (`STYLEGUIDE.md`, authoritative): semantic light/dark tokens, Figtree / Bricolage Grotesque / JetBrains Mono, and **react-native-reusables** primitives (shadcn/ui for React Native on `@rn-primitives`) restyled to it - see [Styling conventions](#styling-conventions) |
@@ -100,8 +100,9 @@ targets/watch/      the Apple Watch app (Swift, not bundled by Metro): Core/ (Fo
                     only), Net/, Storage/, Phone/, Playback/, UI/
 watch-core/         SwiftPM package over targets/watch/Core, for its tests on the host
 plugins/            config plugins (CarPlay scenes, Cast, the watch scheme, the Xcode 26
-                    and widget fixes); withCarPlay, withCast, withWatchScheme and
-                    withWidgetsNoPush have jest tests
+                    fix); withCarPlay, withCast and withWatchScheme have jest tests,
+                    widgets-entitlements.test.ts checks that no target asks for push
+                    and build-properties.test.ts pins the expo-build-properties options
 index.ts            the app entry (package.json main): registers the car's headless
                     task, then expo-router/entry
 public/             sw.js (service worker) + manifest.json (PWA), copied verbatim
@@ -147,7 +148,7 @@ URLs, so every URL below is the same as before the groups existed.
 | `(app)` layout, native | `src/app/(app)/_layout.tsx` | Only re-exports `NativeAppShell` (`src/components/shell/native-shell.tsx`, whose web file is an empty stand-in; see [the web start](#the-web-start-a-split-build) for why). That shell: `AuthGate` (`src/components/shell/auth-gate.tsx`: `loading` → spinner, `unauthenticated` → `<Redirect href="/connect" />`; also backfills `has_password`/`has_recovery` on sessions persisted before those flags existed), then **`NativeTabs`** with one trigger per destination (SF Symbols on iOS, Material Symbols on Android) and, on iOS 26, the mini player as the tab bar's `BottomAccessory`. On tablet/desktop the native tab bar is `hidden` and the shell's own top bar, sub-nav and docked player take over; `ShellFrame` (`shell-frame.tsx`) draws that chrome around the navigator in both `(app)` layouts. On a phone without the iOS 26 accessory it also renders the one `FloatingMiniPlayer` as the frame's `phoneBottom`, over NativeTabs. |
 | `(app)` layout, web | `src/app/(app)/_layout.web.tsx` | `AuthGate`, then **headless `expo-router/ui` `Tabs`** over the same route groups: a hidden `TabList` registers the five tab routes, one `<TabSlot />` renders the page, and `ShellFrame` surrounds it with our chrome (phone: `MiniPlayer`, sitting on the tab bar through a `100%` bottom offset, + `PhoneTabBar`; tablet/desktop: top bar, sub-nav, banners, `DockedPlayer`). Also the web-only `CommandPalette` and its keyboard shortcut (`usePaletteShortcut`, in `palette-store.ts`), the keyboard shortcuts overlay and the player's sheets (`ShellPlayerOverlays`), all three mounted through `deferred` once the page has painted (their keys and open states live in the shell, so a key pressed earlier still opens one). |
 | tab stacks | `(app)/(home,library,search,offline,me)/_layout.tsx` | ONE layout file that becomes each tab's `Stack`. Its group-keyed `unstable_settings` (`TAB_STACK_SETTINGS`) give each stack its root route; `screenListeners` is `tabStackListeners`. On a phone each page's Stack `header` is `PhoneHeader`; tablet/desktop hide it. |
-| - (browser tab title, web) | `src/components/shell/document-title{,.web}.tsx`, `src/lib/use-page-title{,.web}.ts`, `src/lib/document-title.ts` | Expo Router turns React Navigation's document-title sync off, so the app names the tab itself. A pushed page or root modal calls `usePageTitle(title)` (a no-op on native; `undefined` while its data loads), which claims the title while the screen is **focused**, so Back names the page under it again. `DocumentTitle`, mounted once in the root layout, is the only writer of `document.title`: `▶ <book> · AudioSilo` while a book plays, else `<page> · AudioSilo`, else the active tab's name. `StaticDocumentTitle` puts `AudioSilo` in the exported HTML (a `<title>` in `+html.tsx` would sit behind Expo's own). A new page calls `usePageTitle` too. |
+| - (browser tab title, web) | `src/components/shell/document-title{,.web}.tsx`, `src/lib/use-page-title{,.web}.ts`, `src/lib/document-title.ts` | Expo Router turns React Navigation's document-title sync off, so the app names the tab itself. A pushed page or root modal calls `usePageTitle(title)` (a no-op on native; `undefined` while its data loads), which claims the title while the screen is **focused**, so Back names the page under it again. `DocumentTitle`, mounted once in the root layout, is the only writer of `document.title`: `▶ <book> · AudioSilo` while a book plays, else `<page> · AudioSilo`, else the active tab's name. The exported HTML gets `AudioSilo` from a `<title>` in `+html.tsx` (router 58 leaves `Head` tags out of the static HTML). A new page calls `usePageTitle` too. |
 | `/` | `(app)/(home)/index.tsx` → `src/components/home/home-screen.tsx` | Home, aggregated across **the person listening's** servers (`useProfileConnections`; the `use*All` hooks read `useApis()`, the active profile's connections, see [Profiles](profiles.md#visible-and-background-connections)): the greeting and sync pill, the Now card, This week (`user_stats`), Continue listening, Next in your series (`next_book`), Coming up in your series (`upcoming`, `UpcomingRail`; see [Upcoming releases](state-and-data.md#upcoming-releases)), Listening in the house (`HouseRow`, see [Listening in the house](listening-in-the-house.md)), smart shelves, Recently added, Favourites, Recently finished. The rules are `home-model.ts` (which book leads, the shelves, the `/next` candidates) and `listening.ts` (streak, bars and pace in **server** time); see [Home](state-and-data.md#home). |
 | `/browse?type=recent\|finished` | `(app)/(home,library,search,offline,me)/browse.tsx` → `src/components/library/books/see-all-screen.tsx` | The "See all" cover grid behind Home's Recently finished shelf (Recently added's See all opens the Library's Books mode with `sort=recent` instead). |
 | `/upcoming` | `(app)/(home,library,search,offline,me)/upcoming.tsx` → `src/components/upcoming/upcoming-screen.tsx` | The listener's upcoming releases on every server (`UpcomingContent`: Coming soon, Just released, Missing from your series), pushed on the current tab by Home's Coming up in your series > See all (`upcomingHref`); a cold link opens it in Home. The You hub's Upcoming section renders the same body. See [Upcoming releases](state-and-data.md#upcoming-releases). |
@@ -401,10 +402,10 @@ web, a secure context with the Cache API).
 - **Cold deep link owner = Home.** A cold `/book/...` link, which every tab
   could own, is given to the alphabetically **first** tab group - which is why
   Downloads is `(offline)` and not `(downloads)`. `TAB_STACK_SETTINGS` (the
-  group-keyed `unstable_settings` of the array-group layout) inserts each tab's
-  root underneath so back works, and `tabStackListeners` strips the link params
-  React Navigation copies onto that root and its ancestors (otherwise back
-  landed on `/?libraryId=1`). A root keeps only its own `rootParams`
+  group-keyed `unstable_settings` of the array-group layout: each tab's `anchor`)
+  inserts each tab's root underneath so back works, and `tabStackListeners`
+  strips the link params React Navigation copies onto that root and its
+  ancestors (otherwise back landed on `/?libraryId=1`). A root keeps only its own `rootParams`
   (`Destination.rootParams` in `destinations.ts`: Library's `mode`, `sort`,
   `status`, `dl`, `len`; the You hub's `section` and the Journal's `tab`); every other param on a root, and every param on its
   ancestors, is replaced with none.
@@ -417,6 +418,16 @@ web, a secure context with the Cache API).
   `src/lib/root-stack.ts`: `POP_TO_TOP` on that tab stack's key), which keeps
   the root's own params; a navigate to the root's href would push a second copy of
   the root, since a navigate is a push in this router.
+- **The navigation container is read through `src/lib/router-ref.ts`.**
+  expo-router 58 removed its global store, and its only public read is a hook. A
+  press handler, a startup path or a test that reads the state at call time
+  imports `navigationRef` from `@/lib/router-ref`, the one module that names the
+  deep `expo-router/build/global-state/navigationRef` path. An expo-router upgrade
+  checks that path first.
+- **Navigation at mount uses `useRouter()`.** Since expo-router 58 the
+  module-level `router` throws until the router has rendered once, so an effect or
+  guard that navigates on mount (`kids-route-guard.tsx`, the connect layout) takes
+  the hook's router. The module-level one is fine in press handlers.
 - **A tab root opened from elsewhere is popped to, not pushed.** `openYou` /
   `openJournal` (never `pushInShell`, which would push a second hub) close a root
   modal, pop the Me stack to its root (`popTabToRoot`) and then navigate;
@@ -425,9 +436,10 @@ web, a secure context with the Cache API).
 - **Web: `<TabSlot />` stays at a fixed ancestor path at every width**; only
   the sibling chrome toggles. Moving it between wrappers remounts every screen on
   a resize and jumps the URL to another tab.
-- **Native: never add or remove tabs at runtime.** `NativeTabs` can't; tablet
-  and desktop set `hidden` on the whole bar instead, so every tab's stack
-  survives an iPad rotation or split view crossing 640.
+- **Native: never add or remove tabs at runtime.** `NativeTabs`
+  (`expo-router/native-tabs`) can't; tablet and desktop set `hidden` on the
+  whole bar instead, so every tab's stack survives an iPad rotation or split
+  view crossing 640.
 - **Route-driven side effects** (clearing the search query when leaving the
   Search tab, forgetting browse scroll positions when leaving the browse
   section - the Library root and folders plus the book, series, author,
@@ -707,8 +719,9 @@ ones a contributor trips over first.
 These are the four failure modes that cost the most time on a fresh checkout.
 :::
 
-1. **Node 24 is required** (`.nvmrc` pins `24.16.0`). RN 0.85 needs ≥ 20.19.4,
-   and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12) - an
+1. **Node 24 is required** (`.nvmrc` pins `24.16.0`; versions in the
+   [toolchain matrix](../contributing/workspace.md#toolchain-matrix)). The Expo
+   CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an
    older system Node crashes as soon as a `.env` file exists. Run `nvm use`
    first.
 2. **Native runs need a dev build, not Expo Go.** The `audiosilo-player` module,
@@ -726,7 +739,7 @@ These are the four failure modes that cost the most time on a fresh checkout.
 Also: run tool commands from the **repo root** - a stray `cd` into
 `node_modules` breaks Expo's config resolution. And before calling any change
 done, run the full gate (`npx tsc --noEmit && npm run lint && npm run format &&
-npm test`) - CI enforces all four; see
+npm test`). CI enforces it, plus the dependency checks; see
 [Gates and CI](../contributing/gates-and-ci.md).
 
 ## The web start (a split build)

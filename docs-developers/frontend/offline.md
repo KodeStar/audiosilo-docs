@@ -54,7 +54,9 @@ by Metro exactly like the playback service (`engine.native.ts` /
   never through the service worker.
 - `storageEstimate?()` - how much room there is, as a `StorageEstimate { scope,
   capacity, free }`, or null when the platform can't say. Native: the disk
-  (`Paths.totalDiskSpace` / `availableDiskSpace`, scope `device`). Web: the origin's
+  (`Paths.totalDiskSpace` / `availableDiskSpace`, scope `device`; since SDK 58 the iOS bridge
+  sends native `Int64` values such as these, `File.size` and a download's progress as a JS
+  `bigint`, so read them through `nativeNumber` in `src/lib/native-number.ts`). Web: the origin's
   quota from `navigator.storage.estimate()` (scope `browser`; `free` = quota minus
   everything the site stores; other apps' use is not knowable there). Read by the
   Downloads page's storage card and by keep-ahead's space rule.
