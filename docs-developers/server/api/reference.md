@@ -6697,7 +6697,7 @@ one request is applied in one transaction.
 | `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
 | `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`, else chapters a Bridge found in the narration when they fit). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included. `"generated"` is not a choice: `"files"` turns found chapters off and `"auto"` brings them back |
-| `match` | object | from 2.6.0: `{ "work_id", "recording_id"?, "asin"?, "isbn"? }`, the community match the edit was taken from, recorded as the book's [`community_match`](#get-apiv1adminlibrariesidbook) (how `accepted`) in the edit's transaction. Needs `source: "community"`, and may come alone (no `set`): the console's dialog sends it with every accept of ticked fields, and alone (after any ticked cover) when the pick is the book's recorded match (work and recording) or the book has no ASIN or ISBN; a cover-only accept of any other book sends none. From 2.7.0, `asin` and `isbn` are the identifiers the match offered, ticked or not (`""` or absent for none), stored as the fields store theirs, so a [refresh](#bulk-community-matching) never fills one back; an unlink ignores them. `{ "work_id": "" }` unlinks the book (below). One book at a time: the bulk edit refuses it |
+| `match` | object | from 2.6.0: `{ "work_id", "recording_id"?, "asin"?, "isbn"? }`, the community match the edit was taken from, recorded as the book's [`community_match`](#get-apiv1adminlibrariesidbook) (how `accepted`) in the edit's transaction. Needs `source: "community"`, and may come alone (no `set`): the console's dialog sends it with every accept of ticked fields, and alone (after any ticked cover) for a book with no ASIN or ISBN, and after a ticked cover when the pick is the book's recorded match (work and recording; with nothing ticked the dialog's accept is off); a cover-only accept of any other book sends none. From 2.7.0, `asin` and `isbn` are the identifiers the match offered, ticked or not (`""` or absent for none), stored as the fields store theirs, so a [refresh](#bulk-community-matching) never fills one back; an unlink ignores them. `{ "work_id": "" }` unlinks the book (below). One book at a time: the bulk edit refuses it |
 
 **Unlinking** (from 2.6.0). `match: { "work_id": "" }`, from any edit (no
 `source` needed), removes the book's recorded match, every `source: "community"`
@@ -7295,7 +7295,10 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
 - `changes` is what applying would write under each scope the run's mode takes
   (fields in display order, set or reverted, and whether the cover is taken),
   worked out against the book now by the same rules the apply uses, so the
-  review can't disagree with it. From 2.6.0 a change also carries `match: true`
+  review can't disagree with it. From 2.7.0 a `refresh` item the run recorded
+  with nothing to change under a scope shows no change under it (no fields,
+  no cover) whatever the book would take now, as an apply under that scope
+  never takes it ([below](#post-apiv1adminmatch-runsidapply)). From 2.6.0 a change also carries `match: true`
   (omitted otherwise) when applying records the book's community match (a new
   match, or a refresh healing a merged work); the console lists it as "the
   community match" when no ASIN or ISBN is written beside it. A `match` run's
@@ -7383,12 +7386,13 @@ stopped apply takes the rest.
 
 **A refresh's no-op items** (from 2.7.0). The server leaves out a refresh item
 with nothing to change under the scope, so a client need not exclude each one.
-An item whose review showed no change under that scope (`changes` empty for it)
-is never taken, even if the book changed since: nothing is written that the
-review didn't show. One that had a change then but has none now is dropped
-from `apply_total` as the apply passes it. Either way it stays unapplied
-(`pending`, like an excluded item, not `skipped`), and `apply_done` ends at
-`apply_total`. The `202`'s run and the audit's `books` count every item taken.
+An item the run recorded with nothing to change under that scope (its review
+shows no fields and no cover under it) is never taken, even if the book changed
+since: nothing is written that the review didn't show. One that had a change
+when recorded but has none now is planned again and dropped from `apply_total`
+(in batches of up to 100, the rest before the run settles). Either way it stays
+unapplied (`applied` `""`, like an excluded item, so an `auto` one still counts
+as `pending`), not `skipped`, and `apply_done` ends at `apply_total`. The `202`'s run and the audit's `books` count every item taken.
 An item recorded before 2.7.0 is planned again as before. A `match` or `repick`
 item with nothing to change is still `skipped` with `nothing_to_change`.
 
