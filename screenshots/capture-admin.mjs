@@ -1045,26 +1045,18 @@ await step('book: generated description', async () => {
 });
 
 // ── A recorded community match ──────────────────────────────────────────────
-// The Hound of the Baskervilles is matched for the shot as the match dialog does
-// it: the match endpoint's first candidate whose recording has an ASIN, accepted
-// with that ASIN and the match (work and recording). Its Community card then
-// shows the ASIN, the work, the recording, how and when, and Unlink. The book is
-// unlinked again afterwards, so later shots see it unmatched. Before the
-// stand-in Bridge is paired, so the card has no Characters and recaps part.
+// The Hound of the Baskervilles is matched as the match dialog does it (the first
+// candidate whose recording has an ASIN) and unlinked afterwards, so later shots
+// see it unmatched. Before the stand-in Bridge is paired: no Characters part.
 await step('book: recorded community match', async () => {
   if (!wanted('admin/book-community-match.png')) return;
   const book = await bookBy('Sir Arthur Conan Doyle', 'Hound of the Baskervilles');
   if (!book) throw new Error('no seeded Hound of the Baskervilles');
   const at = `/admin/libraries/${book.library_id}/book${pathQuery(book.path)}`;
   const {candidates = []} = await api(token, 'GET', `/admin/libraries/${book.library_id}/book/match${pathQuery(book.path)}`);
-  let pick = null;
-  for (const c of candidates) {
-    const rec = (c.recordings ?? []).find((r) => r.asins?.length);
-    if (rec) {
-      pick = {work: c.work_id, recording: rec.id, asin: rec.asins[0]};
-      break;
-    }
-  }
+  const pick = candidates
+    .flatMap((c) => (c.recordings ?? []).filter((r) => r.asins?.length).map((r) => ({work: c.work_id, recording: r.id, asin: r.asins[0]})))
+    .at(0);
   if (!pick) throw new Error('no candidate with an ASIN (is meta.audiosilo.app reachable?)');
   await api(token, 'PATCH', at, {
     source: 'community',

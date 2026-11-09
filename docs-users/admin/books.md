@@ -600,17 +600,17 @@ that work starts picked if the search finds it.
 
 ### Unlinking a community match
 
-The **Community metadata** card shows which community work a matched book is:
+**Unlink** removes a book's community match. The **Community metadata** card
+shows which match that is:
 
 - **Community work**: the work's id. It opens the work's page on the community
   site.
 - **Recording**: the edition's id, when the match named one.
-- How and when it was matched, for example "Matched by a bulk match 2 days
-  ago." or "Matched 2 days ago."
+- How and when it was matched, for example "Matched 2 days ago."
 
 ![The Community metadata card of a matched book, with Unlink](/img/screenshots/admin/book-community-match.png)
 
-A book matched before 2.6.0 shows only its ASIN or ISBN until it is matched
+A book matched before 2.6.0 shows no **Community work** until you match it
 again.
 
 To remove the match:
@@ -623,15 +623,14 @@ cover. Your own edits and uploaded covers stay.
 
 If the book has an ASIN or ISBN of its own (from its files, or one you typed),
 that stays too. The book still shows as matched, and
-[Fill in matched books](health.md#filling-in-books-that-are-already-matched) can bring the
-community's details back. Without one, the book shows as **Not matched**, and the
-next match run asks about it again.
+[Fill in matched books](health.md#filling-in-books-that-are-already-matched)
+can bring the community's details back. Without one, the book shows as **Not
+matched**, and the next match run asks about it again.
 
-You can't unlink a book while a match run is applying matches to its library,
-or to all libraries. You see "A match run is working. Wait for it to finish, or stop
-it, then try again." and nothing changes. Wait for the run, or click **Stop** on
-the [Health page](health.md#matching-every-book-at-once), then try again. A run
-that is only finding matches, or one for another library, doesn't block Unlink.
+You can't unlink a book while a match run is applying matches to its library.
+You see "A match run is working. Wait for it to finish, or stop it, then try
+again." Wait for the run, or click **Stop** on the
+[Health page](health.md#matching-every-book-at-once), then try again.
 
 :::warning[Known issue in 2.6.0: a cleared ASIN can return]
 Clearing or reverting an ASIN leaves the book's community match in place.

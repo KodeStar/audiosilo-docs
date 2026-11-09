@@ -169,16 +169,12 @@ what it found and apply it.
    ("Applying *N* of *M* matches"). **Stop** finishes the books in hand and
    leaves the rest to apply later from the same review.
 
-While a run is applying matches, you can't **Unlink** the books it covers: that
-library's books, or every book for a run over all libraries. This includes
-**Fill in matched books** and **Use *country* ASINs**. A run that is still
-finding matches doesn't block Unlink. See
+While a run is applying matches, you can't **Unlink** the books it covers. See
 [Unlinking a community match](books.md#unlinking-a-community-match).
 
 If a run shows as matching or applying but makes no progress (after a server
-error, for example), click **Stop**. It ends at once and changes nothing more. A
-run stopped while applying can be applied again from the same review. Starting
-another run also releases a stuck run, and so does unlinking a book it covers.
+error, for example), click **Stop**. It ends at once. A run stopped while
+applying can be applied again from the same review.
 
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
@@ -276,7 +272,7 @@ such a match on its own only when all of these hold:
 
 Any other such match goes to **To review**, where you can tick it. The book's
 page then shows the work it is matched to, and how and when (see
-[Books matched to a store listing](books.md#books-matched-to-a-store-listing)).
+[Unlinking a community match](books.md#unlinking-a-community-match)).
 
 #### Weak matches
 

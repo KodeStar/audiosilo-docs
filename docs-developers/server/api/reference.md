@@ -6666,8 +6666,9 @@ book path).
   no service is configured). Recorded whether or not the match gave the book an
   ASIN or ISBN; for a store listing with neither it is what makes the book
   `matched`. The console's Community card shows it, with Unlink, whenever it is
-  present (from 2.7.0; in 2.6.0 only for a book with no ASIN or ISBN). Omitted when the book has none (no backfill: a book matched
-  before 2.6.0 has none until it is matched again).
+  present (from 2.7.0; in 2.6.0 only for a book with no ASIN or ISBN). Omitted
+  when the book has none (no backfill: a book matched before 2.6.0 has none
+  until it is matched again).
 - `generated_description` - the description the [Bridge](#the-bridge) generated
   for the book (its checked `.audiosilo/description.json`, Phase 1c), with
   `generated_at` the time `bridge.json`'s `description` object gives (omitted when
@@ -6705,8 +6706,8 @@ matches](#delete-apiv1admincommunity-matches) does for a library, before the res
 of the edit applies), so it is `matched: false` again unless it has an ASIN or
 ISBN of its own. An admin's own edits and uploads stay. There is no undo.
 
-Only an explicitly empty `match.work_id` unlinks. Both ids are trimmed at the
-ends of whitespace and other invisible characters (from 2.7.0: format characters
+Only an explicitly empty `match.work_id` unlinks. Both ids lose leading and
+trailing whitespace and other invisible characters (from 2.7.0: format characters
 such as U+200B, U+FEFF and U+2060, variation selectors, default-ignorables such
 as U+3164, and U+2800); interior ones are kept. A nonempty `work_id` that holds
 nothing else is `400 invalid_override` with `field: "match"`; nothing in the
@@ -6722,9 +6723,9 @@ was planned for (`cover_superseded`, see [the items](#get-apiv1adminmatch-runsid
 The status check and clear share the edit's writer transaction, so a refused
 Unlink also refuses any other edits in the request. Ordinary field edits remain
 allowed. After a stop request, Unlink stays blocked until the apply's workers
-finish, including cover writes. A run left marked `applying` with nothing behind
-it (its finishing write failed) is settled back to `ready` and the Unlink tried
-once more, so a stuck run never blocks it.
+finish, including cover writes. A stuck run (see the
+[statuses](#bulk-community-matching)) is settled first and the Unlink tried once
+more, so it never blocks.
 
 ```json
 {
@@ -7103,9 +7104,10 @@ Run **statuses**: `matching` → `ready` (waiting for review) → `applying` →
 `error` is `metadata_off` when community metadata was turned off,
 `metadata_unavailable` when the service kept failing, `internal`), and
 `interrupted` (the server stopped mid-match; a run stopped mid-apply goes back
-to `ready` at the next start, its applied books marked). From 2.7.0 a run left
-marked `matching` or `applying` with nothing working on it (its finishing write
-failed) is settled the same way when a run starts or applies, on
+to `ready` at the next start, its applied books marked). From 2.7.0 a stuck run,
+one left marked `matching` or `applying` with nothing working on it (its
+finishing write failed), is settled the same way (`matching` becomes
+`interrupted`, `applying` becomes `ready`) when a run starts or applies, on
 [Stop](#post-apiv1adminmatch-runsidcancel), and on an Unlink it blocks.
 
 #### What a run asks of the community service
@@ -7370,9 +7372,8 @@ stopped apply takes the rest.
 Stops the run while it works: matching stops (`cancelled`, nothing changed);
 applying stops after the books in hand (`ready` again, the rest still to
 apply). Turning community metadata off stops an apply the same way. From 2.7.0
-a run still marked working with nothing behind it (its finishing write failed)
-is settled at once: `matching` becomes `interrupted`, `applying` becomes
-`ready`. `204`; `409 code: "match_run_not_running"` when it isn't marked
+a stuck run (see the [statuses](#bulk-community-matching)) is settled at once.
+`204`; `409 code: "match_run_not_running"` when it isn't marked
 working. Audited as `book.match_stop` (with `"orphan": true` for a settled stuck
 run).
 
