@@ -6725,7 +6725,7 @@ Unlink also refuses any other edits in the request. Ordinary field edits remain
 allowed. After a stop request, Unlink stays blocked until the apply's workers
 finish, including cover writes. A stuck run (see the
 [statuses](#bulk-community-matching)) is settled first and the Unlink tried once
-more, so it never blocks.
+more, so a stuck run never blocks it (a failed settle still answers `409`).
 
 ```json
 {
@@ -7306,11 +7306,11 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   `cover_pending`, so the next apply takes its cover (unless the book was
   unlinked since: then it writes nothing, `nothing_to_change`). From 2.7.0
   `cover_superseded` means the cover was not written because the book changed
-  while it was fetched (a cover uploaded or found by a rescan, another match
-  accepted, an ASIN or ISBN edited, an Unlink): the write checks, in its own
-  transaction, that the book still has no cover, the recorded match and the
-  ASIN and ISBN the apply planned. It is final: `applied` when the item's fields
-  went in, else `skipped`.
+  since the apply planned it (a cover uploaded or found by a rescan, another
+  match accepted, an ASIN or ISBN edited, an Unlink): it is checked before the
+  fetch, and the write checks again, in its own transaction, that the book still
+  has no cover, the recorded match and the ASIN and ISBN the apply planned. It
+  is final: `applied` when the item's fields went in, else `skipped`.
 
 #### `POST /api/v1/admin/match-runs/{id}/apply`
 

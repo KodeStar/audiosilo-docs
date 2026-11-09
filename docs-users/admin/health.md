@@ -169,12 +169,12 @@ what it found and apply it.
    ("Applying *N* of *M* matches"). **Stop** finishes the books in hand and
    leaves the rest to apply later from the same review.
 
-While a run is applying matches, you can't **Unlink** the books it covers. See
-[Unlinking a community match](books.md#unlinking-a-community-match).
+While a run is applying matches, you can't **Unlink** any book in its library.
+See [Unlinking a community match](books.md#unlinking-a-community-match).
 
 If a run shows as matching or applying but makes no progress (after a server
-error, for example), click **Stop**. It ends at once. A run stopped while
-applying can be applied again from the same review.
+error, for example), click **Stop**. A stuck run ends at once. A run stopped
+while applying can be applied again from the same review.
 
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
