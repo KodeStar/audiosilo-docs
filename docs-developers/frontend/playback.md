@@ -331,7 +331,7 @@ can still overflow, since the budget counts one file's extractors.
   and `ICON_SKIP_FORWARD_*`, available since Media3 1.5.0), so no app-shipped drawable and
   no icon-less action for newer Android to drop.
 - **Registered with `setCustomLayout`, not `setMediaButtonPreferences`.** The
-  slot-based preferences API capped the Media3 1.5.1 notification at 3 actions
+  slot-based preferences API capped the Media3 notification at 3 actions
   (it drops the secondary slots - verified via `dumpsys notification`,
   `actions=3`). `setCustomLayout` makes the notification provider emit the
   standard `[prev, play/pause, next]` row automatically (from the player's

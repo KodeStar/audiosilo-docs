@@ -63,7 +63,7 @@ NarrationSilenceProcessor  ->  SonicAudioProcessor  ->  VoiceBoostProcessor
    (book time)                    (speed)                 (what you hear)
 ```
 
-Media3 1.5.1's `DefaultAudioProcessorChain` only accepts Media3's own (final) silence
+Media3's `DefaultAudioProcessorChain` only accepts Media3's own (final) silence
 processor, so the chain replaces it the way Pocket Casts does. Order matters: silence
 skipping runs first, on the book's own frames, so its skipped-frame count is book time (what
 `getSkippedOutputFrameCount` reports to the sink's position maths, and what time saved
@@ -72,7 +72,7 @@ time at any speed. One chain instance per sink.
 
 - **`NarrationSilenceProcessor`** is a Kotlin port of Media3 **1.11.1**'s
   `SilenceSkippingAudioProcessor` (Apache 2.0, provenance in the file header). It is vendored
-  because 1.5.1's copy sizes its "maybe silence" buffer in frames but uses it as bytes
+  because 1.9.0's copy sizes its "maybe silence" buffer in frames but uses it as bytes
   (androidx/media#3271), keeping a quarter of the intended padding around each word in
   stereo, and fades per byte. Narration defaults: threshold 330 (about -40 dBFS peak),
   minimum silence 300 ms, retention ratio 0.25, at most 1 s of silence kept, mute to 10%. It

@@ -161,7 +161,7 @@ the listeners never fire.
 
 ### A `MediaLibraryService`
 
-`AudiosiloPlayerService` is a Media3 `MediaLibraryService` (Media3 1.5.1) whose session player
+`AudiosiloPlayerService` is a Media3 `MediaLibraryService` (Media3 1.9.0) whose session player
 is the same `AudiobookPlayer` the phone's lock screen uses. The module's own `AndroidManifest.xml` declares it for the
 `androidx.media3.session.MediaLibraryService`, `MediaSessionService` and
 `android.media.browse.MediaBrowserService` actions, plus `com.google.android.gms.car.application`
@@ -206,10 +206,21 @@ is the same `AudiobookPlayer` the phone's lock screen uses. The module's own `An
   the effects switches do ([Smart speed and Voice boost](audio-effects.md#android-one-processor-chain)).
 - **Playback resumption**: `onPlaybackResumption` (a Bluetooth or car play with an empty
   player) starts the snapshot's first Continue listening book only when it has a play spec.
-  Media3 1.5.1 asks only on a play command, so merely connecting Auto never plays.
-  `ResumptionReceiver` (a `MediaButtonReceiver`) refuses to start the foreground service when
-  there is nothing resumable, since a foreground service that doesn't start playback within
-  seconds crashes the app (`ForegroundServiceDidNotStartInTimeException`).
+  Media3 asks only on a play command, so merely connecting Auto never plays. With
+  `isForPlayback = false` (System UI's resumption card after a reboot) it answers from the
+  play spec with no side effect.
+  `ResumptionReceiver` (a `MediaButtonReceiver`) overrides Media3 1.9's
+  `shouldStartForegroundService(Context, Intent)` and refuses to start the foreground service
+  when there is nothing resumable, since a foreground service that doesn't start playback
+  within seconds crashes the app (`ForegroundServiceDidNotStartInTimeException`). A media
+  button start that does go ahead goes foreground at once with a placeholder notification
+  under Media3's notification id (Media3's own replaces it when the book plays); if nothing
+  resumes within 15 s the placeholder is removed and the service stops.
+- **Media3 is pinned.** The module's `media3Version` must be what the app resolves: Gradle
+  takes the highest Media3 any dependency asks for while the module compiles against its own
+  declaration, and a mismatch compiles and then breaks at run time. The module's `strictly`
+  constraints make the build fail when anything asks for another version, so a bump changes
+  `media3Version` and the code together.
 - **The bookmark** is a third custom `CommandButton` (`audiosilo.BOOKMARK`,
   `ICON_BOOKMARK_UNFILLED`, `ICON_BOOKMARK_FILLED` for 2 s after a press). System UI (API 33+)
   shows play, previous, next and only the first two custom actions, and our
