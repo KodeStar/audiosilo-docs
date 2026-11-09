@@ -717,11 +717,15 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   newest [match run](api/reference.md#bulk-community-matching)
   (`GET /admin/match-runs`, polled each second while one works): Find matches
   (and, with a preferred marketplace set, "Use *country* ASINs", a repick), its
-  progress with Stop, then the counts and "Review and apply". The review dialog
+  progress with Stop, then the counts and "Review and apply" (from 2.7.0 under a
+  "stopped early" notice when the run's `error` is `metadata_unavailable`,
+  `stoppedEarly`, which the last run's line repeats). The review dialog
   pages each outcome's items (`GET …/items?outcome=`), ticks the confident ones,
   shows what the chosen scope writes from each item's server-computed `changes`
   (a tidied title among them, under fill), words a `none` item from its `detail`
-  (`weak_match` with its `score`, `identifier_unknown`, `work_unknown`), lists a
+  (`weak_match` with its `score`, `identifier_unknown`, `work_unknown`) and a
+  `review` item's (`length_differs`, `dramatization_only`, from 2.7.0
+  `identifier_disagrees`), lists a
   change's `match` as "the community match" when no ASIN or ISBN is written beside
   it (`changeParts`),
   and posts the admin's picks as `exclude`/`include` ids. When the newest run's

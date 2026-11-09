@@ -7085,9 +7085,9 @@ Each book's **outcome**:
 | Outcome | Meaning |
 |---|---|
 | `auto` | Confident (`matchrun.Classify`): the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN (from 2.6.0, one with neither on firmer ground: see below the table), and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition), or, from 2.6.0, within **20%** (`meta.NarratedRuntimeOff`) when the book's narrator reads it (`matchrun.narratorReads`: `reasons.narrator` is `full` and the proposed recording's own credit names one of the book's narrators, `meta.ReadBy`; a placeholder credit such as `Full Cast`, `GraphicAudio`, `Various` or `Unknown` never counts, `meta.PersonNarrator`, as it agrees with every recording carrying it). An identifier hit (`reasons.identifier`: in a match run always a tag hint) needs no lead, unless the next candidate is one too (`review`; a guard, as metaserve names one work per request today). From 2.7.0 the book must also agree with it (`matchrun.identifierAgrees`): `reasons.title`, when judged, at least **0.65** (`IdentifierTitleAgree`), or at least **0.9** (`IdentifierTitleSame`) when `reasons.series` is `conflict`, as the same title at another position is the series numbered another way (a conflict with no title judged is held). Else `review`. So a wrong tag ASIN naming a book with a similar title within 10% of the length is still `auto`, and so, from 2.6.0, is one naming another edition of the right work when a recording of it within 10% takes its place (`meta.FitRecording`, [the dialog's rule](#get-apiv1adminlibrariesidbookmatch)). Applied unless the admin leaves it out. A repick's offers are all `auto`. |
-| `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's, or 20% when the book's narrator reads it (a match run's, as for `auto`, or a refresh's), carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. One whose work holds only dramatizations the book doesn't state it is, none of them the book's by length ([`default_recording_id`](#get-apiv1adminlibrariesidbookmatch), from 2.6.0), carries `detail: "dramatization_only"` (`DetailDramatizationOnly`) and no recording, so nothing is attached unasked. One found by a tag ASIN or ISBN the book doesn't agree with (see `auto`, from 2.7.0) carries `detail: "identifier_disagrees"` (`DetailIdentifierDisagrees`). |
+| `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's, or 20% when the book's narrator reads it (a match run's, as for `auto`, or a refresh's), carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. One whose work holds only dramatizations the book doesn't state it is, none of them the book's by length ([`default_recording_id`](#get-apiv1adminlibrariesidbookmatch), from 2.6.0), carries `detail: "dramatization_only"` (`DetailDramatizationOnly`) and no recording, so nothing is attached unasked. One found by a tag ASIN or ISBN the book doesn't agree with (see `auto`, from 2.7.0) carries `detail: "identifier_disagrees"` (`DetailIdentifierDisagrees`), ahead of `dramatization_only` and `length_differs` when either would also apply. |
 | `none` | No candidate; or, in a match run, a best candidate scoring under **60** (`matchrun.ReviewFloor`) on metaserve's scale, with `detail: "weak_match"` (`DetailWeakMatch`), its `score` kept for the review's wording and its `proposal` empty (from 2.6.0). A candidate without `reasons` (an older metaserve's fallback search, on another scale) stays `review`. The match dialog has no such floor: it lists its candidates (up to 6) however low they scored. |
-| `error` | The service failed for this book (`detail: "metadata_unavailable"`), from 2.7.0 also when the best candidate's work can't be read. [Ten in a row](#what-a-run-asks-of-the-community-service) stop the run. |
+| `error` | The service failed for this book (`detail: "metadata_unavailable"`), from 2.7.0 also when the best candidate's work can't be read for any reason but a `404` (a gone work gives way to the next). [Ten in a row](#what-a-run-asks-of-the-community-service) stop the run. |
 
 **A store listing with no ASIN or ISBN** (from 2.6.0, LibraForge E6,
 `matchrun.anchorFits`). Nothing else names its edition, so it is `auto` only when
@@ -7158,8 +7158,9 @@ as it can.
   lost connection takes every stream on it). Any book the service answers for resets
   the count. From 2.7.0 a run stopped this way ends `ready` with
   `error: "metadata_unavailable"`:
-  the books it answered are reviewed and applied as usual, and those it never reached
-  stay unmatched, so the next run takes them. Before 2.7.0 it ended `failed`, which
+  the books it answered are reviewed and applied as usual, and its `error` items and
+  the books it never reached stay unmatched, so the next run takes them. Before 2.7.0
+  it ended `failed`, which
   can't be applied (`409 match_run_not_ready`).
 
 `refresh` and `repick` runs share the workers, the pacing, the waits and the stop.
@@ -7203,8 +7204,9 @@ count the books matched, `apply_total`/`apply_done` the last apply. `counts`
 are the items by outcome, `pending` the `auto` ones not applied yet, and
 `applied`/`skipped`/`failed` what applying did. `scope` is the last apply's.
 `error` (omitted when empty) is why a run stopped by itself: on a `failed` run, and
-from 2.7.0 `metadata_unavailable` on a run an outage stopped early (`ready`, or
-later `applied`; additive, as `error` was only on `failed` runs before).
+from 2.7.0 `metadata_unavailable` on a run an outage stopped early (`ready`, and
+kept through `applying` and `applied`; additive, as `error` was only on `failed`
+runs before).
 
 #### `POST /api/v1/admin/match-runs`
 
