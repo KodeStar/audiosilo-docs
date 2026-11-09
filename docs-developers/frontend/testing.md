@@ -567,11 +567,9 @@ npx tsc --noEmit && npm run lint && npm run format && npm test
 npx expo install --check && node scripts/check-native-dupes.mjs
 ```
 
-CI (`.github/workflows/ci.yml`) gates all of them on every PR/push - the Expo SDK
-pins (`npx expo install --check`; `expo.install.exclude` in `package.json` holds
-the one deliberate drift, AsyncStorage 3.x), one copy of each native module
-(`scripts/check-native-dupes.mjs`), typecheck, ESLint, **prettier `--check`** (the `format` script; use
-`npx prettier --write .` to fix locally), and the Jest suite. CI reads the Node
+CI (`.github/workflows/ci.yml`) gates all of them on every PR/push: the Expo SDK
+pins, one copy of each native module, typecheck, ESLint, **prettier `--check`**
+(the `format` script; fix with `npx prettier --write .`) and the Jest suite. CI reads the Node
 version from `.nvmrc` (`24.16.0`) via `node-version-file`, and installs with a
 frozen `npm ci` - keep `package-lock.json` committed in sync after dependency
 changes. See [Gates and CI](../contributing/gates-and-ci.md) for the

@@ -375,10 +375,9 @@ delegate (`AudiosiloPhoneSceneDelegate.swift`) forwards each URL context and use
 to the app delegate, where Expo's subscribers (expo-linking, expo-router) listen. It also
 hands each one to React Native's scene API (`RCTLinkingManager`
 `scene:openURLContexts:` / `scene:continueUserActivity:`), which sends JS its `url` event.
-Since React Native 0.88 the app-delegate `RCTLinkingManager` methods do nothing in an app
-with a scene manifest, so the AppDelegate linking overrides of the SDK 56 era are gone: with
-them alone, a link opened while the app runs (a pairing link, a widget, the Live Activity)
-would never reach JS. Pairing deep links, cold and warm, are the regression to check after
+Since React Native 0.88 the app-delegate `RCTLinkingManager` methods do nothing in a scene
+app, so the AppDelegate has no linking overrides. Without the scene calls, a link opened while
+the app runs (a pairing link, a widget, the Live Activity) would never reach JS. Pairing deep links, cold and warm, are the regression to check after
 any change here. `plugins/withCarPlay.test.ts` runs the transforms over the SDK 58
 AppDelegate fixture (`plugins/__fixtures__/app-delegate-sdk58.ts`) and pins the scene API
 calls in the Swift source.
@@ -441,8 +440,7 @@ and the `ContinueListening` widget (`systemSmall`, `systemMedium`).
 `withXcode26SwiftUICoreFix` is listed before it so it runs after it (the extension links the
 same static pods). The app sends no push, so no target may carry `aps-environment`, or every
 profile would need the Push Notifications capability. expo-widgets 58 adds it only when
-asked, and `plugins/widgets-entitlements.test.ts` fails if it comes back (expo-widgets 56
-added it unconditionally, and a `withWidgetsNoPush` plugin stripped it).
+asked, and `plugins/widgets-entitlements.test.ts` fails if it comes back.
 
 - `src/widgets/continue-listening.tsx` and `sleep-timer-activity.tsx` are `'widget'`
   functions: babel-preset-expo turns each into a source string the extension evaluates in its

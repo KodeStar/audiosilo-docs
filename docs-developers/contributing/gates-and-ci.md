@@ -65,7 +65,7 @@ The workflows for the server, player and metadata repos, verified against
 
 | Workflow | Name | Triggers | What it does |
 |---|---|---|---|
-| `ci.yml` | `ci` | every PR; push to `main` | Job **check**: Node from `.nvmrc`, `npm ci`, `npx expo install --check` (the Expo SDK pins), `node scripts/check-native-dupes.mjs` (one copy of each native module), `npx tsc --noEmit`, `npm run lint`, `npm run format` (prettier `--check`), `npm test -- --ci --coverage`. |
+| `ci.yml` | `ci` | every PR; push to `main` | Job **check**: Node from `.nvmrc`, `npm ci`, `npx expo install --check` (the Expo SDK pins; `expo.install.exclude` in `package.json` holds the one deliberate drift, AsyncStorage 3.x), `node scripts/check-native-dupes.mjs` (one copy of each native module), `npx tsc --noEmit`, `npm run lint`, `npm run format` (prettier `--check`), `npm test -- --ci --coverage`. |
 | `web.yml` | `web image` | push to `main`; `v*` tags; manual dispatch | `npx expo export --platform web` (built with `baseUrl=/web`) and publishes the static export as `ghcr.io/<owner>/audiosilo-web` (`:latest` from `main`, semver from tags). |
 
 ### audiosilo-meta
@@ -174,7 +174,7 @@ answers, with and without ffprobe installed:
 
 ### Frontend (TypeScript)
 
-- Harness: **jest-expo 58 (Jest 30) + `@testing-library/react-native` 14** -
+- Harness: **jest-expo (Jest 30) + `@testing-library/react-native` 14** -
   matchers are built in (no `jest-native`). `jest.setup.ts` provides in-memory
   mocks for `expo-secure-store` and AsyncStorage; tests mock `fetch` /
   `@/api/reachability` as needed, and flip `Platform.OS` at runtime to cover

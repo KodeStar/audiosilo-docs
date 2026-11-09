@@ -401,9 +401,8 @@ web, a secure context with the Cache API).
 - **Cold deep link owner = Home.** A cold `/book/...` link, which every tab
   could own, is given to the alphabetically **first** tab group - which is why
   Downloads is `(offline)` and not `(downloads)`. `TAB_STACK_SETTINGS` (the
-  group-keyed `unstable_settings` of the array-group layout: each tab's `anchor`,
-  which replaced `initialRouteName` in expo-router 58) inserts each tab's
-  root underneath so back works, and `tabStackListeners` strips the link params
+  group-keyed `unstable_settings` of the array-group layout: each tab's `anchor`)
+  inserts each tab's root underneath so back works, and `tabStackListeners` strips the link params
   React Navigation copies onto that root and its ancestors (otherwise back
   landed on `/?libraryId=1`). A root keeps only its own `rootParams`
   (`Destination.rootParams` in `destinations.ts`: Library's `mode`, `sort`,
@@ -436,9 +435,8 @@ web, a secure context with the Cache API).
 - **Web: `<TabSlot />` stays at a fixed ancestor path at every width**; only
   the sibling chrome toggles. Moving it between wrappers remounts every screen on
   a resize and jumps the URL to another tab.
-- **Native: never add or remove tabs at runtime.** `NativeTabs` (from
-  `expo-router/native-tabs` since SDK 58) can't; tablet
-  and desktop set `hidden` on the whole bar instead, so every tab's stack
+- **Native: never add or remove tabs at runtime.** `NativeTabs`
+  (`expo-router/native-tabs`) can't; tablet and desktop set `hidden` on the whole bar instead, so every tab's stack
   survives an iPad rotation or split view crossing 640.
 - **Route-driven side effects** (clearing the search query when leaving the
   Search tab, forgetting browse scroll positions when leaving the browse
@@ -719,8 +717,9 @@ ones a contributor trips over first.
 These are the four failure modes that cost the most time on a fresh checkout.
 :::
 
-1. **Node 24 is required** (`.nvmrc` pins `24.16.0`). RN 0.88 needs ^22.13 || ^24.3,
-   and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12) - an
+1. **Node 24 is required** (`.nvmrc` pins `24.16.0`; versions in the
+   [toolchain matrix](../contributing/workspace.md#toolchain-matrix)). The Expo
+   CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an
    older system Node crashes as soon as a `.env` file exists. Run `nvm use`
    first.
 2. **Native runs need a dev build, not Expo Go.** The `audiosilo-player` module,
@@ -738,7 +737,7 @@ These are the four failure modes that cost the most time on a fresh checkout.
 Also: run tool commands from the **repo root** - a stray `cd` into
 `node_modules` breaks Expo's config resolution. And before calling any change
 done, run the full gate (`npx tsc --noEmit && npm run lint && npm run format &&
-npm test`) - CI enforces all four; see
+npm test`). CI enforces it, plus the dependency checks; see
 [Gates and CI](../contributing/gates-and-ci.md).
 
 ## The web start (a split build)
