@@ -1,702 +1,233 @@
 ---
-title: "Library health and jobs"
-description: "The Health pages of the AudioSilo admin console: what each kind of issue means and how to fix or ignore it, comparing duplicates, offline libraries, the scan queue, stopping a scan, the scan history with its logs, and the System page with everything the server depends on."
+title: "Check your library's health"
+description: "Find and fix books that could be better, match many books at once, follow your scans, and check what the server depends on."
 ---
 
-The **Health** destination in the [admin console](console-tour.md) has three
-pages:
+The **Health** destination in the [admin console](console-tour.md) helps you
+keep your library in good shape. It has three pages:
 
-- **Issues** ("Library health") lists the books that could be better - files
-  that couldn't be read, missing covers, likely duplicates and so on - with a
-  fix for each where the console has one.
-- **Jobs** shows the scan running now, the scans waiting their turn, the
-  schedules, and a history of every scan with its log.
-- **System** shows everything the server depends on - ffmpeg, the community
-  metadata service, the HTTPS certificate, the database, each library's disk -
-  with a plain status for each.
+- **Issues** lists books that could be better, such as files that couldn't be
+  read or missing covers, with a fix for each.
+- **Jobs** shows the scans running, waiting and finished, with their logs.
+- **System** shows everything the server depends on, with a status for each.
 
-Nothing on these pages changes your audio files. Fixes are saved in AudioSilo
-(a cover you upload, a match you accept, a folder detection choice, the
-community's chapters), and an
-issue you ignore is only hidden. **Detect chapters** is the one fix that writes
-into your library: the Bridge
+Nothing here changes your audio files. Fixes are saved in AudioSilo, and an
+issue you ignore is only hidden. The one exception is **Detect chapters**: the
+Bridge
 [saves the chapters it finds](generating-characters-and-recaps.md#where-found-chapters-show-and-turning-them-off)
-in the `.audiosilo` folder beside the book's audio.
+in a `.audiosilo` folder beside the book.
 
 ## Library health
 
-Open **Health** in the top bar (it opens on **Issues**), or click **Triage** on
-the overview's **Needs attention** card, which lists the kinds of issue that
-have something in them. Clicking one of those opens its list directly.
+Open **Health** in the top bar, or click **Triage** on the overview's **Needs
+attention** card. Each kind of issue has a card with how many books are in it.
+Click a card to open its list.
 
 ![Health > Issues](/img/screenshots/admin/health-issues.png)
 
-The line under the title says how many things could be better ("12 things
-could be better. None of it loses data.") or "Nothing needs attention right
-now." Beside it, "Checked ..." says when a scan last finished, and **Check
-again** rescans every library (one at a time - the issues update as each one
-finishes).
-
-Under it is one card per kind of issue, with how many books are in it, a few
-of their covers, and how many you have ignored. Click a card to open its list
-below.
+**Check again** rescans every library, and the issues update as each finishes.
 
 ### The kinds of issue
 
-| Card | What it means | The fix it offers |
+| Card | What it means | How to fix it |
 |---|---|---|
-| **Files that couldn't be read** | A scan couldn't read one of the book's files: it couldn't be opened (for example a permissions problem), it is empty (0 bytes), or ffprobe couldn't read it (a damaged or incomplete file, or one that took more than 30 seconds to read: "ffprobe timed out after 30s"). The row names the file and the reason. A file that timed out while others were being read is first read again on its own, so a busy disk alone doesn't put a healthy file here. Every scan checks the file again, so once you fix the permissions or the share is back, the book leaves the list by itself. A damaged file (one ffprobe can't make sense of) is the exception: scans don't keep re-reading it while it stays the same. Replace the file and the next scan reads it; **Read again** or a server restart checks it once more. | **Read again** reads the book's files again straight away. A toast says "*title* reads fine now", or "*title* still can't be read" with the reason. |
-| **Folder may hold several books** | AudioSilo reads a folder with audio in it as one book. These folders look like they hold several: at least two parts, every part an hour or longer, with different titles. | **Choose detection** opens [Library > Folders](libraries.md#the-folders-page) on that folder: **Separate books** splits it, and **Always one book** tells AudioSilo it really is one book, which also clears it from this list. |
-| **One book split into disc folders** | A book ripped from CDs sits in one folder per disc (`CD1`, `CD2`, ...), so each disc reads as its own book. The row is the first disc, and says "*folder* reads as one book per disc folder". | **Join into one book** sets the folder holding the discs to **Always one book** ("Joining the discs of *folder*"). The library rescans, then they play as one book, with listening progress carried over. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
-| **Likely duplicates** | Copies of one book in the same library (and, when you ask, in other libraries). See [Duplicates](#duplicates). | A side-by-side comparison. |
-| **Missing covers** | No cover image in the book's folder and none inside its files. | **Upload a cover** opens the book's page, where **Change cover** adds one (see [Covers](books.md#covers)). |
-| **Not matched to community metadata** | The book has no ASIN or ISBN of its own, so community metadata can't find it. One in its tags doesn't count until a match applies (see [ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints)), so such a book is listed here too and its row says "No ASIN or ISBN". From 2.6.0 a book [matched to a store listing](books.md#books-matched-to-a-store-listing) isn't listed. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). To match the whole list at once, use **Match automatically** above it (see [Matching every book at once](#matching-every-book-at-once)). |
-| **Series spelled several ways** | Books of one series that spell its name differently, for example "He Who Fights With Monsters" on some books and "He Who Fights with Monsters" on others. AudioSilo already shows them as one series; this is only about every book saying the same. See [Series spelled several ways](#series-spelled-several-ways). | **Use this spelling** sets one spelling on every book of the series. |
-| **Long books without chapters** | Books over two hours long with no chapter marks (or a single chapter). Listeners can play them but can't jump between chapters. When the book was checked against the community's chapter lists and they couldn't be used, a second line says why, for example "Community chapters: for another edition" or "Community chapters: cross from one file into the next. Merging the files would let them fit" (see [Community chapters](books.md#community-chapters)). | **Detect chapters**, while your [Bridge](bridge.md) is online and offers it: the Bridge transcribes the book and finds the chapters in the narration, with no agent cost (see [Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)). A book whose chapter source was chosen on its page says so instead. Otherwise, [match](books.md#matching-with-community-metadata) the book so its community chapters can be used (a book with no chapters of its own gets them automatically once they fit), add chapters to the file with your tagging tool, or ignore it. |
-| **More detailed chapters available** | The book has chapters, and the community has finer ones that fit this copy ("Has 34 chapters; the community's finer ones fit this copy"). Nothing changes until you use them. | **Use detailed chapters** switches the book to the community's chapters. Using them on the book's page does the same. Once you have chosen, the book stays off this list, even if you later switch it back to the file's chapters. |
-| **Converted to play in browsers** | The audio format doesn't play in web browsers, so the server converts it while someone listens in the web player. The apps play it as it is. An `.mka` book is listed here too: with MP3 inside, a server with ffmpeg sends it to every player as plain MP3 instead; with other audio inside, an iPhone can't play it (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). | None needed: it works. Re-encode the file if you'd rather the server didn't convert it, or ignore it. |
+| **Files that couldn't be read** | A file couldn't be opened, is empty, or is damaged. The row gives the reason. | Fix the file or its permissions. **Read again** checks it straight away; otherwise the next scan does. |
+| **Folder may hold several books** | A folder reads as one book but looks like it holds several. | **Choose detection** opens the folder in [Library > Folders](libraries.md#the-folders-page): choose **Separate books** or **Always one book**. |
+| **One book split into disc folders** | A book ripped from CDs reads as one book per disc. | **Join into one book**. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
+| **Likely duplicates** | Copies of one book in the same library. | Compare them side by side. See [Duplicates](#duplicates). |
+| **Missing covers** | No cover in the book's folder or files. | **Upload a cover** opens the book's page (see [Covers](books.md#covers)). |
+| **Not matched to community metadata** | The book has no community match, so players can't show its community details. Only shown while community metadata is on. | **Review match** opens the [match dialog](books.md#matching-with-community-metadata). To match the whole list, use [Match automatically](#matching-every-book-at-once). |
+| **Series spelled several ways** | Books of one series spell its name differently. | **Use this spelling**. See [Series spelled several ways](#series-spelled-several-ways). |
+| **Long books without chapters** | Books over two hours with no chapters, so listeners can't skip between them. | **Detect chapters** with your [Bridge](bridge.md) (see [Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)), or [match](books.md#matching-with-community-metadata) the book to use its [community chapters](books.md#community-chapters). |
+| **More detailed chapters available** | The community has finer chapters that fit this copy. | **Use detailed chapters**. |
+| **Converted to play in browsers** | The format doesn't play in web browsers, so the server converts it for the web player. The apps play it as it is. | Nothing needed: it works. |
 
 ### Working through a list
 
-Each row shows the book's cover, title, why it is listed and where it is on
-disk. Click the title or cover to open the book's page.
-
-- **Ignore** hides the book from this list. A toast confirms it with an
-  **Undo** button. An ignored book stays hidden through rescans, and even if
-  you move its folder, until you show it again. Ignoring a book in one list
-  doesn't hide it from the others.
-- **Show ignored (*N*)** switches to the books you've ignored ("Ignored:
-  *kind*"), each with **Show again**. **Back to the open ones** returns.
-- Tick the box on several rows (or **Select all**) to act on them together
-  from the bar at the bottom: **Ignore** (or **Show again** in the ignored
-  view), **Read again** in **Files that couldn't be read** (it reads two
-  books at a time, so a long selection takes a moment), **Use detailed
-  chapters** in **More detailed chapters available**, and **Detect chapters**
-  in **Long books without chapters** (one confirmation for them all).
-  **Shift-click** a box to select every book from the last one you clicked to
-  this one, [as on Books](books.md#changing-many-books-at-once);
-  Shift-clicking a ticked box clears the run instead.
-- Long lists load 50 books at a time; **Show more** loads the next.
-
-When a list is empty it says **All clear** - the category you were working on
-stays open rather than jumping to the next one. Books you ignored stay ignored
-until you show them again.
-
-### Matching every book at once
-
-**Not matched to community metadata** opens with a **Match automatically**
-card above its list. It looks every book in the list up in the community
-catalogue in one pass, then waits for you: nothing changes until you review
-what it found and apply it.
-
-1. Pick a library (when you have more than one books library) and click
-   **Find matches**.
-   The server does the work, so you can leave the page. The card shows
-   "Matching *N* of *M* books", and **Stop** ends the run without changing
-   anything.
-2. When it's done, the card counts what it found: **confident** matches,
-   matches **to review**, books **not found**, and any it **couldn't check**
-   (the catalogue didn't answer for them). Click **Review and apply**.
-3. Choose **What to write**:
-   - **ASIN and ISBN only** marks each book matched, so players show its
-     "About this book", and changes nothing else. A match with no ASIN or ISBN
-     to attach marks the book matched by recording the community work it is,
-     though players can't show its "About this book" yet (see
-     [Books matched to a store listing](books.md#books-matched-to-a-store-listing)).
-   - **Fill in what's missing** (the default) also fills every field the book
-     has empty (narrator, series, published year, description), takes the
-     community cover for a book with no cover at all, and
-     [tidies a cluttered title](#tidied-titles). Nothing else the book already
-     has is replaced.
-   - **Use community values** also replaces fields that differ, as accepting a
-     match by hand does. A book's series become the community's: any series an
-     earlier match wrote that the community no longer lists for the book (one
-     it removed or merged, or an edition for another narration) is removed, back
-     to what your files say. Series you typed yourself stay.
-
-   Under each book the dialog says what your choice writes, for example "Sets
-   Narrator, Published, and ASIN". For a match with no ASIN or ISBN it ends with
-   "the community match" instead: that is what marks the book matched. When your choice changes the book's series,
-   it shows them before and after, for example "Series: Harry Potter
-   (Full-Cast Editions) #2; Harry Potter (Narrated by Stephen Fry) #2 → Harry
-   Potter #2", so a series it removes is never a surprise. Fields you edited
-   yourself are never replaced, and a series number is only set beside the
-   series it belongs to.
-   In **Fill in matched books**, a row with no fields or cover to change under
-   the selected choice cannot be ticked and does not count toward **Apply**.
-   When no books are selected, **Done** finishes the review without changing
-   any book, so you can start another kind of run.
-4. Each book shows its path in the library (hover it for the whole path on
-   disk) and, under an arrow, the community match: its title, authors,
-   narrators and length, the series it belongs to with its position ("Series:
-   Alice in Wonderland #2"), and the ASIN with its store. A match to the wrong
-   book of a series, or to another series altogether, shows at a glance.
-5. **Confident** matches are ticked; untick any you don't want. **To review**
-   lists matches that scored 60% to 89%, only just ahead of another work, or with
-   no ASIN or ISBN to attach (unless they pass the
-   [firmer rule for store listings](#store-listings-with-no-asin-or-isbn)), and
-   matches whose recording is another length than the book, however well they
-   scored. Those say so in both lengths ("Held for review: the book is 10h 34m
-   long, this recording 7h 2m"), as the closest recording can be
-   another edition. **Another recording scores almost as well** explains a close
-   competing score. From 2.7.0 a match found by the ASIN or ISBN in the book's tags
-   is held when the book's title doesn't agree with it ("Held for review: the ASIN
-   or ISBN in its tags may name another book", see
-   [ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints)).
-   A work that holds only a dramatization of the book is held too, unless:
-   - the book says it's a dramatization: its title, folder or narrator, or, from 2.6.0,
-     its author (such as "Michael J. Sullivan - Graphic Audio") or a genre such as
-     Radio Drama, Audio Drama or Hörspiel;
-   - one of its narrators reads that recording, at a length that fits;
-   - its ASIN names that recording; or
-   - from 2.6.0, the dramatization is your book's length to within 1% (or 2 minutes,
-     whichever is more), as another production of the book is hardly ever that close.
-
-   Otherwise it's the right book, but not your recording, and the match dialog
-   preselects no recording for it either: **Choose an edition** only if your files
-   are that production. Tick the ones that are right, or click **Match by hand** to
-   open that book's match dialog over the review. When you accept a match there, you're back on
-   the review where you left it, and the book reads **Matched since this run**.
-   To look closer first, or to listen to it, the icon beside **Match by hand**
-   opens the book's page in a new tab. On **Confident** and **To review**,
-   **Shift-click** a box to give every book from the last one you clicked on
-   that list to this one the same tick (books already applied, gone or matched
-   since are skipped, and so is a book you just matched by hand until its row
-   updates). **Not found** and **Not checked** list
-   the rest, [weak matches](#weak-matches) among them. Each list is ordered best
-   match first.
-
-   An apply never writes over a book matched since the run looked, whatever you
-   choose to write: by hand from the review, on its book page, by another admin,
-   or from an ASIN a rescan found in its Audiobookshelf `metadata.json`.
-6. Click **Apply to *N* books**. The server applies them in the background
-   ("Applying *N* of *M* matches"). **Stop** finishes the books in hand and
-   leaves the rest to apply later from the same review.
-
-While a run is applying matches, you can't **Unlink** any book in its library.
-See [Unlinking a community match](books.md#unlinking-a-community-match).
-
-If a run shows as matching or applying but makes no progress (after a server
-error, for example), click **Stop**. A stuck run ends at once. A run stopped
-while applying can be applied again from the same review.
-
-![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
-
-A match is confident when it scores 90% or more, at least 10 points ahead of
-the next candidate, its recording has an ASIN or ISBN to attach, and its
-recording's length is within 10% of the book's (when both are known: the
-closest recording can still be another edition, such as a dramatization of an
-unabridged book). From 2.6.0 the length may be up to 20% off when the book's
-narrator reads that recording: the community agrees on the narrator and the
-recording's own credit names them, so it's the same production timed
-differently. A credit such as Full Cast, GraphicAudio, Various or Unknown names
-no one and doesn't count. An ASIN or ISBN from the book's tags that the
-community knows needs no lead: see
-[ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints). A match with no
-ASIN or ISBN to attach is confident only on firmer ground: see
-[Store listings with no ASIN or ISBN](#store-listings-with-no-asin-or-isbn). Whatever a
-run writes shows as a **Community** value on the book's page, and you can
-revert it like any other. To undo every community match at once and start
-again, use [Clear community matches](server.md#community-metadata) in Server
-settings.
-
-The score weighs the book's title, author, series and length, and also:
-
-- **Its place in a series.** A work in the book's series at another position
-  scores lower, so book 4 is no rival to a book that says it is book 1 (an
-  omnibus that covers the position isn't marked down). A title that is the
-  series name and a number ("Dungeon Diving 102") is read as a title, not a
-  position, when the book says it is another number.
-- **The series' own listing.** A work the series lists at exactly the book's
-  number (or a box set's range), with a length within 2% of the book's, isn't
-  marked down when the book's title doesn't name it, for example a first
-  volume whose file carries only its subtitle. A title that clearly names
-  another volume of the series still wins. So more of a series' volumes are
-  applied automatically.
-- **Its narrators.** A recording read by the book's narrators counts in the
-  work's favour, and is the recording the match picks if its length fits.
-- **Its language.** A work the community knows to be in another language scores
-  lower. The book's own language counts: from its tags, an Audiobookshelf
-  `metadata.json`, or your edit. From 2.6.0 a book that states none is matched in
-  its library's language, when the library has one: at least 20 of its books
-  state a language and at least 90% of those agree ("English", "eng" and "en"
-  count as one; "Multilingual" counts as none). There is nothing to set: the
-  match dialog and **Match automatically** both work it out. Otherwise (a library
-  of mixed languages, or fewer than 20 books stating one) a book that states none
-  isn't judged on it. **Audible
-  marketplace** plays no part, since the store you buy from says nothing about
-  what language a library is in.
-
-meta.audiosilo.app already scores a book's place in a series this way, and marks
-down a length that's far off, for any server that asks it. Narrators and language count from
-2.6.0, the first version that sends them. A server with a
-[local copy](server.md#keeping-a-local-copy) scores all of this from 2.6.0.
-[ASIN and ISBN tags as hints](#asin-and-isbn-tags-are-hints),
-[weak matches](#weak-matches) and [tidied titles](#tidied-titles) come with the
-server itself, from 2.6.0, however it asks.
-
-Books you've ignored under **Not matched** are left out of a run. A run sends the
-same as matching a book by hand (see
-[What matching sends](books.md#matching-with-community-metadata)), for several
-books at a time.
-
-From 2.6.0 a run against the community service is much faster, as it mostly asks
-once per book. A server with a [local copy](server.md#keeping-a-local-copy) answers
-from that copy when it is ready and supports the request, so it has no round
-trips to wait on. While the copy is unavailable, or when it cannot handle a
-request or runs into an error, matching and lookups can go to the online
-service with the same book details. Mirror mode does not guarantee local-only
-matching. The optional [unknown-ASIN report](server.md#helping-complete-the-community-database)
-is separate: its checks wait for the copy instead of falling back, and the
-report itself is sent remotely only when you enable it.
-
-If the service is only busy, the run waits and carries on. If it stays unreachable,
-the run stops early but, from 2.7.0, keeps what it found. The card says "This run
-stopped early" and how many books it checked. Review and apply those as usual. Once
-the service is back, run it again for the books it couldn't check. If it found
-nothing to review, the card says "The last run stopped early" instead. After you
-apply, the last run's line still says it stopped early. (Before 2.7.0 such a run
-had no review.)
-
-Turning community metadata off while a run is still looking stops it with no review
-("The last run stopped: community metadata was turned off."), so run it again later.
-Turned off while a run is applying, it stops as **Stop** does: what went in stays, and
-the rest is left to apply later from the same review.
-
-#### Store listings with no ASIN or ISBN
-
-Some books the community holds as a store listing with no ASIN or ISBN (books
-sold outside Audible, for example). From 2.6.0 a match to one of them marks the
-book matched by recording the community work it is, so it leaves **Not matched**
-and later match runs leave it alone. As nothing else names the edition, a run applies
-such a match on its own only when all of these hold:
-
-- it scores 90% or more, at least 10 points ahead of the next candidate;
-- the community names the book's author in full and places the work at the
-  book's position in its series (so a book outside a series is never applied on
-  its own);
-- both lengths are known, and the recording's is within 2% of the book's (a
-  narrator who reads it doesn't widen this).
-
-Any other such match goes to **To review**, where you can tick it. The book's
-page then shows the work it is matched to, and how and when (see
-[Unlinking a community match](books.md#unlinking-a-community-match)).
-
-#### Weak matches
-
-A run doesn't offer a weak match for review. When the best candidate scores
-under 60%, the community most likely doesn't have the book, so it is listed under
-**Not found** with the score in its wording ("Only weak community matches (the
-best scored 48 of 100): find it by hand from the book page"). There is nothing to
-tick on it, but **Match by hand** still works, and the
-[match dialog](books.md#matching-with-community-metadata) still lists the closest
-candidates, however low they scored.
-
-#### ASIN and ISBN tags are hints
-
-A scan reads an ASIN, ISBN and language from the audio files' tags as hints for
-a match. They never become the book's own ASIN or ISBN, so a book with an ASIN
-tag still shows under **Not matched**, and players treat it as unmatched, until
-a match applies. Books already on your server have these tags read at the next
-scan.
-
-A match sends the hint when the book has no ASIN or ISBN of its own. A hint the
-community knows scores 100% and is confident whatever the next candidate scored,
-as long as its recording's length is within 10% of the book's (from 2.6.0, 20%
-when the book's narrator reads it). It goes to
-**To review** instead when the length doesn't fit, when the next candidate was
-found by an identifier too, or, from 2.7.0, when the book's title doesn't match.
-The tag may name another book. A book at another position in the series is held
-too, unless its title is the same: then the series is just numbered another way.
-
-From 2.6.0, when the hint names a recording more than 10% off the book's length that
-none of the book's narrators reads, and the same work has another recording within
-10%, **Match automatically** proposes that one instead: a tag's ASIN can name
-another edition of the right book. As its length fits, that match is confident
-when the recording has an ASIN or ISBN. If the book's narrator reads the hint's
-recording, the match keeps it: confident within 20% of the book's length, held for
-review by its length further off. A book
-that doesn't say it's a dramatization moves onto one only if its narrator reads it
-or its length names it (see [Matching every book at once](#matching-every-book-at-once)).
-The match dialog still starts from the hint's recording; choose the edition there.
-
-A hint the community doesn't know costs nothing: the book is matched on its other
-details.
-
-With [Help complete the community database](server.md#helping-complete-the-community-database)
-on, a tag ASIN the community doesn't know can also be reported (the rule is on
-that page). The community adds only a real Audible listing, but a wrong tag ASIN
-can be a real listing of another book: that book is then added, and from then on
-the next match trusts the tag like any hint it knows (see the warning below).
-Correct a tag you know is wrong, and it stops being reported after the next scan.
-
-:::warning[A wrong ASIN in a tag can apply the wrong book]
-A tag that names another book with a similar title, or another recording of the
-right book, is confident and ticked like any other hint when the length fits. So
-it can apply the wrong book or recording. Look through **Confident** before you
-apply when your tags came from a source you don't trust. To undo one, revert the
-values on the book's page or use
-[Clear community matches](server.md#community-metadata). The next run will find
-the same tag again, so correct the tag, or match the book by hand, which keeps it
-out of later runs.
-:::
-
-**Why not just take the tag as the book's ASIN?** Tags are often wrong about this.
-On one benchmark of real audiobooks, 16% of the books with an ASIN tag carried an
-ASIN that wasn't the book's confirmed listing: another store's, another edition's,
-or simply wrong. A stored ASIN takes a book out of match runs, and
-[Fill in matched books](#filling-in-books-that-are-already-matched) never matches
-it again by title, so a wrong tag would lock the book out of matching.
-An Audiobookshelf `metadata.json` is different: Audiobookshelf wrote it after a
-match, so its ASIN or ISBN counts as the book's straight away (see
-[Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
-
-#### Tidied titles
-
-**Fill in what's missing** replaces a book's title only when the title from its
-files is the community's title plus nothing but clutter: the series name, a number
-that the book's position (its own or the community's) or the community's title
-states, the community's subtitle, words such as "book", "volume" or "unabridged", and a store's genre labels
-such as "LitRPG". So "Emergence: The Mystic Knight, Book 1 (Unabridged)" becomes
-"Emergence".
-
-Anything else keeps the file's title:
-
-- a real extra word;
-- "Part 1" or "Part 2", which split the book, and "abridged", which names another
-  edition;
-- a number nothing states, such as "Book 2" on a work the community places at
-  number 1;
-- a title you edited yourself.
-
-A title of just the community's words changes only when it is all in one case
-("the martian" becomes "The Martian"), so your own styling stays.
-
-Under each book, the review lists the change with the others ("Sets Title,
-Narrator, and ASIN"). It applies to whatever you apply with that choice: **To
-review** matches you tick and **Fill in matched books** too. **ASIN and ISBN only**
-leaves titles alone, and **Use community values** replaces any title that differs
-anyway. A tidied title is a **Community** value: reverting it brings the file's
-title back, but a later **Fill in what's missing** can tidy it again, so type the
-title you want to keep it for good.
-
-#### Which ASIN a match takes
-
-A recording sold in several Audible stores has an ASIN in each. A match takes
-the one from the store set as **Audible marketplace** in
-[Server settings](server.md#community-metadata), then the US store's, then any
-other. The review shows each ASIN's store ("B0... · UK"). With no marketplace
-set, the US store's comes first. An ASIN in the book's tags decides which recording
-it is, not which ASIN is stored, except that it leads where its recording sells
-under two in one store.
-
-Once a marketplace is set, the card also offers **Use *country* ASINs**. It
-looks again at the books matched earlier, by hand or in bulk, and offers to
-switch each one to its recording's ASIN in your store, where the community
-catalogue now has one (it gains them over time). Review and apply it the same
-way. It never changes an ASIN from an Audiobookshelf `metadata.json`, or one you
-typed, and a book matched again by hand since the run looked keeps that match.
-
-#### Filling in books that are already matched
-
-**Fill in matched books** looks up every book that already has an ASIN or
-ISBN, using the ASIN first and the ISBN if the ASIN is unknown, and offers the
-community's details for it: title, series, narrator, description and cover.
-From 2.6.0 it looks up a book with neither identifier by the community work it
-is matched to (see [store listings](#store-listings-with-no-asin-or-isbn)). It
-also tries that recorded work when the community knows none of the book's
-identifiers, unless you set an ASIN or ISBN yourself. Your own identifier takes
-precedence, so an unknown one leaves the book unchanged. Identifiers from the
-files or a community match still allow this lookup. The lookup follows the work
-if the community merged or renamed it.
-A known identifier takes precedence, even if it names another work. If a book
-with neither identifier is matched to a recording that has gained an ASIN or
-ISBN since, the review offers it too; existing identifiers stay as they are.
-From 2.7.0 it doesn't offer an ASIN or ISBN you left unticked or removed. For
-a book matched before 2.7.0, this starts once you accept its match again with
-at least one field or the cover ticked, or unlink it and match it again (see
-[Unlinking a community match](books.md#unlinking-a-community-match)).
-If the recorded work is looked up but the community no longer has it, the book
-is listed under **Not found** ("The community no longer has the work this book
-is matched to; the match is kept") and stays matched. Use it for books that got an ASIN or ISBN
-without their details (for example, from a run applied with **ASIN and ISBN
-only**), and to clean up books an earlier match gave too many
-series. Review and apply it as above, choosing **Fill in what's missing** or
-**Use community values** (existing ASINs and ISBNs stay as they are, so **ASIN and
-ISBN only** isn't offered). Books that are already up to date aren't listed.
-A book whose identifiers the community doesn't know, and which has no recorded
-community match, is listed under **Not found** ("The community doesn't know
-this book's ASIN or ISBN"). A refresh never searches for another book by title.
-A book whose recording is more than 10% off its length goes to **To review**
-(from 2.6.0, 20% when the book's narrator reads that recording, as in
-[a match](#matching-every-book-at-once)), so a book matched on its narrator's
-say-so is still kept up to date.
-
-To clean up series an earlier match added (every edition and reading order of
-a series, say), run **Fill in matched books** and apply it with **Use
-community values**: the review shows each book's series before and after.
+- **Ignore** hides a book from this list, even through rescans. **Show
+  ignored** lists them, each with **Show again**.
+- Tick several rows (or **Select all**) to act on them together from the bar at
+  the bottom. **Shift-click** selects a run.
 
 ### Duplicates
 
 **Likely duplicates** shows each group of copies side by side, with the copy
-worth keeping first (marked **Worth keeping**, the others **Another copy**).
-"Worth keeping" means the better format (M4B/AAC over MP3), then a single file
-over several, then the higher bitrate, then the copy more people listen to.
+worth keeping first. That is the better format (M4B/AAC over MP3), then a
+single file over several, then the higher bitrate, then the copy more people
+listen to.
 
 ![Comparing likely duplicates](/img/screenshots/admin/health-duplicates.png)
 
-The line under the title says why they look like copies:
-
-| Line | Why they were grouped |
-|---|---|
-| **Identical audio files** | Every copy's audio is the same, byte for byte. A group where only some of the copies share their audio says what joins the rest instead (an ASIN or ISBN, or the same title, author and length). |
-| **Sharing an ASIN or ISBN, of the same length** | The books carry the same identifier and their lengths match (within a minute or 2%). |
-| **Sharing an ASIN or ISBN, but of different lengths** | The books carry the same identifier, but their lengths don't match. See below: these may not be copies at all. |
-| **The same title, author and length, in different files** | Title, author and narrator agree, and so do the lengths. |
-
-**Sharing an ASIN or ISBN, but of different lengths** usually means one of the
-books is matched to the wrong recording (an unabridged book given a dramatized
-edition's ASIN, say), or one copy is incomplete. These groups have no **Worth
-keeping** or **Another copy** marks, and a note under the line says what to
-check. Don't delete either until you know which is which:
-
-- Compare the **Length** of each with the recording it should be. If one is
-  matched to the wrong recording, open it, click **Match**, and pick the
-  recording that fits its length (the match dialog shows how far each one is
-  off). If the community catalogue doesn't have that recording, clear the
-  book's ASIN and, if present, ISBN on its page, then use **Unlink** to remove
-  any recorded community match (see the
-  [2.6.0 known issue](#filling-in-books-that-are-already-matched)).
-- If one copy is missing files, replace it with a complete copy.
-- If both are right (two editions that really share an identifier), click
-  **They're different books**.
-
-Each column
-shows the copy's **Path**, **Format**, **Length**, **Size**, **Chapters**,
-whether it is **Matched**, how many **Listeners** have progress on it, and
-when it was **Added**. **Open book** opens a copy's page.
-
-- Only copies **in the same library** are compared, unless you turn on
-  **Include other libraries** above the list (it shows when the server has
-  more than one books library): "Also group copies of a book that are in
-  different libraries." Each copy in a group that spans libraries then names
-  its **Library**. The same book in two libraries is often deliberate (a kids'
-  library, say), and players already show it once, so those groups never count
-  towards the number on the **Likely duplicates** card or the Health count,
-  which stay per library. **They're different books** and **Show ignored**
-  work on them as on any group.
-- The discs of a book split into disc folders look alike but aren't copies, so
-  they are listed under **One book split into disc folders** instead, never
-  here.
-- Keeping both copies is fine. If they really are different books (two
-  narrations, an abridged edition), click **They're different books** and the
-  group stops being suggested - until another copy turns up. The ignored view
-  has **Suggest as duplicates again**.
 - AudioSilo never deletes a copy for you. To remove one, delete its files from
-  the library folder and rescan; listening progress on the deleted copy's path
-  is kept (see [Jobs](#what-a-removed-book-leaves-behind)).
+  the library folder and rescan.
+- If they are really different books (two narrations, say), click **They're
+  different books**.
+- **Include other libraries** also compares copies across libraries.
 
-A long list shows more groups as you scroll down (or click **Show more** at the
-bottom), and each copy's cover appears as it scrolls into view. A group with more
-than 10 copies (for example, the same audio copied across a big library) shows
-the first 10; **Show all *n* copies** at the bottom of the group shows the rest.
+Copies that share an ASIN or ISBN but have **different lengths** may not be
+copies at all: one may be matched to the wrong recording. Check before you
+delete either.
 
 ### Series spelled several ways
 
-AudioSilo treats names that differ only in capitals, accents, punctuation or
-spacing as one series, so the Series page already shows one card for them. The
-books themselves still say it differently, which shows in the players' book
-details, the Books list and the library export. This list sorts that out.
+AudioSilo already shows spellings that differ only in capitals, accents or
+punctuation as one series. But the books still say it differently in the
+players' details. This list fixes that.
 
-Each series has its own notice, for example "“He Who Fights With Monsters”
-looks like He Who Fights with Monsters", with how many books carry the other
-spellings.
-
-- The spelling it offers is the one this library's matched books use most, else
-  the one most of its books use (the rule the Series page names a series by, so
-  the two usually agree; the Series page can pick another when it shows every
-  library, or when a book lists the series among its other series). Pick another
-  from the list beside the button if you prefer it.
-- **Use this spelling** sets that spelling on every book that spells the series
-  another way, as an edit on each book; the files are untouched. Each book keeps
-  its number in the series. The toast has an **Undo** button, and you can also
-  revert the series on any single book's page. It works like
-  [merging two spellings of an author](books.md#merging-two-spellings).
-- **Ignore** stops suggesting the series, for all its books. **Show ignored**
-  lists those series, each with **Show again**.
-
-Only books in the same library are compared. AudioSilo never changes a spelling
-on its own.
+- **Use this spelling** sets one spelling on every book of the series, as an
+  edit. Pick another spelling from the list beside it if you prefer. The
+  message has an **Undo** button.
+- **Ignore** stops suggesting that series.
 
 ### When a library is offline
 
-If a library's folder can't be read (typically a network share that
-unmounted), a notice at the top of the page says "*name* is offline. Nothing
-was deleted." AudioSilo can't read the folder, so it kept the library's books,
-and the notice says how many listeners' progress is safe. **View library**
-opens [Library > Libraries](libraries.md); once the folder is back, **Retry**
-scans it. See
+If a library's folder can't be read, a notice says "*name* is offline. Nothing
+was deleted." Once the folder is back, **Retry** scans it. See
 [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing).
+
+## Matching every book at once
+
+**Not matched to community metadata** has a **Match automatically** card above
+its list. It looks up every book in the list in one pass, then waits: nothing
+changes until you review and apply what it found.
+
+1. Pick a library and click **Find matches**. You can leave the page while it
+   runs.
+2. When it's done, click **Review and apply**.
+3. Choose **What to write**:
+   - **ASIN and ISBN only** marks each book matched and changes nothing else.
+   - **Fill in what's missing** (the default) also fills empty fields, adds a
+     cover where there is none, and [tidies cluttered titles](#tidied-titles).
+   - **Use community values** also replaces fields that differ. Fields you
+     edited yourself are never replaced.
+4. Check each match and what it would write. **Confident** matches are ticked;
+   untick any that are wrong. **To review** lists matches that need your eye:
+   tick the right ones, or click **Match by hand**.
+5. Click **Apply to *N* books**. The server applies them in the background.
+
+![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
+
+A match is **confident** when it scores 90% or more, at least 10 points ahead
+of the next candidate, and its length is within 10% of the book's (20% when the
+book's narrator reads it). Weaker matches, and matches to a dramatization your
+book doesn't seem to be, go to **To review**.
+
+Whatever a run writes is a **Community** value that you can revert on the
+book's page. To undo every community match at once, use
+[Clear community matches](server.md#community-metadata). If the community
+service stops answering, the run stops early but keeps what it found.
+
+### Weak matches
+
+When the best candidate scores under 60%, the community most likely doesn't
+have the book. It is listed under **Not found**. You can still match it by
+hand: the [match dialog](books.md#matching-with-community-metadata) lists the
+closest candidates, however low they scored.
+
+### ASIN and ISBN tags are hints
+
+An ASIN or ISBN in a book's tags is only a hint for a match, because tags are
+often wrong about it. It never becomes the book's own, so the book shows under
+**Not matched** until a match applies. A hint the community knows makes a
+confident match when the length and title fit.
+
+:::warning[A wrong ASIN in a tag can apply the wrong book]
+A tag naming a similar book, or another recording, can still look confident.
+If you don't trust where your tags came from, check **Confident** before you
+apply. Correct the tag, or match the book by hand, to stop it coming back.
+:::
+
+An ASIN from an Audiobookshelf `metadata.json` counts as the book's own straight
+away (see
+[Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
+
+### Store listings with no ASIN or ISBN
+
+Some books the community holds as a store listing with no ASIN or ISBN (see
+[Books matched to a store listing](books.md#books-matched-to-a-store-listing)).
+A run applies such a match on its own only when it scores 90% or more, names the
+book's author in full, sits at the book's place in its series, and fits its
+length within 2%. Otherwise it goes to **To review**.
+
+### Tidied titles
+
+**Fill in what's missing** replaces a title only when it is the community's
+title plus clutter, such as the series name, a book number or "Unabridged".
+"Emergence: The Mystic Knight, Book 1 (Unabridged)" becomes "Emergence". A
+title you edited yourself is never tidied.
+
+### Which ASIN a match takes
+
+A recording sold in several Audible stores has an ASIN in each. A match takes
+the one from your **Audible marketplace** (in
+[Server settings](server.md#community-metadata)), then the US store's. Once a
+marketplace is set, **Use *country* ASINs** switches books matched earlier to
+your store's ASIN.
+
+### Filling in books that are already matched
+
+**Fill in matched books** offers the community's latest details for books that
+are already matched. Use it for books that got an ASIN without their details,
+or to clean up series an earlier match added. It never brings back an ASIN or
+ISBN you left unticked or removed. (For a book matched before version 2.7.0,
+accept its match again with a field ticked to get this.)
 
 ## Jobs
 
-**Health > Jobs** is where scans are. "Scans run one at a time; the rest wait
-their turn." - a scan of one library waits while another library is scanned,
-so they never compete for the disk.
+**Health > Jobs** is where scans are. Scans run one at a time, so they never
+compete for the disk.
 
 ![Health > Jobs with a scan's log open](/img/screenshots/admin/health-jobs.png)
 
-### Running now and waiting
-
-- **Running now** shows "Scanning *name*", why it started and when, a
-  progress bar, and counters: **Books checked**, **New**, **Changed**,
-  **Moved** and **Removed**. When nothing runs it says **Nothing running**.
-- **Stop** ends the running scan. A scan you stop removes nothing from the
-  library: "Nothing was removed. The next scan picks up where it left off." (If
-  it was already removing missing books, that finishes first, and the history
-  shows what it removed.)
-- **Waiting (*N*)** lists the scans queued behind it, in order. **Cancel**
-  drops one before it starts.
-- **Run a job** starts a scan: **Rescan** one library, or **Rescan every
-  library**.
-
-A scan has up to an hour; the scan when the server starts has no limit, since
-it may be indexing a whole library. Deleting a library cancels its scans. A
-library whose folder doesn't answer (a network share whose server is gone)
-stops at once as "Folder unreachable" instead of holding up the scans behind
-it.
-
-A library whose scan is waiting shows a **Waiting** badge on its card in
-[Library > Libraries](libraries.md), and its **Rescan** button reads
-**Queued**.
-
-### Schedules
-
-The **Schedules** card lists every library that is scanned automatically,
-with its schedule ("Every 6 hours", "Daily at 03:00") and when the next scan
-is due. **Change** opens Library > Libraries; schedules are set when you
-[edit a library](libraries.md#scanning-on-a-schedule).
+- **Running now** shows the current scan and its progress. **Stop** ends it
+  without removing anything from the library.
+- **Waiting** lists the scans queued behind it. **Cancel** drops one.
+- **Run a job** starts a scan of one library, or every library.
+- **Schedules** lists every library that is scanned automatically. Schedules
+  are set when you
+  [edit a library](libraries.md#scanning-on-a-schedule).
 
 ### History
 
 **History** lists every scan, newest first: the library, who or what started
-it (an admin's name, **Scheduled**, **Server start** or **Settings
-changed**), when, how long it took, and what it found - for example "3 new · 1
-changed · 1 removed", "No changes", or how it ended (a book you renamed or
-moved counts once, as moved):
-
-| Result | Meaning |
-|---|---|
-| "Part of the folder couldn't be read, so nothing was removed" | Some folders were unreadable (often permissions), so the scan didn't remove anything it couldn't see. |
-| "Folder unreachable. Nothing was removed" | The library's folder was missing or empty (an unmounted share). |
-| "Failed. Nothing was removed" | Something went wrong; the log says what. |
-| "Stopped. Nothing was removed" | An admin stopped it. |
-| "The server stopped during the scan" | The server shut down or restarted mid-scan. The next scan catches up. |
-
-Use **Show scans of** to see one library's scans. **Log** opens a scan's log:
-when it started, how many books it found, every book that moved ("progress
-followed"), every file it couldn't read and why, every book removed from the
-index, and how it finished. **Older scans** loads more. AudioSilo keeps the
-last 100 scans of each library.
-
-When you join a folder's disc folders into one book (see
-[Books split into disc folders](libraries.md#books-split-into-disc-folders)),
-the log has a line for each disc: "Joined *disc* into *folder*; progress
-followed", or "Joined *disc* into *folder*; progress stayed with the disc:
-length unknown" when the length of a disc before it couldn't be read (no
-ffprobe). Setting the folder back to Automatic logs "Split *folder* back into
-its discs; its progress stays with the folder". Neither counts as new or
-removed books.
+it, how long it took and what it found. Click **Log** to see a scan's details:
+books found, moved and removed, and every file it couldn't read and why.
+AudioSilo keeps the last 100 scans of each library.
 
 ### What a removed book leaves behind
 
-When a scan finds a book's files are gone, it removes the book from the
-library and writes "Removed from the index: *path*" in the scan's log. That
-log line is all the console keeps about it - there are no "missing" books
-cluttering the library. Nothing personal is lost, though: everyone's progress,
-bookmarks and notes, and your edits and cover, are remembered by the book's
-path, so if the files come back to the same place, the next scan brings the
-book back with all of it. A book you **moved** is followed to its new place
-instead ("Moved *path* to *new path*; progress followed"). If a listener
-already had progress saved at the new place (from an earlier book that sat
-there), the more recently saved of the two is kept.
+When a book's files are gone, a scan removes it from the library and notes it in
+the log. Its progress, bookmarks, edits and cover are remembered by the book's
+path, so if the files come back to the same place, they come back too.
 
 ## System
 
 **Health > System** lists everything the server depends on, one row each, with
-a status on the right: **Healthy**, **Needs attention**, **Missing**, **Off**,
-**Waiting**, **Downloading**, **Opening**, **Update available** or **Failed**. The page
-refreshes itself every 30 seconds.
+a status such as **Healthy**, **Needs attention**, **Missing** or **Off**.
 
 ![Health > System](/img/screenshots/admin/system.png)
 
 | Row | What it tells you |
 |---|---|
-| **ffmpeg** | Found (with its version), so formats browsers can't play are converted while someone listens, `.mka` books with MP3 inside play in every player, and [community chapters](books.md#community-chapters) start on the pause in the audio; "Downloaded into the data folder" when the server fetched its own copy. **Missing**: those formats won't play in the web player, `.mka` books won't play on an iPhone, and community chapter starts may be a few seconds off. |
-| **ffprobe** | Found, so lengths, chapters and codecs are read from the files. **Missing**: lengths and chapters come only from tags. |
-| **Community metadata** | **Healthy** with how fast the service answered, **Needs attention** when it isn't responding, or **Off** (switched off, or no service address set). The server only asks the service while the lookup is on, at most once a minute. A server that keeps a [local copy](server.md#keeping-a-local-copy) shows the copy here instead: see [below](#the-local-copy-of-community-metadata). |
-| **HTTPS certificate** | **Healthy** with the days left and who issued it, **Needs attention** when it expires within two weeks, has expired or its file can't be read, **Waiting** while Let's Encrypt hasn't issued it yet, or **Off** with plain HTTP ("For HTTPS, put a reverse proxy in front or switch to Let's Encrypt"). |
-| **Database** | Its schema number. The book index can be rebuilt from your folders; accounts and progress can't, which is why the server makes [backups](backups.md) of it. |
-| **Backups** | The backups folder, when the last backup was made and when the next one runs. **Failed** (with the reason) when the last backup failed; **Off** when no backups are scheduled, marked as a problem if there isn't a single backup either. See [Backups and restoring](backups.md). |
-| ***Each library*** | The library's folder, and the space free on its disk. **Needs attention** when less than a tenth of the disk is free, or when the folder isn't reachable. |
-| **Web player** | Whether people can listen in a browser at `/web`: "Built into this server.", "Served from the player folder." or, marked **Off**, "Not available. The apps still work." |
-| **AudioSilo version** | The version you run: **Healthy** when it's the newest (or, for a build of your own or the `:edge` image, "A development build, so it isn't compared with releases."), **Update available** when a newer release exists, **Needs attention** when the last check failed, or **Off** when the update check is turned off. See [About and updates](server.md#about-and-updates). |
+| **ffmpeg** | Converts formats browsers can't play, and places [community chapters](books.md#community-chapters) exactly. |
+| **ffprobe** | Reads lengths, chapters and codecs from the files. |
+| **Community metadata** | Whether the metadata service is answering. |
+| **HTTPS certificate** | Days left. **Needs attention** within two weeks of expiry. |
+| **Database** | Its version. Accounts and progress live here, so the server makes [backups](backups.md). |
+| **Backups** | When the last backup was made and when the next one runs. |
+| ***Each library*** | Free disk space. **Needs attention** below a tenth free, or when the folder isn't reachable. |
+| **Web player** | Whether people can listen in a browser. |
+| **AudioSilo version** | Whether a newer release is out. See [About and updates](server.md#about-and-updates). |
 
-Two notices can appear above the list:
-
-- "A library folder isn't reachable" (or how many aren't). Nothing was
-  deleted: the server keeps every book, and people's progress, until the folder
-  is back. Mount it again, then rescan (see
-  [When a library is offline](#when-a-library-is-offline)).
-- "The community metadata service isn't responding": players still show what
-  they already had, and new matches wait until it's back. **Metadata settings**
-  opens [its settings](server.md#community-metadata). Nothing to do unless it
-  lasts a day. (With a local copy, it only appears until the copy is ready.)
-
-To change any of this, see [Server settings](server.md#settings): the HTTPS
-mode and certificate names are under **Network & HTTPS**, the tools under
-**Transcoding**, the backup schedule under **Backups**.
+To change any of this, see [Server settings](server.md#settings).
 
 ### The local copy of community metadata
 
 When the server [keeps a local copy](server.md#keeping-a-local-copy) of the
-community metadata (and the lookup is on), the **Community metadata** row is
-about that copy:
+community metadata, the **Community metadata** row shows that copy's status,
+version and size.
 
 ![Health > System, the community metadata row with a local copy](/img/screenshots/admin/system-mirror.png)
 
-| Status | What it means |
-|---|---|
-| **Healthy** | "Answering from the local copy. No book is looked up over the internet." |
-| **Downloading** | The first copy is downloading ("Downloading the local copy for the first time."), or a newer one is downloading while the current copy keeps answering. |
-| **Opening** | "Opening the local copy. This takes a few seconds." Shown just after a restart, while lookups use the online service; once a newer copy has downloaded, "Opening the new copy. The current one answers meanwhile." |
-| **Waiting** | "No local copy yet. The first download starts shortly." |
-| **Needs attention** | The copy still answers, but its last update failed, or it is newer than this version of AudioSilo understands. |
-| **Failed** | "The local copy couldn't be downloaded." There is no copy yet, so lookups go to the online service. |
-
-**Healthy** describes the copy's readiness. A particular matching or lookup
-request can still fall back to the online service if the copy cannot answer
-it, as described in [Matching every book at once](#matching-every-book-at-once).
-
-Under the row:
-
-- While a download runs, a progress bar with how much has arrived.
-- The copy's details: **Data version**, **Built**, **Data schema**, **Size on
-  disk**, **Downloaded**, **Last check** and **Next check** ("Checking now"
-  while a check runs).
-- A notice when something needs saying: lookups are using the online service
-  until the copy is ready; the copy is newer than this server understands
-  (update AudioSilo); or the download or the last update failed, with the
-  reason (such as not enough disk space, and how much is needed). A failed
-  check is tried again an hour later, and a failed update keeps the current
-  copy in use.
-- **Check now** looks for a newer copy straight away (it's greyed out while a
-  download runs or a copy opens). The server already checks once a day by itself, so this is
-  only for when you don't want to wait.
-
-## Where to next
-
-- [Server settings, updates and logs](server.md) - the settings behind the
-  System page, updates and the server's log.
-- [Libraries](libraries.md) - schedules, skipped files and folder detection.
-- [Books and metadata](books.md) - covers, matching and a book's page.
+The server checks for a newer copy once a day, or click **Check now**. A failed
+update keeps the current copy in use.

@@ -1,385 +1,205 @@
 ---
-title: "Libraries"
-description: "Adding, editing, ordering, rescanning, exporting and deleting libraries in the AudioSilo admin console, scan schedules and skipped files, whether book details come from tags or folder names, correcting folder detection, and what happens when a library's folder goes missing."
+title: "Add and manage libraries"
+description: "Add a library folder in the admin console, then rescan, schedule, edit, export or delete it, and fix how its folders are read."
 ---
 
 A **library** is a folder on the server that AudioSilo reads for audiobooks or
-podcasts. Each library has one **Kind**: **Books** or **Podcasts**.
-You can have several - for example one for fiction, one for kids - and control
-per person which ones (or which parts of them) are visible via
-[shares](sharing.md).
-
-[Podcasts](podcasts.md) need a Bridge and the Podcasts module. Player apps
-from 2.4.0 [show podcasts](podcasts.md#what-is-available-now); older ones
-don't. The book
-detection, book details and export tools described below apply to **Books**
-libraries.
-
-Libraries live under **Library > Libraries** in the
-[admin console](console-tour.md) ("Folders AudioSilo reads. Your files stay
-where they are."). Each library is a card with a few of its newest covers, its
-name, its status, its folder and its book or episode count - and, when it is
-scanned on a schedule, the schedule and when the next scan is due ("Every 6 hours · next in
-5 hr"). A library that takes its book details from folder names says "Details
-from folder names" (see
-[Where book details come from](#where-book-details-come-from)).
-
-![The Libraries page](/img/screenshots/admin/libraries.png)
-
-The status next to the name is one of:
-
-- **Online** - the folder is readable and nothing is running.
-- **Scanning** - a scan is running; a progress bar under the card counts
-  "*X* of *Y* books checked" (or "Looking for books..." while it is still
-  finding them). Podcast libraries count "episodes checked" and say "Looking
-  for podcast episodes...". A running scan wins over the other states: a **Retry** on an
-  unavailable library shows **Scanning** while it runs.
-- **Waiting** - a scan is queued behind another library's. Scans run one at a
-  time; the **Rescan** button reads **Queued** until this one starts. See
-  [Jobs](health.md#jobs).
-- **Folder unavailable** - AudioSilo can't read the folder right now. See
-  [When a library folder goes missing](#when-a-library-folder-goes-missing).
-
-Everything else you do to a library is on its card: **Rescan**, and the **⋯**
-menu with **Edit library...**, **Folder detection...**, **Export book list**,
-**Export with file paths and tags...** and **Delete library...**.
+podcasts. You add and manage libraries in **Library > Libraries** in the
+[admin console](console-tour.md). You can have several, for example one for
+fiction and one for kids, and use [shares](sharing.md) to choose who sees which.
 
 ## Adding a library
 
-Click **Add library** (or choose **Add a library** in the
-[command palette](console-tour.md#search-and-commands)). The **Add a library**
-dialog asks for:
+1. Open **Library > Libraries** and click **Add library**.
+2. Choose the **Kind**: **Books** or **Podcasts**. You can't change it later.
+3. Type a **Name**, for example `Fiction`. Each library needs a name of its own.
+4. Type the **Folder** on the server, for example `/srv/audiobooks`, or click
+   **Browse** to pick it.
+5. Click **Add library and scan**.
 
-- **Kind** - **Books** (the default) or **Podcasts**. You cannot change it later.
-- **Name** - a display name, e.g. `Fiction`.
-- **Folder** - the folder on the server's own disk, e.g. `/srv/audiobooks`.
-  Type it, or click **Browse** to pick it.
-
-A podcast library needs its own folder: it cannot share a root with, contain,
-or sit inside another library. Mount the same folder read-write in the Bridge;
-the server can keep reading it read-only. Its card has a **Podcasts** badge,
-and its menu greys out folder detection and book exports. Its form asks for a
-podcast name and folder and hides the book-only settings below. It also has
-**Give everyone access**, ticked by default, which gives every listener on the
-server access to the new library as it is added (see
-[Set up a podcast library](podcasts.md#set-up-a-podcast-library)). See
-[Podcasts](podcasts.md) for downloads, retention and space.
-
-Each library needs a name of its own. A name already in use is refused under
-the **Name** field ("That name is already in use. Pick another one."), and so
-is the name of a library your `config.yaml` declares, with another folder.
-
-Under them are two optional scan settings, **Scan automatically** and **Skip
-these files and folders** - see
-[Scanning on a schedule](#scanning-on-a-schedule)
-and [Skipping files and folders](#skipping-files-and-folders) - and **Book
-details come from** (see
-[Where book details come from](#where-book-details-come-from)). The last two are
-for books only. You can leave them all as they are and set them later.
+The library appears straight away and its first scan starts. Listeners don't
+have to wait: books appear as the scan finds them.
 
 ![Adding a library with the folder picker open](/img/screenshots/admin/library-add.png)
 
-**Browse** lists the server's folders, one level at a time - from the folder
-you typed if it exists, otherwise from the top of the server's disk. Click a
-folder's name to open it, use the path above the list (or **Up one folder**)
-to go back, then click **Choose** next to a folder, or **Use this folder** for
-the one you're in. A few details:
+The form also has a scan schedule, files to skip and where book details come
+from. You can leave them as they are and set them later (see below).
 
-- Picking a folder fills in the **Name** from the folder's name if you haven't
-  typed one.
-- Only folders are listed, never files, and hidden folders (names starting
-  with a dot) are left out.
-- A folder that another library already uses says so ("Already the folder of
-  *name*").
-- Very large folders show only their first 1,000 subfolders; type the path if
-  yours isn't listed.
-
-For a **Books** library there is no layout or structure to choose. AudioSilo
-works out which folders are books by itself. A **Podcasts** library reads the
-show details the Bridge saves instead.
-
-Click **Add library and scan**. The library appears straight away and its
-first scan starts ("The first scan has started. Covers fill in as books are
-found."). Listeners don't have to wait: the folder view works immediately, and
-books are indexed as the scan progresses (or on demand when someone opens one).
-For a podcast library the message instead says "Shows and episodes appear as
-they are indexed."
+There is no layout to choose for a **Books** library. AudioSilo works out which
+folders are books by itself (see [Folder detection](#folder-detection)).
 
 :::warning[Library folders must be on the server]
-The folder must be one the **server itself** can read directly. If your
-audiobooks live on a NAS or network share (SMB/NFS), mount the share on the
-server machine first and point the library at the mount point - you can't
-enter a network URL. If the server runs in Docker, mount the folder into the
-container and use the in-container path (see
-[Quickstart with Docker](../getting-started/quickstart-docker.md)); the
-**Browse** list shows the container's folders, not the host's.
+The folder must be one the **server itself** can read. If your audiobooks are
+on a NAS or network share, mount the share on the server machine first and use
+the mount point. If the server runs in Docker, mount the folder into the
+container and use the path inside the container (see
+[Quickstart with Docker](../getting-started/quickstart-docker.md)).
 :::
+
+### Podcast libraries
+
+[Podcasts](podcasts.md) need a Bridge and the Podcasts module. A podcast library
+needs its own folder: it can't share, contain or sit inside another library's
+folder. Mount the same folder read-write in the Bridge. See
+[Set up a podcast library](podcasts.md#set-up-a-podcast-library).
+
+Folder detection, book details and exports apply only to **Books** libraries.
 
 ## Editing a library
 
-**⋯ > Edit library...** opens the **Edit *name*** dialog: "Rename the library,
-point it at another folder, or change how it's scanned."
+![The Libraries page](/img/screenshots/admin/libraries.png)
+
+Each library is a card with its name, status, folder and book count. Its **⋯**
+menu holds everything else you can do to it.
+
+To rename a library, point it at another folder or change how it's scanned:
+
+1. Click **⋯ > Edit library...**.
+2. Change what you need.
+3. Click **Save changes**.
 
 ![Editing a library: the folder, the scan settings and where book details come from](/img/screenshots/admin/library-edit.png)
 
-- **Kind** is shown but cannot be changed.
-- **Name** and **Folder** (with the same **Browse** picker).
-- **Scan automatically** and **Time** - see
-  [Scanning on a schedule](#scanning-on-a-schedule).
-- **Skip these files and folders** - see
-  [Skipping files and folders](#skipping-files-and-folders). Books only.
-- **Book details come from** - see
-  [Where book details come from](#where-book-details-come-from). Books only.
+Changing the folder or the skipped files rescans the library. When you change
+the folder, listening progress follows the books found at the same place
+inside the new folder.
 
-A library declared in the server's `config.yaml` (or by the app that runs the
-server) has a **From your config** badge on its card. Its **Name** and
-**Folder** are shown but can't be changed here, and the dialog says why: "From
-your config: this library's name and folder are set in config.yaml (or by the
-app that runs the server). Change them there and restart." Every start reads
-those libraries from the config again, so a name changed in the console would
-come back as a second library. Its other settings can be changed as usual.
-
-Click **Save changes**. Changing the **folder** or the **skipped files**
-rescans the library ("AudioSilo is rescanning it now."); renaming it or
-changing its schedule doesn't, since the books haven't changed. Changing where
-book details come from doesn't rescan either: every book in the library is
-updated as you save. When you
-change the folder, listening progress follows the books the scan finds again
-at the same place inside the new folder.
-
-If you're reorganising, prefer moving files *within* the existing folder:
-progress follows moved files automatically (see
+If you're reorganising, prefer moving files *within* the library's folder:
+progress follows them (see
 [Organizing your library](../getting-started/organizing-your-library.md)).
+
+A library set in the server's `config.yaml` has a **From your config** badge.
+Its name and folder can only be changed in `config.yaml`, followed by a
+restart. Its other settings can be changed here.
 
 ## Rescanning
 
-Click **Rescan** on a library to re-index it - after you've added, removed,
-renamed or re-tagged files. The button reads **Scanning...** while the scan
-runs, the progress bar fills, and a toast says "Finished scanning *name*" when
-it is done - even for a scan so short the progress bar barely shows. You can
-keep working in the console meanwhile. The
-[command palette](console-tour.md#search-and-commands) can rescan a library,
-or every library at once, too.
+Click **Rescan** on a library after you add, remove, rename or re-tag files. You
+can keep working while it runs, and a message says when it has finished. The
+[command palette](console-tour.md#search-and-commands) can also rescan one
+library or all of them.
 
-Scans run **one at a time**. If another library is being scanned, yours waits
-its turn: the card says **Waiting** and the button **Queued** until it starts.
-Within a scan, AudioSilo reads several audio files at once (one per processor,
-up to 8), which makes a first scan of a big library much quicker. A rescan
-where little has changed looks through several folders and files at once too,
-so it finishes sooner, most of all on a network share or an Unraid array. On a
-slow disk or a busy network share you can make it do fewer things at once: set
-`scan.concurrency` in `config.yaml` (or the `AUDIOSILO_SCAN_CONCURRENCY`
-variable) and restart. It isn't in the console; see the
-[configuration reference](/developers/server/configuration#library-scans-scan).
-**Health > Jobs** shows what is running and waiting, lets you stop a scan or
-cancel a waiting one, and keeps a history of every scan with its log (see
-[Jobs](health.md#jobs)).
+Scans run one at a time. A library waiting its turn says **Waiting**.
+[Health > Jobs](health.md#jobs) shows what is running and waiting, and keeps a
+history of every scan.
 
-**With FFmpeg 7.1 or 8.1, a first scan is many times faster** (from 2.5.1). The
-server then reads the lengths and chapters of most MP3, M4B, M4A, MP4, FLAC,
-Ogg, Opus and MKA files itself instead of starting ffprobe for each one, and
-asks ffprobe only about a file it can't be sure of (an unusual MP3 or MP4, for
-example). The official and LinuxServer.io Docker images have 8.1. With any
-other version, ffprobe reads every file. See [ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe)
-for how to check yours.
+Scans also run on their own when the server starts, when a library's settings
+change, and on its [schedule](#scanning-on-a-schedule).
 
-Scans also run automatically:
+A rescan never touches your files. Listening progress and bookmarks survive
+rescans, and follow a book when you move or rename its folder.
 
-- for every library **when the server starts**,
-- when a library is **added**, or its **folder** or **skipped files** change,
-- when you change a **folder detection** setting (below),
-- on the library's **schedule**, if you set one (below).
-
-A rescan never touches your files - it only rebuilds AudioSilo's index of them.
-Listening progress and bookmarks are keyed to file paths, so they survive
-rescans, and even survive moving or renaming a book's folder (the scanner
-recognises moved files and carries progress across).
+:::tip[Faster scans]
+A first scan is much faster with FFmpeg 7.1 or 8.1, which the official Docker
+images have (see
+[ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe)).
+On a slow disk or busy network share you can make scans do fewer things at
+once with `scan.concurrency` in `config.yaml`, then restart (see the
+[configuration reference](/developers/server/configuration#library-scans-scan)).
+:::
 
 ## Scanning on a schedule
 
-AudioSilo notices new books when you rescan, when someone opens one in the
-folder view, and when the server starts. If you add books to the folder
-regularly (from another computer, or a download tool), let the library rescan
-itself: **⋯ > Edit library...**, then **Scan automatically**:
+If you add books to a library regularly, let it rescan itself. Open
+**⋯ > Edit library...** and pick **Scan automatically**:
 
-- **Off** - the default; scan only when you ask (and at startup).
-- **Every hour**, **Every 3 hours**, **Every 6 hours**, **Every 12 hours**,
-  **Every 24 hours** - counted from when the library's last scan started,
-  whatever started it, so a rescan you run by hand pushes the next one back.
-- **Daily at a set time** - pick the **Time**. It is in the **server's** time
-  zone, which may not be yours. If the server was off at that time, the scan
-  runs as soon as it is back.
+- **Off**: the default. Scan only when you ask, and when the server starts.
+- **Every hour** up to **Every 24 hours**: counted from when the last scan
+  started, so a rescan by hand pushes the next one back.
+- **Daily at a set time**: pick the **Time**, in the **server's** time zone. If
+  the server was off then, the scan runs as soon as it is back.
 
-The library's card then shows the schedule and the next scan ("Daily at 03:00
-· next in 7 hr"), and **Health > Jobs** lists every schedule. A scheduled scan
-waits its turn like any other.
-
-For a podcast library this schedule re-indexes the files the Bridge has saved.
-It does not set how often feeds are checked or change the
-[per-show retention policy](podcasts.md#downloads-and-retention).
+For a podcast library, the schedule only re-indexes the files the Bridge has
+saved. It doesn't set how often feeds are checked.
 
 ## Skipping files and folders
 
-Some folders hold audio that isn't an audiobook: publisher sample clips, an
-`Extras` folder of interviews, a podcast someone dropped in. **Skip these
-files and folders** (in **⋯ > Edit library...**) lists what AudioSilo should
-leave out. One pattern per line:
+Some folders hold audio that isn't an audiobook, such as sample clips or an
+`Extras` folder. List what to leave out in **Skip these files and folders**
+(in **⋯ > Edit library...**), one pattern per line:
 
 | Pattern | Skips |
 |---|---|
 | `*.sample.mp3` | every file ending in `.sample.mp3`, in any folder |
-| `Extras/` | every folder named `Extras`, wherever it is, with everything in it (the trailing `/` means folders only) |
-| `Podcasts/*` | everything inside the `Podcasts` folder at the top of the library (a `/` in the middle means "starting at the library folder") |
-| `/Extras` | only the `Extras` folder at the top of the library (a `/` at the start also means "starting at the library folder") |
-| `metadata.json` | the `metadata.json` files Audiobookshelf leaves in book folders, so this library takes no details from them (see [Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)) |
-| `# publisher samples` | nothing: a line starting with `#` is a note to yourself |
+| `Extras/` | every folder named `Extras`, wherever it is (the trailing `/` means folders only) |
+| `Podcasts/*` | everything inside the `Podcasts` folder at the top of the library |
+| `/Extras` | only the `Extras` folder at the top of the library |
+| `metadata.json` | the `metadata.json` files Audiobookshelf leaves in book folders (see [Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)) |
+| `# publisher samples` | nothing: a line starting with `#` is a note |
 
-A pattern without a `/` (or with one only at the end) matches a file or
-folder name anywhere in the library; `*` stands for any run of characters and `?` for one character.
-Upper and lower case don't matter. You can have up to 100 patterns. A pattern
-the server can't use is refused when you save, with the line named under the
-box.
+`*` stands for any run of characters and `?` for one character. Upper and lower
+case don't matter.
 
-Saving new patterns rescans the library: books the patterns now cover are
-removed from the library (your files stay where they are) and books they no
-longer cover come back. This works even if the patterns cover every book in
-the library - AudioSilo doesn't mistake that for a missing folder. Skipped files are hidden from the folder view too,
-and can't be opened from it. The patterns are stored by AudioSilo, not in a
-file in your library folder - AudioSilo never writes there.
+Saving rescans the library. Skipped books are removed from the library, but
+your files stay where they are.
 
 ## Where book details come from
 
-**Book details come from** (in **⋯ > Edit library...**, or when adding a
-library) decides where the library's books take their title, author, series
-and series number from:
+**Book details come from** (in **⋯ > Edit library...**) decides where books
+take their title, author, series and series number from:
 
-- **The files' tags first** - the default. The audio files' tags are used,
-  and the folder names fill in whatever the tags leave empty (see
+- **The files' tags first**: the default. Folder names fill in whatever the
+  tags leave empty (see
   [Where titles, authors and series come from](../getting-started/organizing-your-library.md#where-titles-authors-and-series-come-from)).
-- **Folder names first** - for a library whose folders are named well and
-  whose tags aren't. The folders are read as `Author / Series / 03 - Title`:
-  the top folder is the author, the folder holding the book is the series,
-  and the book's own folder (or file) name is the title, with a leading number
-  read as its number in the series. A book directly inside its author's folder
-  (`George Orwell/Animal Farm`) gets an author and a title but no series from
-  the folders. Disc and track folders (`CD1`, `Disc 2`) are parts of the book
-  above them, never its title. A book named
+- **Folder names first**: for a library whose folders are named well but whose
+  tags aren't. Folders are read as `Author / Series / 03 - Title`, with a
+  leading number read as the book's place in the series. Names like
   [`Author; Series; Book 04; Title`](../getting-started/organizing-your-library.md#names-like-author-series-book-04-title)
-  takes its series, number and title from those parts (from 2.6.0; before,
-  the whole name was its title).
+  are read by their parts.
 
-Whichever comes second fills what the first leaves empty, so with **Folder
-names first** the tags still give the narrator, and a series for a book the
-folders don't name one for. A tag title that is exactly the folder's name,
-number and all (`13 Reasons Why`), is kept whole, so a number that is part of
-the title isn't read as a series number (a name like `Author; Series; Book 04;
-Title` is still read as its parts).
+Whichever comes second fills in what the first leaves empty. An Audiobookshelf
+`metadata.json` in a book's folder wins over both.
 
-Either way, a book whose folder has an Audiobookshelf `metadata.json` takes the
-values in that file over both (see
-[Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
-
-Changing this setting updates every book in the library at once, without a
-rescan, and your own edits (and values you accepted from community metadata)
-stay on top. On a book's page, the values taken from the folders are marked
-**Path** (see [Editing details](books.md#editing-details)). Switching back to
-**The files' tags first** puts the tags' values back.
+Changing this updates every book at once, without a rescan. Your own edits stay
+on top. On a book's page, values taken from folders are marked **Path** (see
+[Editing details](books.md#editing-details)).
 
 ## Library order
 
-A new library goes to the end of the list. Drag a library by its handle to reorder the list. With a keyboard, focus the
-handle, press **Space** (or **Enter**) to pick the library up, move it with the
-arrow keys, and press **Space** again to drop it (**Escape** cancels). On a
-wide screen the small up and down arrows beside the handle move a library one
-place.
+Drag a library by its handle to reorder the list. Players list libraries in
+this order.
 
-The hint under the list sums up what the order means: "Players list libraries
-in this order. When the same book is in two libraries and both copies are
-equally good, the one in the higher library is used."
-
-"Equally good" has a precise meaning. When the same book is in more than one
-library, search and "recently added" show it once, and AudioSilo picks the
-**best-quality copy**: the better format (M4B/AAC over MP3 over anything else),
-then a single-file copy over a multipart one, then the higher bitrate. Only when
-all of that ties does the copy in the higher library win. Put your primary
-library first.
+When the same book is in two libraries, AudioSilo shows it once and uses the
+better copy. When both are equally good, the higher library wins.
 
 ## Folder detection
 
-AudioSilo works out what is a book on its own, using one simple rule:
+AudioSilo works out what is a book with one rule: **a folder that directly
+contains audio files is one book**, and those files are its parts. Loose audio
+files at the top of the library are each a book of their own.
 
-- **A folder that directly contains audio files is one book**, and all those
-  files are its parts - whether that's a single `.m4b` or fifty numbered
-  `.mp3` chapters.
-- The only exception is the **top level of the library**: loose audio files
-  sitting directly in the library's folder are each treated as an individual,
-  single-file book.
+One layout can't be guessed: a folder of many unrelated single-file books, such
+as a `Short Stories` folder of thirty standalone `.mp3` files. By the rule, it
+reads as one thirty-part book.
 
-That matches how most people organise audiobooks (one folder per book, usually
-inside author or series folders). But one layout genuinely can't be guessed: a
-folder that holds **many unrelated single-file books** - say a `Short Stories`
-folder containing thirty standalone `.mp3` files. By the rule above, that
-folder would be indexed as one giant thirty-part "book".
+To fix that, click **⋯ > Folder detection...**, open the folder and choose:
 
-That's what **⋯ > Folder detection...** is for. It opens the library's folders
-so you can correct any the detector gets wrong:
+- **Automatic**: the default. AudioSilo decides.
+- **Always one book**: all its audio files are one book. On a folder of disc
+  folders, this joins the discs (see
+  [Books split into disc folders](#books-split-into-disc-folders)).
+- **Separate books**: each audio file in the folder is its own book.
 
 ![The folder detection dialog](/img/screenshots/admin/detection.png)
 
-Click a folder's name to open it. Folders AudioSilo already treats as a book
-say "Detected as one book" (with the book's title). Each folder has a choice of:
-
-- **Automatic** - the default; let AudioSilo decide.
-- **Always one book** - force the folder to be a single book (all its audio
-  files are its parts). On a folder whose audio is only in disc folders
-  (`CD1`, `CD2`, ...), it joins the discs into one book: see
-  [Books split into disc folders](#books-split-into-disc-folders).
-- **Separate books** - treat each audio file in the folder as its own book.
-  This is the fix for the "folder of standalone single-file books" case.
-
-The dialog offers **Always one book** only where it changes something: on a
-folder that is a book, on one holding disc folders to join, or on one that is
-already set. A folder of books (an author's or a series' folder) can't be made
-one book. **Separate books** isn't offered on a folder of disc folders, which
-has no files of its own to split.
-
-A change is saved the moment you make it, and the library rescans to apply it
-("Rescanning *name* to apply it.").
-
-:::tip
-These settings are durable, not scan results - they survive rescans and even a
-full index rebuild. Set one once and forget it.
-:::
+Your choice is saved at once and the library rescans. It survives rescans and
+even a full index rebuild.
 
 ### The Folders page
 
-**Library > Folders** makes the same choice with more room. Pick a library
-(when you have more than one books library), then a folder in the tree. With
-only podcast libraries, the page says "No book libraries yet": podcast shows
-have no folders to read as books. Folders
-that are books are marked **Book**, and folders you have pinned say **Always
-one book** or **Separate books**.
+**Library > Folders** makes the same choice with more room. Pick a library and
+a folder in the tree. The page shows the three choices with what each would
+mean for that folder ("Here: 12 books."), then the folder's audio files.
 
 ![Library > Folders](/img/screenshots/admin/folders.png)
 
-For the selected folder the page asks "How should AudioSilo read this
-folder?" and shows the three choices as cards, each with what it would mean
-for this folder (for example "Here: one book with 3 files." or "Here: 12
-books."), then the folder's audio files. If the folder is a book, **Open book**
-opens its [book page](books.md#a-books-page). A book folder the library hasn't
-scanned yet (one you've just copied in) says "Not in the library yet." with
-**Rescan**, which adds it; **Open book** shows once it's in. A folder with no audio files of
-its own has nothing to choose; the folders inside it are read on their own.
-The exception is a folder of disc folders, which can be joined into one book
-(below).
-
-As in the dialog, a choice is saved the moment you make it and the library
-rescans ("Rescanning *name*. Listening progress moves with each file."). The
-**Change detection** button on a book's page opens its folder here.
+If the folder is a book, **Open book** opens its
+[book page](books.md#a-books-page). A book's page has a **Change detection**
+button that opens its folder here.
 
 ### Books split into disc folders
 
-A book ripped from CDs often sits in one folder per disc, with no audio in the
+A book ripped from CDs often has one folder per disc, with no audio in the
 book's own folder:
 
 ```text
@@ -387,154 +207,64 @@ Audiobooks/
 └── Terry Pratchett/
     └── Mort/
         ├── CD1/
-        │   ├── 01.mp3
-        │   └── 02.mp3
         ├── CD2/
         └── CD3/
 ```
 
-By the folder-per-book rule each disc reads as its own book, and Library >
-Folders tells you so: open `Mort` and it says the folder "holds no audio files
-of its own, only disc folders (CD1, CD2...)". Choose **Always one book** there
-("Here: 3 disc folders become one book, in disc order.") and AudioSilo reads
-the discs as one book:
+By the folder rule each disc reads as its own book. To join them:
 
-- The discs play **in disc order**, counting numbers the way people do, so
-  `CD2` comes before `CD10`. Within each disc the files keep the order they had
-  as a book of their own. A chapter taken from a file name is led by its disc
-  ("CD2 - 01"), since disc rips number their tracks from 1 again on every disc.
-- Folder names AudioSilo recognises as discs are `CD`, `Disc` or `Disk`
-  followed by a number, with or without a space (`CD1`, `Disc 2`, `Disk 03`).
-  The join needs at least two of them, directly in the folder, and nothing else
-  with audio beneath it. A single disc folder already reads as one book.
-- **Listening progress carries over**: everyone's position moves onto the
-  joined book's timeline (a listener who got furthest on any disc keeps that
-  furthest point), and so do bookmarks, notes, listening history and sessions.
-  A favourite on any disc becomes a favourite of the joined book.
-- Your **edits, custom cover and ASIN/ISBN** on the discs are copied to the
-  joined book, field by field, the first disc winning where two discs differ.
-  The cover is the image in the book's own folder, else the first disc's.
-- Without ffprobe (see [Transcoding](server.md#transcoding)) a disc's length can
-  be unknown. Then AudioSilo can't tell where the later discs start, so their
-  listening progress stays with the disc rather than landing in the wrong place.
-  The scan's log says so (see [Jobs](health.md#history)).
+1. Open the book's folder (`Mort`) in **Library > Folders**.
+2. Choose **Always one book**.
 
-The joined book isn't a new book: it doesn't count as new in the scan, and no
-"books added" notification goes out for it. The
-[Health page](health.md#the-kinds-of-issue) lists folders like this under
-**One book split into disc folders**, with a button that does the same thing.
+The discs then play as one book, in disc order. Everyone's progress, bookmarks
+and notes move onto the joined book. Disc folders are named `CD`, `Disc` or
+`Disk` and a number. To undo it, set the folder back to **Automatic**.
 
-AudioSilo never joins discs on its own: you choose it. And **Always one book**
-joins only a folder of disc folders. Set on any other folder without audio of
-its own (an author's or a series' folder, say), it still does nothing, so an
-older setting like that never merges a series into one book.
-
-To undo it, set the folder back to **Automatic**. Each disc becomes its own
-book again: your edits and covers on the discs are still there, and
-progress made on the joined book stays with the joined book ("progress on the
-one book is kept for it, not split back"). Join the folder again later and it
-comes back.
+The [Health page](health.md#the-kinds-of-issue) lists folders like this, with a
+button that joins them.
 
 ## Exporting a library
 
-**⋯ > Export book list** downloads the library's book list as a `.json` file
-(named after the library and today's date, e.g.
-`audiosilo-fiction-2026-09-21.json`).
+**⋯ > Export book list** downloads the library's book list as a `.json` file.
+It is meant for [AudioSilo Meta](../community/meta-site.md): import it on the
+site's **Watching** page to see which books of a series you are missing and
+what is coming next.
 
-The file is meant for [AudioSilo Meta](../community/meta-site.md), the community
-metadata site: open its **Watching** page at
-[meta.audiosilo.app](https://meta.audiosilo.app) and import the file to mark
-which entries of a series you already own, so the site can show you what you are
-missing and what is coming next.
-
-It is a plain list of books - title and subtitle, authors, narrators, series and
-position (and every other series a book is in, with its position there),
-publication date, publisher, language, abridged, genres, ASIN/ISBN, runtime and
-chapter count. Copies of the same book are listed once. Nothing about your
-server goes into it:
-**no file paths, no folder names, no file sizes or formats, not the library's
-folder, and not your tags** (your own notes such as "Owned" or "Read"). It is
-safe to hand to the site or keep as a record of what a library holds.
+It holds each book's details, but **no file paths, folder names or tags**, so it
+is safe to share.
 
 ### Exporting with file paths and tags
 
-**⋯ > Export with file paths and tags...** makes the same list for your own
-scripts, with more in it. Where the plain export lists two copies of a book
-once, this one gives each copy its own row, with its path, tags and
-description, so a script can tie a row back to its files and move or rename one
-copy without asking the server about each book. The file name ends in
-`-private.json` (e.g. `audiosilo-fiction-2026-09-21-private.json`) so it is
-never taken for the one to share.
+**⋯ > Export with file paths and tags...** makes a fuller list for your own
+scripts, with each copy's path, tags and description. Keep this file to
+yourself: don't post it publicly or upload it to the community site.
 
-The console asks first: "This file is for you alone". The paths show how your
-folders are named and laid out and the tags are your own notes, so don't attach
-this file to a public issue or upload it to the community site. Use the plain
-**Export book list** for that.
-
-:::note
-Export covers the **whole** library, not just the parts you have shared with a
-particular person.
-:::
+Both exports cover the **whole** library, not just the parts shared with one
+person.
 
 ## Deleting a library
 
-**⋯ > Delete library...** asks you to type the library's name to confirm, then
-says exactly what goes: it "removes the library and its books from AudioSilo,
-with everyone's progress, bookmarks and notes in it. The folder and its files
-are not touched."
-
-A library [from your config](#editing-a-library) can't be deleted here: its
-**Delete library...** is greyed out and says "Declared in config.yaml (or by the
-app that runs the server): remove it there and restart to delete it." Every
-start reads it from the config again, so deleting it here would only bring it
-back empty, with everyone's progress in it gone.
-
-If the console didn't know yet that a library comes from your config (say it
-was added to `config.yaml` and the server restarted while the console was
-open), the server refuses the delete. The dialog closes, a message says the
-same thing, and the card then shows **From your config** with its Delete
-greyed out.
+Click **⋯ > Delete library...** and type the library's name to confirm.
 
 :::warning[Everyone's progress in the library goes too]
-Deleting a library removes what AudioSilo knows *about* it for every person:
-their listening progress, bookmarks, notes and listening history for books in
-that library, its folder detection settings, and any of its folders you had
-added to shares. Your audio files are never touched. Don't delete and re-add a
-library to "refresh" it - use **Rescan** for that, or **Edit library...** to
-point it somewhere new.
+Deleting a library removes everyone's listening progress, bookmarks, notes and
+listening history for its books, its folder detection settings and its folders
+in shares. Your audio files are never touched. To refresh a library, use
+**Rescan** instead.
 :::
+
+A library set in `config.yaml` can't be deleted here. Remove it from
+`config.yaml` and restart.
 
 ## When a library folder goes missing
 
-If a library's folder becomes unreachable - the classic case is a network
-share that unmounted after a reboot - AudioSilo protects the index rather than
-"helpfully" syncing with an empty folder:
+If a library's folder can't be read, often because a network share unmounted,
+AudioSilo stops the scan and removes nothing. It does the same if the folder is
+suddenly empty while books are still indexed, since that almost always means a
+dropped mount.
 
-- A scan that finds the folder **missing or unreadable** stops without removing
-  anything.
-- A scan that finds the folder **suddenly empty** while books are still indexed
-  also stops - that pattern almost always means a dropped mount, not a
-  genuinely emptied folder.
-
-The console shows it plainly. The library's status reads **Folder
-unavailable**, its **Rescan** button becomes **Retry**, and the card says
-**Safety stop: nothing was deleted** - "AudioSilo can't read *folder*, so it
-kept all *N* books and everyone's progress. If it's a network share, mount it,
-then retry." (A library that has no books yet says "AudioSilo can't read this
-folder" instead.) A scan that stops this way ends with a "Scan of *name*
-stopped" toast. The [overview](console-tour.md#the-overview) shows the same
-notice, and the health line at the top of every page names the offline
-library, as does [Health > Issues](health.md#when-a-library-is-offline). Once
-the folder is back, **Retry** shows **Scanning** while it runs, then the
-status returns to **Online**.
-
-The console counts a folder as unavailable when it is missing, can't be read,
-doesn't answer within a couple of seconds (a hung network mount can't freeze
-the page), is empty while books are still indexed under it, or when the last
-scan stopped at this safety check.
-
-The user-visible effect for listeners: the library's books **stay listed** in
-the apps and the book counts don't drop; playback of those books fails until
-the folder is back. Everyone's progress and bookmarks are safe throughout. Once
-you've remounted the share (or fixed permissions), click **Retry** and
-everything picks up where it left off.
+The library's card then says **Folder unavailable**, and the
+[overview](console-tour.md#the-overview) and
+[Health](health.md#when-a-library-is-offline) show a notice. Listeners still
+see its books, but they won't play until the folder is back. Mount the share
+again (or fix the permissions), then click **Retry**.

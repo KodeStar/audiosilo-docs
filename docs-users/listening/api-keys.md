@@ -1,51 +1,42 @@
 ---
-title: API keys for integrations
-description: "Create a personal API key so a dashboard, script, or monitoring tool can reach your AudioSilo server on your behalf - where to find it, using it, and revoking it safely."
+title: Create API keys
+description: "Create a personal API key so a dashboard, script or monitoring tool can reach your AudioSilo server for you."
 ---
 
-An **API key** is a long, secret token you create for yourself so another app can talk to your AudioSilo server *as you*, without handing over your password. It is the right tool when you want a home dashboard (such as Heimdall), a script, a cron job, or an uptime monitor to reach your server automatically.
+An **API key** is a secret token that lets another app reach your server as you, without your password. Use one for a home dashboard such as Heimdall, a script, or an uptime monitor. Create keys on your [account page](account.md#opening-it), under **Personal API keys**.
 
-Each key acts as you for everyday requests - browsing your libraries, reading your books, saving your listening progress. You can create as many as you like, name each one, and revoke any of them at any time. (A key can't manage your account itself - it can't create another key, set your password or manage your [household members](household.md#household-members) - and it can't start casting to a Chromecast. Those always need you signed in normally, so a leaked key can't lock you out or quietly multiply itself.)
+A key can browse your libraries, read your books and save your progress. It can't manage your account: it can't make keys, set your password, manage your [household members](household.md#household-members) or start casting.
 
-## Where to find it
-
-In the player, open your [account page](account.md#opening-it) for the server. There you'll find a **Personal API keys** section.
-
-:::note
-On a server too old to offer API keys, the section says it isn't available there. It is hidden for **demo accounts** (a throwaway demo login can't create keys) and for a [kid's account](account.md#a-kids-account) from someone's household, which can't have keys.
-:::
+Demo accounts and [kids' accounts](account.md#a-kids-account) can't have keys.
 
 ## Creating a key
 
-1. Tap **Create API key** beside the section's title.
-2. Give the key a **name** that reminds you what it's for, for example *Home dashboard* (up to 100 characters), and tap **Create API key** again.
-3. The key appears **once**, in a pop-up. Copy it straight away and paste it into the app you're setting up.
+1. Open your [account page](account.md#opening-it) for the server.
+2. Under **Personal API keys**, tap **Create API key**.
+3. Give the key a name, such as *Home dashboard*, and tap **Create API key** again.
+4. Copy the key straight away and paste it into the app you're setting up.
 
 :::warning[Shown once - copy it now]
-The key is displayed only at the moment you create it. AudioSilo stores only a scrambled version and can never show it to you again. If you lose it, just revoke it and create a new one. Treat a key like a password: anyone who has it can use your account.
+The key is shown only when you create it. If you lose it, revoke it and make a new one. Treat a key like a password: anyone who has it can use your account.
 :::
 
 ## Using a key
 
-Whatever tool you're configuring will ask for a token, or for an "Authorization header". Send the key as a **Bearer** token. For example, to list your libraries with `curl`:
+Send the key as a **Bearer** token in the `Authorization` header. For example, to list your libraries with `curl`:
 
 ```sh
 curl -H "Authorization: Bearer YOUR_API_KEY" \
   https://books.example.com/api/v1/libraries
 ```
 
-Replace `YOUR_API_KEY` with the key you copied, and `books.example.com` with your own server's address.
-
-## Seeing when a key was last used
-
-Each key in the list shows when you **created** it and when it was **last used** (it reads *Never used* until something authenticates with it). That's a quick way to notice a key a tool has stopped using - or one being used when it shouldn't be.
+Replace `YOUR_API_KEY` with your key, and `books.example.com` with your server's address.
 
 ## Revoking a key
 
-To switch a key off, tap **Revoke** next to it and confirm. Anything using that key **loses access immediately**. This can't be undone - if you need it back, create a fresh one.
+Each key in the list shows when it was created and last used. To switch one off, tap **Revoke** and confirm. Anything using it loses access at once.
 
-## A key inherits your permissions - so pick the right account
+## Pick the right account
 
-A key can reach everything your account can (bar managing the account itself, as above), and nothing more. If you are an **admin**, a key made from your account can also reach admin-only information - server statistics, the list of users - not just your own books.
+A key can reach everything your account can. A key made by an **admin** can also reach admin information, such as the list of users.
 
-If you only need a key for read-only widgets like "what am I listening to" or a library's contents, consider creating it from a **regular (non-admin) account** that has just the access it needs. That way a leaked key can't touch admin features. If you don't have such an account, ask your admin to set one up - see [People and invites](../admin/users-and-invites.md).
+For a simple widget, make the key from a regular account with just the access it needs. Then a leaked key can't touch admin features. Your admin can set one up: see [People and invites](../admin/users-and-invites.md).

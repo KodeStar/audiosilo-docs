@@ -1,43 +1,43 @@
 ---
 slug: /
 title: What is AudioSilo?
-description: "AudioSilo is a self-hosted audiobook platform: a server that streams your own files and a player app for web, iOS and Android."
+description: "AudioSilo is a self-hosted audiobook server and a player app for web, iOS and Android."
 ---
 
-AudioSilo is a self-hosted audiobook platform. You point a small server at a folder of audiobook files on a machine you own - a home server, a NAS, or a cheap VPS - and listen from anywhere: in a browser, or with the AudioSilo app on your phone. Your books never leave your hardware, there is no subscription, and your files stay exactly as they are on disk. Progress, bookmarks and your listening history sync across every device you use.
+AudioSilo plays your own audiobooks from a server you run at home. You install the
+server, point it at your audiobook folder, and listen in a browser or in the app
+on your phone. There is no subscription, and your files are never changed.
 
 ![The AudioSilo web player home screen](/img/screenshots/web-player/home.png)
 
-## The server and player
+## Get started
 
-AudioSilo combines a server with a player app. You only *have* to run the
-server; an optional [Bridge](./getting-started/running-a-bridge.md) can run
-beside it for heavier jobs such as generating characters and recaps.
+1. Install the server with [Docker](getting-started/quickstart-docker.md), on
+   [Unraid](getting-started/install-unraid.md), or
+   [without Docker](getting-started/install-binary.md).
+2. [Set up your server](getting-started/first-run.md): create your admin account
+   and add your audiobook folder.
+3. [Get the apps](listening/mobile-apps.md) and
+   [connect them to your server](listening/connecting.md).
 
-### The server
+Want to look first? [Try the demo](demo.md) without installing anything.
 
-The heart of the system. It scans your audiobook folders, builds a fast search index, and streams the audio to your devices (new files show up when you browse to them or after a rescan). It also includes a built-in admin console for managing libraries, users and sharing, and it can serve the web player itself - so one running server is a complete, listen-in-the-browser setup. It is designed from the start to be safe to expose to the internet.
+## Find what you need
 
-Install it with [Docker](./getting-started/quickstart-docker.md), from [Unraid's Community Applications](./getting-started/install-unraid.md), or as a [single downloadable program](./getting-started/install-binary.md).
+- [Everything AudioSilo can do](features.md), one line each.
+- [Which audio formats work](getting-started/organizing-your-library.md#supported-formats), and how to lay out your folders.
+- [Listen offline](listening/offline-downloads.md) by downloading books to your device.
+- [Reach your server from outside your home](getting-started/remote-access.md).
+- [Invite people](admin/users-and-invites.md) or [add your household](listening/household.md).
+- [Listen on your Apple Watch](listening/apple-watch.md), [in the car](listening/in-the-car.md) or [on a Chromecast](listening/chromecast.md).
+- [Read the ebook](listening/reading-the-ebook.md) and [follow along with the narration](admin/making-read-along.md).
+- [Back up your server](admin/backups.md), and update it ([Docker](getting-started/quickstart-docker.md#update), [Unraid](getting-started/install-unraid.md#update), [without Docker](getting-started/install-binary.md#update)).
+- [Troubleshooting](troubleshooting.md) and the [FAQ](faq.md).
 
-### The player app
+## The Bridge: optional extras
 
-Where you actually listen. One app ships as a web player (served by your own server, installable as a PWA) and as native iOS and Android apps. It handles chapters, playback speed, sleep timers, favourites, offline downloads and background playback, and the native apps add more device integration (see [The mobile apps](./listening/mobile-apps.md)). See [Connecting to a server](./listening/connecting.md) to get started.
-
-## What makes it a good home for your audiobooks
-
-- **Safe to expose to the internet.** No default passwords - credentials are generated on first run or chosen by you on a one-time setup page. Nobody can sign themselves up (accounts come from an admin's invite, or from someone with an account adding a member of their household), log-in attempts are rate limited with brute-force lockout, and HTTPS is on by default. See [Remote access](./getting-started/remote-access.md).
-- **Fast, even with huge libraries.** Search and browsing are built on an indexed database that stays quick at thousands of books, and your library is browsable immediately after adding it - no long import step.
-- **Your files stay ordinary files.** AudioSilo never converts, moves or rewrites your audiobooks. The folder on disk is the source of truth; the server's database is just a rebuildable index. Rename or move a book and your listening progress follows it. See [Organizing your library](./getting-started/organizing-your-library.md).
-
-## How this guide is organized
-
-- **[Getting started](./getting-started/quickstart-docker.md)** - install the server with [Docker](./getting-started/quickstart-docker.md), [on Unraid](./getting-started/install-unraid.md) or as a [native binary](./getting-started/install-binary.md), understand the [first run](./getting-started/first-run.md), lay out [your library folders](./getting-started/organizing-your-library.md), and set up [remote access](./getting-started/remote-access.md).
-- **[Server administration](./admin/console-tour.md)** - the admin console: [libraries](./admin/libraries.md), [people and invites](./admin/users-and-invites.md), and [sharing parts of a library](./admin/sharing.md).
-- **[Listening](./listening/connecting.md)** - connecting a device, [browsing](./listening/browsing.md), [playing a book](./listening/playback.md), [the full player](./listening/full-player.md), [the companion](./listening/companion.md), the [sleep timer](./listening/sleep-timer.md), [Up next](./listening/up-next.md), [the end of a book](./listening/end-of-book.md), [reading the ebook](./listening/reading-the-ebook.md), [offline downloads](./listening/offline-downloads.md), [your listening stats](./listening/you.md) and [year in listening](./listening/year-in-listening.md), [settings](./listening/settings.md), [your account](./listening/account.md), the [mobile apps](./listening/mobile-apps.md) and [keyboard shortcuts](./listening/keyboard-shortcuts.md).
-- **[Demo](./demo.md)** - try AudioSilo without installing anything.
-- **[Troubleshooting](./troubleshooting.md)** and the **[FAQ](./faq.md)**.
-
-:::tip
-Want to see it before you install it? There is a public demo at [demo.audiosilo.app](https://demo.audiosilo.app) - see the [demo page](./demo.md).
-:::
+The server is all you need to listen. The optional
+[Bridge](getting-started/running-a-bridge.md) is a second container that adds
+[podcasts](admin/podcasts.md), [read-along](admin/making-read-along.md),
+[characters and recaps](admin/generating-characters-and-recaps.md) and
+[Audible backups](admin/audible.md).

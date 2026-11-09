@@ -1,117 +1,81 @@
 ---
-title: Your account on a server
-description: "Each server's account page: setting or changing your password, pairing another device with a 10-minute code, the server's home and away addresses, seeing your signed-in devices and signing one out, personal API keys, and signing this device out safely."
+title: Manage your account
+description: "Set a password, pair another device, sign out a lost phone, check listening sync and sign out, for each server you use."
 ---
 
-Each server you're connected to has its own **account page**, covering your account on that one server: your password, your other devices, API keys, and signing out.
+Each server you use has its own **account page**. There you set your password, pair another device, see your signed-in devices, and sign out.
 
-![A server's account page on a computer: who you're signed in as, the Password and Pair another device cards, the signed-in devices, the Listening sync card and the API keys](/img/screenshots/web-player/account.png)
+![A server's account page on a computer: Password, Pair another device, signed-in devices, Listening sync and API keys](/img/screenshots/web-player/account.png)
 
 ## Opening it
 
-- **On a tablet or computer**: pick the server in your profile menu (top right), or **Account on** your main server. Or open [Settings](settings.md#accounts-and-devices), choose **Accounts and devices**, and tap the server.
-- **On a phone**: the **Account** section of the **Me** tab shows your main server's account. If you're signed in to more than one server, a row of their names above it lets you switch. **Settings > Accounts and devices** leads to each server's page too.
-
-At the top: your name, a line like *"@sam · User on Hearthside · signed in on 3 devices"*, and your role (**User** or **Administrator**). A demo account is marked **Demo**.
-
-When two saved servers have the same name, their labels include a host or
-address, such as **AudioSilo (books.example.com)**. The account switcher and
-Apple Watch card use that distinction too.
+- **On a tablet or computer**: pick the server in your profile menu (top right).
+- **On a phone**: open the **Me** tab and choose **Account**. If you use more than one server, tap its name in the row at the top.
+- Anywhere: [Settings > Accounts and devices](settings.md#accounts-and-devices), then tap the server.
 
 ## Password
 
-Accounts created by invite often start **without** a password - you signed in with a code, and that's fine day to day. The **Password** card says whether you have one (**Set** or **Not set**). Setting one is your **reliable way back in** on any device:
+Accounts made by invite often have no password. That's fine day to day, but a password is your **reliable way back in**. With one, you can sign in on any device with no new invite.
 
-- Tap **Set a password** (or **Change password**), enter a new password of at least 8 characters, and save.
-- Changing an existing password asks for your **current password** first.
-- Setting a first password signs nothing out: your other devices stay signed in.
+1. On the **Password** card, tap **Set a password** (or **Change password**).
+2. Enter a password of at least 8 characters. To change one, enter your current password first.
+3. Save.
 
-**Changing a password signs your other devices out.** The device you changed it on stays signed in. Every other phone, tablet and browser signed in to your account on this server stops working at once and needs to sign in again, with the new password or by pairing; anything one of them was casting stops too. A [Pair another device](#pair-another-device) code you had open stops working, and so does a recovery code saved from an older app. Your [personal API keys](#personal-api-keys) and your [calendar link](upcoming.md#add-to-your-calendar) keep working. That's on purpose: if someone else knew your old password, changing it locks them out wherever they used it.
+Setting a first password signs nothing out.
 
-The dialog says *"This device stays signed in; your other devices may be signed out."*, and the message afterwards says what the server did: *"Your other devices are signed out. This one stays signed in."* When another device is still signed in (an older server leaves them all signed in), the message says *"Your other devices stay signed in."* When the app can't read the server's device list, it only says *"This device stays signed in."*
-
-Why it's worth doing, especially if you were invited by pairing and never set one: if you ever sign out or get a new phone, a username and password sign you straight back in with no help from anyone. Without one, getting back in means asking your admin for a fresh invite - so setting a password once is the safety net that keeps your account in your own hands.
-
-Demo accounts can't have a password, so the card isn't shown for them.
-
-If someone added you to their [household](household.md), the card says so: *"Adam set up this account, so it has no password yet. Set one to sign in on a new device yourself."*
-
-## A kid's account
-
-A kid's account from someone's [household](household.md) has a simpler page, because the grown-up who manages it looks after its devices:
-
-- The **Password** card says *"A kid's account has no password. Adam signs it in on a new device."*, with no button: a kid's account can't have one.
-- There's no **Pair another device** card: the grown-up who manages the account sets up its devices, with **Set up their own device** on their [Household page](household.md#their-devices).
-- There's no **Personal API keys** section.
-- [Listening in the house](in-the-house.md) is off, and its switch on the Household page says *"A kid's account can't share what it listens to."*
+**Changing a password signs out your other devices.** This device stays signed in. Every other device needs to sign in again. Your [API keys](#personal-api-keys) and [calendar link](upcoming.md#add-to-your-calendar) keep working. If someone else knew your old password, this locks them out.
 
 ## Pair another device
 
-Sign another phone, tablet or browser in to the same account without a new invite:
+To sign in another phone, tablet or browser without a new invite:
 
-1. Tap **Show a pairing code**. A QR code appears, with a countdown: **it works for 10 minutes**, for one device.
-2. On a phone, scan it with the AudioSilo app ([Scan a QR code](connecting.md#scanning-the-qr-code-with-your-phone) on its connect screen) or the camera. Or send the link: **Copy link** in the web player, **Share link** in the apps.
+1. Tap **Show a pairing code**.
+2. Scan the QR code with the other device's AudioSilo app or camera, or send it the link. The code works once, for 10 minutes.
 3. The other device signs straight in.
 
-Once the code has expired it fades, and **Make a new code** gives you a fresh one. **Done** puts the card away.
-
-Or, if you've [set a password](#password), just sign in with your username and password on the new device.
+If the code expires, tap **Make a new code**.
 
 ## Apple Watch
 
-On an iPhone with a paired Apple Watch, the **Apple Watch** card signs the watch in to this server with no typing (**Set up Apple Watch**, then **Send again** if you need it). After that it shows who the watch is signed in as, the listening it still has to send and when it last synced. The books on the watch are in [Downloads](apple-watch.md#in-downloads-on-your-iphone), and **Books on your watch** takes you there. Kids' accounts and demos don't have it. See [Apple Watch](apple-watch.md).
+On an iPhone with a paired Apple Watch, the **Apple Watch** card signs the watch in to this server. See [Listen on your Apple Watch](apple-watch.md).
 
 ## At home and away
 
-When the server has a home address, an away address or both, an **At home and away** card lists them. In the iOS and Android apps, the one in use right now is marked **In use**, with a line such as *"Using your home address. The app switches between them by itself."* How the switching works, and what to check when it doesn't happen: [At home and away](connecting.md#at-home-and-away).
+If the server has home and away addresses, an **At home and away** card lists them. In the apps, the one in use is marked **In use**. See [At home and away](connecting.md#at-home-and-away).
 
 ## Signed-in devices
 
-Every device signed in to your account on this server, **this device** first, then the others. Each row has the name the device signed in with, the app and its version, the platform, and when it was last used: *"AudioSilo 1.4.2 · iOS · last seen 3 days ago"*. An [Apple Watch](apple-watch.md) has a watch icon and the name **Apple Watch**, whatever you've called it, with **Apple Watch** as its platform too: *"AudioSilo 2.6.0 · Apple Watch · last seen 3 days ago"*. (API keys aren't in this list; they have [their own section](#personal-api-keys).)
+Every device signed in to your account on this server, with when it was last used. API keys aren't in this list.
 
-To cut off a phone you've lost or sold, tap **Sign out** on its row and confirm. It loses access straight away and needs to sign in again to reach the server. If you think someone else knows your password, [change it](#password) instead: that signs out every other device at once. Your admin can also sign you out everywhere from the admin console.
+To cut off a lost or sold phone, tap **Sign out** on its row and confirm. It loses access at once. If you signed in [household](household.md) members on that phone, they're signed out too, unless you untick them.
 
-If you signed in members of [your household](household.md) on that phone (a kid you added there, say), the confirmation also offers **Also sign out Evie and Ellis on that device**, naming them, ticked. Leave it ticked and they're signed out of that phone too; the message afterwards says how many were. Untick it to sign out only yourself, as for a family tablet that stays at home. Their sign-ins on other devices, including their own phones, aren't touched.
-
-**This device** has no Sign out button in the list. To sign this device out, use [Sign out of the server](#signing-out) at the bottom of the page, which saves your place first.
-
-The list appears on servers new enough to show it.
+To sign out this device, use [Sign out](#signing-out) at the bottom of the page.
 
 ## Listening sync
 
-On a recent server, the **Listening sync** card says whether what you listened to on this device has reached the server: **3 listens waiting to sync**, **1 listening event couldn't sync**, or both, and when this device last synced (*"Last synced 2 minutes ago"*). It says *"Everything you listened to is on Home."* only when nothing is waiting and nothing was rejected. Listening waits here while you're offline and goes by itself when the server is reachable again; see [Listening on more than one device](playback.md#listening-on-more-than-one-device).
+The **Listening sync** card shows whether what you heard on this device has reached the server, and when it last synced. Listening waits on the device while you're offline and goes by itself when the server is reachable. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 
-If the server turns something down, it's listed under **Couldn't sync**, kept for 30 days: the book and what it was (*"The Way of Kings · 1:02:13 to 1:40:00"*, *"Marked finished"* or *"Marked not finished"*), and why:
+![The Listening sync card: last synced now, and one listen under Couldn't sync, with Discard](/img/screenshots/web-player/account-listening-sync.png)
 
-- *"This copy of the book is a different length from the server's."* The download is a different edition from the one on the server now.
-- *"It's more than 90 days old."*
-- *"You can't open this book on the server any more."* or *"The book isn't on the server any more."*
-- *"The server doesn't know this kind of listen."* or *"The server couldn't read it."*
-
-Your place on the server isn't affected by these. **Discard** removes one from the list.
-
-![The Listening sync card: everything is on the server, last synced now, and under Couldn't sync one listen of The Art of War turned down because the copy is a different length, with Discard](/img/screenshots/web-player/account-listening-sync.png)
+Anything the server turned down is listed under **Couldn't sync**, with the reason. Usually the downloaded copy is a different edition from the server's, or the listen is over 90 days old. Your place on the server isn't affected. **Discard** removes one from the list.
 
 ## Personal API keys
 
-**Personal API keys** let dashboards, scripts and other tools reach your server on your behalf, such as a Home Assistant or Heimdall tile. See [API keys for integrations](api-keys.md) for creating, using and revoking them. On a server too old to offer them, the section says so; demo accounts don't have it.
+API keys let dashboards and tools reach your server for you, such as a Home Assistant tile. See [Create API keys](api-keys.md).
 
 ## Signing out
 
-**Sign out of &lt;server&gt;** at the bottom of the page disconnects this device from that server.
+**Sign out of** the server, at the bottom of the page, disconnects this device. Before it does, the app:
 
-If you're about to sign out **without a password set**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in on this server"* - and offers to **Set a password** right there. Take the offer; it's the whole reason the warning exists. If books from this server are downloaded on the device, the warning also says how many you'd lose.
+- warns you if you have no password, since you'd need a new invite to get back in, and offers **Set a password**;
+- tries to send any listening that hasn't synced, and asks before losing it.
 
-For a member of someone's household, the warning names who can sign you in again instead: *"Without a password, Adam can sign you in again from their Household page."*, or for a kid's account, *"A kid's account has no password. Adam can sign it in again from their Household page."*, with no **Set a password** button, since a kid's account can't have one.
+Signing out deletes this server's downloads on this device. Your books, progress and bookmarks stay on the server. To get back in, see [Getting back in after signing out](connecting.md#getting-back-in-after-signing-out).
 
-If some of your listening hasn't reached the server yet, the app first tries to send it. If any is still waiting (you're offline, say), it asks: *"3 listens haven't synced to Home. Sign out anyway?"*, since signing out loses them. Cancel, and sign out once you're back online. **Removing a server** from [Settings](settings.md#accounts-and-devices) warns the same way (*"3 listens haven't synced to Home and will be lost."*).
+## A kid's account
 
-Signing out **takes this server out of your app** and deletes your downloads from it on this device, along with any of your progress that hasn't synced yet. Anyone else on this device signed in to the same server keeps theirs. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
-
-:::tip
-Signing out isn't a big deal. Next time you open the connect screen, any server you've connected to before shows a one-tap **Reconnect to &lt;your server&gt;** row - so you only re-enter your code or password, never the server address. See [Connecting and signing in](connecting.md#getting-back-in-after-signing-out).
-:::
+A kid's account from someone's [household](household.md) has a simpler page. It has no password, no **Pair another device** and no API keys. The grown-up who manages it sets up its devices from their [Household page](household.md#their-devices).
 
 ## Server version
 
-The foot of the page shows the version of AudioSilo that server is running.
+The foot of the page shows the server's AudioSilo version.

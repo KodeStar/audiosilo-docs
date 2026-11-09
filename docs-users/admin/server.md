@@ -1,713 +1,356 @@
 ---
-title: "Server settings, updates and logs"
-description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata and keeping a local copy of it, transcoding, household members, demo mode, backups, notifications, importing from Audiobookshelf, the Bridge, optional modules), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins (and the people managing household members) changed."
+title: "Change server settings"
+description: "Every server setting in the admin console, what each one does and when to change it, plus updates, logs and the audit log."
 ---
 
-The **Server** destination in the [admin console](console-tour.md) is where
-you look after the server itself:
+**Server > Settings** in the [admin console](console-tour.md) holds the
+server's settings, one topic at a time. This page explains each one: what it
+does, and when you would change it. You need to be an admin.
 
-- **Settings** - the server's settings, one topic at a time.
-- **Logs** - what the server has been doing since it started.
-- **Audit log** - what admins changed (and what people did with their household
-  members), and when.
-- **About** - which version you run, whether a newer one exists, and how to
-  update.
-
-The health of what the server depends on - ffmpeg, the certificate, disk
-space, backups - is on [Health > System](health.md#system).
+The **Server** area also has **About** (your version and updates), **Logs**
+and the **Audit log**, covered at the end of this page. The health of what the
+server depends on (ffmpeg, the certificate, disk space, backups) is on
+[Health > System](health.md#system).
 
 ## Settings
 
 ![Server settings, General](/img/screenshots/admin/settings.png)
 
-**Server > Settings** lists its topics down the left (across the top on a
-phone): **General**, **Network & HTTPS**, **Players & app links**,
-**Community metadata**, **Transcoding**, **Household**, **Demo mode**,
-**Backups**, **Notifications**, **Import**, **Bridge** and **Modules**. Each setting lives in exactly one of them.
-Backups, Notifications, Import and Bridge have pages of their own:
-[Backups and restoring](backups.md),
-[Notifications and the bell](notifications.md),
-[Importing from Audiobookshelf](import.md) and [The Bridge](bridge.md). The settings are the same ones the server keeps in
-`config.yaml` in its data folder: a change you save here is written there, so
-it lasts across restarts.
+The topics are listed down the left (across the top on a phone). Four of them
+have their own pages: [Backups](backups.md), [Notifications](notifications.md),
+[Import](import.md) and [Bridge](bridge.md).
 
-Most topics are made of cards. Change what you like in a card, then press
-**Save changes** at its foot (**Reset** puts the card back as it was). Only
-the values you changed are sent. If the server refuses one - an address
-without `https://`, a time like "2 days" - the reason shows under that field
-and nothing in the card is saved, so fix it and save again. A number outside
-what the setting takes (**Days to keep sessions** below 30, say) is caught
-before anything is sent: the field says "Enter a whole number from 30 to
-3,650." and **Save changes** waits until it's in range. The switches
-(**Check for new versions**, **Look up community metadata** and each
-module's **Enable** switch) save the moment you flip them.
+To change a setting:
 
-If a card has unsaved changes, leaving its topic or the Settings page asks
-**Leave without saving?** **Cancel** keeps the draft; **Discard and leave**
-continues without saving it. Saving or resetting the card clears the warning.
-Reloading or closing the browser tab also warns while changes are unsaved.
-If a background status check fails, the loaded settings and your drafts stay
-visible alongside the error; **Try again** refreshes the status.
+1. Change the values you want in a card.
+2. Press **Save changes** at the foot of the card (**Reset** undoes your edits).
+
+If the server refuses a value, the reason shows under the field and nothing in
+the card is saved. Switches, such as **Check for new versions**, save the
+moment you flip them. The console warns you before you leave a card with
+unsaved changes.
+
+Your changes are written to `config.yaml` in the server's data folder, so they
+last across restarts.
 
 ### When a change takes effect
 
-Most settings apply the moment you save: the next request already uses
-them, and a toast says "Applied now. No restart needed."
+Most settings apply as soon as you save. No restart is needed.
 
-A few are only read when the server starts, and carry a **Restart to apply**
-badge: the listen address, the HTTPS mode and certificate names, the web
-player folder, the community metadata service address and where community
-metadata is looked up (its **Source**), turning demo mode on or off, how long idle demo guests are kept, and the backups folder. When you save one of them:
+A few only apply after a restart, and carry a **Restart to apply** badge:
 
-- On **Network & HTTPS**, the console asks first ("Save and apply at the next
-  restart?"), because a wrong value there can stop the server from starting.
-- The toast says "Saved. Some of it takes effect when the server restarts."
-- A notice at the top of every Settings topic, "Restart AudioSilo to finish
-  applying your changes", names the settings waiting, and each carries a
-  **Waiting for a restart** badge. The [Overview](console-tour.md#the-overview) shows the
-  same notice, with **Open Settings**, so a choice made in the
-  [setup flow](../getting-started/first-run.md#set-up-your-server) isn't left
-  waiting unnoticed. Until you restart, the server keeps using its current
-  values.
+- the listen address, the HTTPS mode and certificate names;
+- the web player folder and the backups folder;
+- the community metadata service address and **Source**;
+- turning demo mode on or off, and how long idle demo guests are kept.
 
-The console can't restart the server for you. Restart it the way you started
-it: `docker compose restart` (or `docker restart` with your container's name),
-restarting the service, or quitting and starting the program again.
+After you save one, a notice at the top of
+Settings lists what is waiting. The server keeps its current values until you
+restart it.
+
+The console can't restart the server. Restart it the way you started it: for
+example `docker compose restart`, restarting the service, or quitting and
+starting the program again.
 
 :::warning[If the server won't start after a change]
-A listen address whose port something else uses, or a Let's Encrypt name that
-doesn't point at the server, can keep it from starting. Open `config.yaml` in
-the server's data folder, put the old value back (the keys are listed in the
+A port that something else uses, or a Let's Encrypt name that doesn't point at
+the server, can stop it from starting. Open `config.yaml` in the data folder,
+put the old value back (the keys are in the
 [configuration reference](/developers/server/configuration)), and start it
 again.
 :::
 
 ### Settings set somewhere else
 
-Settings marked **Set by AUDIOSILO_...** can't be changed here: an environment
-variable sets them (common with Docker, where `docker-compose.yml` passes
-them). An environment variable wins over this page and over `config.yaml`, so
-change it where it is set and recreate the container. The console never copies
-its value into `config.yaml`, so removing the variable later brings back the
-file's own value.
+A setting marked **Set by AUDIOSILO_...** is set by an environment variable,
+often from your `docker-compose.yml`. It can't be changed here. An environment
+variable wins over this page and `config.yaml`, so change it where it is set
+and recreate the container.
 
 ### General
 
-- **Server name** - shown in the apps when someone connects, on invites and in
-  this console's top bar. With no name, apps and invites use **AudioSilo** and
-  the console uses the server's host or address. Set a name to make it easier
-  to recognize.
+- **Server name** - shown in the apps, on invites and in the console's top
+  bar. Set one so people recognize your server.
 - **Public address** - the address people use from outside your home, like
-  `https://books.example.com`, used in invite links and QR codes. Leave it
-  empty to use whatever address the browser used. See
+  `https://books.example.com`. Invite links and QR codes use it. See
   [Tell the server its public address](../getting-started/remote-access.md#tell-the-server-its-public-address).
 - **Home address** - the address devices use on your home network, like
-  `http://192.168.1.20:8080`. The apps switch to it by themselves when they
-  can reach it, and use the public address when they can't. Leave it empty to
-  use the address the browser used when that is a home-network address. See
+  `http://192.168.1.20:8080`. The apps switch to it when they can reach it.
+  See
   [Tell the server its home address](../getting-started/remote-access.md#tell-the-server-its-home-address).
-
-The **Listening history** card sets **Days to keep sessions** (400 out of the
-box, anything from 30 to 3650). Each listening session records which device
-and app it was on and the time of day. After this many days that detail is
-dropped and the session is added into daily totals per person and book, which
-[Activity](activity.md) keeps for good, so totals and books listened to stay
-while "which phone, what time" goes. 400 days keeps a full year of detail for
-the Activity pages' longest range. A change applies at the server's next daily
-tidy-up. The `AUDIOSILO_SESSION_DAYS` variable sets it too, and then locks it
-here.
-
-The **Updates** card holds the **Check for new versions** switch, on out of
-the box. While it is on, the server asks GitHub once a day whether a newer
-AudioSilo exists, and [Server > About](#about-and-updates) shows the answer.
-Turning it off stops the update check's requests to GitHub (a
-[local copy of community metadata](#keeping-a-local-copy) still downloads from
-GitHub). See [What the update check sends](#what-the-update-check-sends).
+- **Days to keep sessions** (in **Listening history**) - how long each
+  listening session keeps its device and time of day. After that, it is folded
+  into daily totals, which [Activity](activity.md) keeps for good. 400 days by
+  default (30 to 3,650), which keeps a full year of detail.
+- **Check for new versions** (in **Updates**) - on by default. The server asks
+  GitHub once a day whether a newer AudioSilo exists. See
+  [What the update check sends](#what-the-update-check-sends).
 
 ### Network & HTTPS
 
 ![Server settings, Network & HTTPS](/img/screenshots/admin/settings-network.png)
 
-The **HTTPS** card chooses how the server proves who it is to browsers and
-apps (the same three choices as [Remote access](../getting-started/remote-access.md)):
+The **HTTPS** card chooses how the server secures connections (more in
+[Remote access](../getting-started/remote-access.md)):
 
-- **Off** - plain HTTP. Only behind a reverse proxy that does HTTPS.
+- **Off** - plain HTTP. Use it only behind a reverse proxy that does HTTPS.
 - **Self-signed** - encrypted, but browsers warn the first time. The default,
   and fine on a home network.
-- **Let's Encrypt** - free trusted certificates, renewed automatically. Needs
-  ports 80 and 443 open to the internet, and shows **Certificate names**: one
-  name per line, like `books.example.com`, each pointing at this server.
+- **Let's Encrypt** - free trusted certificates, renewed for you. Needs ports
+  80 and 443 open to the internet. Enter each **Certificate name** (like
+  `books.example.com`) on its own line.
 
-With **Self-signed** chosen, the card also shows **Plain HTTP at home**, on out
-of the box. The phone apps can't trust a self-signed certificate, so while it is
-on the server's port also answers plain HTTP to devices on your home network
-(anything else is sent to HTTPS), and that is how the apps connect at home.
-Turn it off and the apps can't connect to a self-signed server. See
-[Plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect),
-including what it means for your network. It has no effect when you give the
-server your own certificate (`tls.cert_file`). `tls.home_http` in `config.yaml` or
-`AUDIOSILO_TLS_HOME_HTTP` sets it too, and then locks it here.
+With **Self-signed**, leave **Plain HTTP at home** on. The phone apps can't
+trust a self-signed certificate, so they connect over plain HTTP on your home
+network. Turn it off and the apps can't connect. See
+[Plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect).
 
-The **Certificate** row says how the certificate the server serves now looks:
-"Valid" with the days left, "Expires in *N* days" (under two weeks), "Expired",
-"Not issued yet" (Let's Encrypt hasn't issued one yet), or "None (plain HTTP)".
-Once there is a certificate, the line under it names who issued it and the
-date it runs out.
+The **Certificate** row shows whether the current certificate is valid and when
+it runs out.
 
 The **Network** card:
 
 - **Listen address** - the address and port the server listens on, like
   `0.0.0.0:8080`. Change it only if something else uses the port.
-- **Trusted proxies** - your reverse proxies, one address or range per line.
-  The server believes their `X-Forwarded-For` header, so devices, sessions and
-  rate limits see each visitor's real address. A plain address like
-  `10.0.0.2` is saved as the range `10.0.0.2/32`.
-- **Allowed web origins** - other websites allowed to call this server's API
-  from a browser, show its covers and play its audio, one per line (like
-  `http://localhost:8081`). Usually empty; see
+- **Trusted proxies** - your reverse proxies, one per line. Set this so the
+  server sees each visitor's real address.
+- **Allowed web origins** - other websites allowed to use this server from a
+  browser. Usually empty; see
   [Settings you can leave alone](../getting-started/remote-access.md#settings-you-can-leave-alone).
-
-The HTTPS mode, plain HTTP at home, the certificate names and the listen
-address wait for a restart; trusted proxies and allowed origins apply at once.
 
 ### Players & app links
 
-The **Web player** card says whether people can listen in a browser at `/web`:
-**Built in** (this build carries the player), **Served from a folder** (with
-the **Player folder** under it) or **Not available**. The player folder can
-only be changed in `config.yaml` (`web_dir`) or with `AUDIOSILO_WEB_DIR`, and
-takes effect at the next start.
+The **Web player** card says whether people can listen in a browser at `/web`.
+The player folder can only be set in `config.yaml` (`web_dir`) or with
+`AUDIOSILO_WEB_DIR`.
 
-The **App links** card lets invite links and QR codes on your own domain open
-the installed app directly. It only helps with an app build that claims your
-domain, so most servers leave it empty:
-
-- **iOS app IDs** - team ID and bundle ID, like `ABCDE12345.app.audiosilo`, one
-  per line.
-- **Android package** - like `app.audiosilo`.
-- **Android certificate fingerprints** - the SHA-256 of the app's signing
-  certificate (32 pairs of hex digits joined by colons), one per line.
+The **App links** card lets invite links on your own domain open the installed
+app directly. It only helps with an app build made for your domain, so most
+servers leave it empty.
 
 ### Community metadata
 
 ![Server settings, Community metadata](/img/screenshots/admin/settings-metadata.png)
 
-The **Look up community metadata** switch turns the community metadata lookup
-on or off for the whole server. When it is on, books that can be matched (they
-carry an ASIN or ISBN) gain an extra "About this book" block in the player - a
-description, production details, the series they belong to, and (where the
-community has written them) character cards and story-so-far recaps - drawn
-from the free, community-run catalogue at
-[meta.audiosilo.app](https://meta.audiosilo.app). For that lookup only a
-book's ASIN or ISBN is sent, never file paths or who is listening. See
-[A book's page](../listening/book-page.md#about-this-book) for what listeners
-see.
+**Look up community metadata** turns on extra book details from the free
+community catalogue at [meta.audiosilo.app](https://meta.audiosilo.app). Books
+with an ASIN or ISBN gain an "About this book" section in the player: a
+description, series, and (where written) characters and recaps. See
+[A book's page](../listening/book-page.md#about-this-book).
 
-From server 2.6.0, matching a book in the admin console sends the following
-details, since its job is to find a
-book that has no ASIN or ISBN yet: when you open **Match with community
-metadata** on a book, the book's tagged title, author and series, its length,
-narrators and language, any ASIN or ISBN (from its tags too, when it has neither
-of its own), what you type, and the names of up to three of its folders
-(the top folder, the folder holding the book, and the book's own folder or
-file name) go to the metadata service. Nothing is sent until you open the
-dialog (or start [Match automatically](health.md#matching-every-book-at-once),
-which sends the same for every book it looks up), and never anything about who
-listens. See
-[Matching with community metadata](books.md#matching-with-community-metadata).
+What is sent:
 
-While the lookup is on, the server also checks matched books against the
-community's chapter lists in the background (see
-[Community chapters](books.md#community-chapters)). That sends only the book's
-ASIN or ISBN and then the community's own ids for the recording it names.
-Turning the lookup off stops the checks; chapters already in use stay until
-you switch a book back.
+- **Looking up a book** sends only its ASIN or ISBN, never file paths or who
+  is listening.
+- **Matching a book** in the console sends its tagged title, author, series,
+  length, narrators and language. It also sends any ASIN or ISBN, what you
+  type, and up to three of its folder names. This happens only when you open **Match with community
+  metadata** or run [Match automatically](health.md#matching-every-book-at-once).
+  See [Matching with community metadata](books.md#matching-with-community-metadata).
+- **Community chapters** are checked in the background for matched books (see
+  [Community chapters](books.md#community-chapters)).
+- **Cover images** are downloaded by your server from where the catalogue
+  keeps them. Listeners' devices never contact those hosts.
 
-While the lookup is on, your server also downloads community cover images
-from wherever the catalogue keeps them (Audible's image servers or Open
-Library, for example) for the players' series rails and previous-book rows,
-and hands the players small copies. Only the image itself is asked for, and
-listeners' devices never contact those image hosts.
+Turning the switch **off** stops all of this at once, for everyone. The server
+then never contacts the metadata service or the cover hosts.
 
-With a [local copy](#keeping-a-local-copy), lookups, matching and chapter checks
-use your server's copy when it is ready and can answer. If it is unavailable,
-does not support the request or fails, those requests can go to the online
-metadata service instead. Cover images still come from their hosts, and the
-daily [report of unknown ASINs](#helping-complete-the-community-database) goes to
-the metadata service if you turn it on.
+The other settings on this topic:
 
-- Flipping the switch takes effect immediately for **everyone connected**, and
-  the choice is remembered across restarts.
-- Turning it **off** is a one-tap privacy switch: your server stops contacting
-  the metadata service and the cover image hosts at all, and the extra section
-  disappears from every player.
-- While it is on, **Status** says whether the service answers ("Responding ·
-  *N* ms" or "Not responding"). With a local copy it says how the copy is
-  doing instead ("Local copy ready", "Local copy downloading", "Opening the
-  local copy", "No local copy yet" or "Local copy couldn't download"), with a link to the details on
-  [Health > System](health.md#the-local-copy-of-community-metadata).
-- **Check for upcoming releases** turns on a daily check of the series your
-  libraries hold: which books in them are preorders, which came out recently,
-  and which are missing (on by default). It gives you the
-  [notification](notifications.md#what-to-send) **New releases in your series**,
-  and in the player each listener (except a kid) sees what's coming in the
-  series they can see, on Home and an Upcoming page, and can subscribe their
-  calendar app to the release days
-  ([Upcoming releases](../listening/upcoming.md)). A calendar that fetches from
-  the cloud, like Google Calendar, needs the **Public address** above to be a
-  public HTTPS address with a trusted certificate. It asks the metadata service
-  only about series and books, never who is listening. With a
-  [local copy](#keeping-a-local-copy), it uses the copy when it can answer and
-  can otherwise fall back to the online service. The switch
-  works only while the lookup is on (it is greyed out otherwise). Under it, while
-  the switch and the lookup are both on, the last check: "Not run yet" (the first check runs as soon as you switch it on,
-  or about an hour after the server starts), "Last checked *when*: *N* series,
-  *M* books coming or missing", or, in red, "Last check failed *when*" with the
-  reason. How far back a release still counts as new (90 days) is set in the
-  config file only.
-- **Help complete the community database** (from 2.6.0, **off** by default)
-  sends the metadata service, once a day, the Audible ASINs of your books that
-  the community database doesn't know, so the community can add them. See
-  [Helping complete the community database](#helping-complete-the-community-database)
-  below for what it sends and what the line under it says.
-- Both the upcoming-release check and unknown-ASIN report need community
-  metadata enabled. While it is off, their controls explain that prerequisite;
-  turning it back on restores their saved choices. Report status refreshes
-  while this topic is open, so an asynchronous report can finish without a
-  page reload.
-- **Audible marketplace** in the **Matching** card is the store you buy from
-  (United Kingdom, United States, Germany and so on). When a recording sells in
-  several stores, a match takes this store's ASIN; with **No preference** it
-  takes the US store's. It says nothing about what language your library is in:
-  a match reads that from each book, or, from 2.6.0, from
-  [the rest of its library](health.md#matching-every-book-at-once) when the book
-  states none and nearly all its library's books agree on one. It applies to the
-  next match, and [Use *country* ASINs](health.md#which-asin-a-match-takes) can switch books
-  matched earlier.
-- **Service address** in the **Service** card is the metadata service your
-  server uses (`https://meta.audiosilo.app` out of the box). Change it only if
-  you run your own; a new address is used from the next restart. If no address
-  is set, the switch is greyed out and a notice ("No metadata service is
-  configured") asks you to enter one and restart.
-- **Clear community matches**, in the **Danger zone** at the bottom, undoes
-  every community match so you can match from fresh. With more than one books
-  library, pick one (or **All libraries**); then click **Clear matches** and
-  type the word it asks for. It removes the titles, authors, narrators, series,
-  years, descriptions, ASINs, ISBNs and covers a community match wrote, whether
-  you accepted it by hand or
-  [in bulk](health.md#matching-every-book-at-once), and the record of which
-  community work each book was matched to, along with the match runs
-  and any review still waiting. Your own edits, the covers you uploaded and an
-  ASIN or ISBN from a book's Audiobookshelf `metadata.json` stay. The books go
-  back to what their tags and folders say and show under
-  [Not matched](health.md#matching-every-book-at-once) again (unless their
-  `metadata.json` carries an ASIN or ISBN), ready for **Find matches**. Nothing is sent to the
-  metadata service, so it works with the switch off too. It can't be undone:
-  only matching again brings the values back. While a match run is working it
-  asks you to wait for it, or stop it, first.
+- **Status** - whether the service (or your local copy) is answering.
+- **Check for upcoming releases** - on by default. A daily check of the series
+  you hold, for preorders, recent releases and missing books. Listeners (except
+  kids) see them on [Upcoming releases](../listening/upcoming.md), and you can
+  get a [notification](notifications.md#what-to-send). A calendar app in the
+  cloud, like Google Calendar, needs a public HTTPS **Public address** with a
+  trusted certificate.
+- **Help complete the community database** - off by default. See
+  [below](#helping-complete-the-community-database).
+- **Audible marketplace** (in **Matching**) - the store you buy from. When a
+  recording sells in several stores, a match takes this store's ASIN. It has
+  nothing to do with your library's language. See
+  [Which ASIN a match takes](health.md#which-asin-a-match-takes).
+- **Service address** - `https://meta.audiosilo.app` by default. Change it only
+  if you run your own.
+- **Clear community matches** (in **Danger zone**) - undoes every community
+  match in one library or all of them, so you can match again from fresh. Your
+  own edits and uploaded covers stay. It can't be undone.
+
+The upcoming-release check and the report below only work while the lookup is
+on.
 
 #### Helping complete the community database
 
-From 2.6.0, the **Help complete the community database** switch lets your
-server tell the community which of your books it is missing. It is **off**
-until you turn it on, and it works only while **Look up community metadata** is
-on (it is greyed out otherwise). Once a day, while it is on:
+Turn on **Help complete the community database** to tell the community which of
+your books it is missing. Once a day, the server sends the metadata service the
+Audible ASINs of your books that the community database doesn't know. The
+community can then add those books.
 
-1. The server collects your books' Audible ASINs: each book's own ASIN, and an
-   ASIN from a book's tags only when the book has no ASIN or ISBN of its own
-   (nor one you edited or cleared) and no other book's tags carry the same ASIN.
-2. It looks each one up in the community database first, as the lookup always
-   does, and keeps only the ones the database doesn't know.
-3. It sends those ASINs to the metadata service, and nothing else: no titles,
-   file paths, server name, or anything about who listens. The service sees
-   your server's IP address while it receives them and stores only each ASIN,
-   a count and the dates it was reported, with no address. It holds the
-   address in memory for about a day after its last request, for a rate limit.
-   meta.audiosilo.app keeps no access log for these reports over HTTPS, which
-   is how AudioSilo servers send them. The web server's error log can still
-   record the address of a request that goes wrong, such as a report that
-   cannot reach the service while it is restarting. Its
-   [privacy page](https://meta.audiosilo.app/privacy) ("Reports of unknown
-   books") has the details.
+Only the ASINs are sent: no titles, file paths, server name or anything about
+listeners. The service doesn't store your IP address with them. Its
+[privacy page](https://meta.audiosilo.app/privacy) has the details.
 
-A report is a suggestion of where to look, never a record: the community's
-catalogue bot can look each reported ASIN up as a real Audible listing and add
-the book in a reviewed change, so a later lookup of that book finds it.
+Good to know:
 
-Some limits on what it does:
-
-- It sends only over **HTTPS**. With a **Service address** that starts with
-  `http://` (other than one on this same machine, for testing), nothing is sent.
-- With a [local copy](#keeping-a-local-copy), the lookups are answered by the
-  copy on your server, and only the report itself goes to the metadata service.
-  Nothing is sent until the copy is ready.
+- It sends only over HTTPS.
+- With a [local copy](#keeping-a-local-copy), nothing is sent until the copy is
+  ready.
 - A server in [demo mode](#demo-mode) never sends a report.
-- An ASIN already sent isn't sent again for a month, and one the database later
-  adds stops being sent.
+- An ASIN isn't sent again for a month.
 
-While the switch and the lookup are both on, a line under it says how the last
-report went:
-
-- "Not sent yet: the first report goes out as soon as this is switched on, or
-  about an hour after the server starts."
-- "Last report *when*: *N* unknown ASINs sent", or "Last checked *when*:
-  nothing new to send" when every ASIN is known or was sent recently.
-- "Last tried *when*: the metadata service doesn't take reports (it needs an
-  https address and a service that accepts them)." An older service, or one
-  run with reports turned off, is then left alone for a week. Turning the
-  report off and on does not clear that wait.
-- In red, "Last report failed *when*; it's tried again tomorrow." The service
-  didn't answer or was too busy, or a lookup failed; any ASIN it didn't accept
-  is sent again next time.
+A line under the switch says when the last report went out, and whether it
+failed. A failed report is tried again the next day.
 
 #### Keeping a local copy
 
-Choose a local copy to answer supported requests on your server and reduce
-online lookups: it costs about 1.8 GB of disk and about 450 MB of download a
-day. It can still fall back to the online service, as described below.
-Otherwise keep the default, which stores no full copy.
+The **Source** card chooses where lookups are answered:
 
-The **Source** card has two choices:
+- **Ask the metadata service for each book** (the default). Each lookup goes
+  to the service online.
+- **Keep a local copy.** The server downloads the whole community database and
+  answers lookups, matching and chapter checks from it. Fewer requests leave
+  your server.
 
-- **Ask the metadata service for each book** (the default). Each lookup sends
-  the book's ASIN or ISBN to the service, as described above, and matching
-  sends what the match dialog needs.
-- **Keep a local copy.** The server downloads a copy of the whole community
-  database and uses it for "About this book", the match dialog, Match
-  automatically and community chapter checks. Requests the copy cannot
-  answer, including while it is not ready, can fall back to the online service
-  with the same identifiers or matching details. A book the ready copy says
-  it does not know does not by itself trigger an online retry. The optional
-  [report of unknown ASINs](#helping-complete-the-community-database) also
-  goes out if it is on, but its identifier checks wait for the local copy.
-
-What a local copy costs:
-
-- **Disk space:** the copy takes about 1.8 GB in the server's data folder. An
-  update needs about 2.5 GB free on top of that while it runs; without that
-  room the update is skipped, the current copy stays in use, and Health >
-  System says how much space it needs.
-- **Bandwidth:** about 450 MB for each new copy. The server looks for a new
-  copy once a day, and since the community database changes several times a
-  day, that usually means a download every day.
+A local copy takes about 1.8 GB of disk, plus about 2.5 GB free while it
+updates. It downloads about 450 MB a day, from GitHub. Choose it if you want
+fewer online lookups and have the space.
 
 How it behaves:
 
-- The choice applies **after a restart** (the card carries a **Restart to
-  apply** badge). After the restart the first copy is downloaded shortly
-  after the server starts, then updated once a day; [Health > System](health.md#the-local-copy-of-community-metadata)
-  shows its progress, and **Check now** there looks for a newer copy at once.
-- **Until the first copy is ready**, and whenever the copy runs into an error,
-  lookups go to the online service as before, so listeners never lose the
-  extra section while it downloads. Health > System says when that is
-  happening.
-- A book the copy doesn't know is **not** looked up online. If the server
-  already had details for it, it keeps showing them rather than going blank.
-- The copy comes from GitHub, which the server checks once a day. Requests
-  answered by the copy need no internet round trip; requests it cannot answer
-  can still go to the metadata service. The download carries nothing about
-  your books or listeners.
-- Cover images are not part of the copy: the server still downloads the
-  community covers the players show from wherever the catalogue keeps them
-  (only the image itself is asked for).
-- While the **Look up community metadata** switch is off, the copy isn't
-  updated either, and turning it off stops an update that is downloading.
-- The copy isn't part of the server's [backups](backups.md), and doesn't need
-  to be in yours: it can always be downloaded again.
-- Switching back to **Ask the metadata service for each book** deletes the
-  copy when the server next starts.
+- It applies after a restart. [Health > System](health.md#the-local-copy-of-community-metadata)
+  shows the download's progress.
+- Until the copy is ready, or if it fails, lookups go to the online service, so
+  listeners don't lose anything.
+- A book the copy doesn't know is not looked up online.
+- Cover images still come from their hosts.
+- The copy isn't in your [backups](backups.md). It can always be downloaded
+  again.
+- Switching back to **Ask the metadata service for each book** deletes the copy
+  at the next start.
 
 ### Transcoding
 
-**Transcoding** shows **ffmpeg** and **ffprobe**: the version found and where,
-"downloaded" when the server fetched its own copy into the data folder, or
-**Not available** with what that means. ffmpeg converts formats browsers can't
-play to MP3 while someone listens, and copies the MP3 out of `.mka` (Matroska)
-files so every player can play them; ffprobe reads lengths, chapters and codecs.
-When ffprobe is version 7.1 or 8.1, the server reads most files' lengths,
-chapters and codecs itself during a scan, much faster, and uses ffprobe for the
-rest; with another version, ffprobe reads every file (see
-[ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe)).
+**Transcoding** shows whether the server found **ffmpeg** and **ffprobe**.
+Nothing here can be changed in the console.
 
-The MP3 copies are kept in the data folder, under `cache/remux`, so each book
-is copied once rather than on every play. The folder holds at most 8 GiB: past
-that, the copies played longest ago are removed (and made again if someone
-plays them). The server makes no new copy while the disk would be left with
-less than 1 GiB free; such a book then plays through the live conversion. The
-folder is safe to delete and needs no backup. Opening a book in the player
-starts its copies in the background, so they are usually ready by the time
-someone presses play.
+- **ffmpeg** converts formats a browser can't play while someone listens, and
+  makes the small copies the [Apple Watch app](../listening/apple-watch.md)
+  downloads. Without it, some books won't play in a browser and watches get no
+  copies.
+- **ffprobe** reads lengths, chapters and codecs during a scan. See
+  [ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe).
 
-For the [Apple Watch app](../listening/apple-watch.md), ffmpeg also makes a small copy of each audio
-file for a watch to download and play away from your phone (about 430 MB for a
-20-hour book). They are made only when a watch asks for a book,
-kept in the data folder under `cache/renditions/watch`, and never written into
-your books folder. That folder holds at most 10 GiB: past that, the copies used
-longest ago are removed (and made again if a watch asks again). The same 1 GiB
-free-disk rule applies. The folder is safe to delete and needs no backup.
-Without ffmpeg the server offers no watch copies.
-
-Nothing here can be changed in the console. The server finds the two tools
-when it starts: next to its own program, on the system's PATH, or downloaded
-into the data folder. To use other copies, start it with the `--ffmpeg` and
+The server finds them next to its own program, on the system's PATH, or
+downloads its own copy. To use other copies, start it with the `--ffmpeg` and
 `--ffprobe` options (see the
 [configuration reference](/developers/server/configuration#cli-flags-cmdaudiosilo)).
 
+Converted copies are kept in the data folder under `cache/`. They are capped in
+size, safe to delete and need no backup.
+
 ### Household
 
-The **Household members** card: "People add kids and grown-ups to their
-household from the player, with no invite from you. Each member is a real
-account, managed by the person who added it." (See
-[Household members](users-and-invites.md#household-members).)
+These settings control [household members](users-and-invites.md#household-members):
+kids and grown-ups people add from the player, with no invite from you.
 
-- **People can add household members** - on out of the box. Off stops new
-  members being added; members already added keep working, and the people who
-  added them can still manage them.
-- **Members per person** - from 1 to 50 (6 unless you change it). Lowering it
-  never removes anyone: someone already over the new number just can't add more.
+- **People can add household members** - on by default. Off stops new members
+  being added. Members already added keep working.
+- **Members per person** - 6 by default (1 to 50). Lowering it never removes
+  anyone.
 
-Both apply at once, with no restart. To stop one person adding members, turn
-off **Can add household members** on their Account tab instead. The
-`AUDIOSILO_HOUSEHOLD_MEMBERS_ENABLED` and `AUDIOSILO_HOUSEHOLD_MAX_MEMBERS`
-variables set them too, and then lock them here.
+To stop just one person adding members, turn off **Can add household members**
+on their Account tab instead.
 
 ### Demo mode
 
 The **Demo mode** card runs a public demo from this server (see
 [Demo](../demo.md)):
 
-- **Enable demo mode** - hands out throwaway accounts at `/web/demo`, and sends
-  visitors of the site's front page straight to the demo. Waits for a restart.
-- **Guests can listen to** - the library every demo account gets. Use a
-  library of public-domain books, never your own collection.
-- **Most guests at once** - `0` means no limit; leave it empty for the default
-  (200).
-- **Remove idle guests after** - a length of time like `30m`, `2h` or `24h`;
-  empty means 24 hours. Waits for a restart.
+- **Enable demo mode** - hands out throwaway accounts at `/web/demo`.
+- **Guests can listen to** - the library guests get. Use public-domain books,
+  never your own collection.
+- **Most guests at once** - `0` means no limit; empty means 200.
+- **Remove idle guests after** - like `30m` or `24h`; empty means 24 hours.
 
 ### Modules
 
 ![Server settings, Modules](/img/screenshots/admin/settings-modules.png)
 
-Modules are optional features you choose to turn on. Every module starts off and
-stays off until you turn it on; pairing a Bridge doesn't turn one on. **Modules**
-shows a card for each one, with what it does, **Learn more** (which opens this
-section) and its **Enable** switch. The switch saves the moment you flip it,
-and the module starts or stops at once, with no restart.
+Modules are optional features. Each one is off until you turn on its
+**Enable** switch, which takes effect at once.
 
-Some modules need a [Bridge](bridge.md). Their card says where your Bridge
-stands, under the switch's name:
+Some modules need a [Bridge](bridge.md). Their card says whether your Bridge is
+ready, and links to **Bridge settings** if it isn't. You can turn a module on
+before then: listeners see it once the Bridge is ready.
 
-- **Needs a Bridge** - no Bridge is paired, or it hasn't reported in the last
-  two minutes.
-- What your Bridge is missing, like **Sign in to GitHub on your Bridge** - the
-  Bridge is online but can't do what this module needs yet.
-- **Bridge ready** - the Bridge can do it.
+- **Podcasts** - follows shows by feed URL and downloads their episodes. Needs a
+  Bridge. With it on, listeners can also search podcast directories and import
+  OPML. See [Podcasts](podcasts.md).
+- **Contributions** - sends your book corrections, and the characters and
+  recaps your Bridge generates, to the community metadata database. Needs a
+  Bridge signed in to GitHub. See
+  [Contribute from your server](../community/contributing-from-your-server.md).
+- **Audible** - shows the books in your Audible accounts and backs up the ones
+  you choose into your library. Needs a Bridge. See [Audible](audible.md).
 
-Until the Bridge is ready, the card has a **Bridge settings** link to pair one or
-see what is wrong.
-
-You can turn a module on before its Bridge is ready. Its card then says **On,
-but hidden from listeners until the Bridge is ready.** Listeners see what the
-module adds only while the Bridge is ready: it appears and disappears on its own
-as the Bridge comes and goes, without you touching the switch. Contributions,
-which listeners never see, says **On, but nothing is sent until the Bridge is
-ready.** instead.
-
-The modules today:
-
-- **Podcasts** - follows shows by feed URL, keeps their details and artwork up
-  to date, downloads episodes and checks retention. An admin sets retention
-  per show [through the API](podcasts.md#downloads-and-retention) for now.
-  It needs an online Bridge that supports podcasts. With it on, the server can
-  also [search podcast directories (no Bridge needed) and import OPML](podcasts.md#finding-shows-and-moving-subscriptions),
-  which listeners use from the player's Add shows page; exporting OPML works
-  with the module on or off.
-  Player apps from 2.4.0
-  [show podcasts](podcasts.md#what-is-available-now); older ones don't. Turning the
-  module off stops follows and feed/download/retention scheduling, keeping the
-  indexed shows and files. Work already held by the Bridge may finish; a
-  compatible client can still read saved episodes without it.
-- **Contributions** - sends your book corrections, and the characters and recaps
-  your Bridge generates, to the community metadata database, so every AudioSilo
-  server can use them. It needs a Bridge signed in to GitHub, or given a GitHub
-  token of your own (**Sign in to GitHub on your Bridge** until it is, and also
-  while a signed-in Bridge can't reach GitHub to renew its sign-in, which ends by
-  itself: see [Bridge accounts](../getting-started/bridge-accounts.md#github)).
-  While it is
-  on and the Bridge is ready, the generate dialog offers **Also contribute to the
-  community** (on by default), and a book's page offers
-  [Share with the community](bridge.md#share-with-the-community) and
-  [Suggest corrections](bridge.md#suggest-corrections). Turned off, none of them
-  shows, and such a job already queued waits until it is on again, except a
-  share, which is cancelled if the book's characters and recaps are generated
-  again meanwhile. Listeners see nothing of it. See
-  [Contributing from your server](../community/contributing-from-your-server.md).
-- **Audible** - shows the books in the Audible accounts your Bridge signs in to,
-  which of them are already on this server, and backs up the others you choose
-  into your library. It needs an online Bridge that
-  supports Audible (**An online Bridge that supports Audible** until there is one).
-  While it is on, the server asks the Bridge to check each account's library every
-  6 hours, Settings gains an **Audible** page and Settings > Bridge an **Audible
-  accounts** card. Turned off, both are hidden and no checks or backups are made;
-  the accounts and their titles are kept. Listeners see nothing of it. See
-  [Audible](audible.md).
-
-A module's environment variable (`AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED=true`
-turns Contributions on) sets its switch too, and then locks it here, like any
-[setting set somewhere else](#settings-set-somewhere-else).
-Each change is in the [audit log](#audit-log) as a settings change.
+Turning a module off keeps what it already made (shows, files, accounts).
 
 ## About and updates
 
 ![Server > About](/img/screenshots/admin/about.png)
 
-**Server > About** starts with the **Updates** card, which says one of:
+**Server > About** shows your version and whether a newer one exists. **Check
+now** asks straight away.
 
-- **You're up to date** - this version is the newest release.
-- **AudioSilo *version* is available** - with a **Release notes** button, a
-  line saying AudioSilo is free and that sponsors keep it going (with a
-  **Sponsor on GitHub** link), and how to update this server:
-  - **Docker**: pull the new image (`ghcr.io/kodestar/audiosilo-server:<version>`,
-    or `:latest`) and recreate the container (`docker compose pull` then
-    `docker compose up -d`). Your data folder stays as it is.
-  - **The program on its own**: download the new version for your system from
-    the release page, replace the program and start it again with the same data
-    folder (see [Install the native binary](../getting-started/install-binary.md)).
-  - **A local build**: pull the new tag and build again.
-- **This is a development build** - a build of your own, or the
-  [`:edge` image](../getting-started/quickstart-docker.md#testing-unreleased-builds),
-  can't be compared with releases; the card names the newest release.
-- **Couldn't check for updates** - GitHub limited requests from your address
-  for now, couldn't be reached from the server (check its internet
-  connection), or gave an answer that didn't make sense. The server tries
-  again the next day.
-- **Not checked yet** - the server checks a minute after it starts, then once a
-  day.
-- **The update check is off** - with a **General settings** button to turn it
-  on.
+When an update is available, the card shows the release notes and how to
+update:
+
+- **Docker** - pull the new image and recreate the container
+  (`docker compose pull`, then `docker compose up -d`). Your data folder stays
+  as it is.
+- **The program on its own** - download the new version from the release page.
+  Replace the program and start it with the same data folder (see
+  [Install the native binary](../getting-started/install-binary.md)).
+
+Nothing is installed for you: updating is always your step. Before you update,
+see [Before an upgrade](backups.md#before-an-upgrade).
 
 ![An update available, with the sponsor line](/img/screenshots/admin/update-notice.png)
 
-The card's header says when the server last asked, and its foot names the
-latest release and when it was published. **Check now** asks GitHub
-straight away (a second press within a minute shows the same answer rather
-than asking again).
-
-When an update exists, the version line on the
-[overview's Server card](console-tour.md#the-overview) also shows a
-"*version* available" link to this page.
-
-**A console tab left open during an update** still runs the console from before
-it. The first page you open there that the new server no longer has reloads the
-tab into the new console by itself, once. This works for a tab opened on 2.5.1
-or later, so it starts with the update after 2.5.1: a tab still open from 2.5.0
-needs reloading by hand. If the page still can't open, it says **AudioSilo was
-updated**: "This tab still has the console from before the update. Reload to
-open the new one.", with **Reload** and **Go to the overview**. A page that
-fails for any other reason shows **This page hit a problem**, with **Reload** and
-**Go to the overview**, and the console's menu stays in place.
-
-The **About *name*** card lists the server's name, version, how it is installed
-(Docker container, Program or Local build), platform, how long it has been
-running, its data folder, the database's size and schema number, and its
-server ID. Under it are links to this documentation, the source code, the
-issue tracker and **Support AudioSilo** (the project's GitHub Sponsors page; see
-[The support card](console-tour.md#the-support-card)).
+The **About** card below lists the server's details, such as how it is
+installed, its data folder and the database size.
 
 ### What the update check sends
 
-The update check asks one fixed address at GitHub
-(`api.github.com/repos/KodeStar/audiosilo-server/releases/latest`), at most
-once a day plus whenever you press **Check now**. The request carries only your
-server's version (as `AudioSilo/<version>`), and GitHub sees the address it
-comes from, as with any request. Nothing about your libraries, books or people
-is sent, and there is no identifier for your server. While **Check for new
-versions** is off, the server doesn't make this request at all. Nothing is downloaded or
-installed for you: updating is always your step.
+The update check asks GitHub about the latest release, at most once a day and
+when you press **Check now**. It sends only your server's version. GitHub sees
+your address, as with any request. Nothing about your libraries, books or
+people is sent. Turn off **Check for new versions** in [General](#general) to
+stop it.
 
 ## Logs
 
 ![Server > Logs](/img/screenshots/admin/logs.png)
 
-**Server > Logs** shows what the server has been doing since it started: scans
-starting and finishing, a library folder that went missing, a failed update
-check, a warning about the HTTPS setup, and so on. The newest line is at the
-bottom, and while you stay at the bottom the view follows new lines.
+**Server > Logs** shows what the server has been doing since it started: scans,
+missing folders, warnings and errors. Filter by **Warnings** or **Errors**,
+or search. **Live tail** keeps the view updated.
 
-- **All**, **Warnings** and **Errors** filter by how serious a line is
-  (Warnings also shows errors).
-- **Search logs** keeps only the lines that contain what you type, in the
-  message or its details.
-- **Live tail** (on by default) fetches new lines every two seconds. Turn it
-  off to read without the view moving.
-
-A few things to know:
-
-- The server keeps its **newest 2,000 lines in memory**, from when it started,
-  and nothing is written to disk for this page. A restart empties it. The page
-  opens on the newest 500 lines that match the filters and holds up to 1,000
-  as new ones arrive; when there were more, "Older lines aren't shown." marks
-  the gap at the top. After a server restart the live tail starts over with
-  the new lines.
-- The full log is wherever the server's output goes: `docker compose logs`
-  under Docker, the terminal or service log otherwise. That is also where the
-  first-run admin password was printed; it never appears here.
-- Passwords, tokens, invite codes and other secrets are never shown: any detail
-  named after one (a token, password, code, key, cookie or secret) is replaced
-  with `[redacted]` before the line reaches this page.
+The page holds only the newest lines since the last restart. The full log is
+wherever the server's output goes, such as `docker compose logs`. Passwords,
+tokens and other secrets are never shown.
 
 ## Audit log
 
 ![Server > Audit log](/img/screenshots/admin/audit.png)
 
-**Server > Audit log** lists what admins changed, and what people did with their
-household members in the player, newest first: when, who,
-what they did and to what, with the details underneath. For example
-"Changed settings" with each setting's old and new value, "Edited a book" with
-the fields that changed, "Gave access" with the person and the share, or
-"Downloaded a backup" with the backup's name. A key symbol next to a name
-means the change was made with a personal API key rather than in a signed-in
-app. Things the server did by itself on an admin's behalf, like applying a
-restore at start, are listed under **AudioSilo**.
+**Server > Audit log** lists what admins changed, newest first: who, what and
+when, with the details. It also lists what people did with their household
+members. Filter by **Area** or **Who**, or search.
 
-What is recorded: changes to accounts, invites, devices signed out, shares and
-access, household members (what the people who manage them do in the
-player, naming them as the one who did it), people's progress, libraries, books
-and covers, ignored health issues,
-settings, backups (including every download, restore and cancelled restore),
-notification destinations, and answers to the
-[support card](console-tour.md#the-support-card) ("Answered the support card",
-with the answer and, for **Not now**, when the card shows again).
+It records changes to accounts, invites, devices, access, progress, libraries,
+books, settings, backups and notifications. Sign-ins and listening are in
+[Activity](activity.md), and scans in [Health > Jobs](health.md#jobs).
 
-What isn't:
-
-- **Sign-ins and listening.** They are in [Activity](activity.md) and on
-  [People > Devices](users-and-invites.md#the-devices-page) (and you can be
-  [notified](notifications.md) of sign-ins).
-- **Scans** (and rescans of one book, and stopped scans): their history is in
-  [Health > Jobs](health.md#jobs).
-- Anything else people do in a player.
-
-The log never holds a secret: a password change reads only "set" or "removed",
-an invite never shows its code, and a notification destination's address or
-secret only as "New address" or "New secret". It doesn't record IP addresses.
-Entries are kept for a year.
-
-To narrow the list, choose an **Area** (Accounts, Household members, Invites,
-Devices, Shares and access, Progress, Imports, Libraries, Books, Health, Settings,
-Backups, Notifications), a person under **Who** (everyone but demo accounts and
-household members, since the people who manage household members appear in the log
-too), or type in **Search names and paths** (it matches what a change was made to, or who made it). **Show older**
-at the foot loads the next 50.
-
-## Where to next
-
-- [Backups and restoring](backups.md),
-  [Notifications and the bell](notifications.md),
-  [Importing from Audiobookshelf](import.md) and [The Bridge](bridge.md) - the
-  topics with pages of their own.
-- [Library health and jobs](health.md) - the System page, issues and scans.
-- [Remote access](../getting-started/remote-access.md) - HTTPS, ports and
-  proxies in more depth.
-- [Troubleshooting](../troubleshooting.md) - when something isn't working.
+The log never holds a password or other secret, and no IP addresses. Entries
+are kept for a year.

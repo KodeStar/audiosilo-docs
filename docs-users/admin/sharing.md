@@ -1,152 +1,80 @@
 ---
-title: "Sharing"
-description: "How AudioSilo access control works: shares as named sets of folders, whole-library access, building shares in the admin console, and what a person with a share actually sees."
+title: "Limit what someone can see"
+description: "Use shares to choose which folders each person can see: a whole library, an author, a series or a single book."
 ---
 
-AudioSilo's access control answers one question: **which folders can this
-person see?** The mechanism is the **share** - a named set of folders that you
-give to people. **People > Shares** in the [admin console](console-tour.md) is
-where you build them.
+A **share** limits what someone can see to the folders you choose: a whole
+library, an author, a series or a single book. Give someone a share and they
+see only those books. You build shares in **People > Shares** in the
+[admin console](console-tour.md), as an admin.
+
+To give someone a whole library, you don't need a share: pick the library when
+you [invite them](users-and-invites.md#inviting-someone), or use **Give
+access** on their [Access tab](users-and-invites.md#access).
 
 ![The Shares page](/img/screenshots/admin/shares.png)
 
 ## How access works
 
-The rules are short:
+- **Someone you invite sees nothing until you give them something.** The invite
+  dialog asks what they can listen to.
+- **Admins see everything.** Shares never limit an admin.
+- **Shares add up.** Someone with two shares sees everything either one covers.
+- **Sharing a folder shares everything under it**, including books you add there
+  later.
+- **Access is read-only.** A share lets someone listen, never change or delete
+  your files.
 
-- **A person you invite sees nothing until you give them something.** There is no
-  default library. The [Invite someone](users-and-invites.md#inviting-someone)
-  dialog asks what they can listen to, so nobody has to start empty-handed.
-- **Admins see everything.** Shares never restrict an admin account.
-- **Access is the union of a person's shares.** Give someone two shares and
-  they see everything either one covers. A
-  [household member](users-and-invites.md#household-members) also gets what
-  their owner gives them: everything the owner can listen to, or the
-  collections the owner shares with them.
-- All access over the network is **read-only** - a share lets someone listen,
-  never change or delete your files.
-
-A share's folders can sit at any level of a library's folder tree:
-
-- the **whole library**,
-- an **author's folder**,
-- a **series folder**,
-- or a **single book**.
-
-Sharing a folder shares everything underneath it, including books you add there
-later - share an author's folder once, and every book you drop into it is
-automatically included.
-
-## Whole-library access
-
-Giving someone an entire library is the most common case, so it has a shortcut:
-pick the library in the **Invite someone** dialog, or with **Give access** on
-the person's [Access tab](users-and-invites.md#access). Behind the scenes this
-creates (and then reuses) a share for that library containing the whole
-library, so there is exactly one system, not two.
-
-The Shares page lists these separately, under **Whole libraries**, each named
-after its library: "Made when you give someone a whole library. Change who has
-it from each person's page." They are read-only there - no renaming, deleting,
-folders or people buttons. To give or take away a whole library, use **Give
-access** and **Remove** on the person's [Access tab](users-and-invites.md#access).
-Deleting a library removes its whole-library access too.
-
-A share *you* make stays an ordinary share even if you fill it with a whole
-library: you can still rename it, delete it, and change its folders and people.
-
-## What the listener sees
-
-A share doesn't just hide play buttons - it filters the person's entire view of
-the server:
-
-- **Browsing** shows only their shared folders. The folders *above* a shared
-  folder stay visible so they can navigate down to it, but those folders contain
-  nothing else. Someone with only `Brandon Sanderson/Mistborn` sees a
-  `Brandon Sanderson` folder with just `Mistborn` inside.
-- **Search, book lists and "recently added"** only return books they can see.
-- Someone with folders in only one library sees only that library.
-- Every play, cover and download request is checked against their access on the
-  server - the filtering isn't cosmetic.
-
-Changing a share takes effect immediately: add a folder and everyone with that
-share sees the new content; remove a folder (or take the share away) and it
-disappears from their apps the next time they refresh.
+A [household member](users-and-invites.md#household-members) also gets what the
+person who added them chooses.
 
 ## Creating a share
 
-Click **New share** and give it a name (the dialog suggests `e.g. Kids`): "Name
-it after what's in it. You add folders and people next." Click **Create share**
-and the new share opens, ready to fill.
+1. Click **New share**.
+2. Give it a name, like `Kids`, and click **Create share**.
+3. Click **Add a folder**, pick the **Library**, and open folders until you find
+   the one you want.
+4. Click **Add this folder** (or **Add** next to a folder or book).
+5. Under **People with this share**, click **Add person** for each person.
 
-The list on the left shows each share with how many folders and people it has.
-Click one to see it on the right, in two parts.
+You can also add books from **Library > Books**: select them and choose **Add to
+share**, or use **Add to a share** on a book's page (see
+[Books and metadata](books.md#changing-many-books-at-once)).
 
-### Folders in this share
+Changes take effect straight away. Remove a folder or person with the **✕**
+beside it. The share's **⋯** menu has **Rename** and **Delete share**.
+Deleting a share touches no files, and people's progress is kept.
 
-Each folder is shown as `Library › folder/path` (or the library's name with
-"whole library"). Remove one with the **✕** beside it.
+## What the listener sees
 
-**Add a folder** opens a picker that browses the library as the player sees it:
+A share filters the person's whole view of the server, and the server checks
+every play, cover and download against it.
 
-1. Pick the **Library** (when you have more than one).
-2. Click folders to open them.
-3. Click **Add the whole library** at the top level, **Add this folder** for the
-   folder you're in, or **Add** next to any folder or book in the list. Anything
-   already in the share says **Already in**.
+- Browsing shows only their shared folders. Folders above a shared folder stay
+  visible so they can find it, but show nothing else.
+- Search and book lists only show books they can see.
+- If their folders are all in one library, they see only that library.
 
-You never type paths by hand, so there's nothing to mistype.
+## Examples
 
-You can also add books from the other side: select books in **Library >
-Books** and choose **Add to share**, or use **Add to a share** on a book's
-page (see [Books and metadata](books.md#changing-many-books-at-once)). Each
-book becomes one of the share's folders.
+**A kids' share.** Make a share called `Kids`. Add the author folders that suit
+them, say `Roald Dahl` and `Terry Pratchett`. Add each child's account. New books
+you add under those folders appear for them automatically.
 
-Share a book by its own folder (or file), not by a folder or file inside it. A
-share that holds only part of a book, such as one disc folder of a book joined
-from its discs (see
-[Books split into disc folders](libraries.md#books-split-into-disc-folders)) or
-one file of a book made of several, doesn't give access to the book itself:
-its title, chapters and cover stay hidden, as for anything outside the share.
-The share still grants its own files, but a player can't open them as a book,
-so add the book's folder instead.
-
-### People with this share
-
-Everyone who has the share, each with a **✕** to take it away, and **Add
-person** to give it to someone else. (Admins aren't offered: they see everything
-already. Whole-library entries list their people without these buttons.) You can also give and remove shares from a person's
-[Access tab](users-and-invites.md#access).
-
-One share can go to any number of people, which is what makes it a good unit:
-fix the share once and everyone who has it follows.
-
-### Renaming and deleting
-
-The share's **⋯** menu has **Rename** and **Delete share**. Deleting asks first
-and says how many people lose access to its books, "unless another share covers
-them. No files are touched." Their progress is kept, so giving them access again
-later picks up where they left off.
-
-## Practical examples
-
-**A kids' share.** Click **New share** and name it `Kids`. **Add a folder** for
-each set of books that's appropriate - say the `Roald Dahl` and
-`Terry Pratchett` author folders in your Fiction library. Then **Add person**
-for each child's account. Their apps show only those authors; new books you add
-under either folder appear for them automatically, and anything else in the
-library simply doesn't exist for them.
-
-**Sharing one series with a friend.** Your friend wants *The Expanse* and
-nothing else. Create a share named `Expanse for Sam`, open the series folder in
-**Add a folder** and click **Add this folder**. Then
-[invite them](users-and-invites.md#inviting-someone) and choose `Expanse for
-Sam` under **What can they listen to?**. They'll see a library containing
-exactly one series - and if you later decide to share more, just add folders to
-their share.
+**One series for a friend.** Make a share called `Expanse for Sam` and add the
+series folder. Then [invite them](users-and-invites.md#inviting-someone) and
+choose that share under **What can they listen to?**.
 
 :::tip
-Name shares after the *audience or purpose* (`Kids`, `Book club`,
-`Expanse for Sam`) rather than the content. The folders inside will change over
-time; a purpose-named share stays meaningful.
+Name shares after who they are for (`Kids`, `Book club`) rather than what is in
+them. The folders will change; the purpose won't.
 :::
+
+## Good to know
+
+- Whole-library access appears under **Whole libraries** on the Shares page.
+  Change who has it from each person's [Access tab](users-and-invites.md#access).
+- Share a book by its own folder (or file), not a folder inside it. A share
+  holding only one disc folder, or one file of a multi-file book, doesn't give
+  access to the book (see
+  [Books split into disc folders](libraries.md#books-split-into-disc-folders)).
