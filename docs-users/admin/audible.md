@@ -98,10 +98,11 @@ Accounts tab (**Change**) to carry on.
 
 ![Server > Settings > Audible: the titles of the signed-in accounts, with their states and whether each is on this server](/img/screenshots/admin/audible-titles.png)
 
-**Server > Settings > Audible** lists every title your Audible accounts own, as the
-Bridge last saw them, sorted by title. Each row shows the title, its authors and
-series, then its length, the release date of a preorder, its ASIN, (with several
-accounts) which account owns it, and **To ...** when you gave it a
+**Server > Settings > Audible** lists every title your Audible accounts own or have
+[preordered](#preorders), as the Bridge last saw them, sorted by title. Each row
+shows the title, its authors and series, then its length, the release date of a
+preorder, its ASIN, (with several accounts) which account owns it, and **To ...**
+when you gave it a
 [destination](#choosing-a-destination). A title that isn't on this server says
 [where its backup would go](#where-a-title-would-go), and one that is
 [contested](#contested-titles) says which book it tied for. A title Audible won't
@@ -139,9 +140,9 @@ page for the account you chose under **Account**, or for the only one there is.
 | State | Means |
 |---|---|
 | **Available** | the account owns it and can download it |
-| **Preorder** | not released yet; the row says when it is |
+| **Preorder** | ordered but not released yet; the row says when it is (see [Preorders](#preorders)) |
 | **Unavailable** | the account has it but Audible won't let it be downloaded (for example a podcast or a periodical, or a title without download rights); the row says why |
-| **No longer in the library** | it was in the account before, but the Bridge's last complete check didn't find it (returned, or removed from the account) |
+| **No longer in the library** | it was in the account before, but the Bridge's last complete check didn't find it (returned, or removed from the account; or a preorder that was cancelled or never came out, see [Preorders](#preorders)) |
 
 Audible sometimes gives a title it has had for years a placeholder release date
 far in the future (such as the year 2200). A date more than two years ahead is
@@ -503,8 +504,34 @@ overwritten.
 
 ## Preorders
 
+Audible doesn't put a preorder in your Audible library until it comes out, so at
+each check the Bridge also reads the account's orders and lists every preorder
+still waiting there, with its title, authors, series and release date from
+Audible's catalogue. A preorder shows from the first check after you order it:
+press [Check now](#check-now) to see it sooner. Until the catalogue has described
+it, its row shows only its ASIN. A release date Audible moves is picked up at the
+next check.
+
+Once a check has seen a preorder, the Bridge remembers it, and it stays a
+**Preorder** until the account's library lists it (then it takes the library's
+state, usually **Available**), even after the order has dropped out of Audible's
+order history. When you cancel the order, or when it still isn't in the library 30
+days after its release date, the Bridge stops reporting it and it turns
+**No longer in the library**. If the Bridge can't read the orders or the catalogue
+at a check, the check still finishes and lists the preorders it remembers.
+
+:::note[Older preorders]
+Audible's order history only goes back about six months, so a preorder ordered
+longer ago than that when the Bridge (a release after 0.6.0) first checks the
+account can't be found. It isn't listed until it comes out, then shows as
+**Available** like any other title. A preorder ordered later is remembered, however
+long it waits for release.
+:::
+
 A **Preorder** can't be downloaded yet. **Back up** on one remembers it: the title
 shows **Backs up on release**, and the request is kept through restarts.
+The row shows [where it would go](#where-a-title-would-go) once Audible's catalogue
+has described it.
 
 From the title's release date, the server checks the account **every hour**
 instead of every 6 hours. The first check that finds it **Available** backs it up:
