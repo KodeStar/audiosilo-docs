@@ -372,14 +372,18 @@ controller the phone scene adopts later. The scene window is mirrored onto the a
 
 Links take two routes, as Expo SDK 58's own `ExpoAppSceneDelegate` does. The phone scene
 delegate (`AudiosiloPhoneSceneDelegate.swift`) forwards each URL context and user activity
-to the app delegate, where Expo's subscribers (expo-linking, expo-router) listen. It also
+to the app delegate, where Expo's subscribers (expo-linking, expo-router) listen. It then
 hands each one to React Native's scene API (`RCTLinkingManager`
 `scene:openURLContexts:` / `scene:continueUserActivity:`), which sends JS its `url` event.
+It skips that call when a subscriber already announced the URL (expo-router posts a Handoff
+`href` itself), so JS never hears a link twice. `LinkAnnouncement` watches
+`RCTOpenURLNotification` for this, the same guard as Expo's `SceneEventForwarder`.
 Since React Native 0.88 the app-delegate `RCTLinkingManager` methods do nothing in a scene
 app, so the AppDelegate has no linking overrides. Without the scene calls, a link opened while
-the app runs (a pairing link, a widget, the Live Activity) would never reach JS. Pairing deep links, cold and warm, are the regression to check after
-any change here. `plugins/withCarPlay.test.ts` runs the transforms over the SDK 58
-AppDelegate fixture (`plugins/__fixtures__/app-delegate-sdk58.ts`) and pins the scene API
+the app runs (a pairing link, a widget, the Live Activity) would never reach JS. Pairing deep
+links, cold and warm, are the regression to check after any change here.
+`plugins/withCarPlay.test.ts` runs the transforms over the SDK 58 AppDelegate fixture
+(`plugins/__fixtures__/app-delegate-sdk58.ts`) and pins the scene API
 calls in the Swift source.
 
 ### The templates (`AudiosiloCarPlaySceneDelegate.swift`)

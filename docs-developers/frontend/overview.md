@@ -100,8 +100,9 @@ targets/watch/      the Apple Watch app (Swift, not bundled by Metro): Core/ (Fo
                     only), Net/, Storage/, Phone/, Playback/, UI/
 watch-core/         SwiftPM package over targets/watch/Core, for its tests on the host
 plugins/            config plugins (CarPlay scenes, Cast, the watch scheme, the Xcode 26
-                    fix); withCarPlay, withCast and withWatchScheme have jest tests, and
-                    widgets-entitlements.test.ts checks the widget's entitlements
+                    fix); withCarPlay, withCast and withWatchScheme have jest tests,
+                    widgets-entitlements.test.ts checks that no target asks for push
+                    and build-properties.test.ts pins the expo-build-properties options
 index.ts            the app entry (package.json main): registers the car's headless
                     task, then expo-router/entry
 public/             sw.js (service worker) + manifest.json (PWA), copied verbatim
@@ -402,9 +403,9 @@ web, a secure context with the Cache API).
   could own, is given to the alphabetically **first** tab group - which is why
   Downloads is `(offline)` and not `(downloads)`. `TAB_STACK_SETTINGS` (the
   group-keyed `unstable_settings` of the array-group layout: each tab's `anchor`)
-  inserts each tab's root underneath so back works, and `tabStackListeners` strips the link params
-  React Navigation copies onto that root and its ancestors (otherwise back
-  landed on `/?libraryId=1`). A root keeps only its own `rootParams`
+  inserts each tab's root underneath so back works, and `tabStackListeners`
+  strips the link params React Navigation copies onto that root and its
+  ancestors (otherwise back landed on `/?libraryId=1`). A root keeps only its own `rootParams`
   (`Destination.rootParams` in `destinations.ts`: Library's `mode`, `sort`,
   `status`, `dl`, `len`; the You hub's `section` and the Journal's `tab`); every other param on a root, and every param on its
   ancestors, is replaced with none.
@@ -436,8 +437,9 @@ web, a secure context with the Cache API).
   the sibling chrome toggles. Moving it between wrappers remounts every screen on
   a resize and jumps the URL to another tab.
 - **Native: never add or remove tabs at runtime.** `NativeTabs`
-  (`expo-router/native-tabs`) can't; tablet and desktop set `hidden` on the whole bar instead, so every tab's stack
-  survives an iPad rotation or split view crossing 640.
+  (`expo-router/native-tabs`) can't; tablet and desktop set `hidden` on the
+  whole bar instead, so every tab's stack survives an iPad rotation or split
+  view crossing 640.
 - **Route-driven side effects** (clearing the search query when leaving the
   Search tab, forgetting browse scroll positions when leaving the browse
   section - the Library root and folders plus the book, series, author,
