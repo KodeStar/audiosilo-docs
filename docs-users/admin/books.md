@@ -573,8 +573,7 @@ Accepted values are marked **Community** and are locked like your own edits;
 you can revert them the same way. From 2.7.0, an ASIN or ISBN you leave unticked, or
 revert later, stays off:
 [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
-doesn't write it back. A book matched before 2.7.0 can still get it back until
-you match it again. If you have unsaved edits on the page, save
+doesn't write it back. If you have unsaved edits on the page, save
 or discard them before matching.
 
 A cover you accept becomes the book's [custom cover](#covers). If it can't be

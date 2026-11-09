@@ -412,9 +412,8 @@ if the community merged or renamed it.
 A known identifier takes precedence, even if it names another work. If a book
 with neither identifier is matched to a recording that has gained an ASIN or
 ISBN since, the review offers it too; existing identifiers stay as they are.
-From 2.7.0 it never offers the one you left unticked when you accepted the
-match, or removed since (for a book matched before 2.7.0, only once you match
-it again).
+From 2.7.0 it doesn't offer an ASIN or ISBN you left unticked or removed. For
+a book matched before 2.7.0, this starts once you match it again.
 If the recorded work is looked up but the community no longer has it, the book
 is listed under **Not found** ("The community no longer has the work this book
 is matched to; the match is kept") and stays matched. Use it for books that got an ASIN or ISBN
