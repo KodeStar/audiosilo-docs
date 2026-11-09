@@ -139,7 +139,11 @@ what it found and apply it.
    scored. Those say so in both lengths ("Held for review: the book is 10h 34m
    long, this recording 7h 2m"), as the closest recording can be
    another edition. **Another recording scores almost as well** explains a close
-   competing score. A work that holds only a dramatization of the book is held too, unless:
+   competing score. From 2.7.0 a match found by the ASIN or ISBN in the book's tags
+   is held when the book's title doesn't agree with it ("Held for review: the ASIN
+   or ISBN in its tags may name another book", see
+   [ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints)).
+   A work that holds only a dramatization of the book is held too, unless:
    - the book says it's a dramatization: its title, folder or narrator, or, from 2.6.0,
      its author (such as "Michael J. Sullivan - Graphic Audio") or a genre such as
      Radio Drama, Audio Drama or Hörspiel;
@@ -247,11 +251,15 @@ is separate: its checks wait for the copy instead of falling back, and the
 report itself is sent remotely only when you enable it.
 
 If the service is only busy, the run waits and carries on. If it stays unreachable,
-the run stops by itself, and the card says "The last run stopped: the community
-metadata service didn't answer. Try again later." A run that stops this way has no
-review: nothing was changed, and what it had found so far is gone, so run it again
-once the service is back. The same goes for turning community metadata off while a
-run is still looking ("The last run stopped: community metadata was turned off.").
+the run stops early but, from 2.7.0, keeps what it found. The card says "This run
+stopped early" and how many books it checked. Review and apply those as usual. Once
+the service is back, run it again for the books it couldn't check. If it found
+nothing to review, the card says "The last run stopped early" instead. After you
+apply, the last run's line still says it stopped early. (Before 2.7.0 such a run
+had no review.)
+
+Turning community metadata off while a run is still looking stops it with no review
+("The last run stopped: community metadata was turned off."), so run it again later.
 Turned off while a run is applying, it stops as **Stop** does: what went in stays, and
 the rest is left to apply later from the same review.
 
@@ -296,8 +304,10 @@ A match sends the hint when the book has no ASIN or ISBN of its own. A hint the
 community knows scores 100% and is confident whatever the next candidate scored,
 as long as its recording's length is within 10% of the book's (from 2.6.0, 20%
 when the book's narrator reads it). It goes to
-**To review** instead when the length doesn't fit, or when the next candidate was
-found by an identifier too.
+**To review** instead when the length doesn't fit, when the next candidate was
+found by an identifier too, or, from 2.7.0, when the book's title doesn't match.
+The tag may name another book. A book at another position in the series is held
+too, unless its title is the same: then the series is just numbered another way.
 
 From 2.6.0, when the hint names a recording more than 10% off the book's length that
 none of the book's narrators reads, and the same work has another recording within
@@ -321,9 +331,9 @@ the next match trusts the tag like any hint it knows (see the warning below).
 Correct a tag you know is wrong, and it stops being reported after the next scan.
 
 :::warning[A wrong ASIN in a tag can apply the wrong book]
-Nothing else checks a hint. An ASIN in a tag that names another work of about the
-same length is confident, and ticked, like any other: it can apply the wrong
-book, or the right book's other recording. Look through **Confident** before you
+A tag that names another book with a similar title, or another recording of the
+right book, is confident and ticked like any other hint when the length fits. So
+it can apply the wrong book or recording. Look through **Confident** before you
 apply when your tags came from a source you don't trust. To undo one, revert the
 values on the book's page or use
 [Clear community matches](server.md#community-metadata). The next run will find

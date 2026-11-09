@@ -1457,7 +1457,8 @@ an iTunes freeform or ID3 TXXX ASIN, `isbn`, `language` / TLAN. They are hints f
 community match only, never `books.asin` / `isbn` and never on the wire: only
 `GetBook` and a run's subjects read them, and a tagged book stays `unmatched`.
 `matchrun.QueryFor` sends a hint as `BookASIN` / `BookISBN` when the book has
-neither of its own, so one the community knows whose length fits is confident
+neither of its own, so one the community knows whose length fits (and, from 2.7.0,
+whose title the book agrees with) is confident
 (see [the outcomes](api/reference.md#bulk-community-matching)) and becomes the book's
 ASIN only by an apply (from 2.6.0 a match run may propose another recording of the
 hint's work that fits the book's length better: [`default_recording_id`](api/reference.md#get-apiv1adminlibrariesidbookmatch)).
