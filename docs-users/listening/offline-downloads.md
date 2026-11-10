@@ -74,7 +74,7 @@ Barely at all, and that's the point:
 
 - A downloaded book plays from the device, so it starts instantly and never buffers.
 - Chapters, the sleep timer, speed, bookmarks and notes all work the same.
-- It starts where you left off, even offline. If you listened further on another device, it starts there, as long as this device has been online since.
+- It starts where you left off, even offline. If you listened later on another device, it starts there, as long as you've opened the app online since.
 - Your listening is saved on the device and syncs the next time the app reaches your server. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 - If a book's chapters change on the server, the download picks them up next time you're online. The audio isn't downloaded again.
 - **Read the ebook** opens the downloaded ebook with no connection. See [Read the ebook](reading-the-ebook.md#reading-offline).
