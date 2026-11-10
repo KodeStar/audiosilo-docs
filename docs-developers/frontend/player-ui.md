@@ -53,20 +53,20 @@ timer have their own pages ([End of a book](end-of-book.md),
   `canRoutePick`), Cast (`CastButton`, only when the bar has room for all its
   actions; see [Chromecast](chromecast.md#the-cast-button)), Up next and expand.
   **Three columns:** the book and the actions are equal side columns (`flex-1
-  basis-0`, the same padding on both sides) and the middle column's width comes from
-  `dockLayout` (`centre`, 300-560 with the scrubber), so the transport is centred on
-  the bar whatever the title, the actions or the sleep countdown. What fits is
-  decided by the bar's **measured** width (`dockLayout`), not the window class: every
-  action from 1144 (both side columns sized for them with the sleep pill at its
+  basis-0`, the same padding on both sides) and the transport sits between them, so
+  it is centred on the bar whatever the title, the actions or the sleep countdown.
+  `dockLayout` decides the middle column's width (`centre`, 300-560 with the
+  scrubber) and what fits, from the bar's **measured** width, not the window class:
+  every action from 1144 (both side columns sized for them with the sleep pill at its
   widest, a running "10:05:00" or "Keep going"), the tablet set (sleep, Up next,
   expand) below that, and no scrubber below 800. Everything it drops is in the full
   player. The `UndoChip` **floats above the bar**, centred over the transport, and
   nothing in the bar lays out around it, so a jump never moves or resizes the
-  scrubber under the pointer that made it. While the chip shows, the dock's
-  published edge includes its band (`UNDO_CHIP_HEIGHT` plus a gap), so toasts clear
-  it. Speed and sleep open through `usePlayerSheets`; the dock mounts **no sheets**
-  and no grace card (`ShellPlayerOverlays` does, below). It publishes its height as
-  the `dock` edge.
+  scrubber under the pointer that made it. Speed and sleep open through
+  `usePlayerSheets`; the dock mounts **no sheets** and no grace card
+  (`ShellPlayerOverlays` does, below). It publishes its height as the `dock` edge,
+  plus the chip's band (`UNDO_CHIP_HEIGHT` and a gap) while the chip shows, so
+  toasts clear it.
 - **The sync line** (dock and the full player's status line) is `usePlaceSync`
   (`place-sync.ts`): sign in again > saved on this device (the server offline, or
   this server's saves queued) > synced / synced just now. It counts only the playing
