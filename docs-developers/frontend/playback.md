@@ -133,7 +133,13 @@ points:
   target - exported pure so it's unit-testable). It refuses outright when the
   target is a synthetic `…/_offline/…` URL and no service worker controls the
   page (the URL would 404 and kill playback), and treats an 8 s buffering
-  timeout as a failed swap.
+  timeout as a failed swap. It reads its own intent after the copy has buffered,
+  not before: a pause made meanwhile stands (the listener's, or the tab
+  [giving way to another tab's play](#one-tab-plays-at-a-time-web)).
+- **A `playing` from an element that is paused by then is not reported.** The
+  browser can queue a `playing` before a pause lands. Reported, the store would
+  read it as a play begun here and take the connection back from the tab that
+  plays now.
 - A **transcoded** track (`track.transcoded`, web only) is re-requested on every
   seek instead of seeking the element, and its position is reported
   track-absolute - see [Web transcode negotiation](#web-transcode-negotiation-transcodets).
@@ -758,6 +764,97 @@ one now).
 The events go to the outbox and are sent from there:
 [Offline](offline.md#listening-sync-the-outbox). On this path the player posts no
 history spans (the server writes history from the listening) and saves no `PUT`.
+
+### One tab plays at a time (web)
+
+Two tabs of the web player are one device to the server: they share its device id
+and the listening outbox. Playing at once, their seconds would be recorded twice
+and the saved place would go back and forth. So one tab plays at a time per
+connection, and the newest play wins (`src/playback/playing-claim.ts`, fe#123).
+None of this runs in the apps, and it holds on any server.
+
+**The channel** (`tabChannel`, `src/lib/tab-channel.ts`) carries messages between
+the tabs of one browser profile on one origin. A tab never hears its own messages.
+
+- `BroadcastChannel` where the browser has it. It needs no secure context, so a
+  plain-http address has it too.
+- Else `storage` events: the message is written to `localStorage` under
+  `audiosilo-tab:<name>` and removed at once, and every other tab is told of the
+  write. The message must be JSON.
+- Null off the web, or in a browser with neither.
+
+The claims go over the channel named `audiosilo-playing` (`PLAYING_CHANNEL`).
+
+**The claim** (`PlayingClaim`) has four fields:
+
+| Field | Holds |
+|---|---|
+| `connectionId` | the connection of the loaded book |
+| `tab` | the tab's id for claims, a random id made when the tab first opens the channel |
+| `askedAt` | when the play was asked for (`playAskedAt`): a press here (`beginPlaybackAttempt`), else the moment the engine began by itself (the OS media controls) |
+| `sentAt` | when the tab began playing, which is when the claim was made |
+
+The store announces a claim on every move into `playing`, before the listening
+span opens (`claimPlaying` in `store.ts`).
+
+**Who gives way** (`givesWayTo`, pure). A tab gives way to another tab's claim
+when all of these hold:
+
+- it plays, or means to (`wantsPlayback`: a play asked for and still starting);
+- its loaded book is on the claim's connection;
+- the claim's play was asked for later than its own. In the same millisecond the
+  greater tab id wins.
+
+"Newest" is when the play was asked for, not which claim arrives last. A tab still
+loading whose play is the newer one keeps going, and the other tab gives way once
+it hears that tab's claim. Of two tabs that start together exactly one stands.
+The rule is per connection, not per book: two connections may play side by side.
+A tab that is not playing does nothing visible.
+
+**The tab that gives way** (`giveWayTo` in `store.ts`) does four things:
+
+1. It notes the play request that gave way (`yieldedAttempt`). A start or a
+   Retry still loading then does not play once it has loaded (`startEngine`,
+   the one place every start passes, returns false).
+2. It closes its listening span there and then, dated no later than the claim's
+   `sentAt`, so two tabs never record the same seconds. The pause that follows
+   finds no span left, so the span is one event.
+3. It drops the play intent and pauses the engine, whatever the snapshot reads.
+   A play asked for a moment ago, whose first engine event has not arrived, must
+   not go on to `playing`: with the intent dropped it would read as a new play
+   and take the connection back.
+4. It tells the listener (`onGaveWayToTab`).
+
+The tab keeps its book and its place, and a play there claims the connection back.
+
+A tab whose stream died (`error`, no Retry out) is not playing, so it gives way to
+nothing and shows no notice. Its engine is paused all the same: a stream that
+came back by itself would read as a new play and take the connection back.
+
+**The notice** (`startOtherTabNotice` in `other-tab-notice.ts`, one of the root's
+services) is a toast, "Playing in another tab" (`player.otherTab.title`).
+
+- It is shown once the tab is looked at (`whenActive`): the tab is usually hidden
+  behind the one that plays.
+- It is one notice, however often the tab gave way while hidden.
+- A tab that was hidden and plays again by the time it is looked at shows none.
+- On the web the root's services start after the first paint. The store keeps a
+  give-way nobody was there to hear (`gaveWayUntold`) until the service registers.
+
+**Known limits:**
+
+- A tab on a build before the rule (one left open across an update) neither
+  claims nor gives way.
+- Each tab resumes from its own place. The tabs share a device id, and the
+  [place reconcile](#picking-up-another-devices-place-place-reconcilets) only
+  takes another device's place. A play in the tab that gave way goes on from
+  where that tab paused, not from where the other tab got to.
+- The channel reaches one browser profile on one origin. Another browser, a
+  private window or the same server at another address is another device, and
+  is not paused.
+
+What the tabs share of the listening outbox, an Undo of a finish included, is in
+[Offline](offline.md#across-tabs).
 
 ### Progress autosave and sync triggers
 
