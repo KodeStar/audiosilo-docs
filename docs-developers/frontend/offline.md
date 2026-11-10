@@ -488,22 +488,9 @@ headless task). Per answer:
   on. Each of those `PUT`s carries the
   [replay guard](state-and-data.md#the-replay-guard), since no server resolved those
   spans against its row. A Mark as finished has no span, so its `PUT` takes place, length
-  and speed from the mirror record the finish wrote (`withFinishedPlace`), not 0 of 0. The rollback's `PUT`s run
-  as a send, so an Undo's withdrawal (below) waits for them.
-
-#### Taking a finish back
-
-Mark as finished on a `listening_sync` server is a `finish` event, but its Undo is a
-progress edit sent at once: a finish still waiting would reach the server after the edit
-and finish the book again. `undoFinish` (`finish-route.ts`) therefore calls
-`withdrawFinish(connectionId, libraryId, path)` first:
-
-- the book's waiting `finish` events leave the outbox;
-- one whose request is out is waited for, and the edit goes after it;
-- a chunk read before the withdrawal drops the withdrawn events.
-
-An edit that fails puts them back and flushes; a withdrawal that fails still lets the
-edit through, with nothing taken back.
+  and speed from the mirror record the finish wrote (`withFinishedPlace`), not 0 of 0.
+  The rollback's `PUT`s run as a send, so an Undo's withdrawal
+  ([Taking a finish back](#taking-a-finish-back)) waits for them.
 
 The web's `pagehide` sends what waits (oldest first, up to about 60 KB, `fitKeepalive`)
 with `keepalive`, the span closes still queued behind a lock included (a lease's timer
@@ -532,6 +519,20 @@ record it is for, with 5 s of slack widened by how far the connection's server c
 known to be ahead (`holdsFilePlace`, the stored `clockSkewMs`), so a device whose clock
 runs slow keeps its file place and a mirror that lost writes never resumes at a stale
 file.
+
+### Taking a finish back
+
+Mark as finished on a `listening_sync` server is a `finish` event, but its Undo is a
+progress edit sent at once: a finish still waiting would reach the server after the edit
+and finish the book again. `undoFinish` (`finish-route.ts`) therefore calls
+`withdrawFinish(connectionId, libraryId, path)` first:
+
+- the book's waiting `finish` events leave the outbox;
+- one whose request is out is waited for, and the edit goes after it;
+- a chunk read before the withdrawal drops the withdrawn events.
+
+An edit that fails puts them back and flushes; a withdrawal that fails still lets the
+edit through, with nothing taken back.
 
 ## The offline companion (`offline-meta.ts`)
 

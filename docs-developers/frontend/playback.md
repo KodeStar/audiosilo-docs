@@ -725,7 +725,7 @@ one now).
   reason; a move while paused is sent at once as a span that moved nowhere, as a save
   would have been), a stop, a book switch, a sleep stop and the end of the book, which
   then sends `finish` once. The finish goes into the outbox only after the last span's
-  close has landed there, and one send follows both (`finishAfter`, server#359), so the
+  close has landed there. One send then follows both (`finishAfter`, server#359), so the
   server has the book's session before its finish. The book page's Mark as finished goes
   the same way (`recordFinishEvent` in `finish-route.ts`). The web's `pagehide` closes it
   and sends what waits with `keepalive`.
@@ -736,7 +736,8 @@ one now).
   launch closes the stored span into the outbox (`recoverOpenSpan`). The keep
   never moves the span's end back, since a native lock-screen move's landed place reaches
   the store before the move does. A save and the 15 s cut take where the engine is. An
-  event never claims more than 23 h of wall clock (`MAX_EVENT_SPAN_MS`), for timers that stood still while the app slept.
+  event never claims more than 23 h of wall clock (`MAX_EVENT_SPAN_MS`), for timers that
+  stood still while the app slept.
   Offline means the server is marked unreachable
   ([Reachability](state-and-data.md#reachability-srcapireachabilityts)), which on a
   phone follows the system's network.

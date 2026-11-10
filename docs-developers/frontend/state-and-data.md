@@ -148,9 +148,9 @@ Patterns to copy when adding an endpoint:
 - `useMarkFinished` never sends a bare mutation. On a `listening_sync` server it records
   a `finish` event through the player's store (`recordFinishEvent` in
   `src/playback/finish-route.ts`; the store registers it as it loads, since the hooks
-  can't import the store): the book's open span closes first and goes before it, the mirror
-  records the book finished (`finishedSave`, the same record the `PUT` path sends), and
-  offline it waits in [the outbox](offline.md#listening-sync-the-outbox). The mutation
+  can't import the store). The book's open span closes first and goes before it. The
+  mirror records the book finished (`finishedSave`, the same record the `PUT` path sends).
+  Offline the event waits in [the outbox](offline.md#listening-sync-the-outbox). The mutation
   resolves once the event waits there; the store reads the lists and the book's progress
   row again once it is sent. Elsewhere it goes through the offline-aware `saveProgress`
   (below), so a "mark finished" reconciles with playback progress under the same
@@ -1401,9 +1401,9 @@ don't document or rely on one.
 ### The replay guard
 
 On the `PUT` path (a server without `listening_sync`, or a Sync v2 rollback) a save is
-last-write-wins, so a session that began where this device could not check its server
-would move another device's further place back when it reconnects (v2.5.1 PLAYER-01: a
-place went from 3570 s to 4.78 s). The guard (fe#198) holds such saves instead:
+last-write-wins. A session that began where this device could not check its server would
+move another device's further place back when it reconnects (PLAYER-01: a place went
+from 3570 s to 4.78 s). The guard (fe#198) holds such saves instead:
 
 - **Which sessions.** `loadInitialProgress` marks its `ResumeLookup` `unchecked` when the
   server was not reached, or when this device's newer record resumes more than 30 s
@@ -1418,7 +1418,8 @@ place went from 3570 s to 4.78 s). The guard (fe#198) holds such saves instead:
 - **The check.** Before a guarded save is `PUT`, `guardPasses` reads the server's row.
   `guardHolds` (pure) holds it when the row is another device's unfinished place more than
   `GUARD_SLACK_S` (30 s) further on, and the listener has not answered that place (the
-  mirror's `answered` keys, built by `placeKey`). A held save is not sent and
+  mirror's `answered` keys, built by `placeKey`). A finished save (a rollback's finish)
+  is never held. A held save is not sent and
   leaves the queue; the mirror keeps this device's place.
 - **The offer.** `onHeldSave` tells the place reconcile, which offers the place that held
   it for the loaded book with the usual Jump/Stay toast
