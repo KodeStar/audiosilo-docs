@@ -156,7 +156,10 @@ Patterns to copy when adding an endpoint:
   resolves once the event waits there; the store reads the lists and the book's progress
   row again once it is sent. Elsewhere it goes through the offline-aware `saveProgress`
   (below), so a "mark finished" reconciles with playback progress under the same
-  last-write-wins rules.
+  last-write-wins rules. The book menu (`onFinish` in `book-actions.tsx`) calls the hook
+  only where the finish goes as an event (`finishTakesEvent`) or the server has no
+  `progress_edit`. With `progress_edit` and no event route its Mark as finished is a
+  `useEditProgress` edit, which needs the server: nothing queues it offline.
 - `useServerInfo` uses `useOptionalApi` + `enabled: !!api` and a 5-minute
   `staleTime`, so chrome that renders before a connection exists is safe.
 
