@@ -587,6 +587,10 @@ The tabs of a browser are one device (fe#123, fe#211). They share the three
 documents and the device id, but not each other's memory. `sendingNow`, `withdrawn`
 and the `maybeReached` set are each tab's own, and are all there is in the app.
 
+The saved place is shared the same way. A tab that another tab has played past
+saves nothing of its own, and takes the mirror's place before it plays again:
+[The tabs stay at one place](playback.md#the-tabs-stay-at-one-place).
+
 So what a tab's Undo must know of another tab's sends is written in the stored
 outbox, on the `finish` entry (`OutboxEntry`):
 

@@ -783,7 +783,8 @@ the tabs of one browser profile on one origin. A tab never hears its own message
   write. The message must be JSON.
 - Null off the web, or in a browser with neither.
 
-The claims go over the channel named `audiosilo-playing` (`PLAYING_CHANNEL`).
+The claims and their answers go over the channel named `audiosilo-playing`
+(`PLAYING_CHANNEL`).
 
 **The claim** (`PlayingClaim`) has four fields:
 
@@ -811,21 +812,26 @@ it hears that tab's claim. Of two tabs that start together exactly one stands.
 The rule is per connection, not per book: two connections may play side by side.
 A tab that is not playing does nothing visible.
 
-**The tab that gives way** (`giveWayTo` in `store.ts`) does four things:
+**The tab that gives way** (`giveWayTo` in `store.ts`) does six things:
 
-1. It notes the play request that gave way (`yieldedAttempt`). A start or a
+1. It saves the place it gives way at, and notes that another tab plays
+   ([The tabs stay at one place](#the-tabs-stay-at-one-place)). It saves nothing
+   of its own after that.
+2. It notes the play request that gave way (`yieldedAttempt`). A start or a
    Retry still loading then does not play once it has loaded (`startEngine`,
    the one place every start passes, returns false).
-2. It closes its listening span there and then, dated no later than the claim's
+3. It closes its listening span there and then, dated no later than the claim's
    `sentAt`, so two tabs never record the same seconds. The pause that follows
    finds no span left, so the span is one event.
-3. It drops the play intent and pauses the engine, whatever the snapshot reads.
+4. It answers the claim with the place its span ended at
+   ([The tab that gives way says where it stopped](#the-tab-that-gives-way-says-where-it-stopped)).
+5. It drops the play intent and pauses the engine, whatever the snapshot reads.
    A play asked for a moment ago, whose first engine event has not arrived, must
    not go on to `playing`: with the intent dropped it would read as a new play
    and take the connection back.
-4. It tells the listener (`onGaveWayToTab`).
+6. It tells the listener (`onGaveWayToTab`).
 
-The tab keeps its book and its place, and a play there claims the connection back.
+The tab keeps its book, and a play there claims the connection back.
 
 A tab whose stream died (`error`, no Retry out) is not playing, so it gives way to
 nothing and shows no notice. Its engine is paused all the same: a stream that
@@ -841,14 +847,141 @@ services) is a toast, "Playing in another tab" (`player.otherTab.title`).
 - On the web the root's services start after the first paint. The store keeps a
   give-way nobody was there to hear (`gaveWayUntold`) until the service registers.
 
-**Known limits:**
+#### The tabs stay at one place
+
+Two tabs are never at two places of one book (owner decision). A tab that plays
+after another tab played the same book first moves to the place the tabs share.
+
+**The note** (`otherTabPlayed`). A tab with a book of the claim's connection
+loaded notes the claim when it gave way to it, or was not playing (paused by
+hand, a dead stream). The note keeps the time of the earliest such claim: the
+tab's place may be behind from then.
+
+- While the note stands, the tab saves nothing of its own place
+  (`behindOtherTab` in `persist`). A finish still saves.
+- The reason: a paused tab's save dated now (a speed change, the place
+  reconcile's flush on the foreground) would be the newest record in the mirror
+  the tabs share, over the other tab's. Its `PUT` would move the server's place
+  back.
+- The note is cleared when the tab plays (`claimPlaying`: the others follow it
+  from here).
+- A move of the listener's own clears it too (`userMoved`). A seek in the paused
+  tab stands, and every book switch is such a move.
+
+**A play is noted once** (`notedPlay`: the claim's tab and `askedAt`). A tab
+claims on every move into `playing`, so a play that goes on claims again with the
+`askedAt` it began with: the next file of a multi-file book, a stall it came back
+from, a transcoded stream requested again at `&t=`. A tab that already noted that
+play leaves its note as it stands, so a seek the listener made there since is
+still the place it plays from. Only a new play (a press, the OS media controls)
+is noted again, over a seek made since. `switchBook` forgets the play: a book
+loaded after the claim resumed from the shared place as of its load, so it notes
+the play's next claim and follows it.
+
+**The shared place** (`otherTabsPlace`) is the mirror's record of the loaded
+book: what a fresh load resumes from, by its file when the queue holds it
+(fe#188). The tab takes it when both of these hold:
+
+- this browser's `device_id` saved it, at or after the noted claim;
+- it is more than 2 s (`SAME_PLACE_S`) from the engine's place, earlier or
+  later. The other tab is the latest listening, so the tab moves back as well as
+  forward.
+
+Another book played in the other tab leaves this book's record as it was, so
+nothing moves. Another device's record is left to the
+[place reconcile](#picking-up-another-devices-place-place-reconcilets).
+
+| The tab | Takes the shared place |
+|---|---|
+| is played by a press (`toggle`) | before the engine starts (`catchUpWithOtherTab`) |
+| is retried (`retry`) | by reloading there |
+| began playing by itself (the OS media controls, `!wantsPlayback` at `playing`) | as it plays (`catchUpPlaying`). No span or history opens, and nothing is saved, until it has moved (`catchingUp`) |
+| is paused and brought to the front | at once, still paused (`showOtherTabsPlace`, on the foreground from `other-tab-notice.ts`). The note stays, so the play that follows reads the place again |
+
+**The move** (`moveToTabPlace`) is the engine's seek, not `seekBook`:
+
+- `adoptTabPlace` sets the [resume floor](#resume-protection) to the place, and
+  the next span begins there as a `resume`.
+- No `jump` or `moved_back` event is sent. The server is never told that the
+  listener chose the place the tab was at.
+- The [Undo chip](player-ui.md#undo-a-jump-jump-undots) follows its own rule. It
+  reads the snapshot stream, so a move of more than a minute offers the way
+  back. That Undo is the listener's own `seekBook`.
+- A book the other tab finished starts again from 0, as a `restart` with the
+  `unfinish` owed, as a fresh load of a finished book does. Not when this tab is
+  at the end itself, and not in a paused tab brought to the front, which stays
+  where it is.
+- A seek the engine refuses puts back what `adoptTabPlace` set. The play goes on
+  from where the engine is: a floor left at a place far ahead would refuse its
+  every save and span.
+- A book switch drops a move still out (`switchBook` clears `catchingUp`), so it
+  holds none of the next book's saves or spans.
+
+#### The tab that gives way says where it stopped
+
+The mirror holds the other tab's last save, made every 15 s while it plays. So a
+tab that takes over from one still playing starts up to 15 s behind it. A press
+is never kept waiting for more: the tab plays at once, and moves when it hears
+where the other tab stopped.
+
+**The answer** (`GaveWay` in `playing-claim.ts`, sent by `tabClaims().answer` on
+the same channel, over both transports) is told from a claim by its `kind`:
+
+| Field | Holds |
+|---|---|
+| `kind` | `'gave-way'` (a claim has none) |
+| `connectionId`, `libraryId`, `path` | the book the tab was playing |
+| `position` | where its span ended, in whole-book seconds |
+| `file`, `filePos` | the playing file and the seconds into it, when known |
+| `finished` | whether that place is the book's end |
+| `tab` | the tab that gave way |
+| `to`, `claimedAt` | the claim it answers: the tab that made it and its `sentAt` |
+
+Only a tab whose own place was the latest answers. A tab that was itself behind
+another tab's play sends nothing: one with the note standing, or one still moving
+to the shared place (`catchingUp`).
+
+**The tab that claimed** (`onGaveWayAnswer`) moves there by `moveToTabPlace`,
+the same path as the mirror's place:
+
+1. It drops the listening it began at the older place (`dropListening`: the open
+   span, stored or not, and the history's start), with no event.
+2. It begins again at the place taken, as a `resume`.
+3. It saves the place at once.
+
+So the spans are one chain (one tab's begins where the other's ended), and the
+saved place never goes back. The answer is read against the place the play began
+at (`ownClaim.pos`, moved with each tab place taken), not where it has played to
+since.
+
+An answer is ignored when it:
+
+- answers an older claim than the tab's last, or comes more than 5 s
+  (`GAVE_WAY_ANSWER_MS`) after the claim;
+- is for another connection or another book, or comes while a book loads;
+- would move a place the listener chose here (`placeChosen`: an explicit start
+  or a seek, until another tab plays);
+- comes when yet another tab plays by now;
+- is within 2 s of the place the play began at;
+- says the book was finished. A book is not started again under a listener
+  hearing it, and the next resume reads the save.
+
+A play that began by itself is still moving to the mirror's place when the answer
+comes, so the answer waits for that move (`catchingUp`). The web engine places a
+seek made before its metadata where the load starts (`placeAt`), so an answer
+during a load lands there.
+
+#### Known limits {/* #one-tab-known-limits */}
 
 - A tab on a build before the rule (one left open across an update) neither
-  claims nor gives way.
-- Each tab resumes from its own place. The tabs share a device id, and the
-  [place reconcile](#picking-up-another-devices-place-place-reconcilets) only
-  takes another device's place. A play in the tab that gave way goes on from
-  where that tab paused, not from where the other tab got to.
+  claims nor gives way, and sends no answer.
+- Two windows both in view never get a foreground event. The paused one shows
+  the place it stopped at until it plays, and the play takes the other's place
+  exactly.
+- After a seek the engine refused (a Cast session, say), the tab plays and saves
+  from where it is, not from the shared place.
+- An Undo of a finish can wait on another tab's mark
+  ([Offline](offline.md#across-tabs)).
 - The channel reaches one browser profile on one origin. Another browser, a
   private window or the same server at another address is another device, and
   is not paused.
