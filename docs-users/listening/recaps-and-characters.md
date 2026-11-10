@@ -41,7 +41,7 @@ Some series can be read in more than one order, such as The Chronicles of Narnia
 
 ## Generated on this server
 
-For a book the community hasn't covered, an admin can have the server's [Bridge](../admin/bridge.md) write characters and recaps (see [Generating characters and recaps](../admin/generating-characters-and-recaps.md)). They appear in the same tabs, follow the same spoiler rules, and carry a **Generated on this server** mark.
+For a book the community hasn't covered, an admin can have the server's [Bridge](../admin/bridge.md) write characters and recaps (see [Generate characters and recaps](../admin/generating-characters-and-recaps.md)). They appear in the same tabs, follow the same spoiler rules, and carry a **Generated on this server** mark.
 
 ![A book's Recaps tab with recaps generated on the server, the whole-book summary kept closed, and Show anyway](/img/screenshots/web-player/book-recaps-generated.png)
 

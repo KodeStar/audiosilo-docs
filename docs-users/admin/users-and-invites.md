@@ -10,7 +10,7 @@ There are two ways to give someone access to your server:
   manage yourself: friends, family in another home, other adults.
 - **Add them as a household member.** Anyone with an account can add the kids
   and grown-ups they live with from the player, with no invite from you. The
-  person who adds them manages them. See [Your household](../listening/household.md).
+  person who adds them manages them. See [Add your household](../listening/household.md).
 
 Several people sharing one phone or tablet? Each signs in with their own
 account and switches between [profiles](../listening/profiles.md). To give

@@ -138,7 +138,7 @@ The watch uses home and away addresses [like the phone apps](connecting.md#at-ho
 The watch can't accept a self-signed certificate. So, as on your phone:
 
 - **At home**, it uses the server's [plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect). Set the watch up on the same network as the server.
-- **Away from home**, it needs an address with a trusted certificate. See [Remote access](../getting-started/remote-access.md).
+- **Away from home**, it needs an address with a trusted certificate. See [Reach your server from outside your home](../getting-started/remote-access.md).
 
 Without a trusted away address, the watch still plays its books anywhere, but syncs only at home.
 

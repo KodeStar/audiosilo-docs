@@ -74,7 +74,7 @@ In the mobile apps, playback carries on in the background:
 
 Previous goes back to the start of the chapter. Within the first 3 seconds of a chapter, it goes to the chapter before.
 
-See [The mobile apps](mobile-apps.md) for more on the apps.
+See [Get the apps](mobile-apps.md) for more on the apps.
 
 ## Books a browser can't play directly
 

@@ -33,7 +33,7 @@ In the admin console under [Server > Logs](./admin/server.md#logs). It holds the
 The server prints it only once. From least to most drastic:
 
 1. **Check the logs.** `docker compose logs` often still has it, unless the container was recreated.
-2. **Ask another admin** to set a new password for you in [People and invites](./admin/users-and-invites.md).
+2. **Ask another admin** to set a new password for you in [Invite people](./admin/users-and-invites.md).
 3. **Use the auth code**, if you saved it. It still signs the player in as the admin, but not the admin console.
 4. **Reset the database.** Stop the server, move `audiosilo.db` (and any `audiosilo.db-wal` / `audiosilo.db-shm`) out of the data folder, and start it again. You get a new password.
 

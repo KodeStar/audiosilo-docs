@@ -91,7 +91,7 @@ and recreate the container.
 ![Server settings, Network & HTTPS](/img/screenshots/admin/settings-network.png)
 
 The **HTTPS** card chooses how the server secures connections (more in
-[Remote access](../getting-started/remote-access.md)):
+[Reach your server from outside your home](../getting-started/remote-access.md)):
 
 - **Off** - plain HTTP. Use it only behind a reverse proxy that does HTTPS.
 - **Self-signed** - encrypted, but browsers warn the first time. The default,
@@ -310,7 +310,7 @@ update:
   as it is.
 - **The program on its own** - download the new version from the release page.
   Replace the program and start it with the same data folder (see
-  [Install the native binary](../getting-started/install-binary.md)).
+  [Install without Docker](../getting-started/install-binary.md)).
 
 Nothing is installed for you: updating is always your step. Before you update,
 see [Before an upgrade](backups.md#before-an-upgrade).

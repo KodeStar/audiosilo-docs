@@ -56,7 +56,9 @@ keeps its query and then update or remove the script.
 ## When a code change needs a docs change
 
 Grep these docs for the symbol, flag, route, or UI label you changed -
-`onBrokenLinks` can't catch a stale *claim*, only a stale link. The common
+`onBrokenLinks` can't catch a stale *claim*, only a stale link. Write any User Guide change to the
+[readability rules](#user-guide-readability-rules), and add a new
+user-visible feature to [Features](/users/features) in one line. The common
 mappings:
 
 | You changed… | Update |

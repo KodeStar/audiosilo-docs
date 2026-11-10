@@ -66,7 +66,7 @@ inside the new folder.
 
 If you're reorganising, prefer moving files *within* the library's folder:
 progress follows them (see
-[Organizing your library](../getting-started/organizing-your-library.md)).
+[Organize your audiobook files](../getting-started/organizing-your-library.md)).
 
 A library set in the server's `config.yaml` has a **From your config** badge.
 Its name and folder can only be changed in `config.yaml`, followed by a

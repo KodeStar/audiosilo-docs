@@ -32,6 +32,7 @@ const sidebars: SidebarsConfig = {
         'listening/browsing',
         'listening/book-page',
         'listening/offline-downloads',
+        'listening/podcasts',
         'listening/sleep-timer',
         'listening/bookmarks-and-notes',
         'listening/up-next',
@@ -46,7 +47,6 @@ const sidebars: SidebarsConfig = {
       items: [
         'listening/reading-the-ebook',
         'listening/recaps-and-characters',
-        'listening/podcasts',
         'listening/upcoming',
         'listening/you',
         'listening/year-in-listening',

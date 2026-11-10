@@ -9,7 +9,7 @@ To add someone, open the **Household** page and tap **Add someone to your househ
 
 How this differs from the other ways to share:
 
-- **Inviting someone** is done by the server's admin, and gives a full account of their own. See [People and invites](../admin/users-and-invites.md).
+- **Inviting someone** is done by the server's admin, and gives a full account of their own. See [Invite people](../admin/users-and-invites.md).
 - **Profiles** let several people use one device. See [Share a device](profiles.md).
 
 ## Finding it

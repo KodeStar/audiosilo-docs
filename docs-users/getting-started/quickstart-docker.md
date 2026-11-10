@@ -68,7 +68,7 @@ Save both now. [Set up your server](./first-run.md) says what each is for.
 
 ## 3. Open it
 
-Browse to `https://your-server:8080`. The server uses a self-signed certificate at first, so your browser warns you. Accept the warning to continue.
+Browse to `https://your-server:8080`. The server uses a self-signed certificate at first, so your browser warns you. Accept the warning to continue. On your home network, `http://your-server:8080` works too, without the warning.
 
 - **`/admin`** is the admin console. Sign in as `admin` with the printed password.
 - **`/web`** is the web player.

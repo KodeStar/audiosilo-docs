@@ -114,7 +114,7 @@ To [cast](../listening/chromecast.md) from the apps without a trusted certificat
 The protections are always on; there's nothing to enable:
 
 - **No default passwords.** The first admin password is random, or chosen by you.
-- **No sign-ups.** Only the admin creates accounts. Devices join with short-lived invite codes. See [People and invites](../admin/users-and-invites.md).
+- **No sign-ups.** Nobody can create their own account. Accounts come from an admin's invite, or from a person adding a member of their household. Devices join with short-lived invite codes. See [Invite people](../admin/users-and-invites.md).
 - **Rate limits and lockouts.** Repeated wrong passwords or invite codes lock the sender out for a while.
 - **Secrets are stored scrambled**, and every sign-in can be revoked.
 - **File access is fenced in.** Only your library folders can be streamed.

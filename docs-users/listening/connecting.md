@@ -30,7 +30,7 @@ The phone opens the AudioSilo app, or the web player, signed in as you. You can 
 Treat an invite link like a key. Anyone who opens it can sign in as you, so don't post it publicly.
 :::
 
-If the invite has expired or is used up, the page says so. Ask for a new one. The admin's side is in [People and invites](../admin/users-and-invites.md).
+If the invite has expired or is used up, the page says so. Ask for a new one. The admin's side is in [Invite people](../admin/users-and-invites.md).
 
 ## Scanning the QR code with your phone
 
@@ -103,7 +103,7 @@ When the server has both, the iOS and Android apps use the home address at home 
 
 Your [account page](account.md#at-home-and-away) lists both addresses. The web player doesn't switch: it keeps the address you opened it at. An Apple Watch [works the same way as the phone](apple-watch.md#at-home-and-away).
 
-To listen away from home at all, the server must be reachable from the internet. See [Remote access](../getting-started/remote-access.md).
+To listen away from home at all, the server must be reachable from the internet. See [Reach your server from outside your home](../getting-started/remote-access.md).
 
 ### If the app doesn't switch to the home address
 

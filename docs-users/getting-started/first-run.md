@@ -27,7 +27,7 @@ On its very first start, the server creates an `admin` account with a random pas
 Save both now:
 
 - The **admin password** signs you in to the admin console at `/admin`.
-- The **auth code** signs a phone or browser in as the admin, from the connect page. See [Connecting to a server](../listening/connecting.md).
+- The **auth code** signs a phone or browser in as the admin, from the connect page. See [Connect the app to your server](../listening/connecting.md).
 
 The server keeps only scrambled copies, so it can't show them again. Under Docker, `docker compose logs` shows the banner until the container is recreated.
 
@@ -128,7 +128,7 @@ Copy backups to another disk now and then. See [Backups](../admin/backups.md).
 
 ![Step 7: a pairing QR code for your phone](/img/screenshots/setup/phone.png)
 
-Scan the code with your phone's camera. It opens the AudioSilo app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. See [Connecting to a server](../listening/connecting.md).
+Scan the code with your phone's camera. It opens the AudioSilo app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. See [Connect the app to your server](../listening/connecting.md).
 
 If you opened the console on the server itself (`localhost`), the code needs a home or public address from [step 4](#step-4-how-will-people-reach-the-server). The step tells you if one is missing.
 
@@ -142,7 +142,7 @@ Optional. A **Bridge** is a companion container that writes to your library fold
 2. Replace each `/path/to/...` with that library's folder on your computer or NAS.
 3. Press **Connect a Bridge** for the pairing code to enter on the Bridge's page.
 
-[Running a Bridge](./running-a-bridge.md) has the full setup.
+[Add a Bridge](./running-a-bridge.md) has the full setup.
 
 **Finish setup** ends the flow and opens the Overview. If a choice needs a restart (a local metadata copy or an HTTPS setting), the Overview reminds you until the server restarts.
 

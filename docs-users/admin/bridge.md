@@ -71,7 +71,7 @@ Bridge**, which opens the right tab of the Bridge's page.
 Under the steps, the card lists the Bridge's GitHub account, agent credential and
 whether it is ready to contribute. You sign in to these on the Bridge's own page:
 **Open Accounts on the Bridge** takes you there (see
-[Bridge accounts](../getting-started/bridge-accounts.md)).
+[Sign the Bridge in to your accounts](../getting-started/bridge-accounts.md)).
 
 ## Libraries
 

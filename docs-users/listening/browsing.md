@@ -56,7 +56,7 @@ Home is built around what you're doing. From the top:
 - **Next in your series** - what comes after the books you're on. A book you don't have shows as a pale "ghost" cover marked **Not in your library**.
 - **Coming up in your series** - preorders, new releases and missing volumes, with dates. See [Upcoming releases](upcoming.md).
 - **New episodes** - from podcasts you follow. See [Podcasts](podcasts.md#new-episodes-on-home).
-- **Listening in the house** - what others on your server are listening to, when you both share it. See [Listening in the house](in-the-house.md).
+- **Listening in the house** - what others on your server are listening to, when you both share it. See [See what others are listening to](in-the-house.md).
 - **Smart shelves** - filters that keep themselves up to date, such as **Finish what you started**, **Short listens** and **Added this week**.
 - **Recently added**, **Favourites** and **Recently finished**, each with **See all**.
 

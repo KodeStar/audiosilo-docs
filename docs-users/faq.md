@@ -18,7 +18,7 @@ Audible's protected `.aax` and `.aaxc` files are not supported. See [Supported f
 No, but you'll want it. The Docker image includes it, and the standalone program downloads it if your system lacks it.
 
 - **ffprobe** reads durations and chapters. Without it, books still play, but with no durations or chapter lists.
-- **ffmpeg** converts formats a browser can't play, and places [community chapters](./admin/books.md#community-chapters) precisely. Without it, those books play only in the mobile apps.
+- **ffmpeg** converts formats a browser can't play, lets every player play an `.mka` book with MP3 inside, and places [community chapters](./admin/books.md#community-chapters) precisely. Without it, books a browser can't play work only in the apps, where the phone can decode them.
 
 [Health > System](./admin/health.md#system) shows whether each was found. See [ffmpeg and ffprobe](./getting-started/install-binary.md#ffmpeg-and-ffprobe).
 
@@ -32,7 +32,7 @@ Yes. Each app release on GitHub has an APK. The Play Store app and the APK can't
 
 ### Does it work offline?
 
-Yes. Download a book and it plays with no connection, in the apps and in the web player over HTTPS. Progress syncs when you're back online. See [Offline downloads](./listening/offline-downloads.md).
+Yes. Download a book and it plays with no connection, in the apps and in the web player over HTTPS. Progress syncs when you're back online. See [Listen offline](./listening/offline-downloads.md).
 
 ## Your library and your data
 
@@ -68,13 +68,13 @@ To avoid lookups over the internet, your admin can [keep a local copy](./admin/s
 
 ### Can other people on my server see what I'm listening to?
 
-Other listeners can't, unless you both turn on [Listening in the house](./listening/in-the-house.md). Your admin can see everyone's listening in [Activity](./admin/activity.md#what-the-server-records).
+Other listeners can't, unless you both turn on [See what others are listening to](./listening/in-the-house.md). Your admin can see everyone's listening in [Activity](./admin/activity.md#what-the-server-records).
 
 ## Users and sharing
 
 ### How many users can I have, and can I limit what each one sees?
 
-There's no limit. Each person gets their own progress, bookmarks and favourites. Invite people with an invite code (see [People and invites](./admin/users-and-invites.md)). People can also add the [household members](./listening/household.md) they live with.
+There's no limit. Each person gets their own progress, bookmarks and favourites. Invite people with an invite code (see [Invite people](./admin/users-and-invites.md)). People can also add the [household members](./listening/household.md) they live with.
 
 To limit what someone sees, use **shares**: sets of folders you grant to people. See [Sharing](./admin/sharing.md).
 

@@ -37,7 +37,7 @@ The Bridge runs as **two containers**:
 
 ## What you need
 
-- A server running in Docker, as in [Quick start with Docker](quickstart-docker.md),
+- A server running in Docker, as in [Install with Docker](quickstart-docker.md),
   with [community metadata](../admin/server.md#community-metadata) on (it is by
   default).
 - Your audiobooks folder on the same machine, so both containers can mount it.

@@ -23,7 +23,7 @@ https://audiobooks.example.com/admin
 ![The admin sign-in screen](/img/screenshots/admin/login.png)
 
 Sign in with the admin username and password created when you first set up the
-server (see [First run](../getting-started/first-run.md)). On a new server,
+server (see [Set up your server](../getting-started/first-run.md)). On a new server,
 signing in first opens the
 [Set up your server](../getting-started/first-run.md#set-up-your-server) flow.
 
@@ -64,7 +64,7 @@ What each section is for:
 | **Library > Authors**, **Series**, **Narrators** | Merging two spellings of a name, and the books missing from a series. See [Authors and narrators](books.md#authors-and-narrators). |
 | **Library > Folders** | How AudioSilo reads each folder. See [The Folders page](libraries.md#the-folders-page). |
 | **Library > Libraries** | Add, edit, rescan, export and delete libraries. See [Add and manage libraries](libraries.md). |
-| **People > People** and **Invites** | Accounts and invite links. See [People and invites](users-and-invites.md). |
+| **People > People** and **Invites** | Accounts and invite links. See [Invite people](users-and-invites.md). |
 | **People > Shares** | Named sets of folders you give to people. See [Sharing](sharing.md). |
 | **People > Devices** | Every signed-in phone, browser and API key. See [The Devices page](users-and-invites.md#the-devices-page). |
 | **Activity** | Listening over time, who is playing now, every session and a year in review. See [See who is listening](activity.md). |

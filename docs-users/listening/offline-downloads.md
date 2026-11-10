@@ -105,7 +105,7 @@ You can install the web player as an app. It gets its own icon and window, and i
 - **Android**: in Chrome's menu, choose **Add to Home screen** or **Install app**.
 - **iPhone or iPad**: in Safari, tap **Share**, then **Add to Home Screen**.
 
-Installing also tells the browser the site matters to you, so it guards your downloads more strongly. The native apps add more than this: see [The mobile apps](mobile-apps.md).
+Installing also tells the browser the site matters to you, so it guards your downloads more strongly. The native apps add more than this: see [Get the apps](mobile-apps.md).
 
 ## Good to know
 

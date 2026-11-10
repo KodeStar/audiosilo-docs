@@ -68,7 +68,7 @@ Only books with a known release day appear: preorders and recent releases. Missi
 Each calendar app decides how often it checks the link. Google Calendar can take a day or more.
 
 :::note[Google Calendar needs a public address]
-Google Calendar, Outlook on the web and iCloud calendars fetch the link from the internet. They only work with a server that has a public HTTPS address and a trusted certificate. See [Remote access](../getting-started/remote-access.md). With a home-only server, use a calendar on your own device (on a Mac, choose **On My Mac**, not iCloud).
+Google Calendar, Outlook on the web and iCloud calendars fetch the link from the internet. They only work with a server that has a public HTTPS address and a trusted certificate. See [Reach your server from outside your home](../getting-started/remote-access.md). With a home-only server, use a calendar on your own device (on a Mac, choose **On My Mac**, not iCloud).
 :::
 
 ### Keep the link private

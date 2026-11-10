@@ -10,9 +10,7 @@ the AudioSilo app. Your [Bridge](bridge.md) reads the feeds and downloads the
 episodes; the server serves them. Listeners add and follow shows themselves in the
 player: see [Podcasts](../listening/podcasts.md).
 
-Podcasts need an admin to set them up, a Bridge, and the **Podcasts** module. The
-app shows podcasts from version 2.4.0; the web player shows them once your server
-is up to date.
+Podcasts need an admin to set them up, a Bridge, and the **Podcasts** module.
 
 ## Set up a podcast library
 

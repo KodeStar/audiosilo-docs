@@ -39,4 +39,4 @@ Each key in the list shows when it was created and last used. To switch one off,
 
 A key can reach everything your account can. A key made by an **admin** can also reach admin information, such as the list of users.
 
-For a simple widget, make the key from a regular account with just the access it needs. Then a leaked key can't touch admin features. Your admin can set one up: see [People and invites](../admin/users-and-invites.md).
+For a simple widget, make the key from a regular account with just the access it needs. Then a leaked key can't touch admin features. Your admin can set one up: see [Invite people](../admin/users-and-invites.md).
