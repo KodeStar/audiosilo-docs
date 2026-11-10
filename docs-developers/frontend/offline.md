@@ -523,16 +523,27 @@ file.
 ### Taking a finish back
 
 Mark as finished on a `listening_sync` server is a `finish` event, but its Undo is a
-progress edit sent at once: a finish still waiting would reach the server after the edit
-and finish the book again. `undoFinish` (`finish-route.ts`) therefore calls
-`withdrawFinish(connectionId, libraryId, path)` first:
+progress edit: a finish still waiting would reach the server after the edit and finish
+the book again. `undoFinish` (`finish-route.ts`) therefore calls
+`withdrawFinish(connectionId, libraryId, path)` first, which returns
+`{ unsent, restore }`:
 
 - the book's waiting `finish` events leave the outbox;
-- one whose request is out is waited for, and the edit goes after it;
+- one whose request is out is waited for;
 - a chunk read before the withdrawal drops the withdrawn events.
 
-An edit that fails puts them back and flushes; a withdrawal that fails still lets the
-edit through, with nothing taken back.
+Then one of two things happens:
+
+- **The server never had the finish** (`unsent`: one was taken back and none it waited
+  for was answered, an offline Mark as finished). The Undo is done on the device, with no
+  edit: `unrecordFinish` puts back this device's mirror record from before the finish,
+  stamped with the finish's time so it replaces the finished record (a place saved since
+  still wins; the mirror's own `ack_version` and `answered` are kept). With no earlier
+  record, only the finished record is rewritten to the place before. Offline Undo works.
+- **The server has it** (a finish it waited for was answered). The progress edit is sent;
+  an edit that fails puts the taken events back and flushes (`restore`).
+
+A withdrawal that fails still lets the edit through, with nothing taken back.
 
 ## The offline companion (`offline-meta.ts`)
 

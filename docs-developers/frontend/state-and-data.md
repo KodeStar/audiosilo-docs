@@ -150,7 +150,9 @@ Patterns to copy when adding an endpoint:
   `src/playback/finish-route.ts`; the store registers it as it loads, since the hooks
   can't import the store). The book's open span closes first and goes before it. The
   mirror records the book finished (`finishedSave`, the same record the `PUT` path sends).
-  Offline the event waits in [the outbox](offline.md#listening-sync-the-outbox). The mutation
+  Offline the event waits in [the outbox](offline.md#listening-sync-the-outbox): the
+  mutation runs whatever the online flag says (`networkMode: 'always'`, both routes work
+  offline), so the toast with Undo shows offline too. The mutation
   resolves once the event waits there; the store reads the lists and the book's progress
   row again once it is sent. Elsewhere it goes through the offline-aware `saveProgress`
   (below), so a "mark finished" reconciles with playback progress under the same
@@ -354,7 +356,7 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `cover_sizes` | `BookCover`'s thumbnail choice |
 | `queue` | every Up next entry point and panel, the book menu's Up next item, the series page's Queue it (else Play), keep-ahead's queue window |
 | `collections` | the Collections mode, the collection page, the book menu's Add to collection |
-| `progress_edit` | the book menu's Mark as not finished, and Mark as finished with Undo (without it: `useMarkFinished`, no Undo; with `listening_sync` too, the finish is `useMarkFinished`'s event). The Undo goes through `undoFinish`, which first takes back a `finish` event still waiting ([Taking a finish back](offline.md#taking-a-finish-back)) |
+| `progress_edit` | the book menu's Mark as not finished, and Mark as finished with Undo (without it: `useMarkFinished`, no Undo; with `listening_sync` too, the finish is `useMarkFinished`'s event). The Undo goes through `undoFinish`, which first takes back a `finish` event still waiting; a finish the server never answered is undone on the device with no edit ([Taking a finish back](offline.md#taking-a-finish-back)) |
 | `user_stats` | Home's This week card, the Now card's finish date and the "&lt;narrator&gt; reads" shelf's top narrator (`useMyStats('30d')`, `useMyListening`, `useListeningGoal`) |
 | `ratings` | the end credits' and the book page's stars (`useBookRating`) |
 | `annotations` | bookmark labels in the editor and on the one-tap toast's Add note, Edit on bookmark and note rows, "See all in your journal", the Journal's Bookmarks and Notes lists and their export (the full list: [Where the capability matters](annotations.md#where-the-capability-matters)) |

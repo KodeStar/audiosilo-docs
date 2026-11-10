@@ -725,8 +725,10 @@ one now).
   reason; a move while paused is sent at once as a span that moved nowhere, as a save
   would have been), a stop, a book switch, a sleep stop and the end of the book, which
   then sends `finish` once. The finish goes into the outbox only after the last span's
-  close has landed there. One send then follows both (`finishAfter`, server#359), so the
-  server has the book's session before its finish. The book page's Mark as finished goes
+  close has landed there, a close already on its way included (the web reports `paused`
+  just before `ended`; `closesInFlight` holds it and the finish takes over its send). One
+  send then follows both (`finishAfter`, server#359): one POST carries `listen` then
+  `finish`, so the server has the book's session before its finish. The book page's Mark as finished goes
   the same way (`recordFinishEvent` in `finish-route.ts`). The web's `pagehide` closes it
   and sends what waits with `keepalive`.
 - **Offline**, the tick leaves the span open until it is an hour long
