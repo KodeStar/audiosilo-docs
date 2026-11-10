@@ -816,7 +816,9 @@ A tab that is not playing does nothing visible.
 
 1. It saves the place it gives way at, and notes that another tab plays
    ([The tabs stay at one place](#the-tabs-stay-at-one-place)). It saves nothing
-   of its own after that.
+   of its own after that. A tab that was itself behind another tab's play (the
+   note already standing, or a move to the shared place still out) saves
+   nothing here either.
 2. It notes the play request that gave way (`yieldedAttempt`). A start or a
    Retry still loading then does not play once it has loaded (`startEngine`,
    the one place every start passes, returns false).
@@ -827,7 +829,7 @@ A tab that is not playing does nothing visible.
    ([The tab that gives way says where it stopped](#the-tab-that-gives-way-says-where-it-stopped)).
 5. It drops the play intent and pauses the engine, whatever the snapshot reads.
    A play asked for a moment ago, whose first engine event has not arrived, must
-   not go on to `playing`: with the intent dropped it would read as a new play
+   not go on to `playing`. With the intent dropped it would read as a new play
    and take the connection back.
 6. It tells the listener (`onGaveWayToTab`).
 
@@ -859,10 +861,10 @@ tab's place may be behind from then.
 
 - While the note stands, the tab saves nothing of its own place
   (`behindOtherTab` in `persist`). A finish still saves.
-- The reason: a paused tab's save dated now (a speed change, the place
-  reconcile's flush on the foreground) would be the newest record in the mirror
-  the tabs share, over the other tab's. Its `PUT` would move the server's place
-  back.
+- The reason: a paused tab can save a place dated now (a speed change, the place
+  reconcile's flush on the foreground). That save would be the newest record in
+  the mirror the tabs share, over the other tab's. On a server without
+  `listening_sync` its `PUT` would move the server's place back too.
 - The note is cleared when the tab plays (`claimPlaying`: the others follow it
   from here).
 - A move of the listener's own clears it too (`userMoved`). A seek in the paused
@@ -870,10 +872,10 @@ tab's place may be behind from then.
 
 **A play is noted once** (`notedPlay`: the claim's tab and `askedAt`). A tab
 claims on every move into `playing`, so a play that goes on claims again with the
-`askedAt` it began with: the next file of a multi-file book, a stall it came back
-from, a transcoded stream requested again at `&t=`. A tab that already noted that
-play leaves its note as it stands, so a seek the listener made there since is
-still the place it plays from. Only a new play (a press, the OS media controls)
+`askedAt` it began with. That happens at the next file of a multi-file book, after
+a stall it came back from, and when a transcoded stream is requested again at
+`&t=`. A tab that already noted that play leaves its note as it stands, so a seek
+the listener made there since is still the place it plays from. Only a new play (a press, the OS media controls)
 is noted again, over a seek made since. `switchBook` forgets the play: a book
 loaded after the claim resumed from the shared place as of its load, so it notes
 the play's next claim and follows it.
@@ -978,8 +980,8 @@ during a load lands there.
 - Two windows both in view never get a foreground event. The paused one shows
   the place it stopped at until it plays, and the play takes the other's place
   exactly.
-- After a seek the engine refused (a Cast session, say), the tab plays and saves
-  from where it is, not from the shared place.
+- After a seek the engine refused (its `seekTo` or `skipToTrack` rejected), the
+  tab plays and saves from where it is, not from the shared place.
 - An Undo of a finish can wait on another tab's mark
   ([Offline](offline.md#across-tabs)).
 - The channel reaches one browser profile on one origin. Another browser, a

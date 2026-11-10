@@ -496,8 +496,8 @@ The web's `pagehide` sends what waits (oldest first, up to about 60 KB, `fitKeep
 with `keepalive`, the span closes still queued behind a lock included (a lease's timer
 never fires on a page that is going); an answer that still arrives is applied, and anything unanswered stays
 (a resend is a `duplicate`). A `finish` another tab's Undo took back a moment ago is left
-out, and the ones that go are marked in the stored outbox for 5 s
-([Across tabs](#across-tabs)).
+out. The ones that go while their server looks reachable are marked in the stored
+outbox for 5 s ([Across tabs](#across-tabs)).
 
 **What the listener sees.** `pendingSaves` counts the outbox's listen events (not a
 finish or unfinish) plus the open span while its server can't be reached: Home's pill reads "N listens waiting to sync"
@@ -600,7 +600,7 @@ outbox, on the `finish` entry (`OutboxEntry`):
 | `maybeReached` | a request carried it while its server looked reachable and got no answer | when the request ends (`markSettled`), in the same write that takes the tab's `out` mark off |
 
 **Why the stored document and not the channel.** Every tab reads the outbox under
-its lock (`tabLock`), and the lock gives a send and an Undo one order: the Undo
+its lock (`tabLock`), and the lock gives a send and an Undo one order. The Undo
 either took the finish back first, or finds it out and waits. A message on the
 [tab channel](playback.md#one-tab-plays-at-a-time-web) could arrive after the send
 it was meant to stop.
@@ -610,7 +610,7 @@ it was meant to stop.
 1. Under the lock, `markOut` finds the finishes no longer stored (taken back by an
    Undo in another tab, or answered there) and leaves them out of the request.
 2. It marks the rest `out` until 45 s from now. That is past the request's 15 s
-   timeout and the read of its answer, so a mark that ran out was left by a tab
+   timeout and the read of its answer. So a mark that ran out was left by a tab
    that went away with its request, never by one still waiting.
 3. When the request ends, `markSettled` takes this tab's mark off the finishes
    still stored (an answered one has left the outbox) and marks the ones that got
@@ -638,20 +638,26 @@ see its request's answer:
 - It reads the stored outbox straight from `localStorage` (`storedOutboxNow`) and
   leaves out a finish another tab took back.
 - It marks the finishes it sends `out` for 5 s (`markOutNow`), written at once,
-  outside the lock. An Undo in another tab waits that long for the request to
-  land. It then reads the mark left standing as "the server may hold it" and
-  sends its edit, which a finish landing later would have undone.
+  outside the lock. Only a finish whose server looks reachable is marked
+  (`finishesLeaving`), and only when the stored outbox could be read.
+- An Undo in another tab waits that long for the request to land. It then reads
+  the mark left standing as "the server may hold it" and sends its edit, which a
+  finish landing later would have undone.
 
 **A swept span is sent.** A tab that closes the span another tab left
-(`sweepLeftBehind`: on its launch, once another tab's live span would be stale,
-before a flush of every outbox and before the sign-out count) sends that
-connection's outbox at once. The tab that would have sent it is gone, so no send
-of its own follows.
+(`sweepLeftBehind`) sends that connection's outbox at once. The tab that would
+have sent it is gone, so no send of its own follows. The sweep runs:
+
+- on the tab's launch;
+- once another tab's live span would be stale;
+- before a flush of every outbox;
+- before the sign-out count.
 
 **Known limit.** An Undo can wait up to 45 s on the mark of a tab that died with
-its request out and sent nothing as it went (a crash, a tab the browser
-discarded). The edit is then sent. A page that goes with a `pagehide` writes its
-5 s mark over its own 45 s one for the finishes its keepalive request carries.
+its request out and sent nothing as it went. A crash does that, and so does a tab
+the browser discarded. The edit is then sent when the server looks reachable.
+Otherwise the Undo is done on this device, as for a finish no request carried. A page that goes with a `pagehide` writes its 5 s mark over its own 45 s
+one for the finishes its keepalive request carries.
 
 In a test, two tabs are two copies of the modules (`jest.isolateModules`) over
 `src/testing/fake-browser.ts`, with `@/lib/storage` mocked per tab (`tabStorage`).
