@@ -1060,7 +1060,7 @@ What a cut-short read does to the stored book is in [Read problems](#read-proble
 
 With `--ffprobe ""`, or no ffprobe found, the probe still runs, by FFmpeg 8.1's
 rules (`noFFprobeRules`, the release the Docker images ship). A file it is unsure
-of gets no duration and no `ProbeErr`, as before. A read out of time says so
+of gets no duration and no `ProbeErr`. A read out of time says so
 (`Metadata.ProbeTimedOut`) and is read again alone, as an ffprobe time-out is.
 The start-up log says the probe is on with no ffprobe.
 

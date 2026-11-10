@@ -231,9 +231,9 @@ resumed job's own book found again, moves followed), and when new:
    (`resumesAt`, shared with the generate continue below: `splitting` for a
    continuable transcription, `chapter_detecting` for a rerunnable detection). Its
    transcription is kept, and the log says "taking up the book's stopped chapters
-   run, its transcription kept". A run that **failed** for a reason of its own, or
-   is parked, is cleared as before, so asking again never fails the same way
-   forever; so is one it can't trust (the file replaced, the windows gone, swept).
+   run, its transcription kept". A run that **failed** for a reason of its own, is
+   parked, or can't be trusted (the file replaced, the windows gone, swept) is
+   cleared, so asking again never fails the same way forever.
 4. Else **creates** an engine book with goal `chapters` and no series, and follows
    it: its progress is generate's without `cost_usd` (`stage` `chapter_detecting`,
    the ETA, a park's code and hint).
