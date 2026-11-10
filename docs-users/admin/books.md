@@ -271,8 +271,8 @@ for listeners too, edit its **Series number** on
 ## Good to know
 
 - **What matching sends.** The book's tagged details, length, ASIN or ISBN,
-  what you type, and up to three of its folder names go to the metadata
-  service. Nothing about your server or who listens is sent. With a
+  what you type, and up to three names from its path (the author, series and
+  book folders) go to the metadata service as search terms, never the full path. Nothing about your server or who listens is sent. With a
   [local copy](server.md#keeping-a-local-copy), lookups use the copy when it
   can answer, but can still fall back to the online service.
 - **An ASIN or ISBN you leave unticked, or revert, stays off.**
