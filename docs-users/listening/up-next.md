@@ -1,65 +1,57 @@
 ---
-title: Up next
-description: "Lining up the books you want to hear next: opening Up next on a computer, tablet or phone, adding books, reordering, clearing with Undo, dragging covers in, the suggestions under the queue, and how the queue decides what plays when a book ends."
+title: Choose what plays next
+description: Line up the books you want to hear next in Up next, a queue that follows you to every device.
 ---
 
-**Up next** is your queue: the books you'd like to hear after the one you're on, in the order you want them. It's kept on your server, so the same list follows you to every device you listen on.
+**Up next** is your queue: the books you want to hear after the one you're on, in your order. It's kept on your server, so the same list follows you to every device. [Podcast episodes](podcasts.md) can go in it too.
 
-[Podcast episodes](podcasts.md) can go in Up next too, from an episode's **...** menu. An app older than 2.4.0 doesn't show them in the list, but changing the list there keeps them on it.
-
-:::note
-Up next needs a recent AudioSilo server. On an older server the Up next buttons don't appear at all, and everything else works as before.
-:::
+Up next needs a recent AudioSilo server. On an older one, the Up next buttons don't appear.
 
 ## Opening Up next
 
-![The web player on a computer with the Up next drawer open on the right: the book playing now, three queued books, and suggestions underneath](/img/screenshots/web-player/up-next.png)
+![The web player on a computer with the Up next drawer open on the right](/img/screenshots/web-player/up-next.png)
 
-**On a computer** (or any wide window, such as a large tablet held sideways), Up next is a **drawer** down the right-hand side of the window, next to the page you're browsing. It's open to start with. Drag its left edge to make it wider or narrower, or use **Hide Up next** to tuck it away; AudioSilo remembers both on that device. In the web player, the **Q** key shows or hides it (see [Keyboard shortcuts](keyboard-shortcuts.md)).
+**On a computer** (or any wide window), Up next is a **drawer** down the right-hand side, beside the page you're browsing. Drag its left edge to resize it, or use **Hide Up next** to tuck it away.
 
-**On a tablet or phone**, Up next rises from the bottom of the screen as a **sheet**, over whatever you're looking at - the full player included. In the web player, **Esc** closes it, and so does **Q** where it opened it ([Keyboard shortcuts](keyboard-shortcuts.md)).
+**On a tablet or phone**, Up next rises from the bottom of the screen as a **sheet**.
 
 ![Up next as a sheet on a phone](/img/screenshots/web-player/phone-up-next.png)
 
-You can open it from:
+Open it from:
 
-- the **Up next** button in the top bar (tablet and computer), with the number of books queued;
-- the Up next button on the [player bar](playback.md#the-mini-player-and-the-player-bar) along the bottom of the window;
-- the Up next button among the [full player](full-player.md)'s actions, on a phone or tablet;
-- on a phone, the round Up next button beside the big title at the top of each tab;
-- in the web player's [quick search](browsing.md#quick-search-in-the-web-player), the **Open Up next** action.
+- the **Up next** button in the top bar, or beside the page title on a phone;
+- the Up next button on the [player bar](playback.md#the-mini-player-and-the-player-bar) or in the [full player](full-player.md);
+- the **Q** key, or **Open Up next** in [quick search](browsing.md#quick-search-in-the-web-player), in the web player.
 
-Up next shows **one server's queue**: the server of the book you're playing, or your main server when nothing is playing. If you're connected to more than one server, the line under the title names it, along with how much listening is queued ("7h 2m queued").
+Up next shows one server's queue: the server of the book you're playing, or your main server when nothing is playing.
 
 ## What's in it
 
-- **Now playing** at the top: the cover, the chapter you're in, and the time left at your speed.
-- **Your queue**, in order. Each book shows how far you are with it (a percentage, or **Finished**). Tap a book to open its page; its **play** button plays it now, and its **X** removes it from the queue. (In the web player those two buttons appear when you point at a book or move to it with the keyboard.)
-- **Continue the series and more** underneath: the next book in the series you're playing, books you're partway through on this server, and, when the community database knows the next book in a series but your server doesn't have it, a pale "ghost" for it with **See the series**. Tap **+** to add a suggestion to the queue.
-- **Play the next book automatically** at the bottom: when a book ends, start the first book in Up next, or the next in the series. This is the same switch as **Automatically play next book** in [Settings](settings.md#up-next-and-downloads) - see [The end of a book](end-of-book.md#playing-on-automatically).
-
-While a [podcast episode](podcasts.md#when-an-episode-ends) is playing, the suggestions offer the show's next episode, marked **Next episode**, and the switch reads **Play Up next automatically**: after an episode, only the first item in Up next plays, never the next episode unless you've queued it.
+- **Now playing** at the top.
+- **Your queue**, in order. Tap a book to open its page. Its **play** button plays it now, and its **X** removes it.
+- **Continue the series and more**: suggestions such as the next book in the series. Tap **+** to add one.
+- **Play the next book automatically**: when a book ends, start the next one. See [Playing on automatically](end-of-book.md#playing-on-automatically).
 
 ## Adding books
 
-- Open any book's [menu](browsing.md#the-book-menu) (its **...** button in a list, or press and hold its cover) and choose **Add to Up next** (or **Remove from Up next** if it's already there).
-- On a [book's page](book-page.md#listening-and-the-buttons), the **Up next** button offers **Play next** (to the top of the queue) and **Add to the end of Up next**.
-- On a [series page](browsing.md#series-pages), the action under the shelf (and beside each book in the list) reads **Queue it** for a book you haven't started, and **Queued** once it's in.
-- In Up next itself, tap **+** beside a suggestion.
-- **In the web player on a computer**, drag any book cover from the page and drop it on the drawer. A dashed area at the end of the queue lights up as you drag. Only books from the queue's own server can go in; for any other, the drawer says which server it's showing.
+- Choose **Add to Up next** from any book's [menu](browsing.md#the-book-menu).
+- On a [book's page](book-page.md#listening-and-the-buttons), choose **Play next** (top of the queue) or **Add to the end of Up next**.
+- On a [series page](browsing.md#series-pages), tap **Queue it**.
+- In Up next, tap **+** beside a suggestion.
+- In the web player on a computer, drag a book cover onto the drawer.
 
-A short note confirms each change with **Undo**, in case you tapped the wrong book. If the queue is full, the note says so; remove a book to make room.
+Each change shows a note with **Undo**, in case you picked the wrong book.
 
 ## Changing the order
 
-- **Drag** a book by its grip (the handle at its left) to a new place.
-- **With a keyboard**, move to a book's grip and use the **up and down arrow keys**, or hold **Alt** (**Option** on a Mac) and press up or down anywhere on the book's row.
-- **With a screen reader**, each book offers **Move up** and **Move down** actions.
+- **Drag** a book by its grip, the handle at its left.
+- **With a keyboard**, move to a book's grip and use the **up and down arrow keys**.
+- **With a screen reader**, use each book's **Move up** and **Move down** actions.
 
-## Clearing it
-
-**Clear** empties the queue in one go. A note at the bottom of the screen offers **Undo**, which puts every book back in its old order.
+**Clear** empties the whole queue. **Undo** puts it all back.
 
 ## When a book ends
 
-The first book in your queue is what plays next; see [What plays next](end-of-book.md#what-plays-next). A book leaves the queue as soon as it starts playing, wherever you start it: from Up next, its page, a list, the car, or as the next book at the end of another. It also leaves when it finishes or you use **Mark as Finished** in the full player. Marked finished from its book menu, it stays in the queue until you remove it. With **Keep the next books ready** on, AudioSilo also [downloads the top of your queue](offline-downloads.md#keep-the-next-books-ready) ahead of time.
+The first book in your queue plays next. See [What plays next](end-of-book.md#what-plays-next).
+
+A book leaves the queue as soon as it starts playing, wherever you start it. It also leaves when it finishes. With [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) on, AudioSilo downloads the top of your queue ahead of time.

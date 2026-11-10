@@ -1,120 +1,57 @@
 ---
-title: "Activity"
-description: "What the admin console's Activity screens show: listening over a period, who is listening right now, every listening session, a year in listening, and what the server records to draw them."
+title: "See who is listening"
+description: "Use the admin console's Activity pages to see listening over time, who is playing right now, every session, and a year in review."
 ---
 
 **Activity** in the [admin console](console-tour.md) shows what your household
-listens to and how the server copes. It has four sections: **Overview**, **Live
-now**, **Sessions** and **Year in listening**.
+listens to. It has four sections: **Overview**, **Live now**, **Sessions** and
+**Year in listening**. Only admins can see it.
 
-Everything here is drawn from **listening sessions**: stretches of listening on
+Everything here is built from **listening sessions**: a stretch of listening on
 one book on one device. The server works them out from the progress the apps
-already save while they play, so there is nothing for listeners to turn on.
-A few things follow from that:
+already save, so listeners don't need to turn anything on.
 
-- A session shows up once the app has saved progress twice. Marking a book
-  finished without playing it is not listening.
-- Time listened is measured with the server's own clock between saves, so a
-  phone with its clock set wrong can't inflate it.
-- Days, hours and weekdays are counted in the **server's** time zone. The
-  Overview names the zone ("times in server time").
-- Listening under an hour reads in minutes ("24m"); longer totals in hours
-  ("2.4h", "128h").
-- Apps released before apps started naming themselves to the server show as
-  "Unknown app" until they are updated.
-
-What the server keeps, for how long, and who can see it is set out in
-[What the server records](#what-the-server-records).
+Days and hours are counted in the **server's** time zone.
 
 ## Overview
 
 ![Activity > Overview](/img/screenshots/admin/activity.png)
 
-**Activity > Overview** covers a period: **7 days**, **30 days** (the
-default), **90 days** or **1 year**, each ending now. The period you pick is
-kept in the page's address, so a link or a reload opens the same view.
+**Activity > Overview** covers a period: **7 days**, **30 days**, **90 days** or
+**1 year**. Four tiles at the top show listening hours, sessions, the most
+streams at the same time, and books finished. Each tile compares with the
+period before.
 
-Four tiles sit at the top:
+Below the tiles:
 
-- **Listening hours** in the period, with a small line of the daily hours and
-  how many people listened.
-- **Sessions** started in the period, with their average length.
-- **Peak concurrent streams**: the most sessions open at the same time, and
-  when that was.
-- **Books finished** in the period, with the finish rate ("40% finish rate ·
-  2 of 5 started"). A book counts once however many people finished it.
+- **Listening hours per day**, split by the people who listened most.
+- **The year, day by day**: a calendar of the last 12 months.
+- **When** *your server* **listens**: listening by hour of day and weekday.
+- **Top books** and **Top people**. Click one to open its page.
+- **Most heard**: the top authors and narrators.
+- **Started vs finished**: how far people get into the books they start.
+  **Where people stopped** lists books where at least two people gave up at the
+  same chapter.
+- **How it played**: how much listening played directly and how much was
+  transcoded.
+- **Apps in use**: the apps and versions people listen with. A note points out
+  devices running an older build.
+- **Library growth** and **Storage and coverage**: how your collection grew,
+  the space it takes, and how many books are matched, have chapters and have a
+  cover.
 
-Where the period before had something to compare with (the same length, just
-before it), a tile also shows the change as an arrow and a percentage.
-
-Below the tiles, when someone listened in the period:
-
-- **Listening hours per day** (**per week** for 1 year): a bar for each day,
-  split by the four people who listened most, with everyone else together as
-  "Everyone else". Point at a bar to see who listened how long.
-- **The year, day by day**: a calendar of the last 12 months, whatever period
-  you picked. The darker a day, the more listening; point at a day to see its
-  hours.
-- **When** *your server* **listens**: listening by hour of day and weekday, with
-  the busiest hour in words ("Busiest: Wednesday 21:00", always on a 24-hour clock).
-- **Top books**: the books listened to most, with how many people listened.
-  Click one to open its page.
-- **Top people**: who listened most, with how many books they listened to and
-  finished. A book someone marked finished without listening to it in the
-  period counts among their books too. Click a name to open their page.
-- **Most heard**: the top authors and narrators by time listened.
-- **Started vs finished**: of the people who played a book in the period, how
-  many have reached 25%, 50% and 75% of it, and how many finished it.
-  **Where people stopped** lists books where at least two people stopped at the
-  same chapter and haven't come back for 30 days, naming the chapter as
-  [Live now](#live-now) does. When the book also has a file
-  that couldn't be read, **See the read problem** opens it in
-  [Library health](health.md).
-- **How it played**: how much listening played directly and how much went
-  through the transcoder, per audio format.
-- **Apps in use**: the devices that listened, by app and version. A note points
-  out devices running an older build than others on the same platform, and
-  apps from before apps named themselves.
-
-Whatever the period, two cards describe your collection:
-
-- **Library growth**: how many books your libraries held over the period.
-- **Storage and coverage**: the space your books take, by library and by
-  format, and the share of books that are **Matched to the community** (an
-  ASIN or ISBN, or from 2.6.0 a match to a
-  [store listing](books.md#books-matched-to-a-store-listing) without one), that
-  have chapters and that have a cover.
-
-If people haven't been active for 60 days, a notice lists them, with when each
-was last seen (or "never signed in"); click a name to open their page. When
-nobody listened in the period the page says "No listening in this period":
-try a longer one.
+A notice lists anyone who hasn't been active for 60 days.
 
 ## Live now
 
 ![Activity > Live now](/img/screenshots/admin/activity-live.png)
 
 **Activity > Live now** shows every device playing or paused in the last ten
-minutes, playing first. A device that moved on to another book shows only the
-book it is on now. The line under the title counts the streams ("2 streams
-playing · 1 direct, 1 transcoding · 1 paused"), and the page refreshes every
-ten seconds.
+minutes. The page refreshes every ten seconds.
 
-Each card shows the cover, who is listening, **Playing** or **Paused**, the
-book, the chapter and how far they are, plus the details below. The chapter is
-its title as the player shows it, with a file name tidied up
-("01_Opening_Credits.mp3" reads "01 Opening Credits"). A title that says
-nothing but a number, such as "024" or "Track 01", is named by its place in
-the book instead (the fifth chapter reads "Chapter 5"); a numbered title such
-as "Chapter 10" is kept as written. A book that is one long chapter shows no chapter.
-
-- **Device** - the name the device gave when it signed in.
-- **App** - the app and its version, for example "AudioSilo 1.4.2 · iOS". A
-  watch ([Apple Watch](../listening/apple-watch.md)) shows **Apple Watch** or
-  **Wear OS** as its platform, with a watch icon.
-- **Playback** - **Direct** or **Transcode**, with the audio format.
-- **Address** - the network address the device last connected from.
-- **Started** - when this session began.
+Each card shows who is listening, the book, the chapter and how far they are.
+It also shows the device, the app and its version, whether it plays directly or
+is transcoded, the network address and when the session started.
 
 A session closes on its own after 10 minutes without a position update.
 
@@ -122,164 +59,101 @@ A session closes on its own after 10 minutes without a position update.
 
 ![Activity > Sessions](/img/screenshots/admin/activity-sessions.png)
 
-**Activity > Sessions** lists every listening session, newest first: the
-**Person**, the **Book** (with how far the session moved them through it, for
-example "12% → 18%"), **When** it started, how long they **Listened**, the
-**Device** and app, and the **Playback** (Direct or Transcode). Click a person
-or a book to open their page.
+**Activity > Sessions** lists every listening session, newest first. Each row
+shows the person, the book and how far the session moved them, when it
+started, how long they listened, the device and app, and how it played.
 
-- **Whose sessions** narrows the list to one person, or **Everyone**.
-- **See listening sessions** in a [progress menu](users-and-invites.md#editing-someones-progress)
-  opens the list for one person and one book. A "Book: ..." chip shows the
-  book; its **×** (**Show every book**) clears it.
-- **Show older sessions** loads the next page.
+- **Whose sessions** narrows the list to one person.
+- **See listening sessions** in a person's
+  [progress menu](users-and-invites.md#editing-someones-progress) opens the
+  sessions for one person and one book.
 
-Listening [imported from Audiobookshelf](import.md) shows the device
-Audiobookshelf recorded, with "Imported from Audiobookshelf" under it, among
-the other sessions by when it started.
+Listening [imported from Audiobookshelf](import.md) is marked "Imported from
+Audiobookshelf".
 
-Sessions are kept for 400 days unless you
-[change it](server.md#general). After that they are summarised by day, so they
-still count in the totals and charts but no longer appear in this list.
+Sessions are kept for 400 days unless you [change it](server.md#general).
+After that they are summarised by day. They still count in the totals and
+charts, but no longer appear in this list.
 
 ## Year in listening
 
 ![Activity > Year in listening](/img/screenshots/admin/activity-year.png)
 
 **Activity > Year in listening** tells a calendar year as a story. Pick the
-**Year** (this year, by the server's calendar, and the four before it); the
-current year reads "so far".
-
-- The headline: how many people listened, and for how long, and once that
-  passes two days, how many days of stories it makes.
-- **Book of the year**: the book listened to most, how many people spent how
-  long with it, and the most heard narrator.
-- Books finished, books listened to, the longest run of days in a row with some
-  listening, and the busiest hour. A book finished by several people counts
-  once, and a book marked finished (or imported as finished) without any
-  listening recorded that year still counts as a book listened to, so books
-  finished is never more than books listened to. (The busiest hour needs the detailed
-  sessions, so a year past the sessions' keeping time, 400 days unless
-  changed, has none.)
-- The year day by day, as a calendar.
-- **Most played**: the covers of the books listened to most.
-- **Who listened**: each person's hours and books finished.
-
-A year nobody listened in says "No listening in" that year.
+**Year**. You see how many people listened and for how long, the book of the
+year and books finished. You also see the longest run of days with some
+listening, the busiest hour, the most played books and each person's hours.
 
 ## Each person's listening
 
-A person's page opens on their **Listening** tab: their listening year, the
-books they have in progress and have finished (each with a menu to mark it
-finished, edit its dates or see its sessions) and their recent sessions. See
+A person's page opens on their **Listening** tab: their year, the books they
+have in progress and have finished, and their recent sessions. See
 [A person's page](users-and-invites.md#listening).
 
 ## What the server records
 
-So that admins can see who is listening and on what, the server keeps a few
-records about each person. Only admins can see them (apart from what a listener
-chooses to share with the house; see [Listening in the house](#listening-in-the-house)
-below), and they never leave your server.
+To show who is listening and on what, the server keeps a few records about each
+person. Only admins can see them (apart from what a listener chooses to
+[share with the house](#listening-in-the-house)), and they never leave your
+server.
 
-- **Devices.** For each signed-in device (a phone, a browser, a personal API
-  key): its name, which app it is and its version, when it last connected, and
-  the network address it last connected from. Only the latest address is kept,
-  not a history, and only while the device is signed in: once it signs out, the
-  address is cleared within a day. Sessions themselves don't record addresses;
-  **Live now** shows the device's latest one.
-- **Listening sessions.** Who listened to which book, when, for how long, how
-  far through the book, on which device and app, and whether it played directly
-  or through the transcoder. These come from the progress saves the apps
-  already make, or on a recent server and app from the listening the apps
-  send: listening done offline then counts on the day and at the time it
-  happened, even when it reaches the server later or the device's clock was
-  wrong, and listening sent twice counts once.
-- **Start and finish dates** for each book a person reads. Books finished
-  before this was added have their last listen as the finish date, and no start
-  date. An admin can [correct the dates](users-and-invites.md#editing-someones-progress).
+- **Devices**: each signed-in device's name, app and version, when it last
+  connected, and the network address it last connected from. Only the latest
+  address is kept. It is cleared within a day of the device signing out.
+- **Listening sessions**: who listened to which book, when, for how long, how
+  far, on which device and app, and whether it was transcoded.
+- **Start and finish dates** for each book a person reads. An admin can
+  [correct them](users-and-invites.md#editing-someones-progress).
 
-**Listening from before an upgrade.** The server started recording sessions in
-version 1.16. On the upgrade to 1.17 it fills in the time before that from what
-it already had. The apps have kept their own history of each stretch of
-listening since June 2026, and those become sessions, shown as **Listening
-history** in the Sessions list because the device and app weren't recorded.
-Anything older, or played offline, is estimated from where each book was left.
-Estimates count in the totals and top lists, not the day-by-day charts, and the
-Overview and Year in listening say how much of a period is estimated.
+Detailed sessions are kept for 400 days unless you set another time (30 days to
+10 years) in [Server > Settings > General](server.md#general). After that they
+are reduced to daily totals: how long each person listened to which book on
+which day.
 
-**Listening imported from Audiobookshelf.** An admin can
-[import each person's Audiobookshelf history](import.md). Its sessions count
-like the ones recorded here, on the days and hours they happened, but not in
-the apps in use or the playback breakdown. Where Audiobookshelf's progress went
-further than its sessions, the rest is an estimate, and the estimated note
-covers it too ("beyond what an imported history covered").
-
-**How long it's kept.** Detailed sessions are kept for 400 days (about 13
-months) unless you set another time in
-[Server > Settings > General](server.md#general), from 30 days to 10 years.
-After that they are reduced to daily totals: how long each person
-listened to which book on which day. The device, app and time of day are
-dropped.
-
-Deleting an account removes all of its records; deleting a library removes the
+Deleting an account removes all of its records. Deleting a library removes the
 listening records for its books. You can also
-[sign out a single device](users-and-invites.md#the-devices-page), leaving the
-person's other devices signed in.
+[sign out a single device](users-and-invites.md#the-devices-page).
 
 ### Listeners' own lists and goals
 
-The server can also keep a few things each listener sets up for themselves, so
-they follow them from device to device. The apps will offer them as they gain
-the features:
+The server also keeps things each listener sets up for themselves: their
+**Up next** queue, their **collections**, their **ratings** and a yearly
+**listening goal**. Nothing in the admin console shows them.
 
-- **Up next** - the books they have queued to play next.
-- **Collections** - lists of books they have made, with a name and a
-  description, and who they have shared each one with.
-- **Ratings** - a 1 to 5 rating of a book and an optional short note.
-- **A listening goal** - how many books they want to finish each year.
+Two things are visible to other listeners:
 
-They are kept in the server's database like everything else, but nothing in
-the admin console shows them. Two things are visible to other listeners:
+- **Sharing a collection shows usernames.** To pick who to share with, any
+  signed-in listener can see the usernames of the server's other accounts.
+  Nothing else about the accounts is shown.
+- **A shared collection shows its owner.** The person it is shared with sees
+  its name, description, owner and only the books they can already open.
+  Sharing never gives anyone access to a book.
 
-- **Sharing a collection shows usernames.** To pick who to share a collection
-  with, any signed-in listener can see the usernames of the server's other
-  enabled accounts (demo accounts can't, and are never listed). Only usernames
-  are shown, nothing else about the accounts.
-- **A shared collection shows its owner.** Someone a collection is shared with
-  sees its name, its description, the owner's username, and only the books in
-  it that **they** already have access to. Sharing a collection never gives
-  anyone access to a book, and they can't change it, only remove it from their
-  own list.
-
-The server also works out each listener's own listening figures for their app:
-time listened, their most-listened books, authors and series, and the books
-they finished. A listener gets only their own, never anyone else's, and the
-book lists name only books they can still open.
-
-Deleting an account removes these too: its queue, its collections (and its
-place in other people's shared ones), its ratings and its goal. Deleting a
-library removes its books from everyone's queues, collections and ratings. All
-of it is part of every [backup](backups.md).
+Each listener can see their own listening figures in their app, never anyone
+else's. Deleting an account removes its lists, ratings and goal. All of it is
+part of every [backup](backups.md).
 
 ### Listening in the house
 
-Listeners can choose to share what they're listening to with the other people on
-the server who share too; who sees what is on
-[Listening in the house](../listening/in-the-house.md#who-shows-up). The server
-keeps only each account's choice, and builds what it shows from the listening
-sessions it already records.
-
-Nothing in the admin console shows who shares or changes anyone's choice. As an
-admin you already see everyone's listening on this page, whether or not they
-share. Deleting an account removes its choice, and it is part of every backup.
+Listeners can choose to share what they're listening to with others on the
+server who share too (see
+[Listening in the house](../listening/in-the-house.md#who-shows-up)). The
+server keeps only each account's choice. Nothing in the admin console shows who
+shares.
 
 ### Casting
 
-When a listener [plays a book on a Chromecast](../listening/chromecast.md), their
-app asks the server for a temporary pass for that one book (24 hours, audio and
-cover only), so the Cast device never gets the listener's own sign-in. The pass
-stops working for good when the device that asked for it signs out (including when
-you [sign that device out](users-and-invites.md#the-devices-page)) or when the
-account is deleted. It also doesn't work while the account is disabled or the person
-can't open the book, but it works again if that changes within its 24 hours.
-Passes are not listed as devices in the console.
+When a listener [plays a book on a Chromecast](../listening/chromecast.md),
+their app gets a temporary pass for that one book. It lasts 24 hours and covers
+only the audio and cover, so the Cast device never gets the listener's own
+sign-in. The pass stops working when the device that asked for it signs out, or
+when the account is deleted.
+
+### Good to know
+
+- Listening from before the server recorded sessions is estimated from where
+  each book was left. Estimates count in the totals and top lists, not in the
+  day-by-day charts, and the pages say how much is estimated.
+- Listening imported from Audiobookshelf counts like any other, except in
+  **Apps in use** and **How it played**.
+- An app too old to name itself to the server shows as "Unknown app".

@@ -1,182 +1,113 @@
 ---
-title: "Backups and restoring"
-description: "Back up the AudioSilo server's database from the admin console: what a backup holds and what it doesn't, the schedule, how many are kept and where, downloading a copy, and restoring one at the next start."
+title: "Back up your server"
+description: "Back up your server's database on a schedule or by hand, keep a copy somewhere safe, and restore one when you need to."
 ---
 
-Your audiobooks are files in your own folders, and AudioSilo never changes
-them. Everything else lives in the server's **database**: who has an account,
-how far everyone got in every book, bookmarks, notes, your metadata edits,
-shares, invites and devices. The book list in it can be rebuilt by scanning
-your folders again; the rest can't. A **backup** is a copy of that database.
-
-Backups live in **Server > Settings > Backups** in the
-[admin console](console-tour.md).
+AudioSilo backs up its **database** every day by itself: accounts, everyone's
+progress, bookmarks, notes, your edits, shares and invites. Your audiobooks are
+not in it, so back up your book folders separately. You manage backups in
+**Server > Settings > Backups** in the [admin console](console-tour.md).
 
 ![Server > Settings > Backups](/img/screenshots/admin/settings-backups.png)
 
 ## What is in a backup
 
-A backup is one file holding the whole database at the moment it was made:
+A backup is one file holding the whole database. It does **not** hold:
 
-- accounts (with their password hashes, never the passwords themselves),
-  signed-in devices and API keys, and invites;
-- listening progress, bookmarks, notes, history and favourites, and each
-  listener's up next, collections (and who they're shared with), ratings and
-  listening goal;
-- shares and who can see what;
-- your metadata edits, custom covers and folder detection choices;
-- the [audit log](server.md#audit-log), your
-  [notification](notifications.md) destinations, the event list behind the
-  bell, and the answer to the [support card](console-tour.md#the-support-card).
+- your audiobooks;
+- the settings file, `config.yaml`, or your HTTPS certificates. Keep a copy of
+  the data folder's `config.yaml` with your backups.
 
-It does **not** hold:
-
-- your audiobooks (back up your book folders on their own);
-- the server's settings file, `config.yaml` (the server name, address, HTTPS
-  and the other [settings](server.md#settings)), or its HTTPS certificates.
-  Keep a copy of the data folder's `config.yaml` with your backups.
+A backup holds every account's password hashes, so keep it private.
 
 ## The schedule
 
-The **Schedule** card:
+The **Schedule** card sets:
 
-- **Back up** - **Off**, **Every day** or **Every week**, then (for a weekly
-  backup) the day and the time. The time is the server's own time zone. Out of
-  the box the server backs up every day at 03:00. If the server was off when a
-  backup was due, it makes one as soon as it is back (one, however many it
-  missed).
-- **Scheduled backups to keep** - how many scheduled backups stay in the
-  folder, 7 out of the box (anything from 1 to 365). Once there are more, the
-  oldest scheduled backup is deleted each time a new one is made (except one
-  that is waiting to be restored). Backups you make with **Back up now** are
-  never deleted for you: they stay until you delete them. **Before an upgrade**
-  copies are kept apart from these (see [below](#before-an-upgrade)).
-- **Folder** - where backups are kept: a `backups` folder inside the server's
-  data folder unless you choose another one. It can't be changed here, only in
-  `config.yaml` (`backups.dir`) or with the `AUDIOSILO_BACKUP_DIR` environment
-  variable, and a new folder is used from the next restart.
+- **Back up** - **Off**, **Every day** or **Every week**, and the time. Out of
+  the box, every day at 03:00 (the server's time zone). If the server was off
+  when a backup was due, it makes one when it is back.
+- **Scheduled backups to keep** - 7 by default (1 to 365). The oldest scheduled
+  backup is deleted when a new one is made.
+- **Folder** - a `backups` folder in the data folder, unless you set
+  `backups.dir` in `config.yaml` or `AUDIOSILO_BACKUP_DIR`. A new folder is used
+  after a restart.
 
-Press **Save changes** to apply a new schedule. It takes effect at once, no
-restart needed. The line under the list says when the next backup runs.
+Press **Save changes** to apply a new schedule.
 
 :::tip[Keep a copy somewhere else]
-A backup on the same disk as the server is lost with it. Point the folder at
-another disk (a NAS share, a second drive) in `config.yaml`, or download a
-backup now and then and keep it somewhere else. Either way, keep it private: a
-backup holds every account's password hashes.
+A backup on the same disk as the server is lost with it. Point the backups
+folder at another disk, or download a backup now and then and keep it
+elsewhere.
 :::
 
-## The list
+## Making and downloading backups
 
-The **Backups** card lists every backup, newest first, with when it was made,
-its kind, its file name and size:
+The **Backups** card lists every backup, newest first.
 
-- **Scheduled** - made by the schedule.
-- **Manual** - made with **Back up now** (or a backup file you copied into the
-  folder yourself).
-- **Before a restore** - the copy of the database that a restore replaced.
-- **Before an upgrade** - the copy the server made as it started a new version
-  that changes the database (see [below](#before-an-upgrade)).
+- **Back up now** makes one straight away. These are never deleted for you.
+- **Download** saves a backup to your computer.
+- The bin deletes a backup from the server.
 
-**Back up now** makes a backup straight away; the button says "Backing up..."
-until it's done, and a message says how it went. For each backup:
-
-- **Download** saves the file to your computer. Downloads are recorded in the
-  [audit log](server.md#audit-log).
-- **Restore...** puts the server back to that backup (see below).
-- The bin deletes it from the server's folder ("Delete this backup?"). Copies
-  you downloaded aren't affected.
-
-If a backup fails, a notice says so with the reason: the disk is full, the
-server can't write to its backups folder (check the folder's permissions), or
-something else (the cause is in [Server > Logs](server.md#logs)). The same
-shows as **Failed** on [Health > System](health.md#system), and you can have
-it [sent to you](notifications.md).
+If a backup fails, a notice gives the reason, such as a full disk or a folder
+the server can't write to. You can have it [sent to you](notifications.md).
 
 ## Before an upgrade
 
-From 2.5.0, a new version of the server that needs to change the database
-copies it first. As it starts, before it changes anything, it writes the
-database as it was into the backups folder as a **Before an upgrade** backup
-(a file named `audiosilo-<time>-before-upgrade.db`), and its log says so in
-one line, naming the changes and the copy: "copied the database before
-applying new migrations". A brand-new server, and an update that doesn't change
-the database, make no copy.
+When a new version of the server needs to change the database, it copies the
+database first. The copy shows in the list as **Before an upgrade**. The newest
+three are kept, apart from your scheduled backups.
 
-The newest three of these copies are kept; an older one is deleted when a new
-one is made (except one that is waiting to be restored). They don't count
-towards **Scheduled backups to keep**, and the schedule never deletes them.
+If the copy can't be made (a full disk, say), the server starts anyway. So with
+little room left, make a backup yourself before you update.
 
-If the copy can't be made (the disk is full, say), the log has a warning and the
-server starts anyway, so with little room left, make a backup yourself before
-you update. To go back to the version you had, run it again and restore the
-**Before an upgrade** backup made when you updated, normally the newest (see below); an older server lists it as
-**Manual**.
+To go back to the version you had, run it again and restore the **Before an
+upgrade** backup made when you updated.
 
 ## Restoring a backup
 
-A restore replaces the server's whole database with the backup, so everything
-done since that backup was made is lost. It never happens while the server is
-running: you choose the backup now, and the server swaps it in the next time it
-starts.
+A restore replaces the whole database with the backup. Everything done since
+that backup is lost. The server swaps it in the next time it starts.
 
 1. Press **Restore...** on the backup you want.
-2. Read what will happen, type `restore` in the box, and press **Restore at
-   the next start**.
+2. Type `restore` in the box and press **Restore at the next start**.
 
    ![Restore this backup?](/img/screenshots/admin/backup-restore.png)
 
-   Before accepting it, the server takes a quick look at the file: one that
-   isn't an AudioSilo backup is refused, and so is a backup made by a newer
-   version of AudioSilo (update this server first). A backup from an older
-   version is fine: it is brought up to date when the server starts. The full
-   check for damage happens when the server starts (see below).
-3. A notice, "A restore is waiting for a restart", now sits at the top of the
-   page, with **Cancel restore** if you change your mind. Nothing has changed
-   yet.
-4. Restart the server the way you started it (`docker compose restart`,
-   restarting the service, or quitting and starting the program again).
+3. Restart the server the way you started it (for example
+   `docker compose restart`).
 
-When the server starts, it checks the backup again, **keeps a copy of the
-current database first** (it appears in the list as **Before a restore**),
-then puts the backup in its place. Afterwards the Backups page says "Restored
-from *backup* (*time*)" and names the copy it kept. To undo the restore,
-restore that copy the same way.
+Changed your mind before restarting? Press **Cancel restore**.
 
-If the backup can't be used when the server starts (it was deleted in the
-meantime, it turned out to be damaged, or the note of which backup to restore
-couldn't be read), the server starts with its database as it was, and the page says "The restore from *backup* wasn't applied" and
-why. It doesn't try again at the next start.
+When the server starts, it saves the current database as a **Before a restore**
+backup, then puts your backup in its place. To undo the restore, restore that
+copy the same way. If the backup can't be used, the server starts as it was and
+the Backups page says why.
 
-What to expect after a restore:
+After a restore:
 
-- Accounts, passwords, progress, bookmarks, edits, shares, invites and devices
-  are as they were when the backup was made.
-- Phones and browsers set up after the backup must sign in again. Devices you
-  signed out, and API keys revoked, after it was made work again, so sign them
-  out again on [People > Devices](users-and-invites.md#the-devices-page)
-  afterwards. The restore dialog says this too.
-- Settings in `config.yaml` stay as they are, and the server's identity does
-  too, so the apps still recognise it.
-- Your books are read again from your folders when the server starts, so books
-  added since the backup come back on their own.
-- The restore is recorded in the [audit log](server.md#audit-log).
+- Accounts, progress, edits, shares and invites are as they were when the
+  backup was made.
+- Devices set up since the backup must sign in again.
+- Devices you signed out since the backup work again. Sign them out again on
+  [People > Devices](users-and-invites.md#the-devices-page).
+- Your settings in `config.yaml` stay as they are.
+- Books added since the backup come back on their own: the server reads your
+  folders again when it starts.
+
+A backup from an older version works. One from a newer version doesn't: update
+this server first.
 
 ### Restoring a copy you kept elsewhere
 
-The server only restores backups that are in its backups folder. To restore a
-file you downloaded, copy it back into the folder, keeping its name (it starts
-with `audiosilo-` and ends with `.db`). It appears in the list, and **Restore...**
-works as above.
+The server only restores backups in its backups folder. Copy your file back into
+that folder, keeping its name (it starts with `audiosilo-` and ends with `.db`).
+It then appears in the list.
 
-This is also how you move to a new disk or machine: install AudioSilo, sign
-in to the new server's console once, copy your backup into its backups folder,
-restore it and restart. Copy your old `config.yaml` into the new data folder
-too if you want the same settings.
+**Moving to a new machine** works the same way:
 
-## Where to next
-
-- [Notifications](notifications.md) - hear about a failed backup.
-- [Server settings, updates and logs](server.md) - the other settings, and the
-  audit log.
-- [Health > System](health.md#system) - the backups at a glance.
+1. Install AudioSilo and sign in to the new console once.
+2. Copy your backup into its backups folder.
+3. Restore it and restart.
+4. Copy your old `config.yaml` into the new data folder if you want the same
+   settings.

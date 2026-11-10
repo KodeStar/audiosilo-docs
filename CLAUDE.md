@@ -48,6 +48,9 @@ Node 24 (workspace convention; `.nvmrc` in the sibling repos).
   one ships, search the whole tree for it.
 - **Audience separation**: no Go/TS symbols or source paths in the User Guide;
   the Developer Docs reference symbols/paths as inline code (not links).
+- **User Guide readability rules**: every User Guide change follows the
+  "User Guide readability rules" section of
+  `docs-developers/contributing/documentation.md` (the single copy).
 - **Hyphens, not em dashes**: use `-` or restructure the sentence; do not use the
   em dash character (em dashes read as an AI tell and produce messy heading
   anchors). The sole exception is a code block that reproduces literal program

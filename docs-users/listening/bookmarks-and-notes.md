@@ -1,56 +1,58 @@
 ---
-title: Bookmarks and notes
-description: "Marking a moment with one tap, adding a note and a label (Quote, Favourite, Re-listen, Funny, Question), notes pinned to a place in the book, editing and deleting with Undo, the Fell asleep bookmark, and where they all show up."
+title: Add bookmarks and notes
+description: Mark a moment in a book with one tap, add a note or a label, and find them all again later.
 ---
 
-A **bookmark** marks a moment in a book: a line you loved, a scene to hear again, a name you'll want later. A **note** is a longer thought pinned to a place in the book: a theory, a reminder, a quote typed out. Both are saved to your account, so they follow you to every device.
+A **bookmark** marks a moment in a book: a line you loved, or a scene to hear again. A **note** is a longer thought pinned to a place in the book. Both are saved to your account, so they follow you to every device.
 
 ## Adding a bookmark
 
-**One tap** adds a bookmark where you are: the bookmark button in the [full player](full-player.md) or on the [player bar](playback.md#the-mini-player-and-the-player-bar), or the **B** key in the web player. A note confirms it: *"Bookmark added"*, with the time. Nothing interrupts your listening.
+Tap the bookmark button in the [full player](full-player.md) or on the [player bar](playback.md#the-mini-player-and-the-player-bar). In the web player, you can press **B**. A note confirms *"Bookmark added"*, and the book keeps playing.
 
-That note carries an **Add note** button: tap it while the note is showing to open the bookmark's editor and say what the moment was, or give it a label.
+To say why you marked the moment:
 
-On a book's **Bookmarks** tab (on its [page](book-page.md#the-tabs), or in the player's [companion](companion.md)), the **Bookmark 17:26:50** button at the top does the same for the book you're playing. For a book that isn't playing, it opens the editor at your place in the book first, so you can see where the bookmark will land before you make it.
+1. Tap **Add note** on the confirmation while it's showing.
+2. Type a note, or pick a label.
+3. Tap **Save bookmark**.
 
-In the car, the car's own bookmark button adds one too (see [In the car](in-the-car.md#while-it-plays)).
+You can also add one with the **Bookmark** button at the top of a book's **Bookmarks** tab. In the car, the car's bookmark button works too (see [In the car](in-the-car.md#while-it-plays)).
 
 ## The bookmark editor
 
-![The bookmark editor: the bookmark's time and chapter, the note, and the label chips with Quote chosen](/img/screenshots/web-player/bookmark-editor.png)
+![The bookmark editor: the time and chapter, the note, and the label chips](/img/screenshots/web-player/bookmark-editor.png)
 
-The editor shows where the bookmark is (the time, and the chapter it's in), then:
+The editor shows the bookmark's time and chapter, then:
 
 - **Note** - what happened here, in your own words (up to 2,000 characters).
-- **Label** - one of **Quote**, **Favourite**, **Re-listen**, **Funny** or **Question**, so you can find that kind of moment again later. Tap a label to choose it, and tap it again to clear it.
-
-**Bookmark 17:26:50** makes a new one; **Save bookmark** saves your changes to one you already have. On a phone the editor slides up from the bottom and rises with the keyboard, so what you type stays in view; on a computer it opens as a small window.
+- **Label** - **Quote**, **Favourite**, **Re-listen**, **Funny** or **Question**, so you can find that kind of moment later. Tap a label again to clear it.
 
 ## Notes
 
-A note belongs to a **place in the book**, like a bookmark, but it's for more than a line. On a book's **Notes** tab, **Note at 17:26:50** opens the note editor pinned to where you are: your place in the book while it plays, otherwise where you left off (or the start, for a book you haven't started). Write as much as you like (up to 10,000 characters), then **Pin note**.
+A note is pinned to a place in the book, like a bookmark, but it holds more.
 
-Notes understand simple formatting: `**bold**`, `*italic*` and lists. Notes you wrote before AudioSilo pinned them to a place sit at the start of the book (0:00).
+1. Open the book's **Notes** tab, on its [page](book-page.md#the-tabs) or in the player's [companion](companion.md).
+2. Tap **Note at** and the time. The note is pinned to where you are, or where you left off.
+3. Write up to 10,000 characters. Simple formatting works: `**bold**`, `*italic*` and lists.
+4. Tap **Pin note**.
 
-## Your bookmarks and notes
+## Finding them again
 
-![A book's Bookmarks tab: the Bookmark button and See all in your journal, then a Quote, a Re-listen and a Question bookmark](/img/screenshots/web-player/book-bookmarks.png)
+![A book's Bookmarks tab with a Quote, a Re-listen and a Question bookmark](/img/screenshots/web-player/book-bookmarks.png)
 
-Each book's **Bookmarks** and **Notes** tabs list them in book order. Each one shows its **time** (tap it to jump there), its label, its note (a Quote reads as a quotation), the chapter it's in and how long ago you made it. Then:
+A book's **Bookmarks** and **Notes** tabs list them in book order:
 
-- **Edit** (the pencil) opens the editor again. A note keeps its place when you edit it.
-- **Delete** (the bin) removes it straight away, with **Undo** in the note that follows. Undo puts it back where it was, with the same note and label (it counts as made just now).
+- Tap a **time** to jump there. A jump can be [undone](full-player.md#undo-a-jump).
+- **Edit** (the pencil) changes it.
+- **Delete** (the bin) removes it, with **Undo** in case you didn't mean to.
 
-On a phone, tapping a time opens the full player at that point, whether or not it's the book you're playing. On a tablet or computer the book you're playing jumps there and keeps playing, and another book starts there under the player bar. In the player's own [companion](companion.md), the book you're playing jumps there in place. A jump in the book you're playing can be [undone](full-player.md#undo-a-jump) like any other.
+They also show as pins on the whole-book timeline, in the full player and on the book's page.
 
-**See all in your journal** opens the [Journal](journal.md), which gathers every bookmark and note from every book (and every server), with a filter by label and a search.
-
-Your bookmarks and notes also show as **pins** on the whole-book timeline, in the full player and on the book's page, and a bookmark puts a small mark on the seek bar and the player bar's scrubber. Tap a pin to jump to it.
+**See all in your journal** opens the [Journal](journal.md). It gathers every bookmark and note from every book, with a search and a label filter.
 
 ## Fell asleep
 
-When the [sleep timer](sleep-timer.md#if-you-fell-asleep) stops a book and you didn't keep it going, it leaves a bookmark where it stopped, labelled **Fell asleep** with a small moon. In the list it reads *"You drifted off around here"* until you write a note of your own on it. The [Journal's Diary](journal.md#drift-offs) shows it under the listening it ended, with a way to pick up from there.
+When the [sleep timer](sleep-timer.md#if-you-fell-asleep) stops a book and you didn't keep it going, it leaves a bookmark where it stopped. It's labelled **Fell asleep**, with a small moon. The [Journal's Diary](journal.md#drift-offs) shows it too.
 
-## On an older server
+## Good to know
 
-Adding bookmarks and notes works on every AudioSilo server. **Labels**, **editing** (and with it the **Add note** button after a one-tap bookmark), and the Journal's lists of bookmarks and notes need a recent one: on an older server the editor has no label choice, Edit isn't offered, and editing says *"Editing needs a newer AudioSilo server."* Ask whoever runs your server to update it.
+Adding bookmarks and notes works on every AudioSilo server. Labels, editing and the Journal's lists need a recent server. Ask whoever runs your server to update it.

@@ -1,28 +1,22 @@
 ---
-title: Quick start with Docker
-description: "Run the AudioSilo server with Docker Compose: the image, the volumes, first-run credentials, and setting up your first library in the console."
+title: Install with Docker
+description: "Run the AudioSilo server with Docker Compose, get your first-run password and add your books."
 ---
 
-## Quick start with Docker
-
-Docker is the recommended way to run AudioSilo on a NAS, home server or VPS. The published image bundles the server, the web player and ffmpeg, so a single container is a complete setup.
-
-The image is **`ghcr.io/kodestar/audiosilo-server`**.
+Docker is the recommended way to run AudioSilo on a NAS, home server or VPS. One container holds the server, the web player and ffmpeg. The image is **`ghcr.io/kodestar/audiosilo-server`**.
 
 :::tip[On Unraid?]
-Install from Community Applications instead - see [Install on Unraid](./install-unraid.md).
+Install from Community Applications instead: see [Install on Unraid](./install-unraid.md).
 :::
 
-For an HTTPS setup with a reverse proxy from the start, follow the illustrated [Caddy](https://audiosilo.app/blog/audiosilo-with-caddy/), [SWAG](https://audiosilo.app/blog/audiosilo-with-swag/), or [Traefik](https://audiosilo.app/blog/audiosilo-with-traefik/) walkthrough instead. Their Compose files include both AudioSilo and the proxy.
+## What you need
 
-### What you need
+- Docker **20.10.10 or newer** with the Compose plugin (`docker compose`). Run `docker version` to check. Older Docker stops the container straight away (see [Troubleshooting](../troubleshooting.md#the-container-stops-at-start-up-with-pthread_create-failed)).
+- A folder of audiobooks on the host, for example `/srv/audiobooks`. Its layout can wait: see [Organize your audiobook files](./organizing-your-library.md).
 
-- Docker **20.10.10 or newer** with the Compose plugin (`docker compose`). `docker version` shows yours. Older Docker blocks something the server needs to start, so the container stops straight away (see [Troubleshooting](../troubleshooting.md#the-container-stops-at-start-up-with-pthread_create-failed)).
-- A folder of audiobooks somewhere on the host (for example `/srv/audiobooks`). Don't worry about its layout yet - see [Organizing your library](./organizing-your-library.md).
+## 1. Create a compose file
 
-### 1. Create a compose file
-
-Make a directory for AudioSilo (for example `~/audiosilo`) and save this as `docker-compose.yml` inside it:
+Make a folder for AudioSilo, for example `~/audiosilo`. Save this inside it as `docker-compose.yml`:
 
 ```yaml
 services:
@@ -42,25 +36,23 @@ services:
       AUDIOSILO_WEB_DIR: /app/web
 ```
 
-Two mounts matter:
+Change `/srv/audiobooks` to your books folder. The two mounts:
 
-- **`/data`** holds everything the server creates: its database, `config.yaml` and TLS certificates. Here it maps to a `./data` folder next to the compose file - keep it persisted and back it up.
-- **`/library`** is your audiobooks folder, mounted **read-only** (`:ro`). The server never writes to your books, so read-only costs nothing and protects them.
+- **`/data`** holds the server's database, `config.yaml` and certificates. Keep it, and back it up.
+- **`/library`** is your books, mounted read-only (`:ro`). The server never writes to your books.
 
-A setting given as an `AUDIOSILO_*` variable here wins over `config.yaml`, and the admin console shows it as locked ("Set by AUDIOSILO_WEB_DIR") rather than offering to change it. Leave a setting out of the compose file if you'd rather change it in the console's [Server > Settings](../admin/server.md#settings).
+Set `PUID` and `PGID` to the user and group that should own the data folder. On Linux that's the output of `id -u` and `id -g`.
 
-Set `PUID`/`PGID` to the user and group that should own the data directory - on generic Linux, the output of `id -u` and `id -g`; on Unraid, `99`/`100`. The container fixes up ownership of `/data` on start and runs as that user, so it works however the mounted volume is owned.
+A setting you give as an `AUDIOSILO_*` variable wins over the admin console, which then shows it as locked. Leave a setting out if you'd rather change it in [Server > Settings](../admin/server.md#settings).
 
-Your books never live inside the container or the data volume - the web player and server are app code inside the image, and updating either is just pulling a new image.
-
-### 2. Start it and grab your credentials
+## 2. Start it and save your password
 
 ```bash
 docker compose up -d
 docker compose logs
 ```
 
-On the very first start, the server creates an admin account and prints the credentials **once** in the logs:
+On the very first start, the log shows the admin password and an auth code **once**:
 
 ```text
 ========================================================
@@ -72,75 +64,76 @@ On the very first start, the server creates an admin account and prints the cred
   Config file    : /data/config.yaml
 ```
 
-Save the password and the auth code somewhere safe now - they are never shown again. See [First run](./first-run.md) for what each is for and what to do if you miss them.
+Save both now. [Set up your server](./first-run.md) says what each is for.
 
-### 3. Open it
+## 3. Open it
 
-By default the server speaks HTTPS with a self-signed certificate, so browse to:
+Browse to `https://your-server:8080`. The server uses a self-signed certificate at first, so your browser warns you. Accept the warning to continue. On your home network, `http://your-server:8080` works too, without the warning.
 
-```text
-https://your-server:8080
-```
+- **`/admin`** is the admin console. Sign in as `admin` with the printed password.
+- **`/web`** is the web player.
+- **`/`** is the connect page, where a listener enters an invite code.
 
-Your browser will warn about the certificate the first time - that's expected with the default setup; accept it to continue. The phone apps can't accept that warning, so at home they connect over plain HTTP instead, which the server offers to devices on your home network ([plain HTTP at home](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect), including a note on Docker Desktop). [Remote access](./remote-access.md) covers getting a proper certificate or running behind a reverse proxy.
+The phone apps connect over plain HTTP at home instead (see [plain HTTP at home](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect)). To listen away from home, see [Reach your server from outside your home](./remote-access.md).
 
-- **`/`** - the connect page, where a listener enters an invite code to pair a device.
-- **`/admin`** - the admin console. Log in as `admin` with the printed password.
-- **`/web`** - the web player, bundled with the image.
+## 4. Set up your server
 
-### 4. Set up your server
+The first time you sign in to the admin console, it opens **Set up your server**. Its first step asks for your books folder:
 
-The first time you sign in to the admin console, it opens **Set up your server**: eight short steps, each one skippable. Its first step asks for your books folder: type the path **inside the container** - `/library` with the compose file above (mounted folders are offered as buttons) - and press **Check folder** to see what it finds. The library is browsable as soon as it's added; the scanner fills in metadata, covers and durations in the background. [First run](./first-run.md#set-up-your-server) walks through every step.
+1. Type **`/library`**, the path inside the container.
+2. Press **Check folder**.
+3. Follow the remaining steps, or skip any of them.
 
-Skipped the folder? Add the library later from the console's **Add your first library** button - see [Libraries](../admin/libraries.md). Then connect a phone or browser and start listening - see [Connecting to a server](../listening/connecting.md).
+The server scans your books in the background. [Set up your server](./first-run.md#set-up-your-server) walks through every step. Then [connect a phone or browser](../listening/connecting.md).
 
-### Updating
-
-The server and the bundled web player ship together in the image, so updating either is the same command:
+## Update
 
 ```bash
 docker compose pull && docker compose up -d
 ```
 
-An update never changes your books. A new version can add to the database in the data directory, and when it does, the server first copies the database into its backups folder as a **Before an upgrade** backup (see [Backups](../admin/backups.md#before-an-upgrade)), so you can go back. An admin console left open in a browser tab (one opened on 2.5.1 or later) reloads into the new version when a page you open there is gone from the new server (see [About and updates](../admin/server.md#about-and-updates)). To hear about new versions, look at **Server > About** in the admin console: the server asks GitHub once a day whether a newer release exists (you can turn that off; see [What the update check sends](../admin/server.md#what-the-update-check-sends)).
+This updates the server and the web player together. Your books are never changed. When an update changes the database, the server first saves a [backup](../admin/backups.md#before-an-upgrade) of it. **Server > About** in the admin console tells you when a new version is out.
 
-:::note
-If your books live on a network share (SMB/NFS), mount the share on the Docker host and bind-mount the mounted path into the container. The server is deliberately careful here: if the share goes away, it will not wipe its index or your listening progress - books simply reappear when the share is back.
+## Good to know
+
+- **Books on a network share (SMB/NFS):** mount the share on the Docker host, then mount that path into the container. If the share goes away, the server keeps your books and progress; they come back when the share does.
+- **HTTPS with a reverse proxy from the start:** follow the [Caddy](https://audiosilo.app/blog/audiosilo-with-caddy/), [SWAG](https://audiosilo.app/blog/audiosilo-with-swag/) or [Traefik](https://audiosilo.app/blog/audiosilo-with-traefik/) guide. Each has a Compose file with both AudioSilo and the proxy.
+
+## Testing unreleased builds
+
+:::warning[For testing only]
+The **`:edge`** tag is built from the latest development code. It can break. Stay on `:latest` for everyday listening.
 :::
 
-### Testing unreleased builds
+Run edge as a **second** container on a **copy** of your data folder. Never point it at the original: it may change the database in a way a release can't undo.
 
-:::warning[Unstable - for testing only]
-The **`:edge`** tag is rebuilt from the server's latest development code every time it changes (the web player inside it can lag a little behind the player's own development code). It has not been through a release, can break, and is not supported for everyday listening. Stay on `:latest` unless you want to try a fix or feature before it ships.
-:::
+1. Copy the data folder while the server is stopped (delete any older `./data-edge` first):
 
-To try it, run a **second** container on a **copy** of your data folder, never the original: an edge build may upgrade the database in a way a release can't undo. Stop your server while you copy, so the database is copied whole, and delete any older `./data-edge` first (use `sudo` if your user can't read every file in the folder):
+   ```bash
+   docker compose stop
+   cp -a ./data ./data-edge
+   docker compose start
+   ```
 
-```bash
-docker compose stop
-cp -a ./data ./data-edge
-docker compose start
-```
+2. Add this under `services:` in the same `docker-compose.yml`:
 
-Then add the edge server as a second service in the same `docker-compose.yml`, under `services:`, on a different port so it runs beside your normal one:
+   ```yaml
+     audiosilo-edge:
+       image: ghcr.io/kodestar/audiosilo-server:edge
+       ports:
+         - "8081:8080"
+       volumes:
+         - ./data-edge:/data
+         - /srv/audiobooks:/library:ro
+       environment:
+         PUID: "1000"                    # the same as your normal service
+         PGID: "1000"
+   ```
 
-```yaml
-  audiosilo-edge:
-    image: ghcr.io/kodestar/audiosilo-server:edge
-    ports:
-      - "8081:8080"
-    volumes:
-      - ./data-edge:/data
-      - /srv/audiobooks:/library:ro
-    environment:
-      PUID: "1000"                    # the same as your normal service
-      PGID: "1000"
-```
+3. Start it with `docker compose up -d audiosilo-edge`. To get the newest build, run `docker compose pull audiosilo-edge && docker compose up -d audiosilo-edge`.
 
-Start it with `docker compose up -d audiosilo-edge`; to get the newest build, run `docker compose pull audiosilo-edge && docker compose up -d audiosilo-edge`. The admin console shows its version as `dev-` followed by the first 7 characters of the commit it was built from, and once it has checked for updates, [Server > About](../admin/server.md#about-and-updates) calls it a development build.
+Try the edge server in a browser at `https://your-server:8081/web`. Don't pair a phone app that already uses your normal server: the copy has the same identity, so the app would move its sign-in over to it. Notifications set up in the console may come from the edge server too.
 
-The copy is the same server as far as your devices know: the same users and the same server identity. Try the edge server in a browser (`https://your-server:8081/web`) rather than pairing a phone app that is already connected to your normal server: the app would take it for that server and move its sign-in over to the copy. Notifications set up in the console may come from the edge server too.
+To stop testing, run `docker compose rm -sf audiosilo-edge`, then delete its block from the compose file and delete `./data-edge`.
 
-To stop testing, remove the edge container (`docker compose rm -sf audiosilo-edge`), then delete its block from the compose file and delete `./data-edge`. Your normal server, on the original data folder, is untouched.
-
-This applies to the `ghcr.io/kodestar/audiosilo-server` image above. The LinuxServer.io image used on Unraid has its own tags and keeps its data in `/config` (see [Moving from the AudioSilo image](./install-unraid.md#moving-from-the-audiosilo-image)), so it isn't a matter of changing the tag there.
+This is for the `ghcr.io/kodestar/audiosilo-server` image. The LinuxServer.io image on Unraid has its own tags and keeps its data in `/config`.

@@ -1,264 +1,110 @@
 ---
 title: FAQ
-description: Frequently asked questions about AudioSilo - formats, ffmpeg, NAS storage, backups, users, offline listening, and hardware.
+description: Quick answers about AudioSilo's formats, storage, backups, privacy, users and hardware.
 ---
 
-Quick answers to the questions that come up most. For symptom-based problem
-solving, see [Troubleshooting](./troubleshooting.md).
+Quick answers to common questions. For problems, see [Troubleshooting](./troubleshooting.md).
 
-## Formats & playback
+## Formats and playback
 
 ### What audio formats are supported?
 
-The server recognizes these file extensions as audiobooks:
+`.m4b`, `.m4a`, `.mp4`, `.mp3`, `.flac`, `.ogg`, `.opus` and `.mka`. A single `.m4b` and a folder of `.mp3` files both play as one book with chapters. `.mka` needs ffmpeg on the server.
 
-**`.m4b`, `.m4a`, `.mp4`, `.mp3`, `.flac`, `.ogg`, `.opus`** and **`.mka`**
-
-`.m4b` (a single file with embedded chapters) is the audiobook standard and
-works best, but a folder of `.mp3` chapter files is treated just as well -
-the server presents both the same way, with one continuous timeline and a
-chapter list. A folder's files play in the natural order of their names, so
-`2` comes before `10` whether or not the numbers are padded.
-
-`.mka` (Matroska audio) needs ffmpeg on the server. With MP3 inside, the
-usual kind, it then plays everywhere, offline downloads included, as a lossless
-MP3 copy; with other audio inside (AAC, Opus, FLAC) it plays in the web player,
-and in the Android app where the phone can decode it, but not on an iPhone. See
-[Supported formats](./getting-started/organizing-your-library.md#supported-formats).
-
-Audible's DRM formats (`.aax`/`.aaxc`) are deliberately **not** indexed - the
-server could never play them, since they're locked to your Audible account.
-To add books, copy supported, DRM-free audio files into your library folder;
-see [Organizing your library](./getting-started/organizing-your-library.md).
+Audible's protected `.aax` and `.aaxc` files are not supported. See [Supported formats](./getting-started/organizing-your-library.md#supported-formats).
 
 ### Do I need ffmpeg?
 
-No - but you'll want it. The server uses two companion tools:
+No, but you'll want it. The Docker image includes it, and the standalone program downloads it if your system lacks it.
 
-- **ffprobe** reads durations, embedded chapters, and each file's audio codec.
-  With FFmpeg 7.1 or 8.1, the server reads most files itself during a scan,
-  which is much faster (see
-  [ffmpeg and ffprobe](./getting-started/install-binary.md#ffmpeg-and-ffprobe)).
-  Without ffprobe, books
-  still index and play (titles and authors come from tags and folder names),
-  but durations and chapter lists are unavailable.
-- **ffmpeg** enables on-the-fly conversion of browser-unfriendly codecs to
-  MP3, which the web player uses automatically for such books. Without it,
-  that feature is simply off, and those books play only in the mobile apps
-  (where the device can decode them - an Android phone may not). It also lets
-  every player play an `.mka` book with MP3 inside, and finds the pauses that [community chapters](./admin/books.md#community-chapters)
-  start on; without it they are placed by time alone and may be a few seconds
-  off.
+- **ffprobe** reads durations and chapters. Without it, books still play, but with no durations or chapter lists.
+- **ffmpeg** converts formats a browser can't play, lets every player play an `.mka` book with MP3 inside, and places [community chapters](./admin/books.md#community-chapters) precisely. Without it, books a browser can't play work only in the apps, where the phone can decode them.
 
-In practice you rarely have to think about this: the **Docker image includes
-ffmpeg**, and the native binary looks for a copy on your system and - if none
-is found - downloads one automatically into its data directory on first
-start. The admin console's [Health > System](./admin/health.md#system) page
-shows whether each tool was found, and which version.
+[Health > System](./admin/health.md#system) shows whether each was found. See [ffmpeg and ffprobe](./getting-started/install-binary.md#ffmpeg-and-ffprobe).
 
 ### Is there a web version, or do I need the apps?
 
-Both exist, and they're the same player. The server ships with the **web
-player** built in at `https://your-server/web` - nothing to install, works in
-any modern browser, and can be added to your phone's home screen as an app
-(PWA). "Modern" means Safari 16.4, Chrome 111, Firefox 128 or newer (Edge and
-other Chromium browsers follow Chrome); an older browser may show the player
-unstyled or not at all, so update it or use the apps. The **iOS and Android apps** add more device integration; see
-[The mobile apps](./listening/mobile-apps.md).
-
-The admin console at `/admin` is also built into the server - no separate
-install for that either.
+Both. The server has a **web player** built in at `/web`. It works in any current browser (Safari 16.4, Chrome 111, Firefox 128 or newer) and can be added to your home screen. The [iOS and Android apps](./listening/mobile-apps.md) add more phone features.
 
 ### Can I install the Android app without the Google Play Store?
 
-Yes. From version 2.5.0, each app release on GitHub carries an APK you can
-install yourself, or follow with Obtainium for updates. The Google Play app and
-the APK can't update each other, so pick one. See
-[Android without Google Play](./listening/mobile-apps.md#android-without-google-play).
+Yes. Each app release on GitHub has an APK. The Play Store app and the APK can't update each other, so pick one. See [Android without Google Play](./listening/mobile-apps.md#android-without-google-play).
 
 ### Does it work offline?
 
-Yes. Download a book to your device and it plays with no connection - in the
-mobile apps, and in the web player too (over HTTPS). Listening progress made
-offline is queued and synced back to the server the next time you're
-connected. See [Offline downloads](./listening/offline-downloads.md).
+Yes. Download a book and it plays with no connection, in the apps and in the web player over HTTPS. Progress syncs when you're back online. See [Listen offline](./listening/offline-downloads.md).
 
-## Your library & your data
+## Your library and your data
 
 ### Can my books live on a NAS or network share?
 
-Yes - this is a common setup. Mount the share (SMB/NFS) on the machine
-running the server first, then point the library at the mounted folder; the
-server always works with what looks like a local path.
-
-There's a safety net built in for exactly this arrangement: if the mount
-drops and the folder suddenly looks empty, the server **refuses to update its
-index** rather than concluding all your books are gone. Your catalog,
-progress, and bookmarks stay intact; remount and rescan, and everything is
-back.
+Yes. Mount the share on the server machine, then point the library at the mounted folder. If the share drops, the server keeps your books and progress until it's back.
 
 ### Is my listening progress safe if I reorganize or re-tag my files?
 
-Yes, by design. AudioSilo identifies a book by **where it lives** (its folder
-path), not by a database number or its tags - so re-tagging files changes
-nothing about your progress, bookmarks, or notes.
-
-If you **move or rename** a book, the server notices too: it keeps a cheap
-content fingerprint of each book, and when a path disappears while a new path
-with the same content appears, your progress and bookmarks follow the book to
-its new home automatically.
+Yes. Re-tagging changes nothing. If you move or rename a book, the server notices and moves your progress and bookmarks with it.
 
 ### What should I back up?
 
-Two things:
+- **Your audiobook folders.** AudioSilo never changes them.
+- **The server's data folder** (`--data`, or `/data` under Docker). It holds the settings and the database with accounts, progress and bookmarks. The `meta-mirror` folder can be left out.
 
-- **Your audiobook folders** - the books themselves. AudioSilo treats your
-  files as the source of truth and never modifies them, so any backup of the
-  folders is a backup of your library.
-- **The server's data directory** (the `--data` folder, or the `/data` volume
-  in Docker). It holds `config.yaml`, the certificates, and the database. If
-  the server keeps a local copy of the community metadata, its `meta-mirror`
-  folder can be left out: it is downloaded again when it's missing.
-
-The database's book *index* is rebuildable - the server can recreate it from
-your files at any time - but the database also holds the things that
-**aren't** on disk: user accounts, listening progress, bookmarks, notes,
-favourites, shares, and folder overrides. That's why the data directory
-belongs in your backups.
-
-The server also backs its database up by itself, every night out of the box,
-and can restore one of those backups for you: see
-[Backups and restoring](./admin/backups.md). Those backups sit in the data
-folder unless you point them at another disk, and they don't include
-`config.yaml`, so keep copying the data folder (or at least `config.yaml` and
-the backups) somewhere else.
+The server also backs up its database every night by itself (see [Backups](./admin/backups.md)). Those backups don't include `config.yaml`, so copy the data folder somewhere else too.
 
 ### Where does the extra "About this book" information come from?
 
-The description, characters, story-so-far recaps and series links that some
-books show in the player come from **AudioSilo Meta**, and so do the chapters
-of a book whose files have none (or whose admin chose the community's more
-detailed ones). AudioSilo Meta is a free, community-built
-audiobook database at [meta.audiosilo.app](https://meta.audiosilo.app). It's
-optional (your admin switches the lookup on or off), and you can browse and add
-to the catalogue yourself - see
-[The community metadata site](./community/meta-site.md).
+From **AudioSilo Meta**, a free, community-built audiobook database at [meta.audiosilo.app](https://meta.audiosilo.app). It adds descriptions, characters, recaps, series and chapters. Your admin can switch it off. You can browse and add to it yourself: see [The community metadata site](./community/meta-site.md).
 
 ### Does my server tell anyone which books I have?
 
-Only as much as a lookup needs. To fetch the extra "About this book"
-information, the server asks meta.audiosilo.app about a book by its ASIN or
-ISBN, so the service sees those identifiers; matching a book in the admin
-console also sends what the match needs (title, author, series, narrators,
-language, any ASIN or ISBN in its tags, folder names and the like; see
-[Server settings](./admin/server.md#community-metadata)).
-Nothing about who listens, and no file paths, is ever sent.
+Only what a lookup needs:
 
-One more thing is sent only if the admin turns it on: with **Help complete the
-community database** (from 2.6.0, off by default), the server sends
-meta.audiosilo.app, once a day, the Audible ASINs of its books that the
-community database doesn't know, so the community can add them. No titles,
-file paths, server name or listener details go with them. The service stores
-each ASIN with a count and dates and no address with them; it holds your
-server's address in memory for about a day after its last request, for a rate
-limit (see
-[Helping complete the community database](./admin/server.md#helping-complete-the-community-database)).
+- **Community metadata** sends a book's ASIN or ISBN to meta.audiosilo.app. Matching a book also sends details like its title and author (see [Server settings](./admin/server.md#community-metadata)). No listener details or full file paths are ever sent: a match can send up to three names from the book's path (its author, series and book folders) as search terms.
+- **Help complete the community database** (off by default) sends, once a day, the ASINs the database doesn't know. See [Helping complete the community database](./admin/server.md#helping-complete-the-community-database).
+- **Podcast search** sends the search text to Apple Podcasts or Podcast Index. See [Searching podcast directories](./admin/podcasts.md#searching-podcast-directories).
+- **The update check** asks GitHub once a day for the newest version. See [What the update check sends](./admin/server.md#what-the-update-check-sends).
 
-If you'd rather not look books up over the internet at all, the admin can
-choose **Keep a local copy** for community metadata: the server then downloads
-the whole community database from GitHub and answers every lookup from it.
-Until the first copy has downloaded, lookups still go to meta.audiosilo.app.
-The optional daily report above still goes to meta.audiosilo.app with a local
-copy, if it is turned on.
-What it costs in disk space and downloads is in
-[Keeping a local copy](./admin/server.md#keeping-a-local-copy). Or switch the
-community metadata off entirely, and the server contacts neither.
-
-Podcast search is separate: it sends the search text to Apple Podcasts (or
-Podcast Index, if your admin set it up), which also sees your server's address;
-see
-[Searching podcast directories](./admin/podcasts.md#searching-podcast-directories).
-
-Separately, the server asks GitHub once a day whether a newer AudioSilo
-version exists (it can be turned off); see
-[What the update check sends](./admin/server.md#what-the-update-check-sends).
+To avoid lookups over the internet, your admin can [keep a local copy](./admin/server.md#keeping-a-local-copy) of the community database, or switch community metadata off. Until the copy is ready, or if it fails, lookups still go online. The daily report above, when it's on, still goes online.
 
 ### Can other people on my server see what I'm listening to?
 
-Other listeners can't, unless you choose to: **Listening in the house** is off by
-default, and only works between people who have both turned it on. See
-[Listening in the house](./listening/in-the-house.md). Your server's admin is
-different: they can already see everyone's listening in the admin console's
-[Activity](./admin/activity.md#what-the-server-records), whether or not you share.
+Other listeners can't, unless you both turn on [See what others are listening to](./listening/in-the-house.md). Your admin can see everyone's listening in [Activity](./admin/activity.md#what-the-server-records).
 
-## Users & sharing
+## Users and sharing
 
 ### How many users can I have, and can I limit what each one sees?
 
-There's no fixed user limit - create an account for everyone in the house.
-Each user gets their own listening progress, bookmarks, notes, and
-favourites. You invite people with an invite code (no password needed for
-listeners - see [People and invites](./admin/users-and-invites.md)), and,
-unless you turn it off, people can also add the kids and grown-ups they live
-with from the player, with no invite (see
-[Your household](./listening/household.md)).
+There's no limit. Each person gets their own progress, bookmarks and favourites. Invite people with an invite code (see [Invite people](./admin/users-and-invites.md)). People can also add the [household members](./listening/household.md) they live with.
 
-Access is controlled with **shares**: named sets of folders (one author, one
-series, a single book, or a whole library) that you grant to users. A user
-sees only what they've been granted - browsing, search, and playback are all
-scoped to match. A household member also gets what the person who added them
-chooses: everything that person can listen to, or only the collections they
-share. See [Sharing](./admin/sharing.md) and
-[Household members](./admin/users-and-invites.md#household-members).
+To limit what someone sees, use **shares**: sets of folders you grant to people. See [Sharing](./admin/sharing.md).
 
 ## Running the server
 
 ### Why do I need a server at all? My files already sit in a folder.
 
-The folder stays exactly as it is - AudioSilo never rewrites or reorganizes
-your files, and the network side of the system is read-only. What the server
-adds on top:
+The folder stays exactly as it is. The server adds:
 
-- **Your place is kept everywhere.** Pause on your phone, resume in the
-  browser at your desk - progress, bookmarks, and playback speed follow you.
-- **Streaming from anywhere**, with seeking, chapters, covers, and fast
-  search across thousands of books.
-- **Multiple people, separate progress** - everyone gets their own account,
-  and you decide who sees what.
-- **A player designed for audiobooks** - chapter-aware seeking, a sleep
-  timer, adjustable speed, offline downloads - instead of a generic file
-  player.
+- **Your place everywhere.** Pause on your phone, carry on in the browser.
+- **Streaming from anywhere**, with chapters, covers and fast search.
+- **Separate accounts** for everyone, with their own progress.
+- **A player made for audiobooks**: sleep timer, speed, offline downloads.
 
-And because the files remain the source of truth, you can stop using
-AudioSilo at any time and your library is just... still a folder of files.
+Stop using AudioSilo and your library is still a folder of files.
 
 ### Can I run it on a Raspberry Pi or another low-power box?
 
-Yes. The server is a single Go binary with its database built in - no separate
-database server and no heavyweight runtime - and its search and browsing are
-built to stay fast on modest hardware even with large libraries. GitHub
-Releases include Linux builds for both **amd64** and **arm64** (as tarballs and
-`.deb`/`.rpm` packages), so a Raspberry Pi running a 64-bit OS works out of the
-box. There's currently no 32-bit ARM build, so older Pis on a 32-bit OS aren't
-covered.
-
-See [Install the binary](./getting-started/install-binary.md) to get set up.
+Yes, on a 64-bit OS. Releases include Linux builds for **amd64** and **arm64**. There's no 32-bit ARM build. See [Install without Docker](./getting-started/install-binary.md).
 
 ## The project
 
 ### Where does the project live?
 
-AudioSilo's server, player, community metadata database and documentation are
-developed in the open on GitHub:
+On GitHub:
 
-- [audiosilo-server](https://github.com/KodeStar/audiosilo-server) - the
-  server (API, admin console, web player hosting)
-- [audiosilo-frontend](https://github.com/KodeStar/audiosilo-frontend) - the
-  player app (web, iOS, Android)
-- [audiosilo-meta](https://github.com/KodeStar/audiosilo-meta) - the
-  community metadata database behind meta.audiosilo.app
-- [audiosilo-docs](https://github.com/KodeStar/audiosilo-docs) - this
-  documentation
+- [audiosilo-server](https://github.com/KodeStar/audiosilo-server): the server, admin console and web player hosting
+- [audiosilo-frontend](https://github.com/KodeStar/audiosilo-frontend): the player app (web, iOS, Android)
+- [audiosilo-bridge](https://github.com/KodeStar/audiosilo-bridge): the optional Bridge
+- [audiosilo-meta](https://github.com/KodeStar/audiosilo-meta): the community metadata database
+- [audiosilo-docs](https://github.com/KodeStar/audiosilo-docs): this documentation
 
-Bug reports and feature requests are welcome as GitHub issues on the matching
-repository.
+Bug reports and feature requests are welcome as GitHub issues on the matching repository.

@@ -1,45 +1,40 @@
 ---
-title: Keyboard shortcuts
-description: "Controlling the web player from the keyboard: play and pause, skipping, chapters, speed, bookmarks, the full player, Up next, the sleep timer, the ebook reader, and the ? overlay that lists them all."
+title: Use keyboard shortcuts
+description: Control the web player from the keyboard, and press ? to list every shortcut.
 ---
 
-In the **web player** you can control playback from the keyboard, on any page and over the full player. Press **?** to see the list in the app.
+In the **web player** you can control playback from the keyboard, on any page. Press **?** to see the list in the app. The mobile apps don't use these.
 
 | Key | What it does |
 |---|---|
 | **Space** or **K** | Play or pause |
-| **J** or **←** | Skip back (by your skip-back length, 15 seconds out of the box) |
-| **L** or **→** | Skip forward (by your skip-forward length, 30 seconds out of the box) |
+| **J** or **←** | Skip back (15 seconds unless you change it) |
+| **L** or **→** | Skip forward (30 seconds unless you change it) |
 | **Shift+←** / **Shift+→** | Previous or next chapter |
 | **[** / **]** | Slower or faster, by 0.05× |
-| **B** | Add a bookmark where you are |
+| **B** | Add a bookmark |
 | **P** | Open the full player |
-| **Q** | Show or hide [Up next](up-next.md), on a server that has it (not over the full player) |
-| **⌘K** (Mac) or **Ctrl+K**, or **/** | [Quick search](browsing.md#quick-search-in-the-web-player) and commands (not over the full player) |
+| **Q** | Show or hide [Up next](up-next.md) |
+| **⌘K** (Mac), **Ctrl+K** or **/** | [Quick search](browsing.md#quick-search-in-the-web-player) |
 | **Z** | Open the [sleep timer](sleep-timer.md) |
-| **Esc** | Close whatever is on top: a sheet, then the full player |
+| **Esc** | Close whatever is on top |
 | **?** | Show this list |
 
-The skip lengths follow your [Settings](settings.md#playback), and the list in the app shows your own.
+You can change the skip lengths in [Settings](settings.md#playback).
 
 ## In the ebook reader
 
-While the [ebook reader](reading-the-ebook.md) is open, the playback keys stand back and these work instead:
+While the [ebook reader](reading-the-ebook.md) is open, these keys work instead:
 
 | Key | What it does |
 |---|---|
-| **→** / **←** | Next or previous page (the other way round in a right-to-left book) |
+| **→** / **←** | Next or previous page |
 | **Page Down** / **Page Up** | Next or previous page, once you've clicked into the text |
 | **Esc** | Close the Contents, then the reader |
 
-## When they don't fire
+## When they don't work
 
-The shortcuts stay out of the way of everything else you do with the keyboard:
-
-- **Not while you're typing** in a box (search, a note, a password).
-- **Not over another window** in the app, such as a sheet, a dialog, a menu or quick search. That window's own keys win, and **Esc** closes it. (The Up next sheet that **Q** opened is the exception: **Q** closes it again.)
-- **Space and the arrow keys are left to the control you're on** when it uses them itself: Space presses a focused button or tab, and the arrows move a focused slider (on the seek bar, they skip back and forward). Space on a focused seek bar still plays and pauses.
-- **The playback keys need a book loaded**; **?**, **Esc**, **Q** and quick search work without one.
-- Never with **Ctrl**, **Alt** or **⌘** held (apart from ⌘K / Ctrl+K), so your browser's own shortcuts keep working. The exception is **[** and **]** on keyboards where you type them with **AltGr** or **Option** (many European layouts): they still change the speed.
-
-The mobile apps don't use these; there, use the on-screen controls, your headphone buttons, or the lock screen.
+- **While you're typing** in a box, such as search or a note.
+- **Over another window**, such as a sheet, a menu or quick search. **Esc** closes it.
+- **The playback keys need a book loaded.**
+- **With Ctrl, Alt or ⌘ held** (apart from ⌘K and Ctrl+K), so your browser's own shortcuts still work. **[** and **]** still work where you type them with **AltGr** or **Option**.

@@ -1,59 +1,45 @@
 ---
-title: Listening in the house
-description: "See what the other people on your server are listening to, on your Home page and on a book's page: off by default, only between people who both share, and what is and isn't shared."
+title: See what others are listening to
+description: "Share what you're listening to with the other people on your server, and see what they're listening to on your Home page."
 ---
 
-**Listening in the house** shows what the other people on your server are listening to: who, which book, which chapter, and whether they're listening right now. It's for a household sharing one AudioSilo server, so you can see that your partner is halfway through the book you just finished, or see which book a housemate started last night.
+**Listening in the house** shows what other people on your server are listening to: who, which book, and which chapter. It's for a household sharing one server.
 
-It is **off by default**, and it only works **both ways**: you see the others only while you share yours too, and they see you only while they share theirs.
+It's **off by default** and works **both ways**. You see others only while you share too, and they see you only while they share.
 
 ## Turning it on
 
-Open the [Household page](household.md) (**Sharing settings** beside the Home page's row opens it too). Under **Listening in the house**, each of your servers that supports it has a switch: **Share what I'm listening to with the house**. Under it, the app says exactly what it does:
+1. Open the [Household page](household.md).
+2. Under **Listening in the house**, turn on **Share what I'm listening to with the house**.
 
-*"Your current book shows on the Home page of other people on Hearthside who share theirs too. Off by default."*
+There's one switch per server. When several people share a device ([profiles](profiles.md)), each sets their own. Turn it off any time: you stop showing up for others, and they disappear from your Home page.
 
-(with your server's name in place of *Hearthside*). Turn it on, and from then on you see the others who share, and they see you. Turn it off again whenever you like: you stop showing up for them, and the house disappears from your Home page straight away.
-
-The switch is per server: if you're signed in to two servers, you choose for each one. It belongs to the person listening: when several people share the device ([profiles](profiles.md)), each sees and sets the switches for their own accounts. It only appears for a server running an AudioSilo version that has the feature, and a [demo](../demo.md) account can't turn it on.
+Demo accounts can't turn it on.
 
 ## What you see
 
-**On your Home page**, a **Listening in the house** section appears (after *Next in your series*) once someone else who shares has listened in the last day. Its line under the title names the server and says *shared by choice*. Each person gets a card:
+**On your Home page**, a **Listening in the house** section appears once someone who shares has listened in the last day. Each card shows their name, the book, the chapter, and whether they're listening now. A green dot means they're listening right now. Tap a card to open the book.
 
-- their initials and name, with a small green dot while they're listening right now;
-- the book's title and cover;
-- when, and the chapter: **Listening now**, **Paused**, **Earlier today**, **Yesterday** or **Recently**, then the chapter they're on (*"Listening now · Chapter 4"*).
+![Listening in the house on the Home page: one person listening now and one paused, with Sharing settings beside the title](/img/screenshots/web-player/home-house.png)
 
-Tap a card to open that book's page. **Sharing settings** beside the title opens the [Household page](household.md), where the switch is in its last part, **Listening in the house**. When nobody else is listening, the section isn't shown at all.
+**On a book's page**, an **In the house** card shows anyone who shares and is on that same book.
 
-![Listening in the house on the Home page: jamie listening now to The Hound of the Baskervilles and rosa paused on The Call of the Wild, with Sharing settings beside the title](/img/screenshots/web-player/home-house.png)
+![A book's page with the In the house card: one person listening now, and the chapter](/img/screenshots/web-player/book-in-the-house.png)
 
-**On a book's page**, an **In the house** card appears when someone who shares is on that same book, with their name and where they are in it.
-
-![A book's page with the In the house card under About: jamie, listening now, and the chapter](/img/screenshots/web-player/book-in-the-house.png)
-
-The house is checked again every minute while the app is open on the Home page or a book's page.
+The cards update about once a minute.
 
 ## Who shows up
 
-- Only other people on the same server who have turned sharing on. You never see yourself.
-- Only their most recent book, and only if they listened to it in the last 24 hours.
-- Only listening done while their sharing is on. Anything they listened to while it was off never shows, even if they turn sharing back on soon after. If they were in the middle of a book when they turned it on, it shows once they listen to more of it.
-- Only books **you** can open yourself. If someone's latest book is in a library or folder you don't have access to, that person doesn't appear at all, rather than showing an older book.
-- Never a demo account, and never an account the admin has disabled.
-- Never a kids account from someone's [household](household.md): a kid can't turn sharing on, never shows up for others and never sees the house.
+- Only people on the same server who share. You never see yourself.
+- Only their most recent book, if they listened in the last 24 hours.
+- Only listening done while their sharing was on.
+- Only books you can open yourself. If you can't open their latest book, that person doesn't appear.
+- Never kids' accounts, demo accounts or disabled accounts.
 
 ## What is and isn't shared
 
-Shared, while you have the switch on: your username, the book you listened to most recently (its title, author and cover), your exact place in it and the book's length (the app shows the chapter you're on), and the exact time your app last saved your place (the app shows whether you're listening now, paused, or listened earlier).
+**Shared** while your switch is on: your username, your most recent book, your place in it, and when you last listened.
 
-**Never shared**: the device you listen on, your network address, or which app you use. None of that is ever sent to other listeners.
+**Never shared**: your device, your network address, or which app you use.
 
-The server admin has no screen that shows who shares. An admin can already see everyone's listening in the admin console's [Activity](../admin/activity.md#what-the-server-records), whether or not you share with the house.
-
-## Notes
-
-- While you don't share, the app doesn't ask the server who else is listening at all.
-- It isn't live to the second. A card can be up to a minute behind, and *Listening now* means the person's app saved their place within the last minute.
-- Only listening on this server counts. Listening that an admin [imported](../admin/import.md) from another app doesn't show up in the house.
+The admin can already see everyone's listening in the console's [Activity](../admin/activity.md#what-the-server-records), whether or not you share.

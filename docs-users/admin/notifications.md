@@ -1,142 +1,76 @@
 ---
-title: "Notifications and the bell"
-description: "Have the AudioSilo server tell you when something happens - new books, a new release in a series you hold, a failed scan, an offline library, a new sign-in, a used invite, an update, a failed backup - through a webhook, an ntfy topic or a Discord channel, and in the admin console's bell. What each event means and what a message carries."
+title: "Get notifications"
+description: "Hear about new books, new releases, failed scans or backups, new sign-ins and updates, in the console's bell or on your phone, Discord or a webhook."
 ---
 
-The server keeps a list of things an admin may want to know about: new books,
-a new release in a series your libraries hold, a scan that failed, a library whose folder went missing, someone signing in,
-an invite being used, a new version, a backup that failed. You see them in two
-places:
-
-- **The bell** at the top of the [admin console](console-tour.md), always.
-- **Wherever you choose to send them**: a webhook (Home Assistant, n8n and the
-  like), an [ntfy](https://ntfy.sh) topic on your phone, or a Discord channel.
-  Set these up in **Server > Settings > Notifications**.
+Your server can tell you when something happens: new books, a new release in a
+series you hold, a failed scan or backup, a new sign-in, an update. You always
+see these in the **bell** in the [admin console](console-tour.md). You can also
+send them to your phone with [ntfy](https://ntfy.sh), to a Discord channel, or
+to a webhook such as Home Assistant. You need to be an admin.
 
 ## The bell
 
 ![The notifications bell](/img/screenshots/admin/bell.png)
 
-Click the bell in the top bar to see the newest eight events, newest first,
-each with when it happened. Click one to go where you can deal with it: new
-books open the library, new releases open
-[Library > Series](books.md#series), a failed scan opens
-[Health > Jobs](health.md#jobs), a sign-in opens
-[People > Devices](users-and-invites.md#the-devices-page), an update opens
-[Server > About](server.md#about-and-updates), a failed backup opens
-[Backups](backups.md). **Settings** at the top opens the Notifications
-settings, and **See all** at the bottom opens the full list.
-
-A dot on the bell means there are events you haven't seen yet; they are marked
-**New** in the list. Opening the bell marks them as seen. This is remembered
-by the browser, so another browser (or another admin) has its own dot. The
-bell checks for new events once a minute, and the server keeps events for 90
-days.
-
-## Every event: Server > Events
+Click the bell in the top bar to see the newest events. A dot means there is
+something you haven't seen. Click an event to go where you can deal with it.
+**See all** opens **Server > Events**, with every event from the last 90 days.
 
 ![Server > Events, every event of the last 90 days](/img/screenshots/admin/events.png)
-
-**Server > Events** (or **See all** in the bell) lists every event the server
-has kept, newest first, with its date and time. Pick a kind of event at the top
-to see only those (every sign-in, say, or every failed backup), and **Show
-older** at the bottom to go further back. Each one opens the same place the
-bell would.
 
 ## Adding a destination
 
 ![Server > Settings > Notifications](/img/screenshots/admin/settings-notifications.png)
 
-Press **Add a destination** and choose its kind:
+1. Open **Server > Settings > Notifications**.
+2. Press **Add a destination** and choose its kind (below).
+3. Give it a **Name** and tick what to **Send**. The problems are ticked for
+   you.
+4. Press **Add destination**.
+5. Press **Send test** to check it arrives.
 
-- **Webhook** - AudioSilo sends a JSON message (a `POST`) to an address you
-  give. A local address like `http://192.168.1.5:8123/...` is fine. Add a
-  **Signing secret** if the receiver should check that messages really come
-  from your server: each request then carries an `X-AudioSilo-Signature`
-  header. What the message looks like, and how to check the signature, is in
-  the [developer docs](/developers/server/backups-and-notifications#webhook).
+The kinds:
+
 - **ntfy** - push notifications on your phone. Enter the topic's address, like
   `https://ntfy.sh/your-topic`, and subscribe to the same topic in the ntfy
   app. Anyone who knows a topic's name can read it, so pick one nobody can
-  guess. If your ntfy server needs a sign-in, put its **Access token** in.
+  guess. If your ntfy server needs a sign-in, add its **Access token**.
 - **Discord** - a message in a channel. In Discord, open the channel's
-  settings, then **Integrations**, **Webhooks**, and **Copy webhook URL**, and
-  paste that. The address is the secret here, so there is no other.
+  settings, then **Integrations** > **Webhooks** > **Copy webhook URL**, and
+  paste that.
+- **Webhook** - AudioSilo sends a JSON message to an address you give. A local
+  address is fine. Add a **Signing secret** if the receiver should check the
+  messages are really from your server. The message format is in the
+  [developer docs](/developers/server/backups-and-notifications#webhook).
 
-Give it a **Name** (shown in the list and in the table below) and tick what to
-**Send**. A new destination starts with the problems ticked (a failed scan, an
-offline library, an update, a failed backup); add the rest if you want them.
-Press **Add destination**, then **Send test** to check it works.
-
-The address and the secret are kept on the server and never shown in full
-again: the list shows only the start of the address (for a short ntfy topic,
-not even that). To change one, use
-**Edit** in the destination's **...** menu and type the new value; leaving the
-field empty keeps what is saved, and **Remove the saved secret** removes it.
-A saved secret stays with the server it was given for: if you change the
-address to another server, the dialog asks you to enter the secret again (or
-remove it), and the server won't save the new address until you do. A new
-address on the same server keeps the secret. A
-server can have up to 20 destinations.
-
-## The destination list
-
-Each destination shows its name, kind, the start of its address, and how the
-last message went:
-
-- **Nothing sent yet**.
-- **Last sent** (*when*) - it arrived.
-- **Last attempt failed** (*when*), with why: "it took too long to answer" (no
-  answer within 10 seconds), "the server couldn't connect" (wrong address, or
-  the receiver is down), "it answered HTTP *number*" (the receiver refused it,
-  for example 404 for a wrong address or 401 for a wrong token), or "something
-  went wrong".
-
-**Send test** sends a test message right away ("Test from *your server's
-name*") and says whether it arrived. The switch turns a destination off and on
-without deleting it. **Delete** in the **...** menu removes it.
-
-A message that doesn't get through because the receiver is busy, down or slow
-is tried twice more (after 10 seconds, then after a minute). The server never
-follows a redirect: if the address answers "moved", fix the address.
+The list shows whether each destination's last message arrived, or why it
+failed. The switch turns a destination off without deleting it. To change one,
+use **Edit** in its **...** menu.
 
 ## What to send
 
 The **What to send** table has a row per event and a column per destination.
-Tick a box to send that event there; it saves as you tick.
+Tick a box to send that event there. It saves as you tick.
 
 | Event | When it happens |
 |---|---|
-| **New books added** | A scan found new books: one message per scan, with a few of the titles. |
-| **A scan failed** | A library couldn't be scanned to the end. The bell shows the error the scan stopped with; the message sent out only names the library and points to the scan's log in [Health > Jobs](health.md#jobs), because that error can name a folder on the server. |
-| **A library went offline** | A library's folder can't be read (an unmounted drive or network share), so the scan stopped and nothing was removed. Sent once, not at every scan, until the folder is back. |
-| **Someone signed in** | A sign-in from somewhere new: a phone or browser set up from an invite or a QR code, or a password sign-in from a browser that person hasn't signed in from before, with the person's name, the device's name and the app. Signing in to this console again from the same browser isn't announced again; a sign-in from any other browser is, yours included. If you sign a browser out from [People > Devices](users-and-invites.md#the-devices-page), its next sign-in is announced again, and after a new password, [Sign out everywhere](users-and-invites.md#devices) or a disabled account every browser of that person is. Demo guests don't count. |
-| **An invite was used** | A device was set up from someone's invite. |
-| **An update is available** | A new AudioSilo version is out. Once per version, and only while **Check for new versions** is on ([General](server.md#general)). |
-| **A backup failed** | A scheduled or manual [backup](backups.md) failed, with the reason. |
-| **A Bridge job finished** | The [Bridge](bridge.md) finished a job: "Characters and recaps ready" with the book's title, when it [generated them](generating-characters-and-recaps.md), "Description ready" when it [wrote a description](generating-characters-and-recaps.md#a-description-for-the-book) on its own, "Chapters found" when it [found a book's chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps), "Read-along made" with how much of the text lined up ("99% lined up") when it [made a read-along](making-read-along.md) (listeners follow it in a player from 2.6.0 on), "Shared with the community" when it [shared a book's characters and recaps](bridge.md#share-with-the-community) ("Already in the community" when the community already had all of it, so nothing was sent), "Corrections sent" when it filed your [suggested corrections](bridge.md#suggest-corrections), or "Bridge check finished" with the library's name (the book's title when the check named a book) when it [verified a library](bridge.md#verify). In the bell, a share, a corrections job and a check show as "Bridge job finished" with the book's title (the library's name for a check of a whole library). |
-| **A Bridge job failed or needs attention** | A Bridge job stopped with an error, or paused waiting for someone to look at it, with the reason. Pauses that end by themselves (the agent's usage limit, the agent briefly away, waiting for an ASR worker) aren't sent. A job that was paused when the Bridge restarted may be announced again (a known issue). The bell shows the Bridge's own error; the message sent out only names the book and the reason. |
-| **New releases in your series** | A book came out in a series your libraries hold, and your server doesn't have it: a preorder whose day has come, or a book released in the last 90 days (by default). One message per daily check, with up to five titles ("Title (Series #10)"). Each book is announced **once**, never again, even if it drops off the list and comes back. The first check after you turn it on (or after a series first appears on your server) only notes what is already out, so you don't get a flood about old books. It needs community metadata and **Check for upcoming releases** to be on ([Community metadata](server.md#community-metadata)). |
+| **New books added** | A scan found new books. |
+| **A scan failed** | A library couldn't be scanned. See [Health > Jobs](health.md#jobs). |
+| **A library went offline** | A library's folder can't be read, such as an unmounted drive. Nothing was removed. |
+| **Someone signed in** | A sign-in from a new device or browser. |
+| **An invite was used** | A device was set up from an invite. |
+| **An update is available** | A new AudioSilo version is out. Needs **Check for new versions** on ([General](server.md#general)). |
+| **A backup failed** | A [backup](backups.md) failed, with the reason. |
+| **A Bridge job finished** | The [Bridge](bridge.md) finished a job, such as [characters and recaps](generating-characters-and-recaps.md) or a [read-along](making-read-along.md). |
+| **A Bridge job failed or needs attention** | A Bridge job stopped with an error, or is waiting for you. |
+| **New releases in your series** | A book came out in a series you hold, and you don't have it. Needs **Check for upcoming releases** on ([Community metadata](server.md#community-metadata)). |
 
-All of them show in the bell whether or not you send them anywhere.
+Every event shows in the bell whether you send it anywhere or not.
 
 ## What a message carries
 
-Messages carry what the console would show: names (of people, devices and
-libraries), book titles, counts, a version number, the server's name, and a
-link into this console when the server has a
-[public address](server.md#general) (an update links to its release notes
-instead). They never carry a password, an invite
-code, a token, anyone's IP address, the destination's own address, or a
-folder on the server (a failed scan's error stays in the bell). On
-Discord, mentions are switched off, so a book title or device name with
-`@everyone` in it can't ping anyone. Messages are written in English,
-whatever language the console is in.
-
-## Where to next
-
-- [Backups and restoring](backups.md) - the backups a failed-backup message is
-  about.
-- [Server settings, updates and logs](server.md) - the public address and the
-  update check, and the audit log.
-- [Library health and jobs](health.md) - where scan problems are dealt with.
+Messages carry names, book titles, counts and a link into the console (when the
+server has a [public address](server.md#general)). They never carry a
+password, invite code, token, IP address or a folder path on the server.
+Messages are in English.

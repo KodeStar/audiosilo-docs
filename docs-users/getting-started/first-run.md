@@ -1,22 +1,13 @@
 ---
-title: First run
-description: "Setting up a new AudioSilo server: the admin account (printed once, or chosen in the browser with --setup), then the admin console's eight-step Set up your server flow, the Finish setting up card, and the data directory."
+title: Set up your server
+description: "Create your admin account, then let the admin console walk you through your books folder, addresses, backups and your first phone."
 ---
 
-## First run
-
-A new server is set up in two parts:
-
-1. **Your admin account.** The server makes it for you and prints its password once, or, started with `--setup`, lets you choose the password in your browser.
-2. **Set up your server.** The first time you sign in to the admin console, it walks you through eight short steps: your books folder, how your books are named, community metadata, how people reach the server, Audiobookshelf, backups, connecting a phone and adding a Bridge. You end the flow listening, not reading settings.
+A new server is set up in two parts. First you get an admin account. Then the admin console walks you through eight short steps, from your books folder to connecting your phone. Every step can be skipped and changed later.
 
 ## Your admin account
 
-The first time the server starts with an empty data directory, it bootstraps itself. There are two ways it can make the admin account, depending on how you start it.
-
-### The default: generated credentials, printed once
-
-Started normally (including under Docker), the server creates the admin account itself - with a strong random password, never a default one - and prints everything you need to the log, **exactly once**:
+On its very first start, the server creates an `admin` account with a random password. It prints the password and an auth code to its log, **once**:
 
 ```text
 ========================================================
@@ -33,190 +24,144 @@ Started normally (including under Docker), the server creates the admin account 
 ========================================================
 ```
 
-The two addresses at the bottom use the server's public address once one is
-set; on a new server they are `localhost` with the server's port (`http://`
-when HTTPS is off).
+Save both now:
 
-Save these now:
+- The **admin password** signs you in to the admin console at `/admin`.
+- The **auth code** signs a phone or browser in as the admin, from the connect page. See [Connect the app to your server](../listening/connecting.md).
 
-- The **admin password** signs you in to the admin console at `/admin`, which then [sets up your server](#set-up-your-server) with you (and to the player, if you want to listen as the admin account).
-- The **auth code** is for pairing a listening device - enter it on the connect page and you get a QR code and links that sign a phone or browser in without typing a password. See [Connecting to a server](../listening/connecting.md). (The console's setup flow also shows a pairing code for your own phone, in [step 7](#step-7-connect-a-phone).)
-
-The banner is shown once by design: the server stores only scrambled (hashed) versions of secrets, so it *cannot* show them again later. Under Docker, `docker compose logs` shows it until the container is recreated.
+The server keeps only scrambled copies, so it can't show them again. Under Docker, `docker compose logs` shows the banner until the container is recreated.
 
 :::warning[Missed the banner?]
-If you lost the credentials before setting anything up, the simplest fix is to start over: stop the server, delete the data directory, and start it again - a fresh first run prints a fresh banner. Only do this before you've added users or listening progress you care about, because the data directory is where those live. [Troubleshooting](../troubleshooting.md#i-lost-the-first-run-admin-password) has gentler options for later.
+Before you've added people or listening, the simplest fix is to start over. Stop the server, delete the data folder, and start it again for a fresh banner. Later, see [I lost the first-run admin password](../troubleshooting.md#i-lost-the-first-run-admin-password).
 :::
 
-### The alternative: choose the password in your browser (`--setup`)
+### Choose the password in your browser instead
 
-Start the binary with `--setup` and the server skips creating an admin. Instead it prints a one-time link:
+Start the program with `--setup` (see [Install without Docker](./install-binary.md)). The server then prints a one-time link instead of a password.
 
-```text
-========================================================
- AudioSilo first-run setup
-========================================================
- Open this URL in your browser to finish setting up:
-   https://localhost:8080/setup#token=...
---------------------------------------------------------
- You'll choose an admin password, then the console walks you through the rest.
-========================================================
-```
-
-Open the link and choose the **admin username** (it defaults to `admin`) and an **admin password** you'll actually remember (at least 8 characters), then press **Create account**:
+1. Open the link from the server's log. (The normal sign-in page can't create the first admin.)
+2. Choose an admin username and a password of at least 8 characters.
+3. Press **Create account**, then **Continue setup**, and sign in.
 
 ![The --setup page: create your admin account](/img/screenshots/server/setup-wizard.png)
 
-If you opened `/admin` and reached a sign-in page before creating that account,
-follow **the setup link from the server log**. The ordinary sign-in page does
-not create the first admin.
-
-That is all this page asks. Once the account exists it says **Your account is ready** and hands you over to the admin console, where the books folder and everything else is set up:
-
 ![Your account is ready, with Continue setup](/img/screenshots/server/setup-wizard-done.png)
 
-**Continue setup** opens the admin console's sign-in; sign in with the account you just made and the [Set up your server](#set-up-your-server) flow opens.
-
-A few things worth knowing about how this page is secured:
-
-- The secret token rides in the part of the URL after the `#`, which browsers never send to servers - so it can't leak into logs. The link only works with the token.
-- The page **shuts itself off the moment an admin account exists**. After setup - or on a server that was set up the normal way - `/setup` simply sends you to the admin console, and on a server never started with `--setup` it doesn't exist at all.
+The link stops working as soon as an admin account exists.
 
 ## Set up your server
 
-The first time you open the admin console (`/admin`) on a new server, it takes you to **Set up your server**: a page of its own, with the steps listed down the side.
+The first time you open the admin console, it opens **Set up your server**, with the steps listed down the side.
 
 ![Step 1 of Set up your server: the books folder](/img/screenshots/setup/folder.png)
 
-How it works:
-
-- **Every step has Skip, and every step after the first has Back.** Nothing is required; a skipped step is waiting for you later on the Overview (see [Finish setting up](#the-finish-setting-up-card)).
-- **The list on the left** marks each step done (a tick) or skipped (a dashed circle), and any step is a click away.
-- **Finish later**, at the top, takes you to the console. The flow opens again the next time you open the console in a new browser session, until you finish it, and it picks up at the first step you haven't answered.
-- **Everything you choose is an ordinary setting.** Each step saves to the same place as [Server > Settings](../admin/server.md#settings) and [Libraries](../admin/libraries.md), so you can change any of it there later.
-- **Set somewhere else.** A setting fixed by an `AUDIOSILO_*` environment variable shows a lock and which variable sets it ("Set by AUDIOSILO_PUBLIC_URL"), as in Settings; one fixed by the program that started the server says **Set by the program that started the server**. Either can't be changed here.
-
-A server that was already in use before this flow existed (it had a library, or more than one account) never shows it.
+- Every step has **Skip**. A skipped step waits for you on the Overview (see [below](#the-finish-setting-up-card)).
+- **Finish later** takes you to the console. The flow opens again in your next browser session.
+- Everything you choose is an ordinary setting. You can change it later in [Server > Settings](../admin/server.md#settings) and [Libraries](../admin/libraries.md).
+- A setting fixed by an `AUDIOSILO_*` environment variable shows a lock and can't be changed here.
 
 ### Step 1: Where are your books?
 
-Type the folder on the server that holds your audiobooks and press **Check folder** (the screenshot above). AudioSilo checks the folder is there and readable, and shows what it found - the audio files, how many **book folders** and how many **single-file books** - before anything is added.
+Type the folder that holds your audiobooks and press **Check folder**. AudioSilo shows how many books it found before adding anything.
 
-- **The path as the server sees it.** In Docker that's the path *inside* the container: the right-hand side of the volume, like `/audiobooks` - not the folder on your computer or NAS. Typing the host path is the usual first-run mistake, and this check catches it: the server says the folder "isn't there, or the server can't read it".
-- **Folders mounted into the server** (on Linux, including Docker) are offered as buttons under the field; pressing one checks it.
-- **No audio files found here** means the folder exists but holds no books AudioSilo recognizes - usually the wrong folder.
-- A folder another library already uses gets a warning (adding it again makes a second library with the same books), and a folder inside, or around, a [podcast library's](../admin/podcasts.md) folder is refused.
-- **Library name** appears once the check has found the folder, and defaults to the folder's name with a capital letter (`/audiobooks` gives "Audiobooks"); it's shown in the apps and the console, and you can rename it later.
+- **Use the path as the server sees it.** In Docker that's the path inside the container, like `/library`, not the folder on your NAS. If the server says the folder isn't there, this is usually why.
+- Folders mounted into the server are offered as buttons under the field.
+- **No audio files found here** usually means the wrong folder.
+- **Library name** defaults to the folder's name. You can rename it later.
 
-Libraries the server already has are listed under **Already added**, the ones from your `config.yaml` or environment marked **From your config**. With a library already there, you can leave the field empty and continue.
-
-The library isn't created yet: that happens at the end of step 3, once its naming and region are chosen, so its very first scan uses them. Until then only this browser remembers the folder: carry on in another browser before the library is made, and step 1 shows as not done there, with **Choose the folder again**. Steps 2 and 3, which need the folder, open step 1 instead. Type the folder once more and carry on; the library is made after the next two steps.
+The library is created at the end of step 3, so its first scan uses your choices from steps 2 and 3.
 
 ### Step 2: How are your books named?
 
 ![Step 2: sample books named from tags and from folders](/img/screenshots/setup/naming.png)
 
-Book details - title, author, narrator, series and number - can come from the files' **tags** or from the **folder names**. This step reads up to eight books spread across your folder and shows each one both ways, side by side:
+Titles, authors, narrators and series can come from the files' **tags** or from the **folder names**. This step shows up to eight of your books both ways, side by side. The side with fewer blanks is marked **Suggested**.
 
-- Rows where the two disagree are highlighted, and a field neither gives reads *none*. The line at the top counts the blank fields each way.
-- A book with an Audiobookshelf `metadata.json` shows a **metadata.json** badge: that file is read over both.
-- The side with fewer blanks is preselected and marked **Suggested**: **The files' tags first** suits files that are tagged well (most bought audiobooks are), **Folder names first** suits folders that follow `Author / Series / 01 - Title`. Either way, the other one fills what the first leaves empty.
+- **The files' tags first** suits well-tagged files, like most bought audiobooks.
+- **Folder names first** suits folders named like `Author / Series / 01 - Title`.
 
-This choice decides every book's names, and changing it later re-reads the whole library, so it's worth a look now. [Organizing your library](./organizing-your-library.md#where-titles-authors-and-series-come-from) explains the two in more detail; the same setting is **Book details come from** on each [library](../admin/libraries.md#where-book-details-come-from).
-
-For a library the server already has (one from your config, say), the step shows its current choice. Choosing the other re-reads its books' details straight away (your own edits stay).
+Either way, the other fills in what the first leaves empty. Changing this later re-reads the whole library, so it's worth a look now. See [Organize your audiobook files](./organizing-your-library.md#where-titles-authors-and-series-come-from).
 
 ### Step 3: Community metadata
 
 ![Step 3: community metadata, the marketplace and a local copy](/img/screenshots/setup/metadata.png)
 
-[Community metadata](../admin/server.md#settings) adds descriptions, series and covers from the AudioSilo metadata service. Its lookups are the server's main traffic to the internet, so it's your choice:
+Community metadata adds descriptions, series and covers from the AudioSilo metadata service.
 
-- **Look up community metadata**: on or off. Off, nothing about your books leaves the server for it.
-- **Audible marketplace**: the store you buy from. The wrong one matches books to the wrong edition.
-- **Metadata source**: ask the service for each book, or **keep a local copy** (about 1.8 GB on disk and about 450 MB downloaded a day, so no book is looked up over the internet; it applies after a restart). See [Keeping a local copy](../admin/server.md#keeping-a-local-copy).
+- **Look up community metadata** turns it on or off. Off, nothing about your books leaves the server for it.
+- **Audible marketplace** is the store you buy from. The wrong one matches the wrong edition.
+- **Metadata source** asks the service for each book, or keeps a [local copy](../admin/server.md#keeping-a-local-copy) (about 1.8 GB).
 
-**Continue** - or **Skip**, which keeps these settings as they are - adds your library and starts its first scan. From here on the scan's progress shows above each step, and you can carry on while it runs.
+**Continue** (or **Skip**) adds your library and starts its first scan. You can carry on while it runs.
 
 ### Step 4: How will people reach the server?
 
 ![Step 4: the server's addresses and HTTPS](/img/screenshots/setup/reach.png)
 
-Invite links and pairing QR codes are built from the server's addresses, so a wrong one is the usual reason a phone can't connect.
+Invite links and QR codes use the server's addresses. A wrong address is the usual reason a phone can't connect.
 
-- **This browser reaches the server at** shows the address you're using now, with buttons to use it as the **home address** (an address on your home network, like `http://192.168.1.20:8080`) or the **public address** (one that works from anywhere). An address only this computer can use (`localhost`) is offered as neither.
-- **Public address** and **Home address** can also be typed. An address without `http://` or `https://` gets one added when you continue (`https://` for the public address, `http://` for the home address, as the examples show). One that still isn't a plain web address is marked under its own field ("Enter a full address, like http://192.168.1.20:8080"), and so is one the server refuses, so you can see which of the two to fix. See [Tell the server its public address](./remote-access.md#tell-the-server-its-public-address) and [its home address](./remote-access.md#tell-the-server-its-home-address).
-- **A reverse proxy is in front of the server** appears when your requests arrive through one the server doesn't trust yet; **Trust** adds its address to the trusted proxies, so sessions and devices show each person's real address. See [Behind a reverse proxy](./remote-access.md#behind-a-reverse-proxy).
-- **HTTPS** shows the server's mode and what it means for phones. With the default self-signed certificate, the **plain HTTP at home** switch is here too ([why the apps need it](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect)). These apply after a restart; **Change HTTPS in Settings** opens the rest.
+- **Home address** is the server's address on your home network, like `http://192.168.1.20:8080`.
+- **Public address** works from anywhere, like `https://books.example.com`.
+- The buttons under **This browser reaches the server at** fill either one with the address you're using now.
+- If your requests come through a reverse proxy, **Trust** adds it to the trusted proxies.
+- **Plain HTTP at home** lets the phone apps connect at home ([why](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect)).
+
+See [Reach your server from outside your home](./remote-access.md).
 
 ### Step 5: Coming from Audiobookshelf?
 
 ![Step 5: the Audiobookshelf import](/img/screenshots/setup/abs.png)
 
-If you're moving from Audiobookshelf, AudioSilo can bring each person's listening progress across, so nobody starts their books again. **Open the import** opens [the import](../admin/import.md) in a new tab, leaving the flow where it is. Audiobookshelf's `metadata.json` files in your book folders are read as they are, so their titles, authors, series and descriptions come across with the books.
-
-There is nothing to set here: **Continue** records the step as done, whether or not you opened the import (someone who never used Audiobookshelf has nothing left to do). **Skip** records it as skipped, so it waits on the Overview for later.
+**Open the import** brings each person's listening progress across from Audiobookshelf (see [the import](../admin/import.md)). It opens in a new tab. Audiobookshelf's `metadata.json` files are read as they are, with nothing to set.
 
 ### Step 6: Backups and updates
 
 ![Step 6: the backup schedule, how many to keep, and the update check](/img/screenshots/setup/backups.png)
 
-- **Back up**: when the database (listening progress, edits, accounts) is copied. The default is every day at 03:00, in the server's time zone.
-- **Scheduled backups to keep**: the newest 7 by default (1 to 365).
-- **Folder**: where backups go. It's shown here but set only in `config.yaml` (`backups.dir`) or `AUDIOSILO_BACKUP_DIR`; copy backups to another disk now and then. See [Backups](../admin/backups.md).
-- **Check for new versions**: once a day the server asks GitHub for the newest release. Only the request itself is sent - nothing about your library or people.
+- **Back up** sets when the database is copied. The default is every day at 03:00.
+- **Scheduled backups to keep** defaults to 7.
+- **Check for new versions** asks GitHub once a day for the newest release. Nothing about your library is sent.
+
+Copy backups to another disk now and then. See [Backups](../admin/backups.md).
 
 ### Step 7: Connect a phone
 
 ![Step 7: a pairing QR code for your phone](/img/screenshots/setup/phone.png)
 
-Scan the code with your phone's camera: it opens the AudioSilo app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. **Open the web player** opens it in a new tab, also signed in. See [Connecting to a server](../listening/connecting.md).
+Scan the code with your phone's camera. It opens the AudioSilo app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. See [Connect the app to your server](../listening/connecting.md).
 
-If you opened the console on the server itself (at `localhost` or `127.0.0.1`), a phone can't use that address. The code then sends your phone to the server's home address instead, and says so ("This page is open on the server itself, so the code sends your phone to the home address, ..."). With no home or public address set, it warns **A phone can't reach 127.0.0.1:8080** (or whichever address you used) instead, and leads with **Set the server's address**, which takes you back to [step 4](#step-4-how-will-people-reach-the-server); the QR code is dimmed meanwhile, since it won't work on a phone until the server has an address. Add the address there, then make a new code.
-
-Below them:
-
-- whether **ffmpeg** is ready: with it, books in formats a browser can't play are converted as they stream; without it, those books won't play in the web player.
-- a reminder that each person can add their [household members](../listening/household.md) from **Me > Household** in the player.
+If you opened the console on the server itself (`localhost`), the code needs a home or public address from [step 4](#step-4-how-will-people-reach-the-server). The step tells you if one is missing.
 
 ### Step 8: Add a Bridge
 
 ![Step 8: adding a Bridge, with the compose snippet](/img/screenshots/setup/bridge.png)
 
-Optional. A **Bridge** is a companion container that does the work the server won't: it writes to your library folders and runs heavy jobs like generated character sheets and recaps, and it downloads podcasts, so the server itself stays read-only. The step shows the lines to add to the compose file that runs your server (**Copy snippet**). They mount each of your libraries in the Bridge, one volume per library, at the same folder the server uses, and give the Bridge the server's address in the compose file, `http://audiosilo:8080`. Replace each `/path/to/...` with that library's folder on your computer or NAS. For characters and recaps you also add the agent container: the **Running a Bridge** link opens [Running a Bridge](./running-a-bridge.md), which has it and the rest of the options. **Connect a Bridge** shows the pairing code to enter on the Bridge's page. Before the server has a library, the snippet's one volume line is an example, and says so. Once a Bridge is paired, this step shows its setup checklist instead. The same snippet is on **Server > Settings > Bridge** while no Bridge is paired.
+Optional. A **Bridge** is a companion container that writes to your library folders and runs heavy jobs, like downloading podcasts. The server itself stays read-only.
 
-**Finish setup** (or **Skip and finish**) ends the flow and takes you to the Overview. **Finish setup** counts this step as done whether or not you paired a Bridge, since a Bridge is optional; **Skip and finish** leaves it on the Finish setting up card for later. Any step you never reached counts as skipped, except the books folder once the server has a books library. If something you chose applies only after a restart (a local copy of community metadata, or an HTTPS setting), the message as you finish names it ("Restart AudioSilo to finish applying ..."), and the Overview keeps a **Restart AudioSilo to finish applying your changes** notice, with **Open Settings**, until the server restarts.
+1. Press **Copy snippet** and add the lines to the compose file that runs your server.
+2. Replace each `/path/to/...` with that library's folder on your computer or NAS.
+3. Press **Connect a Bridge** for the pairing code to enter on the Bridge's page.
+
+[Add a Bridge](./running-a-bridge.md) has the full setup.
+
+**Finish setup** ends the flow and opens the Overview. If a choice needs a restart (a local metadata copy or an HTTPS setting), the Overview reminds you until the server restarts.
 
 ## The Finish setting up card
 
 ![The Overview's Finish setting up card, listing two skipped steps](/img/screenshots/setup/finish-card.png)
 
-When you finish with steps skipped, the Overview shows a **Finish setting up** card listing them. Each one opens that step again; once you've been through what's left, you're back on the Overview. A skipped books folder step isn't listed once the server has a books library. The card shows too while you haven't finished the flow (you left it with **Finish later**): "You haven't finished setting up this server yet", with **Continue setting up**. **Dismiss** hides the card for good, for every admin of the server. The settings themselves stay where they always are, under [Server > Settings](../admin/server.md#settings) and [Libraries](../admin/libraries.md).
+If you skipped steps or chose **Finish later**, the Overview shows a **Finish setting up** card. Each line opens that step again. **Dismiss** hides the card for every admin.
 
-## What lives in the data directory
+## What's in the data folder
 
-The `--data` directory (mounted at `/data` under Docker) is the server's home. After the first run it contains:
+The data folder (`--data`, or `/data` under Docker) holds:
 
-- `config.yaml` - all server settings. Most of them can be changed in the admin console under [Server > Settings](../admin/server.md#settings), which writes this file for you; or edit it and restart. See [Remote access](./remote-access.md) for the TLS mode and other network settings.
-- `audiosilo.db` - the database: user accounts, listening progress, bookmarks, and a searchable index of your books. The index part is rebuildable from your files at any time; the accounts and progress are the part you'd back up.
-- `certs/` - the Let's Encrypt (autocert) certificate cache. In self-signed TLS mode the certificate and key are written at the data directory root instead, as `selfsigned-cert.pem` / `selfsigned-key.pem`.
-- `tools/` - ffmpeg/ffprobe, if the native binary had to download them (see [Install the native binary](./install-binary.md)).
-- `cache/remux/` - MP3 copies of `.mka` books with MP3 inside, so every player can play them (size limits under [Server > Transcoding](../admin/server.md#transcoding)). Safe to delete, no backup needed: the copies are made again when played.
-- `cache/renditions/watch/` - small copies of the audio files a watch downloads (for the [Apple Watch app](../listening/apple-watch.md); empty until a watch asks). At most 10 GiB (see [Server > Transcoding](../admin/server.md#transcoding)). Safe to delete, no backup needed.
-- `meta-mirror/` - only when the server [keeps a local copy of the community metadata](../admin/server.md#keeping-a-local-copy): that copy (about 1.8 GB). It is downloaded again whenever it's missing, so it needs no backup.
+- `config.yaml`: the server's settings. The admin console writes it for you.
+- `audiosilo.db`: accounts, listening progress, bookmarks and the index of your books. Back this up.
+- `certs/` and `selfsigned-*.pem`: certificates.
+- `tools/`: ffmpeg and ffprobe, if the server downloaded them.
+- `cache/` and `meta-mirror/`: copies the server makes again when needed. No backup needed.
 
-Your audiobooks are **never** copied in here. The books folder you point a library at stays untouched, and stays the source of truth - see [Organizing your library](./organizing-your-library.md).
+Your audiobooks are never copied here. See [Organize your audiobook files](./organizing-your-library.md).
 
-## Your first look around
-
-Open the server's address in a browser (with the defaults, `https://your-server:8080` - expect a certificate warning until you've read [Remote access](./remote-access.md)).
-
-The front page is the **connect page**. It's public and deliberately minimal: anyone you invite lands here, enters an invite code, and gets a QR code plus "Open in app" / "Open web player" buttons to pair their device.
-
-![The connect page](/img/screenshots/server/connect-page.png)
-
-The **admin console** lives at `/admin`. Sign in with the admin username and password from the banner or the `--setup` page; on a new server, it opens [Set up your server](#set-up-your-server) first.
-
-![The admin console login](/img/screenshots/admin/login.png)
-
-From here you manage libraries, people, invites and sharing - take the [console tour](../admin/console-tour.md) next. A server with no libraries (because you skipped the books folder) greets you with an **Add your first library** button on the Overview.
+Next, take the [console tour](../admin/console-tour.md).

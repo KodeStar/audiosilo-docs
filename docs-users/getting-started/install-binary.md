@@ -1,71 +1,51 @@
 ---
-title: Install the native binary
-description: "Run AudioSilo without Docker: download a self-contained release, let it find or fetch ffmpeg, and start it from a terminal or as a system service."
+title: Install without Docker
+description: "Run AudioSilo as a single program on Linux, macOS or Windows, from a terminal or as a system service."
 ---
 
-## Install the native binary
+AudioSilo also ships as one self-contained program for Linux, macOS and Windows. It suits a desktop machine or a small home server without Docker. The web player is built in.
 
-If you'd rather not use Docker - say, on a desktop machine or a small home server - AudioSilo ships as a single self-contained program for Linux, macOS and Windows.
+:::tip
+For an always-on, multi-user or reverse-proxied setup, [Docker](./quickstart-docker.md) is the recommended path.
+:::
 
-### Download a release
+## Download a release
 
-Releases are published on GitHub: [github.com/KodeStar/audiosilo-server/releases](https://github.com/KodeStar/audiosilo-server/releases).
+Download your system's file from [GitHub releases](https://github.com/KodeStar/audiosilo-server/releases):
 
-Each release includes:
+- a `.tar.gz` for Linux or macOS, or a `.zip` for Windows (`amd64` or `arm64`);
+- or a `.deb` or `.rpm` package for Linux, which also sets up a system service (see [below](#linux-packages-and-systemd)).
 
-- `audiosilo_<version>_<os>_<arch>.tar.gz` for Linux and macOS, and a `.zip` for Windows (both `amd64` and `arm64`).
-- `.deb` and `.rpm` packages for Linux, which also install a systemd service (see below).
-- `checksums.txt`, so you can verify your download.
+`checksums.txt` lets you verify the download. Unpack the archive and you have one program, `audiosilo`.
 
-AudioSilo itself is licensed under **AGPL-3.0**. The Linux downloads also contain
-the GNU C Library, licensed under **LGPL-2.1-or-later**, so the Linux package's
-license notice covers both. Each archive includes `LICENSE` and `NOTICE`; the
-`.deb`/`.rpm` installs `NOTICE` under `/usr/share/doc/audiosilo/`. That notice
-links to the library's source and explains how to rebuild AudioSilo to relink
-it against a modified copy.
-
-Unpack the archive and you have one executable, `audiosilo`. **The web player is built into the release binary**, so `/web` works out of the box - no extra downloads or configuration.
-
-### ffmpeg and ffprobe
-
-AudioSilo uses ffmpeg/ffprobe for durations, chapter extraction and on-the-fly transcoding. They are **not** bundled in the download (they're large and most machines already have them). Instead, the server sorts this out itself on startup:
-
-1. It first looks for `ffmpeg`/`ffprobe` next to the `audiosilo` executable, then on your `PATH`.
-2. If neither is found, it downloads a trusted static build **once** into `tools/` inside your data directory (over HTTPS, and checked by running it before use) and reuses it from then on.
-3. If you're offline or on a platform with no static build available, the server still runs - you just lose durations/chapters and transcoding until a tool is available. It retries on the next start.
-
-In short: on the common path there is nothing to install, and if the download can't happen, nothing breaks.
-
-**For faster first scans, use FFmpeg 7.1 or 8.1** (from 2.5.1). With one of those versions the server reads most files' lengths and chapters itself, without starting ffprobe for each one, and asks ffprobe only about the files it can't be sure of. With any other version (for example Ubuntu 24.04's 6.1), every file is read by ffprobe, which works but makes the first scan of a big library much slower. The copy the server downloads for Linux and Windows is FFmpeg 8.1, so it gets the speedup. A copy downloaded before 2.5.1 (a development build, with no speedup) is replaced in the background, and the server uses the 8.1 build from its next start. You can also install a 7.1 or 8.1 package and restart the server, which then finds it first. At start, the server's log says whether the faster reading is on ("in-process probe on") or off. Run `ffprobe -version` to see which you have. ffprobe is still needed either way.
-
-### Run it from a terminal
+## Run it from a terminal
 
 ```bash
 ./audiosilo --data ./data
 ```
 
-The very first start creates an admin account and prints the credentials **once** - save them. Then open `https://localhost:8080` (the default is HTTPS with a self-signed certificate, so expect a browser warning). Sign in to the admin console at `/admin` and it walks you through setting up the server. See [First run](./first-run.md) for the full walkthrough.
+1. The first start prints the admin password and an auth code **once**. Save them.
+2. Open `https://localhost:8080/admin`. Expect a certificate warning at first; accept it.
+3. Sign in as `admin`. The console walks you through [setting up your server](./first-run.md).
 
-Prefer to choose the admin password in the browser instead of a printed one? Start with `--setup`:
+To choose the admin password in your browser instead, start with `--setup`. The server then prints a one-time link to a page where you create the admin account:
 
 ```bash
 ./audiosilo --data ./data --setup
 ```
 
-Instead of creating an admin for you, the server prints a one-time link to a page where you choose the admin username and password. Either way, the admin console then walks you through the rest - your books folder, how books are named, connecting a phone - the first time you sign in. Details in [First run](./first-run.md).
+Useful options:
 
-Useful flags:
-
-| Flag | What it does |
+| Option | What it does |
 | --- | --- |
-| `--data <dir>` | Where config, database and certificates live (default `./data`). |
-| `--setup` | First run prints a one-time link to choose the admin password in the browser, instead of printing generated credentials. |
-| `--ffmpeg <path>` | Explicit path to ffmpeg; `""` disables transcoding and the MP3 copies of `.mka` books. |
-| `--ffprobe <path>` | Explicit path to ffprobe; `""` disables duration/chapter extraction (the server then reads none itself either). |
+| `--data <dir>` | Where settings, the database and certificates live (default `./data`). |
+| `--setup` | On first run, choose the admin password in the browser. |
+| `--ffmpeg <path>` | Path to ffmpeg; `""` turns off converting audio. |
+| `--ffprobe <path>` | Path to ffprobe; `""` turns off reading durations and chapters. |
 
-### Linux packages and systemd
+## Linux packages and systemd
 
-The `.deb`/`.rpm` packages install the binary to `/usr/bin/audiosilo`, pull in your distribution's `ffmpeg`, and place a systemd unit. The package deliberately doesn't create a system user for you; do that once, then enable the service:
+The `.deb` and `.rpm` packages install `audiosilo`, pull in your system's `ffmpeg`, and add a systemd service. Create the service's user and data folder once, then start it:
 
 ```bash
 sudo useradd --system --home /var/lib/audiosilo --shell /usr/sbin/nologin audiosilo
@@ -73,15 +53,36 @@ sudo install -d -o audiosilo -g audiosilo /var/lib/audiosilo
 sudo systemctl enable --now audiosilo
 ```
 
-The service runs with its data directory at `/var/lib/audiosilo`, so the first-run credentials appear in its logs:
+The first-run password appears in the service's log:
 
 ```bash
 journalctl -u audiosilo
 ```
 
+## Update
+
+1. Download the new release from [GitHub releases](https://github.com/KodeStar/audiosilo-server/releases).
+2. Stop the server.
+3. Replace the old `audiosilo` program with the new one. With a package, install the new `.deb` or `.rpm` with your package manager instead.
+4. Start the server again, with the same `--data` folder. For the service, run `sudo systemctl restart audiosilo`.
+
+Your data folder and your books are not changed. When an update changes the database, the server first saves a [backup](../admin/backups.md#before-an-upgrade) of it. **Server > About** in the admin console tells you when a new version is out.
+
+## ffmpeg and ffprobe
+
+AudioSilo uses ffprobe to read durations and chapters, and ffmpeg to convert audio a browser can't play. They are not in the download, but you usually have nothing to do:
+
+1. The server looks for them next to `audiosilo`, then on your `PATH`.
+2. If it finds neither, it downloads a trusted copy **once** into `tools/` in your data folder.
+3. If that can't happen (offline, say), the server still runs without durations, chapters or converting. It tries again at the next start.
+
+**FFmpeg 7.1 or 8.1 makes first scans much faster.** With those versions the server reads most files itself instead of running ffprobe on each one. The copy the server downloads for Linux and Windows is 8.1. Run `ffprobe -version` to see which you have.
+
+## Good to know
+
 ### Building from source
 
-If you have Go 1.26 or newer and Node 24 installed, you can build the server yourself:
+With Go 1.26 or newer and Node 24:
 
 ```bash
 git clone https://github.com/KodeStar/audiosilo-server.git
@@ -90,10 +91,8 @@ scripts/build-admin.sh        # builds the admin console so it's included
 go build -o audiosilo ./cmd/audiosilo
 ```
 
-:::note
-Skip `scripts/build-admin.sh` and `/admin` shows a short "admin console isn't built" page instead of the console. A plain source build also does not include the embedded web player - the admin console and the API work as normal, but `/web` stays off unless you point the server at a built player. The release downloads and the Docker image both include the player, so for everyday use prefer those. How the player gets bundled is covered in the [developer docs](/developers/server/web-ui).
-:::
+A source build does not include the web player, so `/web` stays off. The release downloads and the Docker image include it. See the [developer docs](/developers/server/web-ui) for bundling it.
 
-:::tip
-Running an always-on, multi-user or reverse-proxied setup? [Docker](./quickstart-docker.md) is the recommended path there - the native binary is aimed at home users who want one download and no container runtime.
-:::
+### Licence
+
+AudioSilo is licensed under **AGPL-3.0**. The Linux downloads also contain the GNU C Library (**LGPL-2.1-or-later**). Each archive includes `LICENSE` and `NOTICE`; the packages install `NOTICE` under `/usr/share/doc/audiosilo/`.

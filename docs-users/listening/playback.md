@@ -1,107 +1,100 @@
 ---
-title: Playing a book
-description: "Starting a book, the mini player and the player bar, playing to another speaker, how your position syncs across devices, listening offline, books a browser can't play directly, lock-screen, headphone and car controls, and books without chapters."
+title: Play a book
+description: Start a book, control it from any screen, and keep your place in sync across your devices.
 ---
 
-Tap **Start listening** (or **Resume**) on any [book's page](book-page.md) to start it. On a phone the [full player](full-player.md) opens straight away. On a tablet or computer the book plays where you are, under the **player bar** along the bottom of the window; open the full player from it whenever you want the big view.
+Tap **Start listening** or **Resume** on a [book's page](book-page.md). On a phone the [full player](full-player.md) opens. On a tablet or computer the book plays under the player bar, and you can open the full player from there.
 
 ## The mini player and the player bar
 
-While a book is playing, a small player stays with you on every screen. It steps aside while the full player is open.
+While a book plays, a small player stays with you on every screen.
 
-**On a phone**, a **mini player** card floats just above the tab bar (in the web player, on Android, and on iPhones before iOS 26): the cover, the current chapter, and the book with its [time left](full-player.md#time-left) (a running sleep timer's countdown comes first), then **skip back** and **play/pause**, which shows a spinner while the book loads and **Retry** if playback fails. A thin line along its bottom shows how far you are through the chapter. When the only chapter just repeats the title (a podcast episode, say, or a single-file book), or there's no chapter at all, the card shows the title once, then the time left. Tap it to open the full player.
-
-On an **iPhone running iOS 26 or later**, the mini player is a glass strip inside the tab bar with the same things. Scroll down and the tab bar shrinks; the mini player tucks in beside it with just the cover, the chapter and play/pause.
+**On a phone**, a **mini player** sits just above the tab bar. It shows the cover, the chapter, the [time left](full-player.md#time-left), skip back and play/pause. Tap it to open the full player. On an iPhone with iOS 26 or later, it's a glass strip inside the tab bar.
 
 **On a tablet or computer**, the **player bar** runs along the bottom of the window:
 
-- a thin line along its top edge showing your progress through the whole book;
-- on the left, the cover, the chapter, the book and author, and whether your [place is saved](#your-position-follows-you) - tap it to open the full player. When the only chapter just repeats the title, or there's no chapter at all, it shows the title and then just the author or show;
-- in the middle, previous chapter, skip back, play/pause, skip forward and next chapter, over a scrubber for the current chapter (with a tick for each bookmark) and the time left in the book;
-- on the right, the [undo button](full-player.md#undo-a-jump) after a jump, then speed, the [sleep timer](sleep-timer.md) (with its countdown while one runs), bookmark, output, [Cast](chromecast.md), [Up next](up-next.md), and an arrow that opens the full player.
+- On the left: the cover, the chapter and the book. Tap it to open the full player.
+- In the middle: chapter and skip buttons, play/pause, and a scrubber for the current chapter.
+- On the right: speed, the [sleep timer](sleep-timer.md), bookmark, output, [Cast](chromecast.md), [Up next](up-next.md), and an arrow to the full player. After a jump, an [undo button](full-player.md#undo-a-jump) appears here too.
 
-When the bar is short of room (a narrower window, or the undo button taking its space), it drops speed, bookmark, output and Cast first, then the chapter scrubber and the time left; everything it drops is in the full player.
+In a narrow window, some of these buttons are left to the full player. The bookmark button marks where you are: see [Add bookmarks and notes](bookmarks-and-notes.md).
 
 ## Play to another speaker (AirPlay and Chromecast)
 
-The **output** button in the full player (and on the player bar; a screen reader calls it **Audio output**) hands audio off to another output:
+The **output** button in the full player and on the player bar sends the sound somewhere else:
 
-- **iPhone / iPad** - opens the AirPlay picker, so you can send playback to a HomePod, an Apple TV, or AirPlay speakers.
-- **Android** - opens the system's media output panel (or the Bluetooth settings where there isn't one), for a Bluetooth speaker (an Echo paired as a speaker, for example).
-- **Web** - uses AirPlay in Safari. Other browsers have no output picker, so the button is hidden there.
+- **iPhone and iPad**: the AirPlay picker, for a HomePod, an Apple TV or AirPlay speakers.
+- **Android**: the system's media output panel, for a Bluetooth speaker.
+- **Web player**: AirPlay in Safari. Other browsers don't show the button.
 
-To play on a **Chromecast**, a TV with Google Cast or a Nest speaker, use the **Cast** button beside it instead: see [Chromecast](chromecast.md).
-
-Your position keeps syncing as normal while playing to another device.
+For a Chromecast, a TV with Google Cast or a Nest speaker, use the **Cast** button instead. See [Chromecast](chromecast.md). Your place keeps syncing either way.
 
 ## Your position follows you
 
-AudioSilo saves your position to the server **every 15 seconds while playing**, and immediately whenever you pause, seek, change speed, or stop. Start a book on your phone in the car, open the web player at your desk, and it's waiting on the home screen at the right spot. On a recent server the app sends what you listened to rather than just where you are, so listening on two devices, or offline, comes together properly: see [Listening on more than one device](#listening-on-more-than-one-device).
+AudioSilo saves your place to the server every 15 seconds while you listen, and straight away when you pause, seek or stop. Start a book on your phone, open the web player at your desk, and it's waiting at the right spot.
 
-The player says where your place is: **Synced** (*Synced just now* while playing), **Saved on this device, will sync** while the book's server can't be reached or saves are waiting to go, or **Saved on this device, sign in again to sync** when that server needs you to sign in again.
+The player shows whether your place is **Synced**, or **Saved on this device, will sync** while the server can't be reached.
 
-A few protections work behind the scenes so you never lose your place:
+A few protections keep your place safe:
 
-- Your position is stored **on the server and on the device**, and the most recent one wins - so a flaky connection can't quietly rewind you.
-- A book **never silently restarts from the beginning**. If a streamed book can't confirm your resume position (say, the server is briefly unreachable), the player shows an error with a **Retry** button rather than starting at zero.
-- Even if playback did slip back somehow, the app refuses to overwrite your real progress with a much earlier position - only a deliberate move backwards counts. In the mobile apps that includes a move from the lock screen, headphones or a [car](in-the-car.md): a scrub back there is saved as your new place straight away.
-- **Picking up where another device left off**: if a book is still loaded on this device when you come back to it (you open the app again, or press play after a pause of more than a minute) and you've listened further on another device meanwhile, the player jumps to that newer place before it saves anything, and says so: *"Picked up your place from another device"*, with **Undo** to go back. On a recent server it asks instead when the two places don't follow on from each other (below).
-- **Auto-rewind on resume**: after a pause, playback backs up a few seconds (5 by default, adjustable up to 30 or off) so you regain the thread of the sentence.
+- **A book never silently restarts from the beginning.** If a streamed book can't find your place, the player shows **Retry** instead of starting at zero.
+- **An earlier position can't overwrite your progress by accident.** Only a move back you make yourself counts, including a scrub from the lock screen, headphones or a car.
+- **You pick up another device's place.** If a book is still loaded here and you've listened further elsewhere, the player jumps to the newer place and says so, with **Undo**.
+- **Auto-rewind.** After a pause, playback backs up a few seconds so you catch the sentence again. Change it in [Settings](settings.md#playback).
 
 ## Listening on more than one device
 
-On a recent server, each device sends the server **what you listened to**: from where to where, and when. The server puts it together from every device, so:
+Each device tells the server what you listened to: from where to where, and when. The server puts it together, so:
 
-- **Nothing moves your place back by itself.** If two devices each listened without seeing the other's place (say your watch played on a run while your phone was in a drawer, or the phone was offline), the server keeps the place further on and remembers the other one.
-- **You choose which place to carry on from.** When the other place is more than half a minute away, the player asks: *"On Apple Watch you were at Chapter 12, 4:10. Jump there?"*. **Jump** takes you there; **Stay** (the button that closes the message) keeps the place you have, and the server takes this device's place from then on. Either way you're asked once. The [book's page](book-page.md#listening-and-the-buttons) offers the same place under its buttons: *"On Apple Watch: Chapter 12, 4:10 · Play from there"*. The device is named as it signed in to your server ("another device" if the server doesn't know its name).
-- **A cold start never rewinds you.** A device that starts playing before it has heard from the server can't pull the book back to where it started.
-- **Finished stays finished.** A device that hadn't heard you finished the book doesn't undo it by playing on; starting the book again does.
-- **Listening counts when it happened.** Your [history](book-page.md#history), the Journal, your stats and the server's activity show offline listening on the day and at the time you listened, even when it reaches the server days later, and even when the device's clock was wrong. Listening sent twice is counted once.
-- **Your place in the right file.** For a book in several files, the app also notes which file you were in, so listening on a download that still has an older file order lands in the same file on the server.
+- **Nothing moves your place back by itself.** If two devices listened without seeing each other (a watch on a run while your phone was offline, say), the server keeps the place further on.
+- **You choose where to carry on.** When another device's place is more than half a minute away, the player asks: *"On Apple Watch you were at Chapter 12, 4:10. Jump there?"* **Jump** goes there. **Stay** keeps your place. The [book's page](book-page.md#listening-and-the-buttons) offers it too.
+- **Finished stays finished**, unless you start the book again.
+- **Listening counts when it happened.** Offline listening shows in your history, Journal and stats at the time you listened, even if it syncs days later.
 
-**Places from Audible.** When your server's admin has [Audible sync](../admin/audible.md#syncing-listening-places) on for an Audible account of yours, Audible is one more device: a place further on in the Audible app reaches your books here within about 15 minutes, and the player moves to it or offers it as *"On Audible (Chris (US)) ..."*. It never moves your place back, and it adds nothing to your history or stats. Your place here goes back to Audible a few minutes after you stop listening.
+Until it reaches the server, your listening waits on the device. Home says how many listens are waiting, and your [account page](account.md#listening-sync) shows the details.
 
-Until it reaches the server, what you listened to waits on the device: Home's line says **3 listens waiting to sync**, and your [account page](account.md#listening-sync) says how many are waiting and when this device last synced. If the server ever turns one down (say the downloaded copy is a different length from the server's book), it's listed there with the reason. On an older server, the app saves your place as it always has.
-
-## Bookmarks, notes and history
-
-The bookmark button in the full player or on the player bar adds a bookmark where you are, in one tap; **Add note** on the note that confirms it lets you say why (see [Bookmarks and notes](bookmarks-and-notes.md)). Your bookmarks, notes and listening history for the book are in the [companion](companion.md#bookmarks-notes-and-history) and on the [book's page](book-page.md#the-tabs), and every book's are in the [Journal](journal.md), all saved to your account.
+**Places from Audible.** If your admin has turned on [Audible sync](../admin/audible.md#syncing-listening-places) for your Audible account, Audible counts as one more device. A place further on in Audible reaches you within about 15 minutes. Your place here goes back to Audible a few minutes after you stop. It never moves your place back.
 
 ## Listening while offline
 
-If the connection drops mid-listen:
+If the connection drops while you listen:
 
-- A **downloaded** book keeps playing as if nothing happened - see [Offline downloads](offline-downloads.md).
-- A **streamed** book will pause with an error and a **Retry** button once its buffer runs out. Offline, Home's card for a book that isn't downloaded says **Not downloaded** rather than offering Resume.
-- Either way, an *"Offline - changes sync when reconnected"* banner appears, and any progress, bookmarks, or finished-marks you make are **queued on the device and synced automatically** when the server is reachable again. On a recent server your listening waits too (*"3 listens waiting to sync"*), shows in the book's history marked **Waiting to sync**, and reaches the server at the time you listened: see [Listening on more than one device](#listening-on-more-than-one-device).
-
-## Books a browser can't play directly
-
-Most audiobooks use audio that every browser plays (AAC, the usual audio in `.m4b` files, and MP3, among others). A few use something browsers can't decode, such as AC-3 or Apple Lossless (ALAC). The mobile apps play those as they are, where the device can decode them (an Android phone may not). In the **web player**, AudioSilo has your server **convert them to MP3 as you listen**, automatically:
-
-- The book's page says so under its details: *"AC-3 audio is converted to MP3 for this browser"*.
-- Everything works as usual - chapters, the seek bar, speed, the sleep timer. A jump takes a moment longer than usual, because the server starts converting again from the new place.
-- **You can't download such a book in the browser**: its files wouldn't play offline there, so the download button is turned off (on a wide enough page it says **Can't download in this browser**). Download it in the [mobile app](mobile-apps.md) instead. (A copy downloaded earlier can still be removed.)
-
-The conversion needs **ffmpeg** on your server, which the Docker image includes and the server downloads for itself otherwise (your admin can check under [Server > Transcoding](../admin/server.md#transcoding)). Without it, the web player tries to play the book directly, and if the browser can't, you get the usual playback error - see [Troubleshooting](../troubleshooting.md#a-book-plays-in-the-app-but-wont-play-in-the-browser).
-
-An `.mka` (Matroska) book with MP3 inside isn't one of these when your server has ffmpeg: the server sends it as a plain MP3 file, so it plays, seeks and downloads like any MP3 book (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). The very first play of a large one can start through the conversion while the server is still making that copy (it starts when the book is opened). Until the copy is ready, a jump in that first stream may not land where you asked; once the copy is made, the book seeks normally.
+- A **downloaded** book keeps playing. See [Listen offline](offline-downloads.md).
+- A **streamed** book pauses with **Retry** once it runs out of buffered audio. Offline, Home shows **Not downloaded** for it instead of Resume.
+- Progress, bookmarks and finished marks wait on the device and sync once the server is back.
 
 ## Lock-screen and headphone controls
 
-In the mobile apps, playback continues in the background and shows up everywhere your system shows media:
+In the mobile apps, playback carries on in the background:
 
-- **Android** - the lock screen and notification give you the full audiobook row: **previous chapter**, a **chapter-relative scrubber** you can drag, **next chapter**, and **skip back/forward** buttons that use the skip lengths you chose in [Settings](settings.md#playback). One exception: a very long book in a single `.m4b` or `.m4a` file (over about 41 hours in that one file; the exact limit depends on the phone's memory) plays as one item, so its lock screen and notification show a scrubber for the whole file and no previous/next chapter buttons. In the app, its chapters work as usual. (Without this, such a book could stop the app at a chapter change.)
-- **iOS** - the lock screen and Control Centre show the **chapter** you're in (its title, with the book and author under it) and a **scrubber for that chapter**, with play/pause and **skip back/forward** buttons that use the same skip lengths you chose in [Settings](settings.md#playback). Next and previous track, from headphones or a car, move by **chapter**. A book without chapter marks shows the current file instead.
-- **Headphones and earbuds** - play/pause and skip buttons work as you'd expect, and playback pauses politely for interruptions (a phone call, a navigation prompt) and resumes afterwards only if it was playing before.
-- **In the car** - Android Auto and CarPlay show your books on the car's screen; see [In the car](in-the-car.md).
+- **Android**: the lock screen and notification show previous and next chapter, a chapter scrubber, and skip buttons that use your skip lengths from [Settings](settings.md#playback).
+- **iOS**: the lock screen and Control Centre show the chapter, a chapter scrubber, play/pause and skip buttons. Next and previous track, from headphones or a car, move by chapter.
+- **Headphones**: play/pause and skip work as you'd expect. Playback pauses for a call or a navigation prompt, and resumes after if it was playing.
+- **In the car**: see [In the car](in-the-car.md).
 
-On both, previous goes back to the start of the chapter when you're more than 3 seconds into it, and to the chapter before when you're right at its start.
+Previous goes back to the start of the chapter. Within the first 3 seconds of a chapter, it goes to the chapter before.
 
-See [The mobile apps](mobile-apps.md) for more on the native apps.
+See [Get the apps](mobile-apps.md) for more on the apps.
+
+## Books a browser can't play directly
+
+A few audiobooks use audio that browsers can't play, such as AC-3 or Apple Lossless (ALAC). The mobile apps play them as they are, where the device can. In the web player, your server converts them to MP3 as you listen:
+
+- The book's page says so, such as *"AC-3 audio is converted to MP3 for this browser"*.
+- Chapters, seeking, speed and the sleep timer all work. A jump takes a moment longer.
+- You can't download such a book in the browser. Download it in the [mobile app](mobile-apps.md) instead.
+
+Converting needs **ffmpeg** on your server. The Docker image includes it, and otherwise the server downloads it (your admin can check under [Server > Transcoding](../admin/server.md#transcoding)). If a book still won't play, see [Troubleshooting](../troubleshooting.md#a-book-plays-in-the-app-but-wont-play-in-the-browser).
 
 ## Books without chapters
 
-A long audiobook that's a single file with no chapter markers still gets chapter-style navigation: the player divides it into **virtual chapters** (every 30 minutes by default - adjustable from 5 to 60 minutes in [Settings](settings.md#playback)), so the chapter skips, the chapter list, and the sleep timer's **End of chapter** all work.
+A long single file with no chapter marks is split into **virtual chapters**, every 30 minutes by default. You can choose 5 to 60 minutes in [Settings](settings.md#playback). Chapter skips, the chapter list and the sleep timer's **End of chapter** all work.
 
-Many such books can get real chapters instead: when your server's admin has community metadata switched on and the book is matched, the server can take its chapters from the [community database](../community/meta-site.md). They then show and play like the book's own, with a line under the chapter list saying where they came from (see [A book's page](book-page.md#chapters)). A server with a [Bridge](../admin/generating-characters-and-recaps.md#books-without-chapters) can also find a book's chapters in its narration.
+Many such books can get real chapters, from the community database or from your server's [Bridge](../admin/generating-characters-and-recaps.md#books-without-chapters). See [Use the book page](book-page.md#chapters).
+
+## Good to know
+
+- **Older servers** don't combine listening from several devices. The app just saves your place, as before.
+- **MKA books.** An `.mka` book with MP3 inside plays like any MP3 book when your server has ffmpeg (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). On the very first play of a large one, a jump may not land exactly until the server has finished preparing it.
+- **Very long single files on Android.** A book in one `.m4b` or `.m4a` file over about 41 hours shows a scrubber for the whole file on the lock screen, with no chapter buttons. Its chapters work as usual in the app.
+- **A listen the server turns down**, such as one from a download of a different length, is listed with the reason on your [account page](account.md#listening-sync).
