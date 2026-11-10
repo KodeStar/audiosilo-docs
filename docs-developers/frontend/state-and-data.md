@@ -145,9 +145,16 @@ Patterns to copy when adding an endpoint:
   one connection run one at a time (the mutation `scope`),
   and only the last of a run invalidates the list, so an earlier answer can't flip
   the heart back.
-- `useMarkFinished` deliberately routes through the offline-aware
-  `saveProgress` (below) instead of a bare mutation, so a "mark finished"
-  reconciles with playback progress under the same last-write-wins rules.
+- `useMarkFinished` never sends a bare mutation. On a `listening_sync` server it records
+  a `finish` event through the player's store (`recordFinishEvent` in
+  `src/playback/finish-route.ts`, which the store registers as it loads, since the hooks
+  can't import it): the book's open span closes first and goes before it, the mirror
+  records the book finished (`finishedSave`, the same record the `PUT` path sends), and
+  offline it waits in [the outbox](offline.md#listening-sync-the-outbox). The mutation
+  resolves once the event waits there; the store reads the lists and the book's progress
+  row again once it is sent. Elsewhere it goes through the offline-aware `saveProgress`
+  (below), so a "mark finished" reconciles with playback progress under the same
+  last-write-wins rules.
 - `useServerInfo` uses `useOptionalApi` + `enabled: !!api` and a 5-minute
   `staleTime`, so chrome that renders before a connection exists is safe.
 
@@ -347,7 +354,7 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `cover_sizes` | `BookCover`'s thumbnail choice |
 | `queue` | every Up next entry point and panel, the book menu's Up next item, the series page's Queue it (else Play), keep-ahead's queue window |
 | `collections` | the Collections mode, the collection page, the book menu's Add to collection |
-| `progress_edit` | the book menu's Mark as not finished, and Mark as finished with Undo (without it: `useMarkFinished`, no Undo) |
+| `progress_edit` | the book menu's Mark as not finished, and Mark as finished with Undo (without it: `useMarkFinished`, no Undo). With `listening_sync` too the finish is `useMarkFinished`'s event and the Undo a progress edit sent through `undoFinish`, which first takes the book's waiting finish out of the outbox (`withdrawFinish`, [the outbox](offline.md#taking-a-finish-back)) |
 | `user_stats` | Home's This week card, the Now card's finish date and the "&lt;narrator&gt; reads" shelf's top narrator (`useMyStats('30d')`, `useMyListening`, `useListeningGoal`) |
 | `ratings` | the end credits' and the book page's stars (`useBookRating`) |
 | `annotations` | bookmark labels in the editor and on the one-tap toast's Add note, Edit on bookmark and note rows, "See all in your journal", the Journal's Bookmarks and Notes lists and their export (the full list: [Where the capability matters](annotations.md#where-the-capability-matters)) |
@@ -1314,7 +1321,8 @@ The offline-safe write path for listening progress:
   `updated_at` captured **at save time** - so replays that land late still
   reconcile correctly by timestamp. The server's `SaveProgress` applies the
   same newest-`updated_at`-wins rule (see the
-  [server data model](../server/data-model.md)).
+  [server data model](../server/data-model.md)). That is why a session that began
+  at an unchecked place carries the [replay guard](#the-replay-guard) below.
 - **Connection-scoped.** Every `ProgressSave` carries a `connectionId`, and both
   the mirror and the queue key on `(connectionId, libraryId, path)` - which,
   crucially, stops the queue from replaying one server's positions against
@@ -1378,12 +1386,50 @@ The offline-safe write path for listening progress:
   the server as listening events ([Playback](playback.md#listening-spans-sync-v2)), and
   the legacy queue only drains what it already held. `pendingSaves` counts both (the
   queue's saves and the outbox's listens).
+- **Downloaded books keep the progress list's places.** Home's progress list
+  (`allProgressQuery`) puts the rows of the books downloaded here into the mirror in one
+  write (`writeMirrors`, keep-newest; a record identical to the stored one writes
+  nothing), as `fetchBookProgress` does for one book. An offline resume then knows a
+  place another device reached even when the book's page was never opened online. A
+  failed mirror write never fails the list.
 
 :::note[No realtime sync]
 Progress sync is REST-only. The server advertises a `websocket` capability flag
 for a future realtime channel, but no WebSocket client exists in the frontend -
 don't document or rely on one.
 :::
+
+### The replay guard
+
+On the `PUT` path (a server without `listening_sync`, or a Sync v2 rollback) a save is
+last-write-wins, so a session that began where this device could not check its server
+would move another device's further place back when it reconnects (v2.5.1 PLAYER-01: a
+place went from 3570 s to 4.78 s). The guard (fe#198) holds such saves instead:
+
+- **Which sessions.** `loadInitialProgress` marks its `ResumeLookup` `unchecked` when the
+  server was not reached, or when this device's newer record resumes more than 30 s
+  behind the server's unfinished row. A downloaded book's `failed` start counts too, and
+  so does a book adopted from the engine (`adoptLoadedBook`: the engine's place, never
+  looked up). The store keeps a guard per session (`placeGuard`, with a random id) and
+  puts `guard` and the session's `guard_session` on its saves, never on an explicit
+  place or a finish. Neither is sent or kept in the mirror.
+- **Until one is `PUT`.** A guarded save that is `PUT`, live or replayed from the queue
+  later, settles its session (`guardSettled`), and the store's next save drops the
+  guard. A save of an earlier session landing late never lifts a later session's guard.
+- **The check.** Before a guarded save is `PUT`, `guardPasses` reads the server's row.
+  `guardHolds` (pure) holds it when the row is another device's unfinished place more than
+  `GUARD_SLACK_S` (30 s) further on that the listener has not answered (the mirror's
+  `answered` keys, `placeKey`: `device_id|updated_at`). A held save is not sent and
+  leaves the queue; the mirror keeps this device's place.
+- **The offer.** `onHeldSave` tells the place reconcile, which offers the place that held
+  it for the loaded book with the usual Jump/Stay toast
+  ([Playback](playback.md#offering-another-devices-place-sync-v2)). Stay answers the
+  place and saves this device's place at once; a toast nobody answers answers nothing.
+  Each listener runs on its own, so one that throws never turns a held save into a
+  queued one.
+
+The guard and the offer share `GUARD_SLACK_S` and `placeKey`. Sync v2 needs none of
+this: the server resolves each span on its `base_version`.
 
 ## Reachability (`src/api/reachability.ts`)
 

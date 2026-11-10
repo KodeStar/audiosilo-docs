@@ -619,6 +619,11 @@ replay queue.
   *downloaded* book, `failed` means offline-first and never started: 0 is
   correct.
 
+A lookup whose place was never checked against the server (it was not reached, or this
+device's newer record is more than 30 s behind the server's unfinished row) is marked
+`unchecked`, and on the `PUT` path that session's saves carry the
+[replay guard](state-and-data.md#the-replay-guard) until one is `PUT`.
+
 The mirror (`writeMirror`, key `audiosilo.progressMirror`) is written on **every
 save and every successful server read**, keep-newest by `updated_at`, and -
 unlike the replay queue - is **never pruned on sync**. It exists precisely so a
@@ -652,7 +657,7 @@ never written.
 
 It moves only when the server's record was written by another `device_id`, is newer than
 anything this device's mirror knows for the book, is not finished, and is more than
-`MOVE_THRESHOLD_S` (30 s) from the engine's place; a seek of the listener's own while the
+`MOVE_THRESHOLD_S` (30 s, the replay guard's `GUARD_SLACK_S`) from the engine's place; a seek of the listener's own while the
 check was out wins (`localMoveCount`). The move is `seekBook` (so the resume floor and the
 undo chip see it), and a toast ("Picked up your place from another device") offers Undo.
 This module is the only place that reconciles a loaded book: never make `toggle()` look
@@ -688,8 +693,11 @@ checked on each sync answer for the loaded book (`onSyncAnswer`; never moving a 
 book) and, where `placeToMoveTo` finds nothing to move to, on the foreground, reconnect
 and picked-up checks above. Each place is shown once per launch and a device's places
 at most once per book every 10 minutes (`OFFER_REPEAT_MS`: a device that plays on sends
-a new place with every span). On a server without the flag nothing is offered and the
-auto-move with Undo above stays as it was. The book page shows the same offer as a line
+a new place with every span). On a server without the flag the auto-move with Undo above stays as it
+was, and the one offer is for a save the
+[replay guard](state-and-data.md#the-replay-guard) held: `onHeldSave` brings the place
+that held it (`offerLoadedPlace(..., { held: true })`), and there **Stay** also saves this
+device's place at once (`saveLoadedPlace`). The book page shows the same offer as a line
 (`ListeningOfferLine`, [Book page](book-page.md#the-primary-action-and-the-action-row)).
 
 ### Listening spans (Sync v2)
@@ -717,14 +725,19 @@ one now).
 - **Closed** on a pause, a move (the new place opens the next span with the move's
   reason; a move while paused is sent at once as a span that moved nowhere, as a save
   would have been), a stop, a book switch, a sleep stop and the end of the book, which
-  then sends `finish` once (so does Mark finished). The web's `pagehide` closes it and
-  sends what waits with `keepalive`.
+  then sends `finish` once. The finish goes into the outbox only after the last span's
+  close has landed there, and one send follows both (`finishAfter`, server#359: a 12 s
+  book's finish once arrived first and found no session to mark). The book page's Mark
+  as finished takes the same way (`finish-route.ts`,
+  [State & data](state-and-data.md#react-query-srcapihooksts-srcapiprovidertsx)). The web's `pagehide`
+  closes it and sends what waits with `keepalive`.
 - **Offline**, the tick leaves the span open until it is an hour long
   (`MAX_SPAN_MS`), so a day offline is a handful of events. Online or offline the open span is stored every 5 s
   (`OPEN_SPAN_KEEP_MS`) with the event id it took when it opened (`OpenSpan.id`,
   so a span closed twice is one event), so a kill loses at most 5 s: the next
   launch closes the stored span into the outbox (`recoverOpenSpan`). The keep
-  never moves the span's end back. An event never claims more than 23 h of wall
+  never moves the span's end back (a native lock-screen move's landed place reaches the
+  store before the move); a save and the 15 s cut take where the engine is. An event never claims more than 23 h of wall
   clock (`MAX_EVENT_SPAN_MS`), for timers that stood still while the app slept.
   Offline means the server is marked unreachable
   ([Reachability](state-and-data.md#reachability-srcapireachabilityts)), which on a
@@ -749,7 +762,9 @@ These are the saves of a server without `listening_sync` (a server with it gets
 - Additional saves fire on every seek (`seekBook`/`seekInTrack`/`goToTrack`),
   on `setRate`, and on `stop`.
 - Saves go through `saveProgress` (`progress-sync.ts`): mirror first, then the
-  network if reachable, else the offline replay queue (latest save per book).
+  network if reachable, else the offline replay queue (latest save per book). A
+  session that began at an unchecked place carries the
+  [replay guard](state-and-data.md#the-replay-guard).
   `finished` is set within 5 s of the end; each save carries
   `version: 0`, a per-install `device_id` and a capture-time `updated_at` so
   the server's last-write-wins reconciliation (and offline replays) order

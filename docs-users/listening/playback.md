@@ -47,7 +47,7 @@ A few protections keep your place safe:
 Each device tells the server what you listened to: from where to where, and when. The server puts it together, so:
 
 - **Nothing moves your place back by itself.** If two devices listened without seeing each other (a watch on a run while your phone was offline, say), the server keeps the place further on.
-- **You choose where to carry on.** When another device's place is more than half a minute away, the player asks: *"On Apple Watch you were at Chapter 12, 4:10. Jump there?"* **Jump** goes there. **Stay** keeps your place. The [book's page](book-page.md#listening-and-the-buttons) offers it too.
+- **You choose where to carry on.** When another device's place is more than half a minute away, the player asks: *"On Apple Watch you were at Chapter 12, 4:10. Jump there?"* **Jump** goes there. **Stay** keeps your place. It asks this too when you come back online after listening offline. The [book's page](book-page.md#listening-and-the-buttons) offers it too.
 - **Finished stays finished**, unless you start the book again.
 - **Listening counts when it happened.** Offline listening shows in your history, Journal and stats at the time you listened, even if it syncs days later.
 
@@ -61,7 +61,7 @@ If the connection drops while you listen:
 
 - A **downloaded** book keeps playing. See [Listen offline](offline-downloads.md).
 - A **streamed** book pauses with **Retry** once it runs out of buffered audio. Offline, Home shows **Not downloaded** for it instead of Resume.
-- Progress, bookmarks and finished marks wait on the device and sync once the server is back.
+- Progress, bookmarks and **Mark as finished** wait on the device and sync once the server is back.
 
 ## Lock-screen and headphone controls
 
