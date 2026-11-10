@@ -32,6 +32,8 @@ AudioSilo picks the next book the same way everywhere:
 
 A book in more than one series follows its main series first, then its others. After an omnibus of books 1-3, the next book is book 4.
 
+In a series folder the server hasn't finished scanning, the next folder plays next, even before it is scanned.
+
 If nothing comes next, the card says **End of the series**. If the community knows a next book that your server doesn't have, it shows as a pale cover with **View on AudioSilo Meta**. AudioSilo never tries to play a book you don't have, and skips any gap in the series.
 
 ## Playing on automatically

@@ -65,7 +65,7 @@ AudioSilo takes each book's details from these sources:
 - **Folder names.** The book's folder (or file) is the title, its parent folder the series, and the folder above that the author. A leading number like `03 - Title` is the book's place in the series (`02.5` works too). `Author/Title/` with no series folder works as well.
 - **The files' tags.** Title (usually the album tag), author, narrator, series and genres. Junk titles like "Track 01" are ignored.
 - **Audiobookshelf's `metadata.json`**, when the book's folder has one. See [below](#coming-from-audiobookshelf).
-- **The audio itself**, via ffprobe: durations and any chapters in the file.
+- **The audio itself**: durations and any chapters in the file.
 - **The community database**, for chapters only: a book with no chapters of its own gets them once it is [matched](../admin/books.md#community-chapters).
 
 By default tags win over folder names. If your folders are named well and your tags aren't, set the library to [folder names first](../admin/libraries.md#where-book-details-come-from). Anything still wrong can be fixed in the admin console without touching the files: see [Books and metadata](../admin/books.md).

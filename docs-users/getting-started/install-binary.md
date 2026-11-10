@@ -41,7 +41,7 @@ Useful options:
 | `--data <dir>` | Where settings, the database and certificates live (default `./data`). |
 | `--setup` | On first run, choose the admin password in the browser. |
 | `--ffmpeg <path>` | Path to ffmpeg; `""` turns off converting audio. |
-| `--ffprobe <path>` | Path to ffprobe; `""` turns off reading durations and chapters. |
+| `--ffprobe <path>` | Path to ffprobe; `""` turns it off. AudioSilo still reads most files' lengths and chapters itself. |
 
 ## Linux packages and systemd
 
@@ -70,11 +70,11 @@ Your data folder and your books are not changed. When an update changes the data
 
 ## ffmpeg and ffprobe
 
-AudioSilo uses ffprobe to read durations and chapters, and ffmpeg to convert audio a browser can't play. They are not in the download, but you usually have nothing to do:
+AudioSilo reads most files' lengths and chapters itself, and uses ffprobe for the rest. It uses ffmpeg to convert audio a browser can't play. They are not in the download, but you usually have nothing to do:
 
 1. The server looks for them next to `audiosilo`, then on your `PATH`.
 2. If it finds neither, it downloads a trusted copy **once** into `tools/` in your data folder.
-3. If that can't happen (offline, say), the server still runs without durations, chapters or converting. It tries again at the next start.
+3. If that can't happen (offline, say), the server still runs. It doesn't convert audio, and the few files it can't read itself have no length or chapters. It tries again at the next start.
 
 **FFmpeg 7.1 or 8.1 makes first scans much faster.** With those versions the server reads most files itself instead of running ffprobe on each one. The copy the server downloads for Linux and Windows is 8.1. Run `ffprobe -version` to see which you have.
 

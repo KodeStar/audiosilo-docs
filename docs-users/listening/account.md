@@ -23,7 +23,7 @@ Accounts made by invite often have no password. That's fine day to day, but a pa
 
 Setting a first password signs nothing out.
 
-**Changing a password signs out your other devices.** This device stays signed in. Every other device needs to sign in again. Your [API keys](#personal-api-keys) and [calendar link](upcoming.md#add-to-your-calendar) keep working. If someone else knew your old password, this locks them out.
+**Changing a password signs out your other devices.** This device stays signed in. Every other device needs to sign in again, and so do household members signed in on those devices. Your [API keys](#personal-api-keys) and [calendar link](upcoming.md#add-to-your-calendar) keep working. If someone else knew your old password, this locks them out.
 
 ## Pair another device
 

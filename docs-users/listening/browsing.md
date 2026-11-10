@@ -169,7 +169,7 @@ The **Search** tab finds books, series, authors, narrators and characters, acros
 
 Results appear as you type, grouped into:
 
-- **Books** - matching titles, authors, narrators, series, genres and tags. A book on more than one server shows once.
+- **Books** - matching titles, authors, narrators, series, genres and tags. A book on more than one server shows once. A Chinese or Japanese title is found by any character or word in it.
 - **Series** - each opens its [series page](#series-pages).
 - **People** - authors and narrators.
 - **Characters** - from books you've started.
