@@ -692,12 +692,15 @@ checked on each sync answer for the loaded book (`onSyncAnswer`; never moving a 
 book) and, where `placeToMoveTo` finds nothing to move to, on the foreground, reconnect
 and picked-up checks above. Each place is shown once per launch and a device's places
 at most once per book every 10 minutes (`OFFER_REPEAT_MS`: a device that plays on sends
-a new place with every span). On a server without the flag the auto-move with Undo above
-stays. Its only offer is for a save the
+a new place with every span). The book page shows the same offer as a line
+(`ListeningOfferLine`, [Book page](book-page.md#the-primary-action-and-the-action-row)),
+on a server with the flag only.
+
+On a server without the flag the auto-move with Undo above stays. Its only offer is the
+loaded book's toast for a save the
 [replay guard](state-and-data.md#the-replay-guard) held (`onHeldSave`,
 `offerLoadedPlace(..., { held: true })`), where **Stay** also saves this device's place
-at once (`saveLoadedPlace`). The book page shows the same offer as a line
-(`ListeningOfferLine`, [Book page](book-page.md#the-primary-action-and-the-action-row)).
+at once (`saveLoadedPlace`). The book page shows no line there.
 
 ### Listening spans (Sync v2)
 
