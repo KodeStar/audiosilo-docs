@@ -66,7 +66,7 @@ timer have their own pages ([End of a book](end-of-book.md),
   every action from 1144 (both side columns sized for them with the sleep pill at its
   widest, a running "10:05:00" or "Keep going"), the tablet set (sleep, Up next,
   expand) below that, and no scrubber below 800. Everything it drops is in the full
-  player. The `UndoChip` **floats above the bar**, centred over the transport, and
+  player. The `UndoChip` **floats above the bar**, centred on the bar (over the transport, except on a 640 to 731 px bar, where the transport sits off centre), and
   nothing in the bar lays out around it, so a jump never moves or resizes the
   scrubber under the pointer that made it. Speed and sleep open through
   `usePlayerSheets`; the dock mounts **no sheets** and no grace card
