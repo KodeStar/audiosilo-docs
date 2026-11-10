@@ -950,7 +950,8 @@ both repos, with a test on each side.
   [Read-along](../bridge/readalong.md).
 - **Setup and contributions (Phase 2b):** the heartbeat's `setup` block (the
   Bridge's onboarding checklist: `paired`, `libraries`, `asr`, `agent`, `budget`,
-  `github`, plus `can_contribute` and `github_login`) reaches the console only, as
+  `github`, plus `can_contribute` and `github_login`; `agent` and `github` are
+  optional) reaches the console only, as
   `setup` on `GET /admin/bridge`
   ([the checklist](../bridge/pairing-and-jobs.md#the-setup-checklist)). Two new
   kinds, both owned by the `contributions` module (`404 module_off` while it is
@@ -1026,7 +1027,9 @@ both repos, with a test on each side.
   /bridge/progress?account=&since=&limit=` (`{rows, next, more}`, keyset on
   `progress.change_seq`, the account's own rows left out). Both answer `403
   sync_off`, `403 user_unavailable`, `404 unknown_account`; the feed also `400
-  invalid_request`. The account's `sync` is the console's now: the Bridge's PUT
+  invalid_request`. A `preorder` title takes no part in either direction (not in
+  the params, `not_synced` on the listening route, not in the feed), and its
+  release offers its book's place again (server `0071`). The account's `sync` is the console's now: the Bridge's PUT
   sends it and the server ignores it. The `audible:` device id is reserved
   (`/me/listening/sync` refuses it; a progress PUT saves it as none). Server
   migration `0066`, Bridge `0011`; the heartbeat gains no block. The Bridge mirrors

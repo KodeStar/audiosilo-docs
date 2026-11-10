@@ -20,7 +20,11 @@ catches up.
 
 ## Podcast libraries
 
-`Scanner.Scan` branches on `libraries.kind` before book detection. A podcast
+`Scanner.Scan` branches on `libraries.kind` before book detection. A kind this
+server doesn't know (`catalog.KnownKind`: a newer server's, left by a rollback)
+is never scanned as books: the scan fails with `library.ErrUnknownKind`, recorded
+as a failed run, and a targeted index refuses any library that isn't `books`
+(`resolveBook`, `ErrNotIndexable`). A podcast
 scan lists real, non-hidden top-level show directories, reads each
 `feed.json` (regular file, up to 32 MiB, version 1), and indexes its episodes
 with or without audio files. Unsupported versions are skipped and logged;
@@ -35,10 +39,11 @@ files are noticed even with unchanged feed stat. Refresh observes regular file
 presence, sizes, artwork, barriers and matching CHAP, then atomically updates
 the show/episode index. An unchanged signature skips the show only while its
 episodes are still indexed: a show with fewer `podcast_episodes` rows than its
-`feed.json` listed is indexed again (`PodcastEpisodeRows`, from 2.4.0), since an
-older server run on the same database (a rollback to 2.3.1, say) scans the
+`feed.json` listed is indexed again (`PodcastEpisodeRows`), since an
+older server run on the same database (a rollback) scans the
 library as books and drops the episode rows while the show keeps its
-signature. Each podcast scan then deletes the books rows that are not episodes
+signature. A row counts only while its `indexed_at` (`0073`) is its books row's,
+so one that older scan rewrote in place counts as missing too. Each podcast scan then deletes the books rows that are not episodes
 (`PruneNonEpisodeBooks`: what such a books scan left, a folder book at a show
 path for one). A targeted
 `POST /bridge/rescan` forces that refresh for a show path or an indexed episode
@@ -833,9 +838,10 @@ path-derived metadata still works, durations fall back to chapter ends or
 remain 0, and `codec` stays empty - which the API treats as directly playable
 (`direct_playable: true`, so the web player streams the file as it is rather than
 through the transcoder). See
-[Media & streaming](media.md). With ffprobe disabled (`--ffprobe ""`) the
-[in-process probe](#the-in-process-probe) is off too, so the server reads tags
-and paths only (probing in-process with no ffprobe is a possible follow-up).
+[Media & streaming](media.md). With ffprobe disabled (`--ffprobe ""`) or not
+found, the [in-process probe](#the-in-process-probe) still runs, by FFmpeg 8.1's
+rules: most files get their duration, codec and chapters, and only a file it is
+unsure of goes without (see [With no ffprobe](#with-no-ffprobe)).
 
 ### A leaf that states its series
 
@@ -919,20 +925,30 @@ part), which the console's provenance labels `path` (above).
 #### Books already indexed
 
 Books already indexed are put right without a re-index or a migration: the
-snapshot's `@rev` went from 1 to 2 for this rule, and from 2 to 3 for
-[a leaf that states its series](#a-leaf-that-states-its-series) (see
-[Data model](data-model.md#the-rebuildable-index)).
+snapshot's `@rev` went from 1 to 2 for this rule, from 2 to 3 for
+[a leaf that states its series](#a-leaf-that-states-its-series), and from 3 to 4
+for the tag reading of 2.4.0 and 2.5.0 (a series tag carrying its position,
+`metadata.SplitSeriesTag`; a title in any script not generic, `IsGenericTitle`;
+the MP4 `\xa9nrt` narrator item and a narrator tag over composer; see
+[Data model](data-model.md#the-rebuildable-index)). The snapshot carries the
+narrator too, so a backfill rewrites it.
 
 - **Flagged:** `Catalog.Signatures` sets `Signature.NamesCheck` on a snapshot of
   revision 1 or none whose stored title and series could be such a reading
-  (`metadata.MaybeSeriesTitle`, about 2 µs a row), and on a snapshot older than
-  revision 3 whose leaf `metadata.PathLeafSeries` reads. The next scan reads that book's
+  (`metadata.MaybeSeriesTitle`, about 2 µs a row), on a snapshot older than
+  revision 3 whose leaf `metadata.PathLeafSeries` reads, and on a snapshot older
+  than revision 4 whose tag reading may differ (`tagReadingMayDiffer`: an MP4-family
+  book, a narrator, a series `SplitSeriesTag` splits, or a non-ASCII letter in the
+  title or path). The next scan reads that book's
   first file once, with the same read as the path backfill, and
   `Catalog.SetPathReading` rewrites its snapshot (it now skips only a snapshot
   already at the current revision). A book the snapshot alone could settle for
   the lone-folder check waits for this read too, so an unreadable file never
-  records today's revision with its title or the leaf's series unread.
-- **Not flagged:** a current revision-1 or revision-2 snapshot
+  records today's revision with its title or the leaf's series unread. These
+  reads run `readSlots` wide, in batches (`tagRead`, `tagReadsPerSlot`), so a large
+  revision-4 backfill (every narrated book, once) costs one parallel tag read
+  each; a read a Stop cuts short is left for the next scan.
+- **Not flagged:** a current revision 1 to 3 snapshot
   (`Signature.RevStamp`) is stamped at today's revision by that scan
   (`Catalog.StampScannedRev` with `revOlderOwn`, a compare-and-set that changes
   only the revision), so later scans don't test it again. A snapshot of no revision that isn't flagged is not stamped: it keeps no
@@ -975,7 +991,8 @@ Which releases it runs for:
 - **7.1 and 8.1** (`knownRules`; they differ in MP3 gapless durations and in
   empty UTF-16 ID3 strings). The official and LinuxServer.io images are both
   Alpine 3.24, whose ffprobe is 8.1.3.
-- **Any other release turns the probe off**, and ffprobe reads every file:
+- **Any other release turns the probe off**, and ffprobe reads every file (with
+  no ffprobe at all it runs by 8.1's rules, see [With no ffprobe](#with-no-ffprobe)):
   Ubuntu 24.04's 6.1, a master or nightly build (its version is no release: the
   BtbN master builds a server before 2.5.1
   [downloaded](configuration.md#ffmpegffprobe-resolution--auto-download) for
@@ -1004,6 +1021,13 @@ with nothing logged:
 - a crafted table past a bound (a chapter track over 65,536 samples or with
   counts past its tables, Matroska SimpleTags over 4,096 or 8 deep, a
   compressed ID3 frame over 16 MiB);
+- an MP4 track FFmpeg's `mov_read_trak` sanity check calls a broken header
+  (chunks but no `stts`/`stsc` entries or no sample size or count, or samples but
+  no chunks): FFmpeg then reads its `mdhd` duration in 1/90000, so a 13,163 s
+  book prints as 3,510 s, and only ffprobe gives that same answer;
+- the edges where FFmpeg's own arithmetic misbehaves: an `mvhd`/`mdhd` timescale
+  past `INT32_MAX`, a rescale that overflows int64, and an ID3v2.2 `CHA` frame
+  (FFmpeg's three-letter match reads it as `CHAP`);
 - a read error, a reader's panic, no duration, or a probe limit (below).
 
 **Limits.** A file's probe stops after 5 s or 64 MiB read, and that file goes
@@ -1015,8 +1039,37 @@ Vorbis key grows (`blockFile.check`), and every 256 ticks in the walks that
 loop without reading (`blockFile.tick`, a `probeLimit` panic `fastProbe`
 recovers).
 
-**A file neither reads** keeps ffprobe's error as its `ProbeErr`, so Health
-shows the same `probe_failed` text as before (`ErrProbeRejected` included).
+**Bounded reads on a hung share.** The tag read and the narrator walk before the
+probe are bounded too (`readFile`): by the ffprobe run's timeout, the caller's
+context and the probe's byte budget. A tag read out of time skips the probe and
+leaves the file to ffprobe (killable, with its own timeout); one past the budget
+leaves the tags unread and the probe still runs. While armed, every read from the
+file runs on its own goroutine and is waited for only until the deadline
+(`blockFile.waitRead`), so a `pread` on an NFS or SMB share that stopped answering
+costs a goroutine, never a stuck scan reader. Once 16 such abandoned reads are
+outstanding process-wide (`maxAbandonedReads`), a new read fails fast without
+opening the file, logged once until they have all returned. `os.Open` and `Stat`
+are not bounded; the scan's root check catches a dead mount before discovery.
+What a cut-short read does to the stored book is in [Read problems](#read-problems).
+
+**A file neither reads** keeps ffprobe's error as its `ProbeErr`
+(`ErrProbeRejected` included), with FFmpeg's context address dropped
+(`[mp3 @ 0xcbcc3c000]` is stored as `[mp3]`).
+
+#### With no ffprobe
+
+With `--ffprobe ""`, or no ffprobe found, the probe still runs, by FFmpeg 8.1's
+rules (`noFFprobeRules`, the release the Docker images ship). A file it is unsure
+of gets no duration and no `ProbeErr`. A read out of time says so
+(`Metadata.ProbeTimedOut`) and is read again alone, as an ffprobe time-out is.
+The start-up log says the probe is on with no ffprobe.
+
+A scan reads an unchanged book with no stored duration or codec again once per
+server run (`Scanner.rereadUnprobed`, remembered in memory). So a server that ran
+without ffprobe gets its books' lengths on the first scan after the upgrade, and
+a file the probe is unsure of isn't re-indexed on every scan.
+`metadata.ExtractTags` reads tags alone, for the one tags-only caller
+(`suspectFromTags`).
 
 **Keeping parity.** A new FFmpeg release that changes a rule would change a
 value, so the probe is checked against ffprobe mechanically: a fixture corpus
@@ -1206,18 +1259,20 @@ reading a book's files, in three columns:
 
 | `books.scan_error` | When |
 |---|---|
-| `unreadable` | a file couldn't be opened (`metadata.Metadata.OpenErr`) |
+| `unreadable` | a file couldn't be opened (`metadata.Metadata.OpenErr`), or its read was cut short on a hung share (below) |
 | `empty_file` | a file is 0 bytes |
 | `probe_failed` | ffprobe is configured and couldn't read a file (`ProbeErr`): the in-process probe left it to ffprobe, which failed |
 
 `scan_error_file` is the library-relative file and `scan_error_detail` the OS's
 or ffprobe's own message, without the absolute path (the console shows the file
-beside it). To keep that message, ffprobe now runs with `-v error` instead of
+beside it). To keep that message, ffprobe runs with `-v error` instead of
 `-v quiet`: on failure, every distinct line it wrote to stderr, each without the
-input path, is joined with `"; "` and trimmed to 300 bytes (for example
-`[mov,mp4,m4a,3gp,3g2,mj2 @ 0x…] moov atom not found; Invalid data found when
-processing input` - the specific cause usually comes before the generic last
-line). Every re-index clears and re-checks the columns. A fixed permission or a
+input path and without FFmpeg's context address, is joined with `"; "` and
+trimmed to 300 bytes (for example `[mov,mp4,m4a,3gp,3g2,mj2] moov atom not found;
+Invalid data found when processing input` - the specific cause usually comes
+before the generic last line). The console shows a `probe_failed` book as one
+plain line ("couldn't be read as audio") with this detail behind **Details**,
+stripping an address from a row stored before. Every re-index clears and re-checks the columns. A fixed permission or a
 share that came back changes neither the file's mtime nor its size, so the
 unchanged-skip would keep the stale problem; instead each scan re-reads just the
 recorded file of an `unreadable` or `probe_failed` book (`problemCleared`) and
@@ -1242,6 +1297,18 @@ under way to finish and holds back new ones while it runs, one retry at a time.
 Only a file that also times out when read alone is recorded as a problem. On a very
 slow share where many files time out, the retries make the scan slower than
 reading one file at a time would; lower `scan.concurrency` there.
+
+**A read cut short on a hung share.** When any file of an already-indexed book
+comes back with its read cut short or refused at the abandoned-read cap
+(`Metadata.TagsUnread`, `ReadRefused`; see
+[The in-process probe](#the-in-process-probe)), the book's row is not rewritten at
+all (`catalog.recordReadProblem`): names, length, codec, chapters, cover flag,
+mtime and size stay as the last full read left them. Only the problem is
+recorded, `unreadable` with "reading it timed out" (or, for a refused read, "too
+many earlier reads are stuck (on this or another library), so it wasn't tried":
+the cap is process-wide), with ffprobe or without,
+so the next scan reads it again. A new book read so is written with its path's
+names.
 
 Extraction stays best-effort: a problem never stops a scan, and the book is still indexed with
 what could be read. Each book with a problem adds a `problem` line to the

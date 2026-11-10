@@ -178,7 +178,9 @@ offers **Detect chapters** on each row, and for the books you tick.
 
 ![The Detect chapters confirmation](/img/screenshots/admin/detect-chapters-dialog.png)
 
-Generating characters and recaps later reuses that transcription.
+Generating characters and recaps later reuses that transcription. If you cancel
+a Chapters job and detect chapters again, it carries on from what was already
+transcribed.
 
 ### When no chapters are found
 

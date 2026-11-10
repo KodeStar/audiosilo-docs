@@ -224,10 +224,20 @@ resumed job's own book found again, moves followed), and when new:
    whole run, which it never clears.
 2. **Writes from an earlier run** with no new transcription when an engine book at
    the source path already has a `chapters_detected.json` current for its manifest.
-3. Else **creates** an engine book with goal `chapters` and no series, and follows
+3. **Takes up a cancelled chapters run** (`cancelledChapters`, `resumeChapters`):
+   a goal-chapters run on a single file that was **cancelled** at `asr` or
+   `chapter_detecting` (`scheduler.IsCancelled`) continues, under the engine's
+   hold, through `store.ContinueReadalong` with goal `chapters`
+   (`resumesAt`, shared with the generate continue below: `splitting` for a
+   continuable transcription, `chapter_detecting` for a rerunnable detection). Its
+   transcription is kept, and the log says "taking up the book's stopped chapters
+   run, its transcription kept". A run that **failed** for a reason of its own, is
+   parked, or can't be trusted (the file replaced, the windows gone, swept) is
+   cleared, so asking again never fails the same way forever.
+4. Else **creates** an engine book with goal `chapters` and no series, and follows
    it: its progress is generate's without `cost_usd` (`stage` `chapter_detecting`,
    the ETA, a park's code and hint).
-4. At `done` it writes `chapters.json` and merges `bridge.json` (every other field
+5. At `done` it writes `chapters.json` and merges `bridge.json` (every other field
    kept, the [`chapters` object](attachments.md#chaptersjson) added or replaced),
    then asks for the attachments rescan.
 
@@ -275,6 +285,10 @@ reads. Then, in one transaction, the book becomes a whole-run book with the new
 job's identity, `contrib_mode` and `work_id`, its status, error, park and retry
 cleared, and the new job is mapped to it (a job cancelled meanwhile leaves the run
 as it was).
+
+Give-way waits wake when a job ends: each job end (`release`) closes the
+handler's end signal, and `awaitChaptersGivingWay` and `awaitOpenJobEnd` wake on it,
+with the poll kept as the bound (both bounds are time, not a count of wake-ups).
 
 The server keeps the two kinds apart (the table in
 [Kinds are allow-listed twice](pairing-and-jobs.md#kinds-are-allow-listed-twice)):

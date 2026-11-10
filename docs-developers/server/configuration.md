@@ -1,6 +1,6 @@
 ---
 title: Configuration reference
-description: "Every config.yaml key, AUDIOSILO_* environment variable and CLI flag; which settings the admin console can change, which apply live and which need a restart; validation and secure defaults; launcher Options for embedders; and the ffmpeg/ffprobe auto-download."
+description: "Every config.yaml key, AUDIOSILO_* environment variable and CLI flag; which settings the admin console can change, which apply live and which need a restart; validation and secure defaults; and the ffmpeg/ffprobe auto-download."
 ---
 
 Configuration is loaded by `internal/config` and layered in a fixed order.
@@ -10,24 +10,23 @@ Later layers override earlier ones, and the result is validated before use:
 flowchart LR
     A["config.Default()<br/>secure defaults"] --> B["&lt;data&gt;/config.yaml<br/>(if present)"]
     B --> C["AUDIOSILO_* env vars<br/>(applyEnv)"]
-    C --> D["launcher Options overrides<br/>(embedders only)"]
-    D --> E["Validate()"]
+    C --> E["Validate()"]
 ```
 
 Most keys can also be changed while the server runs, from the admin console's
 **Server > Settings** (`PATCH /admin/settings`), which writes them back to
-`config.yaml`. A key set by an environment variable or a launcher override is
-**locked** there instead. See
+`config.yaml`. A key set by an environment variable is **locked** there
+instead. See
 [Changing settings at runtime](#changing-settings-at-runtime).
 
 ## The config file
 
 - **Location**: `<data-dir>/config.yaml` (`config.Path`). The data directory
-  itself comes from the `--data` flag (or `Options.DataDir` for embedders) -
-  there is **no environment variable for the data dir**.
+  itself comes from the `--data` flag. There is **no environment variable for
+  the data dir**.
 - **First run**: when the file does not exist, `config.Load` returns secure
-  defaults with `firstRun=true`, and `pkg/launcher` persists them (with any
-  Options overrides applied) via `Config.Save`. The file is written `0600`,
+  defaults with `firstRun=true`, and `pkg/launcher` persists them via
+  `Config.Save`. The file is written `0600`,
   the data dir created `0700`.
 - **Annotated template**: `config.example.yaml` in the repo root mirrors this
   reference.
@@ -52,7 +51,7 @@ updates only a declared library's root and default view).
 | Flag | Default | Meaning |
 |---|---|---|
 | `--data` | `./data` | Data directory: config, SQLite database, generated certs, downloaded tools, the Matroska remux cache (`cache/remux/`), the watch rendition cache (`cache/renditions/watch/`) |
-| `--ffprobe` | `ffprobe` | Path to ffprobe (durations, chapters, codec detection). With FFmpeg 7.1 or 8.1 the scanner reads most files in-process by that release's rules and runs it only for the rest; with any other release ffprobe reads every file (see [The in-process probe](scanner.md#the-in-process-probe)). **`""` disables it**, the in-process probe included - the scanner degrades to path-derived metadata and `direct_playable` defaults to true |
+| `--ffprobe` | `ffprobe` | Path to ffprobe (durations, chapters, codec detection). With FFmpeg 7.1 or 8.1 the scanner reads most files in-process by that release's rules and runs it only for the rest; with any other release ffprobe reads every file (see [The in-process probe](scanner.md#the-in-process-probe)). **`""` disables it**; the in-process probe still runs, by FFmpeg 8.1's rules, so most files keep their duration, codec and chapters, and a file it is unsure of gets none (its `codec` empty, so `direct_playable` defaults to true; see [With no ffprobe](scanner.md#with-no-ffprobe)) |
 | `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding, the MP3-in-Matroska remux and the watch renditions. **`""` disables it** - `?transcode=1` returns 503, the `transcode` capability reports false, an `.mka` is served as stored (no remux, `direct_playable: false`), and the `renditions` capability is false (`rendition=` answers `404 rendition_unavailable`) |
 | `--setup` | `false` | First-run **setup page**: instead of auto-creating the admin and printing credentials once, mint a one-time token and enable the guarded `/setup` page, where the admin's username and password are chosen in the browser (see [Built-in web UI](web-ui.md#first-run-setup-page-setup)). Either way the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) then adds the books folder and the rest on the first `/admin` visit |
 
@@ -82,7 +81,7 @@ is enabled but not found locally, the auto-download kicks in (below).
 | Key | Type / default | Meaning |
 |---|---|---|
 | `bind` | string, `"0.0.0.0:8080"` | `host:port` to listen on. Must parse with `net.SplitHostPort` |
-| `public_url` | string, `""` | Externally reachable base URL, used in QR pairing payloads, invite links and the launcher's "open this URL" output. Empty → derived per-request from scheme + `Host` header. Also the **away** address the apps use outside the home network (see [Home address](#home-address-lan_url)) |
+| `public_url` | string, `""` | Externally reachable base URL, used in QR pairing payloads, invite links and the first-run banner's setup URL. Empty → derived per-request from scheme + `Host` header. Also the **away** address the apps use outside the home network (see [Home address](#home-address-lan_url)) |
 | `lan_url` | string, `""` | The server's **home** address on the household network, e.g. `http://192.168.1.20:8080`: see [Home address](#home-address-lan_url). Empty → derived per request when the request's `Host` is a home-network host |
 | `trusted_proxies` | []string (CIDRs), `[]` | Networks whose `X-Forwarded-For` is trusted when deriving the client IP (which keys the per-address [rate limit](#rate-limits-rate_limit) and the lockouts). Set when running behind a reverse proxy. Each entry must be a valid CIDR |
 | `cors_origins` | []string, `[]` | Browser origins granted CORS (methods `GET, POST, PUT, PATCH, DELETE, OPTIONS`). Empty = no cross-origin headers at all (native apps and same-origin web still work); `"*"` disables the check entirely. Needed for a hot-reload frontend dev server, e.g. `http://localhost:8081`. Once set, every authenticated media answer (covers, streams) is `Cross-Origin-Resource-Policy: cross-origin`, so a player on another site shows covers and plays audio (from 2.4.1; before, the browser blocked its covers): see [Transport hardening](auth-and-security.md#transport-hardening) |
@@ -886,11 +885,9 @@ database). The ffmpeg/ffprobe paths are CLI flags; the console's Transcoding
 topic only shows what was found.
 
 **Locked settings.** A setting is locked when an `AUDIOSILO_*` variable set it
-(see [Environment variables](#environment-variables)) or a launcher override
-pinned it (`Config.Pin`, called by `applyOverrides` for `bind`, `tls.mode` and
-`public_url`). `Config.Locked` maps each locked setting id to the variable's
-name or `"launcher"`; the console disables locked fields and shows why they
-can't be changed.
+(see [Environment variables](#environment-variables)). `Config.Locked` maps
+each locked setting id to the variable's name; the console disables locked
+fields and shows why they can't be changed.
 
 **Live versus restart.** `api.API` keeps `boot`, the config the server
 started with (never changed), and `live`, an `atomic.Pointer[liveConfig]` that
@@ -957,12 +954,8 @@ Every list is trimmed, with empty entries and repeats dropped, and holds at
 most 50 entries.
 
 `Config.Save` writes the saved config, but keeps `config.yaml`'s own value for
-every key the environment set (as above) and every key a launcher pinned
-(`bind`, `tls.mode`, `public_url` and the launcher's library list). The one
-exception is the save that creates `config.yaml` (first run), which records the
-pinned values; later saves leave them as the file has them. So a console save
-never writes an environment variable's or a launcher's override into the
-file.
+every key the environment set (as above), so a console save never writes an
+environment variable's value into the file.
 
 ## Update check
 
@@ -989,8 +982,7 @@ console's Server > About and Health > System. `pkg/launcher` starts one
 
 ## Validation & secure defaults
 
-`Config.Validate` runs after all layers (and **again** after launcher
-overrides). It rejects:
+`Config.Validate` runs after all layers. It rejects:
 
 - an empty data dir; a `bind` that isn't `host:port`;
 - an unknown `tls.mode`; `autocert` without `tls.hosts`;
@@ -1015,40 +1007,23 @@ and printed once, or set via the guarded setup page), config written
 [Auth & security](auth-and-security.md) for the app-layer hardening these
 feed into.
 
-## Launcher `Options` (for embedders)
+## `pkg/launcher` is not an embedding API {/* #launcher-options-for-embedders */}
 
-`pkg/launcher.Run(ctx, opts)` is the run loop used by the headless `audiosilo`
-command and is also available for running the server in-process. The full
-`Options` surface:
+`pkg/launcher.Run(ctx, opts)` is the run loop behind the headless `audiosilo`
+command. Its `Options` are only what the command's flags set: `DataDir`
+(`--data`), `FFprobePath` / `FFmpegPath` (`--ffprobe` / `--ffmpeg`, `""` turns
+the tool off), `Log` and `Setup` (`--setup`: the token-guarded `/setup` page
+for the admin account instead of the printed credentials banner).
 
-| Field | Type | Meaning |
-|---|---|---|
-| `DataDir` | string | Config/database/certs directory (as `--data`) |
-| `FFprobePath` / `FFmpegPath` | string | Tool paths; `""` disables the tool (as the flags) |
-| `Log` | `*slog.Logger` | Logger; nil → default stderr text logger |
-| `Setup` | bool | Select the first-run flow: `false` = auto-admin + printed banner; `true` = token-guarded `/setup` page (the admin account only; the console's setup flow follows) |
-| `OnURL` | `func(url string)` | Called once at startup with the URL to open: the token-carrying `/setup#token=…` while first-run setup is pending, else `<base>/web` when a player is available, else `<base>/admin`. A GUI launcher uses it to open a browser |
-| `Bind` | string | Config override for `bind` (e.g. `"127.0.0.1:8080"`) |
-| `TLSMode` | string | Config override for `tls.mode` (`"off"`/`"selfsigned"`/`"autocert"`) |
-| `PublicURL` | string | Config override for `public_url` (e.g. a Cloudflare Tunnel URL) |
-| `Libraries` | `[]launcher.Library` (`{Name, Root}`) | When **non-nil**, replaces the configured libraries wholesale (`launcher.Library` mirrors `config.Library` so external modules don't import an internal type) |
+It takes no configuration overrides and pins no setting: `config.yaml` and the
+`AUDIOSILO_*` variables are the only configuration. (The bind, TLS, public URL,
+library and URL-callback overrides were for the archived desktop manager and are
+gone.)
 
-Override semantics (`applyOverrides`): empty/zero fields are ignored, so the
-headless command - which sets none - gets the file's configuration verbatim.
-Overrides are layered on top of the loaded `config.yaml`, then the config is
-**re-validated** (a malformed override fails startup rather than baking an
-unbootable file). Each override is also pinned (`Config.Pin`, `libraries`
-included), so the console disables `bind`, `tls.mode` and `public_url` rather
-than offering a change the next start would undo.
-On first run, the config **including overrides** is what gets persisted to
-`config.yaml`; on later runs overrides apply in memory only, and a settings save
-from the admin console keeps the file's own values for the pinned keys (see
-[Changing settings at runtime](#changing-settings-at-runtime)).
-
-The base URL that `OnURL` (and the startup banners) use is `public_url` when
-set; otherwise it is derived from `tls.mode` (scheme) and `bind` - a wildcard
-bind (`0.0.0.0`/`::`) becomes `localhost`, which is both reachable on the
-host and a secure context for the admin PWA.
+The startup banners' base URL is `public_url` when set; otherwise it is derived
+from `tls.mode` (scheme) and `bind`. A wildcard bind (`0.0.0.0`/`::`) becomes
+`localhost`, which is both reachable on the host and a secure context for the
+admin PWA.
 
 ## ffmpeg/ffprobe resolution & auto-download
 
@@ -1081,28 +1056,34 @@ tools):
   moves only to a branch `metadata`'s `knownRules` has. evermeet's macOS
   download is the latest release when it was fetched (and is kept), so the
   probe runs with it only while that is 7.1 or 8.1. A local ffprobe of a known
-  release found first avoids both.
+  release found first avoids both. If the pinned 8.1 asset is gone (a 404) in
+  the foreground download, with no tools cached, it falls back to BtbN's master
+  build: the tools work, the probe stays off, and a warning says so.
 - **A cached master build is replaced in the background** (`replaceMaster`):
   when the cached ffprobe's version starts `N-` (an older server's download),
   that pair serves this run, and the 8.1 build is fetched in a goroutine into
   `<data>/tools/next` and self-checked; the next start's `promoteStaged` moves it
-  into `<data>/tools/` (an incomplete or failing one is removed). A failed fetch
+  into `<data>/tools/`, ffprobe first (an incomplete or failing one is removed;
+  a rename that fails keeps `next/`, so the following start finishes it). A failed fetch
   touches `<data>/tools/.release-fetch-failed` (an empty file whose modification
   time is the failure's) and is retried no sooner than `releaseRetry` (24 hours)
   after that time; a shutdown mid-fetch leaves the marker as it was, and a
-  success removes it. The start never waits for it.
+  success removes it. The start never waits for it. A download unpacks into a
+  `.download-*` folder inside the one it fills (never the system temp folder),
+  and a start removes one an exit left behind.
 - **The start-up log** says which way the probe went
   (`pkg/launcher.resolveTools`, `metadata.ProbeRelease`): "in-process probe on"
-  with the rules' release, or "in-process probe off: ffprobe is not a release it
-  knows, so ffprobe reads every file". The probe's per-file fallback reason is
+  with the rules' release, "in-process probe off: ffprobe is not a release it
+  knows, so ffprobe reads every file", or, with no ffprobe, that the probe is on
+  by 8.1's rules with no ffprobe for the rest. The probe's per-file fallback reason is
   logged at debug (`metadata.SetLogger`).
 - **Hardening**: extraction only takes files named `ffmpeg`/`ffprobe`
   (basename-only, so no zip-slip), capped at 300 MiB per binary
   (decompression-bomb guard). Pinning per-asset SHA-256 is noted in the
   package as a future hardening step.
 - **Graceful degradation**: offline, an unsupported platform, or a failed
-  check just means running without the tool - chapters/durations and codec
-  detection off without ffprobe, transcoding off without ffmpeg - with a
+  check just means running without the tool - durations, chapters and codecs
+  only from the in-process probe without ffprobe, transcoding off without ffmpeg - with a
   warning logged and a retry on the next start. Nothing is fatal.
 
 ## What ends up in the data directory

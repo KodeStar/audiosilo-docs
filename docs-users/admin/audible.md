@@ -130,6 +130,7 @@ The reason under the title says what to do. Press **Back up** again to retry.
 | **There isn't enough free space.** | The Bridge needs about twice the book's size in its data folder, and the book's size in the library. |
 | **The download link ran out twice.** | Back it up again. |
 | **The Bridge no longer has this account.** | Sign in again on the Bridge. |
+| **Audible offers this title only as a DRM-free MP3** | Nothing to do for now: the Bridge can't back these up yet. |
 
 #### Sign in again after updating the Bridge
 
@@ -239,7 +240,11 @@ are on this server.
 
 Only the place syncs: listening on Audible adds nothing to your history or stats.
 A title whose length on Audible is quite different from the book here doesn't
-sync.
+sync. A preorder starts syncing once it is released.
+
+Sometimes the Audible app uploads an older place it still held over the one the
+Bridge wrote. The next sync writes your place to Audible again, once. If you then
+go back in the Audible app on purpose, that place is left alone.
 
 ### When it stops
 
@@ -280,5 +285,3 @@ server stay.
 - Turning the Audible module off stops checks, backups and syncing. Accounts and
   titles are kept. Turn it back on to remove an account in the console.
 - Error messages never include your Amazon account's details.
-- A book Audible offers only as an MP3 without copy protection can't be backed up
-  yet.

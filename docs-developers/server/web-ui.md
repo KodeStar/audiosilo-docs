@@ -827,8 +827,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (`settings-form.tsx`): a draft of its fields, Reset and Save changes, only
   the changed fields sent (`sectionPatch`); list settings are edited as one
   entry per line. A refusal's `field` puts the server's message under that
-  field. `SettingBadges` reads the envelope: the source of an environment or
-  launcher override from `locked` (the field is disabled), "Restart
+  field. `SettingBadges` reads the envelope: the environment variable that sets a
+  field from `locked` (the field is disabled), "Restart
   to apply" from `restart_settings`, "Waiting for a restart" from
   `restart_pending`, which also drives the notice at the top of every topic.
   The Network & HTTPS cards pass `confirmRestart`, so saving a restart setting
@@ -966,7 +966,11 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   "Checking an Audible library", an `audible.import` "Backing up an Audible book"
   with its ASIN (`backupAsin`), an `audible.sync` "Syncing places with Audible", and
   one the server queued "Scheduled by the server" (`serverScheduled`, which counts
-  `audible.sync`); a sync cancelled by turning sync off shows the server's reason
+  `audible.sync`); a failed Audible job's code reads as a sentence
+  (`audibleJobReason`: an `audible.import`'s from its result's `code` or an error
+  starting `<code>:`, as `audible.code.<code>`; an `audible.poll` or
+  `audible.sync` failed `audible_refused` or `audible_sign_in` as
+  `audible.pollCode.<code>`; an unknown code keeps the Bridge's own text); a sync cancelled by turning sync off shows the server's reason
   ("sync with Audible was turned off for the account", `SERVER_CANCEL_REASONS`).
 - **Settings > Audible** (`features/audible/audible-topic.tsx`, Bridge Phase 4a, a
   `MODULE_PAGES` page listed only while the `audible` module is on) - over
@@ -1179,8 +1183,8 @@ asks.
 
 The headless first-run banner (`writeBanner` in `pkg/launcher`) prints the
 admin username and password, the auth code and the config file's path, then
-sends the reader to this flow and to the connect page (from 2.4.0; before, it
-named only the API routes), from the same base URL as `OnURL`:
+sends the reader to this flow and to the connect page, from the configured base
+URL (`public_url`, else one derived from `tls.mode` and `bind`):
 
 ```
  Finish setting up: open https://audiosilo.example.com/admin and sign in as admin.
@@ -1537,21 +1541,12 @@ that admins have a password) and answers `201 {user}`; the page then shows
 "Your account is ready" with a **Continue setup** link to `/admin`, whose first
 visit opens the console's flow.
 
-`POST /setup` still accepts the old library fields, so a caller that scripts
-it (an older page, or the archived desktop manager) keeps working: with both
-`library_name` and `library_root` it checks the folder exists **before** making
-the admin, then creates the library with the defaults, enqueues a manual scan,
-records the flow's `folder` step as done (its `naming` step stays open, so the
-admin still picks the library's source) and answers `201 {user, library}`. One
-of the two alone is `400`. If library creation fails after the admin was
-created, the page still closes (an admin now exists) and the admin finishes in
-the console - intentionally fail-safe; failing to record the `folder` step is
-only logged.
+`POST /setup` creates the account only. Its body is decoded strictly: any
+other field, the old `library_name`/`library_root` pair included (only the
+archived desktop manager sent it), is `400 invalid request` and creates
+nothing. The library is added in the console's flow.
 
-The launcher prints the token-carrying URL in a startup banner and also
-reports it through `Options.OnURL`, so an in-process caller can open it in a
-browser - see [Configuration](configuration.md#launcher-options-for-embedders).
-The banner's last line reads "You'll choose an admin password, then the console
+The launcher prints the token-carrying URL in a startup banner. The banner's last line reads "You'll choose an admin password, then the console
 walks you through the rest." (`setupBanner` in `pkg/launcher`).
 
 ## Well-known app-association files

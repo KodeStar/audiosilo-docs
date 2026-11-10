@@ -563,7 +563,9 @@ the account had revokes every `session` token of the caller but the one making t
 request, with their open pairing codes (unlinked `pairing` tokens from
 [`POST /auth/pair`](#post-apiv1authpair), or an owner's
 [`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair) for a member) and their recovery code (`has_recovery`
-turns `false`); API keys, the [calendar feed token](#the-calendar-feed) and Bridge
+turns `false`), and their household members' sessions made on the caller's other
+devices with every member's open pairing code (a member's own paired device stays);
+API keys, the [calendar feed token](#the-calendar-feed) and Bridge
 tokens stay, and a first password ends nothing
 ([Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
 An ended token is refused (`401`) on its very next request, media `?token=` included;
@@ -878,7 +880,7 @@ The podcast branch caps a page at 2,000 entries and applies private scope.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `path` | string | `""` (library root) | directory to list, relative to the root |
+| `path` | string | `""` (library root) | directory to list, relative to the root; over 4096 bytes is `400 path is too long` |
 | `offset` | int | `0` | |
 | `limit` | int | `200` | values ≤ 0 or > 500 fall back to 200 |
 
@@ -1015,8 +1017,8 @@ Keyset-paginated (see [conventions](index.md#pagination)).
 }
 ```
 
-Conditional book fields: `asin`/`isbn` appear only when known (attached via
-[enrichment](#put-apiv1adminlibrariesidenrichment) or set by an
+Conditional book fields: `asin`/`isbn` appear only when known (attached by a
+Bridge's [ASIN backfill](#put-apiv1bridgelibrariesidenrichment) or set by an
 [admin edit](#patch-apiv1adminlibrariesidbook)); `codec` is omitted when never
 probed; `added_at` when unknown. Every book response (lists, search, recent,
 `/item`, `/next`) also carries, each omitted when empty:
@@ -1534,7 +1536,8 @@ response's HTTP status. Codes include `invalid_feed_url`, `blocked_address`,
 `not_a_feed`, `not_a_podcast`, `not_podcast_library`, `library_not_writable`,
 `feed_secret_missing`, `request_expired`, `write_failed`, and server-only
 `bridge_lost`. A private request lost before claim on a server restart is
-`request_expired`; follow again. Lost Bridge credentials are
+`request_expired`; follow again. A private request whose requester's account was
+deleted fails `request_expired` before any claim too, its URL dropped. Lost Bridge credentials are
 `feed_secret_missing`; follow the URL again to restore them. No podcast job
 sends a finished/failed notification. See [the Bridge implementation](../../bridge/podcasts.md).
 
@@ -1742,9 +1745,11 @@ type: `application/xml`, `text/xml`, `text/x-opml` or `application/x-opml+xml`,
 with no parameter but `charset=utf-8` and no `Content-Encoding` but `identity`,
 else `415 unsupported_opml_type`. Then the caller's import budget (2/minute,
 burst 1: `429 opml_rate_limited` with `Retry-After`, or `503 opml_busy` with
-`Retry-After: 1` while the server's per-user budget table is full), the body
-(read whole, at most 1 MiB), and one of two server-wide import slots
-(`503 opml_busy`, `Retry-After: 1`).
+`Retry-After: 1` while the server's per-user budget table is full), whether one of
+two server-wide import slots is free (`503 opml_busy`, `Retry-After: 1`, answered
+before the body is read), the body (read whole, at most 1 MiB), then the slot. A
+busy answer refunds the budget it took, so the `Retry-After` retry runs rather than
+meeting `429`.
 
 The whole document is validated before any row acts, so a refused document
 changes nothing:
@@ -2243,8 +2248,13 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    omnibus of 1-3 is no step forward); a book inside the current omnibus in a
    series ranked above is passed over. The first series with a
    later book that isn't passed over answers. When none has a later book but some other book in one of them is
-   numbered, the answer is `{"source": "series"}`, the end of the series; when
-   nothing else is numbered the step falls through.
+   numbered, the series has ended: in the series' own folder (every other indexed
+   book there shares a series with this one, and there is at least one), a
+   folder no scan has reached after the book (the pending rule of step 3) answers
+   as a `folder` answer with `next` and no `book`, so a series still being
+   scanned is walked book by book. Otherwise, or with nothing pending, the answer
+   is `{"source": "series"}`, the end of the series. When nothing else is
+   numbered the step falls through.
 3. **`folder`** - the book's parent folder, listed whole as the caller may open it
    (their share scope and the library's ignore rules): the first book or folder
    whose name sorts after the current one, preferring a book: an indexed one or,
@@ -2962,7 +2972,7 @@ as stored, `audio/x-matroska`. See
 | `401` | missing/invalid token |
 | `403` | path outside the caller's scope |
 | `404` | file does not exist, or isn't audio; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
-| `422` | `code: "rendition_failed"`: ffmpeg refused this file, or its copy came out more than 1 s short of the source; remembered for an hour (or until the file changes), then tried again. `Retry-After` is the seconds the remembered refusal has left (1 to 3600) |
+| `422` | `code: "rendition_failed"`: ffmpeg refused this file, its copy came out more than 1 s short of the source, or the encode ran past its 2-hour timeout; remembered for an hour (or until the file changes), then tried again. `Retry-After` is the seconds the remembered refusal has left (1 to 3600) |
 | `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full) |
 
 #### Watch renditions
@@ -3023,7 +3033,7 @@ one file), each `path` as `/stream` takes it, with its `state`:
 |---|---|
 | `ready` | the rendition is cached; `bytes` is its size (sent only for `ready`) |
 | `pending` | queued or encoding (one encode runs at a time across the server) |
-| `failed` | ffmpeg refused the file, or its copy came out short or with no audio track (the stream answers `422 rendition_failed`), tried again after an hour or once the file changes; `retry_after_seconds` is then the seconds until it is tried again (sent only for a remembered refusal, additive). Also no regular file at that path (gone, a folder: the stream answers `404`; no `retry_after_seconds`) |
+| `failed` | ffmpeg refused the file, its copy came out short or with no audio track, or the encode ran past its 2-hour timeout (the stream answers `422 rendition_failed`), tried again after an hour or once the file changes; `retry_after_seconds` is then the seconds until it is tried again (sent only for a remembered refusal, additive). Also no regular file at that path (gone, a folder: the stream answers `404`; no `retry_after_seconds`) |
 | `missing` | not cached and not queued: always on a `GET` for a file never asked for; on a `POST` when the server's encode queue is full (at most 256 files wait or run across the server), so ask again later |
 
 | Status | Meaning |
@@ -3237,7 +3247,7 @@ Response `200`: the map file's bytes as they are on disk.
 |---|---|
 | `Content-Type` | `application/json; charset=utf-8` |
 | `Content-Encoding` | `gzip` when the request's `Accept-Encoding` allows it (`Vary: Accept-Encoding`) |
-| `ETag` | `"<size hex>-<mtime ns hex>"` of the file (the same for both encodings); a matching `If-None-Match` is `304` |
+| `ETag` | `"<size hex>-<mtime ns hex>"` of the file, `"<size hex>-<mtime ns hex>-gz"` for the gzipped answer (so a cache never pairs one encoding's validator with the other's bytes); a matching `If-None-Match` is `304`, checked before anything is gzipped |
 | `Cache-Control` | `private, no-cache` (the Bridge may rewrite the map at any moment) |
 
 **Header auth only**, as [`/ebook`](#get-apiv1librariesidebook): `?token=` is
@@ -3646,7 +3656,7 @@ fixed-width UTC milliseconds.
 | `duplicate` | the id is already stored for this user, or an earlier copy in the same batch passed the checks: nothing was done again (a copy that was `rejected` doesn't count, so the next copy is checked on its own) |
 | `diverged` | the event was made without seeing the stored row (below); `kept` is `event` or `stored`, and `other_place` is the place **not** kept |
 | `not_applied` | stored, but the place didn't move; `reason` is `older` (an older write under last-write-wins, or a finish/unfinish not newer than the row's last finish-state change) or `resume_behind` (a `resume`/`continue` span behind the stored place, below; `other_place` is the event's place); `behind` only on the Bridge's [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) (furthest only) |
-| `rejected` | not stored and changed nothing; `reason` is `invalid` (a field check failed, the event couldn't be decoded, or its path cleans to nothing or is over 4096 bytes), `unknown_kind`, `too_old` (it ended more than 90 days ago, after the clock correction), `duration_mismatch` (the device's `duration` is more than 10 s from the indexed book's), `no_access` (the path is outside the caller's access, a library they hold no grant on, or a podcast library their client doesn't see: what `PUT` answers with a `403`) or `not_found` (an unknown library to an admin, or a hidden path); on the [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) also `not_synced` (not a synced title's book), and `duration_mismatch` there means Audible's length disagrees |
+| `rejected` | not stored and changed nothing; `reason` is `invalid` (a field check failed, the event couldn't be decoded, or its path cleans to nothing or is over 4096 bytes, checked before its library is looked up), `unknown_kind`, `too_old` (it ended more than 90 days ago, after the clock correction), `duration_mismatch` (the device's `duration` is more than 10 s from the indexed book's), `no_access` (the path is outside the caller's access, a library they hold no grant on, or a podcast library their client doesn't see: what `PUT` answers with a `403`) or `not_found` (an unknown library to an admin, or a hidden path); on the [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) also `not_synced` (not a synced title's book), and `duration_mismatch` there means Audible's length disagrees |
 
 Every status but `rejected` is final for the sender: the event is stored and a
 resend is a `duplicate`. Every stored `listen` counts for sessions and history,
@@ -3737,8 +3747,10 @@ opens one):
   saw the finish keeps playing without undoing it.
 - **Sessions.** A stored listen is folded into the token's session on the book at
   its corrected times (`recordSpan`, the rules in
-  [the data model](../data-model.md#listening-sessions-how-they-are-derived));
-  `finish` and `unfinish` record no session.
+  [the data model](../data-model.md#listening-sessions-how-they-are-derived)).
+  A `finish` marks the token's session on the book finished when its last span
+  ended within 10 minutes before the finish; it opens none. `unfinish` records
+  nothing.
 - **History.** A listen with at least 1 s listened extends the newest history row on
   the book that ended up to 60 s before it began (2 s of overlap allowed) within 5 s
   of where it starts, else it adds a row, so a run of 15 s spans is one row and
@@ -4186,7 +4198,7 @@ stays where it is (so adding twice is harmless). See
 ### `DELETE /api/v1/me/queue`
 
 *Session.* Removes one book (`?library_id=&path=`). `204 No Content`,
-idempotent, with no access check.
+idempotent, with no access check. A `path` over 4096 bytes is `400 path is too long`.
 
 ### `GET /api/v1/me/collections`
 
@@ -4326,7 +4338,8 @@ the collection as the owner sees it, with the queue's
 ### `DELETE /api/v1/me/collections/{id}/items`
 
 *Session.* Removes one book (`?library_id=&path=`, owner only). `204 No
-Content`, idempotent, with no access check on the path. `403`
+Content`, idempotent, with no access check on the path (one over 4096 bytes is
+`400 path is too long`). `403`
 `code: "not_owner"` for a viewer, `404` for anyone else.
 
 ### `PUT /api/v1/me/collections/{id}/shares`
@@ -4981,7 +4994,7 @@ Adds a member.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `name` | string | yes | trimmed; 1-40 characters, no control characters |
+| `name` | string | yes | trimmed; 1-40 characters with something visible, no control or invisible characters (bidi controls and marks, zero-width spaces, the BOM, fillers; right-to-left scripts, ZWJ emoji and ZWNJ are fine); else `400 invalid_name` |
 | `kind` | string | yes | `"kid"` or `"grownup"` |
 | `access` | string | yes | `"all"` or `"collections"` |
 | `sign_in_here` | bool | no | also sign the member in on the caller's device |
@@ -5167,7 +5180,7 @@ person keeps, what ends it and how dead ones are pruned:
 | Status | Meaning |
 |---|---|
 | `201` | `{ token, expires_at }` |
-| `400` | `invalid request` (a malformed body or an unknown field), `path is required` |
+| `400` | `invalid request` (a malformed body or an unknown field), `path is required`, `path is too long` (over 4096 bytes, before the library is looked up) |
 | `401` | no session (a cast token can't mint another: it is never a bearer credential) |
 | `403` | the library or the path is outside the caller's access; `error.code: "not_a_book"` (`Only books can be cast.`) for a path in a podcast library, since episodes are not cast (from 2.4.0; before, the same 403 with no code); or `not available when authenticating with an API key` (a key never mints another credential) |
 | `404` | `book not found` (no book at the path), or `library not found` (an admin naming an unknown library; anyone else gets the `403`) |
@@ -5427,7 +5440,8 @@ password. It also forgets the browsers they signed in from, so each one's next
 password sign-in is announced as a `new_device`. API keys stay, revoked one at a time
 with [`DELETE /admin/devices/{id}`](#delete-apiv1admindevicesid). No body.
 
-Response `200`, the number of sessions it ended (`0` when there were none):
+Response `200`, the number of the person's own sessions it ended (`0` when there
+were none; household members' sessions it also ended aren't counted):
 
 ```json
 { "signed_out": 3 }
@@ -5610,13 +5624,12 @@ Sending the existing `kind` is accepted; a different kind is
 `400 kind_immutable`. Root changes enforce the same `409 root_overlaps` rule
 as create.
 
-A library the server's config declares (`config.yaml`, or an embedder using
-the public `launcher.Options.Libraries` API; no environment variable declares one) keeps the name and
+A library the server's config declares (`config.yaml`; no environment variable
+declares one) keeps the name and
 folder declared there, since every start upserts it by name
 (`launcher.syncLibraries`) and the server never writes a library to
 `config.yaml`. A different `name` or `root` on such a library is
-`409 config_library` (from 2.4.0; before, the rename stuck until the next
-start brought the declared library back as a second one); the same values
+`409 config_library`; the same values
 resent write nothing, and its other settings stay editable. The console reads
 the declared names from `GET /admin/setup`'s `config_libraries` and locks the
 fields. Renaming another library to a declared name at another folder is
@@ -5676,27 +5689,14 @@ any other folder without audio it changes nothing. Clearing it splits the discs
 out again.
 
 Response `200`: `{ "status": "override set", "path": "…", "mode": "collection" }`.
-`400` for any other mode; `404` library not found.
+`400` for any other mode or a path over 4096 bytes (`path is too long`, before
+the library is looked up); `404` library not found.
 
 ### `DELETE /api/v1/admin/libraries/{id}/folder-override`
 
-Clears the override (back to auto-detection) and rescans. `?path=` required.
+Clears the override (back to auto-detection) and rescans. `?path=` required
+(over 4096 bytes is `400 path is too long`).
 Response `200`: `{ "status": "override cleared", "path": "…" }`.
-
-### `PUT /api/v1/admin/libraries/{id}/enrichment`
-
-Attaches durable, path-keyed external identifiers to a book. Survives
-rescans (every re-index of the book layers it back on); modifies no file on
-disk. `?path=` required. An admin's own edit of `asin`/`isbn`
-([`PATCH …/book`](#patch-apiv1adminlibrariesidbook)) wins over the enrichment
-for that field; reverting the edit falls back to the enrichment.
-
-| Body field | Type | Required |
-|---|---|---|
-| `asin` | string | at least one of the two |
-| `isbn` | string | at least one of the two |
-
-Response `200`: `{ "status": "enrichment set", "path": "…" }`.
 
 ### `GET /api/v1/admin/libraries/{id}/export`
 
@@ -5822,8 +5822,8 @@ Per-book notes:
   ```
 - `runtime_min` is the book's duration in whole minutes (rounded);
   `chapters` is the number of indexed chapters. Both are omitted when unknown.
-- `asin` / `isbn` come from the book's identifiers, including any attached via
-  [`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment).
+- `asin` / `isbn` come from the book's identifiers, including any a Bridge
+  attached ([`PUT /bridge/libraries/{id}/enrichment`](#put-apiv1bridgelibrariesidenrichment)).
 - `subtitle`, `published` (`YYYY`, `YYYY-MM` or `YYYY-MM-DD`), `publisher`,
   `language`, `abridged`, `genres`, (with `include=description`) `description`
   and (with `include=tags`) `tags` are the effective values, as on the player's
@@ -5898,8 +5898,8 @@ Progress of the library's (possibly running) scan:
   nothing was pruned.
 
 A scan an admin request queues - `POST …/scan`, creating a library, an edit
-that changes the root or ignore rules, setting or clearing a folder override,
-or a `POST /setup` that sends library fields - reads as `queued` (or `running`) before that request
+that changes the root or ignore rules, or setting or clearing a folder
+override - reads as `queued` (or `running`) before that request
 returns, so a status poll made right after it sees the scan.
 
 ### `GET /api/v1/admin/fs/dirs`
@@ -6022,7 +6022,10 @@ Adds / removes one path rule. Body for both:
 selection of books to a share.
 
 Response: `204 No Content`. `400` when a `library_id` is missing/zero (nothing is
-added), or with code `too_large` for more than 1000 rules.
+added), or with code `too_large` for more than 1000 rules. `409` with code
+`library_grant` on a whole-library grant (a share with `whole_library_id`): its
+rules change only by granting or revoking the library
+([`POST /admin/library-access`](#post-apiv1adminlibrary-access)).
 
 ### `POST /api/v1/admin/share-access` · `DELETE /api/v1/admin/share-access`
 
@@ -6103,7 +6106,7 @@ folder and file names yield), `tag` (any other scanned value - it came from the
 file's embedded tags), `abs` (from an Audiobookshelf `metadata.json` in the
 book's folder), `edited` (typed by an admin), `community` (accepted from
 a community-metadata match, or an ASIN/ISBN attached through
-[enrichment](#put-apiv1adminlibrariesidenrichment)), or `""` when the field has
+[enrichment](#put-apiv1bridgelibrariesidenrichment)), or `""` when the field has
 no value. The scan does not store sources; `path` vs `tag` is worked out when
 the book is read, by the same rule for every book, so a tag that happens to
 match the folder name reads as `path`.
@@ -6199,7 +6202,7 @@ is a `400` too (`too many format or codec values`).
       "edited_fields": ["narrator"],
       "scan_error": "probe_failed",
       "scan_error_file": "Andy Weir/The Martian/The Martian.m4b",
-      "scan_error_detail": "[mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f8c] moov atom not found; Invalid data found when processing input",
+      "scan_error_detail": "[mov,mp4,m4a,3gp,3g2,mj2] moov atom not found; Invalid data found when processing input",
       "chapters_source": "files",
       "chapters_check": "refine"
     }
@@ -6238,11 +6241,16 @@ is a `400` too (`too many format or codec values`).
   value), `[]` when none; `edited` is also true for a chapter-title edit alone.
 - `file_count` is `1` for a single-file book.
 - `scan_error` - the first problem reading the book's files on its last
-  indexing: `unreadable` (a file couldn't be opened), `empty_file` (0 bytes)
-  or `probe_failed` (ffprobe couldn't read it). `scan_error_file` is the
-  library-relative file, `scan_error_detail` the OS's or ffprobe's own message
-  (shown as is; may be empty for `empty_file`). An ffprobe message keeps every
-  distinct line ffprobe printed, joined with `"; "`, at most 300 bytes. A
+  indexing: `unreadable` (a file couldn't be opened, or its read was cut short
+  on a share that stopped answering: `reading it timed out`, or `too many
+  earlier reads are stuck (on this or another library), so it wasn't tried`),
+  `empty_file` (0 bytes) or `probe_failed` (ffprobe couldn't read it).
+  `scan_error_file` is the library-relative file, `scan_error_detail` the OS's,
+  the scan's or ffprobe's own message (may be empty for `empty_file`). An ffprobe
+  message keeps every distinct line ffprobe printed, joined with `"; "`, at most
+  300 bytes, with FFmpeg's context address (`@ 0x...`) dropped. When a read of
+  an already-indexed book is cut short, the book keeps its stored length,
+  chapters and names, and only the problem is recorded. A
   recorded problem is re-checked on every scan, so it clears once the file
   reads (fixed permissions, a share back online). See
   [Read problems](../scanner.md#read-problems).
@@ -8824,7 +8832,7 @@ effect. Lists are never `null`.
 | `backups.keep` | how many scheduled backups are kept, 1-365 (manual and before-restore backups stay until deleted; the newest three before-upgrade backups are kept apart) |
 | `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |
 | `modules.<id>` | each [managed module's](../modules.md) toggle, by module id (`false` by default; config key `modules.<id>.enabled`, variable `AUDIOSILO_MODULES_<ID>_ENABLED`). Applies at once, with no restart. [`GET /admin/modules`](#get-apiv1adminmodules) says more about each |
-| `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it, or `"launcher"` (a launcher override for `bind`, `tls.mode` or `public_url`) |
+| `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it (before 2.7.0 also `"launcher"`, a launcher override, which only the archived desktop manager set) |
 | `restart_settings` | the setting ids read only at start (fixed) |
 | `restart_pending` | restart settings whose saved value differs from the one the server started with |
 
@@ -9356,8 +9364,8 @@ records the outcome on the destination, and answers:
 ```
 
 (`target` is the whole destination as above.) `error` is `""` when it arrived,
-and `"failed"` from a server built without the notification service (an
-embedder's; never one the launcher starts).
+and `"failed"` from a server built without the notification service (never
+one the launcher starts).
 A failed delivery is not an HTTP error here: the answer is `200` either way,
 `404` when there is no such destination.
 
@@ -10532,7 +10540,7 @@ this never indexes a path on demand.
 | Status | Meaning |
 |---|---|
 | `200` | `{ library_id, path, files, book? }` |
-| `400` | `invalid library id` |
+| `400` | `invalid library id`; `path is too long` (over 4096 bytes) |
 | `404` | `library not found`; `code: "no_book"` - no indexed book at that path (or none in the library) |
 
 Without a path, a podcast library always returns `404 no_book`, so an older
@@ -10664,7 +10672,7 @@ one, an id that doesn't match is `404 unknown_account`.
 | `policy_since` | when its automatic policy began to act: a policy backs up only titles first seen after it. Set at the account's creation, when an automatic policy is turned on, and moved to the account's first complete poll (Phase 4b) |
 | `titles` | `GET /admin/audible/accounts` only: the titles counted by state, and how many are matched to a book here (`matched` leaves out a match marked "Not this book") |
 | `last_sync_at` | when its last `audible.sync` finished having read Audible's places, `null` before the first (and after a mapping to another person) (Phase 4c) |
-| `refused_at` | when a sync failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it (Phase 4c) |
+| `refused_at` | when a sync failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it (Phase 4c). A refused sync the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again |
 | `backup_estimate` | `GET /admin/audible/accounts` only: what [Back up everything](#post-apiv1adminaudibleaccountsaccountbackup-all) would queue now, `count` titles and about `bytes` (each title's `runtime_s` x 8000, 64 kbps AAXC: approximate) (Phase 4b) |
 
 ### `GET /api/v1/bridge/users`
@@ -10937,7 +10945,7 @@ keyset-paged.
 | `no_sync` | marked "Don't sync this book" (Phase 4c): neither direction of the account's sync touches its book. Separate from `rejected`; backups never read it |
 | `dest_path` | the console's destination for the title's backup, `""` for the account's placement |
 | `import_job_id` | the title's latest backup job, `null` for none |
-| `import` | the title's backup: `{job_id, state, code}` with `state` the job's ([job states](#the-job-object)) and `code` a failed or parked job's code (`not_released`, `no_rights`, `audible_refused`, `audible_sign_in`, `not_writable`, `exists`, `disk_full`, `offline_url_expired`, `unknown_account`, or `""`); `{job_id: null, state: "pending"}` for a Back up on a preorder waiting for its release; `null` for none |
+| `import` | the title's backup: `{job_id, state, code}` with `state` the job's ([job states](#the-job-object)) and `code` a failed or parked job's code (`not_released`, `no_rights`, `audible_refused`, `not_writable`, `exists`, `disk_full`, `offline_url_expired`, `unknown_account`, `drm_free` (Audible offers the title only as a DRM-free MP3, which the Bridge doesn't back up yet), or `""`); `{job_id: null, state: "pending"}` for a Back up on a preorder waiting for its release; `null` for none |
 | `needs_attention` | a preorder still not available 14 days after its `release_date`: the account is no longer polled hourly for it |
 | `planned` | where a backup would go, as the Bridge planned it at its last poll (the object the [titles PUT](#put-apiv1bridgeaudibleaccountsaccounttitles) takes); `null` when matched, not planned, or the account is no longer mapped to the plan's library (paused or mapped again: none until its next poll) |
 | `contested` | for a title left unmatched as `contested`, `{library_id, path, with: [{asin, title}]}`: the book it tied for and the account's other titles (not `gone`) contested over that book or matched to it, by title, at most 10; `null` otherwise, or while the account isn't mapped to that library |
@@ -11104,8 +11112,12 @@ account's **person**, both ways, furthest wins. Audible's places come in through
 the progress feed, which the Bridge's push loop reads every minute. An account
 syncs while the module is on, its `sync` is on, it isn't paused, `refused_at` is
 unset and its person may still be synced for (not disabled, a kid or a demo
-account). A title syncs when it is matched, not `rejected`, `ignored`, `no_sync` or
-`gone`. Only places move: no listening session, `listening_daily` or history row
+account). A title syncs when it is matched, not `rejected`, `ignored`, `no_sync`,
+`gone` or a `preorder` (a poll may match a preorder to another edition on disk,
+and Audible holds no place for an unreleased title). A preorder is in neither
+direction: not in the job's params, `not_synced` on the listening route, and not
+in the progress feed. Once it is released (`preorder` to `available`), its book's
+place is offered to Audible again, as for a title back from `gone`. Only places move: no listening session, `listening_daily` or history row
 is ever written for Audible's listening, and nothing is recorded against the
 bridge token.
 
@@ -11125,7 +11137,9 @@ kept, with server-built strict params `{account, titles}`. The scheduler queues
 one every 15 minutes for each account that syncs; turning sync on, and a title's
 `rejected` or `no_sync` change, queue it at once. Done having read Audible's places
 sets the account's `last_sync_at`; failed `audible_refused` sets `refused_at`, and
-none is queued until a Bridge PUT or a complete poll clears it. Its params,
+none is queued until a Bridge PUT or a complete poll clears it (a refused sync
+claimed before that clearing marks nothing). Failed `audible_sign_in` (Audible
+didn't accept the sign-in just now) is an ordinary failure. Its params,
 queueing, steps, result and failure codes are in
 [Position sync](../../bridge/audible.md#audible-to-the-server-audiblesync).
 
@@ -11165,7 +11179,9 @@ book is resolved under the **person's** access (outside it: `rejected`
 `no_access`) and must be the match of one of the account's synced titles (else
 `rejected` `not_synced`). It is `rejected` `duration_mismatch` when none of the
 book's titles has an Audible `runtime_s` within 5% of the longer plus 2 minutes of
-the indexed book's duration (an unknown length on either side agrees). Then:
+the book's length: the indexed duration, else the `duration` on the person's own
+progress row for the book (the progress feed's rule). An unknown length on either
+side agrees. Then:
 
 - a `listen` more than 1 s **ahead** of the stored place applies over any device's
   row, whatever its time: the row's `updated_at` never moves back, and its
@@ -11305,29 +11321,24 @@ console's [first-run setup flow](#admin-first-run-setup) does the rest. See
 
 ### `POST /setup`
 
-*Public (token-guarded).* Creates the first admin. The page sends only the
-token and the account; the library fields are still accepted so a caller that
-scripts this route (an older page, or the archived desktop manager) keeps working.
+*Public (token-guarded).* Creates the first admin account, nothing else: the
+library is added in the console's flow.
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|
 | `token` | string | yes | the one-time setup token |
 | `username` | string | no | defaults to `"admin"` |
 | `password` | string | yes | admins must have a password |
-| `library_name` | string | with `library_root` | optional; send both or neither |
-| `library_root` | string | with `library_name` | must be an existing directory on the server |
 
-Without the library fields it creates only the admin: `201 { "user": { … } }`.
-With both, it checks the folder exists before making the admin, then creates
-the library with the defaults, starts its background scan and records the
-console flow's `folder` step as done (its `naming` step stays open):
-`201 { "user": { … }, "library": { … } }`.
+The body is decoded strictly: any other field is `400` and creates nothing.
+That includes the old `library_name`/`library_root` pair, which only the
+archived desktop manager sent. Success is `201 { "user": { … } }`.
 
 | Status | Meaning |
 |---|---|
-| `400` | validation (only one of the library fields, the folder doesn't exist, password rules) |
+| `400` | an unknown field (the old library fields included), or the password rules |
 | `403` | invalid setup token |
-| `409` | setup not available (already completed or never enabled); with the library fields, also a library create refusal (`name_taken`, `root_overlaps`) after the admin was made, which then exists |
+| `409` | setup not available (already completed or never enabled) |
 
 ---
 

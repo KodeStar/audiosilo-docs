@@ -95,7 +95,8 @@ Their signed-in devices, each with **Sign out**, and their personal API keys,
 each with **Revoke**.
 
 **Sign out everywhere** signs them out of every phone, tablet and browser at
-once. Their password and API keys don't change. To get back in, they sign in
+once. Household members signed in on those devices are signed out too. Their
+password and API keys don't change. To get back in, they sign in
 with their password, or you send them a new invite.
 
 ### Invites

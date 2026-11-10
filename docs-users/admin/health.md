@@ -31,7 +31,7 @@ Click a card to open its list.
 
 | Card | What it means | How to fix it |
 |---|---|---|
-| **Files that couldn't be read** | A file couldn't be opened, is empty, or is damaged. The row gives the reason. | Fix the file or its permissions. **Read again** checks it straight away; otherwise the next scan does. |
+| **Files that couldn't be read** | A file couldn't be read, is empty, or isn't audio. The row gives the reason in one line; for a file that isn't audio, **Details** shows the full message. | Fix the file or its permissions. **Read again** checks it straight away; otherwise the next scan does. |
 | **Folder may hold several books** | A folder reads as one book but looks like it holds several. | **Choose detection** opens the folder in [Library > Folders](libraries.md#the-folders-page): choose **Separate books** or **Always one book**. |
 | **One book split into disc folders** | A book ripped from CDs reads as one book per disc. | **Join into one book**. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
 | **Likely duplicates** | Copies of one book in the same library. | Compare them side by side. See [Duplicates](#duplicates). |
@@ -41,6 +41,9 @@ Click a card to open its list.
 | **Long books without chapters** | Books over two hours with no chapters, so listeners can't skip between them. | **Detect chapters** with your [Bridge](bridge.md) (see [Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)), or [match](books.md#matching-with-community-metadata) the book to use its [community chapters](books.md#community-chapters). |
 | **More detailed chapters available** | The community has finer chapters that fit this copy. | **Use detailed chapters**. |
 | **Converted to play in browsers** | The format doesn't play in web browsers, so the server converts it for the web player. The apps play it as it is. | Nothing needed: it works. |
+
+If a network share stops answering during a scan, its books show **reading it
+timed out**. They keep their length and chapters, and the next scan tries again.
 
 ### Working through a list
 
@@ -210,7 +213,7 @@ a status such as **Healthy**, **Needs attention**, **Missing** or **Off**.
 | Row | What it tells you |
 |---|---|
 | **ffmpeg** | Converts formats browsers can't play, and places [community chapters](books.md#community-chapters) exactly. |
-| **ffprobe** | Reads lengths, chapters and codecs from the files. |
+| **ffprobe** | Reads lengths, chapters and codecs for the few files AudioSilo can't read itself. Without it, those files have no length or chapters. |
 | **Community metadata** | Whether the metadata service is answering. |
 | **HTTPS certificate** | Days left. **Needs attention** within two weeks of expiry. |
 | **Database** | Its version. Accounts and progress live here, so the server makes [backups](backups.md). |

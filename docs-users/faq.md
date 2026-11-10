@@ -17,7 +17,7 @@ Audible's protected `.aax` and `.aaxc` files are not supported. See [Supported f
 
 No, but you'll want it. The Docker image includes it, and the standalone program downloads it if your system lacks it.
 
-- **ffprobe** reads durations and chapters. Without it, books still play, but with no durations or chapter lists.
+- **ffprobe** reads lengths and chapters for the few files AudioSilo can't read itself. Without it, those files have no length or chapter list.
 - **ffmpeg** converts formats a browser can't play, lets every player play an `.mka` book with MP3 inside, and places [community chapters](./admin/books.md#community-chapters) precisely. Without it, books a browser can't play work only in the apps, where the phone can decode them.
 
 [Health > System](./admin/health.md#system) shows whether each was found. See [ffmpeg and ffprobe](./getting-started/install-binary.md#ffmpeg-and-ffprobe).

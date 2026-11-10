@@ -493,10 +493,14 @@ ffmpeg -nostdin -loglevel error -xerror -protocol_whitelist fd -f matroska -i fd
   exactly one MP3 audio stream, which also covers folder parts whose codec the
   index doesn't hold. That refusal is `ErrRefused`, remembered in memory per
   cache key for an hour (`cacheRefusalTTL`, up to 1,024 keys: what looks like
-  the file's fault may be the environment's, an I/O error at open or an ffmpeg
-  missing an encoder; a changed file is a new key, tried again at once) and
-  answered with the stored bytes. An exit after ffmpeg wrote output (killed partway, a
-  full disk, a read error) is not a refusal.
+  the file's fault may be the environment's, such as an ffmpeg missing an
+  encoder; a changed file is a new key, tried again at once) and answered with
+  the stored bytes. An exit after ffmpeg wrote output (killed partway, a full
+  disk, a read error) is not a refusal, nor is one whose log names an I/O error
+  before any output (`readFailed`: a flaky share, tried again on the next
+  request). A run its own timeout killed **is** one, in either cache
+  (`timedOut`), so a copy that can't finish in time isn't started from zero on
+  every request; the server shutting down mid-run is not.
 
 **The cache.** `<data>/cache/remux/` (`0700`, made again if it went), one file
 per source named by the first 32 hex digits of a SHA-256 of the absolute path,
@@ -615,8 +619,8 @@ remux's (above) with its own bounds:
 The encode version (`renditionVersion`) is part of the key and the ETag, so a
 change to the encode is a new key and old copies age out of the LRU. A source
 that changes while it is read is never cached under the old key. A refusal
-(ffmpeg's exit before writing anything, a trackless or short copy) is remembered
-for an hour or until the file changes. A failed run's log carries the first and
+(ffmpeg's exit before writing anything, a trackless or short copy, or an encode
+its 2-hour timeout killed) is remembered for an hour or until the file changes. A failed run's log carries the first and
 last 2 KiB of ffmpeg's output. Without ffmpeg (`--ffmpeg ""`) or without a data
 directory the cache is off: the `renditions` flag is `false`, the top-level
 `renditions` list is `[]`, and a `watch` rendition request outside a podcast
@@ -641,8 +645,9 @@ audio and a regular file (`404`). Then `FileCache.Open` waits up to
   transcode: its bytes aren't rangeable, so a watch couldn't resume it.
 - **Refused:** `422 rendition_failed` (remembered, as above), with `Retry-After`
   the seconds the remembered refusal has left (`FileCache.RefusedFor`, 1 to 3600).
-- **Failed otherwise** (the disk guard, a run killed partway, the source changed,
-  the 256-file queue full): `503 rendition_error` with `Retry-After: 60`.
+- **Failed otherwise** (the disk guard, a run killed partway by a shutdown, the
+  source changed, the 256-file queue full): `503 rendition_error` with
+  `Retry-After: 60`.
 
 **Preparing a book.** `POST /libraries/{id}/renditions?path=<book>` with
 `{"kind":"watch"}` resolves the book as `/item` does (a part path names its book)

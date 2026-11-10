@@ -237,7 +237,8 @@ Nothing here can be changed in the console.
   makes the small copies the [Apple Watch app](../listening/apple-watch.md)
   downloads. Without it, some books won't play in a browser and watches get no
   copies.
-- **ffprobe** reads lengths, chapters and codecs during a scan. See
+- **ffprobe** reads lengths, chapters and codecs during a scan, for the files
+  AudioSilo can't read itself. See
   [ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe).
 
 The server finds them next to its own program, on the system's PATH, or

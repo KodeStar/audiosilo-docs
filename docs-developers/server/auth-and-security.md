@@ -461,7 +461,11 @@ and that the person can neither see nor revoke:
   member's from their owner's `POST /me/household/members/{id}/pair`), each
   of which would make a session after the change;
 - their **recovery code** (its linked pairing tokens cascade), so `has_recovery`
-  turns `false`.
+  turns `false`;
+- their **household members** where the person put them: a member's session made
+  on any of the person's devices but the kept one (`created_on_token_id`, the
+  device revoke's `also_members` rule, a device signed out earlier included), and
+  every member's open pairing code. A member's own paired device stays signed in.
 
 What stays: **API keys** (listed and revoked on their own, in the device lists and
 `/auth/tokens`), the [calendar feed token](#calendar-feed-tokens) (the person's to
@@ -483,7 +487,8 @@ its writer transaction; otherwise it answers `ErrInvalidCreds` (`401`).
 same `endSessions` without a password change, keeping the admin's own session when the
 account is theirs, and forgets the person's browsers (`forgetBrowsers`), so each
 one's next password sign-in is announced as a new device. It answers
-`{"signed_out": n}` (the sessions it ended) and is audited as
+`{"signed_out": n}` (the person's own sessions it ended; members' sessions aren't
+counted) and is audited as
 `user.sign_out_everywhere`. A new password forgets the browsers too, as it always has.
 
 ## Admin guards

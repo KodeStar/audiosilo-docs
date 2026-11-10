@@ -153,7 +153,8 @@ settings stay as they are.
 
 ## 3. Open the Bridge's page
 
-Open `http://<your machine>:8091` and sign in with the password.
+Open `http://<your machine>:8091` and sign in with the password. The page is
+light or dark to match your device.
 
 ![The Bridge's sign-in page](/img/screenshots/bridge/sign-in.png)
 
@@ -199,8 +200,9 @@ For a **podcast** library, mount its own folder the same way. An empty podcast
 library can be ready too: the Bridge writes a small hidden marker there. Leave it
 in place.
 
-If you only want podcasts, you can skip steps 6 to 9: podcasts use no speech
-recognition and no AI agent.
+Steps 7 and 9 are optional: only characters, recaps and descriptions need the
+agent. If you only want podcasts, you can skip steps 6 to 9: podcasts use no
+speech recognition and no AI agent.
 
 ### Feeds on your local network
 
@@ -226,7 +228,10 @@ To make it faster, or to give a `:latest-slim` Bridge a way to transcribe:
   Mac with Apple Silicon, or
 - use the `:latest-cuda` image on a computer with an NVIDIA graphics card.
 
-## 7. The agent's credential
+## 7. The agent's credential (optional) {/* #7-the-agents-credential */}
+
+Skip this step if you don't want characters, recaps or descriptions. Chapters,
+read-alongs, podcasts and Audible work without the agent.
 
 The agent needs a credential for an AI account. It runs **Claude Code** unless you
 switch it to Codex (below). You can set the credential on the Bridge's

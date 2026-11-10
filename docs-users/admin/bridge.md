@@ -59,7 +59,7 @@ Bridge**, which opens the right tab of the Bridge's page.
 | **Paired with this server** | the Bridge is paired |
 | **Libraries mapped and writable** | the Bridge can find and write to every library |
 | **Speech recognition ready** | the Bridge or a [worker](../getting-started/running-a-worker.md) can transcribe now |
-| **Agent credential set** | the agent is ready. Only characters, recaps and descriptions need it |
+| **Agent credential set** (Optional) | the agent is ready. Only characters, recaps and descriptions need it |
 | **Monthly budget reviewed** | someone saved the monthly budget on the Bridge's page |
 | **GitHub signed in** (Optional) | the Bridge can share with the community |
 | **Audible signed in** (Optional) | at least one Audible account is signed in and working |

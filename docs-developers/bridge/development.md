@@ -109,7 +109,10 @@ internal/
   config/     config.yaml + AUDIOSILO_BRIDGE_* (bridge.go: the Bridge's own settings)
   store/      SQLite, append-only migrations (0001 the engine, 0002 server_jobs,
               0003 generate_books, server_jobs.server_id, books.contrib_mode,
-              0004 workers, 0005 books.goal, 0006 accounts)
+              0004 workers, 0005 books.goal, 0006 accounts, 0007-0008 podcasts,
+              0009-0012 and 0014 Audible, 0013 idx_books_unfinished: a partial
+              index whose WHERE is unfinishedBook's word for word, so the
+              periodic passes scan only the books the engine may act on)
   -- Phase 2b --
   ghauth/     the GitHub App's device flow, refresh, revoke and /user; a leaf
   accounts/   the Accounts tab: the GitHub sign-in and the agent credentials (vault-sealed)
@@ -174,7 +177,11 @@ Conventions that carry the design:
 ## The page and its API
 
 The Bridge serves its own page and a small JSON API under `/api` on its `listen`
-address (`:8091`). The page has seven tabs: **Status** (led by a **Get set up** card,
+address (`:8091`). It follows the system colour scheme: dark by default, and under
+`prefers-color-scheme: light` `index.css` redefines the brand tokens and the state
+shades it uses with the server console's light palette (`src/theme.test.ts` fails
+a token or a used shade the light block misses). `public/favicon.svg` (also in the
+placeholder page) is its icon. The page has seven tabs: **Status** (led by a **Get set up** card,
 the [setup checklist](pairing-and-jobs.md#the-setup-checklist) with an **Open**
 link to the tab of each step still to do, until every required step is done; pairing, the last heartbeat,
 the job kinds and lanes, where the secret key came from, and a **Characters and
@@ -190,7 +197,9 @@ with cancel, a `bridge.verify` result as a file table, and for a
 `sidecars.generate`, `sidecars.describe` or `chapters.detect` job its stage, progress, cost, the park's code, hint and
 retry time, and **Retry** while it is parked; once done, the files it saved and
 whether a description came, for a describe job what its check measured against, and
-for a chapters job how many chapters it found), **Settings** (its public address,
+for a chapters job how many chapters it found; a known kind is named in words
+only, its raw kind the label's tooltip, and a park leads with its hint for people,
+the engine's own message under a collapsed **Details** line), **Settings** (its public address,
 the check interval, the ASR fallback, the monthly agent budget, the password),
 **Accounts** (Phase 2b: the GitHub sign-in and the agent's credentials; see
 [Contributions](contributions.md#the-pages-routes)), **Workers** (the [ASR workers](workers.md): add one, its token shown once in the commands to run, its state and figures, remove) and **Logs**
