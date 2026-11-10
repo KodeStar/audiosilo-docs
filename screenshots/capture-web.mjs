@@ -827,7 +827,7 @@ async function captureWide(name, viewport, shots) {
   if (wanted(shots.dockUndo)) {
     // A jump of more than a minute (the next chapter, from the docked bar) brings up
     // the Undo chip for ten seconds, floating above the bar over the transport; the shot
-    // is the bar and the band above it that holds the chip.
+    // runs from a little above the chip down to the bar's bottom edge.
     await step('dock undo chip', async () => {
       // Only once jump-undo is watching (a partial run gets here sooner than a full one).
       const wait = listenedAt + JUMP_UNDO_READY_MS - Date.now();
@@ -843,9 +843,9 @@ async function captureWide(name, viewport, shots) {
       const bar = await tid(page, 'shell-docked-player').boundingBox();
       const chip = await undo.boundingBox();
       if (!bar || !chip) throw new Error('no docked bar or Undo chip');
-      // From a little above the chip down to the bar's bottom edge.
       const top = Math.max(0, chip.y - 12);
-      await shoot(page, shots.dockUndo, {clip: {x: bar.x, y: top, width: bar.width, height: bar.y + bar.height - top}});
+      const clip = {x: bar.x, y: top, width: bar.width, height: bar.y + bar.height - top};
+      await shoot(page, shots.dockUndo, {clip});
       // Undo it, so the book is back where the warm-up left it.
       await undo.click({timeout: 5000});
       await undo.waitFor({state: 'hidden', timeout: 8000});
