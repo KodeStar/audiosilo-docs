@@ -1114,7 +1114,7 @@ const standInSetup = (libraries, {budget, github}) => {
         detail: `${libraries.length - missing.length} of ${libraries.length} libraries writable`,
         ...(missing.length ? {library_ids: missing} : {})},
       {id: 'asr', done: true, required: true, detail: 'worker'},
-      {id: 'agent', done: true, required: true, detail: 'claude'},
+      {id: 'agent', done: true, required: false, detail: 'claude'},
       {id: 'budget', done: budget, required: true, detail: '$100 a month'},
       {id: 'github', done: github, required: false, ...(github ? {detail: BRIDGE_GITHUB_LOGIN} : {})},
     ],
@@ -1228,7 +1228,7 @@ await step('settings: bridge', async () => {
         await tryShot(async () => {
           await open(page, '/server?topic=bridge');
           const setupCard = page.locator('[aria-labelledby="bridge-setup-title"]');
-          await setupCard.getByText('3 of 5 required steps done').waitFor({timeout: 15000});
+          await setupCard.getByText('2 of 4 required steps done').waitFor({timeout: 15000});
           await setupCard.scrollIntoViewIfNeeded();
           await sleep(800);
           await shoot(page, 'admin/bridge-setup.png', {clip: around([await setupCard.boundingBox()])});
