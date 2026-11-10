@@ -5,9 +5,9 @@ description: "Have your Bridge write character sheets, chapter recaps and a desc
 
 The community database gives many books
 [characters and recaps](../listening/recaps-and-characters.md), but not every
-book. For one it hasn't covered, your [Bridge](bridge.md) can write them: it
-transcribes the book (or reads its ebook), has an AI agent write them, checks them
-for mistakes and spoilers, and saves them with the book.
+book. For one it hasn't covered, your [Bridge](bridge.md) can write them. It
+transcribes the book (or reads its ebook) and has an AI agent write them. Then it
+checks them for mistakes and spoilers and saves them with the book.
 
 Press **Generate characters and recaps** on the book's page. Some hours later the
 book's **Characters** and **Recaps** tabs appear in the player. The run also

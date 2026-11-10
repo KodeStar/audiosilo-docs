@@ -231,7 +231,7 @@ To make it faster, or to give a `:latest-slim` Bridge a way to transcribe:
 The agent needs a credential for an AI account. It runs **Claude Code** unless you
 switch it to Codex (below). You can set the credential on the Bridge's
 [Accounts tab](bridge-accounts.md#the-agents-credential), which is easiest, or in
-the agent container. The agent container's own wins when both are set.
+the agent container (see [Settings that take precedence](bridge-accounts.md#settings-that-take-precedence)).
 
 **With a Claude subscription:**
 

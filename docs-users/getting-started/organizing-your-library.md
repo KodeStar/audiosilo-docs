@@ -36,9 +36,7 @@ A folder of unrelated single-file books, like `Short Stories/` holding three `.m
 2. In the library's menu, choose **Folder detection...**.
 3. Set the folder to **Separate books** (every file is its own book) or **Always one book**.
 
-Overrides survive rescans. See [Libraries](../admin/libraries.md).
-
-![The folder detection dialog in the admin console](/img/screenshots/admin/detection.png)
+Overrides survive rescans. See [Folder detection](../admin/libraries.md#folder-detection).
 
 ## Supported formats
 

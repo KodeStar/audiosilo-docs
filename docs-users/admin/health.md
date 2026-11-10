@@ -107,9 +107,9 @@ changes until you review and apply what it found.
 
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
-A match is **confident** when it scores 90% or more, at least 10 points ahead
-of the next candidate, and its length is within 10% of the book's (20% when the
-book's narrator reads it). Weaker matches, and matches to a dramatization your
+A match is **confident** when it scores 90% or more and leads the next
+candidate by at least 10 points. Its length must also be within 10% of the
+book's (20% when the book's narrator reads it). Weaker matches, and matches to a dramatization your
 book doesn't seem to be, go to **To review**.
 
 Whatever a run writes is a **Community** value that you can revert on the
@@ -169,8 +169,8 @@ your store's ASIN.
 **Fill in matched books** offers the community's latest details for books that
 are already matched. Use it for books that got an ASIN without their details,
 or to clean up series an earlier match added. It never brings back an ASIN or
-ISBN you left unticked or removed. (For a book matched before version 2.7.0,
-accept its match again with a field ticked to get this.)
+ISBN you left unticked or removed. For a book matched before version 2.7.0,
+accept its match again with a field ticked, or unlink and match it again.
 
 ## Jobs
 

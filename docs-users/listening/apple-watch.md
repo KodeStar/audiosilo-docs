@@ -101,6 +101,8 @@ Tap **Play** on a downloaded book, or tap it in **On this watch**. **Now playing
 
 You get back 15 seconds, forward 30 seconds, chapters, **Speed** (0.8x to 2x) and a **Sleep timer**. The book keeps playing after you leave the app.
 
+At any speed other than 1x, a small line under the progress says how long the chapter will really take, such as *"59m left at 2x"*.
+
 ![Now playing at 2x, with the real time left under the progress](/img/screenshots/watch/watch-now-playing-speed.png)
 
 Before it plays, the watch asks your server for your place if it can. If another device is somewhere else in the book, it offers **Jump there** or **Stay here**. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).

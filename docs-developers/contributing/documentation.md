@@ -57,8 +57,7 @@ keeps its query and then update or remove the script.
 
 Grep these docs for the symbol, flag, route, or UI label you changed -
 `onBrokenLinks` can't catch a stale *claim*, only a stale link. Write any User Guide change to the
-[readability rules](#user-guide-readability-rules), and add a new
-user-visible feature to [Features](/users/features) in one line. The common
+[readability rules](#user-guide-readability-rules). The common
 mappings:
 
 | You changed… | Update |
@@ -196,8 +195,9 @@ write it down.
 
 **Keep links working.** Other pages, the apps and the console link to User
 Guide pages and headings. When you rename a heading, keep its old anchor with
-an explicit id: `## Download a book {/* #downloading-a-book */}`. Moving or renaming a
-page file needs a redirect, so prefer changing only its `title:`.
+an explicit id: `## Download a book {/* #downloading-a-book */}`. Cross-referenced
+headings use a colon or rephrase rather than a dash, so their anchors stay clean.
+Moving or renaming a page file needs a redirect, so prefer changing only its `title:`.
 
 The Developer Docs follow rules 2, 3, 6, 7 and 9 too. They may name code.
 
@@ -208,8 +208,6 @@ The Developer Docs follow rules 2, 3, 6, 7 and 9 too. They may name code.
   mid-sentence, and em dashes also produce messy heading anchors. The one
   exception: a code block that reproduces literal program output verbatim must
   match the source, em dashes included (no current output contains one).
-- Cross-referenced headings should use a colon or rephrase rather than a dash,
-  so the auto-generated anchor stays clean and stable.
 - **Admonition titles go in brackets.** Write `:::note[Title]` (also `tip`,
   `info`, `warning`, `danger`, `caution`), then the body, then a closing `:::`.
   The old `:::note Title` form no longer parses on this site (`future.v4`

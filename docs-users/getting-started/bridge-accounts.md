@@ -62,8 +62,7 @@ subscription token is used. A ChatGPT subscription is signed in in the agent
 container instead (see [Add a Bridge](running-a-bridge.md#7-the-agents-credential)).
 
 The Bridge keeps the credential encrypted and hands it to the agent only for each
-run. Replacing a refused credential lets paused jobs carry on. The agent container
-must be the same version as the Bridge to take a credential this way.
+run. Replacing a refused credential lets paused jobs carry on.
 
 ## Audible
 
@@ -128,11 +127,8 @@ it off again.
 from the server and from your Amazon device list. Books already in your library
 stay. If the server or Amazon can't be reached, the card says what didn't happen.
 
-:::note[Backing up your own books]
-Backing up is for a **personal backup of books you bought**, with your own
-account. Laws on removing DRM differ from country to country, and in some places it
-is not allowed at all. Check your local law, and keep the copies for yourself.
-:::
+Backing up is for a personal backup of books you bought: read the note at the top
+of [Back up your Audible books](../admin/audible.md) first.
 
 ## Settings that take precedence
 

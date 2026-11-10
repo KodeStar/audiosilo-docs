@@ -15,16 +15,12 @@ volume line for each of your libraries. Press **Copy snippet** to use it.
 
 ## Connecting a Bridge
 
-1. Start the Bridge and open its own page.
-2. In the console, open **Server > Settings > Bridge** and press **Connect a
-   Bridge**. A pairing code appears, with the server's address.
-3. On the Bridge's page, paste the **server address** and the **code**, then pair.
+Press **Connect a Bridge** for a pairing code, then paste it on the Bridge's own
+page. The steps are in [Pair it with your server](../getting-started/running-a-bridge.md#4-pair-it-with-your-server).
 
 ![The Connect a Bridge dialog with a pairing code](/img/screenshots/admin/bridge-pair.png)
 
-The code works once, for 15 minutes. If it runs out, press **Make a new code**.
-A Bridge started from the compose snippet can use `http://audiosilo:8080` as the
-server address.
+If the code runs out, press **Make a new code**.
 
 You can pair **one Bridge per server**. **Pair a new Bridge** makes a code for a
 replacement: the old one stops once the new one pairs.

@@ -141,7 +141,7 @@ The folder view shows new files at once. Search and lists need a scan. Press **R
 
 ### One folder shows as a single giant book - or as lots of one-chapter books
 
-Set a per-folder override with **Folder detection...** on the library: **Separate books** or **Always one book**. See [Organize your audiobook files](./getting-started/organizing-your-library.md#when-a-folder-holds-many-separate-books) and [Books split into disc folders](./admin/libraries.md#books-split-into-disc-folders).
+Set a per-folder override with **Folder detection...** on the library: **Separate books** or **Always one book**. See [Folder detection](./admin/libraries.md#folder-detection) and [Books split into disc folders](./admin/libraries.md#books-split-into-disc-folders).
 
 ### A book has no chapters (or only a few broad ones)
 

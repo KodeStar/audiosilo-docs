@@ -5,22 +5,13 @@ description: "Give a child a simple AudioSilo with big story covers, a big playe
 
 **Kids mode** turns AudioSilo into something a child can use on their own: their stories as big covers, a big simple player, and a bedtime. There's no search, no settings and nothing else to wander into. It works in the iPhone and Android apps and the web player.
 
-The quickest way: open the [Household page](household.md), tap **Add someone to your household**, and leave **Kids account** on.
-
 ## Setting it up
 
 Kids mode belongs to a [profile](profiles.md): a person on this device.
 
 ### The quick way: add a kid to your household
 
-1. Open the [Household page](household.md).
-2. Tap **Add someone to your household** and type the child's name.
-3. Leave **Kids account** on.
-4. Choose the collections they can hear, and tap **Add and sign in here**.
-
-The child gets their own account on your server, with no admin needed. They're signed in on this device in kids mode, and you stay the person listening. See [Adding a kid](household.md#adding-a-kid).
-
-You choose what they hear: see [What they can listen to](household.md#what-they-can-listen-to).
+On the [Household page](household.md), tap **Add someone to your household** and leave **Kids account** on. The child gets their own account on your server, with no admin needed, and is signed in on this device in kids mode. See [Adding a kid](household.md#adding-a-kid) for the steps and [What they can listen to](household.md#what-they-can-listen-to) for choosing their books.
 
 ### Kids mode for any profile
 

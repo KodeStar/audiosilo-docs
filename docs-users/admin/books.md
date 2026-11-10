@@ -277,6 +277,5 @@ for listeners too, edit its **Series number** on
   can answer, but can still fall back to the online service.
 - **An ASIN or ISBN you leave unticked, or revert, stays off.**
   [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
-  doesn't write it back. For a book matched before version 2.7.0, accept its
-  match again with a field ticked, or unlink and match it again, to get this.
+  doesn't write it back.
 - **The community has no genres or tags yet**, so matching never changes them.

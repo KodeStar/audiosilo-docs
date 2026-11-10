@@ -80,9 +80,9 @@ charts, but no longer appear in this list.
 ![Activity > Year in listening](/img/screenshots/admin/activity-year.png)
 
 **Activity > Year in listening** tells a calendar year as a story. Pick the
-**Year** to see how many people listened and for how long, the book of the
-year, books finished, the longest run of days with some listening, the busiest
-hour, the most played books and each person's hours.
+**Year**. You see how many people listened and for how long, the book of the
+year and books finished. You also see the longest run of days with some
+listening, the busiest hour, the most played books and each person's hours.
 
 ## Each person's listening
 

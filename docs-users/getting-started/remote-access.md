@@ -25,7 +25,7 @@ You can change these settings in the admin console under [Server > Settings](../
 - Forward one TCP port on your router to the server. External 443 to internal 8080 is a common choice.
 - Everything uses that one port: the API, the admin console, the web player and the audio. There is nothing else to open.
 
-## A real certificate with autocert (Let's Encrypt) {/* #a-real-certificate-with-autocert-lets-encrypt */}
+## A certificate from Let's Encrypt {/* #a-real-certificate-with-autocert-lets-encrypt */}
 
 In the console, go to **Server > Settings > Network & HTTPS**. Set **HTTPS mode** to **Let's Encrypt** and put your domain name in **Certificate names**. Or in `config.yaml`:
 

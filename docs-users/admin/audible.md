@@ -43,9 +43,10 @@ library.
 
 ![The Audible accounts card on Server > Settings > Bridge](/img/screenshots/admin/audible-accounts-card.png)
 
-On **Server > Settings > Bridge**, the **Audible accounts** card lists each account
-with who it is for, its library and store, what it backs up by itself, where
-backups go, whether places sync, and how many of its titles are on this server.
+On **Server > Settings > Bridge**, the **Audible accounts** card lists each
+account. It shows who the account is for, its library and store, what it backs up
+by itself and where, whether places sync, and how many of its titles are on this
+server.
 
 Each account has **Check now**, **Account settings...**, **Back up everything...**
 and **Remove...**. **View titles** opens the titles page.
