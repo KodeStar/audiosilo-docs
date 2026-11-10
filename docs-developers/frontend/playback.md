@@ -699,8 +699,10 @@ on a server with the flag only.
 On a server without the flag the auto-move with Undo above stays. Its only offer is the
 loaded book's toast for a save the
 [replay guard](state-and-data.md#the-replay-guard) held (`onHeldSave`,
-`offerLoadedPlace(..., { held: true })`), where **Stay** also saves this device's place
-at once (`saveLoadedPlace`). The book page shows no line there.
+`offerLoadedPlace(..., { held: true })`), where **Stay** also lifts the guard for the
+session and saves this device's place at once (`saveLoadedPlace`). That save and the
+session's later ones go through even when the other device has saved again since the
+offer. A timed-out toast lifts nothing. The book page shows no line there.
 
 ### Listening spans (Sync v2)
 
@@ -732,7 +734,10 @@ one now).
   just before `ended`; `closesInFlight` holds it and the finish takes over its send). One
   send then follows both (`finishAfter`, server#359): one POST carries `listen` then
   `finish`, so the server has the book's session before its finish. The book page's Mark as finished goes
-  the same way (`recordFinishEvent` in `finish-route.ts`). The web's `pagehide` closes it
+  the same way (`recordFinishEvent` in `finish-route.ts`). Either finish is dated after
+  its span's end is stamped (`takeSpan`): the server applies a batch in time order,
+  request order only breaking ties, so a finish dated earlier would be applied before
+  the book's last span. The web's `pagehide` closes it
   and sends what waits with `keepalive`.
 - **Offline**, the tick leaves the span open until it is an hour long
   (`MAX_SPAN_MS`), so a day offline is a handful of events. Online or offline the open span is stored every 5 s

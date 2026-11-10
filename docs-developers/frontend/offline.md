@@ -534,14 +534,46 @@ the book again. `undoFinish` (`finish-route.ts`) therefore calls
 
 Then one of two things happens:
 
-- **The server never had the finish** (`unsent`: one was taken back and none it waited
-  for was answered, an offline Mark as finished). The Undo is done on the device, with no
-  edit: `unrecordFinish` puts back this device's mirror record from before the finish,
-  stamped with the finish's time so it replaces the finished record (a place saved since
-  still wins; the mirror's own `ack_version` and `answered` are kept). With no earlier
-  record, only the finished record is rewritten to the place before. Offline Undo works.
-- **The server has it** (a finish it waited for was answered). The progress edit is sent;
-  an edit that fails puts the taken events back and flushes (`restore`).
+- **The server cannot have the finish, or cannot be asked** (`unsent`). One was taken
+  back, none it waited for was answered, and none of them may be on the server
+  (`serverMayHold`, below). That is a finish that:
+  - was never sent, or was sent only while its server was marked down or the browser
+    offline (an offline Mark as finished);
+  - the server refused (its own HTTP error, a 503 or any 4xx for example: a refused
+    batch stores nothing);
+  - got no answer, with the server looking down when Undo is pressed (no edit can be
+    made, and the likeliest reading is a request that never left).
+
+  The Undo is done on the device, with no edit: `unrecordFinish` (below) puts the mirror
+  back. Offline Undo works.
+- **The server has it, or may have it.** The progress edit is sent; an edit that fails
+  puts the taken events back and flushes (`restore`), so both sides end finished (sent
+  again, a finish the server already had is a `duplicate`). Two cases:
+  - a finish it waited for was answered;
+  - a request carried the finish while its server looked reachable and got no answer
+    (`gotNoAnswer`), and the server looks reachable now. The request may have arrived
+    and only its answer been lost, so the edit goes: it unfinishes the book either way.
+
+  After an edit that went through, `unrecordFinish` puts the mirror back here too. The
+  edit's answer only reaches the query caches, and the finished record would start the
+  book again at 0 on the next offline Play.
+
+**No answer** (`gotNoAnswer`) is a timeout, a dropped connection, a gateway that lost
+the server (`GATEWAY_LOST`: 502, 504, Cloudflare's 520 and 524) or a 2xx whose body
+could not be read. Any other HTTP error is the server's own answer. The web's
+page-close keepalive send (`sendOnPageHide`) counts as soon as it leaves: the page is
+going, so its answer may never be seen. Such finishes are noted in `maybeReached` for
+this launch, only when the request left while the server looked reachable
+(`looksReachable`: not marked down, and the browser not offline).
+
+**The mirror going back** (`unrecordFinish`, `store.ts`): this device's record from
+before the finish (kept by `recordFinish` in `beforeFinish`) replaces the finished one.
+It is stamped with the time of the record it replaces, which for a downloaded book may
+be the server's row for the finish, newer than the finish's own time; the mirror keeps
+the newest record, so an older stamp would be refused. The mirror's own `ack_version`
+and `answered` are kept. With no earlier unfinished record, the finished record is
+rewritten unfinished at the place before. A place saved since the finish (the record is
+no longer finished) is left as it is.
 
 A withdrawal that fails still lets the edit through, with nothing taken back.
 
