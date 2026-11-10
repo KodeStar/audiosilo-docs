@@ -147,8 +147,8 @@ Patterns to copy when adding an endpoint:
   the heart back.
 - `useMarkFinished` never sends a bare mutation. On a `listening_sync` server it records
   a `finish` event through the player's store (`recordFinishEvent` in
-  `src/playback/finish-route.ts`, which the store registers as it loads, since the hooks
-  can't import it): the book's open span closes first and goes before it, the mirror
+  `src/playback/finish-route.ts`; the store registers it as it loads, since the hooks
+  can't import the store): the book's open span closes first and goes before it, the mirror
   records the book finished (`finishedSave`, the same record the `PUT` path sends), and
   offline it waits in [the outbox](offline.md#listening-sync-the-outbox). The mutation
   resolves once the event waits there; the store reads the lists and the book's progress
@@ -354,7 +354,7 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `cover_sizes` | `BookCover`'s thumbnail choice |
 | `queue` | every Up next entry point and panel, the book menu's Up next item, the series page's Queue it (else Play), keep-ahead's queue window |
 | `collections` | the Collections mode, the collection page, the book menu's Add to collection |
-| `progress_edit` | the book menu's Mark as not finished, and Mark as finished with Undo (without it: `useMarkFinished`, no Undo). With `listening_sync` too the finish is `useMarkFinished`'s event and the Undo a progress edit sent through `undoFinish`, which first takes the book's waiting finish out of the outbox (`withdrawFinish`, [the outbox](offline.md#taking-a-finish-back)) |
+| `progress_edit` | the book menu's Mark as not finished, and Mark as finished with Undo (without it: `useMarkFinished`, no Undo; with `listening_sync` too, the finish is `useMarkFinished`'s event). The Undo goes through `undoFinish`, which first takes back a `finish` event still waiting ([Taking a finish back](offline.md#taking-a-finish-back)) |
 | `user_stats` | Home's This week card, the Now card's finish date and the "&lt;narrator&gt; reads" shelf's top narrator (`useMyStats('30d')`, `useMyListening`, `useListeningGoal`) |
 | `ratings` | the end credits' and the book page's stars (`useBookRating`) |
 | `annotations` | bookmark labels in the editor and on the one-tap toast's Add note, Edit on bookmark and note rows, "See all in your journal", the Journal's Bookmarks and Notes lists and their export (the full list: [Where the capability matters](annotations.md#where-the-capability-matters)) |
@@ -1321,8 +1321,7 @@ The offline-safe write path for listening progress:
   `updated_at` captured **at save time** - so replays that land late still
   reconcile correctly by timestamp. The server's `SaveProgress` applies the
   same newest-`updated_at`-wins rule (see the
-  [server data model](../server/data-model.md)). That is why a session that began
-  at an unchecked place carries the [replay guard](#the-replay-guard) below.
+  [server data model](../server/data-model.md)).
 - **Connection-scoped.** Every `ProgressSave` carries a `connectionId`, and both
   the mirror and the queue key on `(connectionId, libraryId, path)` - which,
   crucially, stops the queue from replaying one server's positions against
@@ -1418,15 +1417,14 @@ place went from 3570 s to 4.78 s). The guard (fe#198) holds such saves instead:
   guard. A save of an earlier session landing late never lifts a later session's guard.
 - **The check.** Before a guarded save is `PUT`, `guardPasses` reads the server's row.
   `guardHolds` (pure) holds it when the row is another device's unfinished place more than
-  `GUARD_SLACK_S` (30 s) further on that the listener has not answered (the mirror's
-  `answered` keys, `placeKey`: `device_id|updated_at`). A held save is not sent and
+  `GUARD_SLACK_S` (30 s) further on, and the listener has not answered that place (the
+  mirror's `answered` keys, built by `placeKey`). A held save is not sent and
   leaves the queue; the mirror keeps this device's place.
 - **The offer.** `onHeldSave` tells the place reconcile, which offers the place that held
   it for the loaded book with the usual Jump/Stay toast
-  ([Playback](playback.md#offering-another-devices-place-sync-v2)). Stay answers the
-  place and saves this device's place at once; a toast nobody answers answers nothing.
-  Each listener runs on its own, so one that throws never turns a held save into a
-  queued one.
+  ([Playback](playback.md#offering-another-devices-place-sync-v2), where Stay also saves
+  this device's place at once). An ignored toast records no answer. Each listener runs on
+  its own, so one that throws never turns a held save into a queued one.
 
 The guard and the offer share `GUARD_SLACK_S` and `placeKey`. Sync v2 needs none of
 this: the server resolves each span on its `base_version`.

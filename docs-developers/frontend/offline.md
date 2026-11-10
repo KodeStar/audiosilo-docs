@@ -451,13 +451,14 @@ Three storage documents, all plain storage, scoped per connection, re-keyed by t
 |---|---|
 | `audiosilo.listeningOutbox` | the closed events waiting for their server, each with its `connectionId`, append-only: an event never changes once it is here (its id and content are fixed once a send was tried). Another tab's change follows by the `storage` event (`refreshOutboxFrom`) |
 | `audiosilo.listeningOpenSpan` | the spans being played, one per playing web tab, each with its `owner` and `keptAt` (a bare span is the pre-W2 form), stored every 5 s online or offline, so a span a kill left open is closed at its last stored values on the next launch (`recoverOpenSpan`). On the web another tab's span is left to it while it is live (kept within 30 s of now, `LIVE_SPAN_MS`; a tab on an older build, with no `owner`, while its end is under 45 s old); a tab whose span another tab took that way plays on under a new id from where the copy ended (`takenFrom` / `goingOnFrom`), so what it played since is not a `duplicate` |
-| `audiosilo.listeningSync` | per connection: when it last synced (`lastSyncAt`), the "couldn't sync" list (rejected events with their reason, kept 30 days, at most 100), the server's clock skew from the answers' `server_time` (`clockSkewMs`; the outbox is its one reader: `progress-sync` asks for the stored skews through `stored-skews.ts`, which the outbox registers, and that read takes no lock since the document is written whole) and the last `listening_sync` answer (`listeningSync`) |
+| `audiosilo.listeningSync` | per connection: when it last synced (`lastSyncAt`), the "couldn't sync" list (rejected events with their reason, kept 30 days, at most 100), the server's clock skew from the answers' `server_time` (`clockSkewMs`, which `progress-sync` reads through `stored-skews.ts`) and the last `listening_sync` answer (`listeningSync`) |
 
 The three documents' read-modify-writes run in a serial queue and under `tabLock`
 (`src/lib/tab-lock.ts`): a Web Lock shared by every tab where the browser has one
 (`navigator.locks`, a secure context only), else, on a plain-http address, a
 `localStorage` lease (fe#208), so two tabs can't lose each other's events; on the web
-each re-reads storage inside the lock.
+each re-reads storage inside the lock. The stored skews' read (`stored-skews.ts`, which
+the outbox registers) takes no lock: the document is written whole.
 
 **Sending** (`flushOutbox`): one flush in flight per connection (a call while one runs
 makes it go round once more), chunks of 200 events, `sent_at` set at each attempt, on
@@ -486,9 +487,8 @@ headless task). Per answer:
   is a `finish` not older than it) and is dropped, and the player saves by `PUT` from then
   on. Each of those `PUT`s carries the
   [replay guard](state-and-data.md#the-replay-guard), since no server resolved those
-  spans against its row. A finish with no listen beside it (a Mark as finished) takes its
-  place, length and speed from the mirror record its finish wrote (`withFinishedPlace`),
-  so it is the legacy finished save, never finished at 0 of 0. The rollback's `PUT`s run
+  spans against its row. A Mark as finished has no span, so its `PUT` takes place, length
+  and speed from the mirror record the finish wrote (`withFinishedPlace`), not 0 of 0. The rollback's `PUT`s run
   as a send, so an Undo's withdrawal (below) waits for them.
 
 #### Taking a finish back
@@ -496,10 +496,14 @@ headless task). Per answer:
 Mark as finished on a `listening_sync` server is a `finish` event, but its Undo is a
 progress edit sent at once: a finish still waiting would reach the server after the edit
 and finish the book again. `undoFinish` (`finish-route.ts`) therefore calls
-`withdrawFinish(connectionId, libraryId, path)` first: the book's waiting `finish` events
-leave the outbox, one whose request is out is waited for (sent, the edit goes after it),
-and a chunk read before the withdrawal drops it. An edit that fails puts them back and
-flushes; a withdrawal that fails still lets the edit through, with nothing taken back.
+`withdrawFinish(connectionId, libraryId, path)` first:
+
+- the book's waiting `finish` events leave the outbox;
+- one whose request is out is waited for, and the edit goes after it;
+- a chunk read before the withdrawal drops the withdrawn events.
+
+An edit that fails puts them back and flushes; a withdrawal that fails still lets the
+edit through, with nothing taken back.
 
 The web's `pagehide` sends what waits (oldest first, up to about 60 KB, `fitKeepalive`)
 with `keepalive`, the span closes still queued behind a lock included (a lease's timer
@@ -726,11 +730,8 @@ Three paths, the first two in `src/playback/store.ts`:
   and `fetchBookProgress` writes each online answer for a book kept offline
   (`setKeptOfflineCheck`, `writeMirror(progressToSave(...))`), keep-newest, so a
   newer local save is never regressed, and a book downloaded at 70% opens offline
-  at 70%, not 0. Home's progress list does the same for every downloaded book in one
-  write (`writeMirrors`), so a place another device reached is kept even for a book
-  whose page was not opened before going offline. A session that still starts at an
-  unchecked place carries the [replay guard](state-and-data.md#the-replay-guard) on the
-  `PUT` path.
+  at 70%, not 0. Home's progress list seeds every downloaded book the same way
+  ([Progress sync](state-and-data.md#progress-sync-srcplaybackprogress-syncts)).
 - **Downloaded while streaming**: a `useDownloads.subscribe` listener watches
   for the currently-playing book flipping to `downloaded` and calls
   `switchCurrentBookToLocal`, which rebuilds the queue against the manifest and
