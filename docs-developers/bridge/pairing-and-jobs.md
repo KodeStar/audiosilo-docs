@@ -165,7 +165,7 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
 | `paired` | yes | the Bridge is paired | |
 | `libraries` | yes | the Bridge has checked libraries and every one is mapped and writable (a library counts once it has been checked) | "checking the libraries..." (`setup.DetailLibrariesChecking`, from v0.5.0) from pairing until a heartbeat has listed the server's libraries and each has been checked (`Input.LibrariesPending`: no `lastBeat` yet, or `libs.Unchecked()`), never done and no `library_ids` meanwhile; then "1 of 2 libraries writable" (or "the server has no libraries yet"); `library_ids` lists the ones still to fix |
 | `asr` | yes | the engine has started and something can transcribe now, not waiting for a worker | `local`, `worker`, "waiting for an ASR worker", "the engine is starting", or why it isn't available |
-| `agent` | yes | the agent container is available (with its own or a handed-over credential) | the backend, or why it isn't ready in plain words (below) |
+| `agent` | no | the agent container is available (with its own or a handed-over credential); only characters, recaps and descriptions need it | the backend, or why it isn't ready in plain words (below) |
 | `budget` | yes | the monthly budget was saved on the page or is set by the environment (`Config.BudgetReviewed`) | "$100 a month" or "no monthly cap" |
 | `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token" |
 | `audible` | no | Phase 4a: at least one Audible account signed in, none refused and none on an older device profile (an additive id: older servers and pages leave it out) | "1 account signed in", "1 account needs signing in again", or "... signing in again to keep backups working" when any is on an older profile; Phase 4c adds "; places don't sync until then" while one is refused, and "; places not syncing for 1 account: " and the reason when an account's last position sync failed (that alone never makes it not done) |
@@ -176,7 +176,7 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
     {"id": "paired", "done": true, "required": true},
     {"id": "libraries", "done": false, "required": true, "detail": "1 of 2 libraries writable", "library_ids": [3]},
     {"id": "asr", "done": true, "required": true, "detail": "local"},
-    {"id": "agent", "done": false, "required": true, "detail": "set the agent's sign-in on the Accounts tab; the agent signs in to Claude or ChatGPT and is needed for characters, recaps and descriptions"},
+    {"id": "agent", "done": false, "required": false, "detail": "set the agent's sign-in on the Accounts tab; the agent signs in to Claude or ChatGPT and is needed for characters, recaps and descriptions"},
     {"id": "budget", "done": true, "required": true, "detail": "$100 a month"},
     {"id": "github", "done": false, "required": false}
   ],
@@ -200,9 +200,13 @@ recaps and descriptions"), but the backend mismatch, which names both CLIs:
 | `no_credential` | `DetailAgentNoCredential`: "set the agent's sign-in on the Accounts tab; ..." |
 | a refused credential (`Refused`) | the container's own detail, saying where to replace it (else `DetailAgentNoCredential`) |
 
-The item stays required (FIRST-RUN F2). The console's Setup card shows the
+The item is optional (`required: false`, an owner decision reversing FIRST-RUN
+F2): podcasts, read-along, chapters and Audible need no agent, so setup reads
+complete without an agent container. The console's Setup card shows the
 Bridge's detail when it sends one, and otherwise its own hint for the id
-(`bridge.setup.hint.agent`, from server 2.5.1 also saying what the agent is for).
+(`bridge.setup.hint.agent`, also saying what the agent is for). The console still
+holds Generate back while the agent step isn't done, required or not
+(`generateNeed`): a run without the agent would park `agent_unavailable`.
 
 The `asr` item's "waiting for an ASR worker" is a stable string
 (`setup.DetailASRWaiting`): from v0.4.0 the Bridge's Status tab, and the console's
@@ -583,8 +587,11 @@ listener routes.
 (`template` the account's placement template, omitted when empty) with no library
 or path, deduped per account, and it promotes an open poll to a person's priority
 when Check now asks. It runs in the `light` lane and writes nothing into a
-library (an ASIN it backfills goes through the server). The module's scheduler
-queues it; queued polls are held while the module is off. See
+library (an ASIN it backfills goes through the server). A refused poll fails
+with a code in its result, `audible_refused` (the device) or `audible_sign_in`
+(the sign-in, for now); the server folds neither, and the console's Bridge jobs
+list words both. The module's scheduler queues it; queued polls are held while
+the module is off. See
 [Audible](audible.md#the-poll-audiblepoll).
 
 `audible.import` (Phase 4b) backs up one title into the account's library. It
