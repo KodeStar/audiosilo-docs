@@ -8832,7 +8832,7 @@ effect. Lists are never `null`.
 | `backups.keep` | how many scheduled backups are kept, 1-365 (manual and before-restore backups stay until deleted; the newest three before-upgrade backups are kept apart) |
 | `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |
 | `modules.<id>` | each [managed module's](../modules.md) toggle, by module id (`false` by default; config key `modules.<id>.enabled`, variable `AUDIOSILO_MODULES_<ID>_ENABLED`). Applies at once, with no restart. [`GET /admin/modules`](#get-apiv1adminmodules) says more about each |
-| `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it, or `"launcher"` (a launcher override for `bind`, `tls.mode` or `public_url`) |
+| `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it (before 2.7.0 also `"launcher"`, a launcher override, which only the archived desktop manager set) |
 | `restart_settings` | the setting ids read only at start (fixed) |
 | `restart_pending` | restart settings whose saved value differs from the one the server started with |
 
@@ -9364,8 +9364,8 @@ records the outcome on the destination, and answers:
 ```
 
 (`target` is the whole destination as above.) `error` is `""` when it arrived,
-and `"failed"` from a server built without the notification service (an
-embedder's; never one the launcher starts).
+and `"failed"` from a server built without the notification service (never
+one the launcher starts).
 A failed delivery is not an HTTP error here: the answer is `200` either way,
 `404` when there is no such destination.
 
