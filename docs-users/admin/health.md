@@ -31,7 +31,7 @@ Click a card to open its list.
 
 | Card | What it means | How to fix it |
 |---|---|---|
-| **Files that couldn't be read** | A file couldn't be read, is empty, or isn't audio. The row gives the reason in one line; **Details** shows the full message. | Fix the file or its permissions. **Read again** checks it straight away; otherwise the next scan does. |
+| **Files that couldn't be read** | A file couldn't be read, is empty, or isn't audio. The row gives the reason in one line; for a file that isn't audio, **Details** shows the full message. | Fix the file or its permissions. **Read again** checks it straight away; otherwise the next scan does. |
 | **Folder may hold several books** | A folder reads as one book but looks like it holds several. | **Choose detection** opens the folder in [Library > Folders](libraries.md#the-folders-page): choose **Separate books** or **Always one book**. |
 | **One book split into disc folders** | A book ripped from CDs reads as one book per disc. | **Join into one book**. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
 | **Likely duplicates** | Copies of one book in the same library. | Compare them side by side. See [Duplicates](#duplicates). |
