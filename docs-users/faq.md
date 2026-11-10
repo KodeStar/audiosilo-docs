@@ -64,7 +64,7 @@ Only what a lookup needs:
 - **Podcast search** sends the search text to Apple Podcasts or Podcast Index. See [Searching podcast directories](./admin/podcasts.md#searching-podcast-directories).
 - **The update check** asks GitHub once a day for the newest version. See [What the update check sends](./admin/server.md#what-the-update-check-sends).
 
-To avoid lookups over the internet, your admin can [keep a local copy](./admin/server.md#keeping-a-local-copy) of the community database, or switch community metadata off.
+To avoid lookups over the internet, your admin can [keep a local copy](./admin/server.md#keeping-a-local-copy) of the community database, or switch community metadata off. Until the copy is ready, or if it fails, lookups still go online. The daily report above, when it's on, still goes online.
 
 ### Can other people on my server see what I'm listening to?
 
@@ -103,6 +103,7 @@ On GitHub:
 
 - [audiosilo-server](https://github.com/KodeStar/audiosilo-server): the server, admin console and web player hosting
 - [audiosilo-frontend](https://github.com/KodeStar/audiosilo-frontend): the player app (web, iOS, Android)
+- [audiosilo-bridge](https://github.com/KodeStar/audiosilo-bridge): the optional Bridge
 - [audiosilo-meta](https://github.com/KodeStar/audiosilo-meta): the community metadata database
 - [audiosilo-docs](https://github.com/KodeStar/audiosilo-docs): this documentation
 

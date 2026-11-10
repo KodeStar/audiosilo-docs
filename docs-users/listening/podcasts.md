@@ -53,7 +53,7 @@ A show the library already has is followed at once. A new show takes a moment wh
 
 You need full access to the library to add shows. Kids' accounts and the demo can't add or follow shows. If **Add shows** is missing, your server can't fetch podcasts right now: ask your admin.
 
-### Search a podcast directory
+### Search a podcast directory {/* #searching-a-podcast-directory */}
 
 ![Add shows on Search: results for "kitchen" from Apple Podcasts](/img/screenshots/web-player/find-shows-search.png)
 
@@ -75,7 +75,7 @@ Every podcast has a feed address, usually ending in `.xml` or `/rss`. Find it on
 3. For a paid or members-only feed, turn on **Private feed**.
 4. Tap **Follow**.
 
-### Import a list from another app
+### Import a list from another app {/* #importing-a-list-from-another-app */}
 
 ![Add shows on Import a list: an import part way through](/img/screenshots/web-player/find-shows-import.png)
 
