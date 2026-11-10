@@ -368,8 +368,9 @@ The shared test helpers live outside that list, in `src/testing/`: the
 player-store double (`player-store-mock.ts`), the native touch-target assertion (`touch-target.ts`, `expectNativeTarget`), `mountWithPortal`
 (`render-overlay.tsx`), the route-tree harness (`route-tree.tsx`), the
 `@/api/provider` stand-in (`api-provider-mock.ts`, `apiProviderMock`),
-`settleFlashList` (`flash-list.ts`) and `notifyQueriesSynchronously`
-(`query-notify.ts`). For the
+`settleFlashList` (`flash-list.ts`), `notifyQueriesSynchronously`
+(`query-notify.ts`) and the stand-in for one browser's tabs (`fake-browser.ts`,
+with `tabStorage` for a per-tab `@/lib/storage`). For the
 player-store double see
 [the section above](#the-shared-player-store-double-srctestingplayer-store-mockts).
 
