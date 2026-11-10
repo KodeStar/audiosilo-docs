@@ -74,7 +74,7 @@ its pauses).
 A `Kick` follows every committed book change: the API registers it with
 `Catalog.OnBookChange`, which `UpsertBooks` and `UpsertBook` (a scan), `EditBook` and `EditBooks`
 (an edit, an accepted match, a [bulk match run](api/reference.md#bulk-community-matching)
-applying), `SetEnrichment`, clearing community matches and setting or removing a
+applying), `BackfillASIN`, clearing community matches and setting or removing a
 custom cover fire after their transaction (to every listener: the
 [cover colour pass](media.md#the-background-colour-pass) hears them too). A kick waits 5 s for the kicks behind it (a scan kicks once per
 book), so a burst is one pass, and the pass only checks what is due.

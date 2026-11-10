@@ -73,10 +73,9 @@ startup logic belongs in `pkg/launcher`.
 The run loop: load config → open the store → wire services → first-run
 bootstrap (auto-admin banner, or the token-guarded `/setup` page in setup mode; the console's first-run flow takes it from there)
 → sync config-declared libraries → kick off the initial background scan → serve
-until the context is cancelled. It is public so the server can also run
-in-process (see [Configuration](configuration.md#launcher-options-for-embedders));
-`Options` carries embedding-friendly overrides (`Bind`, `TLSMode`, `PublicURL`, `Libraries`,
-`OnURL`) that are re-validated after being layered onto the loaded config.
+until the context is cancelled. It is not an embedding API: `Options` holds
+only what the command's flags set, and it overrides no configuration (see
+[Configuration](configuration.md#launcher-options-for-embedders)).
 Before the database opens, `Run` applies a restore an admin asked for
 (`backup.ApplyPendingRestore`); it then starts the backup schedule, the
 notification workers and the daily retention (sessions, audit log, event

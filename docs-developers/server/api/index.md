@@ -260,6 +260,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 |---|---|---|
 | `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`) |
 | `name_taken` | `409` | a library or share name already in use (create, rename) |
+| `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: its rules change only by granting or revoking the library |
 | `config_library` | `409` | a library the server's config declares: renaming it or moving its folder (`PATCH /admin/libraries/{id}`, from 2.4.0), or deleting it (`DELETE /admin/libraries/{id}`, from 2.4.1) |
 | `last_admin` | `409` | demoting or disabling the last enabled admin |
 | `admin_needs_password` | `400` | an admin without a password (creating one, promoting a password-less account, or clearing an admin's password) |
@@ -287,7 +288,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `invalid_setting` | `400` | `PATCH /admin/settings` with a value the server refuses (including a `demo.library` that names no library, and turning `metadata.enabled` on when no metadata service is configured); the body also carries `field`, the setting's id (`network.bind`) |
 | `unknown_setting` | `400` | `PATCH /admin/settings` naming something that isn't a setting (`field` names it) |
 | `setting_read_only` | `400` | `PATCH /admin/settings` changing a setting shown but not changeable there (`players.web_dir`, `backups.dir`; `field` names it) |
-| `setting_locked` | `409` | `PATCH /admin/settings` changing a setting an `AUDIOSILO_*` variable or the launcher sets (`field` names it) |
+| `setting_locked` | `409` | `PATCH /admin/settings` changing a setting an `AUDIOSILO_*` variable sets (`field` names it) |
 | `update_check_off` | `409` | `POST /admin/update/check` while the update check is turned off |
 | `not_mirror_mode` | `409` | `GET /admin/meta/mirror` or `POST /admin/meta/mirror/check` on a server that isn't keeping a local copy of the community metadata (remote mode, or `metadata.mode: mirror` saved but not restarted into) |
 | `backup_running` | `409` | `POST /admin/backups` while a backup is being made |
@@ -455,15 +456,19 @@ chapter `file_path` fields.
 Two server-side guarantees apply to every `?path=`, plus a length cap on the
 content routes:
 
-- **Length cap** - the content routes that address a book or file by
-  `?path=` (`item`, `chapters`, `cover`, `stream`, progress, bookmarks, notes,
-  history and the like, every route whose path goes through the server's
-  `pathInScope`) answer a path over 4096 bytes (as sent,
-  `catalog.MaxPathBytes`) with 400 `path is too long`, before it is cleaned,
-  looked up or stored. In a [listening sync](reference.md#post-apiv1melisteningsync)
-  batch such an event is `rejected` `invalid` and the rest of the batch applies.
-  Routes that take their path on their own (browse, removing from a list, the
-  podcast routes, the admin folder-override and enrichment routes) don't apply it.
+- **Length cap** - every route that takes a `?path=` answers a path over 4096
+  bytes (as sent, `relpath.MaxBytes`, which `catalog.MaxPathBytes` names) with
+  400 `path is too long`. The check comes **first**: before the library is looked
+  up (an unknown or ungranted library answers 400 for such a path, not 404 or
+  403), and before the path is cleaned or stored. That covers the content routes
+  (`item`, `chapters`, `cover`, `stream`, progress, bookmarks, notes, history,
+  `POST /cast/token` and the like), browse (`/fs`), removing from the queue or a
+  collection, the admin folder override (`PUT`/`DELETE`), the Bridge's book read
+  and the Bridge's Audible listening route. In a
+  [listening sync](reference.md#post-apiv1melisteningsync) batch such an event is
+  `rejected` `invalid` whatever its library, and the rest of the batch applies.
+  A podcast show or episode folder name over the cap in a Bridge's feed is
+  refused as invalid.
 - **Traversal safety** - the path is resolved through `library.SafeJoin`, which
   rejects `..` escapes, absolute-path injection, and symlinks pointing outside
   the library root (400 `invalid path`).

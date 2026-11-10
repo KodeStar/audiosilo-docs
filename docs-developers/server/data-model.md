@@ -413,14 +413,20 @@ row itself (as migration 0016 did) instead of blanking the fields, and
 
 A scan also writes an `@rev` key (`catalog.scannedRevKey`): the revision of the
 name-reading rules (the path baseline, `metadata.DeriveFromPath`, plus the tags
-over it) the snapshot used, `3` today (`catalog.scannedRev`). Revision 2 (2.6.0)
+over it) the snapshot used, `4` today (`catalog.scannedRev`). Revision 2 (2.6.0)
 is the one where an album tag that only names the book's series stopped being its
 title; the next scan checks a snapshot of revision 1 or none once, as
 [the scanner](scanner.md#an-album-that-is-only-the-series) describes. Revision 3
 (2.6.0, server#319) is the one where a leaf named `Author; Series; Book NN[;
 Title]` came to state its series and position; the next scan reads a snapshot
 older than 3 with such a leaf once, and stamps an unflagged revision 1 or 2
-snapshot, as [the scanner](scanner.md#a-leaf-that-states-its-series) describes. A snapshot
+snapshot, as [the scanner](scanner.md#a-leaf-that-states-its-series) describes.
+Revision 4 (2.7.0, server#175) is the tag reading of 2.4.0 and 2.5.0 (a series
+tag carrying its position, generic titles in every script, the MP4 narrator item
+and a narrator tag over composer); the next scan reads once a snapshot older than
+4 that may read otherwise (an MP4, a narrator, a splittable series tag, a
+non-ASCII letter in its title or path) and stamps the rest, as
+[the scanner](scanner.md#books-already-indexed) describes. A snapshot
 with no revision (any server before revision 1) was read when the lone folder above a book
 (`Charles Dickens/Great Expectations`) was its series rather than its author. For
 a book one folder deep, `Catalog.Signatures` sorts such a snapshot out in SQL
@@ -782,9 +788,15 @@ id, since a span synced late opens a session dated in the past); a session opens
 the span's start and `from_pos`; listened time is `listenedBetween` of the span's
 own wall time and how far it moved, so a seek ahead or an inflated span is not
 listening; and only a span ending within 60 s of now is live or can be marked
-transcoded. The player cuts its span every 15 s while it plays online, so the live
+transcoded. A span older than the session's last record (one synced late) never
+moves the session's place, length or speed back; only a span at or after it does.
+The player cuts its span every 15 s while it plays online, so the live
 list behaves as with saves. A span's recording is part of its batch's transaction,
-not best effort. Sync `finish` and `unfinish` events record no session.
+not best effort. A sync `finish` (applied, or `not_applied` `older`) marks the
+token's session on the book finished when that session's last span ended within
+`SessionGap` before the finish (`finishSession`); it never opens a session, and a
+furthest-only batch (the Bridge's Audible route) marks none. `unfinish` records
+nothing.
 
 - **Server time only** (for a save). Every time here is when the server received
   the save; the save's own `updated_at` is not used (a device clock can be wrong).
@@ -1021,6 +1033,11 @@ Its keys:
   before the listener; a failure stops the start, as a failed migration does, since
   every series filter reads only the keys (see `books.series_key` and
   `book_more_series` in [The rebuildable index](#the-rebuildable-index)).
+- `search_text`: the version of the search-text rule the `books_fts` rows were
+  written with (`searchTextVersion`: the rule's number and the Unicode version).
+  `Catalog.IndexSearchText` rewrites the rows the rule changes once, at start
+  after `KeySeries`, while it is missing or different (see
+  [FTS design](#fts-design-books_fts)).
 - `setup_state`: the admin console's
   [first-run setup flow](web-ui.md#the-first-run-setup-flow),
   `{"finished":false,"dismissed":false,"steps":{"folder":"done","naming":"skipped"}}`
@@ -1091,8 +1108,9 @@ hold only what it reports:
   `authors` and `series` (JSON), `release_date`, `runtime_s`, `state` (`available` |
   `preorder` | `unavailable` | `gone`), `reason`, the match (`match_library_id`,
   `match_path`, `match_how` `asin` | `fuzzy` | `import`, the last set by a done backup): **path-keyed with no FK to the
-  index**, carried by `MoveDurableState` (`moveBookState`) and by a join
-  (`joinBookState`), cleared by `DeleteLibrary` in the library's own transaction;
+  index**, carried by a move (`MoveDurableState`) and by a join
+  (`JoinDurableState`) in the per-user transaction after the places
+  (`moveAudibleTitles`), cleared by `DeleteLibrary` in the library's own transaction;
   `first_seen`, `updated_at`, `poll_id`, and Phase 4b's `rejected`, `ignored`,
   `dest_path`, `import_job_id`, which a titles call never overwrites. Indexed by
   match, by title and by account then title (the console's orders).
@@ -1137,6 +1155,13 @@ and `''` for none), the book a contested title tied for, with a partial index.
 Like a match's path, the contest is path-keyed with no FK, carried by a move or a
 join and cleared with its library. All three are the poll's, and a stored match clears them.
 
+`0071_audible_sync_followups` recreates the `audible_title_match_update` trigger
+so a `preorder` title takes no part in its account's sync (as a `gone` one), and a
+preorder becoming available offers its book's place to Audible again. It adds
+`audible_accounts.refusal_ended_at` (when the account's sync refusal last ended:
+a Bridge PUT or a complete poll), so a refused `audible.sync` claimed before then
+doesn't mark the account refused again (`FoldAudibleSync`).
+
 ### Podcasts
 
 Migration `0052_podcasts` adds the library kind and initial tables;
@@ -1147,7 +1172,7 @@ The current tables are:
 |---|---|
 | `podcast_shows` | rebuildable show metadata from `feed.json`, keyed by `(library_id, show_path)`; show id, title/author/description/link/language/type/explicit/private, public feed URL and host/hash, podcast GUID, cover path, episode count/latest publication, signature and index time |
 | `podcast_feed_hashes` | current/previous URL hashes; `(library_id, sha256, show_path)`; cascades with its indexed show |
-| `podcast_episodes` | rebuildable one-to-one row for `books.id` with cascade; library/show path, episode id/GUID, publication, season/episode/type/explicit, feed duration, file `present`, generation, removed time and duration source; 0054 adds `sha256`, `timeline_changed`, `fetch_json` and `feed_sig` |
+| `podcast_episodes` | rebuildable one-to-one row for `books.id` with cascade; library/show path, episode id/GUID, publication, season/episode/type/explicit, feed duration, file `present`, generation, removed time and duration source; 0054 adds `sha256`, `timeline_changed`, `fetch_json` and `feed_sig`; 0073 adds `indexed_at`, the `books.indexed_at` the podcast index wrote the row with: a books row an older server rewrote in place (a rollback scans a podcast library as books) no longer matches it, and the next scan re-indexes the show (`PodcastEpisodeRows` counts only rows whose stamps agree; `NULL` counts as matching) |
 | `podcast_follows` | durable `(user_id, library_id, show_path)`, created time and the followed `show_id`; no FK to the show or `books`, so pruning keeps it, but a different show at the same path does not inherit private access |
 | `podcast_feed_state` | server-owned `(library_id, show_path, show_id)` validators, last check/success/status, error code/text, `secret_missing`, failure count and next poll; not written to disk per poll |
 | `podcast_policies` | durable `(library_id, show_path, show_id)` policy: `mode` (`keep`, `on_demand`, `archive`), `keep` (1..1000), `days` (0..365), `updated_at`; no override means Keep 3/days 7 |
@@ -1281,8 +1306,9 @@ the `unknown_asin_report` key of [`server_state`](#server-state).
   folder's detection when the scanner's heuristic gets it wrong: `book` forces
   folder-is-one-book, `collection` forces one book per file.
 - **`book_enrichment`** *(0012)* - PK `(library_id, path)`, `asin`, `isbn`,
-  `updated_at`. Stores external identifiers attached through
-  `PUT /admin/libraries/{id}/enrichment`. Writing it never blanks a
+  `updated_at`. Stores external identifiers a Bridge attaches through
+  `PUT /bridge/libraries/{id}/enrichment` (`BackfillASIN`); rows the retired
+  admin enrichment route stored, ISBNs among them, still apply. Writing it never blanks a
   stored field (a blank `asin` or `isbn` keeps the existing one). It survives
   rebuilds because it is layered onto the book row on every re-index (see
   below); an admin's own `asin`/`isbn` edit wins over it.
@@ -1380,7 +1406,7 @@ book's `book_more_series` rows) and chapter titles and refreshes the book's
 `books_fts` row from the result (and its `book_labels`); the admin book page shows
 the same resolution as provenance, so the two can't disagree. Every write path calls
 it inside its own transaction - `UpsertBook` (each scan or on-demand index),
-`SetEnrichment`, and `EditBook`/`EditBooks` (the admin edits, the bulk form
+`BackfillASIN` (the Bridge's enrichment), and `EditBook`/`EditBooks` (the admin edits, the bulk form
 all-or-nothing). Two consequences:
 
 - **No read-time join.** Players, search, the `/fs` annotations, `/meta`
@@ -1596,6 +1622,8 @@ The migration history so far:
 | 0068 | `unknown_asin_reports` | the [unknown-ASIN report](#unknown-asin-reports)'s `unknown_asin_reports` table (`asin` primary key, `checked_at`, `unknown`, `sent_at`; `WITHOUT ROWID`), derived and naming no book. No data moves |
 | 0069 | `book_matches` | the [recorded community match](#durable-per-library-config-path-keyed-no-fk-to-books) `book_matches` (`library_id`, `path`, `work_id`, `recording_id`, `how` `auto`\|`accepted`, `run_id`, `set_by`, `set_at`; primary key `(library_id, path)`, `library_id` `ON DELETE CASCADE`). No data moves |
 | 0070 | `book_match_offered` | `book_matches.offered_asin` and `offered_isbn` (`TEXT NOT NULL DEFAULT ''`, server#330: the identifiers the [recorded community match](#durable-per-library-config-path-keyed-no-fk-to-books) offered) and `match_run_items.unchanged` (`TEXT NOT NULL DEFAULT ''`, server#332: the comma-separated scopes under which a refresh item had nothing to change when recorded; an apply under one leaves it out without reading the book again). No backfill: `''` behaves as before. No data moves |
+| 0071 | `audible_sync_followups` | the `audible_title_match_update` trigger recreated so a `preorder` title is left out of the sync and its release re-offers the book's place; `audible_accounts.refusal_ended_at` (see [The Bridge](#the-bridge)). No data moves |
+| 0073 | `podcast_episode_indexed` | `podcast_episodes.indexed_at`, backfilled from each episode's `books.indexed_at` (see [Podcasts](#podcasts)) |
 
 ## SQLite choices
 
@@ -1760,7 +1788,7 @@ It is kept in sync **by the application**, not by triggers, keyed by
 
 - `catalog.refreshEffective` deletes then re-inserts the FTS row from the
   book's **effective** values, inside the same transaction as the write that
-  called it (`UpsertBook`, `SetEnrichment`, a metadata edit), so index and FTS
+  called it (`UpsertBook`, `BackfillASIN`, a metadata edit), so index and FTS
   can't diverge and search finds edited titles.
 - `catalog.DeleteBooksNotIn` (the scanner's prune step) deletes the FTS row
   alongside each stale book.
@@ -1768,7 +1796,22 @@ It is kept in sync **by the application**, not by triggers, keyed by
 `catalog.Search` joins `books_fts` to `books` on `rowid`, ranked by FTS
 relevance (`ORDER BY rank`). User input never reaches FTS5 syntax directly:
 `buildMatchQuery` reduces it to quoted, AND-ed prefix terms (`"foo"* AND
-"bar"*`), giving type-ahead behavior without exposing FTS operators. Results
+"bar"*`), giving type-ahead behavior without exposing FTS operators.
+
+**Chinese and Japanese.** FTS5's `unicode61` tokenizer splits only on spaces and
+punctuation, so an unspaced CJK title would be one token. Each column is stored
+in `ftsText`'s form instead: Han, Hiragana and Katakana (with the prolonged sound
+and iteration marks) a character a token. `buildMatchQuery` splits a query the
+same way, a CJK run becoming an adjacent-token phrase whose last token is a
+prefix, and `ftsPhrase` writes the author and narrator filters' phrase alike, so
+`猫` finds `吾輩は猫である` and `吾輩` still does. A trigram tokenizer was rejected:
+it can't match the one- and two-character words CJK search mostly is. Hangul is
+spaced, so it stays as it is. Rows an older server wrote are rewritten once at
+start-up (`Catalog.IndexSearchText`, run after `KeySeries`), gated by
+`server_state` `search_text` (the rule version and the Unicode version), in one
+transaction and with no migration.
+
+Results
 are scoped per-library by the caller's share rules and de-duplicated across
 libraries (see [Data model → libraries](#libraries--shares) for the
 `sort_order` tiebreak).
