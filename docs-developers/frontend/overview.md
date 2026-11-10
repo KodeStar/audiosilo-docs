@@ -510,9 +510,9 @@ grid/list choice is `useBooksLayout` (`audiosilo.booksLayout`, also used by a
 collection and Favourites). The **book menu** is `useBookActions` presented by
 `BookActionsMenu` (`books/book-actions.tsx`): the list view's `BookActionsButton`
 opens it, and so does every `CoverTile` (below). Its items: Play/Resume, Up next (`queue`), Add to
-collection (`collections`), download, Mark as finished (on a server without
-`progress_edit`, through the offline-aware `useMarkFinished`, without Undo) or not
-finished (`progress_edit` only), More in this series. A capability still unknown
+collection (`collections`), download, Mark as finished (Undo only with `progress_edit`;
+how it is sent: [State & data](state-and-data.md#react-query-srcapihooksts-srcapiprovidertsx))
+or not finished (`progress_edit` only), More in this series. A capability still unknown
 hides its item. Remove download asks first through the shared
 `RemoveDownloadConfirm` (see [Offline](offline.md#lifecycle)).
 

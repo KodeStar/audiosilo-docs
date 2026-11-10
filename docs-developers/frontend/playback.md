@@ -619,6 +619,10 @@ replay queue.
   *downloaded* book, `failed` means offline-first and never started: 0 is
   correct.
 
+A lookup whose place was never checked against the server is marked `unchecked`
+([which ones](state-and-data.md#the-replay-guard)), and on the `PUT` path that session's
+saves carry the replay guard until one is `PUT`.
+
 The mirror (`writeMirror`, key `audiosilo.progressMirror`) is written on **every
 save and every successful server read**, keep-newest by `updated_at`, and -
 unlike the replay queue - is **never pruned on sync**. It exists precisely so a
@@ -688,8 +692,11 @@ checked on each sync answer for the loaded book (`onSyncAnswer`; never moving a 
 book) and, where `placeToMoveTo` finds nothing to move to, on the foreground, reconnect
 and picked-up checks above. Each place is shown once per launch and a device's places
 at most once per book every 10 minutes (`OFFER_REPEAT_MS`: a device that plays on sends
-a new place with every span). On a server without the flag nothing is offered and the
-auto-move with Undo above stays as it was. The book page shows the same offer as a line
+a new place with every span). On a server without the flag the auto-move with Undo above
+stays. Its only offer is for a save the
+[replay guard](state-and-data.md#the-replay-guard) held (`onHeldSave`,
+`offerLoadedPlace(..., { held: true })`), where **Stay** also saves this device's place
+at once (`saveLoadedPlace`). The book page shows the same offer as a line
 (`ListeningOfferLine`, [Book page](book-page.md#the-primary-action-and-the-action-row)).
 
 ### Listening spans (Sync v2)
@@ -717,15 +724,22 @@ one now).
 - **Closed** on a pause, a move (the new place opens the next span with the move's
   reason; a move while paused is sent at once as a span that moved nowhere, as a save
   would have been), a stop, a book switch, a sleep stop and the end of the book, which
-  then sends `finish` once (so does Mark finished). The web's `pagehide` closes it and
-  sends what waits with `keepalive`.
+  then sends `finish` once. The finish goes into the outbox only after the last span's
+  close has landed there, a close already on its way included (the web reports `paused`
+  just before `ended`; `closesInFlight` holds it and the finish takes over its send). One
+  send then follows both (`finishAfter`, server#359): one POST carries `listen` then
+  `finish`, so the server has the book's session before its finish. The book page's Mark as finished goes
+  the same way (`recordFinishEvent` in `finish-route.ts`). The web's `pagehide` closes it
+  and sends what waits with `keepalive`.
 - **Offline**, the tick leaves the span open until it is an hour long
   (`MAX_SPAN_MS`), so a day offline is a handful of events. Online or offline the open span is stored every 5 s
   (`OPEN_SPAN_KEEP_MS`) with the event id it took when it opened (`OpenSpan.id`,
   so a span closed twice is one event), so a kill loses at most 5 s: the next
   launch closes the stored span into the outbox (`recoverOpenSpan`). The keep
-  never moves the span's end back. An event never claims more than 23 h of wall
-  clock (`MAX_EVENT_SPAN_MS`), for timers that stood still while the app slept.
+  never moves the span's end back, since a native lock-screen move's landed place reaches
+  the store before the move does. A save and the 15 s cut take where the engine is. An
+  event never claims more than 23 h of wall clock (`MAX_EVENT_SPAN_MS`), for timers that
+  stood still while the app slept.
   Offline means the server is marked unreachable
   ([Reachability](state-and-data.md#reachability-srcapireachabilityts)), which on a
   phone follows the system's network.

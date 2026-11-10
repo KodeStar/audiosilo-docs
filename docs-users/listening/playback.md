@@ -40,7 +40,7 @@ The player shows whether your place is **Synced**, or **Saved on this device, wi
 A few protections keep your place safe:
 
 - **A book never silently restarts from the beginning.** If a streamed book can't find your place, the player shows **Retry** instead of starting at zero.
-- **An earlier position can't overwrite your progress by accident.** Only a move back you make yourself counts, including a scrub from the lock screen, headphones or a car.
+- **An earlier position can't overwrite your progress by accident.** Only a move back you make yourself counts, including a scrub from the lock screen, headphones or a car. If you listened offline while another device got further, the further place isn't overwritten, and for the book you're playing the player asks which to keep. See [Listening on more than one device](#listening-on-more-than-one-device).
 - **You pick up another device's place.** If a book is still loaded here and you've listened further elsewhere, the player jumps to the newer place and says so, with **Undo**.
 - **Auto-rewind.** After a pause, playback backs up a few seconds so you catch the sentence again. Change it in [Settings](settings.md#playback).
 
@@ -63,7 +63,7 @@ If the connection drops while you listen:
 
 - A **downloaded** book keeps playing. See [Listen offline](offline-downloads.md).
 - A **streamed** book pauses with **Retry** once it runs out of buffered audio. Offline, Home shows **Not downloaded** for it instead of Resume.
-- Progress, bookmarks and finished marks wait on the device and sync once the server is back.
+- Progress, bookmarks and finished books, **Mark as finished** included, wait on the device and sync once the server is back.
 
 ## Lock-screen and headphone controls
 
