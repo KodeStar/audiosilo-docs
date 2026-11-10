@@ -96,7 +96,7 @@ Many such books can get real chapters, from the community database or from your 
 
 ## Good to know
 
-- **One tab plays at a time in a browser.** Start playing in a second tab and the first one pauses and says **Playing in another tab**. Press play there to take it back. If both tabs have the same book, the tab you return to carries on from where the other tab got to. Tabs signed in to different servers or accounts can play at once. Your other devices and the apps aren't paused.
+- **One tab plays at a time in a browser.** Start playing in a second tab and the first one pauses and says **Playing in another tab**. Press play there to take it back. With the same book in both tabs, the tab you return to carries on where the other got to. Tabs signed in to different servers or accounts can play at once. Your other devices and the apps aren't paused.
 - **Older servers** don't combine listening from several devices. The app saves your place as before, and the protections in [Your position follows you](#your-position-follows-you) still apply. On some, **Mark as finished** needs a connection.
 - **MKA books.** An `.mka` book with MP3 inside plays like any MP3 book when your server has ffmpeg (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). On the very first play of a large one, a jump may not land exactly until the server has finished preparing it.
 - **Very long single files on Android.** A book in one `.m4b` or `.m4a` file over about 41 hours shows a scrubber for the whole file on the lock screen, with no chapter buttons. Its chapters work as usual in the app.
