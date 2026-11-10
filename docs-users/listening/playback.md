@@ -15,9 +15,11 @@ While a book plays, a small player stays with you on every screen.
 
 - On the left: the cover, the chapter and the book. Tap it to open the full player.
 - In the middle: chapter and skip buttons, play/pause, and a scrubber for the current chapter.
-- On the right: speed, the [sleep timer](sleep-timer.md), bookmark, output, [Cast](chromecast.md), [Up next](up-next.md), and an arrow to the full player. After a jump, an [undo button](full-player.md#undo-a-jump) appears here too.
+- On the right: speed, the [sleep timer](sleep-timer.md), bookmark, output, [Cast](chromecast.md), [Up next](up-next.md), and an arrow to the full player.
 
-In a narrow window, some of these buttons are left to the full player. The bookmark button marks where you are: see [Add bookmarks and notes](bookmarks-and-notes.md).
+After a jump, an [undo button](full-player.md#undo-a-jump) floats just above the bar.
+
+In a narrow window, some buttons are left to the full player. The bookmark button marks where you are: see [Add bookmarks and notes](bookmarks-and-notes.md).
 
 ## Play to another speaker (AirPlay and Chromecast)
 

@@ -49,15 +49,24 @@ timer have their own pages ([End of a book](end-of-book.md),
   panel's now-playing line drops a chapter name that `sameTitle` matches);
   `TransportControls size="sm"` over the dock's `ChapterScrubber`, which takes the
   playing book's `bookmarks` and draws their ticks in the segment
-  (`usePlayingSegment`); and on the right the `UndoChip`, speed, sleep, bookmark,
-  output (only when `canRoutePick`), Cast (`CastButton`, only when the bar has room for
-  all its actions; see [Chromecast](chromecast.md#the-cast-button)), Up next and expand. What fits is decided by
-  the bar's **measured** width (`dockLayout`), not the window class; everything it
-  drops is in the full player. While the Undo chip shows (`useUndoVisible`), its
-  measured width comes off first and the right cluster stops growing, so the book
-  keeps its title. Speed and sleep open through `usePlayerSheets`; the dock mounts
-  **no sheets** and no grace card (`ShellPlayerOverlays` does, below). It publishes
-  its height as the `dock` edge.
+  (`usePlayingSegment`); and on the right speed, sleep, bookmark, output (only when
+  `canRoutePick`), Cast (`CastButton`, only when the bar has room for all its
+  actions; see [Chromecast](chromecast.md#the-cast-button)), Up next and expand.
+  **Three columns:** the book and the actions are equal side columns (`flex-1
+  basis-0`, the same padding on both sides) and the transport sits between them, so
+  it is centred on the bar whatever the title, the actions or the sleep countdown.
+  `dockLayout` decides the middle column's width (`centre`, 300-560 with the
+  scrubber) and what fits, from the bar's **measured** width, not the window class:
+  every action from 1144 (both side columns sized for them with the sleep pill at its
+  widest, a running "10:05:00" or "Keep going"), the tablet set (sleep, Up next,
+  expand) below that, and no scrubber below 800. Everything it drops is in the full
+  player. The `UndoChip` **floats above the bar**, centred over the transport, and
+  nothing in the bar lays out around it, so a jump never moves or resizes the
+  scrubber under the pointer that made it. Speed and sleep open through
+  `usePlayerSheets`; the dock mounts **no sheets** and no grace card
+  (`ShellPlayerOverlays` does, below). It publishes its height as the `dock` edge,
+  plus the chip's band (`UNDO_CHIP_HEIGHT` and a gap) while the chip shows, so
+  toasts clear it.
 - **The sync line** (dock and the full player's status line) is `usePlaceSync`
   (`place-sync.ts`): sign in again > saved on this device (the server offline, or
   this server's saves queued) > synced / synced just now. It counts only the playing
@@ -156,9 +165,12 @@ code starts books in place (`startBookInPlace`) and defers any screen with
 
 After **any** jump of more than a minute of book position, the app remembers where
 the listener was for a few seconds so the `UndoChip` (`undo-chip.tsx`) can take
-them back; the chip replaces the full player's `PlayerStatusLine` and leads the
-docked bar's actions, and `undoJumpWithToast` seeks back and confirms. The
-thresholds and windows are constants at the top of `jump-undo.ts`.
+them back; the chip replaces the full player's `PlayerStatusLine` and floats above
+the docked bar over its transport, and `undoJumpWithToast` seeks back and confirms.
+While the sleep timer's grace card is open the chip gives way everywhere
+(`useUndoVisible` is false, from `useGraceCardOpen`), so the card never moves when
+the chip expires. The thresholds and windows are constants at the top of
+`jump-undo.ts`.
 
 "Any jump" includes the ones that never pass through our UI - a lock-screen or
 headphone seek, a CarPlay scrub - so jumps are **not** recorded by the seek actions.

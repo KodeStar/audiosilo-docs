@@ -826,23 +826,26 @@ async function captureWide(name, viewport, shots) {
 
   if (wanted(shots.dockUndo)) {
     // A jump of more than a minute (the next chapter, from the docked bar) brings up
-    // the Undo chip for ten seconds; the shot is the bar itself.
+    // the Undo chip for ten seconds, floating above the bar over the transport; the shot
+    // runs from a little above the chip down to the bar's bottom edge.
     await step('dock undo chip', async () => {
       // Only once jump-undo is watching (a partial run gets here sooner than a full one).
       const wait = listenedAt + JUMP_UNDO_READY_MS - Date.now();
       if (wait > 0) await sleep(wait);
-      const undo = tid(page, 'dock-actions').getByRole('button', {name: /^Back to /});
+      const undo = tid(page, 'dock-undo').getByRole('button', {name: /^Back to /});
       await tid(page, 'shell-docked-player')
         .getByRole('button', {name: 'Next chapter', exact: true})
         .click({timeout: 8000});
       await undo.waitFor({timeout: 8000});
-      // The chip moves the transport under the pointer: park it off the bar, or the shot
-      // shows whichever button slid beneath it hovered.
+      // Park the pointer off the bar, or the shot shows the Next chapter button hovered.
       await page.mouse.move(0, 0);
       await sleep(SETTLE_MS);
-      const box = await tid(page, 'shell-docked-player').boundingBox();
-      if (!box) throw new Error('no docked bar');
-      await shoot(page, shots.dockUndo, {clip: box});
+      const bar = await tid(page, 'shell-docked-player').boundingBox();
+      const chip = await undo.boundingBox();
+      if (!bar || !chip) throw new Error('no docked bar or Undo chip');
+      const top = Math.max(0, chip.y - 12);
+      const clip = {x: bar.x, y: top, width: bar.width, height: bar.y + bar.height - top};
+      await shoot(page, shots.dockUndo, {clip});
       // Undo it, so the book is back where the warm-up left it.
       await undo.click({timeout: 5000});
       await undo.waitFor({state: 'hidden', timeout: 8000});
