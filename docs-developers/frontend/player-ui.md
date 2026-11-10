@@ -55,12 +55,18 @@ timer have their own pages ([End of a book](end-of-book.md),
   **Three columns:** the book and the actions are equal side columns (`flex-1
   basis-0`, the same padding on both sides) and the transport sits between them, so
   it is centred on the bar whatever the title, the actions or the sleep countdown.
+  The one exception is a bar from 640 to 731 px wide, where equal side columns would
+  be narrower than the actions need (`dockLayout`'s `centred` is false): there the
+  actions column is sized to its content, the book column takes the squeeze and the
+  transport sits off centre, so a running sleep timer never covers the next-chapter
+  button. The side widths are estimates at the default text size; with much larger
+  text the actions can still reach the transport.
   `dockLayout` decides the middle column's width (`centre`, 300-560 with the
   scrubber) and what fits, from the bar's **measured** width, not the window class:
   every action from 1144 (both side columns sized for them with the sleep pill at its
   widest, a running "10:05:00" or "Keep going"), the tablet set (sleep, Up next,
   expand) below that, and no scrubber below 800. Everything it drops is in the full
-  player. The `UndoChip` **floats above the bar**, centred over the transport, and
+  player. The `UndoChip` **floats above the bar**, centred on the bar (over the transport, except on a 640 to 731 px bar, where the transport sits off centre), and
   nothing in the bar lays out around it, so a jump never moves or resizes the
   scrubber under the pointer that made it. Speed and sleep open through
   `usePlayerSheets`; the dock mounts **no sheets** and no grace card

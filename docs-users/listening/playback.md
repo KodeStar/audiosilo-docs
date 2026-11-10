@@ -96,7 +96,7 @@ Many such books can get real chapters, from the community database or from your 
 
 ## Good to know
 
-- **Older servers** don't combine listening from several devices. The app just saves your place, as before.
+- **Older servers** don't combine listening from several devices. The app saves your place as before, and the protections in [Your position follows you](#your-position-follows-you) still apply. On some, **Mark as finished** needs a connection.
 - **MKA books.** An `.mka` book with MP3 inside plays like any MP3 book when your server has ffmpeg (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). On the very first play of a large one, a jump may not land exactly until the server has finished preparing it.
 - **Very long single files on Android.** A book in one `.m4b` or `.m4a` file over about 41 hours shows a scrubber for the whole file on the lock screen, with no chapter buttons. Its chapters work as usual in the app.
 - **A listen the server turns down**, such as one from a download of a different length, is listed with the reason on your [account page](account.md#listening-sync).
