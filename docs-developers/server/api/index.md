@@ -453,22 +453,23 @@ round-trips reliably. The value is the slash-separated path relative to the
 library root, exactly as returned by `/fs` listings, book `rel_path` fields, and
 chapter `file_path` fields.
 
-Two server-side guarantees apply to every `?path=`, plus a length cap on the
-content routes:
+Two server-side guarantees apply to every `?path=`, plus a length cap:
 
-- **Length cap** - every route that takes a `?path=` answers a path over 4096
-  bytes (as sent, `relpath.MaxBytes`, which `catalog.MaxPathBytes` names) with
-  400 `path is too long`. The check comes **first**: before the library is looked
+- **Length cap** - a path over 4096 bytes (as sent, `relpath.MaxBytes`, which
+  `catalog.MaxPathBytes` names) is answered 400 `path is too long` by the content
+  routes (`item`, `chapters`, `cover`, `stream`, progress, bookmarks, notes,
+  history, `POST /cast/token` and the like), browse (`/fs`), removing from the
+  queue or a collection, the admin folder override (`PUT`/`DELETE`) and the
+  Bridge's book read. The check comes **first**: before the library is looked
   up (an unknown or ungranted library answers 400 for such a path, not 404 or
-  403), and before the path is cleaned or stored. That covers the content routes
-  (`item`, `chapters`, `cover`, `stream`, progress, bookmarks, notes, history,
-  `POST /cast/token` and the like), browse (`/fs`), removing from the queue or a
-  collection, the admin folder override (`PUT`/`DELETE`), the Bridge's book read
-  and the Bridge's Audible listening route. In a
-  [listening sync](reference.md#post-apiv1melisteningsync) batch such an event is
-  `rejected` `invalid` whatever its library, and the rest of the batch applies.
-  A podcast show or episode folder name over the cap in a Bridge's feed is
-  refused as invalid.
+  403), and before the path is cleaned or stored. In a
+  [listening sync](reference.md#post-apiv1melisteningsync) batch, the Bridge's
+  Audible listening batch included, such an event is `rejected` `invalid`
+  whatever its library, and the rest of the batch applies. The podcast routes
+  (unfollow, fetch, retention and policy) and the Bridge's ASIN enrichment refuse
+  such a path as their usual `400 invalid_request` (a show or episode path
+  `feed.ShowPath`/`EpisodePath` doesn't take, or no book path), and a podcast
+  show or episode folder name over the cap in a Bridge's feed is invalid.
 - **Traversal safety** - the path is resolved through `library.SafeJoin`, which
   rejects `..` escapes, absolute-path injection, and symlinks pointing outside
   the library root (400 `invalid path`).
