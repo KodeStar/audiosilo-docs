@@ -47,16 +47,16 @@ correctly-labelled file can never be misdetected as a bare OpenAudible array
   than misparsed).
 - `books` is an array of flat, factual per-book records (below).
 
-The same shape is read by two mirrored consumers - the Go automated intake
+Two mirrored consumers read the same shape: the Go automated intake
 (`internal/importer/audiosilobooks.go`) and the site's in-browser parser
-(`site/src/lib/import-parse.ts`) - so a file that imports through the bot also
+(`site/src/lib/import-parse.ts`). So a file that imports through the bot also
 previews in the browser.
 
 ## Per-book fields
 
 Each entry in `books` is a flat object with these keys (all snake_case). A book
 is imported only if it carries a `title`, at least one author, at least one
-narrator, and a recognized `language` - a book missing any of those **four
+narrator, and a recognized `language`. A book missing any of those **four
 required fields is skipped** with a warning. Every other field is optional;
 **omit a field you cannot verify rather than guessing a value**.
 
@@ -69,25 +69,53 @@ required fields is skipped** with a warning. Every other field is optional;
 | `series` | string | The series name. |
 | `series_position` | string | A number (`"1"`, `"2.5"`) or an omnibus range (`"1-3.5"`). If it fails the position pattern the book still imports, but is **not placed in the series**. |
 | `asin` | string | The Audible ASIN. This is the **identity and dedup key**. The envelope carries no marketplace region, so a present ASIN defaults to region `us`. |
-| `isbn` | string | The recording's ISBN-10 or ISBN-13 (hyphens and spaces are stripped). It is recorded on a new recording, rides along on an ASIN merge (below), and is added when the row's ASIN names a recording that lacks it. A row **without** an ASIN adds it to a recording we hold only when that recording is already attested by a user-tier source and is the one same-narrator candidate on the work, both sides state a runtime within 10%, and the row's year is no more than a year before the recording's; nothing else in the row is applied. A row without an ASIN never adds an ISBN to a recording only a bulk mirror has described: it is reported as `isbn-not-attached: mirror-only`, and a row with the ASIN carries the ISBN. Dropped when malformed, when another recording already holds it, or when a work holds it as a print ISBN (`xref.isbn`, compared across the ISBN-10 and ISBN-13 spellings). Send the audiobook's own ISBN, not the print edition's. |
+| `isbn` | string | The recording's ISBN-10 or ISBN-13 (hyphens and spaces are stripped). Send the audiobook's own ISBN, not the print edition's. How the importer applies it is in [How an `isbn` is applied](#how-an-isbn-is-applied). |
 | `language` | string | **Required.** An ISO 639-1 code (`en`) or the English language word (`English`). An absent or unmappable language **skips the book**. |
 | `release_date` | string | `YYYY-MM-DD`, or `YYYY-MM` / `YYYY` when that is all the source states. |
 | `publisher` | string | The recording's publisher. |
 | `runtime_min` | integer | Total runtime in minutes (positive). |
-| `abridged` | boolean | Tri-state: **omit when unknown** - present only when the source actually states it. |
+| `abridged` | boolean | Tri-state. **Omit it when unknown**, and include it only when the source actually states it. |
 | `cover_url` | string | Cover image URL. **`https://` only**; any other value is dropped. |
 | `chapters` | integer | A chapter *count*, not a per-chapter array. The importer ignores it (chapter timing lives on recordings, sourced elsewhere), so it is optional and informational. |
 
-**Not consumed.** Any field not listed above
-(genre, ratings, publisher blurb, personal listening state, local file paths) is
-dropped - this is a facts-only database.
+**Not consumed.** Any field not listed above (genre, ratings, publisher blurb,
+personal listening state, local file paths) is dropped, because this is a
+facts-only database.
+
+### How an `isbn` is applied
+
+The importer records an `isbn`:
+
+- on a new recording;
+- on an ASIN merge, where it rides along (see
+  [What the importer does with it](#what-the-importer-does-with-it));
+- on the recording the row's ASIN names, when that recording lacks it.
+
+A row **without** an ASIN adds the ISBN to a recording the catalogue holds only
+when all of these are true:
+
+- that recording is already attested by a user-tier source;
+- it is the one same-narrator candidate on the work;
+- both sides state a runtime, within 10% of each other;
+- the row's year is no more than a year before the recording's.
+
+Nothing else in such a row is applied. A row without an ASIN never adds an ISBN to
+a recording that only a bulk mirror has described. The importer reports it as
+`isbn-not-attached: mirror-only`, and a row with the ASIN carries the ISBN.
+
+The ISBN is dropped when:
+
+- it is malformed;
+- another recording already holds it;
+- a work holds it as a print ISBN (`xref.isbn`, compared across the ISBN-10 and
+  ISBN-13 spellings).
 
 ### The rules that govern the values
 
 Both apply to every field, and both are enforced downstream:
 
 - **Facts only, never fabricated.** Emit only values your source actually
-  provides. If a fact is not known, omit the optional field - do not invent an
+  provides. If a fact is not known, omit the optional field. Do not invent an
   ASIN, a date, or an abridged flag.
 - **No marketing or personal data.** Publisher copy, genres, ratings, star
   counts, and per-user state are not imported even if present, so there is no
@@ -124,8 +152,8 @@ so the same identity and dedup rules apply as any other import (full detail unde
 
 - **ASIN dedup.** A book whose ASIN already exists in the catalogue is skipped.
   An import that produces no new records **and** dedupes nothing is flagged
-  `needs-human`, not `duplicate` - usually a sign the file did not match its
-  declared format.
+  `needs-human`, not `duplicate`. That is usually a sign the file did not match
+  its declared format.
 - **Work identity** is (title slug + author set), with per-volume disambiguation
   so distinct series volumes never merge into one work.
 - **ASIN merge.** A same-work, same-narrator entry whose only new fact is another
@@ -133,60 +161,69 @@ so the same identity and dedup rules apply as any other import (full detail unde
   existing recording (guarded by runtime and abridged deltas) rather than
   minting a duplicate recording.
 - **An ASIN must name this book.** A row whose `asin` sits on a work it shares no
-  author surname and no title word with is refused and reported: that ASIN belongs to
-  another book, so check how your tool matched it. Send a row with no `asin` rather than
+  author surname and no title word with is refused and reported. That ASIN belongs
+  to another book, so check how your tool matched it. Send a row with no `asin` rather than
   one your tool found by a fuzzy title search.
 - **Series joining.** A series is found by its name, and a name is not an
-  identity, so a row joins a same-named catalogued series only when the series
-  fits it. Its **authors** must fit (a series one author dominates is closed to
-  an unrelated author's book of the same name), and so must its **language**: a
-  series whose derived language - the strict majority of its members'
-  languages - is known and differs from the row's is closed to the row, even
-  when the author is the same (an Italian edition does not join the Spanish
-  series of the same name). A closed series is stepped past: the row joins or
-  founds the next series of that name (`lost-fleet-2`), or, under
-  `--existing-series-only`, the claim is dropped and reported. A series whose
-  members tie between two languages, and a row whose language is unknown, are
-  never judged by language.
+  identity. So a row joins a same-named catalogued series only when the series
+  fits it:
+  - its **authors** must fit. A series one author dominates is closed to an
+    unrelated author's book of the same name;
+  - its **language** must fit. A series' derived language is the strict majority
+    of its members' languages. When it is known and differs from the row's, the
+    series is closed to the row, even when the author is the same. An Italian
+    edition does not join the Spanish series of the same name.
+
+  A closed series is stepped past. The row joins or founds the next series of that
+  name (`lost-fleet-2`). Under `--existing-series-only`, the claim is dropped and
+  reported instead. A series whose members tie between two languages, and a row
+  whose language is unknown, are never judged by language.
 - **Series qualifiers.** A claim also reaches a catalogued series by what the
-  two names state, not only by their exact spelling. A trailing edition
-  decoration (`[German Edition]`, `(Deutsche Ausgabe)`) and a trailing
-  reading-order qualifier (`(Chronological Order)`, `(Published Order)`,
-  `(in chronologischer Reihenfolge)`) are read off the name, which leaves a base
-  name and a language. A claim reaches a held series with the same base in the
-  same language. The language is the decoration's when there is one; otherwise
-  it is the held series' derived language, or the row's own language for the
-  claim. So `Throne of Glass (Deutsche Ausgabe)` finds the held
-  `Throne of Glass [German Edition]`, and a German row naming the plain
+  two names state, not only by their exact spelling. The importer reads two kinds
+  of trailing text off the name, which leaves a base name and a language:
+  - an edition decoration (`[German Edition]`, `(Deutsche Ausgabe)`);
+  - a reading-order qualifier (`(Chronological Order)`, `(Published Order)`,
+    `(in chronologischer Reihenfolge)`).
+
+  A claim reaches a held series with the same base in the same language. The
+  language is the decoration's when there is one. Otherwise it is the held
+  series' derived language, or the row's own language for the claim. So
+  `Throne of Glass (Deutsche Ausgabe)` finds the held
+  `Throne of Glass [German Edition]`. A German row naming the plain
   `Harry Potter` joins the German edition series instead of founding
-  `harry-potter-2` beside it. A reading-order variant (a series with
-  `ordering_of`), or any series held in chronological or recommended order, is
-  reached only by a claim that states that ordering; an unqualified claim reaches
-  only a series in publication order or one stating none. These
-  series are tried after the same-named ones and are judged by the same author
-  and language rules, so under `--existing-series-only` a reached series is a
-  join, not a drop. The importer never writes `translation_of`, `ordering` or
+  `harry-potter-2` beside it.
+
+  A reading-order variant (a series with `ordering_of`), or any series held in
+  chronological or recommended order, is reached only by a claim that states that
+  ordering. An unqualified claim reaches only a series in publication order or
+  one stating none.
+
+  These series are tried after the same-named ones, and are judged by the same
+  author and language rules. So under `--existing-series-only` a reached series is
+  a join, not a drop. The importer never writes `translation_of`, `ordering` or
   `ordering_of`, and a series it founds keeps the source's name exactly as given.
+
   Rows in one batch that spell the same series in different ways are judged
-  together, against one record of that series' authors, so a batch of another
-  author's books cannot take over a series by spreading across spellings. A
-  claim that adds a membership to a series stored under a genuinely different
-  name (not merely another case or bracket spelling) is listed in the run's
-  notes. The intake bot and `libex-select` resolve series through this same rule.
-- **Names that slug to nothing.** A person's identity is the slug of their name,
-  so a name written entirely in a script the slug rule folds away (Cyrillic
+  together, against one record of that series' authors. So a batch of another
+  author's books cannot take over a series by spreading across spellings. A claim
+  that adds a membership to a series stored under a genuinely different name (not
+  merely another case or bracket spelling) is listed in the run's notes. The
+  intake bot and `libex-select` resolve series through this same rule.
+- **Names that slug to nothing.** A person's identity is the slug of their name.
+  So a name written entirely in a script the slug rule folds away (Cyrillic
   `Йордан Йовков`, Korean `김영하`) has none of its own. Such an author,
-  contributor or narrator is never credited to a shared catch-all record: the
-  book is imported with that credit left off, and the import lists it under
-  "credits not recorded" with the reason `unsluggable` (the intake bot puts the
-  same lines in its notes). A book left with no individual author is skipped as
-  `missing-author`, and one left with no narrator as `missing-narrator`, each
-  with a warning naming the names. The intake verdict says how many books were
-  skipped this way and that they need a maintainer - an export of nothing but
-  such books is `needs-human` for that reason, not because the file is the
-  wrong format.
-- **Edition markers.** A trailing `(Unabridged)`/`(Abridged)` in the title is
-  stripped before identity and, if `abridged` was not set, seeds the recording's
+  contributor or narrator is never credited to a shared catch-all record.
+  Instead, the book is imported with that credit left off. The import lists the
+  credit under "credits not recorded" with the reason `unsluggable`, and the
+  intake bot puts the same lines in its notes.
+
+  A book left with no individual author is skipped as `missing-author`, and one
+  left with no narrator as `missing-narrator`, each with a warning naming the
+  names. The intake verdict says how many books were skipped this way, and that
+  they need a maintainer. So an export of nothing but such books is `needs-human`
+  for that reason, not because the file is the wrong format.
+- **Edition markers.** A trailing `(Unabridged)` or `(Abridged)` in the title is
+  stripped before identity. If `abridged` was not set, it seeds the recording's
   tri-state abridged flag.
 - **Retired slugs.** A person, series, or work whose identity resolves to a slug
   a repair merge has already retired is matched against the surviving record
@@ -195,11 +232,10 @@ so the same identity and dedup rules apply as any other import (full detail unde
 
 ## Submitting a generated file
 
-The file is attached to the **Import a library** issue form
-(`data:import`), dragged into its **Export file** field - files up to 25 MiB are
-accepted. The intake workflow sniffs the envelope, runs it through the
-importer, and - on a clean result - opens a bot pull request with the canonical
-records for review. See
+Attach the file to the **Import a library** issue form (`data:import`) by
+dragging it into the **Export file** field. Files up to 25 MiB are accepted. The
+intake workflow sniffs the envelope and runs it through the importer. On a clean
+result, it opens a bot pull request with the canonical records for review. See
 [Intake automation](./contributing-data.md#intake-automation-issue-form-to-bot-pull-request)
 for the verdicts and the pull-request flow.
 
@@ -224,7 +260,7 @@ with its own token (from its environment or `gh`) submits this way.
 ## Local files: emit the folder-scan envelope
 
 If your tool inspects audio files directly (tags, `ffprobe`) rather than
-re-exporting existing metadata, target the folder-scan envelope instead - it is
+re-exporting existing metadata, target the folder-scan envelope instead. It is
 the same idea with per-field provenance, which is what a scanner can honestly
 supply:
 
@@ -233,7 +269,8 @@ supply:
 ```
 
 This is the shape `metascan` produces (see
-[Scanning local files](./contributing-data.md#scanning-local-files-metascan)); the
-`pkg/scan` package is the reference producer. Each book records where every field
-came from (`tag` / `path` / `filename`), and unknown fields are omitted rather
-than guessed - the same facts-only rule, expressed through provenance.
+[Scanning local files](./contributing-data.md#scanning-local-files-metascan)).
+The `pkg/scan` package is the reference producer. Each book records where every
+field came from (`tag`, `path` or `filename`), and unknown fields are omitted
+rather than guessed. It is the same facts-only rule, expressed through
+provenance.
