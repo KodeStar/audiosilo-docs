@@ -29,11 +29,17 @@ plain link stays `/library`.
 - **One selected library.** Every mode but Folders shows one library.
   `useSelectedLibrary()` reconciles the device-local `useLibrarySelection` pick
   (see [State & data](state-and-data.md#library-selection-srcstoreslibrary-selectionts))
-  with every connection's library list. `LibraryPicker` (published with
-  `SubNavActions`, order -100) chooses it, grouped by server, and hides itself
-  when there is only one library. In Collections mode it is `by="server"`,
-  because a collection belongs to a server. Each mode body is keyed on
-  `connection:library`, so switching remounts it cleanly.
+  with every connection's library list. It never puts another server's library
+  in place of one whose server has not answered. While that server's list is not
+  in, the screen shows that server's state: a skeleton, the sign-in state, the
+  offline state, or the load error with Retry.
+  - `LibraryPicker` (published with `SubNavActions`, order -100) chooses the
+    library, grouped by server. Among several servers each label carries its
+    server. It hides itself when there is only one library on one server.
+  - In Collections mode it is `by="server"`, because a collection belongs to a
+    server.
+  - Each mode body is keyed on `connection:library`, so switching remounts it
+    cleanly.
 - **Mode bodies** live in `src/components/library/modes/`:
   - `BooksMode` (see [Books mode](#books-mode));
   - `AuthorsMode` and `NarratorsMode`, on the shared `PeopleMode` in
@@ -57,7 +63,10 @@ plain link stays `/library`.
 its pages never mix with the 100-book pages of `useLibraryBooks`. There is one
 cache entry per library whatever the screen's sort, because every sort happens
 on the device. The pages loaded so far are usable at once. A failed page keeps
-what loaded, and Retry carries on.
+what loaded, and Retry carries on. While a page waits for the network
+(`offline`), the books loaded stay and "Loading more" hides. With nothing loaded
+the grid is the offline state, never a skeleton
+(see [Offline states](state-and-data.md#offline-states-srcliboffline-statets)).
 
 The view is `books-view.ts`, which is pure:
 

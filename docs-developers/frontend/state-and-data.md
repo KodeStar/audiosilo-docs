@@ -166,7 +166,8 @@ across connections.
 - **Mutations** invalidate their exact key on success (`useAddNote`,
   `useDeleteBookmark`, …). `addBookmark()` is the framework-free twin for callers
   outside React. It invalidates `qk.bookmarks` and `qk.myBookmarks` after the
-  write.
+  write. In the app a mutation is never held for the network (see
+  [The online flag](#the-online-flag-srclibdevice-onlinets)).
 - **Optimistic updates.** `useToggleFavourite` shows the full pattern. `onMutate`
   cancels, snapshots and patches the cached list; `onError` rolls back;
   `onSettled` invalidates to reconcile server-derived fields.
@@ -249,6 +250,117 @@ content that isn't there (`isNotInLibraryError`: a 404, 403 or 400). A refused
 token stays refused and a missing book stays missing, so a retry only doubled
 every dead request.
 
+### The online flag (`src/lib/device-online.ts`)
+
+`useDeviceOnline()` and `watchDeviceOnline(listener)` say whether the device has a
+network at all. They never say whether the internet answers.
+
+- **On the web** the signal is the browser's `online` and `offline` events.
+- **In the app** it is expo-network's `isConnected`. `isInternetReachable` is not
+  read. A phone on Wi-Fi with no internet still reaches a server on the same
+  network, and calling that offline hid Retry and the Library.
+- **Unknown counts as online.** That covers a state not yet read, a read that
+  failed, and a network Android can't name (`type: UNKNOWN`, which Android reports
+  with `isConnected: false`).
+- **The first read never undoes a change the listener already told.** iOS can
+  answer `getNetworkStateAsync` up to 5 s late.
+
+In the app the same source drives TanStack's `onlineManager`
+(`onlineManager.setEventListener(watchDeviceOnline)` in `provider.tsx`). The web
+keeps TanStack's own window listeners, which are the same events. So every
+platform follows these rules:
+
+- **A query waits while the device has no network** (`fetchStatus: 'paused'`,
+  `isPaused`) and is asked again when the network returns. A screen treats a
+  paused query as offline, not as loading (see
+  [Offline states](#offline-states-srcliboffline-statets)).
+- **A read that must settle either way** asks with `networkMode: 'always'` or
+  through `fetchFailFast`. A read with a copy on this device to fall back to is
+  one. `useBookProgress` falls back to the mirror, and a held read would never
+  reach it.
+- **A framework-free `queryClient.fetchQuery` waits too**, unless it asks with
+  `networkMode: 'always'`. Keep-ahead's item and chapters reads are held this way
+  (see [Offline](offline.md#the-controller)).
+- **Writes are never held in the app.** The query client's `mutations` default
+  there is `networkMode: 'always'`. A bookmark, note, rating, queue, collection or
+  progress edit made with no network is sent, fails at once, and shows its
+  screen's own error with the form still open. A held mutation lives only in
+  memory, so Save would spin, and the write would be lost if the app closed
+  before the network returned.
+- **The web keeps TanStack's default for writes.** A write waits for the browser
+  to come back online. A write that must work offline on the web too says so
+  itself (`useMarkFinished`).
+
+A held request neither fails nor marks its server down. So a surface that says
+"offline" asks this signal too, and not reachability alone (Search's results,
+`usePlayableHere`). Whether one server answers is a different question, which
+[Reachability](#reachability-srcapireachabilityts) answers.
+
+The tests are `src/lib/device-online.test.ts` and `src/api/online-wiring.test.ts`.
+A test that mocks this module spreads `jest.requireActual`, because the provider
+imports `watchDeviceOnline`.
+
+### Offline states (`src/lib/offline-state.ts`)
+
+One rule says what a read with nothing to show is:
+`offlineState({ waiting, failed, deviceOnline })`.
+
+| Answer | When | What the screen shows |
+|---|---|---|
+| `'offline'` | The read waits for the network (`isPaused`), or it failed with no network on the device. A reload offline sends the request before anything knows. | The offline state, with no Retry. The read is asked again by itself. |
+| `'failed'` | The read failed with a network on the device, so the trouble is the server's. | The server's error, with Retry. |
+| `null` | The read is loading, or loaded. | The screen's own states. |
+
+A signed-out refusal is decided before the rule and is never "offline".
+
+**Who asks the rule directly.** Home's hero (over `useAllProgressAll().offline`),
+the Library's server state, Folders (per server, over `LibrariesOfServer.paused`),
+Books mode (over `useAllLibraryBooks().offline`) and the read-along map
+(`useBookReadalong`).
+
+**A page or a list over one query** asks `useUnreadQuery(query)` with the query's
+`{ data, isPaused, error }`:
+
+- It answers `null` once the query holds data, so a kept answer always shows.
+- It answers `'failed'` for an `ApiError`, which is the server's own answer. So
+  the screen's sign-in or not-in-library state stands, whatever the network did
+  since.
+- The screen checks it **before its skeleton**. A held query stays `isPending`,
+  and `useAllLibraryBooks().isLoading` counts it. A skeleton drawn for that never
+  ends, where the screen used to fail with a Retry.
+
+A page over the whole-library list asks `useUnreadBooks(list)`. There, a list read
+to its end with no book in it counts as read, so its empty state shows. The
+Journal's tabs ask `unreadSources` (`merge-model.ts`). A source held for the
+network is `waiting`, and so is one whose `/server` flag is held.
+
+These screens ask it:
+
+- the Library's Series, Authors, Narrators, Collections and Shows modes;
+- the series, author, narrator, book, episode, collection, show and folder
+  pages;
+- a book's bookmarks, notes and history sections.
+
+A page whose failure is `LoadFailedNote` (book, episode, folder) hands it the hint
+as `offline`, so the sign-in state still comes first. A new screen with a skeleton
+does the same.
+
+**The surface** is `<OfflineState hint>`
+(`src/components/layout/offline-state.tsx`): the offline icon, the title
+`common.offlineTitle` and the caller's hint.
+
+- `useOfflineHint` adds `common.offlineDownloads` to the hint only where downloads
+  exist (`useDownloads.supported`). A web player on a plain-http address has no
+  Downloads tab to send the listener to.
+- Write a hint without the Downloads sentence, and never a second "You're
+  offline" title. `common.offlinePage` and `common.offlineList` are the hints of
+  a page and a list with nothing more to say.
+- With no `hint` it shows the title alone. That is for a section of a page that
+  is on screen, such as a downloaded book's bookmarks, where nothing sends the
+  listener to Downloads.
+
+The rule's tests are in `src/lib/offline-state.test.ts`.
+
 ### Connections that need signing in again
 
 When a screen's load fails for a connection that needs signing in again, the
@@ -260,8 +372,9 @@ connections of the person listening that have `needsReconnect`. The state reads
 `src/components/layout/sign-in-again.tsx`. These screens show it:
 
 - Home's Now card. Recently added hides its error.
-- The Library: `refusedConnection` over the library groups when it has no library
-  to show, and in Folders mode and Books mode.
+- The Library: `refusedConnection` over the server the Library is on
+  (`useSelectedLibrary().server`) while that server's list is not in, and in
+  Folders mode and Books mode.
 - Up next, as a compact row.
 - You > Stats and Year (`useSignedOutConnection(cid)` when their reads fail).
 - The book page, the episode page and folder browse, through `LoadFailedNote`. It
@@ -272,7 +385,10 @@ Folders mode lists one group per server that has libraries or failed to list
 them, each under its server's name when there are several. A failed group that
 is not signed out shows "Couldn't load libraries from &lt;server&gt;."
 (`library.list.loadServerLibrariesError`) with a Retry that refetches only that
-server's list (`useLibrariesAll().retryServer(connectionId)`).
+server's list (`useLibrariesAll().retryServer(connectionId)`). A group whose list
+waits for the network, or failed with none on the device, keeps its row with
+"You're offline" and `library.list.serverOffline`. With no library to list, no
+failed server and no sign-in state, offline is the page's own state.
 
 ### The startup cache (web)
 
@@ -315,6 +431,40 @@ same first answers as the gate opens instead (see
   is not a browser reload, and AsyncStorage can't be read before the first
   render.
 
+### The kept `/server` answer (`src/api/server-snapshots.ts`)
+
+Every capability gate reads `qk.server(cid)`. On a cold start with no network
+that query is never answered, so without a kept copy every gate would wait on a
+flag that never comes. So each connection's last `/server` answer is kept on the
+device. It is the one copy of a server's facts for a launch that cannot reach it.
+
+- **Where.** One document by connection id under `OFFLINE_SERVERS_KEY`
+  (`audiosilo.offlineServers`), each entry `{ info, savedAt }`. It is one of the
+  `SCOPED_STORAGE_KEYS`, so either storage reset wipes it. The identity migration
+  re-keys it, and `onConnectionRemoved` forgets a removed connection's entry.
+- **Kept on every answer** a request to `/server` gets (`watchServerAnswers`, a
+  query-cache subscription). A `setQueryData` seed is `manual`, so it is never
+  written back. An answer that says what the kept one says is not rewritten, and
+  an older answer never replaces a newer one. Writes run under `tabLock`.
+- **Kept on a read outside the cache** too (`keepServerAnswer`). The listening
+  outbox's rollback check uses it
+  ([Offline](offline.md#listening-sync-the-outbox)).
+- **Seeded at launch.** `restoreServerSnapshots` runs in `bootstrapPlayback` with
+  the stores' hydration, before any screen or the car's lists read a flag.
+  `seedServerSnapshot` puts each kept answer into `qk.server(cid)`:
+  - dated `savedAt`, so the first observer still asks the server again and the
+    first answer replaces it;
+  - with `gcTime: Infinity`;
+  - never over an answer the cache already holds that is no older. On the web
+    the startup cache may have restored one first.
+
+So `useCapability`, `cachedCapability` and `fetchCapabilities` hold, offline, the
+flags they held when the app was last online. Never keep another copy of a flag
+beside it. A flag nobody has read stays unknown, and its reader decides what
+unknown means. Listening sync counts it as on (`usesListeningSync`).
+
+The tests are in `src/api/server-snapshots.test.ts`.
+
 ### Capability-gated reads {/* #capability-gated-reads-player-redesign-phase-1a */}
 
 The methods and hooks in this section are tested in `client.test.ts` and
@@ -324,7 +474,8 @@ The methods and hooks in this section are tested in `client.test.ts` and
 **`useCapability(flag, connectionId?)`** (exported from `hooks.ts`) is tri-state:
 
 - `undefined` while the connection's `/server` info is unknown (still loading, or
-  unreachable);
+  unreachable with no
+  [kept answer](#the-kept-server-answer-srcapiserver-snapshotsts));
 - then `true` or `false`. A server that predates the flag reads `false`.
 
 A screen picks its fallback, or hides the feature, on `false`. On `undefined` it
@@ -1607,19 +1758,46 @@ scoped storage key, because a stale pick is harmless.
 
 Read it through `useSelectedLibrary()`
 (`src/components/library/use-selected-library.ts`). It runs the pure
-`resolveLibrarySelection` against every connection's library list (sharing
-`qk.libraries`) and picks, in order:
+`resolveLibrary(stored, groups, shown)` against every connection's library list
+(sharing `qk.libraries`). The Library never shows another server's library in
+place of the one it should show, so the answer is `{ selection, waitingOn }`,
+picked in this order:
 
 1. the stored pick, while its server's list still has it, or while that list is
-   loading or failing, since offline is not gone;
+   unread. Loading, failed, offline and signed out all keep it;
 2. else the library the modes last showed (`shown`, in memory only), while it
-   stands;
-3. else the first library of the first connection that has one.
+   stands. A list that loads late then moves nothing under the listener;
+3. else, when the pick is gone from a server that answered, that server's first
+   library;
+4. else the first connection, in the listener's order, that is not known to share
+   nothing. Its first library is the selection when its list is in. While its
+   list is loading or failed, there is no selection and `waitingOn` names it.
+   Only a server that answered with no libraries is passed over.
 
-That last fallback passes over a connection still loading, because a slow first
-server would otherwise hold the Library up. Holding `shown` keeps the pick from
-jumping to that earlier server when its list arrives. The car's Library tab
-resolves its library the same way.
+`useSelectedLibrary().server` is the group of the selected library's server, or
+of the `waitingOn` server. The Library screen shows that server's state
+(`library-screen.tsx`):
+
+- the mode body once a library is shown. A stored pick whose list is only
+  loading mounts its mode at once;
+- a skeleton while the list loads;
+- `SignInAgainState` for a signed-out refusal;
+- the offline state, or `LoadError` with Retry (`retryServer`), by
+  [`offlineState`](#offline-states-srcliboffline-statets). Each names the server
+  when there are several.
+
+`LibraryPicker` offers every server's libraries whatever is shown, which is the
+way out of a server that does not answer. Among several servers its labels carry
+the server ("Books · Home"). With nothing else to choose it is a plain label
+(`library-picker-label`), so the shelf still says whose it is. It is hidden with
+one library on one server.
+
+**The car** has no picker and no state to show for a server, so it never waits on
+one (`resolveCarLibrary`). Where `resolveLibrary` would wait (no pick, or a pick
+whose server answered that it shares nothing), the car lists the first server
+that is read and has a library. It goes back to the first server once that
+answers, because nothing is remembered. A pick whose server has not answered, or
+still has a library, is never replaced by another server's there either.
 
 ### Other device preferences
 

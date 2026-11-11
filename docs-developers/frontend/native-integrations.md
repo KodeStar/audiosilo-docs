@@ -84,7 +84,7 @@ keys: `continue`, `chapters`, `bookmark`, `bookmarkSaved`, `empty`, `signedOut` 
 | `continue` | Home's rule (`isInProgress`, newest first, every server of the person listening), with the loaded book first (`continueRefs`) | 20 |
 | `upnext` | The queue the app's Up next shows. `queueConnectionId` picks the loaded book's connection, else the default, else the first (see [Overview](shell.md#up-next-drawer-and-sheet)). Left out when that server has no `queue` capability. | 20 |
 | `downloads` | The person listening's downloaded books, newest download first | 50 |
-| `library` | The library the Library tab shows (`resolveLibrarySelection`, as in [State and data](state-and-data.md#library-selection-srcstoreslibrary-selectionts)), `sort: 'recent'` | 50 |
+| `library` | The library the Library tab shows, except that the car never waits on a server (`resolveCarLibrary`, as in [State and data](state-and-data.md#library-selection-srcstoreslibrary-selectionts)), `sort: 'recent'` | 50 |
 
 The limits are `CAR_TAB_LIMITS`. Android Auto doesn't page, and CarPlay trims further to its
 own `maximumItemCount`.

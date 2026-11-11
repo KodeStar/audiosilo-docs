@@ -506,7 +506,7 @@ Only a map with a sentence (`hasSpans`) reaches the reader. It returns:
 | `map` | the sections and spans to send, or null: none to follow |
 | `pending` | still reading it |
 | `failure` | why there is no map when its read failed (`ReadalongFailure`), else null. It never means "no read-along" (see the failure reasons below the table) |
-| `offline` | the server's map waits for the connection with no copy on the device. It is neither pending nor failed, so a surface shows nothing (no spinner, no Make), and a map already shown stays meanwhile |
+| `offline` | the server's map waits for the connection with no copy on the device, or its read failed with no network on the device (`offlineState`). It is neither pending nor failed, so a surface shows nothing (no spinner, no Make), and a map already shown stays meanwhile |
 | `retry` | read it again (offered only when `failure` is `retry`) |
 
 Only the server's 404 `no_readalong` and 409 `readalong_stale`, or the flag off (a
@@ -640,8 +640,6 @@ Known follow-ups:
 - a cap on the cache's size;
 - a disk-full notice;
 - pinch zoom;
-- hiding the app's Text tab offline. The app has no `onlineManager` wiring yet, so
-  offline it says "couldn't load" with Try again.
 - checking a download whose `book.epub` won't read against the server's map by the
   download's sha;
 - using a stale book's kept map online when it still fits the download.
