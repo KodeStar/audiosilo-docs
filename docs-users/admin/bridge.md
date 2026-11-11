@@ -1,6 +1,6 @@
 ---
 title: "Manage the Bridge"
-description: "Pair a Bridge with your server, check its setup and libraries, follow its jobs and share its work with the community, from Settings > Bridge."
+description: "Pair a Bridge with your server, check its setup and libraries, follow its jobs and share its work with the community, from Server > Settings > Bridge."
 ---
 
 The **Bridge** is an optional companion that writes to your library folders and
@@ -23,7 +23,7 @@ page. The steps are in [Pair it with your server](../getting-started/running-a-b
 If the code runs out, press **Make a new code**.
 
 You can pair **one Bridge per server**. **Pair a new Bridge** makes a code for a
-replacement: the old one stops once the new one pairs.
+replacement. The old Bridge stops once the new one pairs.
 
 ## Online, offline and its details
 
@@ -52,7 +52,7 @@ The **Get set up** card shows the Bridge's setup checklist, the same as on its o
 page. Each step shows a tick when done. A step still to do has **Fix on the
 Bridge**, which opens the right tab of the Bridge's page.
 
-![The Setup card on Settings > Bridge](/img/screenshots/admin/bridge-setup.png)
+![The Setup card on Server > Settings > Bridge](/img/screenshots/admin/bridge-setup.png)
 
 | Step | Done when |
 |---|---|
@@ -65,7 +65,7 @@ Bridge**, which opens the right tab of the Bridge's page.
 | **Audible signed in** (Optional) | at least one Audible account is signed in and working |
 
 Under the steps, the card lists the Bridge's GitHub account, agent credential and
-whether it is ready to contribute. You sign in to these on the Bridge's own page:
+whether it is ready to contribute. You sign in to these on the Bridge's own page.
 **Open Accounts on the Bridge** takes you there (see
 [Sign the Bridge in to your accounts](../getting-started/bridge-accounts.md)).
 
@@ -107,7 +107,7 @@ sits under Libraries. See
 
 **Verify** on a books library asks the Bridge to check it end to end, as a job you
 can follow. It compares a book's files with the server's and tries writing a test
-file. **Nothing is changed.** It is the quickest way to check a Bridge is set up
+file. **Nothing is changed.** Use it to check that a Bridge is set up
 properly.
 
 ## Jobs
@@ -130,21 +130,21 @@ after the third try.
 ## Share with the community
 
 When characters and recaps were kept on this server, you can still send them to
-the community metadata database later. The book's **Community metadata** card
+the community database later. The book's **Community metadata** card
 then offers **Share with the community**.
 
 It needs the [Contributions module](server.md#modules) on, and the Bridge online
 and [signed in to GitHub](../getting-started/bridge-accounts.md#github).
 
-Press **Share with the community**. The Bridge sends what it wrote before:
-nothing is generated again, so the agent costs nothing. Each part the community
-still lacks becomes a submission for review. Once done, the card links to each
-one.
+Press **Share with the community**. The Bridge sends what it wrote before. It
+generates nothing again, so the agent costs nothing. Each part the community
+database still lacks becomes a submission for review. Once done, the card links
+to each one.
 
 ## Suggest corrections
 
 When you [edit a matched book's details](books.md#editing-details) and your values
-differ from the community's, you can suggest them to the community. The book's
+differ from the community database's, you can suggest them for it. The book's
 **Community metadata** card then offers **Suggest corrections**.
 
 It needs the Contributions module and community metadata on, the Bridge online
@@ -152,16 +152,19 @@ and signed in to GitHub, and the book matched with an ASIN or ISBN. Only your ow
 edits are sent, never values from the files or a match.
 
 1. Save or discard unsaved edits on the page.
-2. Press **Suggest corrections**. The dialog lists each field you changed: the
-   community's value, then yours.
+2. Press **Suggest corrections**. The dialog lists each field you changed, with
+   the community database's value and then yours.
 3. Untick any you don't want to send.
 4. Under **Evidence**, say where the right values come from, such as a store or
    publisher page.
 5. Press **Suggest N corrections** to send them.
 
-The Bridge files them as one submission under its GitHub account. A changed title
-is applied automatically once checked. Authors, narrators and series are reviewed
-by a maintainer. Once done, the card links to the submission.
+The Bridge files them as one submission under its GitHub account, and the card
+links to it. AudioSilo Meta's intake bot writes the fields marked **Applied
+automatically**, such as a changed title, into a proposed change. A maintainer
+applies the fields marked **Reviewed by a maintainer**, such as authors,
+narrators and series. Every change is reviewed before it is merged (see
+[What happens next](../community/contributing-from-your-server.md#what-happens-next)).
 
 If a share or a correction stops part way, its message says what to do. The Bridge
 makes sure the same submission isn't filed twice.
@@ -185,5 +188,5 @@ last heard from. You add and remove workers on the Bridge's own page.
 **Unpair...**, at the foot of the page, disconnects the Bridge. It stops at its
 next call. Its jobs stay, and queued ones wait for the next Bridge you pair.
 
-Unpair here, in the console: unpairing on the Bridge's own page only makes the
+Unpair here, in the console. Unpairing on the Bridge's own page only makes the
 Bridge forget the server.
