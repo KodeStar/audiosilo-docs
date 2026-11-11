@@ -1167,8 +1167,8 @@ These are the saves on a server without `listening_sync`. A server with it gets
   `flushHistoryOnHide`), posted with a `keepalive` request that outlives the page:
   - `pagehide` (the tab closed, reloaded or navigated off) ends the span;
   - the document going `hidden` splits the span once it is long enough to keep, and
-    a new span opens while playback goes on. A phone's browser may close a tab with
-    no `pagehide`.
+    a new span opens while playback goes on. This covers a phone's browser, which
+    may close a tab with no `pagehide`.
 
   Ending a span clears it first, so it is never posted twice. Every span on the web
   goes as a `keepalive` request, because a hard navigation mid-play pauses the audio
@@ -1360,8 +1360,8 @@ byte ranges and no length the `<audio>` element can know (`duration` reads
   errors instead of ending.
 - Every seek, every auto-rewind, and every resume after a pause longer than
   `TRANSCODE_STALE_PAUSE_MS` (30 s) goes through `reloadTranscodedAt`, which re-runs
-  `loadTrack` at the target. By then the server or a proxy may have dropped a
-  paused, back-pressured transcode.
+  `loadTrack` at the target. After such a pause, the server or a proxy may have
+  dropped the paused, back-pressured transcode.
   - `loadSeq` makes a stale `loadedmetadata` handler do nothing, when a second seek
     comes before the first source loaded.
   - `pendingAutoplay` keeps the play intent across the `loading` window, which now

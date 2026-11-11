@@ -648,8 +648,8 @@ one runs makes it go round once more. It sends chunks of 200 events and sets
 - when the app comes to the front, after the address check;
 - after a sync that left more.
 
-`listening-sync.ts` drives these triggers. The root layout and the car's headless
-task start it.
+`listening-sync.ts` drives the launch, server-back and foreground triggers. The root
+layout and the car's headless task start it.
 
 Each answer is handled like this:
 
@@ -1016,7 +1016,7 @@ first, then the series, without the current book, finished books or repeats.
 | `failed` | left for the listener to retry |
 | `declined` | cancelled or removed this session. It keeps its place, and the planner never reaches past it for another |
 | `waiting` | the network rule says not now |
-| `no-space` | the book doesn't fit |
+| `no-space` | no room: it would leave less than the reserve free (see **Space** below) |
 | `later` | room unknown, so one download at a time |
 | `unavailable` | this device can't keep it: a web browser that plays it through the server's transcoder. It is left alone in its place |
 | `start` | start it now |
@@ -1054,11 +1054,10 @@ book's** connection:
   on a metered connection gives `waiting`;
 - the storage estimate and the registry.
 
-That is nearly the order `resolveUpNext` plays books in at the end of a book, so the
-book kept ready is usually the book that plays. Keep-ahead differs in three ways. It
-also skips finished series books, it follows the loaded book's series after a short
-queue, and it plans nothing when `/next` fails, where the resolver falls back to the
-folder.
+The queue and the series give nearly the order `resolveUpNext` plays books in at the
+end of a book, so the book kept ready is usually the book that plays. Keep-ahead also
+skips finished series books, follows the loaded book's series after a short queue,
+and plans nothing when `/next` fails, where the resolver falls back to the folder.
 
 The controller publishes `{ status, slots }` to the `useKeepAhead` store. Then, for
 each `start`, it fetches the full item and chapters and calls

@@ -1,6 +1,6 @@
 ---
 title: Kids mode
-description: "Kids mode as a property of a profile: on by default for a kid's account, the /kids route and its guard, the one connect-flow gate, which stories it shows (the owner's shared collections, else one library), a kid who is signed out, the kids player at 1x, the Grown-ups hold, the car, and bedtime."
+description: "Kids mode, a property of a profile: on by default for a kid's account, the kids route and its guard, the one gate between kids mode and the connect flow, the stories it shows (the owner's shared collections, else one library), a kid signed out, the kids player at normal speed, the Grown-ups hold, the car, and bedtime."
 ---
 
 Kids mode is a **property of a [profile](profiles.md)** (`Profile.kids`). An adult sets

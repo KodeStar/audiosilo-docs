@@ -86,7 +86,7 @@ server's English and is never shown. `apiErrorKind` returns:
 
 | Codes in `API_ERROR_CODES` | From |
 |---|---|
-| `member_limit`, `username_taken`, `invalid_name`, `invalid_collections`, `feature_off`, `not_allowed`, `member_cannot_manage`, `member_disabled`, `kid_account`, `demo_account` | the server's routes |
+| `member_limit`, `username_taken`, `invalid_name`, `invalid_collections`, `feature_off`, `not_allowed`, `member_cannot_manage`, `member_disabled`, `kid_account`, `demo_account` | the household members routes, and pairing (`kid_account`) |
 | `library_not_writable`, `kind_unavailable`, `detect_open`, `contribute_open`, `generate_open`, `readalong_open`, `no_ebook` | the Bridge's routes |
 | `no_readalong`, `readalong_stale` | the read-along map |
 | `module_off`, `bridge_unavailable`, `fetch_limit`, `identity_changed`, `show_not_found`, `privacy_conflict`, `too_many_requests`, `checked_recently`, `invalid_feed_url`, `no_library_access`, `not_podcast_library` | podcasts (following, fetching, adding shows) |
@@ -465,7 +465,8 @@ Cross-server screens ask per connection (`useCapabilitiesAll` and
 
 With `progress_edit`, the book menu offers Mark as not finished, and Mark as
 finished with Undo. Without it, Mark as finished is `useMarkFinished`, with no
-Undo. With `listening_sync` too, the finish is `useMarkFinished`'s event.
+Undo. With `progress_edit` and `listening_sync` both, the finish is
+`useMarkFinished`'s event.
 
 The Undo goes through `undoFinish`, which first takes back a `finish` event that
 is still waiting. After that:
@@ -1751,8 +1752,8 @@ The offline-safe write path for listening progress:
   - the playing file and the seconds into it (`file`, `file_pos`), for the resume
     by file;
   - on a `listening_sync` server, the version of the book's server row that this
-    device has acknowledged (`ack_version`, never lowered; `ackVersion`);
-  - the offers it has answered (`answered`, with `device_id|updated_at` keys;
+    device has acknowledged (`ack_version`, never lowered; `ackVersion`), and the
+    offers it has answered (`answered`, with `device_id|updated_at` keys;
     `answerOffer`).
 
   `ack_version` and `answered` are kept across captures, and a `PUT` never sends
@@ -1917,9 +1918,9 @@ There are two deliberate tiers. Know which one you are writing to.
 | Layer | Module | Backing | Used for |
 |---|---|---|---|
 | Plain | `src/lib/storage.ts` (`getItem`/`setItem`/`removeItem`, JSON-serialized) | AsyncStorage on native; localStorage on web, through AsyncStorage's web shim | connection metadata, settings, language pref, downloads registry, progress mirror and queue, the listening outbox, open span and sync state, device id |
-| Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain, Android Keystore) on native. On iOS it uses the `audiosilo.tokens.afu` keychain service, readable after first unlock (see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)). localStorage on web, where SecureStore doesn't exist. | **session tokens** (`audiosilo.token.<connectionId>`), plus profile PINs (`audiosilo.profilePin.<profileId>`) and the device's copy of an upcoming calendar link (`audiosilo.upcoming-calendar.<connectionId>`) |
+| Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain, Android Keystore) on native. On iOS it uses the `audiosilo.tokens.afu` keychain service, readable after first unlock (see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)). localStorage on web, where SecureStore doesn't exist. | **session tokens** (`audiosilo.token.<connectionId>`), plus profile PIN hashes (`audiosilo.profilePin.<profileId>`) and the device's copy of an upcoming calendar link (`audiosilo.upcoming-calendar.<connectionId>`) |
 
-The split exists because tokens are true secrets. Hardware-backed storage on
+The split exists because these values are secrets. Hardware-backed storage on
 native is worth the extra API for them, while everything else is non-sensitive
 state that benefits from the simpler JSON layer. On web both tiers degrade to
 localStorage, since same-origin script access is the trust boundary there

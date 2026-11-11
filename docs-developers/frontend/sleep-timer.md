@@ -171,8 +171,8 @@ player write) and from the tick, and it does two things:
 
 - **It closes the window once its deadline has passed.** The tick alone isn't
   enough. iOS suspends the app after the timer pauses the audio, and the thing that
-  wakes it can be the listener pressing play the next morning. That play must still
-  close the window as the drift-off it was.
+  wakes it can be the listener pressing play the next morning. The window must
+  still close then as the drift-off it was.
 - **It marks the fire `stirred`** when the transport goes live again after
   `PAUSE_SETTLE_MS` (2 s), or when the position moves more than `SCRUB_SECONDS`
   (5 s) from where the timer stopped it. The 2 s wait is there because the engine
@@ -598,7 +598,7 @@ rather than as long as a mounted component. It must run whether or not the playe
 modal is open. The timer has to arm for a book started from the mini player, the
 library, or a lock-screen play.
 
-It listens to four things:
+It listens to four things, the first two together:
 
 - **The setting and the profiles store.** Together they decide whether any rule is
   on (`autoSleepOn()`), which attaches and detaches everything else.
