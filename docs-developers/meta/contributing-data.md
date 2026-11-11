@@ -83,36 +83,50 @@ date), then every other per-row warning.
 
 Seven behaviors are worth knowing:
 
-- **Mirror-seeded records are taken over by ASIN.** When an Add a work or Add a
-  recording submission names, by ASIN, a recording that was seeded from a bulk
+- **Mirror-seeded records are taken over by ASIN.** An Add a work or Add a
+  recording submission may name, by ASIN, a recording that was seeded from a bulk
   mirror and that no user has attested (every `sources[]` entry is bulk-mirror
-  tier: `libex-import` or `librivox`), the bot does not close it as a duplicate:
-  it applies the submission over that record through `importer.AttestAt`, which runs it as a
-  one-row user-library import over the store `metaissue` already opened and
-  hands it to `attestExisting` - the hook a library import takes at its
-  ASIN-dedup skip. The stated runtime, release date, publisher and cover replace
-  the mirror's (a stated date never coarsens a recorded one), a stated recording
-  ISBN is appended when no recording carries it yet, blank fields keep the
-  mirror's values, genres are added to the work's set, and a `user` source
-  citing the form's Sources field is appended - to the work too when it is also
-  a mirror seed. The pull request carries a *modified* record, which the rebase
-  sweep and `ai-verify` (through `cmd/metadiff`) handle like any other change,
-  and a maintainer still approves it. Nothing is applied, and the verdict is
-  `needs-human` naming why, when the submission disagrees with the seed (a
-  runtime more than 10% apart, or a release date that is not the same date at
-  another precision), when it describes a different book than the record its
-  ASIN names (authors, narrators or language - a mistyped ASIN must not attest
-  somebody else's record), when a submitted ISBN is recorded on a different
-  recording, or when its ASINs name two different recordings. Every matched
-  ASIN is classified before the verdict, so their order never changes it. A
-  title that differs is only a note, and identity is never rewritten. Only an
-  ASIN match takes a record over: a mirror-seeded record met by title, ISBN or
-  narrator set is `needs-human` (the verdict names the mirror that seeded the
-  record - "the libex mirror", "the LibriVox mirror" - never libex for a
-  LibriVox record), and on the add forms the message names the
-  record's mirror-only ASINs (adding the matching one to the issue turns it
-  into a takeover). The rule itself is LICENSING.md's "Trust tiers and the
-  user-overwrite rule" (in `audiosilo-meta`).
+  tier: `libex-import` or `librivox`). The bot does not close it as a duplicate.
+  It applies the submission over that record through `importer.AttestAt`, which
+  runs it as a one-row user-library import over the store `metaissue` already
+  opened, and hands it to `attestExisting`, the hook a library import takes at its
+  ASIN-dedup skip.
+
+  What the takeover changes:
+
+  - the stated runtime, release date, publisher and cover replace the mirror's (a
+    stated date never coarsens a recorded one);
+  - a stated recording ISBN is appended when no recording carries it yet;
+  - blank fields keep the mirror's values;
+  - genres are added to the work's set;
+  - a `user` source citing the form's Sources field is appended, to the work too
+    when it is also a mirror seed.
+
+  The pull request carries a *modified* record, which the rebase sweep and
+  `ai-verify` (through `cmd/metadiff`) handle like any other change, and a
+  maintainer still approves it.
+
+  Nothing is applied, and the verdict is `needs-human` naming why, when:
+
+  - the submission disagrees with the seed: a runtime more than 10% apart, or a
+    release date that is not the same date at another precision;
+  - it describes a different book than the record its ASIN names (authors,
+    narrators or language), because a mistyped ASIN must not attest somebody
+    else's record;
+  - a submitted ISBN is recorded on a different recording;
+  - its ASINs name two different recordings.
+
+  Every matched ASIN is classified before the verdict, so their order never
+  changes it. A title that differs is only a note, and identity is never
+  rewritten.
+
+  Only an ASIN match takes a record over. A mirror-seeded record met by title,
+  ISBN or narrator set is `needs-human`. The verdict names the mirror that seeded
+  the record ("the libex mirror", "the LibriVox mirror"), never libex for a
+  LibriVox record. On the add forms the message names the record's mirror-only
+  ASINs, and adding the matching one to the issue turns it into a takeover. The
+  rule itself is LICENSING.md's "Trust tiers and the user-overwrite rule" (in
+  `audiosilo-meta`).
 - **A taken title slug is judged by author.** On Add a work, a title whose slug
   another work already holds is a duplicate only when that work is by the
   submitting author, judged by the importer's same-person rule (so "J. Doe"
@@ -140,19 +154,23 @@ Seven behaviors are worth knowing:
   building a tool that produces such a file, the [Import file format](./import-format.md)
   page is the producer-facing spec.
 - **A submission is admitted by its routing label, not by `opened`.** The
-  workflow triggers on `labeled` (for a routing `data:*` label) and `edited`
-  (for an issue carrying a `data:` label). An issue opened with its routing
-  label fires that label's `labeled` event too, so admitting `opened` as well
-  ran intake twice and posted every verdict twice. And the GitHub API silently
-  drops labels on issues opened by non-collaborators (a Bridge filing with a
-  token from its environment or `gh` creates intake issues over the API), so
-  such an issue arrives label-less and is admitted when a maintainer applies the
-  routing label later - a `labeled` event. (An issue filed through the AudioSilo
-  App comes in by a third door, `workflow_call` from `route.yml`:
-  [below](#issues-filed-through-the-audiosilo-app).) The job gate excludes the workflow's
-  own outcome labels (`data:invalid` / `data:needs-human` / `data:duplicate`) so
-  outcome-labeling can't re-fire intake. Each run posts its non-ok verdict as a
-  comment, so an edit always gets an answer.
+  workflow triggers on `labeled` (for a routing `data:*` label) and `edited` (for
+  an issue carrying a `data:` label). An issue opened with its routing label
+  fires that label's `labeled` event too, so admitting `opened` as well ran
+  intake twice and posted every verdict twice.
+
+  The GitHub API silently drops labels on issues opened by non-collaborators. A
+  Bridge filing with a token from its environment or `gh` creates intake issues
+  over the API, so such an issue arrives label-less. It is admitted when a
+  maintainer applies the routing label later, which is a `labeled` event. An
+  issue filed through the AudioSilo App comes in by a third door,
+  `workflow_call` from `route.yml`
+  ([Issues filed through the AudioSilo App](#issues-filed-through-the-audiosilo-app)).
+
+  The job gate excludes the workflow's own outcome labels (`data:invalid` /
+  `data:needs-human` / `data:duplicate`), so outcome-labeling can't re-fire
+  intake. Each run posts its non-ok verdict as a comment, so an edit always gets
+  an answer.
 - **Corrections are judged against the schema first.** A correction naming a
   field that lives on the *other* record kind - `runtime_min` against a work
   URL, say, when a runtime belongs to one narration - is `invalid`, and the
@@ -258,20 +276,29 @@ fields are applied by the bot:
 | work | `title` | `authors`, `series`, `series_index`, `more_series` |
 | recording | `release_date`, `isbn` (added) | `narrators` |
 
-A recording field addressed to the **work** isn't a mapping bug: the filer didn't
-know the recording, so it goes to a maintainer, who finds it. One structurally
-invalid change (an unknown field, a work field addressed to a recording, no record
-or no corrected value, a value over 500 characters or holding a control character,
-the same field of the same record stated twice (two different ISBNs are two
-facts), a bidirectional embedding, override or isolate control, U+202A to U+202E
-or U+2066 to U+2069, in a value; a zero-width joiner or non-joiner is allowed)
-refuses the **whole** issue, naming every bad change: a batch is machine-written,
-so one bad change makes its siblings suspect. So does a Changes block that can't
-be read (not version 1, an unknown or repeated key, no changes or more than 25),
-missing evidence, evidence over 2,000 characters or holding a bidirectional
-control, or an unticked dedication. The valid changes are then decided one at a
-time: a maintainer's field, a recording field addressed to the work, or a record
-it can't resolve is `needs-human`; a bot-applied field runs through the single-field form's own path
+A recording field addressed to the **work** isn't a mapping bug. The filer didn't
+know the recording, so it goes to a maintainer, who finds it.
+
+One structurally invalid change refuses the **whole** issue, naming every bad
+change, because a batch is machine-written and one bad change makes its siblings
+suspect. A change is invalid when it has:
+
+- an unknown field, or a work field addressed to a recording;
+- no record or no corrected value;
+- a value over 500 characters or holding a control character;
+- the same field of the same record stated twice (two different ISBNs are two
+  facts);
+- a bidirectional embedding, override or isolate control in a value (U+202A to
+  U+202E or U+2066 to U+2069). A zero-width joiner or non-joiner is allowed.
+
+The whole issue is also refused for a Changes block that can't be read (not
+version 1, an unknown or repeated key, no changes or more than 25), missing
+evidence, evidence over 2,000 characters or holding a bidirectional control, or an
+unticked dedication.
+
+The valid changes are then decided one at a time. A maintainer's field, a
+recording field addressed to the work, or a record the bot can't resolve is
+`needs-human`. A bot-applied field runs through the single-field form's own path
 (`applyCorrection`: applied, unchanged, needs-human or invalid). The verdict is:
 
 - `ok` when at least one change applied: ONE pull request with the applied part,
@@ -470,30 +497,40 @@ go run ./cmd/metaimport libation    <export.json> [--dry-run] [--date YYYY-MM-DD
 It imports **factual fields only** (dropping publisher copy, genres, ratings, and
 personal state), maps one export entry to a work + recording (+ people + series),
 and **deduplicates by ASIN** against the catalogue. `--dry-run` prints the plan
-without writing; a real run writes the files, then validates the whole tree and
-exits non-zero if that fails. The identity rules are careful: a person slug is the
-identity (name variants merge, no numbered duplicates), a work is (title slug +
-author set) with per-volume disambiguation so distinct series volumes never merge,
-a trailing `(Unabridged)`/`(Abridged)` marker is stripped before identity (and
-seeds the recording's tri-state `abridged` when the source didn't state it), and a
-same-work/same-narrator entry whose only new fact is another ASIN **merges that
-ASIN into the existing recording** (guarded by runtime and abridged checks) rather
-than minting a sibling. A marketplace edition or a trailing narrator credit is
-stripped before identity too, so "The Search: International Edition" or "The
-Search, Read by Dee Reader" from the author of a catalogued "The Search" resolves
-to that work and lands as a recording of it (or merges its ASIN into the same
-production). A work catalogued only under a qualified title stays reachable as a
-merge target, never created there; several such works decide nothing. Before a
-row creates a work, its normalized identity (see
-[the data model](./data-model.md#translations-and-reading-orders)) is also checked
-against the catalogue and the run so far, and a match is skipped as
-`identity-duplicate` rather than minted beside it. A series claim joins a same-named catalogued series only
-when its authors and its language fit that series (see
-[the import format](./import-format.md)); otherwise the row founds its own series
-of that name at the next slug. A row whose person, series, or work identity resolves to a
-slug a repair merge has since **retired** is judged against the surviving record
-instead of minting a new one at the old address - the same `data/redirects.json`
-table `metaserve` uses to 301 a retired id (see [the data model](./data-model.md#slug-is-identity-the-file-is-only-storage)).
+without writing. A real run writes the files, then validates the whole tree and
+exits non-zero if that fails.
+
+The identity rules:
+
+- **People.** A person slug is the identity. Name variants merge, and there are no
+  numbered duplicates.
+- **Works.** A work is (title slug + author set), with per-volume disambiguation
+  so distinct series volumes never merge. Before a row creates a work, its
+  normalized identity (see
+  [the data model](./data-model.md#translations-and-reading-orders)) is also
+  checked against the catalogue and the run so far. A match is skipped as
+  `identity-duplicate` rather than minted beside it.
+- **Title decoration.** A trailing `(Unabridged)`/`(Abridged)` marker is stripped
+  before identity, and seeds the recording's tri-state `abridged` when the source
+  didn't state it. A marketplace edition or a trailing narrator credit is
+  stripped too. So "The Search: International Edition" or "The Search, Read by Dee
+  Reader" from the author of a catalogued "The Search" resolves to that work, and
+  lands as a recording of it (or merges its ASIN into the same production).
+- **Qualified titles.** A work catalogued only under a qualified title stays
+  reachable as a merge target, never created there. Several such works decide
+  nothing.
+- **Recordings.** A same-work, same-narrator entry whose only new fact is another
+  ASIN **merges that ASIN into the existing recording**, guarded by runtime and
+  abridged checks, rather than minting a sibling.
+- **Series.** A series claim joins a same-named catalogued series only when its
+  authors and its language fit that series (see
+  [the import format](./import-format.md)). Otherwise the row founds its own
+  series of that name at the next slug.
+- **Retired slugs.** A row whose person, series, or work identity resolves to a
+  slug a repair merge has since **retired** is judged against the surviving
+  record, instead of minting a new one at the old address. This is the same
+  `data/redirects.json` table `metaserve` uses to 301 a retired id (see
+  [the data model](./data-model.md#slug-is-identity-the-file-is-only-storage)).
 
 ### Libex modes and recording relocation
 
@@ -912,65 +949,76 @@ writes the packs, then validates the whole tree. For each selected project:
     record); re-importing the id then finds that person by id.
   - **Courtesy titles and ranks.** A titled credit is never folded onto its
     bare twin when LibriVox lists the two as different author ids in one run,
-    whatever their years: "Mrs. William Platt" beside "William Platt" are two
-    people, "Mrs. C. M. Livingston" beside "C. M. Livingston" is LibriVox's
-    own duplicate record of one (15071 is now an alias on her record), and a run
-    cannot tell which. Both
-    records are kept, the run report lists the pair under `librivox worklist:
-    N author id pairs one courtesy title apart` for a person to merge or
-    confirm, and metacheck's honorific-person-pair advisory names it too. Nor
-    is a titled credit folded onto a catalogued bare record that the
+    whatever their years. "Mrs. William Platt" beside "William Platt" are two
+    people, while "Mrs. C. M. Livingston" beside "C. M. Livingston" is
+    LibriVox's own duplicate record of one (15071 is now an alias on her
+    record), and a run cannot tell which. Both records are kept. The run report
+    lists the pair under `librivox worklist: N author id pairs one courtesy
+    title apart` for a person to merge or confirm, and metacheck's
+    honorific-person-pair advisory names it too.
+
+    Nor is a titled credit folded onto a catalogued bare record that the
     same-name test above finds is someone else ("Sir Hugh Fraser" is not
-    `hugh-fraser`, an actor who narrates); when that test cannot tell, the
-    project goes to the worklist as `same-name-author`, unless a reviewed
-    rejection already says the records the two spellings land on are two people,
-    in which case the credit stays on its own. A credit whose id the
-    catalogue already holds keeps its holder's spelling. The other way round, a
-    bare name that would otherwise be a new person lands on the one catalogued
-    record with a courtesy title or a military rank in front of it ("Frederick
-    Treves" on `sir-frederick-treves`, "Joseph H. Alexander" on
-    `colonel-joseph-h-alexander`), unless their life years disagree, that
-    record only narrates, or it carries a `librivox_author_id` and the credit
-    states years that are not that record's birth and death. A titled credit
-    the fold leaves meets the same-name test under its own spelling.
+    `hugh-fraser`, an actor who narrates). When that test cannot tell, the
+    project goes to the worklist as `same-name-author`. The exception is when a
+    reviewed rejection already says the records the two spellings land on are
+    two people; then the credit stays on its own. A credit whose id the
+    catalogue already holds keeps its holder's spelling.
+
+    The other way round, a bare name that would otherwise be a new person lands
+    on the one catalogued record with a courtesy title or a military rank in
+    front of it ("Frederick Treves" on `sir-frederick-treves`, "Joseph H.
+    Alexander" on `colonel-joseph-h-alexander`). It does not when their life
+    years disagree, when that record only narrates, or when it carries a
+    `librivox_author_id` and the credit states years that are not that record's
+    birth and death. A titled credit the fold leaves meets the same-name test
+    under its own spelling.
 - **A reader id is a person of its own, even when the name is not.** LibriVox
   readers are accounts, and several share a display name ("Martina", "eva",
-  "Lisa"). When a reader's name slugs to a person who already carries (or
-  earlier in the run took) a **different** reader id, the reader gets a person
-  of their own at `<name slug>-librivox-<reader id>` (`martina-librivox-634`,
-  the [person id rule](data-model.md#person---an-entry-in-the-datapeople-family)),
-  created with that id, and the first holder of the name keeps the plain slug
-  (decided per reader id before any project is placed, by lowest project id,
-  so the run's row order never matters; a reader first credited on a project
-  that goes to the worklist still holds the name). A
-  later project by the same reader finds that person by id, so no reader is ever
-  minted twice. A person at the plain slug who carries no reader id (a narrator
-  another source catalogued) is not another reader: the first LibriVox reader of
-  that name is stamped onto them, unless that person is an **author record**
-  (carrying a catalogued `librivox_author_id`, or a life that ended before
-  2005, when LibriVox began - a birth year alone counts: no one born in 1840
-  read for LibriVox - its own, or that of a new author id of the run landing on
-  it, whether the run meets the author or the reader first). The reader is
-  then split off the same way: a reader called Adam Smith is
-  `adam-smith-librivox-19341`, never Adam Smith (1723-1790). A living or
-  undated author id of the same run and a reader of the same name are one
-  person, whichever project the run meets first. Collective credits ("Various", "Full Cast") and
-  the synthetic voice stand for no one person and are never split: a second
-  reader id of one is the keep-and-warn case above. The run never writes over an
-  existing or retired person id that the composed id happens to match: it
-  credits the plain slug instead, whose holder keeps their own reader id, and
-  warns. Authors are not split this way: a work's identity rides on its author
-  slugs (a same-name author is told apart by its years, or by its author id
-  when it states none, above). The
-  `librivox:` summary line counts the readers split. A reader whose name slugs
-  to nothing (Greek, Cyrillic, CJK) is a person of their own at
-  `librivox-reader-<reader id>` (`librivox-reader-11294`), created with that id
-  and the name kept as written, so two such readers are never one record and a
-  rerun finds each by id; a `librivox:` summary line of its own counts them.
-  When that id is already another person's or a retired one (before the run, or
-  because a row of the run created a person there), or the credit carries no
-  reader id, the project is skipped with a warning before anything
-  is planned (it stays re-importable), never credited to the shared catch-all
+  "Lisa").
+
+  - **A shared name.** When a reader's name slugs to a person who already carries
+    (or earlier in the run took) a **different** reader id, the reader gets a
+    person of their own at `<name slug>-librivox-<reader id>`
+    (`martina-librivox-634`, the
+    [person id rule](data-model.md#person---an-entry-in-the-datapeople-family)),
+    created with that id. The first holder of the name keeps the plain slug. That
+    is decided per reader id before any project is placed, by lowest project id,
+    so the run's row order never matters. A reader first credited on a project
+    that goes to the worklist still holds the name. A later project by the same
+    reader finds that person by id, so no reader is ever minted twice.
+  - **A catalogued narrator.** A person at the plain slug who carries no reader id
+    (a narrator another source catalogued) is not another reader. The first
+    LibriVox reader of that name is stamped onto them.
+  - **An author record.** The exception is a person who is an **author record**:
+    one carrying a catalogued `librivox_author_id`, or a life that ended before
+    2005, when LibriVox began. A birth year alone counts, since no one born in
+    1840 read for LibriVox. That may be the person's own record, or that of a new
+    author id of the run landing on it, whether the run meets the author or the
+    reader first. The reader is then split off the same way: a reader called Adam
+    Smith is `adam-smith-librivox-19341`, never Adam Smith (1723-1790). A living
+    or undated author id of the same run and a reader of the same name are one
+    person, whichever project the run meets first.
+  - **Collective credits** ("Various", "Full Cast") and the synthetic voice stand
+    for no one person and are never split. A second reader id of one is the
+    keep-and-warn case above.
+  - **A taken id.** The run never writes over an existing or retired person id
+    that the composed id happens to match. It credits the plain slug instead,
+    whose holder keeps their own reader id, and warns.
+  - **Authors are not split this way.** A work's identity rides on its author
+    slugs; a same-name author is told apart by its years, or by its author id when
+    it states none (above).
+
+  The `librivox:` summary line counts the readers split.
+
+  **A name that slugs to nothing** (Greek, Cyrillic, CJK) makes the reader a
+  person of their own at `librivox-reader-<reader id>` (`librivox-reader-11294`),
+  created with that id and the name kept as written. So two such readers are never
+  one record, and a rerun finds each by id. A `librivox:` summary line of its own
+  counts them. When that id is already another person's or a retired one (before
+  the run, or because a row of the run created a person there), or the credit
+  carries no reader id, the project is skipped with a warning before anything is
+  planned. It stays re-importable, and is never credited to the shared catch-all
   person, which `metacheck` refuses whatever the source.
 - **A rerun splits readers on recordings it skips.** When a held recording
   credits a reader to a person carrying another reader id of the same name, or
