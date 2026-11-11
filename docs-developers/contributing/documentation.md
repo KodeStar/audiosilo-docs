@@ -203,11 +203,48 @@ Moving or renaming a page file needs a redirect, so prefer changing only its `ti
 
 The Developer Docs follow rules 2, 3, 6, 7 and 9 too. They may name code.
 
+### Wording
+
+These apply to the User Guide and the Developer Docs.
+
+- **Say what it does, not how it feels.** Name the step, the mechanism or the
+  number. "Downloaded books play with no connection", not "your library is
+  always within reach". If a sentence could appear unchanged in another
+  project's docs, cut it.
+- **Name who does what.** "The server scans the folder", not "the folder is
+  scanned". Use the passive only when the actor does not matter.
+- **No colon as a mid-sentence connector.** A colon introduces a list, an
+  example or a labelled item. Anywhere else, write two sentences.
+- **Plain and literal.** No metaphors, slogans or sentence fragments for
+  effect. Never "simply", "easily" or "just" in a step. Give the measured
+  figure instead of "much faster".
+- **One name per thing.** Use the label the reader sees in the product, or the
+  real symbol in the Developer Docs, and keep it for the whole page. Do not
+  switch between "the console", "the admin page" and "the dashboard".
+- **Steps start with the goal and end with the result.** "To share a book,
+  open its page and select **Share**." After a step that changes something,
+  say what the reader should now see.
+- **Links say where they go.** Link text is the page's title or a short
+  description, never "here" or "this page".
+- **A rule never beats a clear sentence.** Short does not mean clipped. Keep a
+  longer sentence when it carries one idea with its condition. If a rule makes
+  a sentence worse, rewrite the sentence another way.
+
+Two more for the Developer Docs:
+
+- **Whole sentences.** Keep "the" and "a", give every clause a verb, and spell
+  out arrows and slashes in prose. "The parser rejects a bad date and writes
+  nothing", not "bad date -> no write". A parenthesis holds one complete
+  aside. A second one in the same sentence becomes its own sentence.
+- **One kind of page.** A page is a how-to (steps to a goal), a reference
+  (facts to look up) or an explanation (why it works this way). When a page
+  starts doing two of these, split it and link.
+
 ### Formatting
 
-- **Hyphens, not em dashes.** Use a spaced hyphen (`-`) or restructure the
-  sentence; do not use the em dash character. A spaced hyphen reads fine
-  mid-sentence, and em dashes also produce messy heading anchors. The one
+- **No em dashes, and few spaced hyphens.** Do not use the em dash character.
+  It also produces messy heading anchors. A spaced hyphen (`-`) in the middle
+  of a sentence is the same habit, so prefer a full stop or a comma. The one
   exception: a code block that reproduces literal program output verbatim must
   match the source, em dashes included (no current output contains one).
 - **Admonition titles go in brackets.** Write `:::note[Title]` (also `tip`,
