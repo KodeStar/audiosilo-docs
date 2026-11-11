@@ -6,20 +6,23 @@ description: "Architecture of audiosilo-meta: the GitHub repo that IS the commun
 ## What audiosilo-meta is
 
 `audiosilo-meta` is the community audiobook metadata database behind
-[meta.audiosilo.app](https://meta.audiosilo.app). Its defining idea: **the GitHub
-repository is the database.** There is no application database and no server-side
-accounts - metadata lives as plain JSON files under `data/`, one file per entity,
-edited by pull request or issue form, validated by Go tooling in CI, and compiled
-into a single SQLite artifact that consumers download and serve read-only.
+[meta.audiosilo.app](https://meta.audiosilo.app). Its defining idea is that **the
+GitHub repository is the database.** There is no application database and there
+are no server-side accounts. The metadata lives as plain JSON files under `data/`,
+one file per entity:
 
-The reason it exists is a gap no other open database fills: none is both
-**audiobook-specific** and **community-editable**. Open Library, Wikidata, and
-BookBrainz are open but carry essentially no narrator, recording, or chapter
-structure; Audnexus is a read-only cache over Audible's own catalogue. So
-narrators, specific recordings, and chapters are **first-class data** here - the
-fields every other database lacks.
+- contributors edit it by pull request or issue form;
+- Go tooling validates it in CI;
+- the release workflow compiles it into a single SQLite artifact, which
+  consumers download and serve read-only.
 
-Module path: `github.com/kodestar/audiosilo-meta`. The code is **AGPL-3.0**; the
+It exists because no other open database is both **audiobook-specific** and
+**community-editable**. Open Library, Wikidata and BookBrainz are open but carry
+almost no narrator, recording or chapter structure. Audnexus is a read-only cache
+over Audible's own catalogue. So narrators, specific recordings and chapters are
+**first-class data** here, the fields every other database lacks.
+
+Module path: `github.com/kodestar/audiosilo-meta`. The code is **AGPL-3.0**. The
 data is split across two licence layers (below).
 
 ```
@@ -33,9 +36,9 @@ data is split across two licence layers (below).
 
 ## The two licence layers
 
-Data lives in two layers, and the boundary is **enforced structurally by the JSON
-Schema**, not by convention (see `LICENSING.md` in the repo): the `license` field
-of a core record accepts only `CC0-1.0`, and a sidecar's only `CC-BY-SA-4.0`
+Data lives in two layers. The JSON Schema enforces the boundary, not convention
+(see `LICENSING.md` in the repo). The `license` field of a core record accepts
+only `CC0-1.0`, and a sidecar's accepts only `CC-BY-SA-4.0`
 (`common.schema.json` `$defs/license` vs `$defs/license_content`).
 
 | Layer | Entities | Licence |
@@ -43,42 +46,46 @@ of a core record accepts only `CC0-1.0`, and a sidecar's only `CC-BY-SA-4.0`
 | **Factual core** | works, recordings, people, series | **CC0-1.0** public-domain dedication |
 | **Expressive layer** | per-work characters + recaps sidecars | **CC BY-SA 4.0** |
 
-Publisher blurbs and cover art are referenced, never copied: descriptions are
+Publisher blurbs and cover art are referenced, never copied. Descriptions are
 community-written and covers are URLs. Every entity also carries a `sources[]`
-provenance array so any source can be audited or retracted wholesale. Full detail
+provenance array, so any source can be audited or retracted wholesale. Full detail
 is in [the data model](data-model.md).
 
+### What may be imported
+
 Imports are bounded, curated tranches, never a wholesale mirror of another
-catalogue, with one named exception: [LibriVox](https://librivox.org), whose
-recordings are in the public domain, may be mirrored in full under the
-`librivox` source type, facts only. The tooling is in place and the backfill
-lands in reviewed tranches, as
-[contributing data](contributing-data.md#librivox-the-public-domain-mirror)
-describes. The API serves those recordings like any other and adds a
-`source=librivox` filter, `lookup?librivox_id=` and a feed in LibriVox's own
-shape, so an app that reads LibriVox can switch its base URL
+catalogue. The one named exception is [LibriVox](https://librivox.org). Its
+recordings are in the public domain, so they may be mirrored in full under the
+`librivox` source type, facts only. The tooling is in place, and the backfill
+lands in reviewed tranches
+([LibriVox: the public-domain mirror](contributing-data.md#librivox-the-public-domain-mirror)).
+The API serves those recordings like any other. It adds a `source=librivox`
+filter, `lookup?librivox_id=` and a feed in LibriVox's own shape, so an app that
+reads LibriVox can switch its base URL
 ([the LibriVox layer](api.md#the-librivox-layer)).
-A maintainer may also import the public product listings of two stores the
+
+A maintainer may also import the public product listings of two stores that the
 identifier-derived links don't reach, Audiobook Guild and GraphicAudio, for books
-they name: facts only, under the `store-listing` source type, with the store page
-kept on the recording's `links` and served as a purchase link
-([store listings](contributing-data.md#store-listings-audiobook-guild-and-graphicaudio)).
+the maintainer names. These are facts only, under the `store-listing` source
+type. The store page is kept on the recording's `links` and served as a purchase
+link
+([Store listings: Audiobook Guild and GraphicAudio](contributing-data.md#store-listings-audiobook-guild-and-graphicaudio)).
 
 ## Package layout
 
-The tooling follows the same discipline as the rest of the workspace: thin CLIs
-under `cmd/`, all logic in reusable packages, and a clean split between the
-public `pkg/*` (consumed as ordinary dependencies by `audiosilo-bridge` and,
-for `pkg/query` and `pkg/release`, by the AudioSilo server; see
-[Public Go packages](#public-go-packages)) and the private `internal/*`.
+The tooling follows the same discipline as the rest of the workspace. The CLIs
+under `cmd/` are thin, all logic sits in reusable packages, and there is a clean
+split between the public `pkg/*` and the private `internal/*`. `audiosilo-bridge`
+consumes the public packages as ordinary dependencies, and the AudioSilo server
+consumes `pkg/query` and `pkg/release` (see [Public Go packages](#public-go-packages)).
 
-`data/` carries its own `data/go.mod` - a nested Go module with no code in it,
-so the go command leaves the whole ~1.6 GB JSON tree out of this module's
-source zip. Without it, that zip passed Go's 500 MiB module-source limit and
-`go get` of any tag after v0.8.0 failed for a `pkg/*` consumer such as
-the Bridge; with it the zip is about 3.4 MiB. The nested module holds
-no data of its own, so a pull request that only touches it runs the Go gate
-(not the data-only path) and triggers neither a data release nor `ai-verify`.
+`data/` carries its own `data/go.mod`, a nested Go module with no code in it. It
+makes the go command leave the whole ~1.6 GB JSON tree out of this module's
+source zip, which is now about 3.4 MiB. Without it, the zip passed Go's 500 MiB
+module-source limit, and `go get` of any tag after v0.8.0 failed for a `pkg/*`
+consumer such as the Bridge. The nested module holds no data of its own. A pull
+request that touches only it runs the Go gate (not the data-only path) and
+triggers neither a data release nor `ai-verify`.
 
 ```
 data/          the CC0 core, range-packed (PACK-SPEC.md): works/ (composites), people/, series/, redirects.json - the CC BY-SA works-community/ family lives in audiosilo-meta-community
@@ -105,9 +112,9 @@ Dockerfile     image: the site build + the metaserve binary - no baked data; the
 .github/       issue forms + CI workflows (check, release, image, intake, route, ai-verify)
 ```
 
-Dependency direction mirrors the server's "transport is logic-free" rule:
-`cmd/metaserve` is flag wiring only. The queries and the JSON API handler live
-in `pkg/query`; `internal/serve` adds what is metaserve's own.
+The dependency direction mirrors the server's "transport is logic-free" rule.
+`cmd/metaserve` is flag wiring only. The queries and the JSON API handler live in
+`pkg/query`, and `internal/serve` adds what is metaserve's own.
 
 ## Public Go packages
 
@@ -115,68 +122,91 @@ These packages are a public API for programs outside this repo. Mirror-mode
 AudioSilo servers (`metadata.mode: mirror`, see the server's
 [configuration](../server/configuration.md#mirror-mode-metadatamode-mirror))
 use them to download the data release once a day and answer the same API
-in-process:
+in-process.
 
-- **`pkg/query`** - `Open(path, tag)` opens an artifact read-only (a safe DSN,
-  so a `?` or `#` in the path can't drop read-only mode) and runs the load-time
-  integrity checks; `DB.Info()` reports `SchemaVersion`, `BuiltAt`, `Tag`,
-  `Version` and the catalogue's counts; `NewHandler(current, HandlerOptions)`
-  serves the JSON API (`/healthz`, `/api/v1/...` and the `/abs` provider routes;
-  `Routes()` lists them) over whichever `*DB` `current` returns at request time,
-  answering 503 with `Retry-After` while it returns nil. It is the very handler
-  metaserve serves, without CORS or gzip (the caller adds its own).
-  `HandlerOptions` carries the logger, the 503s' `Retry-After`, `SiteURL` (the
-  origin the watch feeds link to), the feeds' clock, and the `works/match`
-  budget and concurrency; the zero value suits an in-process consumer.
-  `MaxSchemaVersion` is the newest artifact schema the code understands (pinned
-  to the builder's `SchemaVersion` by a test).
-- **`pkg/query/querytest`** - `Build(tb, dir)` writes a small, deterministic,
-  real artifact (well under 1 MiB, built by the real builder from a fixed
-  fixture) and constants naming its facts: an ASIN and an ISBN that look up
-  (with their work and recording ids), an ASIN that doesn't, a numbered series,
-  a chaptered recording, a retired slug and its target, and a work carrying the
-  community layer. Downstream tests run against true metaserve behaviour.
-- **`pkg/release`** - the one implementation of the release asset contract
-  (below): `New(repo, token, opts...)`, `LatestData(ctx, etag)` (the newest data
-  release, conditional on an ETag) and `DownloadData(ctx, rel, dst, progress)`
-  (the gz streamed through gunzip into a temp `.meta-*.tmp` file beside `dst`,
-  verified against `meta.sqlite.gz.sha256`, fsynced and renamed; bounded,
-  stall-guarded and only from allowlisted GitHub hosts). metaserve's poller uses
-  it too, adding its delta and cache paths on top.
-- **`pkg/release/releasetest`** - the one fake of GitHub's releases API (ETag
-  and `304`, hit counts, failing, throttled and hung releases, a redirect
-  route, the `User-Agent` of each request) and the checksum and gzip helpers its
-  assets are built with. `pkg/release`'s tests, metaserve's refresh tests and
-  the AudioSilo server's mirror tests all publish their releases there, so they
-  can't drift apart on what a release looks like on the wire.
+### `pkg/query`
 
-Being public, they follow the
+- `Open(path, tag)` opens an artifact read-only and runs the load-time integrity
+  checks. It uses a safe DSN, so a `?` or `#` in the path can't drop read-only
+  mode.
+- `DB.Info()` reports `SchemaVersion`, `BuiltAt`, `Tag`, `Version` and the
+  catalogue's counts.
+- `NewHandler(current, HandlerOptions)` serves the JSON API: `/healthz`,
+  `/api/v1/...` and the `/abs` provider routes (`Routes()` lists them). It serves
+  over whichever `*DB` `current` returns at request time, and answers 503 with
+  `Retry-After` while `current` returns nil. It is the very handler metaserve
+  serves, without CORS or gzip; the caller adds its own.
+- `HandlerOptions` carries the logger, the 503s' `Retry-After`, `SiteURL` (the
+  origin the watch feeds link to), the feeds' clock, and the `works/match` budget
+  and concurrency. The zero value suits an in-process consumer.
+- `MaxSchemaVersion` is the newest artifact schema the code understands. A test
+  pins it to the builder's `SchemaVersion`.
+
+### `pkg/query/querytest`
+
+`Build(tb, dir)` writes a small, deterministic, real artifact, well under 1 MiB,
+built by the real builder from a fixed fixture. Constants name its facts:
+
+- an ASIN and an ISBN that look up, with their work and recording ids;
+- an ASIN that doesn't;
+- a numbered series and a chaptered recording;
+- a retired slug and its target;
+- a work carrying the community layer.
+
+Downstream tests run against true metaserve behaviour.
+
+### `pkg/release`
+
+`pkg/release` is the one implementation of the
+[release asset contract](#release-artifacts):
+
+- `New(repo, token, opts...)` creates the fetcher.
+- `LatestData(ctx, etag)` finds the newest data release, conditional on an ETag.
+- `DownloadData(ctx, rel, dst, progress)` streams the gz through gunzip into a
+  temp `.meta-*.tmp` file beside `dst`, verifies it against
+  `meta.sqlite.gz.sha256`, fsyncs it and renames it into place. The download is
+  bounded, stall-guarded and only from allowlisted GitHub hosts.
+
+metaserve's poller uses it too, and adds its delta and cache paths on top.
+
+### `pkg/release/releasetest`
+
+The one fake of GitHub's releases API. It supports the ETag and `304`, hit
+counts, failing, throttled and hung releases, a redirect route, and the
+`User-Agent` of each request. It also holds the checksum and gzip helpers its
+assets are built with. `pkg/release`'s tests, metaserve's refresh tests and the
+AudioSilo server's mirror tests all publish their releases there, so they can't
+drift apart on what a release looks like on the wire.
+
+### Changing a public package
+
+Because they are public, these packages follow the
 [cross-repo contract](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam)'s
-rules: the handler's responses change additively, and so does the artifact
+rules. The handler's responses change additively, and so does the artifact
 schema ([how its versions are gated](data-model.md#the-compiled-artifact-and-schema-versioning)).
 
 ## The CLI tool set at a glance
 
-Each command is a thin `cmd/*` wrapper over a package; run any of them with `go
+Each command is a thin `cmd/*` wrapper over a package. Run any of them with `go
 run ./cmd/<name>`.
 
 | Command | What it does |
 |---|---|
-| `metacheck` | Validates the whole `data/` tree - schema, pack placement and caps, referential integrity, uniqueness, chapter ordering, series positions. Prints one line per problem and exits 1 if any are found. |
-| `metafmt` | Enforces canonical JSON for `data/**/*.json` (sorted keys, 2-space indent, single trailing LF) and the pack-storage invariants: `--write` also relocates misplaced entries, performs due pack splits, and rebinds, so placement self-heals and nobody computes it by hand. `--check` reports and exits 1. |
-| `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data. Deterministic: identical data produces an identical artifact; each record is dated by its own `added_at`, falling back to its newest `sources[].imported_at`. |
+| `metacheck` | Validates the whole `data/` tree: schema, pack placement and caps, referential integrity, uniqueness, chapter ordering, series positions. Prints one line per problem and exits 1 if any are found. |
+| `metafmt` | Enforces canonical JSON for `data/**/*.json` (sorted keys, 2-space indent, single trailing LF) and the pack-storage invariants. `--write` also relocates misplaced entries, performs due pack splits, and rebinds, so placement self-heals and nobody computes it by hand. `--check` reports and exits 1. |
+| `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data. Deterministic: identical data produces an identical artifact. Each record is dated by its own `added_at`, falling back to its newest `sources[].imported_at`. |
 | `metaserve` | Serves the compiled artifact read-only over HTTP (and optionally the static site at `/`), hot-swapping newer GitHub releases. See [the HTTP API](api.md). |
-| `metascan` | Scans a local audiobook folder into an import JSON - see [contributing data](contributing-data.md#scanning-local-files-metascan). |
-| `metaimport` | Ingests external sources into `data/`: OpenAudible/Libation library exports, libex rows, a maintainer's store listings (`metaimport store`) and the LibriVox mirror (`metaimport librivox fetch` and `import`) - see [contributing data](contributing-data.md#bulk-importers-metaimport), [store listings](contributing-data.md#store-listings-audiobook-guild-and-graphicaudio) and [the LibriVox mirror](contributing-data.md#librivox-the-public-domain-mirror). |
-| `metaissue` | Issue-form body to canonical records + verdict, for the intake bot - see [contributing data](contributing-data.md#intake-automation-issue-form-to-bot-pull-request). |
-| `metaextract` | Supports the source-to-sidecar extraction pipeline: `split` (epub -> chapter text + manifest) and `ngram` (near-verbatim overlap check against the source text). `split` refuses a crafted epub rather than exhausting memory: any archive member over 64 MiB decompressed, or a spine over 256 MiB in total, rejects the whole book before anything is written. |
+| `metascan` | Scans a local audiobook folder into an import JSON. See [Scanning local files: metascan](contributing-data.md#scanning-local-files-metascan). |
+| `metaimport` | Ingests external sources into `data/`: OpenAudible/Libation library exports, libex rows, a maintainer's store listings (`metaimport store`) and the LibriVox mirror (`metaimport librivox fetch` and `import`). See [Bulk importers: metaimport](contributing-data.md#bulk-importers-metaimport), [store listings](contributing-data.md#store-listings-audiobook-guild-and-graphicaudio) and [the LibriVox mirror](contributing-data.md#librivox-the-public-domain-mirror). |
+| `metaissue` | Turns an issue-form body into canonical records and a verdict, for the intake bot. See [Intake automation](contributing-data.md#intake-automation-issue-form-to-bot-pull-request). |
+| `metaextract` | Supports the source-to-sidecar extraction pipeline: `split` (epub -> chapter text + manifest) and `ngram` (near-verbatim overlap check against the source text). `split` refuses a crafted epub rather than exhausting memory. Any archive member over 64 MiB decompressed, or a spine over 256 MiB in total, rejects the whole book before anything is written. |
 
 ## Build, validate, and serve locally
 
 Requires **Go 1.26+** (pure Go, no cgo, no external services). CI reads the Go
 minor from the one-line `.go-version` file at the repo root and resolves it to
-the newest patch, so a local `govulncheck` should run under the newest 1.26.x
-too, or it reports standard-library advisories CI does not. The full gate,
+the newest patch. So a local `govulncheck` should run under the newest 1.26.x
+too, or it reports standard-library advisories that CI does not. The full gate,
 matching CI (`.github/workflows/check.yml`):
 
 ```sh
@@ -185,74 +215,17 @@ go run ./cmd/metacheck --profile core       # validate the data tree
 go run ./cmd/metafmt --check --profile core # canonical formatting (--write to fix)
 ```
 
-`--profile core` is what this repo's `data/` tree now is (works, people, series,
-`redirects.json`) since the CC BY-SA sidecar layer moved to
-`audiosilo-meta-community` - `metacheck`/`metafmt` default to `--profile all`
-(the whole database in one tree) for backward compatibility, so CI and this
-snippet pass `--profile core` explicitly rather than relying on that default.
+`--profile core` describes this repo's `data/` tree (works, people, series,
+`redirects.json`), because the CC BY-SA sidecar layer moved to
+`audiosilo-meta-community`. `metacheck` and `metafmt` default to `--profile all`
+(the whole database in one tree) for backward compatibility. CI and this snippet
+therefore pass `--profile core` explicitly rather than relying on that default.
 
-The `-race` suite takes about a minute on a fast machine; CI splits it into three
-shards that take 3 to 6 minutes each. Almost every test that walks the real data
-tree skips under the race detector, since the fixture suites cover the concurrent
-code and `metacheck`/`metafmt` validate the real tree anyway. The exception is
-`internal/recorddiff`'s real-checkout test, which diffs the last commit under
-`-race` too - but only a bounded sample of its changed packs (every family the
-commit touched keeps one), so it takes a few seconds whatever merged last; without
-`-race` it diffs the whole commit. The skipped real-data tests
-still run in CI: the `real-data.yml` workflow runs the whole suite without
-`-race` every day, on demand, and on every push to `main` that touches anything
-the Go gate would run on (a `paths:` filter skipping `data/**` other than
-`data/go.mod` and `*.md`, so the bots' data-only commits never trigger it). The
-one deliberate difference from the Go gate is `site/**`, which no real-data test
-reads, so site-only pushes do not trigger it either. It is never run on pull
-requests. A newer run cancels an older one, so the newest commit on `main` is
-what reports, and a cancelled run reports nothing. A failure
-opens or updates a single issue labelled `ci-real-data`, which the next green
-run closes. Run them locally with `go test -count=1 ./...`. The linter set is pinned
-by the committed `.golangci.yml` (errcheck, govet, ineffassign, staticcheck,
-unused), so a new golangci-lint release cannot change which linters run; adding
-one is an edit there, with its findings fixed in the same change.
-
-CI runs that same build/vet/`go test -race`/golangci-lint gate, plus a
-`govulncheck` scan, in `check.yml`'s `build`, `test`, `lint` and `vuln` jobs - but
-only when a `changes` job classifies the diff as touching Go code. A
-data-and-prose-only pull request (most of them here, from the intake and sync bots)
-skips their steps straight through; the `metacheck` and `metafmt` jobs are never
-gated, since they are the data's own check regardless of what else changed.
-
-The jobs run in parallel, each on its own runner, so a pull request waits for the
-slowest of them rather than their sum. `test` is three shards:
-`.github/scripts/go-test-shard.sh` partitions `go list ./...` so every package
-runs in exactly one. On a pull request an `advisories` job runs metacheck over
-the base beside the head's run, for the advisory delta (a pull request touching
-no `data/` skips that, since it cannot introduce one). Jobs that need only Go
-code (`build`, `lint`, `vuln`) and the `site` job check out a sparse tree without
-`data/`, skipping most of a full checkout's time; `advisories` does too, reading
-the base's `data/` from git. The test shards also restore a shared `-race` build cache
-(`actions/cache`, keyed on the Go patch and `go.sum`, saved only on pushes to
-`main`): setup-go's cache has one key for every Go job, which the non-race
-`build` job saves first, so the shards used to recompile everything under the
-race detector on every run.
-
-**`check` is the verdict.** It needs `changes`, `build`, `test`, `metacheck`,
-`metafmt` and `advisories`, and passes only when every one of them but
-`advisories` concluded `success` (`.github/scripts/check-verdict.sh`); a skipped
-or cancelled job is a failure. It runs under `always()`, so a cancelled run
-reports a red `check`; a skipped one would read as green to branch protection and
-the sync bot. `advisories` can never end red (every step continues on error,
-each under its own timeout), since the sync bot treats any failed check run on a
-head as a failure, required or not.
-`check` writes the advisories a pull request introduces into its job summary, and
-when it fails its log ends with the tails of the failing jobs' own output, which
-it fetches from the Actions API for the current run attempt only
-(`.github/scripts/failed-job-logs.sh`, so it needs `actions: read`). A re-run of
-the failed jobs therefore never prints a log from an earlier attempt, as the old
-uploaded-artifact logs could. The
-name is load-bearing: branch protection requires `check` and `compose`, and the
-[sync bot](sync-bot.md) gates its merge on `check` (with `compose`, `site` and
-`verify`) by name and hands the tail of
-a failed `check` log to its resolver, so renaming or dropping it leaves both
-waiting for a check that never comes.
+The `-race` suite takes about a minute on a fast machine. Almost every test that
+walks the real data tree skips under the race detector. Run them locally with
+`go test -count=1 ./...`. How CI shards the suite, runs the skipped real-data
+tests, pins the linter set and decides the `check` verdict is in
+[The Go gate in CI](contributing-data.md#the-go-gate-in-ci).
 
 Build the artifact and serve it:
 
@@ -264,23 +237,33 @@ go run ./cmd/metaserve --db meta.sqlite --addr :8080
 ## Release artifacts
 
 On merge to `main`, `.github/workflows/release.yml` publishes a **dated data
-release** tagged `data-vYYYY.MM.DD-<core7>-<community7>` - the short SHAs of both
-this repo's core tree and the composed `audiosilo-meta-community` checkout, since
-a community-only merge can trigger a release too and the core SHA alone stopped
-being unique - when data or schema changes land, when the builder itself changes
-(`internal/build/**`, `cmd/metabuild/**`), or when the cross-repo compose code
-changes (`pkg/check/**`, `pkg/pack/**`), so an artifact-shaping change such as a
-new index actually reaches a published artifact.
+release** when one of these changes lands:
 
-The release is **created as a draft**, every asset is then verified against the
-GitHub API's own reported size and sha256 digest for the bytes it actually
-stored (never re-downloaded and re-hashed locally), and only once every asset
-checks out is the draft published - so a consumer can never select a release
-whose assets are still uploading, and a verification failure deletes the draft
-instead of leaving a broken release visible. A manual `workflow_dispatch` run is
-refused unless it is checked out on `main` (the push trigger is already
-main-only; dispatch is the one door that takes any ref, and a release cut from a
-branch would become the catalogue the moment it lands). The asset contract:
+- data or schema;
+- the builder itself (`internal/build/**`, `cmd/metabuild/**`);
+- the cross-repo compose code (`pkg/check/**`, `pkg/pack/**`).
+
+The last two make sure that a change which shapes the artifact, such as a new
+index, actually reaches a published artifact.
+
+The release is tagged `data-vYYYY.MM.DD-<core7>-<community7>`, the short SHAs of
+this repo's core tree and of the composed `audiosilo-meta-community` checkout. A
+community-only merge can trigger a release too, so the core SHA alone stopped
+being unique.
+
+The workflow **creates the release as a draft**. It then verifies every asset
+against the size and sha256 digest the GitHub API reports for the bytes it
+actually stored, and does not re-download and re-hash them locally. Only once
+every asset checks out does it publish the draft. So a consumer can never select
+a release whose assets are still uploading, and a verification failure deletes
+the draft instead of leaving a broken release visible.
+
+The workflow refuses a manual `workflow_dispatch` run unless it is checked out on
+`main`. The push trigger is already main-only, and dispatch is the one door that
+takes any ref. A release cut from a branch would become the catalogue the moment
+it lands.
+
+The asset contract:
 
 - `meta.sqlite.gz` + `meta.sqlite.gz.sha256` - the universal anchor every
   consumer verifies against.
@@ -289,55 +272,58 @@ branch would become the catalogue the moment it lands). The asset contract:
   binary delta against the previous data release (`--long=31`; a stock zstd CLI
   consumer must also pass `--long=31` at decompression time).
 
-The repo also cuts code/image `v*` releases with no data assets, so consumers
-select the newest **data** release by asset presence: the non-draft,
-non-prerelease release carrying `meta.sqlite.gz` with the maximum `published_at`
-(GitHub's release list order is not publish-chronological, and its "latest" can be
-either kind). The [`metaserve` refresh loop](api.md#serving-and-refresh) and
+The repo also cuts code and image `v*` releases with no data assets. Consumers
+therefore select the newest **data** release by asset presence: the non-draft,
+non-prerelease release carrying `meta.sqlite.gz` with the maximum `published_at`.
+GitHub's release list order is not publish-chronological, and its "latest" can be
+either kind. The [`metaserve` refresh loop](api.md#serving-and-refresh) and
 mirror-mode AudioSilo servers apply the same rule, through `pkg/release`.
 
 ## The published image
 
 `ghcr.io/kodestar/audiosilo-meta` is **the site build plus the `metaserve` binary,
-and no data at all**. The catalogue is not baked in: the container fetches the
+and no data at all**. The catalogue is not baked in. The container fetches the
 newest data release at boot and hot-swaps every release after that, which keeps
 image size and image build time independent of how large the catalogue grows.
 
 The practical consequences for a deployment:
 
 - **Give it a cache volume.** The image runs with `--poll --cache /data/cache` and
-  declares `/data` as a volume. A restart that finds the current release's artifact
-  already in the cache verifies it against the release's `meta.sqlite.sha256` and
-  adopts it **without downloading** - so restarts stay cheap. Without a persistent
-  volume every restart re-downloads the catalogue. Budget for two artifacts at
-  peak, one in steady state.
-- **A boot with no data is a valid state, not a crash.** The server stays up and
-  degrades visibly if GitHub is unreachable - full detail in
+  declares `/data` as a volume. When a restart finds the current release's
+  artifact already in the cache, it verifies it against the release's
+  `meta.sqlite.sha256` and adopts it **without downloading**, so restarts stay
+  cheap. Without a persistent volume, every restart re-downloads the catalogue.
+  Budget for two artifacts at peak and one in steady state.
+- **A boot with no data is a valid state, not a crash.** If GitHub is
+  unreachable, the server stays up and degrades visibly. Full detail is in
   [boot and degraded start](api.md#boot-and-degraded-start).
-- **Probe `/healthz` for readiness only.** It reports readiness, not liveness; a
+- **Probe `/healthz` for readiness only.** It reports readiness, not liveness. A
   liveness probe on it will restart-loop a server that is correctly waiting out an
-  outage. For the same reason, the image deliberately ships **no Dockerfile
-  `HEALTHCHECK`** of its own - an orchestrator's own "unhealthy" verdict is
-  exactly what triggers an automatic restart, which would turn the degraded boot
-  above into the crash loop it exists to avoid. Wire `/healthz` as
-  readiness/startup in the orchestrator instead.
+  outage. For the same reason, the image ships **no Dockerfile `HEALTHCHECK`** of
+  its own. An orchestrator restarts a container it judges "unhealthy", which
+  would turn the degraded boot above into the crash loop it exists to avoid. Wire
+  `/healthz` as readiness or startup in the orchestrator instead.
 - **Name the reverse proxy.** The API is rate limited per client. Behind a
-  proxy, set `METASERVE_TRUSTED_PROXIES` to the proxy's own address or network
-  (the shipped compose file trusts only its own network's gateway, right for a
-  host proxy on the loopback port; a containerised proxy must add its own
-  address), never a whole private range, or every visitor shares the proxy's one bucket; see
-  [rate limit and caching](api.md#rate-limit-and-caching).
+  proxy, set `METASERVE_TRUSTED_PROXIES` to the proxy's own address or network,
+  never a whole private range, or every visitor shares the proxy's one bucket. The
+  shipped compose file trusts only its own network's gateway, which is right for
+  a host proxy on the loopback port. A containerised proxy must add its own
+  address. See [rate limit and caching](api.md#rate-limit-and-caching).
 
 ## How it connects to the rest of AudioSilo
 
-audiosilo-meta is the **upstream** of a three-repo metadata seam. `metaserve`
-serves the community data (or, for a server in mirror mode, the same handler
-answers in-process over a downloaded copy of the artifact); the AudioSilo server
-composes a book's enrichment from it (and re-exposes a single work document, unchanged, for the earlier books of a
-series the listener may not own); the player renders both. Covers are
-referenced by URL, so the server also fetches the images behind those `cover_url`s
-from their own hosts (in mirror mode too) and hands the player thumbnails
-(`meta_covers`): a listener's device never contacts a cover host.
+audiosilo-meta is the **upstream** of a three-repo metadata seam:
+
+- `metaserve` serves the community data. For a server in mirror mode, the same
+  handler answers in-process over a downloaded copy of the artifact.
+- The AudioSilo server composes a book's enrichment from it. For the earlier books
+  of a series the listener may not own, the server re-exposes a single work
+  document, unchanged.
+- The player renders both.
+
+Covers are referenced by URL, so the server also fetches the images behind those
+`cover_url`s from their own hosts (in mirror mode too) and hands the player
+thumbnails (`meta_covers`). A listener's device never contacts a cover host.
 
 ```mermaid
 flowchart LR
@@ -351,36 +337,45 @@ flowchart LR
 ```
 
 The seam of record is
-[the cross-repo contract's community-metadata section](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam) -
-what couples, which files sit on each side, and what a `metaserve` response-shape
-change ripples into. The consumer sides are documented on
+[the cross-repo contract's community-metadata section](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam).
+It covers what couples, which files sit on each side, and what a `metaserve`
+response-shape change ripples into. The consumer sides are documented on
 [server configuration](../server/configuration.md), the server's
 [HTTP API reference](../server/api/reference.md), and the frontend's
 [state and data](../frontend/state-and-data.md).
 
-One more service sits upstream of the data rather than downstream of it: the
-[series-completion bot](./sync-bot.md), a daily job that keeps the series the
-catalogue already holds complete and is the only automation allowed to merge its
+One more service sits upstream of the data rather than downstream of it. The
+[series-completion bot](./sync-bot.md) is a daily job that keeps the series the
+catalogue already holds complete. It is the only automation allowed to merge its
 own pull requests.
 
-`metaserve` additionally doubles as an **Audiobookshelf custom metadata
-provider** (`GET /abs/search`, plus `GET /abs/{lang}/search`, which ranks one
-language's matches first) for that competitor's users - see
+`metaserve` also works as an **Audiobookshelf custom metadata provider** for that
+competitor's users: `GET /abs/search`, plus `GET /abs/{lang}/search`, which ranks
+one language's matches first. See
 [the HTTP API](api.md#get-abssearch-audiobookshelf-provider).
 
 ## The site's watchlist is client-side only
 
 The static site (`site/`, Astro + React islands) carries one feature that looks
 like an account and deliberately isn't: the **series watchlist** behind
-`/watching`. Which series a reader follows, which volumes they have marked as
-owned, which entries they have already been shown, and which series they have
-dismissed all live in a single `localStorage` key in the reader's browser
-(`site/src/lib/watchlist.ts`), never in a database and never in a request body -
-the catalogue API is read-only and there is nothing to attach a reader to. The rules are
-pure functions over a store value, the library-import path shares its matching
-code with `/import`, and the only network traffic the page generates is the same
-public series lookups the series page makes. The consequences are the honest
-ones: clearing site data clears the list (hence the page's download/merge
-backup), nothing syncs between devices by itself, and notifications are served by
-the stateless [watch feed](api.md#apiv1watchfeedatom-apiv1watchfeedjson), whose
-subscription URL carries the series list rather than pointing at stored state.
+`/watching`. The reader's browser keeps all of it in a single `localStorage` key
+(`site/src/lib/watchlist.ts`):
+
+- which series the reader follows;
+- which volumes they have marked as owned;
+- which entries they have already been shown;
+- which series they have dismissed.
+
+None of it is in a database or a request body. The catalogue API is read-only and
+there is nothing to attach a reader to. The rules are pure functions over a store
+value, and the library-import path shares its matching code with `/import`. The
+only network traffic the page generates is the same public series lookups the
+series page makes.
+
+The consequences:
+
+- Clearing site data clears the list, hence the page's download and merge backup.
+- Nothing syncs between devices by itself.
+- Notifications come from the stateless
+  [watch feed](api.md#apiv1watchfeedatom-apiv1watchfeedjson), whose subscription
+  URL carries the series list rather than pointing at stored state.

@@ -3,8 +3,9 @@ title: The .audiosilo folder
 description: "The Bridge's generated files in a book's hidden .audiosilo folder: where they go (and the single-file stem prefix), their formats (characters, recaps, the own-words description, the chapters found in the narration, the read-along map and the provenance), how the Bridge writes them, how the server finds, checks and stores them (signatures, the attachments refresh), the hidden-path rule, and how /meta serves them."
 ---
 
-A `sidecars.generate` job (and a `sidecars.describe` job, Phase 1c, a `chapters.detect` job, Phase 1d, and a `readalong.align` job, Phase 3c) leaves its results **with the book**, in a hidden
-folder the server reads: the filesystem stays the source of truth, and the
+A `sidecars.generate` job leaves its results **with the book**, in a hidden folder
+the server reads. So do a `sidecars.describe` job, a `chapters.detect` job and a
+`readalong.align` job. The filesystem stays the source of truth, and the
 server's copy is a rebuildable index of it like everything else. The Bridge
 writes the files (`internal/generate/attach.go`, `describejob.go`, `chapters.go`, `readalongjob.go`); the server never writes into a
 library and only reads them (`metadata/attachments.go`,
@@ -50,7 +51,7 @@ keeps Fetch as a tombstone. See [publication](podcasts.md#publication-generation
   **`recaps.json`** its `model.Recaps` (with `in_short` and `ending`): exactly what
   the pipeline's `sidecars/` folder holds after its own validation. Their `work`
   field is the resolved community work's slug, or the pipeline's placeholder.
-- **`description.json`** (Phase 1c) is audiosilo-meta's `model.Description`: the
+- **`description.json`** is audiosilo-meta's `model.Description`: the
   book's spoiler-free description in the agent's own words, with the run's `work`
   and `sources` (taken from its `characters.json`) and the share-alike licence,
   checked against meta's `description.schema.json` before it is kept (how it is
@@ -65,7 +66,7 @@ keeps Fetch as a tombstone. See [publication](podcasts.md#publication-generation
 }
 ```
 
-- **`chapters.json`** (Phase 1d) is the chapters the Bridge found in the
+- **`chapters.json`** is the chapters the Bridge found in the
   narration of a book with no chapter markers ([below](#chaptersjson)).
 - **`bridge.json`** is the provenance:
 
@@ -89,7 +90,7 @@ sizes and modification times the server gave (Unix seconds), or the one `.epub`.
 The server reads every field but `inputs`.
 
 Beside a `description.json`, `bridge.json` carries an optional **`description`**
-object (Phase 1c) saying how that file was made:
+object saying how that file was made:
 
 ```json
 "description": {
@@ -114,7 +115,7 @@ holding a JSON object) it writes a fresh one of its own `kind`.
 
 ### `chapters.json`
 
-Phase 1d: the chapters a Bridge found in the narration of a book with no chapter
+The chapters a Bridge found in the narration of a book with no chapter
 markers (how: [Chapterless books](chapters.md)), on the **whole-book timeline**,
 the shape of a community recording's chapter list:
 
@@ -168,7 +169,7 @@ object.
 
 ### `readalong.json`
 
-Phase 3c: the book's **read-along map**, where each sentence of its ebook is
+The book's **read-along map**: where each sentence of its ebook is
 spoken in its audio, written by a `readalong.align` job (how it is made, and the
 whole format: [Read-along](readalong.md#the-map-audiosilo-readalongv1)). Its head
 names the ebook it was made from (`ebook.file`, `ebook.sha256`), the audio
@@ -196,9 +197,9 @@ only and streams the file at
    A file over 4 MiB fails the write (the server wouldn't read it).
    `description.json` follows in a **second save** once the description step has
    run (the characters and recaps never wait for it), only when the step got one.
-   `chapters.json` (Phase 1d) is saved **first**, as soon as the engine has found
+   `chapters.json` is saved **first**, as soon as the engine has found
    the chapters of a book with no markers, before the characters and recaps exist,
-   then again with them at the finish. `readalong.json` (Phase 3c) is written only
+   then again with them at the finish. `readalong.json` is written only
    by a `readalong.align` job, at its end, and only when at least half of the
    ebook's text lined up; its own bound is 16 MiB.
 5. Then `POST /bridge/rescan {library_id, path, mode: "attachments"}`.
@@ -226,8 +227,8 @@ modification times, by the folder holding it. A book's **signature** is its own
 part of that listing, `name:size:mtime_ns` for each of its known names present,
 in the order `characters.json`, `recaps.json`, `description.json`,
 `chapters.json`, `bridge.json`, `readalong.json`, joined by commas (`""` for none),
-its stem taken off. Adding `description.json` (Phase 1c), `chapters.json` (Phase
-1d) and `readalong.json` (Phase 3c, last) kept the
+its stem taken off. Adding `description.json`, `chapters.json` and
+`readalong.json` (last) kept the
 others in their order, so a book without them keeps the signature it had byte for
 byte; a book that has one was read before the name was known, so its signature
 changes and the next scan reads it again. It is stored on the book row
@@ -264,7 +265,7 @@ fingerprint of every part) must not cost. It answers what is now indexed:
 { "path": "Author/Book", "attachments": { "characters": true, "recaps": true, "description": true, "chapters": false, "bridge": true, "readalong": false } }
 ```
 
-`readalong` is Phase 3c's (an older Bridge ignores it). The refresh, like a scan,
+An older Bridge ignores `readalong`. The refresh, like a scan,
 also hashes the ebook of a book whose map it reads, when its stored digest isn't
 for the file there now (see [the scanner](../server/scanner.md#a-books-ebook)).
 

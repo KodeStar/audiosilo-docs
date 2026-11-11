@@ -1,6 +1,6 @@
 ---
 title: Read-along (readalong.align)
-description: "Bridge Phase 3c-1: how a book's ebook is lined up with its narration, sentence by sentence, with no agent. The readalong.align job and its refusals, the goal readalong path and the mechanical loop repair, the reuse table, the readalong_aligning stage (the aligner, the heal, the onset snap), the audiosilo-readalong/v1 map, the 50% refusal, how the server indexes, checks and serves the map and tells when it is stale, and the transcript retention."
+description: "How a book's ebook is lined up with its narration, sentence by sentence, with no agent. The readalong.align job and its refusals, the goal readalong path and the mechanical loop repair, the reuse table, the readalong_aligning stage (the aligner, the heal, the onset snap), the audiosilo-readalong/v1 map, the 50% refusal, how the server indexes, checks and serves the map and tells when it is stale, and the transcript retention."
 ---
 
 A **read-along map** says where each sentence of a book's ebook is spoken in its
@@ -15,7 +15,7 @@ book, and serves it at
 **No agent anywhere**: no credential, no spend, no agent container. Maps are made
 **per book only**, from the console's book page or the player's Text tab (no bulk
 action). The player's side, the companion's Text tab and the reader's Follow
-narration (Phase 3c-2), is on [The ebook reader](../frontend/reader.md#read-along-following-the-narration).
+narration, is on [The ebook reader](../frontend/reader.md#read-along-following-the-narration).
 
 Code: the Bridge's `internal/readalong` (the aligner, pure apart from reading the
 EPUB), `internal/epubcfi` (foliate's CFIs in Go), `internal/pipeline/readalong_stage.go`
