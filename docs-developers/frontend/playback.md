@@ -937,11 +937,18 @@ the same channel, over both transports) is told from a claim by its `kind`:
 | `file`, `filePos` | the playing file and the seconds into it, when known |
 | `finished` | whether that place is the book's end |
 | `tab` | the tab that gave way |
-| `to`, `claimedAt` | the claim it answers: the tab that made it and its `sentAt` |
+| `to`, `askedAt` | the play it answers: the tab that claimed and when that play was asked for |
 
 Only a tab whose own place was the latest answers. A tab that was itself behind
 another tab's play sends nothing: one with the note standing, or one still moving
 to the shared place (`catchingUp`).
+
+An answer belongs to a play, not to one claim message. A tab claims on every move
+into `playing`, so one play can claim twice a few milliseconds apart, and the
+answer to the first claim can arrive after the second. The tab that gives way
+answers a play once (it sends nothing for a play it already noted, `notedPlay`).
+The tab that claimed matches the answer on `to` and `askedAt` against its own
+play (`ownPlay`), which a second claim of the same play leaves untouched.
 
 **The tab that claimed** (`onGaveWayAnswer`) moves there by `moveToTabPlace`,
 the same path as the mirror's place:
@@ -953,13 +960,13 @@ the same path as the mirror's place:
 
 So the spans are one chain (one tab's begins where the other's ended), and the
 saved place never goes back. The answer is read against the place the play began
-at (`ownClaim.pos`, moved with each tab place taken), not where it has played to
+at (`ownPlay.pos`, moved with each tab place taken), not where it has played to
 since.
 
 An answer is ignored when it:
 
-- answers an older claim than the tab's last, or comes more than 5 s
-  (`GAVE_WAY_ANSWER_MS`) after the claim;
+- answers an older play than the tab's current one, or comes more than 5 s
+  (`GAVE_WAY_ANSWER_MS`) after that play's first claim;
 - is for another connection or another book, or comes while a book loads;
 - would move a place the listener chose here (`placeChosen`: an explicit start
   or a seek, until another tab plays);
