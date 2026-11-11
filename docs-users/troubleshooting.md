@@ -22,7 +22,7 @@ Your Docker is older than **20.10.10** and blocks something the server needs. Up
 
 ### My browser warns about the certificate
 
-That's expected with the default self-signed certificate. At home, accept the warning; the connection is still encrypted. To get rid of it, use Let's Encrypt or a reverse proxy: see [Reach your server from outside your home](./getting-started/remote-access.md).
+That's expected with the default self-signed certificate. At home, accept the warning; the connection is still encrypted. To get rid of it, use Let's Encrypt or a reverse proxy. See [Reach your server from outside your home](./getting-started/remote-access.md).
 
 ### Where do I find the server's log?
 
@@ -73,7 +73,7 @@ That server stopped answering. Books from your other servers keep working, and i
 
 ### The app can't connect, but the browser can
 
-The phone apps can't accept the default self-signed certificate. At home they use [plain HTTP](./getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect) instead. Check:
+The iOS and Android apps can't accept the default self-signed certificate. At home they use [plain HTTP](./getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect) instead. Check:
 
 - **Your phone is on the same Wi-Fi as the server.** Away from home, the apps need [Let's Encrypt or a reverse proxy](./getting-started/remote-access.md).
 - **Plain HTTP at home is on** under [Server > Settings > Network & HTTPS](./admin/server.md#network--https).
@@ -94,7 +94,7 @@ Some formats (Apple Lossless, AC-3) don't play in browsers, so the server [conve
 
 - Ask your admin to check [Server > Transcoding](./admin/server.md#transcoding) shows ffmpeg as found.
 - Ask your admin to rescan the book once ffprobe is available.
-- Or listen in the [mobile app](./listening/mobile-apps.md), or convert the file to `.m4b` or `.mp3`.
+- Or listen in the [iOS or Android app](./listening/mobile-apps.md), or convert the file to `.m4b` or `.mp3`.
 
 ### A book plays in the browser but not in the app
 
@@ -106,7 +106,7 @@ Usually a flaky connection. Press **Retry**, which reloads the track. For travel
 
 ### A book won't start
 
-The note says why when it can. If the server isn't answering, see [I can't reach the server at all](#i-cant-reach-the-server-at-all). If one book's audio keeps failing, ask your admin to check its files. Your place is kept, and **Retry** starts from there.
+The message says why when it can. If the server isn't answering, see [I can't reach the server at all](#i-cant-reach-the-server-at-all). If one book's audio keeps failing, ask your admin to check its files. Your place is kept, and **Retry** starts from there.
 
 ### "This book isn't in the library"
 
@@ -120,7 +120,7 @@ No podcasts at all? Update the app, and ask your admin whether you can see the p
 
 ### My book restarted from the beginning
 
-Your place is saved on the server and on the device, so it's very unlikely to be lost. If a book shows 0:00 with an error, don't scrub. Press **Retry** to fetch your real place.
+Your place is saved on the server and on the device, so losing it is very unlikely. If a book shows 0:00 with an error, don't scrub. Press **Retry** to fetch your real place.
 
 ### AudioSilo doesn't appear in Android Auto or CarPlay
 
@@ -133,19 +133,19 @@ See [Getting AudioSilo into the car](./listening/in-the-car.md#getting-audiosilo
 - **Wrong folder path.** Under Docker, the library's folder is the path inside the container (like `/library`), not on the host. Check it in [Libraries](./admin/libraries.md).
 - **A network share dropped.** The server keeps every book and everyone's progress, and marks the library **Folder unavailable**. Remount the share, then press **Retry** on the library.
 
-Your files are never deleted.
+AudioSilo never deletes your files.
 
 ### New books I added aren't showing up
 
 The folder view shows new files at once. Search and lists need a scan. Press **Rescan** on the library, or [scan on a schedule](./admin/libraries.md#scanning-on-a-schedule). A waiting scan shows in [Health > Jobs](./admin/health.md#jobs).
 
-### One folder shows as a single giant book - or as lots of one-chapter books
+### One folder shows as one giant book, or as many one-chapter books {/* #one-folder-shows-as-a-single-giant-book---or-as-lots-of-one-chapter-books */}
 
 Set a per-folder override with **Folder detection...** on the library: **Separate books** or **Always one book**. See [Folder detection](./admin/libraries.md#folder-detection) and [Books split into disc folders](./admin/libraries.md#books-split-into-disc-folders).
 
 ### A book has no chapters (or only a few broad ones)
 
-A long file without chapter marks shows 30-minute **Parts**. To use the community's chapters:
+A long file without chapter marks shows 30-minute **Parts**. To use chapters from the community database:
 
 1. Turn on community metadata in **Server > Settings**.
 2. Match the book with **Match with community metadata** on its page.
@@ -172,7 +172,7 @@ See [Which books have it](./listening/reading-the-ebook.md#which-books-have-it).
 
 **In a browser**, it's usually a reverse proxy adding its own security headers. Let the proxy pass the server's own headers through for `/web/reader.html`. An old browser can't run the reader either.
 
-**In the phone apps**, the phone probably ran short of memory. Press **Try again**, and close other apps if it keeps stopping.
+**In the app**, the phone probably ran short of memory. Press **Try again**, and close other apps if it keeps stopping.
 
 ## Downloads
 
@@ -182,7 +182,7 @@ Updating the app keeps downloads. Deleting and reinstalling it removes them, so 
 
 ### The web player won't offer downloads (or downloaded books won't play offline)
 
-Offline listening in a browser needs HTTPS. Over plain HTTP, downloads are hidden. Use HTTPS (see [Reach your server from outside your home](./getting-started/remote-access.md)) or the phone app. If downloads say offline playback isn't ready, reload the page once.
+Offline listening in a browser needs HTTPS. Over plain HTTP, downloads are hidden. Use HTTPS (see [Reach your server from outside your home](./getting-started/remote-access.md)) or the iOS or Android app. If downloads say offline playback isn't ready, reload the page once.
 
 ## Demo
 
@@ -192,4 +192,4 @@ Only servers set up for it offer a demo. Try the [public demo](./demo.md).
 
 ### The demo says it's at capacity
 
-Too many demo accounts are live at once. Idle ones are cleaned up after about a day, so try again later.
+Too many demo accounts are live at once. The server removes idle ones after about a day, so try again later.

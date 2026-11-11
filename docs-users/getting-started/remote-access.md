@@ -3,7 +3,7 @@ title: Reach your server from outside your home
 description: "Listen away from home: give your server a domain name and a trusted certificate, with Let's Encrypt or a reverse proxy."
 ---
 
-At home, AudioSilo works out of the box. To listen anywhere else, your server needs an address that works from the internet, and a certificate your devices trust. There are two ways to get the certificate:
+At home, AudioSilo needs no extra setup. To listen anywhere else, your server needs an address that works from the internet, and a certificate your devices trust. There are two ways to get the certificate:
 
 - **Let's Encrypt, built in.** The server gets and renews a free certificate itself. Simplest if nothing else runs on the machine.
 - **A reverse proxy** (Caddy, SWAG, nginx, Traefik). Best if you already run one for other services.
@@ -15,7 +15,7 @@ Both need a domain name, such as `books.example.com`, pointing at your home.
 1. **Get a domain name** and point it at your home's internet address.
 2. **Forward a port** on your router to the server, and allow it through the server's firewall (see [Ports and firewalls](#ports-and-firewalls)).
 3. **Turn on HTTPS** with [Let's Encrypt](#a-real-certificate-with-autocert-lets-encrypt) or a [reverse proxy](#behind-a-reverse-proxy).
-4. **Set the public address** so invite links and QR codes use it (see [below](#tell-the-server-its-public-address)).
+4. **Set the public address** so invite links and QR codes use it (see [Tell the server its public address](#tell-the-server-its-public-address)).
 
 You can change these settings in the admin console under [Server > Settings](../admin/server.md#settings), or in `config.yaml` in the data folder. HTTPS settings apply at the next restart. An `AUDIOSILO_*` environment variable wins over both, and the console then shows that setting as locked.
 
@@ -79,7 +79,7 @@ public_url: "https://books.example.com"
 
 ## Tell the server its home address
 
-At home, the apps can talk to the server directly over your own network, which is quicker. Set **Home address** (under Server > Settings > General) to the server's address on your home network:
+At home, the iOS and Android apps can talk to the server directly over your own network, which is quicker. Set **Home address** (under Server > Settings > General) to the server's address on your home network:
 
 ```yaml
 lan_url: "http://192.168.1.20:8080"
@@ -87,23 +87,23 @@ lan_url: "http://192.168.1.20:8080"
 
 (Or `AUDIOSILO_LAN_URL`.) The apps use it when they can reach it, and switch to the public address when you leave home (see [At home and away](../listening/connecting.md#at-home-and-away)).
 
-You can often leave it empty: a device that connects through a home-network address learns it by itself. Set it when devices connect through the public address or a reverse proxy, so they still switch at home.
+You can often leave it empty. A device that connects through a home-network address learns it by itself. Set it when devices connect through the public address or a reverse proxy, so they still switch at home.
 
 ## Good to know
 
 ### The default: self-signed HTTPS
 
-Out of the box, the server makes its own certificate. Browsers warn about it the first time; accept the warning and the connection is encrypted. This is fine at home.
+By default, the server makes its own certificate. Browsers warn about it the first time; accept the warning and the connection is encrypted. This is fine at home.
 
-A self-signed certificate has limits. The web player can't be installed as an app, and the phone apps, an [Apple Watch](../listening/apple-watch.md#a-self-signed-server) and [Cast devices](../listening/chromecast.md) can't accept it. At home the apps use plain HTTP instead (next section). Away from home they need Let's Encrypt or a reverse proxy.
+A self-signed certificate has limits. The web player can't be installed as an app, and the apps, an [Apple Watch](../listening/apple-watch.md#a-self-signed-server) and [Cast devices](../listening/chromecast.md) can't accept it. At home the apps use plain HTTP instead (next section). Away from home they need Let's Encrypt or a reverse proxy.
 
-### Plain HTTP at home (how the phone apps connect)
+### Plain HTTP at home: how the apps connect {/* #plain-http-at-home-how-the-phone-apps-connect */}
 
-With the self-signed certificate, the server also answers **plain HTTP**, but only to devices on your home network. Any other device is sent to HTTPS.
+With the self-signed certificate, the server also answers **plain HTTP**, but only to devices on your home network. The server sends any other device to HTTPS.
 
-There's nothing to set up. Connect the app while your phone is on the same Wi-Fi as the server: scan the pairing QR code or open an invite link. The app signs in over `http://` and remembers it as the [home address](#tell-the-server-its-home-address). To type the address instead, include `http://`, like `http://192.168.1.20:8080`.
+There's nothing to set up. Connect the app while your phone is on the same Wi-Fi as the server. Scan the pairing QR code or open an invite link. The app signs in over `http://` and remembers it as the [home address](#tell-the-server-its-home-address). To type the address instead, include `http://`, like `http://192.168.1.20:8080`.
 
-Plain HTTP isn't encrypted, so anyone watching your home network could see sign-ins. That's the usual trade-off on a trusted home Wi-Fi. On a shared network, turn it off and use a trusted certificate. To turn it off, switch off **Plain HTTP at home** under Server > Settings > Network & HTTPS (or `tls.home_http: false`). The phone apps then can't connect to a self-signed server.
+Plain HTTP isn't encrypted, so anyone watching your home network could see sign-ins. On a shared network, turn it off and use a trusted certificate. To turn it off, switch off **Plain HTTP at home** under **Server > Settings > Network & HTTPS** (or `tls.home_http: false`). The apps then can't connect to a self-signed server.
 
 Plain HTTP at home is also off when you give the server your own certificate file (`tls.cert_file`).
 
@@ -117,7 +117,7 @@ The protections are always on; there's nothing to enable:
 - **No sign-ups.** Nobody can create their own account. Accounts come from an admin's invite, or from a person adding a member of their household. Devices join with short-lived invite codes. See [Invite people](../admin/users-and-invites.md).
 - **Rate limits and lockouts.** Repeated wrong passwords or invite codes lock the sender out for a while.
 - **Secrets are stored scrambled**, and every sign-in can be revoked.
-- **File access is fenced in.** Only your library folders can be streamed.
+- **Only library files are served.** The server streams nothing outside your library folders.
 
 ### Settings you can leave alone
 

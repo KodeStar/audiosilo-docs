@@ -63,12 +63,12 @@ A DRM-free **EPUB** beside a book's audio is that book's ebook, opened with **Re
 AudioSilo takes each book's details from these sources:
 
 - **Folder names.** The book's folder (or file) is the title, its parent folder the series, and the folder above that the author. A leading number like `03 - Title` is the book's place in the series (`02.5` works too). `Author/Title/` with no series folder works as well.
-- **The files' tags.** Title (usually the album tag), author, narrator, series and genres. Junk titles like "Track 01" are ignored.
-- **Audiobookshelf's `metadata.json`**, when the book's folder has one. See [below](#coming-from-audiobookshelf).
+- **The files' tags.** Title (usually the album tag), author, narrator, series and genres. AudioSilo ignores junk titles like "Track 01".
+- **Audiobookshelf's `metadata.json`**, when the book's folder has one. See [Coming from Audiobookshelf](#coming-from-audiobookshelf).
 - **The audio itself**: durations and any chapters in the file.
 - **The community database**, for chapters only: a book with no chapters of its own gets them once it is [matched](../admin/books.md#community-chapters).
 
-By default tags win over folder names. If your folders are named well and your tags aren't, set the library to [folder names first](../admin/libraries.md#where-book-details-come-from). Anything still wrong can be fixed in the admin console without touching the files: see [Books and metadata](../admin/books.md).
+By default tags win over folder names. If your folders are named well and your tags aren't, set the library to [folder names first](../admin/libraries.md#where-book-details-come-from). You can fix anything still wrong in the admin console without touching the files. See [Fix book details](../admin/books.md).
 
 ### Names like `Author; Series; Book 04; Title`
 
@@ -93,7 +93,7 @@ Audiobookshelf can leave a `metadata.json` file in each book's folder (its **Sto
 - Your edits in the admin console still win over the file.
 - When the file changes, the next scan picks it up.
 
-AudioSilo never writes to the file. To ignore these files, add `metadata.json` to the library's [skipped files](../admin/libraries.md#skipping-files-and-folders). To bring listening progress across, use [the import](../admin/import.md).
+AudioSilo never writes to the file. To ignore these files, add `metadata.json` to the library's [skipped files](../admin/libraries.md#skipping-files-and-folders). To bring listening progress across, see [Import your Audiobookshelf history](../admin/import.md).
 
 ## Covers
 
@@ -103,7 +103,7 @@ AudioSilo looks for a cover in this order:
 2. Any image in the book's own folder. (A loose single-file book only uses the names above.)
 3. Artwork inside the audio file.
 
-So embedded art just works, and a `cover.jpg` in the book's folder overrides it. A cover uploaded in the admin console wins over all three (see [Covers](../admin/books.md#covers)).
+So embedded art shows with no setup, and a `cover.jpg` in the book's folder overrides it. A cover uploaded in the admin console wins over all three (see [Covers](../admin/books.md#covers)).
 
 ## Renaming and moving are safe
 
@@ -112,8 +112,6 @@ Listening progress, bookmarks and notes stay with your books when you change thi
 - **Fix the tags** and nothing is lost. The next scan reads the new tags.
 - **Rename or move a book** and the server follows it. Your progress and bookmarks move to the new place automatically.
 
-Reorganize freely.
-
 ## Good to know
 
-**Books on a network share:** mount the SMB or NFS share on the server machine, then point the library at the mounted folder. If the share drops, AudioSilo doesn't treat the books as deleted. They come back when the share does.
+**Books on a network share.** Mount the SMB or NFS share on the server machine, then point the library at the mounted folder. If the share drops, AudioSilo doesn't treat the books as deleted. They come back when the share does.
