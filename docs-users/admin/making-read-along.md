@@ -10,7 +10,7 @@ Listeners can then follow the text as it is read, in the companion's
 
 Your [Bridge](bridge.md) makes it from the book's audio and its ebook, with **no AI
 agent and no cost**. Open the book in the console and press **Make read-along**.
-Needs an admin and a Bridge.
+It needs an admin and a Bridge.
 
 ## What it needs
 
@@ -18,9 +18,9 @@ Needs an admin and a Bridge.
 - **A book with an ebook**: a DRM-free EPUB beside the audio (the book shows an
   **Ebook** chip). It must be the same book as the narration, ideally the same
   edition.
-- **A Bridge that is paired and online.** Needs Bridge 0.5.0 or later.
+- **A Bridge that is paired and online.** It needs Bridge 0.5.0 or later.
 - **A library the Bridge can write to**, shown as **Ready** in
-  [Settings > Bridge](bridge.md#libraries).
+  [Server > Settings > Bridge](bridge.md#libraries).
 
 ## The Read-along card
 
@@ -44,10 +44,10 @@ offline or too old, the card says so.
 ![The Make a read-along confirmation](/img/screenshots/admin/readalong-dialog.png)
 
 The card shows the job's progress, with **Cancel**. The job also shows in
-[Settings > Bridge > Jobs](bridge.md#jobs). When it is done, the card says how much
+[Server > Settings > Bridge > Jobs](bridge.md#jobs). When it is done, the card says how much
 of the text lined up.
 
-Read-alongs are made one book at a time.
+The Bridge makes read-alongs one book at a time.
 
 ### From the player
 
@@ -58,9 +58,10 @@ job's progress, then the text.
 
 ## How long it takes
 
-Most of the time is transcribing the book: the same as when
+Most of the time goes on transcribing the book, which takes as long as when
 [generating characters and recaps](generating-characters-and-recaps.md#the-confirmation).
-A [faster computer](../getting-started/running-a-worker.md) shortens it.
+A [worker](../getting-started/running-a-worker.md) on a faster computer shortens
+it.
 
 The Bridge keeps a book's transcripts for 30 days. If it transcribed the book
 recently, for characters and recaps, for
@@ -78,7 +79,7 @@ well over 90%.
 
 **Less than half is refused.** Under 50% means the ebook and the narration aren't
 the same book or edition. The job fails and saves nothing. Put the EPUB of the same
-edition beside the audio and make it again: the transcript is reused.
+edition beside the audio and make it again. The Bridge reuses the transcript.
 
 A job also fails when the ebook is DRM-protected, isn't a readable EPUB, or is
 over 256 MiB, or when the folder has two EPUBs.
@@ -92,6 +93,6 @@ book's folder is fine.
 
 ## Where it is saved
 
-In the book's hidden `.audiosilo` folder, as `readalong.json` (or
+The Bridge saves it in the book's hidden `.audiosilo` folder, as `readalong.json` (or
 `<file name>.readalong.json` for a single-file book). Delete the file to remove the
 read-along.

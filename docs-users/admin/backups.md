@@ -27,11 +27,11 @@ The **Schedule** card sets:
 - **Back up** - **Off**, **Every day** or **Every week**, and the time. Out of
   the box, every day at 03:00 (the server's time zone). If the server was off
   when a backup was due, it makes one when it is back.
-- **Scheduled backups to keep** - 7 by default (1 to 365). The oldest scheduled
-  backup is deleted when a new one is made.
+- **Scheduled backups to keep** - 7 by default (1 to 365). When the server makes a
+  new one, it deletes the oldest scheduled backup.
 - **Folder** - a `backups` folder in the data folder, unless you set
-  `backups.dir` in `config.yaml` or `AUDIOSILO_BACKUP_DIR`. A new folder is used
-  after a restart.
+  `backups.dir` in `config.yaml` or `AUDIOSILO_BACKUP_DIR`. The server uses a new
+  folder after a restart.
 
 Press **Save changes** to apply a new schedule.
 
@@ -45,12 +45,12 @@ elsewhere.
 
 The **Backups** card lists every backup, newest first.
 
-- **Back up now** makes one straight away. These are never deleted for you.
+- **Back up now** makes one straight away. The server never deletes these for you.
 - **Download** saves a backup to your computer.
 - The bin deletes a backup from the server.
 
 If a backup fails, a notice gives the reason, such as a full disk or a folder
-the server can't write to. You can have it [sent to you](notifications.md).
+the server can't write to. You can also get it as a [notification](notifications.md).
 
 ## Before an upgrade
 
@@ -92,11 +92,11 @@ After a restore:
 - Devices you signed out since the backup work again. Sign them out again on
   [People > Devices](users-and-invites.md#the-devices-page).
 - Your settings in `config.yaml` stay as they are.
-- Books added since the backup come back on their own: the server reads your
-  folders again when it starts.
+- Books added since the backup come back on their own, because the server
+  reads your folders again when it starts.
 
-A backup from an older version works. One from a newer version doesn't: update
-this server first.
+A backup from an older version works. One from a newer version doesn't, so
+update this server first.
 
 ### Restoring a copy you kept elsewhere
 

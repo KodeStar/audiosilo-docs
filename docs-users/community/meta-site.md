@@ -1,11 +1,11 @@
 ---
 title: "Use the community metadata site"
-description: "Search the free community audiobook database, follow series for new releases, check your library and contribute."
+description: "Search the community database of audiobooks, follow series for new releases, check your library and contribute."
 ---
 
-**AudioSilo Meta** at [meta.audiosilo.app](https://meta.audiosilo.app) is a
-free, community-built database of audiobooks: books, their narrations, authors,
-narrators and series. It supplies the
+**AudioSilo Meta** at [meta.audiosilo.app](https://meta.audiosilo.app) is the
+site of the community database, a free, community-built database of audiobooks:
+books, their recordings, authors, narrators and series. It supplies the
 [About this book](../listening/book-page.md#about-this-book) extras in the
 player. Anyone can browse it, with no account.
 
@@ -24,12 +24,12 @@ punctuation: "enders game" finds *Ender's Game*.
 
 ![Search results for a series query](/img/screenshots/meta/search.png)
 
-- A **book page** lists every narration of the book, with narrators, length,
+- A **book page** lists every recording of the book, with narrators, length,
   release date, publisher, ASINs and ISBNs, and chapters.
 - A **series page** lists the books in reading order.
 - A **person page** lists everything an author or narrator is credited on.
 
-![A work page with its recordings](/img/screenshots/meta/work.png)
+![A book page with its recordings](/img/screenshots/meta/work.png)
 
 ![A series page in reading order](/img/screenshots/meta/series.png)
 
@@ -57,7 +57,7 @@ More detail is on the site's [languages page](https://meta.audiosilo.app/docs/la
 ## Characters and story-so-far recaps
 
 Where the community has written them, a book page has two extra tabs, the same
-ones the player shows (see [Recaps and characters](../listening/recaps-and-characters.md)):
+ones the player shows (see [See recaps and characters](../listening/recaps-and-characters.md)):
 
 - **Characters** - a card for each character. The description stays hidden
   until you open the card.
@@ -69,14 +69,14 @@ ones the player shows (see [Recaps and characters](../listening/recaps-and-chara
 ## Check your own library
 
 The [import page](https://meta.audiosilo.app/import) shows which of your
-audiobooks are already in the database and which are new. Drop in an export
+audiobooks are already in the community database and which are new. Drop in an export
 from **OpenAudible**, **Libation** or **Audiobookshelf**, or a scan of a folder
 of audiobooks. The page explains how to make each one.
 
-Your file is read in your browser and never uploaded. Only book identifiers
-(ASINs and ISBNs), and author names for books that don't match, are sent.
+Your browser reads the file and never uploads it. The page sends only book
+identifiers (ASINs and ISBNs), and author names for books that don't match.
 
-![Checking a library export against the database](/img/screenshots/meta/import.png)
+![Checking a library export against the community database](/img/screenshots/meta/import.png)
 
 ## Watching a series
 
@@ -97,8 +97,8 @@ but keeps it; **Unwatch** forgets it.
 
 ![The Watching page listing available and preorder entries](/img/screenshots/meta/watching.png)
 
-Your watchlist is kept **in this browser only**. Nothing is sent to the
-database, and there is no account. Clearing the site's data clears your list, so
+Your watchlist is kept **in this browser only**. The site sends nothing to the
+community database, and there is no account. Clearing the site's data clears your list, so
 [back it up](#backing-up-your-watchlist).
 
 ## Importing your library
@@ -109,10 +109,10 @@ from your library** on the Watching page. It takes the same files as the
 [AudioSilo server library export](../admin/libraries.md#exporting-a-library).
 
 You get a checklist of each series you own something in. Tick the ones to
-follow and press **Watch**: the books you own are marked for you. For a series
+follow and press **Watch**. The site marks the books you own. For a series
 you're not collecting, tick **Never suggest again**.
 
-Like the import page, the file is read in your browser and never uploaded.
+Like the import page, your browser reads the file and never uploads it.
 
 ## Backing up your watchlist
 
@@ -133,7 +133,7 @@ Paste it into any RSS reader to hear about new releases, newly added books and
 preorders in your series. **Atom feed** and **JSON Feed** versions are beside
 it.
 
-The easiest way is the **AudioSilo Discord bot**:
+To get them as Discord messages, use the **AudioSilo Discord bot**:
 
 1. Join the [AudioSilo Discord](https://discord.gg/nFFqRbkRn6).
 2. Allow direct messages from the server (server menu > **Privacy Settings** >
@@ -153,13 +153,13 @@ Two things to know:
 ## Contributing
 
 Everything in AudioSilo Meta is added by its users. You don't need to be a
-programmer: guided forms open a prefilled entry on GitHub, and a bot checks and
+programmer. Guided forms open a prefilled entry on GitHub, and a bot checks and
 files it. You need a free GitHub account.
 
-There are forms to add a book or narration, write characters or recaps, send
+There are forms to add a book or a recording (narration), write characters or recaps, send
 corrections, and submit a whole library (export files up to 25 MB). The import
 page turns each new book it finds into an "add this book" link. A server with a
-Bridge can file characters, recaps and corrections for you: see
+Bridge can file characters, recaps and corrections for you. See
 [Contribute from your server](contributing-from-your-server.md).
 
 The [contribute page](https://meta.audiosilo.app/contribute) shows where help is
@@ -172,12 +172,12 @@ Good to know:
 
 - Many entries came from a public Audible catalogue and haven't been checked by
   anyone. If you add a book that is already there and include its **ASIN**, your
-  details replace the imported ones. Big differences go to a maintainer first.
+  details replace the imported ones. A maintainer checks big differences first.
 - If a correction can't be applied as written, the bot tells you why.
 
 ### How the data stays honest
 
-- **Facts only, in your own words.** The catalogue never copies a publisher's
+- **Facts only, in your own words.** The community database never copies a publisher's
   blurb or text from another site.
 - **Two open licences.** Book details are public domain (CC0). Characters and
   recaps are shared under CC BY-SA.

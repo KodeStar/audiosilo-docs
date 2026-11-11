@@ -6,9 +6,9 @@ description: "Add a podcast library, turn on the Podcasts module, and control ho
 <a id="what-is-available-now"></a>
 
 A **podcast library** lets your listeners follow shows and play their episodes in
-the AudioSilo app. Your [Bridge](bridge.md) reads the feeds and downloads the
+the player. Your [Bridge](bridge.md) reads the feeds and downloads the
 episodes; the server serves them. Listeners add and follow shows themselves in the
-player: see [Podcasts](../listening/podcasts.md).
+player. See [Listen to podcasts](../listening/podcasts.md).
 
 Podcasts need an admin to set them up, a Bridge, and the **Podcasts** module.
 
@@ -28,8 +28,8 @@ Podcasts need an admin to set them up, a Bridge, and the **Podcasts** module.
 A podcast library's folder can't be inside or around another library's folder. You
 can't turn a books library into a podcast library later.
 
-The Bridge creates one folder per show. Don't rename those folders by hand: saved
-episode paths include them.
+The Bridge creates one folder per show. Don't rename those folders by hand, because
+saved episode paths include them.
 
 A feed on your own network is blocked until you
 [allow its address range](../getting-started/running-a-bridge.md#feeds-on-your-local-network)
@@ -82,11 +82,11 @@ AUDIOSILO_BRIDGE_PODCASTS_MAX_EPISODE_MB: "2048"
 Listeners follow a show from its page, or add a new one by search, feed address or
 OPML file in the player. A show already in the library is followed at once; a new
 feed waits for the Bridge to check it. Each person can have five follow requests
-waiting at once. Kids and the demo account can't follow shows.
+waiting at once. Kids accounts and the demo account can't follow shows.
 
-The server has the Bridge check each followed show's feed for new episodes. Recently
-active shows are checked more often than quiet ones. Routine checks are left out of the
-console's Bridge job list.
+The server has the Bridge check each followed show's feed for new episodes,
+recently active shows more often than quiet ones. The console's Bridge job list
+leaves these routine checks out.
 
 Turning the Podcasts module off stops following, feed checks and downloads.
 Shows and episodes already on the server stay and still play.
@@ -132,7 +132,7 @@ Only people who follow a private show see it, admins included. Someone else need
 the same address to follow it. The Bridge keeps the address encrypted, so keep the
 Bridge's data folder in your backups.
 
-The downloaded audio is an ordinary file: anyone who can read the library folder
+The downloaded audio is an ordinary file. Anyone who can read the library folder
 can read it.
 
 ## Good to know
