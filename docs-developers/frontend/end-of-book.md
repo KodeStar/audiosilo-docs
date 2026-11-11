@@ -93,7 +93,9 @@ the book's queue entry off Up next.
 - `startBookInPlace` (`start-book.ts`) loads the item and chapters through the
   query cache, then calls `playBook`. For a downloaded book it asks the server
   first, for up to `FRESH_SOURCE_WAIT_MS` (3 s), and otherwise uses the
-  download's own copy. So the book starts offline and from the car.
+  download's own copy. So the book starts offline and from the car. With nothing
+  to ask (no network on the device, `isDeviceOnline`, or its server marked
+  unreachable, `isReachable`) it uses that copy at once, with no wait.
 - `startBookInPlace` is the one way a book starts outside the player route. The
   `/player` route only *shows* a book started that way.
 - An episode its server still has to fetch is the exception to the queue drop.

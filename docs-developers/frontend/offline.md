@@ -1272,6 +1272,15 @@ Its end is the downloaded part's, so:
   it an error. It shows the notice again.
 - The end credits' Play never finishes such a book by its place
   (`selectEndsPartial`): it stops, unfinished.
+- **Online again in the same session it streams on** (`playOnPastPart`). A Play
+  pressed at that end, or the engine reaching it with the device online and the
+  server marked reachable, asks the server's chapters (for up to
+  `SERVED_ORDER_WAIT_MS`, 3 s, under the spinner). A press asks a server marked
+  down too, since the mark can predate the network coming back. When the chapters
+  go on past the queue's last file, the book starts again (`playBook`) with them,
+  at the next file (by index, since a file the server has not measured yet shares
+  its offset with the one after it). No network, no answer, or a book that ends
+  there now: the notice. A pause or a seek back while it asks stands.
 - A span recovered after a kill in the last seconds (`mirrorSpanEnd`) never makes
   the record finished. Each mirror capture in a partial queue says so
   (`ProgressSave.partial`), and `mirrorSpanEnd` also asks the download
@@ -1279,13 +1288,39 @@ Its end is the downloaded part's, so:
   mirror since the capture carries no `partial`. Only a span that ended in the
   book's last file (streamed, so its end is the book's) finishes it.
 
+**A partial queue's length.** Its own audio is the downloaded part's, more than 10 s
+off the indexed book's whenever a whole file is missing, so the server refused every
+listen over it (`duration_mismatch`). Each partial queue carries the book's length on
+its server instead (`partialQueues` maps it):
+
+- `DownloadManifest.bookDuration`, kept beside `endsBefore` from the chapters answer
+  that set it (`withBookEnd`);
+- else a server chapters answer the start was given that names that end (a cold
+  start's cached one, `serverLengthOf`);
+- else 0, unknown.
+
+A span sends it as its `duration` (0 sends none, and the server then checks none), and
+a mirror save as its `duration`, so a percent read from the mirror is of the book. The
+player's percent reads the same length (`selectBookLength`), as Home does.
+
+**Listens refused earlier are sent again.** Each `flushAllOutboxes` runs
+`resendMismatched`: a listen on the couldn't-sync list refused `duration_mismatch`
+over a download that ends early (`downloadBookLength` in `kept-offline.ts`) goes back
+to the outbox at the book's length, or with none when it is not known, and leaves the
+list. It is queued before it leaves the list, so a stop in between sends it twice (the
+server answers `duplicate`), never not at all. Only a listen whose length would change
+is resent, so one refused again at that length (another edition indeed) stays on the
+list.
+
 **Online adoption streams on** too: an Android adoption that holds a file the
 download lacks builds its queue from the server's chapters
 ([The engine's file order](native-integrations.md#the-engines-file-order)).
 
-The regression tests are `store-adopt.test.ts`, `end-credits.test.tsx`,
-`listening-outbox.test.ts` (span recovery), `partial-download-notice.test.ts` (the
-toast) and `downloads/store.test.ts` (`endsBefore`).
+The regression tests are `store-adopt.test.ts` (play-on too),
+`store-listening.test.ts` (the length), `end-credits.test.tsx`,
+`listening-outbox.test.ts` (span recovery, the resend),
+`partial-download-notice.test.ts` (the toast) and `downloads/store.test.ts`
+(`endsBefore`, `bookDuration`).
 
 ## The PWA layer
 

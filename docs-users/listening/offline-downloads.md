@@ -124,7 +124,9 @@ If audio files were added to a book on your server after you downloaded it, your
 
 - **Online**, with your server reachable, the player plays what's on your device and streams the rest from your server.
 - **Offline**, or when your server can't be reached, a download that's missing the end of the book pauses where the downloaded part ends. The player says **The rest of this book isn't downloaded**, and the book isn't marked finished. Pressing play there shows the message again.
+- **Back online**, pressing play at that point streams the rest from your server, with no need to restart the app. If the network comes back while it plays, it plays on when it reaches that point.
 - A download that's missing only an earlier file, such as an intro added later, still has the book's end. Offline, reaching that end finishes the book as usual.
+- Your listening on such a download syncs like any other, and the player's percentage is of the whole book. Listens from it that an earlier version of the app couldn't sync, listed under **Couldn't sync** on your [account page](account.md#listening-sync), are sent again.
 
 To hear the rest offline, remove the download and download the book again.
 

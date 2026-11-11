@@ -287,8 +287,8 @@ platform follows these rules:
   (see [Offline](offline.md#the-controller)).
 - **Writes are never held in the app.** The query client's `mutations` default
   there is `networkMode: 'always'`. A bookmark, note, rating, queue, collection or
-  progress edit made with no network is sent, fails at once, and shows its
-  screen's own error with the form still open. A held mutation lives only in
+  progress edit made with no network fails at once, unsent (see below), and shows
+  its screen's own error with the form still open. A held mutation lives only in
   memory, so Save would spin, and the write would be lost if the app closed
   before the network returned. Three writes are not mutations and keep their own
   queues:
@@ -303,6 +303,20 @@ platform follows these rules:
 - **The web keeps TanStack's default for writes.** A write waits for the browser
   to come back online. A write that must work offline on the web too says so
   itself (`useMarkFinished`).
+- **In the app the API client refuses a request with no network.** While
+  `isDeviceOnline()` reads false, `ApiClient.send` throws the `NetworkError` of no
+  answer before any fetch. Sent, a request could wait out its whole timeout first
+  (iOS in airplane mode): a bookmark's error came 20-30 s after the tap, and a
+  downloaded book's resume lookup held its start. Every request path gets it:
+  queries, writes, `fetchFailFast`, the save loops and the car's kept bookmarks,
+  which keep a `NetworkError` like any request with no answer. Unknown counts as
+  online, so a server on the same Wi-Fi is always asked. The web leaves it to the
+  browser, whose fetch fails at once offline.
+- **`isDeviceOnline()`** reads the same signal once, outside React. In the app it
+  is what the system said last (the query wiring always watches it there); on the
+  web it is `navigator.onLine`. A reconnect's reachability check
+  (`deviceNetworkChanged`) runs a microtask later, once every listener has heard
+  the new state, so the client does not refuse it on the old "no network".
 
 A held request neither fails nor marks its server down. So a surface that says
 "offline" asks this signal too, and not reachability alone (Search's results,

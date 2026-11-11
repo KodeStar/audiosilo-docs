@@ -844,7 +844,9 @@ A span runs from where playing began to where it ended. It carries:
 - both ends in whole-book seconds **and**, for each end, the playing track's audio
   file (from its track id) and the seconds into it;
 - the audio's length (`queue.audio`, not the timeline's, because the server
-  fingerprints it);
+  fingerprints it). A queue over a download that ends early sends the book's length
+  on its server instead, or none when that is not known (`bookAudioOf`, see
+  [A download that ends early](offline.md#a-download-that-ends-early));
 - the speed and the device's times;
 - why it began (`start`);
 - the version this device has acknowledged for the book (`base_version`), read when
