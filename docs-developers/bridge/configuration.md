@@ -3,32 +3,36 @@ title: Bridge configuration
 description: "The Bridge's config.yaml and AUDIOSILO_BRIDGE_* variables, its data folder, the settings for characters and recaps (the agent container, the budgets, the transcript retention), contributing (the GitHub App's client ID, AUDIOSILO_BRIDGE_GITHUB_TOKEN read live), Audible (no settings; the fake's variables exist only in an audiblefake build), the sealed secrets and their key, PUID/PGID, the slim, full, cuda and agent images, and the compose example that runs it beside a server."
 ---
 
-The Bridge's own settings. The server has none for it (see
-[the server's configuration](../server/configuration.md#the-bridge-no-keys)); the
-code is the Bridge's `internal/config` (`bridge.go` for the settings on this page,
-`config.go` for the engine's).
+These are the Bridge's own settings. The server has none for it (see
+[the server's configuration](../server/configuration.md#the-bridge-no-keys)). The
+code is the Bridge's `internal/config`: `bridge.go` for the settings on this page,
+and `config.go` for the engine's.
 
 ## The data folder and `config.yaml`
 
-Everything the Bridge keeps lives in its **data folder**: `/bridge-data` in the
-images (`AUDIOSILO_BRIDGE_DATA`), else `--data`, else `~/.audiosilo-bridge`. It
-holds `config.yaml` (written `0600` when a setting is saved from the page; until
-then the defaults and the environment apply), its SQLite database `bridge.db`, the sealed
-`secrets/` and their key `secret.key`, and the tools it downloads. **Never point it
-at a library folder.**
+Everything the Bridge keeps lives in its **data folder**. That is `/bridge-data` in
+the images (`AUDIOSILO_BRIDGE_DATA`), else `--data`, else `~/.audiosilo-bridge`.
+**Never point it at a library folder.** It holds:
+
+- `config.yaml`, written `0600` when a setting is saved from the page. Until then
+  the defaults and the environment apply;
+- the SQLite database `bridge.db`;
+- the sealed `secrets/` and their key `secret.key`;
+- the tools the Bridge downloads.
 
 Settings are read from `<data>/config.yaml`, then overridden by `AUDIOSILO_BRIDGE_*`
-variables. An **empty** variable counts as unset. A setting the environment sets is
-shown **locked** on the Bridge's page, since a value saved to the file would be
-overridden again at the next start, and a save from the page never writes it: the
-file keeps its own value for it. A variable that doesn't parse fails the start
-rather than being ignored.
+variables. An **empty** variable counts as unset. A variable that doesn't parse
+fails the start rather than being ignored.
+
+A setting the environment sets is shown **locked** on the Bridge's page, since a
+value saved to the file would be overridden again at the next start. A save from
+the page never writes it, and the file keeps its own value for it.
 
 | Setting | Environment | Default | What it is |
 |---|---|---|---|
 | `listen` | `AUDIOSILO_BRIDGE_LISTEN` (or `--listen`) | `:8091` | the address its page listens on |
-| `server.url` | `AUDIOSILO_BRIDGE_SERVER_URL` | | the server, as the Bridge reaches it (`http://audiosilo:8080` on a compose network): the address `AUDIOSILO_BRIDGE_PAIR_CODE` pairs with, and the one the page's pairing form starts with. An absolute `http(s)` URL without credentials, query or fragment. Once paired, the Bridge keeps the address it paired with, with the pairing |
-| `public_url` | `AUDIOSILO_BRIDGE_PUBLIC_URL` | | its page as your local network reaches it (`http://192.168.1.10:8091`): sent in the heartbeat as `ui_url`, and the console's **Open its page** links to it. Without it the console shows no link. The Workers tab's install command uses it, and so does `install.sh` when it is fetched at this address's host and port (see [Installing a worker](workers.md#installing-a-worker)) |
+| `server.url` | `AUDIOSILO_BRIDGE_SERVER_URL` | | the server, as the Bridge reaches it (`http://audiosilo:8080` on a compose network). `AUDIOSILO_BRIDGE_PAIR_CODE` pairs with this address, and the page's pairing form starts with it. It is an absolute `http(s)` URL without credentials, query or fragment. Once paired, the Bridge keeps the address it paired with, with the pairing |
+| `public_url` | `AUDIOSILO_BRIDGE_PUBLIC_URL` | | its page as your local network reaches it (`http://192.168.1.10:8091`). The heartbeat sends it as `ui_url`, and the console's **Open its page** links to it. Without it the console shows no link. The Workers tab's install command uses it, and so does `install.sh` when it is fetched at this address's host and port (see [Installing a worker](workers.md#installing-a-worker)) |
 | `libraries` | `AUDIOSILO_BRIDGE_LIBRARIES` (`<id>=<path>;<id>=<path>`; a path may hold a comma) | the server's own root path | where the Bridge sees each library, by the server's library id; absolute paths, each id once (see [Library mappings](mappings.md)) |
 | `mapping.check_minutes` | `AUDIOSILO_BRIDGE_MAPPING_CHECK_MINUTES` | `10` | how often the mappings are checked, 1 to 1440 |
 | | `AUDIOSILO_BRIDGE_PAIR_CODE` | | pair at the start with this code from the console, when not paired yet (needs `server.url`) |
@@ -36,61 +40,69 @@ rather than being ignored.
 | | `AUDIOSILO_BRIDGE_DATA` | `/bridge-data` in the images | the data folder |
 | | `PUID` / `PGID` | `1000` / `1000` | the user and group the container runs the Bridge as (below) |
 
-`AUDIOSILO_BRIDGE_PAIR_CODE` is for the **first** start: a code works once and only
+`AUDIOSILO_BRIDGE_PAIR_CODE` is for the **first** start. A code works once and only
 for 15 minutes, and a paired Bridge ignores it. Remove it after pairing.
 
-The engine's settings (`tools`, `asr`, `agent`, `supervisor`, `contribution`,
-`metadata`, with `AUDIOSILO_BRIDGE_TOOLS_*`, `_ASR_*`, `_AGENT_*` and so on) came
-over from audiosilo-sidecars and apply to the engine that runs behind
-`sidecars.generate`. They are read at the start (restart to apply),
-except `asr.worker_fallback` and `agent.monthly_budget_usd`, which the page edits
-and which apply live (below).
+The engine's settings are `tools`, `asr`, `agent`, `supervisor`, `contribution` and
+`metadata`, with `AUDIOSILO_BRIDGE_TOOLS_*`, `_ASR_*`, `_AGENT_*` and so on. They
+came over from audiosilo-sidecars and apply to the engine that runs behind
+`sidecars.generate`. They are read at the start, so restart to apply them. The
+exceptions are `asr.worker_fallback` and `agent.monthly_budget_usd`: the page edits
+them, and they apply live (see the tables below).
+
 The full and cuda images set `AUDIOSILO_BRIDGE_ASR_BACKEND=whisper-cpp` and
 `AUDIOSILO_BRIDGE_ASR_WHISPER_CLI_PATH=/opt/whisper/whisper-cli` for their bundled
 speech recognition.
 
 ## Podcasts
 
-These settings are read at startup; restart after editing the file or environment.
-They apply to guarded feed, artwork and audio requests, independently of speech recognition
-and the agent.
+These settings are read at startup, so restart after editing the file or the
+environment. They apply to guarded feed, artwork and audio requests, independently
+of speech recognition and the agent.
 
 | Setting | Environment | Default | What it is |
 |---|---|---|---|
-| `podcasts.allow_networks` | `AUDIOSILO_BRIDGE_PODCASTS_ALLOW_NETWORKS` | `[]` | CIDR list explicitly allowed for feed, artwork and episode audio fetches; YAML array, comma-separated in the environment. Invalid CIDRs fail startup. Private, loopback and other non-public addresses are blocked unless allowed; grant only the ranges needed |
-| `podcasts.max_feed_mb` | `AUDIOSILO_BRIDGE_PODCASTS_MAX_FEED_MB` | `32` | feed response cap in MiB after decompression, 1 to 64; separate from the 24 MiB saved-file cap and fixed 10 MiB artwork cap |
-| `podcasts.max_episode_mb` | `AUDIOSILO_BRIDGE_PODCASTS_MAX_EPISODE_MB` | `1024` | whole episode cap in MiB, integer 1 to 4096; checked against GET length/resume total and received bytes, separately from feed/artwork limits. Does not use the feed's size estimate |
+| `podcasts.allow_networks` | `AUDIOSILO_BRIDGE_PODCASTS_ALLOW_NETWORKS` | `[]` | the CIDR list explicitly allowed for feed, artwork and episode audio fetches: a YAML array, comma-separated in the environment. Invalid CIDRs fail startup. Private, loopback and other non-public addresses are blocked unless allowed, so grant only the ranges needed |
+| `podcasts.max_feed_mb` | `AUDIOSILO_BRIDGE_PODCASTS_MAX_FEED_MB` | `32` | the feed response cap in MiB after decompression, 1 to 64. It is separate from the 24 MiB saved-file cap and the fixed 10 MiB artwork cap |
+| `podcasts.max_episode_mb` | `AUDIOSILO_BRIDGE_PODCASTS_MAX_EPISODE_MB` | `1024` | the whole-episode cap in MiB, an integer from 1 to 4096. It is checked against the GET length or resume total and against the received bytes, separately from the feed and artwork limits. It does not use the feed's size estimate |
 
-Audio staging is on the show filesystem, not an agent work volume. It should
-support hard links; unsupported filesystems use a no-replace rename fallback.
-Keep space for staged downloads and retained protected episodes. The server's
-per-show retention policy is an API/database preference, not a Bridge config
-key or disk quota; default Keep 3 with seven days' grace. See
+Audio staging is on the show's filesystem, not an agent work volume. That
+filesystem should support hard links; one that doesn't falls back to a no-replace
+rename. Keep space for staged downloads and for retained protected episodes.
+
+The server's per-show retention policy is a preference in the server's API and
+database. It is not a Bridge config key or a disk quota. The default is Keep 3 with
+seven days' grace. See
 [retention](podcasts.md#retention-policy-and-deletion-authority).
 
-The server's toggle is `modules.podcasts.enabled`, environment
-`AUDIOSILO_MODULES_PODCASTS_ENABLED`, default `false`. It is not a Bridge setting.
-Neither is podcast directory search: it runs on the server, and the Podcast
-Index key pair is a server environment variable
-([server configuration](../server/configuration.md#podcast-discovery-podcastsdiscovery)).
-The Bridge has no directory credential.
-See [Podcasts](podcasts.md) for the HTTP guard, on-disk format and secrets.
+These are not Bridge settings:
 
-On-demand fetching adds no configuration key: the reserved `interactive`
-download slot is a fixed runner capacity, described in
-[claims and leases](pairing-and-jobs.md#claims-and-leases).
+- The server's toggle is `modules.podcasts.enabled`, environment
+  `AUDIOSILO_MODULES_PODCASTS_ENABLED`, default `false`.
+- Podcast directory search runs on the server, and the Podcast Index key pair is a
+  server environment variable
+  ([server configuration](../server/configuration.md#podcast-discovery-podcastsdiscovery)).
+  The Bridge has no directory credential.
+- On-demand fetching adds no configuration key. The reserved `interactive`
+  download slot is a fixed runner capacity, described in
+  [claims and leases](pairing-and-jobs.md#claims-and-leases).
+
+See [Podcasts](podcasts.md) for the HTTP guard, the on-disk format and the
+secrets.
 
 ## ASR workers
 
 | Setting | Environment | Default | What it is |
 |---|---|---|---|
-| `asr.worker_fallback` | `AUDIOSILO_BRIDGE_ASR_WORKER_FALLBACK` | `local` | what a segment does when no [ASR worker](workers.md) is connected: `local` (the Bridge's own `asr.*` backend; a Bridge with none waits anyway) or `wait` (the book parks `asr_worker_waiting` until one connects). Unlike the rest of `asr.*` it applies live, to the next segment, and the page's **Settings** edits it (locked when the environment sets it) |
-| `asr.threads` | `AUDIOSILO_BRIDGE_ASR_THREADS` | `0` | whisper.cpp's thread count for the Bridge's own (CPU) transcription; `0` keeps whisper.cpp's default of 4. On a 20-core Mac Studio in Docker, 16 threads ran 3x faster (1.4x real time against 0.4x to 0.5x); leave room for what else the machine runs. Read at the start |
+| `asr.worker_fallback` | `AUDIOSILO_BRIDGE_ASR_WORKER_FALLBACK` | `local` | what a segment does when no [ASR worker](workers.md) is connected. `local` uses the Bridge's own `asr.*` backend, and a Bridge with none waits anyway. With `wait` the book parks `asr_worker_waiting` until a worker connects. Unlike the rest of `asr.*` it applies live, to the next segment. The page's **Settings** edits it, and it is locked when the environment sets it |
+| `asr.threads` | `AUDIOSILO_BRIDGE_ASR_THREADS` | `0` | whisper.cpp's thread count for the Bridge's own (CPU) transcription. `0` keeps whisper.cpp's default of 4. On a 20-core Mac Studio in Docker, 16 threads ran 3x faster (1.4x real time against 0.4x to 0.5x). Leave room for what else the machine runs. Read at the start |
 
-The worker itself takes flags, not this file: `--bridge`, `--token` (else
-`<data>/worker.token`, else `AUDIOSILO_WORKER_TOKEN`), `--data` (else
-`AUDIOSILO_WORKER_DATA`, else `~/.audiosilo-bridge-worker`), `--backend`, `--model`
-and `--whisper-cli`.
+The worker itself takes flags, not this file:
+
+- `--bridge`;
+- `--token`, else `<data>/worker.token`, else `AUDIOSILO_WORKER_TOKEN`;
+- `--data`, else `AUDIOSILO_WORKER_DATA`, else `~/.audiosilo-bridge-worker`;
+- `--backend`, `--model` and `--whisper-cli`.
 
 ## Characters and recaps
 
@@ -99,97 +111,113 @@ The settings [`sidecars.generate`](generating.md) adds, or that matter most to i
 | Setting | Environment | Default | What it is |
 |---|---|---|---|
 | `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` (empty is claude) | the CLI the [agent container](agent-container.md) runs for this Bridge: `claude` or `codex` |
-| `agent.staging_dir` | `AUDIOSILO_BRIDGE_AGENT_STAGING_DIR` | `<data>/staging` | the folder shared with the agent container (absolute). The compose example mounts a volume at `/staging`, outside `/bridge-data`, whose first-start ownership fix would otherwise reach it |
+| `agent.staging_dir` | `AUDIOSILO_BRIDGE_AGENT_STAGING_DIR` | `<data>/staging` | the folder shared with the agent container (absolute). The compose example mounts a volume at `/staging`, outside `/bridge-data`, because the first start's ownership fix of `/bridge-data` would otherwise reach it |
 | `agent.claim_timeout_seconds` | `AUDIOSILO_BRIDGE_AGENT_CLAIM_TIMEOUT_SECONDS` | `120` | how long an agent job waits for the container to claim it before the book parks `agent_unavailable` (10 to 3600) |
-| `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | the monthly agent spend cap across every book, the calendar month in UTC; `0` = no cap. The page's **Settings** tab edits it, locked when the environment sets it, and it applies **live**. The engine reads it per run (`pipeline.Config.MonthlyBudget` is a func). A save that changes it resumes the books and description jobs parked `budget_exceeded` ([Parks](generating.md#parks); one still over the new cap parks again until the next month) |
-| `agent.budget_reviewed_at` | | | when an admin last saved the monthly budget on the page (RFC 3339, `""` for never; written by the save, not meant to be set by hand). The setup checklist's `budget` item is done when it is set **or** the environment sets the budget (`Config.BudgetReviewed`) |
+| `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | the monthly agent spend cap across every book, for the calendar month in UTC. `0` = no cap. The page's **Settings** tab edits it, and it is locked when the environment sets it. It applies **live**: the engine reads it per run (`pipeline.Config.MonthlyBudget` is a func). A save that changes it resumes the books and description jobs parked `budget_exceeded` ([Parks](generating.md#parks)). One still over the new cap parks again until the next month |
+| `agent.budget_reviewed_at` | | | when an admin last saved the monthly budget on the page (RFC 3339, `""` for never). The save writes it, and it is not meant to be set by hand. The setup checklist's `budget` item is done when it is set **or** the environment sets the budget (`Config.BudgetReviewed`) |
 | `agent.book_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_BOOK_BUDGET_USD` | `75` | one book's agent spend cap, read at the start (below) |
 | `transcripts.retention_days` | `AUDIOSILO_BRIDGE_TRANSCRIPTS_RETENTION_DAYS` | `30` | days a finished book's transcripts are kept after its job ends (0 to 3650; `0` = deleted when it ends) |
-| `supervisor.automatic_actions` | `AUDIOSILO_BRIDGE_SUPERVISOR_AUTOMATIC_ACTIONS` | **on** | the supervisor's bounded recoveries (a retry, a readmit, a requeue, each capped per book per day). On by default, because the jobs are pressed in the console and left to run |
+| `supervisor.automatic_actions` | `AUDIOSILO_BRIDGE_SUPERVISOR_AUTOMATIC_ACTIONS` | **on** | the supervisor's bounded recoveries: a retry, a readmit, a requeue, each capped per book per day. On by default, because an admin starts the jobs in the console and leaves them to run |
 
 `supervisor.model_assisted`, `supervisor.model_automatic_actions` and the backend
-failover are **forced off**, whatever the file or the environment says: they would
-run an agent CLI inside the Bridge, which never does. The Bridge's
-page shows the agent, the speech recognition, the budgets with this month's
-spend and the retention on its Status tab (`GET /api/engine`), and says where
-each is set: the monthly budget on its Settings tab (or by its variable, read at
-the next start), the per-book cap and the retention in `config.yaml`, read at the
-next start. That start re-admits a job parked `budget_exceeded` unless the caps
-would park it again with the same reason, figures included: a changed cap
-(raised or lowered) re-admits it, and so does an unchanged one when the month's
-spend grew after a monthly park; one still over a cap parks again before it
-spends anything ([Parks](generating.md#parks)).
+failover are **forced off**, whatever the file or the environment says. They would
+run an agent CLI inside the Bridge, which the Bridge never does.
+
+The Bridge's page shows the agent, the speech recognition, the budgets with this
+month's spend, and the retention on its Status tab (`GET /api/engine`). It says
+where each is set:
+
+- the monthly budget on its Settings tab, or by its variable, read at the next
+  start;
+- the per-book cap and the retention in `config.yaml`, read at the next start.
+
+That start re-admits a job parked `budget_exceeded`, unless the caps would park it
+again with the same reason, figures included.
+
+- A changed cap, raised or lowered, re-admits it.
+- An unchanged cap re-admits it too when the month's spend grew after a monthly
+  park.
+- A job still over a cap parks again before it spends anything
+  ([Parks](generating.md#parks)).
 
 ## Contributing: GitHub
 
-Contributions (`contribute: issue`, `sidecars.contribute`,
-`meta.correct`) file issues on the community repositories with a GitHub token.
-`contrib.TokenSource.Resolve` picks one per use, in this order, and returns which
-as `from` (`env`, `device` or `gh`: the page's `from`), passing over a token GitHub
-refused (an environment or `gh` token until it changes, the sign-in until a new
-one):
+Contributions (`contribute: issue`, `sidecars.contribute`, `meta.correct`) file
+issues on the community repositories with a GitHub token.
+`contrib.TokenSource.Resolve` picks one per use, in this order. It returns which
+one as `from` (`env`, `device` or `gh`), the page's `from`. It passes over a token
+GitHub refused: an environment or `gh` token until it changes, and the sign-in
+until there is a new one.
 
-1. **`AUDIOSILO_BRIDGE_GITHUB_TOKEN`** (`env`): a token of the admin's own (a
-   fine-grained one that can open issues on the community repos and create gists,
-   since a body too long for an issue goes in a gist made with the same token).
-   Read **live**
-   from the environment at each use and never sealed. An older Bridge's start
-   sealed it as `github_pat`; a start now deletes that copy once
-   (`forgetSealedGitHubPAT`, best effort: a copy sealed with another key, or a
-   failed delete, never stops the start).
-2. **The Accounts tab's sign-in** (`device`): a user token of the AudioSilo
+1. **`AUDIOSILO_BRIDGE_GITHUB_TOKEN`** (`env`), a token of the admin's own. It must
+   be a fine-grained token that can open issues on the community repos and create
+   gists, since a body too long for an issue goes in a gist made with the same
+   token. The Bridge reads it **live** from the environment at each use, and never
+   seals it. An older Bridge's start sealed it as `github_pat`. A start now deletes
+   that copy once (`forgetSealedGitHubPAT`). That is best effort: a copy sealed
+   with another key, or a failed delete, never stops the start.
+2. **The Accounts tab's sign-in** (`device`), a user token of the AudioSilo
    Contributions GitHub App from its device flow, refreshed before it expires (see
    [Contributions](contributions.md#the-github-sign-in)).
-3. **`gh auth token`** (`gh`): the `gh` CLI's sign-in, for a Bridge run outside a
+3. **`gh auth token`** (`gh`), the `gh` CLI's sign-in, for a Bridge run outside a
    container. The token never enters argv, a log or an error.
 
-`can_contribute` (the heartbeat's, see
-[Pairing and jobs](pairing-and-jobs.md#the-heartbeat-and-the-capability)) is "a
+The heartbeat's `can_contribute` (see
+[Pairing and jobs](pairing-and-jobs.md#the-heartbeat-and-the-capability)) means "a
 token resolves and GitHub hasn't refused it".
 
 | Setting | Environment | Default | What it is |
 |---|---|---|---|
 | | `AUDIOSILO_BRIDGE_GITHUB_TOKEN` | | a GitHub token that wins over the sign-in while GitHub accepts it (above). Never logged, never sealed |
-| `github.client_id` | `AUDIOSILO_BRIDGE_GITHUB_CLIENT_ID` | the App's (`ghauth.DefaultClientID`, `Iv23likw0zS13hG4spdo`) | the GitHub App the Accounts tab signs in to: letters, digits, `.`, `_`, `-`, at most 64. Empty uses the built-in one at use, so a saved `config.yaml` never pins it. Only for a fork running its own App |
-| `github.web_base_url` | `AUDIOSILO_BRIDGE_GITHUB_WEB_BASE_URL` | `https://github.com` | where the device-code and token endpoints live (an absolute `http(s)` URL), for a test against a fake GitHub |
+| `github.client_id` | `AUDIOSILO_BRIDGE_GITHUB_CLIENT_ID` | the App's (`ghauth.DefaultClientID`, `Iv23likw0zS13hG4spdo`) | the GitHub App the Accounts tab signs in to: letters, digits, `.`, `_`, `-`, at most 64. Empty uses the built-in one at each use, so a saved `config.yaml` never pins it. Set it only for a fork running its own App |
+| `github.web_base_url` | `AUDIOSILO_BRIDGE_GITHUB_WEB_BASE_URL` | `https://github.com` | where the device-code and token endpoints live (an absolute `http(s)` URL), set for a test against a fake GitHub |
 | `contribution.api_base_url` | `AUDIOSILO_BRIDGE_CONTRIBUTION_API_BASE_URL` | `https://api.github.com` | the GitHub REST API root the issues, the user lookup and the revoke go to |
 
-The App itself: id `5387686`, slug `audiosilo-contributions`, public (a private App
-can be authorized by its owner only), device flow on, user tokens **expiring**;
-permissions Issues read and write and Metadata read on the repositories it is
-installed on (audiosilo-meta and audiosilo-meta-community), and Gists read and
-write on the account (a characters or recaps file too long for an issue goes in a
-secret gist); webhook inactive. Its
-client ID ships in the Bridge (no client secret exists or is needed). Meta routes
-on the App's id: see
+**The App itself:**
+
+| | |
+|---|---|
+| Id and slug | `5387686`, `audiosilo-contributions` |
+| Visibility | public, since a private App can be authorized by its owner only |
+| Sign-in | device flow on, user tokens **expiring** |
+| Repository permissions | Issues read and write, and Metadata read, on the repositories it is installed on (audiosilo-meta and audiosilo-meta-community) |
+| Account permissions | Gists read and write. A characters or recaps file too long for an issue goes in a secret gist |
+| Webhook | inactive |
+
+The App's client ID ships in the Bridge. No client secret exists or is needed.
+Meta routes issues on the App's id; see
 [Contributing data](../meta/contributing-data.md#issues-filed-through-the-audiosilo-app).
 
-The **agent container** has no config file of its own: its flags (`--staging`,
-`--home`, `--slots`) and its credentials (`CLAUDE_CODE_OAUTH_TOKEN`,
-`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `CODEX_API_KEY`, from its environment or
-`/agent/secrets/<lowercase name>`) are in
+The **agent container** has no config file of its own. Its flags (`--staging`,
+`--home`, `--slots`) and its credentials are in
 [The agent container](agent-container.md#the-environment-and-the-credentials).
-The Bridge can hold the agent's credential instead (the Accounts
-tab) and hand it to the container per run. See
+The credentials are `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`,
+`OPENAI_API_KEY` and `CODEX_API_KEY`, from its environment or
+`/agent/secrets/<lowercase name>`. The Bridge can hold the agent's credential
+instead, on the Accounts tab, and hand it to the container per run. See
 [The credential hand-off](agent-container.md#the-credential-hand-off).
 
 ## Audible
 
-Audible accounts ([Audible](audible.md)) have **no settings**. An admin
-signs in and maps each account on the Accounts tab, and its sign-in is sealed in
-the vault as `audible_<id>` (below). The server's `audible` module decides whether
-the accounts are polled and backed up (`modules.audible.enabled` on the server, see
-[its configuration](../server/configuration.md#managed-modules-modules)); an
-account's backup policy, placement template and position sync are set
-in the console.
+Audible accounts ([Audible](audible.md)) have **no settings**.
 
-Backups download into `<data>/audible/tmp/` (`0700`), so the data
-folder needs room for about 2.2 times the largest book being backed up; a partial
-download there is kept across a restart for up to 7 days (see
-[Resume and temp files](audible.md#resume-and-temp-files)). They decrypt with the
-same ffmpeg the Bridge's other jobs use (the one its engine resolved at start, else
-`tools.ffmpeg_path`, `AUDIOSILO_BRIDGE_TOOLS_FFMPEG_PATH`, else ffmpeg on the
-`PATH`); every image has one.
+- An admin signs in and maps each account on the Accounts tab. Its sign-in is
+  sealed in the vault as `audible_<id>` ([Secrets](#secrets)).
+- The server's `audible` module decides whether the accounts are polled and backed
+  up (`modules.audible.enabled` on the server; see
+  [its configuration](../server/configuration.md#managed-modules-modules)).
+- An account's backup policy, placement template and position sync are set in the
+  console.
+
+Backups download into `<data>/audible/tmp/` (`0700`). So the data folder needs
+room for about 2.2 times the largest book being backed up. A partial download there
+is kept across a restart for up to 7 days (see
+[Resume and temp files](audible.md#resume-and-temp-files)).
+
+Backups decrypt with the same ffmpeg the Bridge's other jobs use: the one its
+engine resolved at start, else `tools.ffmpeg_path`
+(`AUDIOSILO_BRIDGE_TOOLS_FFMPEG_PATH`), else ffmpeg on the `PATH`. Every image has
+one.
 
 Two variables exist **only in a build with the `audiblefake` tag**, for development
 and tests. Release builds and images never carry the tag, so there they do nothing:
@@ -197,68 +225,102 @@ and tests. Release builds and images never carry the tag, so there they do nothi
 | Environment | What it is |
 |---|---|
 | `AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL` | the base URL of an Audible fake (`go run -tags audiblefake ./cmd/audiblefake`): every Audible and Amazon endpoint goes there instead |
-| `AUDIOSILO_BRIDGE_AUDIBLE_RECORD_DIR` | records every Audible exchange into a `0600` JSON-lines file in this folder, scrubbed of credentials as it is written: for recording fixtures from a real account |
+| `AUDIOSILO_BRIDGE_AUDIBLE_RECORD_DIR` | records every Audible exchange into a `0600` JSON-lines file in this folder, scrubbed of credentials as it is written. It is for recording fixtures from a real account |
 
 ## Secrets
 
-The Bridge's secrets are **never in `config.yaml`**: the token from the server,
-the GitHub sign-in (`github_user_token`: the access token, the refresh token and
-both expiries sealed as **one** value, so a refresh replaces the pair in one
-write) and the agent credentials set on the Accounts tab (`claude_oauth_token`,
-`anthropic_api_key`, `openai_api_key`), and each Audible account's sign-in
-(`audible_<id>`: its tokens and device key, full Amazon account access). `github_pat` is only ever deleted now
-(above). Each is an AES-256-GCM sealed file in `<data>/secrets/`
-(`0600`), bound to its name so a file renamed onto another name doesn't open. One
-master key seals them all:
+The Bridge's secrets are **never in `config.yaml`**. They are:
+
+- the token from the server;
+- the GitHub sign-in, `github_user_token`. The access token, the refresh token and
+  both expiries are sealed as **one** value, so a refresh replaces the pair in one
+  write;
+- the agent credentials set on the Accounts tab: `claude_oauth_token`,
+  `anthropic_api_key` and `openai_api_key`;
+- each Audible account's sign-in, `audible_<id>`: its tokens and device key, with
+  full Amazon account access.
+
+`github_pat` is only ever deleted now
+([Contributing: GitHub](#contributing-github)).
+
+Each secret is an AES-256-GCM sealed file in `<data>/secrets/` (`0600`). The file
+is bound to its name, so a file renamed onto another name doesn't open. One master
+key seals them all:
 
 - `AUDIOSILO_BRIDGE_SECRET_KEY`: 32 bytes, as 64 hex characters or as base64. Use it
   to keep the key **outside** the data volume, so a copy of the volume alone can't
   open the secrets.
 - Otherwise `<data>/secret.key`, created (`0600`) on the first start.
 
-If the key changes (a different variable, a replaced key file), the stored server
-token can't be opened and the Bridge refuses to start, saying so; a GitHub sign-in
-or an agent credential sealed with the old key reads as not set (sign in and set
-it again; an Audible account sealed with it can't be opened either: sign in to it
-again). The page's API never returns a secret: `GET /api/accounts` says which
-are set and when (for the agent, when its credentials last changed, `set_at`, and
-when each was saved, `set_at_by_kind`, which the page shows). Generate a key with,
-for example, `openssl rand -hex 32`. The startup log says where the key came from
-(`environment`, `key file` or `new key file`), never the key.
+Generate a key with, for example, `openssl rand -hex 32`. The startup log says
+where the key came from (`environment`, `key file` or `new key file`), never the
+key.
 
-The page's own password is not a secret in this sense: it is hashed (argon2id) in
+**If the key changes** (a different variable, a replaced key file):
+
+- the stored server token can't be opened, and the Bridge refuses to start, saying
+  so;
+- a GitHub sign-in or an agent credential sealed with the old key reads as not set.
+  Sign in and set it again;
+- an Audible account sealed with the old key can't be opened either. Sign in to it
+  again.
+
+The page's API never returns a secret. `GET /api/accounts` says which are set and
+when. For the agent it gives when its credentials last changed (`set_at`) and when
+each was saved (`set_at_by_kind`), which the page shows.
+
+### The page's password
+
+The page's own password is not a secret in this sense. It is hashed (argon2id) in
 the database, generated and **printed once** to the log on the first start, and
-changed on the page's Settings tab. An owner who lost it runs
-`audiosilo-bridge reset-password [--data DIR]` (from v0.3.0; in Docker
-`docker exec -u PUID:PGID <container> audiosilo-bridge reset-password`): it
-prints a new generated password once and signs every session out, changing
-only the password hash and the sessions (`app.ResetPassword`), so the pairing,
-the mappings, the jobs and the sealed secrets stay, and a running Bridge takes
-it at once. From v0.4.0 the first start's `auth.Manager.EnsureAdmin`
-creates the password only while none is stored (`CreatePassword`, one statement),
-so a first start racing a reset on the same data folder never overwrites the
-reset's password (and prints none). It refuses a folder with no Bridge database (a mistyped `--data`)
-and, as root, a data folder another user owns (SQLite's new files would be
-root's), naming the user to run it as. The command goes before its flags:
-`--data DIR reset-password` is refused rather than starting the Bridge.
+changed on the page's Settings tab.
+
+An owner who lost it runs `audiosilo-bridge reset-password [--data DIR]`, from
+v0.3.0. In Docker that is
+`docker exec -u PUID:PGID <container> audiosilo-bridge reset-password`. The
+command:
+
+- prints a new generated password once, and signs every session out;
+- changes only the password hash and the sessions (`app.ResetPassword`). The
+  pairing, the mappings, the jobs and the sealed secrets stay, and a running Bridge
+  takes the new password at once;
+- refuses a folder with no Bridge database (a mistyped `--data`);
+- run as root, refuses a data folder another user owns, since SQLite's new files
+  would be root's. It names the user to run it as.
+
+The command goes before its flags. `--data DIR reset-password` is refused rather
+than starting the Bridge.
+
+From v0.4.0 the first start's `auth.Manager.EnsureAdmin` creates the password only
+while none is stored (`CreatePassword`, one statement). So a first start racing a
+reset on the same data folder never overwrites the reset's password, and prints
+none.
 
 ## PUID and PGID
 
-The images start as root only to own `/bridge-data` (the Bridge's own data, never a
-library) and then drop to `PUID:PGID` (default `1000:1000`) to run the Bridge, which
-never runs as root. The data folder is given to that user (and made `0700`: it holds
-the page's password hash and sessions beside the sealed secrets) only when it isn't
-theirs yet, on the first start or after a `PUID`/`PGID` change, so a large data
-folder isn't walked on every start. Files the Bridge creates are `0644` and folders
-`0755` (umask `022`), so the server can read them whatever user it runs as.
+The images start as root only to own `/bridge-data`, the Bridge's own data and
+never a library. Then they drop to `PUID:PGID` (default `1000:1000`) to run the
+Bridge, which never runs as root.
 
-Set `PUID`/`PGID` to the **owner of your library folders**, the same as the server,
-so the files the Bridge writes belong to the share's owner. On Unraid that is
-`99`/`100`. Started with an explicit non-root user (`docker --user`, compose
-`user:`) the image skips the ownership change and the drop, so that user must own
-the data folder: the image's own `/bridge-data` belongs to `1000:1000` (`0700`), so
-`--user 1000:1000` works with it as it is, and a bind-mounted folder must be the
-user's. The entrypoint warns when it isn't writable.
+The data folder is given to that user, and made `0700`, only when it isn't theirs
+yet: on the first start, or after a `PUID`/`PGID` change. So a large data folder
+isn't walked on every start. It is `0700` because it holds the page's password hash
+and sessions beside the sealed secrets. Files the Bridge creates are `0644` and
+folders `0755` (umask `022`), so the server can read them whatever user it runs
+as.
+
+Set `PUID`/`PGID` to the **owner of your library folders**, the same as the
+server, so the files the Bridge writes belong to the share's owner. On Unraid that
+is `99`/`100`.
+
+**An explicit non-root user** (`docker --user`, compose `user:`) makes the image
+skip the ownership change and the drop. So that user must own the data folder.
+
+- The image's own `/bridge-data` belongs to `1000:1000` (`0700`), so
+  `--user 1000:1000` works with it as it is.
+- A bind-mounted folder must be the user's.
+
+The entrypoint warns when the folder isn't writable.
 
 ## The images
 
@@ -272,25 +334,30 @@ built from one Dockerfile with four targets:
 | `latest-cuda` | `cuda` | speech recognition on an NVIDIA GPU (run with `--gpus all`) on the `nvidia/cuda` runtime base | amd64 |
 | `latest-agent` | `agent` | the [agent container](agent-container.md#the-image): the pinned native `claude` and `codex` CLIs and the Bridge binary as their runner (`audiosilo-bridge agent-runner`), on Debian bookworm-slim | amd64, arm64 |
 
-The `latest` tags move **only for a release tag** (`v1.2.3`, not a pre-release
-such as `v1.2.3-rc.1`), which also publishes `<tag>`, `<tag>-slim`, `<tag>-cuda`
-and `<tag>-agent`. A manual dispatch from a branch publishes under the branch's
-name (`<branch>`, `<branch>-slim`, `<branch>-cuda`, `<branch>-agent`), never over
-`latest`. The whisper.cpp builds are release assets of the archived
-audiosilo-sidecars repository (its releases stay downloadable), downloaded at
-image build time, pinned by release tag (the same one the Bridge's own
-downloader uses), each checked against the sha256 that release's
-`checksums.txt` lists, and each image fetches only the build it carries; the
-speech models are not baked in (the Bridge downloads the one it needs into its
-data folder on first use).
-`latest`, `latest-slim` and `latest-cuda` (not `agent`) also carry the gzipped
-ASR worker builds the Bridge serves to the computers that run a worker, in
-`/usr/local/share/audiosilo-bridge/workers` (see
+**Tags.** The `latest` tags move **only for a release tag** (`v1.2.3`, not a
+pre-release such as `v1.2.3-rc.1`). A release tag also publishes `<tag>`,
+`<tag>-slim`, `<tag>-cuda` and `<tag>-agent`. A manual dispatch from a branch
+publishes under the branch's name (`<branch>`, `<branch>-slim`, `<branch>-cuda`,
+`<branch>-agent`), never over `latest`.
+
+**whisper.cpp.** The whisper.cpp builds are release assets of the archived
+audiosilo-sidecars repository, whose releases stay downloadable.
+
+- They are downloaded at image build time, pinned by release tag. That is the same
+  tag the Bridge's own downloader uses.
+- Each is checked against the sha256 that release's `checksums.txt` lists.
+- Each image fetches only the build it carries.
+- The speech models are not baked in. The Bridge downloads the one it needs into
+  its data folder on first use.
+
+**Worker builds.** `latest`, `latest-slim` and `latest-cuda` (not `agent`) also
+carry the gzipped ASR worker builds that the Bridge serves to the computers that
+run a worker, in `/usr/local/share/audiosilo-bridge/workers` (see
 [Installing a worker](workers.md#installing-a-worker)).
-**Only the `agent` image carries an AI agent's command-line tool**: the Bridge's
-own images never do, and the Bridge never runs one. Run the same
-version of the Bridge and its agent image: they check each other's protocol
-version.
+
+**Only the `agent` image carries an AI agent's command-line tool.** The Bridge's
+own images never do, and the Bridge never runs one. Run the same version of the
+Bridge and its agent image, since they check each other's protocol version.
 
 ## Running it beside a server
 
@@ -392,11 +459,11 @@ The points that matter:
   [Development](development.md#the-page-and-its-api)), so don't put it behind a
   public reverse proxy.
 - **The `staging` volume is the only one the Bridge and the agent share**, at the
-  Bridge's `agent.staging_dir`. The agent mounts no library and no Bridge data, runs
-  as `10002:10002` with every capability dropped, `no-new-privileges`, a read-only
-  root and a tmpfs `/tmp`, on a network of its own (the internet only). Its
-  credentials come in by name from the shell or a `.env` file, never written into
-  the compose file; see [The agent container](agent-container.md).
+  Bridge's `agent.staging_dir`. The agent mounts no library and no Bridge data. It
+  runs as `10002:10002` with every capability dropped, `no-new-privileges`, a
+  read-only root and a tmpfs `/tmp`, on a network of its own (the internet only).
+  Its credentials come in by name from the shell or a `.env` file, and are never
+  written into the compose file. See [The agent container](agent-container.md).
 - **`stop_grace_period: 20s`** gives the runner time to stop the runs in progress
   (`SIGTERM`, then `SIGKILL` 10 seconds later) and mark them done, so the Bridge
   hears about it at once.

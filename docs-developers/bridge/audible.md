@@ -443,108 +443,145 @@ A title whose date was set aside is logged once per listing through the client's
 ### Preorders
 
 A pending preorder is **not** in the account's Audible library until it is
-released: `GET /1.0/library` lists none, and `GET /1.0/library/{asin}` is a `404`.
-Seen on a real UK account (2026-11), the orders listing is the only place the API
-shows one, so each poll reads it (`audibleacct.Manager.Preorders`, which owns the
-store, the sign-in and the service; `audiblejob` appends its records to the
-library's):
+released. `GET /1.0/library` lists none, and `GET /1.0/library/{asin}` answers
+`404`. On a real UK account (2026-11), the orders listing is the only place the API
+shows one, so each poll reads it. `audibleacct.Manager.Preorders` does this; it
+owns the store, the sign-in and the service. `audiblejob` appends its records to the
+library's.
 
-- **The orders** (`audible.Client.Orders`, `GET /1.0/orders`, signed): an order
-  has `date`, `preorder`, `state`, `detail_state`, `type` and `items` (each with
-  `asin` and `is_preorder`, beside payment fields the client never decodes). A
-  title is a pending preorder when its order has `preorder: true` **and** `state`
-  `ORDER_PENDING_PREORDER` (`Order.PendingPreorder`); a delivered order is
-  `ORDER_CLOSED`/`ORDER_SUCCEEDED`. The listing reaches back about six months and
-  ignores every query parameter tried (`page`, `num_results`, `start_date` and
-  `end_date`, `purchased_after`, `date_range`, `period`); any `response_groups` but
-  the default is a `500`, so none is sent. The paging fields read `0`; `Orders`
-  still follows `max_number_of_pages` should it ever page (at most 20 pages,
-  stopping at a page that adds no new order).
-- **The catalog** (`audible.Client.Products`) describes each pending preorder,
-  read again every poll so a moved release date is picked up: `GET
-  /1.0/catalog/products?asins=a,b,...` in batches of 25, split on a `400`/`414` as
-  `lastpositions` is (`splitOnOverflow`), with `response_groups`
-  `contributors,product_attrs,product_desc,series` (without `product_desc` the
-  catalog sends `title` null). A failed batch ends the batches; then every ASIN not
-  yet answered with its title (left out of a batch, one still refused alone, or in
-  the failed batch or after it) is read alone (`GET /1.0/catalog/products/{asin}`),
-  unless Audible asked to wait (`429`/`503`) or the context ended, which ends the
-  reads too; a single read failing ends them as well. One the catalog doesn't know
-  (a `404` or `400` alone) is left out. Records are built as the library's
-  (`toRecord`), with no customer rights, then marked `Preorder` with
-  `audible.PreorderReason`.
-- **Remembered** (Bridge migration `0012_audible_preorders`, `store.AudiblePreorder`,
-  `store/audiblepreorders.go`): one row per `(account, asin)` with `ordered_at`
-  (the order's date, else when first seen), `last_seen_at` (last seen pending in the
-  orders), `record` (the catalog's last description as JSON, `''` until a read
-  succeeds; a cache the next fill replaces) and `filled_at` (no longer written
-  or read; the column stays so a downgrade works). No credential, no
-  payment field. Each poll reports every remembered row, so a preorder whose order
-  has left the six-month window is still reported. The rows go with the account
-  (`ON DELETE CASCADE`).
-- **Matching.** A preorder the catalog hasn't described yet (no title) matches by
-  ASIN only (`matchTitled`) and gets no planned destination; a preorder claiming a
-  book a library title claims too gives way to it, uncontested.
+#### The orders
 
-**Drop rules** (`reconcilePreorders`, `dropReleased`), by ASIN:
+`audible.Client.Orders` reads `GET /1.0/orders`, signed. An order has `date`,
+`preorder`, `state`, `detail_state`, `type` and `items`. Each item has `asin` and
+`is_preorder`, beside payment fields the client never decodes.
 
-- the library lists it (the library wins; it is reported from there);
-- no order holds it pending and one holds it in a state other than delivered
-  (cancelled). A delivered order (`Order.Delivered`: `state` `ORDER_CLOSED`,
-  `detail_state` `ORDER_SUCCEEDED`) keeps it a preorder until the library lists it,
-  which can be a little after the order closes, so it never drops out of a final
-  poll in between. That wait is capped: a delivered one the library still
-  doesn't list is dropped `DeliveredDropAfter` (14 days) after the later of its
-  `last_seen_at` (last seen pending) and its release date, both bounds of when
-  the order closed (a refund, or a release under another ASIN);
-- the listing's oldest order is older than its `ordered_at` and the listing doesn't
-  hold it: it was in the window and is gone, so it was cancelled (an empty listing,
-  or one with no dated order, drops nothing);
-- its release date is `PreorderDropAfter` (30 days) past and the library still
-  doesn't list it; one the catalog never dated counts as released two years
+- A title is a pending preorder when its order has `preorder: true` **and**
+  `state` `ORDER_PENDING_PREORDER` (`Order.PendingPreorder`).
+- A delivered order is `ORDER_CLOSED`/`ORDER_SUCCEEDED`.
+
+The listing reaches back about six months. It ignores every query parameter tried:
+`page`, `num_results`, `start_date` and `end_date`, `purchased_after`, `date_range`
+and `period`. Any `response_groups` other than the default is a `500`, so the
+client sends none. The paging fields read `0`. `Orders` still follows
+`max_number_of_pages` in case the listing ever pages: at most 20 pages, stopping at
+a page that adds no new order.
+
+#### The catalog
+
+`audible.Client.Products` describes each pending preorder. It reads them again
+every poll, so a moved release date is picked up.
+
+- It asks `GET /1.0/catalog/products?asins=a,b,...` in batches of 25. A batch is
+  split on a `400`/`414` as `lastpositions` is (`splitOnOverflow`).
+- The `response_groups` are `contributors,product_attrs,product_desc,series`.
+  Without `product_desc` the catalog sends `title` null.
+- A failed batch ends the batches. Every ASIN not yet answered with its title is
+  then read alone (`GET /1.0/catalog/products/{asin}`). That covers one left out of
+  a batch, one still refused alone, and one in the failed batch or after it.
+- There are no single reads when Audible asked to wait (`429`/`503`) or the
+  context ended. A single read that fails ends the single reads as well.
+- A title the catalog doesn't know (a `404` or `400` alone) is left out.
+
+The records are built as the library's are (`toRecord`), with no customer rights,
+then marked `Preorder` with `audible.PreorderReason`.
+
+#### Remembered preorders
+
+Bridge migration `0012_audible_preorders` (`store.AudiblePreorder`,
+`store/audiblepreorders.go`) keeps one row per `(account, asin)`:
+
+| Column | What |
+|---|---|
+| `ordered_at` | the order's date, else when the Bridge first saw it |
+| `last_seen_at` | when the Bridge last saw it pending in the orders |
+| `record` | the catalog's last description as JSON, `''` until a read succeeds. It is a cache the next fill replaces |
+| `filled_at` | no longer written or read. The column stays so a downgrade works |
+
+A row holds no credential and no payment field. Each poll reports every remembered
+row, so a preorder whose order has left the six-month window is still reported. The
+rows go with the account (`ON DELETE CASCADE`).
+
+**Matching.** A preorder the catalog hasn't described yet (no title) matches by
+ASIN only (`matchTitled`) and gets no planned destination. A preorder that claims
+the same book as a library title gives way to the library title, uncontested.
+
+#### Drop rules
+
+`reconcilePreorders` and `dropReleased` drop a remembered preorder, by ASIN, when:
+
+- **The library lists it.** The library wins, and the title is reported from there.
+- **An order cancelled it.** No order holds it pending, and one holds it in a state
+  other than delivered.
+- **It was in the orders window and is gone.** The listing's oldest order is older
+  than its `ordered_at`, and the listing doesn't hold it, so it was cancelled. An
+  empty listing, or one with no dated order, drops nothing.
+- **Its release date is `PreorderDropAfter` (30 days) past** and the library still
+  doesn't list it. One the catalog never dated counts as released two years
   (`undatedPreorderYears`) after it was last seen pending.
 
+A delivered order (`Order.Delivered`: `state` `ORDER_CLOSED`, `detail_state`
+`ORDER_SUCCEEDED`) keeps the title a preorder until the library lists it. The
+library can list it a little after the order closes, so the title never drops out
+of a final poll in between. That wait is capped. A delivered preorder the library
+still doesn't list is dropped `DeliveredDropAfter` (14 days) after the later of its
+`last_seen_at` (last seen pending) and its release date. Both bound when the order
+closed. The cap covers a refund, or a release under another ASIN.
+
 A dropped preorder is no longer reported, so the server marks the title `gone` at
-the next final titles PUT. What the server does with a reported preorder (the hourly
-clock, the 14 days, a pending request):
+the next final titles PUT. What the server does with a reported preorder (the
+hourly clock, the 14 days, a pending request) is in
 [On the server: queueing](#on-the-server-queueing-internalaudibleimportsgo-catalogaudible_importgo).
 
-**Soft failure.** Neither the orders nor the catalog ever fails the poll. A failed
-orders listing (or a sign-in that can't be opened) adds and drops nothing beyond
-the library and release-date rules, and one warning is logged (Audible's answer
-redacted, never a credential). A sign-in that can't be opened, or a `429`/`503` on
-the orders, skips the catalog for that poll, so the remembered rows are reported
-with its last description; any other orders failure still reads the catalog. A catalog
-that fails part way still describes the titles it read. A preorder the catalog never
-described is reported by ASIN alone: the server stores it untitled (state
-`preorder`, the reason, no match, no plan). A store failure is a warning too, and
-nothing is written back.
+#### Soft failure
 
-**Elsewhere.** An import of one fails `not_released`
-([step 2](#the-steps-on-the-bridge)). Position sync never touches one (a fuzzy match
-can put one on a book, another edition): `audible.sync` leaves it out
-([step 2](#audible-to-the-server-audiblesync)), and the push loop never writes its
-place (Audible would deny the content reference every pass). Both read the store;
-when it can't say, they run as before with a warning.
+Neither the orders nor the catalog ever fails the poll.
 
-**Limit.** A preorder ordered more than about six months before the account's first
-poll with this code can't be found (Audible's order history has no older pages;
-the catalog's `customer_rights`, `is_preorderable` and `preorder_release_date` say
-nothing about this customer's order). It is reported once released, from the
-library. Every preorder ordered later is remembered.
+- A failed orders listing, or a sign-in that can't be opened, adds and drops
+  nothing beyond the library and release-date rules. One warning is logged, with
+  Audible's answer redacted and never a credential.
+- A sign-in that can't be opened, or a `429`/`503` on the orders, skips the catalog
+  for that poll. The remembered rows are then reported with their last
+  description. Any other orders failure still reads the catalog.
+- A catalog that fails part way still describes the titles it read.
+- A preorder the catalog never described is reported by ASIN alone. The server
+  stores it untitled: state `preorder`, the reason, no match, no plan.
+- A store failure is a warning too, and nothing is written back.
+
+#### Elsewhere
+
+- An import of a preorder fails `not_released`
+  ([step 2](#the-steps-on-the-bridge)).
+- Position sync never touches a preorder, since a fuzzy match can put one on a
+  book of another edition. `audible.sync` leaves it out
+  ([step 2](#audible-to-the-server-audiblesync)). The push loop never writes its
+  place, because Audible would deny the content reference every pass.
+
+Both read the store. When the store can't say, they run as before with a warning.
+
+#### Limit
+
+The Bridge can't find a preorder ordered more than about six months before the
+account's first poll with this code. Audible's order history has no older pages,
+and the catalog's `customer_rights`, `is_preorderable` and `preorder_release_date`
+say nothing about this customer's order. Such a preorder is reported once released,
+from the library. Every preorder ordered later is remembered.
 
 ### Enrichment pacing
 
-A first poll can backfill hundreds of ASINs, one PUT each, and the server's
-[address limiter](../server/auth-and-security.md#rate-limiting) (shared with the
-house's players) answers a quick run `429`. The server is unchanged; the Bridge
-paces the PUTs (`audiblejob.enrich`): at most one per 200 ms (`enrichGap`). On a
-`429` it waits for the `Retry-After` (seconds or an HTTP date, read into
-`link.APIError.RetryAfter`, with `RetryAfterSet` recording whether it was
-provided), or else 2 s, doubling with each `429` in a row. An explicit
-`Retry-After: 0`, including an HTTP date in the past, retries immediately
-within the same attempt cap; an absent header uses the backoff. It
-then retries the same book and doubles the gap, up to 2 s.
+A first poll can backfill hundreds of ASINs, one PUT each. The server's
+[address limiter](../server/auth-and-security.md#rate-limiting) is shared with the
+house's players, and it answers a quick run `429`. The server is unchanged. The
+Bridge paces the PUTs instead (`audiblejob.enrich`), at most one per 200 ms
+(`enrichGap`).
+
+On a `429` the Bridge waits, then retries the same book and doubles the gap, up to
+2 s. The wait is:
+
+- the `Retry-After`, in seconds or as an HTTP date. The link reads it into
+  `link.APIError.RetryAfter`, and `RetryAfterSet` records whether it was provided.
+- none for an explicit `Retry-After: 0`, including an HTTP date in the past. The
+  Bridge retries immediately, within the same attempt cap.
+- with no header, 2 s, doubling with each `429` in a row.
 
 The poll leaves the rest of the backfill to the next poll after:
 
@@ -555,8 +592,8 @@ The poll leaves the rest of the backfill to the next poll after:
 Those books still have no ASIN, so the next poll picks them up again. Their count
 is the result's `enrich_deferred`. Only a cancelled job fails the poll.
 
-Registering the `audible.poll` kind is what adds `audible` to the heartbeat's features
-(`bridge.FeatureAudible`), which the `audible` module needs.
+Registering the `audible.poll` kind adds `audible` to the heartbeat's features
+(`bridge.FeatureAudible`). The `audible` module needs that feature.
 
 ## Backing up a title (`audible.import`)
 
@@ -570,35 +607,46 @@ account's library. The server never talks to Audible and never sees a key.
 | | |
 |---|---|
 | Kind | `audible.import` (`bridge.KindAudibleImport`; the Bridge's `audiblejob.ImportKind`), feature `audible` |
-| Server spec | internal (`POST /admin/bridge/jobs` refuses it with `400`), `writes` (a writable books mapping), `libraryKind` books, no book path (`bookNone`), owned by the `audible` module (`ModuleFor`: held while it is off), **not** quiet: a done or failed one is notified, named by the title (`notifyBridgeJob` reads the title's name) |
-| Dedupe | one open job per account and title (`audibleImportSuffix`: `\|<account>\|<asin>`); a repeat returns the open one |
-| Bridge lane | `download` (`jobs.LaneDownload`, 1 slot by default, shared with `podcast.fetch`), and one import per account at a time on top (a per-account gate, `Importer.gate`) |
+| Internal | yes. `POST /admin/bridge/jobs` refuses it with `400` |
+| Needs | `writes` (a writable books mapping), `libraryKind` books, no book path (`bookNone`) |
+| Module | owned by the `audible` module (`ModuleFor`), so it is held while the module is off |
+| Notified | yes, it is **not** quiet. A done or failed one is notified and named by the title (`notifyBridgeJob` reads the title's name) |
+| Dedupe | one open job per account and title (`audibleImportSuffix`: `\|<account>\|<asin>`). A repeat returns the open one |
+| Bridge lane | `download` (`jobs.LaneDownload`, 1 slot by default, shared with `podcast.fetch`). On top of that, one import per account runs at a time (a per-account gate, `Importer.gate`) |
 | Library | the job row's `library_id` is the account's library at queue time |
 
-**Params** are built by the server (`catalog.importParams`, from the account and the
-title at queue time), strict on the server (`audibleImportParams`), read leniently by
-the Bridge (`audiblejob.ParseImportParams`: unknown fields ignored, the ASIN
-upper-cased):
+**Params.** The server builds them (`catalog.importParams`) from the account and the
+title at queue time. The server reads them strictly (`audibleImportParams`). The
+Bridge reads them leniently (`audiblejob.ParseImportParams`): it ignores unknown
+fields and upper-cases the ASIN.
 
 ```json
 { "account": "k3v9x0p2m4q8r1t5", "asin": "B0FAKE0002", "library_id": 2, "dest_path": "", "template": "" }
 ```
 
-- `dest_path`: the console's destination for the title (`audible_titles.dest_path`),
-  `""` for none. A library-relative file path, or a **folder** when its last
-  segment has no audio extension. The server checks it with
-  `bridge.CheckAudibleDestPath` (the rules are in the
-  [API reference](../server/api/reference.md#patch-apiv1adminaudibletitlesaccountasin)).
-- `template`: the account's placement template (`audible_accounts.template`), `""`
-  for the Bridge's automatic placement. Checked with `bridge.CheckAudibleTemplate`
-  (below).
+- `dest_path` is the console's destination for the title
+  (`audible_titles.dest_path`), `""` for none. It is a library-relative file path,
+  or a **folder** when its last segment has no audio extension. The server checks
+  it with `bridge.CheckAudibleDestPath`. The rules are in the
+  [API reference](../server/api/reference.md#patch-apiv1adminaudibletitlesaccountasin).
+- `template` is the account's placement template (`audible_accounts.template`),
+  `""` for the Bridge's automatic placement. The server checks it with
+  `bridge.CheckAudibleTemplate` ([The template grammar](#the-template-grammar)).
 
-Both are copied in at queue time: editing either later never changes a queued job.
+Both are copied in at queue time, so editing either later never changes a queued
+job.
 
-**Progress** is `{"step", "message", "done", "total"}` with `step` one of
-`license` (also while waiting for the account's gate or the mapping check),
-`download`, `decrypt`, `place`, `rescan`, `enrich`, in that order (`done`/`total`
-are bytes during `download` and `place`).
+**Progress** is `{"step", "message", "done", "total"}`. `step` runs through these
+in order:
+
+1. `license`, also while the job waits for the account's gate or the mapping check;
+2. `download`;
+3. `decrypt`;
+4. `place`;
+5. `rescan`;
+6. `enrich`.
+
+`done` and `total` are bytes during `download` and `place`.
 
 **Result** of a done job:
 
@@ -612,66 +660,80 @@ are bytes during `download` and `place`).
 }
 ```
 
-(The fake's title placed beside `Mara Quill/The Glass Orchard`, book 1 of its
-series in a folder with no code: Auto kept the author folder and guessed the code.)
-`path` is the **book** path `POST /bridge/rescan` answered for the placed file (a
-single-file book is its file), `files` what was placed, `enriched` whether the
-book now carries the title's ASIN (`false`: it had one already, the server refused
-it, `asin_set`, or the file joined a book that isn't the title's).
+This is the fake's title placed beside `Mara Quill/The Glass Orchard`, which is
+book 1 of its series in a folder with no code. Auto kept the author folder and
+guessed the code.
 
-**Failures** are `audiblejob.Failure` `{"code", "message"}`, both as the result and
-as the error, so the server reads the code from the result (`bridge.AudibleImportCode`:
-a park's code, else the result's `code`, else an error starting with a known code):
+- `path` is the **book** path that `POST /bridge/rescan` answered for the placed
+  file. A single-file book's path is its file.
+- `files` is what the Bridge placed.
+- `enriched` says whether the book now carries the title's ASIN. It is `false` when
+  the book had one already, when the server refused it (`asin_set`), or when the
+  file joined a book that isn't the title's.
+
+**Failures** are `audiblejob.Failure` `{"code", "message"}`, sent both as the result
+and as the error. The server reads the code with `bridge.AudibleImportCode`: a
+park's code, else the result's `code`, else an error that starts with a known code.
 
 | Code | When |
 |---|---|
-| `not_released` | the title is a preorder (a remembered pending one, or a library title with a release date ahead), or Audible's license denial says it isn't out (`audible.ErrNotReleased`) |
-| `no_rights` | the title isn't in the account's library (`ErrNotInLibrary`) nor a remembered pending preorder, Audible won't let it be downloaded (`UnavailableReason`: no rights, a show or periodical), or the license is denied for rights (`ErrNoRights`) |
-| `audible_refused` | Audible refused the account's sign-in (`audibleacct.ErrRefused`: the account is marked refused) or the license for another reason (`ErrDenied`); or denied the device as throttled (`ErrThrottled`, a device on an older [profile](#the-device-profile)): the message is `ThrottledText`'s advice to sign in again on the Bridge, the account is marked refused and its later imports fail at once until a sign-in again |
-| `not_writable` | the library isn't the account's, not a books library the server lists, or not mapped **and** writable at the mount in use; the destination or template gives no valid path (`transfer.CleanRel`'s refusals, a hidden segment included; another audio extension than `.m4b`, `.m4a`, `.mp4`); a path the Bridge can't follow (a file where a folder goes, a link out of the mapping, an unreadable folder); a read-only filesystem or a permission refusal at the install |
-| `exists` | anything at the destination (a different file, a folder, a link), or a destination inside a book the library already has (its folder is a listed book's, or already holds audio): checked **before** the license, and again at the install |
-| `disk_full` | free space short in the Bridge's temp folder (2.2x the size, less what the partial holds) or at the library's nearest existing folder (1.1x, `transfer.DefaultHeadroom`), checked before a byte is written; or ENOSPC/EDQUOT during the download, decrypt (ffmpeg's words too) or copy. A free space that can't be read is no refusal |
-| `offline_url_expired` | the presigned download URL answered 401/403/410 again after the one new license |
-| `unknown_account` | not this Bridge's account, or mapped on another server |
+| `not_released` | The title is a preorder: a remembered pending one, or a library title with a release date ahead. Or Audible's license denial says it isn't out (`audible.ErrNotReleased`) |
+| `no_rights` | The title is neither in the account's library (`ErrNotInLibrary`) nor a remembered pending preorder. Or Audible won't let it be downloaded (`UnavailableReason`: no rights, a show or a periodical). Or the license is denied for rights (`ErrNoRights`) |
+| `audible_refused` | Audible refused the account's sign-in (`audibleacct.ErrRefused`, and the account is marked refused), or refused the license for another reason (`ErrDenied`). Or Audible denied the device as throttled (`ErrThrottled`, a device on an older [profile](#the-device-profile)). Then the message is `ThrottledText`'s advice to sign in again on the Bridge, the account is marked refused, and its later imports fail at once until a sign-in again |
+| `not_writable` | The library isn't the account's, isn't a books library the server lists, or isn't mapped **and** writable at the mount in use. Or the destination or template gives no valid path: `transfer.CleanRel`'s refusals (a hidden segment included), or an audio extension other than `.m4b`, `.m4a`, `.mp4`. Or the path is one the Bridge can't follow: a file where a folder goes, a link out of the mapping, an unreadable folder. Or the install hit a read-only filesystem or a permission refusal |
+| `exists` | Something is at the destination (a different file, a folder, a link). Or the destination is inside a book the library already has: its folder is a listed book's, or already holds audio. The Bridge checks this **before** the license, and again at the install |
+| `disk_full` | Before writing a byte, the Bridge found free space short in its temp folder (2.2x the size, less what the partial holds) or at the library's nearest existing folder (1.1x, `transfer.DefaultHeadroom`). Or the download, the decrypt (ffmpeg's words too) or the copy hit ENOSPC/EDQUOT. A free space that can't be read is no refusal |
+| `offline_url_expired` | The presigned download URL answered 401/403/410 again after the one new license |
+| `unknown_account` | The account is not this Bridge's, or is mapped on another server |
 | `drm_free` | Audible offers the title only as a DRM-free MP3 (`audible.ErrDRMFree`), which the Bridge doesn't back up yet |
 
 A download over `DownloadOptions.MaxBytes` (`audible.DefaultMaxDownloadBytes`,
-4 GiB) and other errors fail with no code. The server's `bridge.AudibleImportCodes`
-lists every code above, and the console words each one.
+4 GiB) fails with no code, as do other errors. The server's
+`bridge.AudibleImportCodes` lists every code above, and the console words each one.
 
-**Not writable while running.** A mapping check not made yet for the mount is
-waited for (`mappingPoll`, 1 s), no park. An unwritable mapping refuses a **new**
-job at once; a **resumed** job, and any job at the `place` step (the mapping is
-checked again before the copy: it may have changed during the download), parks
-`not_writable` (`Reporter.Park`, `progress.park.code`) and runs on once the
-mapping is writable again, keeping its download.
+**Not writable while running.** The job waits for a mapping check the mount hasn't
+had yet (`mappingPoll`, 1 s), with no park. When the mapping isn't writable:
+
+- a **new** job is refused at once;
+- a **resumed** job parks `not_writable` (`Reporter.Park`, `progress.park.code`);
+- any job at the `place` step parks `not_writable` too. The Bridge checks the
+  mapping again before the copy, since it may have changed during the download.
+
+A parked job runs on once the mapping is writable again, and keeps its download.
 
 ### The steps on the Bridge
 
-`audiblejob.Importer.Run` (`import.go`):
+`audiblejob.Importer.Run` (`import.go`) runs these steps:
 
-1. **Gate and checks.** Takes the account's gate, checks the account (this Bridge's,
-   mapped on the paired server) and the library (the account's, mapped and
-   writable).
-2. **The title** (`Manager.Title`, `GET /1.0/library/{asin}` signed; on
-   `ErrNotInLibrary`, a [remembered preorder](#preorders)'s record): a preorder is
-   `not_released`, an unavailable reason `no_rights`.
-3. **The destination** (`audiblejob.Destination`): `dest_path` first (the template
-   isn't consulted), else the template (`placement.ModeTemplate`), else Auto
-   (`importjob.Plan` over the paged books listing: the series siblings' folder and
-   code convention, an existing author folder's spelling, else `Author/Title`; an
-   empty author folder dropped). Then `transfer.OnDisk` spells it as the disk spells
-   the folders that exist (the path the server indexes on a case-insensitive
-   disk), and `vacant` refuses an occupied destination (`exists`). **All before
+1. **Gate and checks.** It takes the account's gate. It checks the account (this
+   Bridge's, mapped on the paired server) and the library (the account's, mapped
+   and writable).
+2. **The title.** `Manager.Title` reads `GET /1.0/library/{asin}`, signed. On
+   `ErrNotInLibrary` it takes a [remembered preorder](#preorders)'s record
+   instead. A preorder fails `not_released`, and an unavailable reason fails
+   `no_rights`.
+3. **The destination** (`audiblejob.Destination`). **All of this happens before
    the license and the download.**
+   - `dest_path` comes first, and the template isn't consulted.
+   - Else the template (`placement.ModeTemplate`).
+   - Else Auto: `importjob.Plan` over the paged books listing. It follows the
+     series siblings' folder and code convention, else an existing author folder's
+     spelling, else `Author/Title`. An empty author folder is dropped.
+
+   Then `transfer.OnDisk` spells the path as the disk spells the folders that
+   exist. That is the path the server indexes on a case-insensitive disk. Last,
+   `vacant` refuses an occupied destination (`exists`).
 4. **License** (`Client.License`): the AAXC URL, key, IV and size.
-5. **Download** to `<data>/audible/tmp/<account>-<asin>.aaxc.part` (below).
+5. **Download** to `<data>/audible/tmp/<account>-<asin>.aaxc.part`
+   ([Resume and temp files](#resume-and-temp-files)).
 6. **Decrypt** (`audible.Decrypt`: `ffmpeg -audible_key <key> -audible_iv <iv> -c copy
-   -f ipod`) to `<account>-<asin>.m4b` in the same folder, then the partial goes
-   (room for the copy).
-7. **Place** (`transfer.Local.Place`, below), after the mapping check again.
-8. **Rescan** (`POST /bridge/rescan` with the placed file, 3 tries):
-   the server answers the book path. A failure here says the book is placed.
+   -f ipod`) to `<account>-<asin>.m4b` in the same folder. Then the partial is
+   deleted, to make room for the copy.
+7. **Place** (`transfer.Local.Place`,
+   [The hardened transfer](#the-hardened-transfer-internaltransfer)), after the
+   mapping check again.
+8. **Rescan** (`POST /bridge/rescan` with the placed file, 3 tries). The server
+   answers the book path. A failure here says the book is placed.
 9. **Enrich** (`PUT /bridge/libraries/{id}/enrichment` with the title's ASIN; see
    [Enrichment after placing](#enrichment-after-placing)).
 
@@ -687,26 +749,39 @@ title:
 | `<account>-<asin>.placed.json` | the placement marker, written after the install (below) |
 
 **`audible.Download`** resumes a partial only when its state file agrees with
-`DownloadOptions.ExpectedSize` (the license's size) and holds a validator or a size.
-The `Range` carries `If-Range` (a strong ETag, else `Last-Modified`), so a `200`
-replaces the partial; a `206` at another offset or for another total, or a `416`
-for another file, starts again (the partial removed first; one it can't remove ends
-the download). A short body is `io.ErrUnexpectedEOF`; a `200` without a length is
-held to `ExpectedSize`. Each attempt runs under a stall watchdog (`downloadStall`,
-2 minutes with no answer or no byte: `ErrStalled`, the partial kept). A `ctx`
-cancel stops it mid-body. Its errors never name the presigned URL's query.
+`DownloadOptions.ExpectedSize` (the license's size) and holds a validator or a
+size. The `Range` request carries `If-Range` (a strong ETag, else
+`Last-Modified`).
 
-The importer's loop: a dropped connection, a stall or a `5xx` resumes from the
-partial, waiting 2 s, then 8 s; only `downloadAttempts` (3) attempts **in a
+| Answer | What the download does |
+|---|---|
+| `200` | replaces the partial |
+| `206` at another offset or for another total | starts again |
+| `416` for another file | starts again |
+| `200` without a length | is held to `ExpectedSize` |
+| a short body | fails with `io.ErrUnexpectedEOF` |
+
+Starting again removes the partial first. A partial it can't remove ends the
+download.
+
+Each attempt runs under a stall watchdog (`downloadStall`). Two minutes with no
+answer or no byte fail it with `ErrStalled`, and the partial is kept. A `ctx`
+cancel stops the download mid-body. Its errors never name the presigned URL's
+query.
+
+**The importer's loop.** A dropped connection, a stall or a `5xx` resumes from the
+partial, after waiting 2 s, then 8 s. Only `downloadAttempts` (3) attempts **in a
 row that add nothing** fail the job, so a long download over a link that drops now
-and then finishes. A `401`/`403`/`410` licenses once more (a URL that expired over
-a long wait or a restart), then `offline_url_expired`.
+and then finishes. A `401`/`403`/`410` means the URL expired over a long wait or a
+restart. The importer licenses once more, and a second one fails
+`offline_url_expired`.
 
 **Who keeps the partial**, from the gate on:
 
-- a **stop** (`jobs.Resumes`: the Bridge shutting down, a refused token) or a **lost
-  claim** (`jobs.Lost`: the lease lapsed and the server hands the job out again)
-  keeps the partial and its state for the next run;
+- a **stop** (`jobs.Resumes`: the Bridge shutting down, a refused token) keeps the
+  partial and its state for the next run;
+- a **lost claim** (`jobs.Lost`: the lease lapsed and the server hands the job out
+  again) keeps them too;
 - a **cancel** or a **failure** deletes them (`audible.RemovePartial`);
 - `Importer.Abandon` deletes them for a job the runner ends without running it,
   unless its claim was lost;
@@ -714,80 +789,97 @@ a long wait or a restart), then `offline_url_expired`.
 
 **The start-up sweep** (`audiblejob.SweepTmp`, from `app.newAudible`) keeps only
 `*.aaxc.part` files younger than `PartialMaxAge` (7 days) with their state, and
-placement markers as young; everything else in the folder goes.
+placement markers as young. Everything else in the folder goes.
 
 **The placement marker.** After the install the Bridge writes
-`<account>-<asin>.placed.json` (`library_id`, the request's `dest_path` and
-`template`, the placed `path`, `size`, `mtime_ns`, the join verdicts). While the
-library holds exactly that file (its size, and its modification time within
-`markerSlack`, 2 s), a retry of the same request goes on from the rescan with no
-second license or download and the same result; a request whose destination turns
-out to be that file finishes it too. A request for another destination places anew
-(the earlier copy stays where it is, logged). A changed or replaced file drops the
-marker (`exists`); one that can't be read now keeps it and fails, to try again. The
-result removes it.
+`<account>-<asin>.placed.json`. It holds `library_id`, the request's `dest_path`
+and `template`, the placed `path`, `size`, `mtime_ns` and the join verdicts. The
+marker counts while the library holds exactly that file: its size, and its
+modification time within `markerSlack` (2 s). Then:
+
+- a retry of the same request goes on from the rescan, with no second license or
+  download, and gives the same result;
+- a request whose destination turns out to be that file finishes it too;
+- a request for another destination places anew. The earlier copy stays where it
+  is, and the Bridge logs it.
+
+A changed or replaced file drops the marker (`exists`). A file that can't be read
+now keeps the marker and fails, to try again. The result removes the marker.
 
 ### The hardened transfer (`internal/transfer`)
 
 `transfer.Local.Place` is the only writer into a library. It is hardened in three
-ways:
+ways.
 
-- **Contained.** The mapping's root is opened first as an `os.Root` (a missing
-  root, or a file, fails before the source is read) and every call goes through it,
-  so a symlink can't lead out. `transfer.CleanRel` applies `mapping.SafeJoin`'s rules
-  and refuses an empty path and any hidden (dot) segment (the server never indexes
-  one): `ErrInvalidPath`.
+- **Contained.** It opens the mapping's root first as an `os.Root`. A missing root,
+  or a root that is a file, fails before the source is read. Every call goes
+  through the root, so a symlink can't lead out. `transfer.CleanRel` applies
+  `mapping.SafeJoin`'s rules. It also refuses an empty path and any hidden (dot)
+  segment, which the server never indexes (`ErrInvalidPath`).
 - **No replace.** The same bytes already at the destination are `AlreadyPresent`
-  (an earlier run's copy); anything else there (a different file, a folder, a link)
+  (an earlier run's copy). Anything else there (a different file, a folder, a link)
   is `ErrExists`. The copy is staged as a `.audiosilo-import-*.part` dotfile beside
-  the destination (`0644`, synced, size-checked) and installed with
-  `fsutil.InstallNoReplace` (an exclusive hard link, else `RenameNoReplace`:
-  `renameat2(RENAME_NOREPLACE)` on Linux, a check-then-rename elsewhere; the
-  podcast episode install's primitive, moved into `fsutil`). A file that raced in
-  is kept (`ErrExists`, or `AlreadyPresent` when it is these bytes). A failure or
+  the destination (`0644`, synced, size-checked). `fsutil.InstallNoReplace` then
+  installs it with an exclusive hard link, else `RenameNoReplace`. That is
+  `renameat2(RENAME_NOREPLACE)` on Linux and a check-then-rename elsewhere; it is
+  the podcast episode install's primitive, moved into `fsutil`. A file that raced
+  in is kept: `ErrExists`, or `AlreadyPresent` when it is these bytes. A failure or
   cancel leaves no staged copy.
-- **Free space.** 1.1x the file (`DefaultHeadroom`) free at the nearest existing
-  folder, else `ErrDiskFull` (an unreadable free space is no refusal; ENOSPC/EDQUOT
-  during the copy is `ErrDiskFull` too).
+- **Free space.** It needs 1.1x the file (`DefaultHeadroom`) free at the nearest
+  existing folder, else `ErrDiskFull`. A free space that can't be read is no
+  refusal. ENOSPC/EDQUOT during the copy is `ErrDiskFull` too.
 
-**Why joining an existing book is `exists`.** A backup is a book of its own: the
-server's scan would make a file placed in a listed book's folder, or a folder that
-already holds audio, part of that book, and the server refuses such a done import
-(`ErrImportNotOwn`, below), so `vacant` refuses it before the license (step 3).
-The one join left is a `dest_path` into a new disc folder of a disc set, which
-never takes the ASIN.
+**Why joining an existing book is `exists`.** A backup is a book of its own. The
+server's scan would make a file part of an existing book when it is placed in a
+listed book's folder, or in a folder that already holds audio. The server refuses
+such a done import (`ErrImportNotOwn`, in
+[The done fold](#on-the-server-the-done-fold)). So `vacant` refuses that
+destination before the license (step 3). The one join left is a `dest_path` into a
+new disc folder of a disc set, which never takes the ASIN.
 
 ### Enrichment after placing
 
-The book the rescan answers decides. `joinedBooks` gives each book the file could
-join (at its own path, its folder, or a disc set's folder above it) a verdict:
-`importjob.BookMatcher` picks that book for the title and it isn't
-`importjob.SpanMismatch` (the poll's rule). A book with a verdict takes the ASIN only
-on it; any other book is new (the title's own, a pack placed as a pack included)
-and takes it. The verdicts are kept in the placement marker. The one PUT waits out
-`429`s as the poll's enrichment does (`limitWait`), then gives up with
-`enriched: false`; `asin_set` and a moved book are `enriched: false`, no failure.
+The book the rescan answers decides. `joinedBooks` gives a verdict to each book the
+file could join: at its own path, at its folder, or at a disc set's folder above
+it. The verdict is yes when `importjob.BookMatcher` picks that book for the title
+and it isn't `importjob.SpanMismatch` (the poll's rule).
+
+- A book with a verdict takes the ASIN only when its verdict is yes.
+- Any other book is new, and takes the ASIN. That includes the title's own book,
+  and a pack placed as a pack.
+
+The placement marker keeps the verdicts. The one PUT waits out `429`s as the poll's
+enrichment does (`limitWait`), then gives up with `enriched: false`. `asin_set` and
+a moved book are `enriched: false` too, with no failure.
 
 ### Secrets
 
-The license's key and IV live **in memory and in ffmpeg's argv only**: never a log,
-progress, result, error or file (the import's tests walk all of them for the stub
-key). `audible.License` redacts itself (`String`, `GoString`, `LogValue`;
-`MarshalJSON` refuses), ffmpeg's stderr is redacted of the key and IV (any case:
-ffmpeg echoes a bad key), and a voucher that won't parse is reported without its
-bytes. The argv is visible in the container's process table: accepted. The download
-URL is presigned: errors name it without its query. The account's sign-in stays in
-the vault ([Who holds what](#who-holds-what)); `Title` and `License` go through
-`Manager.signed` (a refusal retries once with a newer sign-in, else marks the account
-refused), `Download` only opens the sign-in (its `401`/`403` is an expired URL, the
-import's to license again, never the account's refusal).
+The license's key and IV live **in memory and in ffmpeg's argv only**. They are
+never in a log, progress, result, error or file, and the import's tests walk all of
+those for the stub key.
+
+- `audible.License` redacts itself (`String`, `GoString`, `LogValue`), and its
+  `MarshalJSON` refuses.
+- ffmpeg's stderr is redacted of the key and IV in any case, since ffmpeg echoes a
+  bad key.
+- A voucher that won't parse is reported without its bytes.
+- The argv is visible in the container's process table. That is accepted.
+- The download URL is presigned, and errors name it without its query.
+
+The account's sign-in stays in the vault ([Who holds what](#who-holds-what)).
+`Title` and `License` go through `Manager.signed`. A refusal there retries once
+with a newer sign-in, else marks the account refused. `Download` only opens the
+sign-in. Its `401`/`403` is an expired URL, which the import licenses again, never
+the account's refusal.
 
 ### On the server: queueing (`internal/audible/imports.go`, `catalog/audible_import.go`)
 
 `audible.Queues` queues a job (`bridge.Enqueue`) and records it on the title
 (`catalog.SetAudibleImport`: `import_job_id`, clearing `import_pending`). A repeat
-finds the open job by its dedupe key and records it too (a crash between the two
-heals). **Priorities**:
+finds the open job by its dedupe key and records it too, so a crash between the two
+heals.
+
+**Priorities:**
 
 | Who | Priority | Requester |
 |---|---|---|
@@ -795,198 +887,278 @@ heals). **Priorities**:
 | an account's **policy** after a poll (`priorityPolicy` = `schedulerPriority`) | `-10` (as the podcast scheduler's fetches and the scheduled polls) | the server |
 | **Back up everything** (`priorityBackupAll`) | `-20` | the admin |
 
-Back up everything sits below new podcast episodes, so a bulk backup in the
+Back up everything sits below new podcast episodes. So a bulk backup in the
 Bridge's one download slot never holds them back for days.
 
-**"On this server"** is a match not marked Not this book (`rejected = 0`): Back up's
-`already_matched`, the policy's pending drop, the titles' `matched` filter and the
-accounts' `matched` count all read it so.
+**"On this server"** is a match not marked Not this book (`rejected = 0`). Back
+up's `already_matched`, the policy's pending drop, the titles' `matched` filter and
+the accounts' `matched` count all read it that way.
 
-**Back up** (`RequestAudibleBackup`): `unknown_account`/`unknown_title`;
-`account_paused`; `already_matched`; `import_open` (an open job, or a pending
-request); a **preorder** stores `import_pending = 1` and answers pending (no job;
-the request survives a restart); `not_available` for `unavailable` or `gone`.
-Contested titles are allowed, and so is one whose last backup is done once it is
-no longer on this server (the admin decides; `retryImportSQL` is Back up
-everything's only).
+#### Back up
 
-**Back up everything** (`AudibleBackupAll`, `backupAllSQL`, also the
-`backup_estimate`): `state = 'available'`, no match, not `rejected`, not `ignored`,
-not `contested` (`contestedSQL`: `reason = 'contested'`), and `retryImportSQL`: no
-backup yet, or the latest isn't open and isn't a `done` one whose result's book is
-still indexed. So a failed or cancelled backup is tried again, a backed-up title
-whose book left the library (deleted or moved) is queued again, and a refused fold
-(`ErrImportNotOwn`) isn't queued again every time. It stops at the first refusal of
-the queue (`kind_unavailable`, `library_not_writable`: none would be taken) with
-what it queued. The estimate is `runtime_s x 8000` bytes (64 kbps AAXC), labelled
-approximate.
+`RequestAudibleBackup` answers:
 
-**The policy** (`AudiblePolicyImports`, run by `afterAudiblePoll` after each
-`final` titles PUT while the module is on and an online Bridge offers
-`audible.import`, within 10 s; what it misses the next poll asks again). None for a
-paused account, or one mapped to a person it may no longer be. Pending requests now
-on this server are dropped first. Then `autoImport.wants` (a table test) per title:
-available, not on this server, nothing open, not ignored; then a **pending request
-always** (at priority `0`); otherwise not rejected, not contested, never attempted
-(any `import_job_id`), `first_seen` **after** `policy_since`, and `all`, or `series`
-when the account's person has a book of one of its series (`seriesOwner`: by series
-key, main or other series, in a library their scopes reach). A refusal of the queue
-that means none will be taken (`library_not_writable`, `kind_unavailable`) ends the
-pass quietly.
+- `unknown_account` or `unknown_title`;
+- `account_paused`;
+- `already_matched`;
+- `import_open` for an open job, or a pending request;
+- pending for a **preorder**. It stores `import_pending = 1` and queues no job. The
+  request survives a restart;
+- `not_available` for `unavailable` or `gone`.
 
-**`policy_since`** makes policies new purchases only. It is set to now at the
-account's creation (the Bridge's first `PUT /bridge/audible/accounts`), when the
-console turns `all` or `series` on (`PatchAudibleAccount`; switching to `manual`
-leaves it), and moved to the account's **first complete poll** (`PutAudibleTitles`
-when `last_poll_at` was `NULL`), so that poll's titles count as the library the
-account already had. The Bridge's account PUT sets `policy` on create only; after
-that the console owns it.
+Contested titles are allowed. So is a title whose last backup is done, once it is
+no longer on this server: the admin decides. `retryImportSQL` is Back up
+everything's alone.
 
-**Preorders.** `preorderWaitingSQL`: a `preorder` with a `release_date` on or before
-today's UTC date and less than `AudiblePreorderWait` (14 days) ago, that a backup may
-wait for (not on this server, not rejected or ignored; or with a pending request
-while not here). Such an account is due **every hour** (`DueAudiblePolls`) instead of
+#### Back up everything
+
+`AudibleBackupAll` (`backupAllSQL`, which also gives the `backup_estimate`) takes
+the titles that are:
+
+- `state = 'available'`, with no match;
+- not `rejected`, not `ignored`, and not `contested` (`contestedSQL`:
+  `reason = 'contested'`);
+- passed by `retryImportSQL`: no backup yet, or the latest backup isn't open and
+  isn't a `done` one whose result's book is still indexed.
+
+So a failed or cancelled backup is tried again, and a backed-up title whose book
+left the library (deleted or moved) is queued again. A refused fold
+(`ErrImportNotOwn`) isn't queued again every time.
+
+It stops at the first refusal of the queue that means none would be taken
+(`kind_unavailable`, `library_not_writable`), with what it queued so far. The
+estimate is `runtime_s x 8000` bytes (64 kbps AAXC), labelled approximate.
+
+#### The policy
+
+`AudiblePolicyImports` runs from `afterAudiblePoll` after each `final` titles PUT,
+within 10 s. It runs only while the module is on and an online Bridge offers
+`audible.import`. What it misses, the next poll asks again.
+
+It queues none for a paused account, or for one mapped to a person it may no longer
+be. It first drops pending requests for titles now on this server. Then
+`autoImport.wants` (a table test) decides per title:
+
+1. The title must be available, not on this server, with nothing open, and not
+   ignored.
+2. A **pending request** is then **always** queued, at priority `0`.
+3. Otherwise the title must also be not rejected, not contested and never attempted
+   (no `import_job_id`), with `first_seen` **after** `policy_since`. And the policy
+   must be `all`, or `series` when the account's person has a book of one of the
+   title's series. `seriesOwner` decides that by series key, main or other series,
+   in a library the person's scopes reach.
+
+A refusal of the queue that means none will be taken (`library_not_writable`,
+`kind_unavailable`) ends the pass quietly.
+
+#### `policy_since`
+
+`policy_since` makes policies apply to new purchases only. The server sets it to
+now:
+
+- at the account's creation (the Bridge's first `PUT /bridge/audible/accounts`);
+- when the console turns `all` or `series` on (`PatchAudibleAccount`). Switching to
+  `manual` leaves it.
+
+It moves to the account's **first complete poll** (`PutAudibleTitles` when
+`last_poll_at` was `NULL`), so that poll's titles count as the library the account
+already had. The Bridge's account PUT sets `policy` on create only. After that the
+console owns it.
+
+#### Preorders on the server
+
+`preorderWaitingSQL` selects a `preorder` that a backup may wait for:
+
+- its `release_date` is on or before today's UTC date, and less than
+  `AudiblePreorderWait` (14 days) ago;
+- it is not on this server and not rejected or ignored, or it has a pending
+  request while not here.
+
+An account with such a title is due **every hour** (`DueAudiblePolls`) instead of
 every `poll_hours`. Past the 14 days the title reads `needs_attention: true`
-(`preorderOverdue`, the same terms; derived, no column) and the hourly clock stops.
-The first poll that reports the title `available` queues a pending request. Where the
-Bridge finds preorders: [Preorders](#preorders).
+(`preorderOverdue`, on the same terms; derived, with no column), and the hourly
+clock stops. The first poll that reports the title `available` queues a pending
+request. Where the Bridge finds preorders is in [Preorders](#preorders).
 
 ### On the server: the done fold
 
 `FoldAudibleImport` runs from the jobs' `OnEnded` hook for a done `audible.import`:
 
-1. the result must name the job's library (and the params') and a clean book path,
-   else `ErrImportNotIndexed`;
-2. `importOwnBook`: the book must be indexed in a books library
-   (`ErrImportNotIndexed`) and be the **title's own**, else `ErrImportNotOwn`
-   (logged): it carries the title's ASIN, or it holds **only** the files the backup
-   placed (a single-file book is its file). A file the scan joined into a folder
-   book already there never makes that book (nor another title's) this title's
-   match, and never the book the admin marked Not this book for the title;
-3. it sets the match (`match_how = 'import'`), clears `rejected` and `import_pending`,
-   only while `import_job_id` is still this job.
+1. The result must name the job's library (and the params' library) and a clean
+   book path, else `ErrImportNotIndexed`.
+2. `importOwnBook` checks the book. It must be indexed in a books library, else
+   `ErrImportNotIndexed`. It must be the **title's own**, else `ErrImportNotOwn`
+   (logged). The title's own book carries the title's ASIN, or holds **only** the
+   files the backup placed (a single-file book is its file). A file the scan joined
+   into a folder book already there never makes that book (nor another title's)
+   this title's match. Nor does it ever match the book the admin marked Not this
+   book for the title.
+3. It sets the match (`match_how = 'import'`) and clears `rejected` and
+   `import_pending`, only while `import_job_id` is still this job.
 
 A later poll keeps an `import` match while its book is indexed and the poll names no
-other match for the title (`importMatches`): the poll may have listed the library
-before the backup landed. A failed job leaves the title as it was; the console shows
-its code (`import.code`).
+other match for the title (`importMatches`). The poll may have listed the library
+before the backup landed. A failed job leaves the title as it was, and the console
+shows its code (`import.code`).
 
 Removing an account cancels its open imports (`bridge.CancelAudibleImports`, in the
-account's delete transaction, `CancelAudibleRemoved`), whether the Bridge or the
-console removed it.
+account's delete transaction, `CancelAudibleRemoved`). That holds whether the
+Bridge or the console removed it.
 
 ### Migration `0064_audible_import`
 
 - `audible_accounts.template TEXT NOT NULL DEFAULT ''`
 - `audible_accounts.policy_since TEXT NOT NULL DEFAULT ''`, backfilled
-  `COALESCE(last_poll_at, created_at)` (an account that polled starts from its last
-  poll, one that never did from its creation)
+  `COALESCE(last_poll_at, created_at)`. An account that polled starts from its last
+  poll, and one that never did starts from its creation.
 - `audible_titles.import_pending INTEGER NOT NULL DEFAULT 0`
 
 No new table. `policy_since` joins the user-state rule's free columns of
-`audible_accounts` (`store/userstate.go`), as the two poll times; a titles write is
-a user-state write. The Bridge's `0010_audible_profile` is
-[the device profile](#the-device-profile)'s.
+`audible_accounts` (`store/userstate.go`), as the two poll times do. A titles write
+is a user-state write. The Bridge's `0010_audible_profile` belongs to
+[the device profile](#the-device-profile).
 
 ### Migration `0065_audible_planned`
 
-What the console says of a title the Bridge left unmatched.
+These columns hold what the console says of a title the Bridge left unmatched.
 
 - `audible_titles.planned TEXT NOT NULL DEFAULT ''`: the title's planned
   destination as JSON, `''` for none.
 - `audible_titles.contest_library_id INTEGER` and `contest_path TEXT NOT NULL
   DEFAULT ''` (NULL and `''` for none), with a partial index on both: the book a
-  contested title tied for. Path-keyed with no FK, carried by a move or a join like
-  a match's path, cleared by the library's delete.
+  contested title tied for. They are path-keyed with no FK. A move or a join
+  carries them like a match's path, and the library's delete clears them.
 
-All three are the poll's: each titles PUT writes them, and a stored match (the
-poll's, a kept `import` match, `FoldAudibleImport`) clears them. A title the final
-call marks `gone` loses its plan. The PUT checks `planned` strictly
-(`checkAudiblePlan`, the rules in the
-[reference](../server/api/reference.md#put-apiv1bridgeaudibleaccountsaccounttitles)),
-bar a `path` over `MaxPathBytes` (Audible's long text through a template), stored
-as an `error` plan. A contest is
-stored only for the account's library. `GET /admin/audible/titles` shows `planned`
-only while the account is mapped to the plan's library, and `contested {library_id,
-path, with}` only while it is mapped to the contest's, `with` the account's other
-titles (not `gone`) contested over that book or matched to it, at most 10
-(`fillContests`, one query a page).
+All three belong to the poll. Each titles PUT writes them, and a stored match
+clears them: the poll's match, a kept `import` match, or `FoldAudibleImport`'s. A
+title the final call marks `gone` loses its plan.
 
-**Deploy the Bridge with the server** (no capability gate: see the
-[cross-repo contract](../architecture/cross-repo-contract.md#16-the-bridge)).
+The PUT checks `planned` strictly (`checkAudiblePlan`; the rules are in the
+[reference](../server/api/reference.md#put-apiv1bridgeaudibleaccountsaccounttitles)).
+The exception is a `path` over `MaxPathBytes` (Audible's long text through a
+template), which is stored as an `error` plan. A contest is stored only for the
+account's library.
+
+`GET /admin/audible/titles` shows:
+
+- `planned`, only while the account is mapped to the plan's library;
+- `contested {library_id, path, with}`, only while the account is mapped to the
+  contest's library. `with` lists the account's other titles (not `gone`)
+  contested over that book or matched to it, at most 10 (`fillContests`, one query
+  a page).
+
+**Deploy the Bridge with the server.** There is no capability gate; see the
+[cross-repo contract](../architecture/cross-repo-contract.md#16-the-bridge).
 
 ### The template grammar
 
-`bridge.CheckAudibleTemplate` is a copy of the Bridge's `placement.Parse` grammar
-(keep `audibleTemplateVars` in step with `placement.knownVars` and `templateMods`
-with `parseMods`): literal text, `{Var}` or `{Var:mods}` (mods `width=N`, `upper`,
-`lower`, `trim`, comma-separated), optional groups `{ ... }` that collapse when a
-variable inside renders empty, and `\` escaping the next character. Variables:
-`Author`, `Series`, `Title`, `TitleShort`, `Seq`, `PaddedSeq`, `SHORTCODE`, `ASIN`,
-`Narrator`, `Year`, `OriginalFilename`, `Ext`. The server also refuses over 500
-bytes, a control character, a leading `/`, a `..` segment and a hidden, dot-led
-segment (the scan skips those). The Bridge parses it again when it places (and
-allows up to 1024 bytes). A rendered last segment ending `.m4b`, `.m4a` or `.mp4`
-names the file; anything else is a folder and the title's file name
-(`<title>.m4b`, `audible.safeFileName`) goes in it. A template that renders no
-valid path is `not_writable`.
+`bridge.CheckAudibleTemplate` is a copy of the Bridge's `placement.Parse` grammar.
+Keep `audibleTemplateVars` in step with `placement.knownVars`, and `templateMods`
+with `parseMods`. The grammar has:
+
+- literal text;
+- `{Var}` or `{Var:mods}`, where the mods are `width=N`, `upper`, `lower` and
+  `trim`, comma-separated;
+- optional groups `{ ... }` that collapse when a variable inside renders empty;
+- `\` escaping the next character.
+
+The variables are `Author`, `Series`, `Title`, `TitleShort`, `Seq`, `PaddedSeq`,
+`SHORTCODE`, `ASIN`, `Narrator`, `Year`, `OriginalFilename` and `Ext`.
+
+The server also refuses a template over 500 bytes, a control character, a leading
+`/`, a `..` segment and a hidden, dot-led segment (the scan skips those). The
+Bridge parses the template again when it places, and allows up to 1024 bytes.
+
+A rendered last segment ending `.m4b`, `.m4a` or `.mp4` names the file. Anything
+else is a folder, and the title's file name (`<title>.m4b`,
+`audible.safeFileName`) goes in it. A template that renders no valid path is
+`not_writable`.
 
 ## Position sync: `audible.sync` and the push loop
 
-Position sync keeps an account's listening places in step with Audible, both ways
-(`internal/audiblesync` on the Bridge; `catalog/audible_sync.go`,
-`api/handlers_audible_sync.go` and `0066` on the server). **Furthest wins** in both
-directions. Audible's place never moves the server's back, and the Bridge never
-writes over a place Audible moved on from. Only places travel. No listening
-session, `listening_daily` or history row is ever written for Audible's listening,
-and nothing is recorded against the bridge token.
+Position sync keeps an account's listening places in step with Audible, both ways.
+The code is `internal/audiblesync` on the Bridge, and `catalog/audible_sync.go`,
+`api/handlers_audible_sync.go` and `0066` on the server.
+
+- **Furthest wins** in both directions. Audible's place never moves the server's
+  back, and the Bridge never writes over a place Audible moved on from.
+- Only places travel. No listening session, `listening_daily` or history row is
+  ever written for Audible's listening, and nothing is recorded against the bridge
+  token.
 
 ### The switches (server)
 
-- **Per account**, `audible_accounts.sync`, the console's alone:
-  [`PATCH /admin/audible/accounts/{account}`](../server/api/reference.md#patch-apiv1adminaudibleaccountsaccount)
-  `{sync}` (audited `bridge.audible.account`). `0066` turned every account off; a new
-  account is created off and a Bridge PUT never turns it on (its `sync` is read and
-  ignored). Turning it off cancels the account's open sync
-  (`bridge.CancelAudibleSyncOff`, "sync with Audible was turned off for the
-  account"); turning it on queues one at once. A Bridge PUT that maps the account
-  to **another person** turns sync off, forgets `last_sync_at` and cancels the open
-  sync: the admin turned it on for the person the console showed then.
-- **Per title**, `audible_titles.no_sync`, the console's "Don't sync this book":
-  [`PATCH /admin/audible/titles/{account}/{asin}`](../server/api/reference.md#patch-apiv1adminaudibletitlesaccountasin)
-  `{no_sync}` (audited `bridge.audible.title`), kept by a poll like `rejected` and
-  `ignored`. It is separate from `rejected` (Not this book) and the sync's alone:
-  backups never read it.
+**Per account** is `audible_accounts.sync`, which only the console sets:
+[`PATCH /admin/audible/accounts/{account}`](../server/api/reference.md#patch-apiv1adminaudibleaccountsaccount)
+`{sync}` (audited `bridge.audible.account`).
 
-A title syncs when `syncTitleSQL` holds: matched, not `rejected`, not `ignored`,
-not `no_sync`, not `gone`, not `preorder`. A poll may match a preorder to another
-edition on disk, and Audible holds no place for an unreleased ASIN, so the server
-leaves a preorder out of both directions: not in `audible.sync`'s params,
-`rejected` `not_synced` on the listening route, and not in the progress feed. The
-Bridge's own `skipped_preorder` stays as a second guard. Once the title is
+- `0066` turned every account off. A new account is created off, and a Bridge PUT
+  never turns it on (the server reads its `sync` and ignores it).
+- Turning it off cancels the account's open sync (`bridge.CancelAudibleSyncOff`,
+  "sync with Audible was turned off for the account"). Turning it on queues one at
+  once.
+- A Bridge PUT that maps the account to **another person** turns sync off, forgets
+  `last_sync_at` and cancels the open sync. The admin turned sync on for the person
+  the console showed then.
+
+**Per title** is `audible_titles.no_sync`, the console's "Don't sync this book":
+[`PATCH /admin/audible/titles/{account}/{asin}`](../server/api/reference.md#patch-apiv1adminaudibletitlesaccountasin)
+`{no_sync}` (audited `bridge.audible.title`). A poll keeps it, as it keeps
+`rejected` and `ignored`. It is separate from `rejected` (Not this book). Only the
+sync reads it; backups never do.
+
+**A title syncs** when `syncTitleSQL` holds: matched, not `rejected`, not
+`ignored`, not `no_sync`, not `gone`, not `preorder`.
+
+A poll may match a preorder to another edition on disk, and Audible holds no place
+for an unreleased ASIN. So the server leaves a preorder out of both directions:
+
+- it is not in `audible.sync`'s params;
+- the listening route answers its events `rejected`, reason `not_synced`;
+- it is not in the progress feed.
+
+The Bridge's own `skipped_preorder` stays as a second guard. Once the title is
 released (`preorder` to `available`), `0071`'s trigger offers its book's place to
-Audible again, as for a title back from `gone`. An account syncs while the module is on, its `sync` is
-on, it isn't paused, `refused_at` is NULL and its person may still be synced for
-(`bridgeUserSQL`: not disabled, not a kid, not a demo account).
+Audible again, as for a title back from `gone`.
+
+**An account syncs** while all of these hold:
+
+- the module is on;
+- its `sync` is on;
+- it isn't paused;
+- `refused_at` is NULL;
+- its person may still be synced for (`bridgeUserSQL`: not disabled, not a kid,
+  not a demo account).
 
 ### Audible to the server: `audible.sync`
 
 **Queueing.** The `audible` module's scheduler (`audible/scheduler.go`
-`queueSyncs`, while the Bridge offers the kind) queues one `audible.sync` per
-`DueAudibleSyncs` account (above, and `sync_queued_at` older than
-`bridge.AudibleSyncEvery`, 15 minutes) at priority `-10`; none for an account with
-no synced title. A console change to which titles sync (`{rejected}` or `{no_sync}`
-on a title) or turning sync on queues the account's sync at once
-(`audible.SyncNow`, `catalog.AudibleSyncQueueable`: the same rule bar the 15
-minutes, with an online Bridge offering the kind). A title change queues even an
-empty title list, so the Bridge drops a left-out title now.
+`queueSyncs`) runs while the Bridge offers the kind. It queues one `audible.sync`
+at priority `-10` for each account `DueAudibleSyncs` returns. That is an account
+that syncs ([The switches](#the-switches-server)) with `sync_queued_at` older than
+`bridge.AudibleSyncEvery` (15 minutes). It queues none for an account with no
+synced title.
 
-**The kind** is internal, quiet, owned by the `audible` module (held while it is
-off), deduped per account and `promotes` (a queued one takes the newest titles; one
-the Bridge already runs keeps its own), and only the newest ended one of each
-account is kept (`pruneAudibleEnded`). Its params are server-built and strict on
-both sides (`audibleSyncParams`, `link.AudibleSyncParams`), at most 1 MiB
-(`AudibleSync` drops the last titles past it):
+Some console changes queue the account's sync at once (`audible.SyncNow`):
+
+- a change to which titles sync (`{rejected}` or `{no_sync}` on a title);
+- turning sync on.
+
+`catalog.AudibleSyncQueueable` applies the same rule without the 15 minutes, and
+needs an online Bridge that offers the kind. A title change queues even an empty
+title list, so the Bridge drops a left-out title now.
+
+**The kind:**
+
+- is internal and quiet;
+- is owned by the `audible` module, and held while the module is off;
+- is deduped per account and `promotes`: a queued one takes the newest titles, and
+  one the Bridge already runs keeps its own;
+- keeps only the newest ended job of each account (`pruneAudibleEnded`).
+
+Its params are server-built and strict on both sides (`audibleSyncParams`,
+`link.AudibleSyncParams`), at most 1 MiB. `AudibleSync` drops the last titles past
+that size.
 
 ```json
 {
@@ -997,191 +1169,253 @@ both sides (`audibleSyncParams`, `link.AudibleSyncParams`), at most 1 MiB
 }
 ```
 
-Each ASIN once, `library_id` > 0, `path` a clean book path (or `.`), `runtime_s`
-not negative.
+Each ASIN appears once, `library_id` is above 0, `path` is a clean book path (or
+`.`), and `runtime_s` is not negative.
 
-**On the Bridge** (`audiblesync.Handler`, light lane):
+**On the Bridge**, `audiblesync.Handler` runs in the light lane:
 
-1. a device refusal fails the job **`audible_refused`**: the server stops queueing
-   until a sign-in again maps the account. A sign-in refusal fails it
-   **`audible_sign_in`**, which the server treats as an ordinary failure and keeps
-   queueing: the next poll Audible answers ends it. Another server's account, or
-   none, is `unknown_account`;
-2. leaves out the titles the account remembers as pending [preorders](#preorders)
-   (`skipped_preorder`), stores the rest (`store.ListAudibleSync`), then while the account's
-   `sync_retry_at` is ahead ends done with `waiting` without calling Audible;
-3. reads Audible's places (`lastpositions`, 25 ASINs a request, split on a
-   `400` or `414`); a failure fails `audible_error`, and a `429`/`503` also waits
-   Audible's `Retry-After` from when it came back, at least 2 minutes
-   (`sync_retry_at`);
-4. skips a place under 1 s, one past the runtime (more than 5% plus 2 minutes:
-   Audible's runtime is minute-rounded, so past it means a wrong match), one older
-   than 85 days (the server refuses events past 90), and one within 5 s of the place
-   last written to Audible (its own echo);
-5. posts the rest to [`POST /bridge/audible/accounts/{account}/listening`](#the-two-bridge-routes):
-   each a `listen` of no length (`from_pos` = `to_pos`, `started_at` = `ended_at` =
-   Audible's `last_updated`, `start` `jump`), plus a `finish` when the place is at the
-   book's end (98% in, or within 3 minutes of the end once 90% in), 200 events a
-   call;
-6. records `heard_ms` for each place the server answered (not rejected):
-   `store.AudibleHeard` clears a `last_ms` written before the job began, and an
-   applied one drops a place the push was waiting to write from the row it had
-   then (it would move Audible back);
-7. **re-asserts** a place the Audible app overwrote. The app may upload the older
-   place it still held over one the push wrote, and the sync then reads it as
-   `behind`. When the Bridge wrote the title's last place (`last_ms`), the server
-   row it last read is still that place (within 5 s) and Audible's place is more
-   than 5 s behind it, `store.RearmAudiblePush` sets `want_ms` to the row's place
-   and `row_seen` to now, so the push writes it again after `StillFor`. It is
-   guarded in SQL: only while the title is listed, nothing is waiting, and no push
-   and no new server row came since the job read it. The push's read before the
-   write still drops it if Audible moved further on meanwhile.
-   **At most once per written place** (`reasserted_ms`, Bridge migration `0014`):
-   a sync can't tell the app's stale upload from a listener who rewound in the
+1. **Refusals.** A device refusal fails the job **`audible_refused`**, and the
+   server stops queueing until a sign-in again maps the account. A sign-in refusal
+   fails it **`audible_sign_in`**. The server treats that as an ordinary failure and
+   keeps queueing, and the next poll Audible answers ends it. Another server's
+   account, or none, is `unknown_account`.
+2. **The titles.** It leaves out the titles the account remembers as pending
+   [preorders](#preorders) (`skipped_preorder`) and stores the rest
+   (`store.ListAudibleSync`). Then, while the account's `sync_retry_at` is ahead,
+   the job ends done with `waiting` without calling Audible.
+3. **Audible's places.** It reads them with `lastpositions`, 25 ASINs a request,
+   split on a `400` or `414`. A failure fails the job `audible_error`. A `429`/`503`
+   also waits Audible's `Retry-After`, counted from when it came back and at least
+   2 minutes (`sync_retry_at`).
+4. **Skips.** It skips:
+   - a place under 1 s;
+   - a place past the runtime by more than 5% plus 2 minutes. Audible's runtime is
+     minute-rounded, so a place past it means a wrong match;
+   - a place older than 85 days, since the server refuses events past 90;
+   - a place within 5 s of the place last written to Audible (its own echo).
+5. **Posting.** It posts the rest to
+   [`POST /bridge/audible/accounts/{account}/listening`](#the-two-bridge-routes),
+   200 events a call. Each place is a `listen` of no length: `from_pos` = `to_pos`,
+   `started_at` = `ended_at` = Audible's `last_updated`, and `start` `jump`. A place
+   at the book's end adds a `finish`. The end is 98% in, or within 3 minutes of the
+   end once 90% in.
+6. **Heard.** It records `heard_ms` for each place the server answered and didn't
+   reject. `store.AudibleHeard` clears a `last_ms` written before the job began. An
+   applied place drops a place the push was waiting to write from the row it had
+   then, because that place would move Audible back.
+7. **Re-assert.** It writes again a place the Audible app overwrote. The app may
+   upload the older place it still held over one the push wrote, and the sync then
+   reads it as `behind`. `store.RearmAudiblePush` sets `want_ms` to the row's place
+   and `row_seen` to now when all of these hold:
+   - the Bridge wrote the title's last place (`last_ms`);
+   - the server row it last read is still that place (within 5 s);
+   - Audible's place is more than 5 s behind it.
+
+   The push then writes it again after `StillFor`. The re-arm is guarded in SQL:
+   only while the title is listed, nothing is waiting, and no push and no new
+   server row came since the job read it. The push's read before the write still
+   drops it if Audible moved further on meanwhile.
+
+   **At most once per written place** (`reasserted_ms`, Bridge migration `0014`).
+   A sync can't tell the app's stale upload from a listener who rewound in the
    Audible app and listens on there. So once a place was written again, Audible
-   behind it again is left alone (an Info log says so) until the push writes a
-   new place (`AudiblePushed` of another place, or another book for the title,
-   resets it). A `duplicate` answer re-arms nothing.
+   behind it again is left alone, and an Info log says so. That lasts until the
+   push writes a new place: `AudiblePushed` of another place, or another book for
+   the title, resets it. A `duplicate` answer re-arms nothing.
 
-`sync_off` from the server ends the job quietly (done, `sync_off`);
-`user_unavailable` fails it with that code. The **event id** is
-`aud-` and the first 32 hex characters of
-`sha256(account|asin|position_ms|last_updated|kind|library_id|path)` (`EventID`;
-`kind` is `""` for the listen and `finish` for the finish), so an unchanged place is
-the same event (a `duplicate`) at every sync, and the same place on a title matched
+**Server answers.** `sync_off` from the server ends the job quietly (done,
+`sync_off`). `user_unavailable` fails it with that code.
+
+**The event id** is `aud-` and the first 32 hex characters of
+`sha256(account|asin|position_ms|last_updated|kind|library_id|path)` (`EventID`).
+`kind` is `""` for the listen and `finish` for the finish. So an unchanged place is
+the same event (a `duplicate`) at every sync. The same place on a title matched
 again to another book is a new event.
 
-The job's **result** is counts and flags only: `account`, `titles`, `heard`,
-`sent`, `finished`, the server's `applied`, `duplicate`, `behind`, `not_applied`,
-`rejected`, `reasserted` (step 7, omitted when 0), and the skips (`skipped_echo`,
-`skipped_past_runtime`, `skipped_old`, `skipped_start`, `skipped_preorder`), `mismatched` (events the server rejected
-`duration_mismatch`: counted, sent once a job and never retried in it); `waiting`
-with `wait_until`, or `sync_off`. `titles` counts the titles kept, after
-`skipped_preorder`. A failure's result is
-`{code, message}`.
+**The job's result** is counts and flags only:
 
-**The server's fold** (`OnEnded`, `catalog.FoldAudibleSync`): a done sync that read
-Audible's places (`bridge.AudibleSynced`: neither `waiting` nor `sync_off`) sets
-`last_sync_at`; a sync failed with `audible_refused` (the result's `code`, or an
-`audible_refused:` error prefix, `AudibleSyncCode`) sets `refused_at`, which stops
-the scheduler. Any account PUT of the Bridge's (a fresh sign-in, an edit) and a
-complete poll (`PutAudibleTitles` with `final`: Audible answered the account) clear
-it and stamp `refusal_ended_at` (`0071`). A refused sync claimed in an earlier
-second than that stamp ran before the fresh sign-in, so it marks nothing
-(`refusalEndedSince`; `claimed_at` is whole seconds, so one claimed in the same
-second still marks). `audible_sign_in` (`bridge.SyncAudibleSignIn`) is a sync's
-code only, never an import's, and an ordinary failure.
+- `account` and `titles`. `titles` counts the titles kept, after
+  `skipped_preorder`;
+- `heard`, `sent` and `finished`;
+- the server's `applied`, `duplicate`, `behind`, `not_applied` and `rejected`;
+- `reasserted` (step 7), omitted when 0;
+- the skips: `skipped_echo`, `skipped_past_runtime`, `skipped_old`,
+  `skipped_start` and `skipped_preorder`;
+- `mismatched`: events the server rejected `duration_mismatch`. They are counted,
+  sent once a job and never retried in it;
+- `waiting` with `wait_until`, or `sync_off`.
+
+A failure's result is `{code, message}`.
+
+**The server's fold** (`OnEnded`, `catalog.FoldAudibleSync`):
+
+- A done sync that read Audible's places (`bridge.AudibleSynced`: neither `waiting`
+  nor `sync_off`) sets `last_sync_at`.
+- A sync failed with `audible_refused` sets `refused_at`, which stops the
+  scheduler. `AudibleSyncCode` reads the code from the result's `code`, or from an
+  `audible_refused:` error prefix.
+- Any account PUT of the Bridge's (a fresh sign-in, an edit) clears `refused_at`
+  and stamps `refusal_ended_at` (`0071`). So does a complete poll
+  (`PutAudibleTitles` with `final`: Audible answered the account).
+- A refused sync claimed in an earlier second than that stamp ran before the fresh
+  sign-in, so it marks nothing (`refusalEndedSince`). `claimed_at` is whole
+  seconds, so one claimed in the same second still marks.
+- `audible_sign_in` (`bridge.SyncAudibleSignIn`) is a sync's code only, never an
+  import's, and an ordinary failure.
 
 ### The server's side of a batch: furthest only
 
 The listening route builds the batch itself: `SyncBatch{UserID: the account's
 person, DeviceID: "audible:<account>", DeviceName: "Audible (<label or STORE>)",
-TokenID: 0, FurthestOnly: true}`. No request body can set `FurthestOnly` or
-`TokenID`: `POST /me/listening/sync` refuses an unknown field. Each event's book is
-resolved under the **person's** scopes (`userPathResolver`, `catalog.UserScopes`),
-then must be a synced title's match (`AudibleSyncBooks`) whose Audible length
-agrees with the book's (`audibleRuntimeAgrees`, listen and finish alike). The
-book's length is its indexed duration, else the `duration` on the person's own
-progress row for it: the progress feed's rule, so the two never disagree.
-`FurthestOnly` (`furthestListen`) then applies only a place more than
-`furthestSlack` ahead, over any device's row, keeping the row's `updated_at`,
-speed and offer, and compares `finish_changed_at` for a place from before a finish
-or a restart; `furthestPastEndRatio` (the manager's wrong-match guard) refuses a
-place well past the end. A device's diverged span then offers Audible's place by
-name (the row's `device_name`, in `other_place`). The rules and each event's
+TokenID: 0, FurthestOnly: true}`. No request body can set `FurthestOnly` or `TokenID`, because
+`POST /me/listening/sync` refuses an unknown field.
+
+For each event:
+
+1. The route resolves the event's book under the **person's** scopes
+   (`userPathResolver`, `catalog.UserScopes`).
+2. The book must be a synced title's match (`AudibleSyncBooks`).
+3. The title's Audible length must agree with the book's (`audibleRuntimeAgrees`),
+   for a listen and a finish alike. The book's length is its indexed duration, else
+   the `duration` on the person's own progress row for it. That is the progress
+   feed's rule, so the two never disagree.
+4. `FurthestOnly` (`furthestListen`) then applies only a place more than
+   `furthestSlack` ahead, over any device's row. It keeps the row's `updated_at`,
+   speed and offer. It compares `finish_changed_at` for a place from before a
+   finish or a restart. `furthestPastEndRatio` (the manager's wrong-match guard)
+   refuses a place well past the end.
+
+A device's diverged span then offers Audible's place by name (the row's
+`device_name`, in `other_place`). The rules and each event's
 `rejected`/`not_applied` reason are in the
 [API reference](../server/api/reference.md#post-apiv1bridgeaudibleaccountsaccountlistening).
 
-The device id `audible:<account>` (`catalog.AudibleDevicePrefix`) is the route's
-alone: `POST /me/listening/sync` refuses a batch naming one (`400 device_id is
-reserved`), a `PUT .../progress` naming one (a row echoed back) saves under no
-device id, and an edit of the row (`EditProgress`, the listener's or an admin's)
-clears it, so the edit reaches the feed and Audible's next place can't undo it
-unseen. A listening import (Audiobookshelf) that moves on such a row clears its
-device id and name the same way (`importer.mergeProgress`), and its undo restores
-the earlier place under no device either (`progressPrior.restored`), never as
-Audible's, so the feed carries the undo to Audible too.
+**The device id `audible:<account>`** (`catalog.AudibleDevicePrefix`) belongs to
+the listening route alone.
+
+- `POST /me/listening/sync` refuses a batch naming one (`400 device_id is
+  reserved`).
+- A `PUT .../progress` naming one (a row echoed back) saves under no device id.
+- An edit of the row (`EditProgress`, the listener's or an admin's) clears the
+  device id. So the edit reaches the feed, and Audible's next place can't undo it
+  unseen.
+- A listening import (Audiobookshelf) that moves on such a row clears its device id
+  and name the same way (`importer.mergeProgress`). Its undo restores the earlier
+  place under no device either (`progressPrior.restored`), never as Audible's, so
+  the feed carries the undo to Audible too.
 
 ### The server to Audible: the push loop
 
-`audiblesync.Pusher` is not a job (no row a minute). Every minute (`PushEvery`), for
-each account mapped here that isn't refused, waiting or paused, it reads the feed
-[`GET /bridge/progress`](#the-two-bridge-routes) from the account's `push_cursor`
-(both started again by a mapping to another server, person or library). The feed
-pages in the server's write order and may give a row again with `updated_at`
-unchanged, so a row is new by its **place** alone, never its time or version: a new
-version at the same place never re-arms a push. The baseline (every read until one
-reaches the feed's end) takes only rows of the last 10 minutes by `updated_at`
-and records the older ones as history, never pushed; after it, every row read is
-new. A row the Bridge fails to record keeps the cursor, so
-the pass reads it again. It skips rows written by `audible:<account>`, and keeps a row on a title
-the last sync didn't list for that book pending (`listed` 0,
-`store.PendAudiblePush`) until a sync lists it.
+`audiblesync.Pusher` is not a job, so it adds no job row a minute. Every minute
+(`PushEvery`) it visits each account mapped here that isn't refused, waiting or
+paused.
 
-For each place **still for 3 minutes** (`StillFor`, since `row_seen`: the Bridge
-has seen the same place for that long on its own clock, so a push lands up to
-about 4 minutes after the listener stops), it drops one under 1 s, within 5 s of
-`last_ms` (debounce) or `heard_ms` (echo), or past the runtime. It checks no length
-of its own: a book whose length disagrees with the title's runtime never reaches
-it, since the feed leaves that row out (the server's `duration_mismatch` rule). It
-reads Audible's places once (`Positions`) and drops one Audible moved on
-from since (over 5 s further on and neither `last_ms` nor `heard_ms`: furthest wins,
-and the next sync brings it in); else writes it: `ContentACR` once per ASIN (cached;
-a cached one a write answers `400`/`404` for is read again and the write tried once
-more), then `SetPosition` (`PUT lastpositions`). The server's place is sent as it
-is, so a move back on the server reaches Audible.
+**Reading the feed.** For each account it reads the feed
+[`GET /bridge/progress`](#the-two-bridge-routes) from the account's `push_cursor`.
+Both the cursor and the baseline (below) start again when the account is mapped to
+another server, person or library.
 
-**Errors never refuse the account.** A `429`/`503` from Audible keeps the place and
-waits its `Retry-After` (at least 2 minutes) counted from the failure; a `5xx` or
-no answer keeps it and leaves the account for 2 minutes (this loop only); another
-`4xx` or a denied license (`audible.IsDenial`) drops it, a throttled device also
-leaving the account for 15 minutes. From the server, `sync_off` leaves the account
-for 5 minutes, `user_unavailable` or `unknown_account` for 15, a `429`/`503` its
-`Retry-After` (at least 2 minutes); all in memory, this loop only. Health
-(`sync_at`, `sync_error`, and `sync_retry_at`, which no later call shortens) feeds
-the `audible` setup item's detail only ("places not syncing for N accounts: ..."),
-never whether it is done.
+- The feed pages in the server's write order, and may give a row again with
+  `updated_at` unchanged. So a row is new by its **place** alone, never its time or
+  version. A new version at the same place never re-arms a push.
+- The baseline is every read until one reaches the feed's end. It takes only rows
+  of the last 10 minutes by `updated_at`, and records the older ones as history,
+  never pushed. After the baseline, every row read is new.
+- A row the Bridge fails to record keeps the cursor, so the pass reads it again.
+- It skips rows written by `audible:<account>`.
+- A row on a title the last sync didn't list for that book stays pending (`listed`
+  0, `store.PendAudiblePush`) until a sync lists it.
+
+**Writing a place.** A place is ready when it has been **still for 3 minutes**
+(`StillFor`, since `row_seen`). That is the Bridge's own clock seeing the same place
+for that long, so a push lands up to about 4 minutes after the listener stops. The
+loop then drops a place:
+
+- under 1 s;
+- within 5 s of `last_ms` (debounce) or `heard_ms` (echo);
+- past the runtime.
+
+It checks no length of its own. A book whose length disagrees with the title's
+runtime never reaches it, since the feed leaves that row out (the server's
+`duration_mismatch` rule).
+
+It reads Audible's places once (`Positions`). It drops a place Audible moved on from
+since: over 5 s further on, and neither `last_ms` nor `heard_ms`. Furthest wins,
+and the next sync brings Audible's place in. Otherwise it writes the place:
+
+1. `ContentACR` once per ASIN, cached. When a write answers `400`/`404` for a
+   cached one, the loop reads it again and tries the write once more.
+2. `SetPosition` (`PUT lastpositions`).
+
+The server's place is sent as it is, so a move back on the server reaches Audible.
+
+**Errors never refuse the account.** Except for Audible's `429`/`503`, the waits
+below are in memory, for this loop only.
+
+| Answer | What the loop does |
+|---|---|
+| Audible `429`/`503` | keeps the place and waits its `Retry-After`, at least 2 minutes, counted from the failure |
+| Audible `5xx` or no answer | keeps the place and leaves the account for 2 minutes |
+| Audible's other `4xx`, or a denied license (`audible.IsDenial`) | drops the place |
+| a throttled device | drops the place and leaves the account for 15 minutes |
+| the server's `sync_off` | leaves the account for 5 minutes |
+| the server's `user_unavailable` or `unknown_account` | leaves the account for 15 minutes |
+| the server's `429`/`503` | waits its `Retry-After`, at least 2 minutes |
+
+Health (`sync_at`, `sync_error`, and `sync_retry_at`, which no later call shortens)
+feeds only the `audible` setup item's detail ("places not syncing for N accounts:
+..."). It never decides whether that item is done.
 
 A successful new Audible sign-in clears the stored `sync_error` and
 `sync_retry_at`, as does a `sync_off` response in either sync direction. These
-clear stale health and retry information without recording a successful sync;
-turning sync off does not claim that a place reached Audible.
+clear stale health and retry information without recording a successful sync.
+Turning sync off does not claim that a place reached Audible.
 
 ### The two Bridge routes
 
-Both are *bridge token*, header only, and act for the account's **person** (never
-the paired admin); their shared refusals (`403 sync_off`, `403 user_unavailable`,
-`404 unknown_account`) are in the
+Both take a *bridge token* in the header only, and act for the account's
+**person**, never the paired admin. Their shared refusals (`403 sync_off`,
+`403 user_unavailable`, `404 unknown_account`) are in the
 [API reference](../server/api/reference.md#audible-position-sync).
 
 | Route | What |
 |---|---|
-| `POST /bridge/audible/accounts/{account}/listening` | `{sent_at, events}` (strict; `sent_at` required; the Sync v2 event shapes and limits): the account's places on Audible, furthest only. `200` the Sync v2 answer |
-| `GET /bridge/progress?account=&since=&limit=` | the person's places on the synced titles' books, one row per title, the account's own rows left out, and a row whose own title's `runtime_s` disagrees with the book's length left out (per title), keyset by `(change_seq, asin)`: `{rows, next, more}`. `400 invalid_request` for no account, a bad limit or cursor |
+| `POST /bridge/audible/accounts/{account}/listening` | The account's places on Audible, furthest only. The body is `{sent_at, events}`: strict, `sent_at` required, with the Sync v2 event shapes and limits. `200` is the Sync v2 answer |
+| `GET /bridge/progress?account=&since=&limit=` | The person's places on the synced titles' books, one row per title, keyset by `(change_seq, asin)`: `{rows, next, more}`. It leaves out the account's own rows, and a row whose own title's `runtime_s` disagrees with the book's length (per title). `400 invalid_request` for no account, a bad limit or a bad cursor |
 
 The feed is keyset on `progress.change_seq` (`0066`), the order the server wrote
-progress rows in, set by triggers so no write path can miss it: a row written late
-with an earlier `updated_at` (an offline backlog, a client's clock behind) is still
-fed, and a title newly matched, synced again or whose runtime changed offers its
-book's place again (the Bridge drops a place it already holds). The counter and its
-triggers are in the [data model](../server/data-model.md#the-bridge).
+progress rows in. Triggers set it, so no write path can miss it.
 
-The Bridge mirrors them by hand in `internal/link/audiblesync.go`
-(`AudibleSyncParams`/`AudibleSyncTitle`, `PostAudibleListening`, `AudibleProgress`;
-`403 sync_off` is `ErrSyncOff`, `403 user_unavailable` `ErrUserUnavailable`).
+- A row written late with an earlier `updated_at` (an offline backlog, a client's
+  clock behind) is still fed.
+- A title newly matched, synced again or whose runtime changed offers its book's
+  place again. The Bridge drops a place it already holds.
+
+The counter and its triggers are in the
+[data model](../server/data-model.md#the-bridge).
+
+The Bridge mirrors both routes by hand in `internal/link/audiblesync.go`
+(`AudibleSyncParams`/`AudibleSyncTitle`, `PostAudibleListening`, `AudibleProgress`).
+`403 sync_off` is `ErrSyncOff`, and `403 user_unavailable` is `ErrUserUnavailable`.
 
 ### Bridge migration `0011_audible_push`
 
-`audible_push`, keyed `(account, asin)`: the book the last `audible.sync` listed
-(or, with `listed` 0, the one a feed row named, pending until a sync lists it),
-`library_id`/`path`, `runtime_s`, `listed`, the cached content reference (`acr`),
-`last_ms`/`at` written to Audible, `heard_ms` sent from it (each clears the other:
-`AudiblePushed`, and `AudibleHeard` for a write before the job began), `want_ms`
-waiting, and the feed row last read: `row_ms` and `row_seen` (when this Bridge
-first read that place, the stillness clock). Migration `0014_audible_reasserted`
-adds `reasserted_ms` (`-1` none): the written place a sync already wrote again
-once (step 7 above). On `audible_accounts`: `push_cursor`/`push_from`, the health columns
-`sync_at`/`sync_error`/`sync_retry_at`, and `refusal_kind` (above).
+`audible_push` is keyed `(account, asin)`. Its columns:
+
+| Column | What |
+|---|---|
+| `library_id`, `path` | the book the last `audible.sync` listed. With `listed` 0, the book a feed row named, pending until a sync lists it |
+| `runtime_s`, `listed` | Audible's runtime, and whether the last sync listed the book |
+| `acr` | the cached content reference |
+| `last_ms`, `at` | the place written to Audible, and when |
+| `heard_ms` | the place sent from Audible. It and `last_ms` each clear the other (`AudiblePushed`, and `AudibleHeard` for a write before the job began) |
+| `want_ms` | the place waiting to be written |
+| `row_ms`, `row_seen` | the feed row last read. `row_seen` is when this Bridge first read that place, the stillness clock |
+| `reasserted_ms` | added by migration `0014_audible_reasserted`, `-1` for none. The written place a sync already wrote again once (step 7 of [`audible.sync`](#audible-to-the-server-audiblesync)) |
+
+On `audible_accounts` it adds `push_cursor`/`push_from`, the health columns
+`sync_at`/`sync_error`/`sync_retry_at`, and `refusal_kind`
+([Refused](#the-sign-in-internalaudibleacct)).
 
 ## On the server (`0063`, `catalog/audible.go`)
 
@@ -1408,11 +1642,11 @@ against the fake.
 The recorder scrubs order payment fields and prices.
 
 In a tagged build, `AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL` points every Audible and
-Amazon endpoint at a fake, and `AUDIOSILO_BRIDGE_AUDIBLE_RECORD_DIR` records every
-exchange into a `0600` JSON-lines file there, scrubbed as it is written
-(`audiblefake.Recorder`: secret keys and the customer, device and token subtrees
-redacted, headers from an allowlist, signed CDN queries dropped): the owner's
-recording run that later, recorded fixtures will come from. See
+Amazon endpoint at a fake. `AUDIOSILO_BRIDGE_AUDIBLE_RECORD_DIR` records every
+exchange into a `0600` JSON-lines file there, scrubbed as it is written. The
+scrubber, `audiblefake.Recorder`, redacts secret keys and the customer, device and
+token subtrees, keeps headers from an allowlist, and drops signed CDN queries. This
+is for the owner's recording run, which later recorded fixtures will come from. See
 [Configuration](configuration.md#audible) and
 [Development](development.md) for the tagged gate.
 

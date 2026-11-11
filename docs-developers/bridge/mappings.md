@@ -33,8 +33,8 @@ For each **books** library, one at a time:
    (`GET /bridge/libraries/{id}/book` with no path) and gets its files with the
    sizes the server sees on its own disk right now. The server picks the first
    **whole** book (every file still on its disk) among the library's first five
-   by title, so one book deleted before a scan notices doesn't make the whole
-   library look unmapped; a single-file book is listed as its own one file.
+   by title. So one book deleted before a scan notices doesn't make the whole
+   library look unmapped. A single-file book is listed as its own one file.
 3. **The sizes.** It stats each of those files through its mount (at most 50; every
    path goes through its `SafeJoin`, which refuses absolute paths, `..` and NUL) and
    compares the size with the server's. Only when **every** file is there with the
@@ -71,27 +71,40 @@ removed on a failed check, so a wrong mount is not left claiming that library.
 A marker of a removed library can be replaced; one naming another current
 library is refused.
 
-Both sides require version 1, a 32-character lowercase hex nonce, a regular file
-no larger than 4 KiB and a non-symlink `.audiosilo` directory. The server also
-checks the library id and answers only `{nonce}`; absent or invalid is
-`404 no_marker`. `checked_path` is `.audiosilo/library.json`. The library can be
-empty, but both mounts must see the marker. An older Bridge's sample-book lookup
-on a podcast library returns `404 no_book`, so it cannot map it as books.
+Both sides require:
 
-`no_marker` or a nonce mismatch means "this folder isn't the library the server
-sees". `library_not_found` means "the library was removed from the server".
-Network errors, timeouts, 401 and unexpected responses mean "could not verify
-this folder with the server", with both mapped/writable false and no raw
-server error. A pre-existing marker survives a transient failure; cleanup
-removes only artifacts created by that failed check. The normal mapping
-recheck interval applies. `bridge.verify` below remains a book check.
+- version 1;
+- a 32-character lowercase hex nonce;
+- a regular file no larger than 4 KiB;
+- a `.audiosilo` directory that is not a symlink.
+
+The server also checks the library id and answers only `{nonce}`. A marker that
+is absent or invalid is `404 no_marker`. `checked_path` is
+`.audiosilo/library.json`. The library can be empty, but both mounts must see the
+marker. An older Bridge's sample-book lookup on a podcast library returns
+`404 no_book`, so it cannot map it as books.
+
+What a failed check means:
+
+| Answer | Means |
+|---|---|
+| `no_marker`, or a nonce mismatch | "this folder isn't the library the server sees" |
+| `library_not_found` | "the library was removed from the server" |
+| network errors, timeouts, 401 and unexpected responses | "could not verify this folder with the server", with both `mapped` and `writable` false and no raw server error |
+
+A pre-existing marker survives a transient failure. Cleanup removes only
+artifacts created by that failed check. The normal mapping recheck interval
+applies. `bridge.verify` below remains a book check.
 
 Fetch and retention jobs recheck the mapping before mutations, including
-recovery. Staging, publication and deletion stay on that show's filesystem;
-regular files and real show/attachment directories are required. Audio install
-tries an exclusive hard link, with a no-replace rename fallback where links
-are unsupported. A present file is never overwritten or adopted merely
-because it has the assigned name.
+recovery. Then:
+
+- Staging, publication and deletion stay on that show's filesystem.
+- Regular files and real show and attachment directories are required.
+- Audio install tries an exclusive hard link. Where links are unsupported, it
+  falls back to a no-replace rename.
+- A present file is never overwritten or adopted merely because it has the
+  assigned name.
 
 ## What it reports
 
@@ -117,17 +130,22 @@ The errors the Bridge writes:
 | `this folder doesn't hold the server's copy of the library (<file>: <reason>)` | a file is missing (`not found here`), unreadable (`permission denied`) or a different size (`size differs: N bytes here, M on the server`) |
 | `mapped, but not writable here: permission denied` | the right library, but the Bridge can't write there |
 
-The server stores the entries as reported and the console shows each library with
-its state: **Ready** (mapped and writable), **Can't write** (mapped, read-only),
-**Not found** (not mapped) or **Not reported yet**, with the server's path, the
-Bridge's path, the book it checked and the error. Write jobs, like
-`sidecars.generate`, are refused for a library that isn't both mapped and
-writable (`409 library_not_writable` from the server; the Bridge checks again
-before it writes).
+The server stores the entries as reported. The console shows each library with
+the server's path, the Bridge's path, the book it checked, the error and its
+state:
+
+- **Ready** (mapped and writable);
+- **Can't write** (mapped, read-only);
+- **Not found** (not mapped);
+- **Not reported yet**.
+
+Write jobs, like `sidecars.generate`, are refused for a library that isn't both
+mapped and writable. The server answers `409 library_not_writable`, and the
+Bridge checks again before it writes.
 
 ## When it checks
 
-Not on every heartbeat: a check stats files and writes a probe, and doing that
+Not on every heartbeat. A check stats files and writes a probe, and doing that
 every 30 seconds would keep a NAS's spun-down disks awake (an Unraid array, say).
 The Bridge checks:
 
@@ -137,9 +155,9 @@ The Bridge checks:
 - **when someone asks**: **Check now** on its page's Libraries tab checks every
   library, and changing one library's folder there re-checks that library only.
 
-A check runs in the background, one library at a time, and checks never overlap: one
-asked for while another runs is done right after it (with the newest server link),
-so a mapping changed mid-check is never missed. When a check finishes, the Bridge
+A check runs in the background, one library at a time, and checks never overlap.
+One asked for while another runs is done right after it, with the newest server
+link, so a mapping changed mid-check is never missed. When a check finishes, the Bridge
 sends a heartbeat at once so the console sees the results. Every heartbeat in
 between carries the last results.
 
