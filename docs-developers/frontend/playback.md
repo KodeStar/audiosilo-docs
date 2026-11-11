@@ -1050,6 +1050,11 @@ These are the saves of a server without `listening_sync` (a server with it gets
   the Home/Browse "continue listening" and "finished" lists re-read from the
   server - without invalidating on every periodic save.
 
+One more store responsibility worth knowing about: when a download completes
+for the book that is currently streaming, the store hot-swaps playback onto the
+local files (`switchCurrentBookToLocal`, preferring the engine's gapless
+`swapTo`) - covered in [Offline](offline.md).
+
 ### The periodic save's pace
 
 Three loops run while a book plays (`startSaveLoop` in `store.ts`). Each is an
@@ -1101,7 +1106,7 @@ so iOS's `inactive` then `background` is one leaving):
 
 - **Leaving the front**, the place is saved at once and the loops are re-based, so
   the save the 15 s pace owed never waits a minute. A listening span is cut as the
-  app goes to the background or the page hides
+  app leaves the front, iOS's `inactive` included, or the page hides
   ([Listening spans](#listening-spans-sync-v2)).
 - **Coming back**, a save the 15 s pace already owes goes at once.
 
@@ -1111,8 +1116,10 @@ from the last one. Otherwise a book that buffers more often than the period woul
 never save.
 
 **Only the periodic save slows.** A pause, a move, a speed change, a stop, the end
-of the book, a page closing, a tab giving way and the app leaving the front still
-save at once. What waits up to a minute is what the server holds, and so what other
+of the book, a tab giving way and the app leaving the front still save at once. On
+a `listening_sync` server so does a page closing, which closes the span and sends
+it. On the `PUT` path a closing page sends no `PUT` of its own, only its history
+span. What waits up to a minute is what the server holds, and so what other
 devices, the console and Listening in the house see.
 
 The server reads a session as `playing` for 60 s after its last save or span
@@ -1129,10 +1136,10 @@ Multiply by the speed for book seconds.
 
 | Where | Holds | Behind by at most |
 |---|---|---|
-| This device, a `listening_sync` server | the open span, recovered at the next launch | 5 s |
-| This device, a play that starts before the launch's recovery ran | the mirror | 15 s |
+| This device, a `listening_sync` server | the open span, once it is recovered: at the next launch in the app, [later on the web](#on-the-web-the-recovery-can-wait-30-s) | 5 s |
+| This device, a play that starts before the span is recovered | the mirror | 15 s |
 | This device, a server without `listening_sync` | the mirror | 15 s |
-| Other devices, a `listening_sync` server | the last cut, until this device launches again and sends the recovered span | 60 s, then 5 s |
+| Other devices, a `listening_sync` server | the last cut, until this device launches again, recovers the span and sends it | 60 s, then 5 s |
 | Other devices, a server without `listening_sync` | the last `PUT`, until this device saves again | 60 s |
 
 At the next launch `recoverOpenSpan` closes the stored span into the outbox, and
@@ -1151,10 +1158,18 @@ span was last kept, under the mirror's own rule that the newest record wins:
 On the web it also runs for a span another tab left behind, dated when that tab
 kept it.
 
-One more store responsibility worth knowing about: when a download completes
-for the book that is currently streaming, the store hot-swaps playback onto the
-local files (`switchCurrentBookToLocal`, preferring the engine's gapless
-`swapTo`) - covered in [Offline](offline.md).
+##### On the web the recovery can wait 30 s
+
+In the app every span a launch finds is a previous launch's, so it is recovered at
+once. A web page cannot tell a crashed tab's span from one a live tab still keeps
+until it has gone unkept for 30 s (`LIVE_SPAN_MS` in `listening-outbox.ts`,
+[the stored span](offline.md#listening-sync-the-outbox)).
+
+- A page opened after those 30 s recovers the span as it launches.
+- A page opened sooner leaves the span alone and looks again 30 s later. Then it
+  closes the span, brings the mirror up and sends the event.
+- Until then this device resumes from the mirror, up to 15 s behind, and other
+  devices hold the last cut, up to 60 s behind.
 
 ## Web transcode negotiation (`transcode.ts`)
 
