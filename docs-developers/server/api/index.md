@@ -640,6 +640,7 @@ therefore never staler than one built fresh, and nothing on the wire changes
 ```json
 {
   "name": "Hearthside",
+  "server_id": "kx8Qz1c7m2Vw0aB3dEfGh",
   "version": "1.4.2",
   "api": "v1",
   "capabilities": {
@@ -649,8 +650,8 @@ therefore never staler than one built fresh, and nothing on the wire changes
     "upload": false,
     "websocket": false,
     "api_keys": true,
-    "metadata": true,
     "export": true,
+    "metadata": true,
     "meta_bundle": true,
     "meta_covers": true,
     "browse_people": true,
@@ -658,11 +659,14 @@ therefore never staler than one built fresh, and nothing on the wire changes
     "series_books": true,
     "cover_sizes": true,
     "next_book": true,
+    "podcast_fetch": true,
+    "podcast_discovery": false,
+    "podcast_opml": true,
     "queue": true,
     "collections": true,
+    "user_stats": true,
     "ratings": true,
     "progress_edit": true,
-    "user_stats": true,
     "my_devices": true,
     "annotations": true,
     "addresses": true,
@@ -670,15 +674,16 @@ therefore never staler than one built fresh, and nothing on the wire changes
     "cast": true,
     "household_members": true,
     "bridge": false,
-    "contributions": false,
-    "podcasts": false,
-    "audible": false,
-    "podcast_fetch": true,
-    "podcast_discovery": false,
-    "podcast_opml": true,
     "ebooks": true,
     "readalong": true,
-    "renditions": true
+    "upcoming": true,
+    "upcoming_calendar": true,
+    "upcoming_covers": true,
+    "listening_sync": true,
+    "renditions": true,
+    "contributions": false,
+    "podcasts": false,
+    "audible": false
   },
   "auth": { "methods": ["auth_code", "password"] },
   "renditions": ["watch"],
@@ -687,7 +692,8 @@ therefore never staler than one built fresh, and nothing on the wire changes
 ```
 
 `name` is the server's display name (`"AudioSilo"` until an admin names it).
-`demo.enabled` drives the "Try the demo" affordance.
+`server_id` is the server's stable identity (see
+[`GET /server`](reference.md#get-apiv1server)). `demo.enabled` drives the "Try the demo" affordance.
 
 Clients **must** feature-gate on these flags rather than probing endpoints. A
 server that predates a flag omits it, so treat a missing flag as `false`
@@ -698,6 +704,7 @@ has them. For the others, each row says when the flag is `true`.
 
 | Flag | Gates |
 |---|---|
+| `admin_ui` | the admin console, baked into the server at `/admin`. Always `true` |
 | `transcode` | whether ffmpeg is configured. Without it, `?transcode=1` is 503 |
 | `web_player` | whether `/web` is mounted |
 | `api_keys` | whether the server supports user-minted [API keys](reference.md#personal-api-keys) |
