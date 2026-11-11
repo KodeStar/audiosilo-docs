@@ -62,7 +62,7 @@ On Android Auto you can name a book: *"play The Hound of the Baskervilles on Aud
 
 The car's Now Playing screen shows the chapter you're in, with a scrubber for that chapter. Next and previous move by chapter.
 
-**Bookmark** adds a bookmark where you are, like the bookmark button in the app. That holds on Android Auto even when the car started the book with the app closed. If your server can't be reached, the bookmark is kept on the phone and sent later.
+**Bookmark** adds a bookmark where you are, like the bookmark button in the app. If your server can't be reached, the bookmark is kept on the phone and sent later.
 
 Every move you make in the car saves your new place.
 

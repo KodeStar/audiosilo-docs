@@ -201,7 +201,7 @@ older binary, and JS detects it.
 |---|---|---|
 | Event | `onRemoteMove { trackIndex, position }` | The engine moved for something outside the JS API: the lock screen or notification scrubber, its skip and chapter buttons, a headset, CarPlay or Android Auto, including their chapter lists. Sent once the move has landed, in file coordinates. Never sent for moves JS asked for (`seekTo`, `skipToTrack`, `load`), auto-rewind, Smart speed's skips, or a file running on into the next |
 | Event | `onRateChange { rate }` | The OS changed the speed (iOS `changePlaybackRateCommand`, CarPlay's rate button, an Android controller). Already applied |
-| Event | `onRemoteBookmark { trackIndex, position, connectionId?, libraryId?, path? }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action), with the engine's own book when it has one. The car controller listens for it, not the engine |
+| Event | `onRemoteBookmark { trackIndex, position, relPath?, connectionId?, libraryId?, path? }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action), with the engine's own book when it has one. The car controller listens for it, not the engine |
 | Event | `onCarConnection { connected }` | CarPlay or Android Auto connected or left |
 | Event | `onCarPlayRequest { id }` | The car asked for a book native can't start alone |
 | Field | `onProgress.silenceSaved` | Book seconds Smart speed removed since the app's process started, summed over every player the service builds. Monotonic ([Android only](audio-effects.md#why-smart-speed-isnt-on-iphone-yet)) |
@@ -604,7 +604,9 @@ order of importance:
 
 1. **It is armed by the play or retry *action*, not by interpreting engine
    events.** `beginPlaybackAttempt()` is called from `playBook`, `retry`, the play
-   half of `toggle`, and a playing adoption's reload (`reloadAdopted`). It sets two
+   half of `toggle` (not at the end of a download that ends early, `atPartialEnd`, see
+   [A download that ends early](offline.md#a-download-that-ends-early)), and a playing
+   adoption's reload (`reloadAdopted`). It sets two
    module-level flags, `wantsPlayback` (we intend to be playing) and
    `startingPlayback` (an attempt is in flight), and starts a `STALL_GRACE_MS` (3 s)
    timer. When the timer fires, the only test is *"are we `playing`?"*, so no
@@ -1281,6 +1283,8 @@ span was last kept, under the mirror's own rule that the newest record wins:
 
 - only a record older than the span's end is changed, and only forward;
 - never a finished book's record, and never a book with no record;
+- never finished at the end of a download that ends early
+  ([A download that ends early](offline.md#a-download-that-ends-early));
 - so a place written since stands: the listener's own move, another tab's play, a
   server row.
 

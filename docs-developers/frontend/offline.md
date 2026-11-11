@@ -672,10 +672,9 @@ Each answer is handled like this:
   `413` moves to the list as `too_large`.
 - Any other `400` sends that chunk's events one by one, once. One refused alone moves
   to the list as `invalid`.
-- An event older than 90 days is not sent. It moves to the list as `too_old`, the
-  server's own bound (`syncRejectAge`), so the list's "over 90 days old" is true
-  whether the device or the server gave it up. So an event that never gets an answer
-  can't hold its book "pending" forever.
+- An event older than 90 days (the server's own bound, `syncRejectAge`) is not sent.
+  It moves to the list as `too_old`, so an event that never gets an answer can't hold
+  its book "pending" forever.
 - A `404` or `405` is a **rollback** only when the server's own `/server` answers
   without `listening_sync`. Anything else at the address keeps the outbox. A
   rollback:
@@ -1270,11 +1269,9 @@ Its end is the downloaded part's, so:
   recovered after a kill in the last seconds (`mirrorSpanEnd`) never makes the record
   finished.
 
-**Online adoption streams on.** When an Android adoption's engine holds a file the
-download lacks and the server's chapters answer, the queue is built from those
-chapters, streaming what the download lacks, and the book plays on. A file the
-server no longer has is gone from the book. See
-[The engine's file order](native-integrations.md#the-engines-file-order).
+**Online adoption streams on** too: an Android adoption that holds a file the
+download lacks builds its queue from the server's chapters
+([The engine's file order](native-integrations.md#the-engines-file-order)).
 
 The regression tests are `store-adopt.test.ts`, `end-credits.test.tsx`,
 `listening-outbox.test.ts` (span recovery) and `downloads/store.test.ts`

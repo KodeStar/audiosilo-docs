@@ -499,11 +499,10 @@ spans (`readerMapOf`), nothing of the head.
   row, or offline with the capability unknown.
 - **Otherwise the server's** (`useReadalong`, keyed by the map's `generated_at`, no
   retry). A copy that can't be read also falls back to the server's.
-- **A stale server map is never used.** Online, a book the server calls `stale`
-  keeps the download's copy shown: the copy was made for the download's EPUB, which
-  is the one read, and it is still checked against the EPUB actually opened (with
-  the server's EPUB opened instead, there is none). The download's background
-  refresh takes a map made again. A stale map with no copy shows nothing.
+- **Never a stale server map.** A stale book with no copy shows nothing. The copy
+  shown for a stale book was made for the download's EPUB, the one read, and is
+  still checked against the EPUB actually opened (with the server's EPUB opened
+  instead, there is none). The download's background refresh takes a map made again.
 
 A map is read once per book. The query last shown stays in the cache, held by an
 observer that never fetches (`pinMap`, one map per query client; another book's map,
@@ -549,8 +548,7 @@ counts as another ebook. The check is `fitsDownload`, the download refresh's own
 rule, where a size unknown on either side fits. The download's own copy then stands
 in. With no copy, the failure is `ebookChanged`, and the surface says "The
 read-along is for a different edition of the ebook" and asks the listener to remove
-the download and download the book again. The check only shows that the two ebooks
-differ, not which is newer, so the words say neither.
+the download and download the book again.
 
 ### The read-along messages
 

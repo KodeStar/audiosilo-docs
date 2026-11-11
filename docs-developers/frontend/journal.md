@@ -124,15 +124,17 @@ neither is ever shown.
    Another book in between ends the session. A session carries the whole stretch's
    fields, `listened` (the spans' sum, without the pauses) and its parts.
 3. **Waiting listens** (`waitingSessions`, `diary-model.ts`): this device's listen
-   events still in the [outbox](offline.md#listening-sync-the-outbox), from every
-   connection (`useWaitingListens` in `src/playback/use-listening-sync.ts`, kept
-   current as the outbox changes), become sessions of their own with `waiting` set.
-   Only the servers the Diary lists take part. They are grouped among themselves,
-   never into a server's session, since a session is one server's record. One the
-   server's rows already hold (the same book, `from` and `to` within 2 s, started
-   within 5 minutes, since the server corrects the device's clock) is left out, so a
-   listen whose answer is on the way never shows twice. The server's sessions are
-   grouped only when its rows change; an outbox change regroups only the waiting ones.
+   events still in the [outbox](offline.md#listening-sync-the-outbox) become sessions
+   of their own with `waiting` set.
+   - They come from every connection the Diary lists (`useWaitingListens` in
+     `src/playback/use-listening-sync.ts`, kept current as the outbox changes).
+   - They are grouped among themselves, never into a server's session, since a
+     session is one server's record.
+   - One the server's rows already hold is left out, so a listen whose answer is on
+     the way never shows twice: the same book, `from` and `to` within 2 s, started
+     within 5 minutes (the server corrects the device's clock).
+   - The server's sessions are grouped only when its rows change; an outbox change
+     regroups only the waiting ones.
 4. **Days** (`groupByDay`, `diary-model.ts`): sessions are grouped by the device's local
    day they started on, newest first, with the day's total. A session past midnight
    stays on its start day. `useDayLabel` names the days as of `useToday`: Today,
