@@ -144,7 +144,7 @@ to each one.
 ## Suggest corrections
 
 When you [edit a matched book's details](books.md#editing-details) and your values
-differ from the community database's, you can suggest them for it. The book's
+differ from the community database, you can suggest them as corrections. The book's
 **Community metadata** card then offers **Suggest corrections**.
 
 It needs the Contributions module and community metadata on, the Bridge online
@@ -160,7 +160,7 @@ edits are sent, never values from the files or a match.
 5. Press **Suggest N corrections** to send them.
 
 The Bridge files them as one submission under its GitHub account, and the card
-links to it. AudioSilo Meta's intake bot writes the fields marked **Applied
+links to it. A bot on AudioSilo Meta writes the fields marked **Applied
 automatically**, such as a changed title, into a proposed change. A maintainer
 applies the fields marked **Reviewed by a maintainer**, such as authors,
 narrators and series. Every change is reviewed before it is merged (see

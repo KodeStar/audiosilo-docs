@@ -91,7 +91,7 @@ The web player can download books too, no app needed. Downloads are kept in the 
 
 - It needs a **secure connection** (an `https://` address). On plain `http://`, the Downloads tab doesn't appear.
 - **Clearing the browser's site data deletes your downloads.** Your books and progress stay safe on the server.
-- A browser can clear stored data when the disk runs very low. Installing the web player as an app (below) makes the browser protect it more. For long trips, the [app](mobile-apps.md) is the safest choice.
+- A browser can clear stored data when the disk runs very low. Installing the web player as an app (below) makes the browser protect it more. For long trips, the [iOS or Android app](mobile-apps.md) is the safest choice.
 - On an **iPhone or iPad**, Safari stops playback in the background. Use the iOS app to listen with the screen off.
 - A book the browser [can't play directly](playback.md#books-a-browser-cant-play-directly) can't be downloaded in the browser.
 

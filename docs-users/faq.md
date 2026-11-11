@@ -59,7 +59,7 @@ Three names come up across these docs:
 
 - **AudioSilo Meta** is the website, [meta.audiosilo.app](https://meta.audiosilo.app). You can browse the database there and add to it yourself. See [Use the community metadata site](./community/meta-site.md).
 - **The community database** is the data: the descriptions, characters, recaps, series and chapters.
-- **Community metadata** is what your server looks up in the database and shows with your books. It is also the name of the setting that turns the lookups on or off.
+- **Community metadata** is what your server looks up in the database and shows with your books. It is also the name of the settings section where your admin turns the lookups on or off.
 
 ### Does my server tell anyone which books I have?
 

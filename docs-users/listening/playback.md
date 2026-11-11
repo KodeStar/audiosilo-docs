@@ -82,11 +82,11 @@ See [Get the apps](mobile-apps.md) for more on the apps.
 
 ## Books a browser can't play directly
 
-A few audiobooks use audio that browsers can't play, such as AC-3 or Apple Lossless (ALAC). The app plays them as they are, where the device can. In the web player, your server converts them to MP3 as you listen:
+A few audiobooks use audio that browsers can't play, such as AC-3 or Apple Lossless (ALAC). The iOS and Android apps play them as they are, where the device can. In the web player, your server converts them to MP3 as you listen:
 
 - The book's page says so, such as *"AC-3 audio is converted to MP3 for this browser"*.
 - Chapters, seeking, speed and the sleep timer all work. A jump takes a moment longer.
-- You can't download such a book in the browser. Download it in the [app](mobile-apps.md) instead.
+- You can't download such a book in the browser. Download it in the [iOS or Android app](mobile-apps.md) instead.
 
 Converting needs **ffmpeg** on your server. The Docker image includes it, and otherwise the server downloads it (your admin can check under [Server > Transcoding](../admin/server.md#transcoding)). If a book still won't play, see [Troubleshooting](../troubleshooting.md#a-book-plays-in-the-app-but-wont-play-in-the-browser).
 

@@ -14,10 +14,11 @@ You don't need a Bridge to listen to your books. Add one for:
 - [characters, recaps and descriptions](../admin/generating-characters-and-recaps.md)
   written by an AI agent;
 - [chapters](../admin/generating-characters-and-recaps.md#books-without-chapters)
-  found in a book's narration;
-- [read-alongs](../admin/making-read-along.md) in the book's ebook;
-- [Audible backups](../admin/audible.md) and listening places kept in step with
-  Audible;
+  for a book that has none, found in its narration;
+- [read-alongs](../admin/making-read-along.md), so listeners can follow the
+  narration in the book's ebook;
+- [Audible backups](../admin/audible.md) of the books you bought, and listening
+  places kept in step with Audible;
 - [sharing with the community](../community/contributing-from-your-server.md).
 
 <a id="which-bridge-version"></a>
@@ -125,8 +126,8 @@ What matters:
   server. On Linux, run `id -u` and `id -g`. On Unraid, use `99` and `100`.
 - **`AUDIOSILO_BRIDGE_SERVER_URL`** is how the Bridge reaches the server. In one
   compose file that is `http://audiosilo:8080`, not the address in your browser.
-- **`AUDIOSILO_BRIDGE_PUBLIC_URL`** is your machine's address on your network,
-  with port 8091.
+- **`AUDIOSILO_BRIDGE_PUBLIC_URL`** is the address of the Bridge's page on your
+  network, which is your machine's address with port 8091.
 - **Keep the work folder separate** from `./bridge-data`.
 - **Keep the agent's security settings** (`user`, `cap_drop`, `read_only` and the
   rest) as they are.

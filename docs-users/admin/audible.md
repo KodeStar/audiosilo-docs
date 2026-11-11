@@ -240,8 +240,8 @@ are on this server.
 - **From here to Audible**, a few minutes after you stop listening.
 
 Only the place syncs. Listening on Audible adds nothing to your history or stats.
-A title whose length on Audible differs from the book here by more than 5% (plus
-2 minutes) doesn't sync. A preorder starts syncing once it is released.
+A title doesn't sync when its length on Audible and the book's length here
+differ by more than 5% of the longer one, plus 2 minutes. A preorder starts syncing once it is released.
 
 Sometimes the Audible app uploads an older place it still held over the one the
 Bridge wrote. The next sync writes your place to Audible again, once. If you then
