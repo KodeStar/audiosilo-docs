@@ -26,7 +26,7 @@ Demo accounts can't turn it on.
 
 ![A book's page with the In the house card: one person listening now, and the chapter](/img/screenshots/web-player/book-in-the-house.png)
 
-The cards update about once a minute. Someone listening with their phone locked, or to a downloaded book, can be up to a minute behind. They may show as paused for a moment.
+The cards update about once a minute. Someone whose app [saves once a minute](playback.md#your-position-follows-you) can be a further minute behind. They may show as paused for a moment.
 
 ## Who shows up
 
