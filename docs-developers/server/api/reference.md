@@ -3753,7 +3753,7 @@ opens one):
   nothing.
 - **History.** A listen with at least 1 s listened extends the newest history row on
   the book that ended up to 60 s before it began (2 s of overlap allowed) within 5 s
-  of where it starts, else it adds a row, so a run of 15 s spans is one row and
+  of where it starts, else it adds a row, so a run of 15 s or 60 s spans is one row and
   offline listening reaches history at the time it happened. A syncing player
   posts no `POST .../history`.
 
@@ -4901,7 +4901,9 @@ listening done since a person last turned sharing on is shown.
   A kid household member never shares and never sees anyone (`{ "sharing": false,
   "listening": [] }`), and never appears as a row.
 - `state` - from the age of the person's newest save: `playing` within 60 seconds,
-  `paused` within 10 minutes (the session gap), else `recent`.
+  `paused` within 10 minutes (the session gap), else `recent`. A player that saves
+  every 60 s can read as `paused` for a moment
+  ([data model](../data-model.md#listening-sessions-how-they-are-derived)).
 - `title` - the index's title, else the path's last segment (a book no longer
   indexed); `author` and `duration` are `null` when unknown (`duration` falls back
   to the session's own).
@@ -8055,7 +8057,8 @@ The session object, shared by both session routes:
   flag.
 - `finished` - a save in the session marked the book finished.
 - `state` - `playing` (a save within the last 60 seconds), `paused` (within 10
-  minutes) or `ended`. A session can come back from `ended`: a late save whose
+  minutes) or `ended`. A player that saves every 60 s can read as `paused` for a
+  moment ([data model](../data-model.md#listening-sessions-how-they-are-derived)). A session can come back from `ended`: a late save whose
   position advanced by about the time that passed (a phone that kept playing
   without saving) continues it, up to 12 hours after its last save.
 - `chapter`, `chapter_index` and `ip` are present on **live** sessions only.

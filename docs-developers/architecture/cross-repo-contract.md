@@ -1375,11 +1375,15 @@ status per event. The workspace's CROSS-REPO.md §25 is the full seam.
   seconds into it; the server places it on the book's current file order, so
   listening on a download with an older order lands in the same file ([seam
   6](#6-the-chapter--whole-book-timeline-model)).
-- **Sessions and history.** On this path the player stops its 15 s `PUT` loop and
+- **Sessions and history.** On this path the player stops its periodic `PUT` loop and
   its `POST /history`; the server builds both from the spans at their
-  clock-corrected device times. The player's 15 s online cut (`continue` spans)
+  clock-corrected device times. The player's online cut (`continue` spans, every
+  15 s, or every 60 s with the app in the background or the book downloaded:
+  [the pace](../frontend/playback.md#the-periodic-saves-pace))
   keeps live sessions and Listening in the house working, against the server's
   `livePlaying` and `SessionGap` ([data model](../server/data-model.md#listening-sessions-how-they-are-derived)).
+  At the 60 s pace a session can read as paused for a moment
+  (KodeStar/audiosilo-server#364).
 - **Rollback.** A `404`/`405` on the route that the server's own `/server`
   confirms (no flag) turns the outbox into one legacy `PUT` per book and puts the
   connection back on the `PUT` path.

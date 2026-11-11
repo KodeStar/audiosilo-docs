@@ -80,8 +80,11 @@ browsers can't decode (`direct_playable: false`) the web player streams the
 server's on-the-fly MP3 instead (`?transcode=1&t=`, ffmpeg, gated by the
 `transcode` capability), re-requesting it on every seek.
 
-**Progress sync.** The player saves position every 15 seconds while playing (and
-on pause/seek/rate/stop), path-keyed, via `PUT /libraries/{id}/progress?path=`.
+**Progress sync.** The player saves position while playing, path-keyed, via
+`PUT /libraries/{id}/progress?path=`: every 15 seconds with the app in front and
+the book streaming, every 60 seconds with the app in the background or the book
+downloaded, and at once on pause/seek/rate/stop
+([the pace](frontend/playback.md#the-periodic-saves-pace)).
 The server reconciles last-write-wins by `updated_at` (`catalog.SaveProgress`);
 the client keeps an offline replay queue (`src/playback/progress-sync.ts`).
 Realtime WebSocket sync is **planned** (Phase C remainder) - the `websocket`
