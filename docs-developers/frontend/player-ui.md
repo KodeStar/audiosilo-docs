@@ -421,7 +421,7 @@ The Text tab shows the playing book's ebook following its narration, through a
 
 | Who | The tab shows |
 |---|---|
-| a listener | once the map is in with a sentence to follow. Never while the map is on its way (no tab that vanishes a moment later), and never for a stale or absent map |
+| a listener | once the map is in with a sentence to follow. Never while the map is on its way (no tab that vanishes a moment later), and never for an absent map, or a stale one the download keeps no copy of (a downloaded book's kept map still shows, [The ebook reader](reader.md#the-map)) |
 | an admin who may make one | always: a spinner while the map is on its way, and the Make offer where there is none to follow |
 | anyone | when the map's read failed (`failure`, [The ebook reader](reader.md#the-map)): a notice by its reason, listed under [What `TextPanel` renders](#what-textpanel-renders). Never the Make offer, since a map may well be there and making it again takes hours |
 | nobody, an admin included | while the server's map waits for the network, or its read failed with no network, and the device holds no copy (`offline`). Nothing can be said or made meanwhile |

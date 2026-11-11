@@ -364,6 +364,14 @@ puts the line at about 41 hours of audio in one file, against about 4 without it
 The heap varies by device. Known limit: two very long files that meet at a
 boundary can still overflow, since the budget counts one file's extractors.
 
+**A queue replaced by `load` is released first.** Setting new items on a prepared
+player keeps the old items' extractors alive while the new ones load, a heap peak a
+small device can't hold. So `load` `stop`s a prepared player before it sets the new
+queue. That stop's events (an idle, the old place) are the old queue's and never reach
+JS (`replacing`). The controller reports the stop as an idle only, with no
+`onIsPlayingChanged(false)` for a queue that was playing, so `load` stops the 1 s
+progress loop itself; the new queue's `playing` starts it again.
+
 - **`TimelineMap` keeps the bridge contract file-based.** The JS store and iOS
   think in `(fileIndex, positionInFile)`; the Android engine plays clip items.
   - `TimelineMap.fileToItem` maps a file-relative position to `(clip index,

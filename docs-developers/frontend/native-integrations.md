@@ -465,8 +465,8 @@ the queue's end, or at the engine's file index when an earlier file's length is 
 resume floor moves to that place and the play state is kept. The price is a short cut in the
 audio, and in return every later tick lands on the right file.
 
-**A file the download lacks.** When the engine plays a file the download lacks (the
-playing one or a later one) and the server's chapters hold it in another order, the
+**A file the download lacks.** When the engine's order holds a file the download lacks
+(any one, an earlier intro included) and the server's chapters hold it in another order, the
 queue is built from those chapters, streaming what the download lacks, and the engine
 is reloaded into it, so the book plays on. Offline, or with no answer, a queue that
 lacks the book's last file is partial: its end is a pause, never a finish (see

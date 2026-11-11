@@ -556,7 +556,7 @@ each answer does:
 
 Each answer's map is tried once per launch (`readalongTried`). A map refused because
 it was made from another ebook is remembered on the manifest (`readalongRefused`, its
-`generated_at`, cleared once a map is kept), so it is not fetched again at every
+`generated_at`, cleared once a map is kept or dropped), so it is not fetched again at every
 launch. A map made again has another `generated_at`, so it is tried.
 
 **Read offline.** The Text tab reads the copy with `readDownloadedReadalong`
@@ -1284,8 +1284,8 @@ download lacks builds its queue from the server's chapters
 ([The engine's file order](native-integrations.md#the-engines-file-order)).
 
 The regression tests are `store-adopt.test.ts`, `end-credits.test.tsx`,
-`listening-outbox.test.ts` (span recovery) and `downloads/store.test.ts`
-(`endsBefore`).
+`listening-outbox.test.ts` (span recovery), `partial-download-notice.test.ts` (the
+toast) and `downloads/store.test.ts` (`endsBefore`).
 
 ## The PWA layer
 
