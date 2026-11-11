@@ -63,7 +63,7 @@ protection), so a car shows its lists at once, before or without JS.
     loaded book first (`continueRefs`), at most 20;
   - `upnext` - the queue the app's Up next shows (`queueConnectionId`: the loaded book's
     connection, else the default, else the first; see
-    [Overview](overview.md#up-next-drawer-and-sheet)), left out when that server has no
+    [The app shell](shell.md#up-next-drawer-and-sheet)), left out when that server has no
     `queue` capability, at most 20;
   - `downloads` - the person listening's downloaded books, newest download first, at most 50;
   - `library` - the library the Library tab shows (`resolveLibrarySelection`, as in

@@ -928,7 +928,7 @@ it is served at `<base>/sw.js` with scope `<base>/`. It has exactly two jobs:
    media, so without the 206 path downloaded books wouldn't play there at all.
 
 **Precaching the split build** (`precacheBuild`). The web build is split by
-route (see [the web start](overview.md#the-web-start-a-split-build)): a page's
+route (see [the web start](web-build.md#the-web-start-a-split-build)): a page's
 chunk loads when the page is first opened, so a page never opened online would
 not boot offline. The worker therefore fetches the shell (the scope's
 `index.html`, `cache: 'no-cache'`), caches every build script and stylesheet it
