@@ -4,13 +4,13 @@ description: "The jest-expo harness, the checks npm test runs before jest, the g
 ---
 
 Every piece of new logic in the frontend ships with a unit test. The harness is
-deliberately boring; the interesting part is the set of conventions that keep
+a standard Jest setup. What matters more is the set of conventions that keep
 the code *testable* in the first place.
 
 ## The harness
 
-- **jest-expo** preset (Jest 30 runtime) - resolves and transforms React
-  Native / Expo modules. Config lives in `jest.config.js`:
+- **jest-expo** preset (Jest 30 runtime). It resolves and transforms React
+  Native and Expo modules. Config lives in `jest.config.js`:
   - `moduleNameMapper` maps the `@/` alias to `src/` (and `@/assets/` to
     `assets/`);
   - `transformIgnorePatterns` re-includes the ESM packages the app imports
@@ -19,10 +19,10 @@ the code *testable* in the first place.
     transpiled instead of failing on `import`;
   - `testMatch` picks up `**/*.test.ts` and `**/*.test.tsx`;
   - `collectCoverageFrom` covers `src/**/*.{ts,tsx}` but **excludes
-    `src/app/**`** - screens are intentionally out of coverage scope (see
-    conventions below).
+    `src/app/**`**. Screens are intentionally out of coverage scope (see
+    [Conventions](#conventions)).
 - **@testing-library/react-native 14** for component and hook tests. Its
-  matchers are **built in** - there is no `@testing-library/jest-native`
+  matchers are **built in**. There is no `@testing-library/jest-native`
   dependency; don't add one.
 
 Run with `npm test`; coverage with `npm test -- --coverage`. `npm test` first runs
@@ -31,80 +31,93 @@ three fast Node checks before jest:
 1. `node scripts/gen-tokens.mjs --check` fails if the generated colour tokens
    (the generated region of `src/global.css`, and `src/theme/tokens.ts`) drifted
    from `src/theme/tokens.json`.
-2. `node --test scripts/gen-tokens.test.mjs` unit-tests the generator itself
-   (Node's built-in test runner, not jest): colour parsing and normalising, the
-   camelCase names, the fixed palette (`parsePalette`: plain colours only, no
-   shade families or aliases), that both themes carry the same keys with valid
-   colours and no clash with the palette, and the CSS and TS it emits.
+2. `node --test scripts/gen-tokens.test.mjs` unit-tests the generator itself,
+   with Node's built-in test runner rather than jest. It covers:
+   - colour parsing and normalising;
+   - the camelCase names;
+   - the fixed palette (`parsePalette`: plain colours only, no shade families or
+     aliases);
+   - that both themes carry the same keys with valid colours and no clash with
+     the palette;
+   - the CSS and TS it emits.
 3. `node scripts/check-styles.cjs` compiles `src/global.css` through Uniwind's
    real compiler, with the same options Metro uses (both read the root
-   `uniwind.config.js`), and asserts styling guarantees no unit test can see: a `dark:`
-   utility still has a rule outside every `@scope` (dark mode in browsers without
-   CSS `@scope`); native keeps the px letter-spacing scale (`tracking-wider` is
-   0.5 on iOS); and the themed Stacks tokens resolve per theme on iOS (also
-   through an opacity modifier such as `bg-brand/10`) and switch under `.dark` on
-   web. If a Uniwind upgrade renames the compiler internals it reads, it fails
-   loudly - update the hook, don't delete the guard.
+   `uniwind.config.js`). It asserts styling guarantees that no unit test can see:
+   - A `dark:` utility still has a rule outside every `@scope`, for dark mode in
+     browsers without CSS `@scope`.
+   - Native keeps the px letter-spacing scale (`tracking-wider` is 0.5 on iOS).
+   - The themed Stacks tokens resolve per theme on iOS, also through an opacity
+     modifier such as `bg-brand/10`, and switch under `.dark` on web.
+
+   If a Uniwind upgrade renames the compiler internals it reads, the check fails
+   loudly. Update the hook; don't delete the guard.
 
 ## Global setup (`jest.setup.ts`)
 
 Loaded via `setupFilesAfterEnv`, it does six things:
 
-1. **Imports `@/i18n`** so i18next is initialised with the English catalog -
-   components using `useTranslation` and the locale-aware formatters resolve
+1. **Imports `@/i18n`** so i18next is initialised with the English catalog.
+   Components using `useTranslation` and the locale-aware formatters resolve
    real strings under the fallback.
-2. Sets **`IS_REACT_ACT_ENVIRONMENT = true`** - React 19 gates `act(...)`
-   support behind this flag, and `render`/`renderHook` need it to flush state
+2. Sets **`IS_REACT_ACT_ENVIRONMENT = true`**. React 19 gates `act(...)`
+   support behind this flag, and `render` and `renderHook` need it to flush state
    updates. Pure-logic suites are unaffected.
 3. Mocks **`@react-native-async-storage/async-storage`** with an in-memory
    `Map` (`getItem`/`setItem`/`removeItem`/`clear` as jest fns).
 4. Mocks **`expo-secure-store`** the same way
    (`getItemAsync`/`setItemAsync`/`deleteItemAsync`).
-5. Mocks **`react-native-reanimated`** with a small self-contained stand-in (the
-   real module initialises its native Worklets module and throws under Node):
-   animations resolve synchronously (timing callbacks fire with
-   `finished: true`), `Animated.*` map to plain RN components, shared values
-   carry the `get`/`set` accessors as well as `.value`, the
-   layout-animation builders (`FadeIn`, `SlideInDown`, `LinearTransition`, …)
-   are chainable no-op stubs, and `useReducedMotion` is a `jest.fn` returning
-   `false` that a test can flip.
+5. Mocks **`react-native-reanimated`** with a small self-contained stand-in,
+   because the real module initialises its native Worklets module and throws
+   under Node. In the stand-in:
+   - animations resolve synchronously (timing callbacks fire with
+     `finished: true`);
+   - `Animated.*` map to plain RN components;
+   - shared values carry the `get` and `set` accessors as well as `.value`;
+   - the layout-animation builders (`FadeIn`, `SlideInDown`, `LinearTransition`, …)
+     are chainable no-op stubs;
+   - `useReducedMotion` is a `jest.fn` returning `false` that a test can flip.
 6. Mocks **FlashList v2's measurements**
    (`@shopify/flash-list/dist/recyclerview/utils/measureLayout`). FlashList
    measures its parent and items natively, which yields nothing under Node, so
-   a list would render no items at all; the mock answers with a fixed 400x900
-   viewport and 100x100 items (the values of the package's own `jestSetup.js`,
-   whose FlashList-to-RecyclerView swap no longer matches its exports). Any
-   `ShelfRow` or `CoverGrid` renders its first items in a test because of it.
+   a list would render no items at all. The mock answers with a fixed 400x900
+   viewport and 100x100 items. These are the values of the package's own
+   `jestSetup.js`, whose FlashList-to-RecyclerView swap no longer matches its
+   exports. Because of this mock, any `ShelfRow` or `CoverGrid` renders its first
+   items in a test.
 
 Together these let the storage, session, sync, settings and downloads layers
-run unchanged without a device or browser. Nothing else is mocked globally -
-`fetch`, reachability, `expo-localization` etc. are mocked per test file as
-needed.
+run unchanged without a device or browser. Nothing else is mocked globally.
+`fetch`, reachability, `expo-localization` and the rest are mocked per test file
+as needed.
 
 ## Conventions
 
 - **Logic stays out of `src/app/**` screens.** Screens compose hooks and
-  components; behavior lives in `src/lib`, `src/api`, `src/playback`,
-  `src/downloads`, `src/stores`, `src/i18n` - pure or framework-light modules
+  components. Behavior lives in `src/lib`, `src/api`, `src/playback`,
+  `src/downloads`, `src/stores` and `src/i18n`: pure or framework-light modules
   that get **co-located `*.test.ts(x)` files**. This is why the coverage
   config can exclude screens outright.
 - **Test the seam you changed.** A wire-format change needs a test on the
-  frontend *and* the server side - see
-  [cross-repo changes](../contributing/cross-repo-changes.md).
+  frontend *and* the server side (see
+  [cross-repo changes](../contributing/cross-repo-changes.md)).
 - Prefer direct function tests for pure modules. For hooks, note that
-  `renderHook` is incompatible with this jest-expo + React 19 setup - the hook
-  tests (e.g. `src/components/account/use-sign-out.test.tsx`) instead **mount a
-  tiny probe component** with `render(...)` that calls the hook and exposes its
-  result.
+  `renderHook` is incompatible with this jest-expo and React 19 setup. The hook
+  tests (for example `src/components/account/use-sign-out.test.tsx`) instead
+  **mount a tiny probe component** with `render(...)` that calls the hook and
+  exposes its result.
 
 ### The shared player-store double (`src/testing/player-store-mock.ts`)
 
 The player store is the hardest dependency to bring into a test: it owns the
 native engine, the API layer and the download store. Three suites need it
-without any of that - `src/playback/sleep-timer.test.ts`,
-`src/playback/auto-sleep-controller.test.ts` and
-`src/components/player/sleep-timer-button.test.tsx` - and they share **one**
-double rather than three near-copies, so its fidelity is decided in one place.
+without any of that:
+
+- `src/playback/sleep-timer.test.ts`;
+- `src/playback/auto-sleep-controller.test.ts`;
+- `src/components/player/sleep-timer-button.test.tsx`.
+
+They share **one** double rather than three near-copies, so its fidelity is
+decided in one place.
 
 Use it as the whole mocked module, and pull the same instance back out with
 `playerStoreMock()` to drive it:
@@ -117,21 +130,21 @@ jest.mock('@/playback/store', () =>
 const player = playerStoreMock();
 ```
 
-What it models **faithfully** - the parts a test may lean on:
+What it models **faithfully**, the parts a test may lean on:
 
-- it is a **real zustand store**, so `subscribe((state, prev) => …)`,
-  notification order and equality behave exactly as in production (the sleep
+- It is a **real zustand store**, so `subscribe((state, prev) => …)`,
+  notification order and equality behave exactly as in production. The sleep
   timer freezes its countdown off a store notification, and the auto sleep
-  controller detects the play edge by comparing `state`/`prev` - both would be
-  testing a fake otherwise);
-- the store's **real selectors** over the stand-in state: `selectBookKey`
+  controller detects the play edge by comparing `state` and `prev`. Both would be
+  testing a fake otherwise.
+- It uses the store's **real selectors** over the stand-in state: `selectBookKey`
   (`connectionId:libraryId:path`), `selectIsPlaying` (strictly `playing`),
-  `selectIsTransportLive` (`playing` or `loading`), `selectBookPosition`;
+  `selectIsTransportLive` (`playing` or `loading`) and `selectBookPosition`.
 - `pause()` records the call **and then** writes the paused snapshot, in that
   order, so a listener reacting to the write is ordered after the pause as it is
-  in production;
+  in production.
 - `setOutputVolume` drops a write that would not change the gain, exactly as the
-  real store does - so the timer's many defensive volume restores do not show up
+  real store does. So the timer's many defensive volume restores do not show up
   as writes production never makes.
 
 Its deliberate **divergences**, which a test must not read as production
@@ -151,10 +164,10 @@ behaviour:
   `dropSubscribers()`. Production has no such hook; they exist for the suites
   that attach and detach a subscription rather than holding one for the process
   lifetime.
-- **`patch()` writes without notifying** - fixture setup, and the shape of a
-  change that happened while nothing was subscribed. Use `setPlayState()` when
-  the notification is the point.
-- Nothing loads a book: there is no engine, no API and no persistence, so
+- **`patch()` writes without notifying.** It is for fixture setup, and for the
+  shape of a change that happened while nothing was subscribed. Use
+  `setPlayState()` when the notification is the point.
+- Nothing loads a book. There is no engine, no API and no persistence, so
   `nowPlaying`, `bookPosition` and the play state are whatever the test sets.
 
 `createPlayerStoreMock()` runs once per module registry, so a suite that calls
@@ -164,11 +177,12 @@ test (`playerStoreMock()` throws rather than hand back a stale instance).
 ### `render` and `fireEvent` are async (RNTL 14)
 
 In `@testing-library/react-native` 14 **both `render` and `fireEvent` return
-promises** and both must be awaited. The failure mode is nastier than a flake:
-a test that fires two un-awaited presses leaves **every later `render` in that
-file** mounting into a detached tree, so unrelated cases further down the file
-fail with queries that find nothing - which reads as "the component stopped
-mounting" rather than as a missing `await` several tests earlier.
+promises**, and both must be awaited. A missing `await` does worse than make a
+test flaky. A test that fires two un-awaited presses leaves **every later
+`render` in that file** mounting into a detached tree. Unrelated cases further
+down the file then fail with queries that find nothing. That reads as "the
+component stopped mounting" rather than as a missing `await` several tests
+earlier.
 
 ```ts
 await render(<TimeStepper value="22:00" onChange={onChange} label="From" />);
@@ -176,7 +190,7 @@ await fireEvent.press(screen.getByLabelText(LATER));
 ```
 
 Note that the common `await act(async () => { render(ui) })` helper does **not**
-await `render` - the `act` callback returns before the render promise settles.
+await `render`, because the `act` callback returns before the render promise settles.
 Prefer awaiting `render` directly; where a mount helper wraps it in `act`, the
 `render` inside still needs its own `await`.
 
@@ -187,9 +201,10 @@ Tooltip) render nothing on native without the root `<PortalHost />`. Mount them
 with `mountWithPortal(ui)`, which renders `ui` inside a `SafeAreaProvider` and the
 `RootInsetsProvider` the overlays read their insets from, with a `PortalHost`
 after it, the way the app's root layout does. The positioned
-overlays also only appear once they have measured their trigger, and React
+overlays also only appear once they have measured their trigger. React
 Native's jest preset stubs `measure` with a no-op, so the helper answers it with
-a fixed box. Await it, and every `fireEvent` after it (see above).
+a fixed box. Await it, and every `fireEvent` after it (see
+[`render` and `fireEvent` are async](#render-and-fireevent-are-async-rntl-14)).
 
 ### Rendering covers, shelves and grids
 
@@ -198,15 +213,16 @@ into several app-wide modules, so a render test mocks them at the top of the fil
 as `src/components/library/cover-pieces.test.tsx` and
 `src/components/series/browse-pieces.test.tsx` do:
 
-- `@/api/provider` - `useOptionalApi` (and `useCid` where the screen reads it), for
-  the cover URL; `@/api/hooks` - `useServerInfo` (the `cover_sizes` flag; while it
-  is unknown the cover deliberately fetches nothing);
-- `@/downloads/store` - `useDownloadEntry` (the downloaded-copy source and the
-  downloaded flag);
-- `@/theme/theme-provider` - `useTheme` (`CoverFrame`'s iOS shadow reads the
-  scheme, and the real provider imports `global.css`);
-- `@/lib/layout` - a fixed `useLayout()` (tile and grid sizes depend on it), and
-  `@/components/player/mini-player` - `useMiniPlayerInset` for a grid's bottom
+- `@/api/provider`: `useOptionalApi` (and `useCid` where the screen reads it), for
+  the cover URL.
+- `@/api/hooks`: `useServerInfo`, for the `cover_sizes` flag. While the flag is
+  unknown, the cover deliberately fetches nothing.
+- `@/downloads/store`: `useDownloadEntry`, for the downloaded-copy source and the
+  downloaded flag.
+- `@/theme/theme-provider`: `useTheme`. `CoverFrame`'s iOS shadow reads the
+  scheme, and the real provider imports `global.css`.
+- `@/lib/layout`: a fixed `useLayout()`, because tile and grid sizes depend on it.
+- `@/components/player/mini-player`: `useMiniPlayerInset`, for a grid's bottom
   padding.
 
 `book-cover.test.tsx` replaces `expo-image` with a host `View` so it can read the
@@ -219,38 +235,46 @@ phone layout, where the sections render in place).
 `src/components/shell/route-tree.test.tsx`, `route-tree-cold.test.tsx` and
 `route-tree-connect.test.tsx` are the regression net for the
 [routing rules](routes.md#routing-rules). They drive
-expo-router's `renderRouter` over **the real `src/app` file list**:
-`realRouteTree()` (`src/testing/route-tree.tsx`) walks `src/app`, stubs every
-screen with its route key as text, and swaps each layout for a plain JS navigator
-of the same shape (`Stack` for the root and the tab stacks, `Tabs` for the
-`(app)` NativeTabs / headless web Tabs). The pieces that decide behaviour are kept
-real: the root's `anchor`, the tab stacks' `TAB_STACK_SETTINGS` and their
+expo-router's `renderRouter` over **the real `src/app` file list**.
+`realRouteTree()` (`src/testing/route-tree.tsx`) walks `src/app` and stubs every
+screen with its route key as text. It swaps each layout for a plain JS navigator
+of the same shape: `Stack` for the root and the tab stacks, and `Tabs` for the
+`(app)` NativeTabs and the headless web Tabs. The pieces that decide behaviour are
+kept real: the root's `anchor`, the tab stacks' `TAB_STACK_SETTINGS` and their
 `tabStackListeners`. Moving or renaming a route file therefore changes the tree
-under test rather than a hand-copied list. Between them they cover: each tab root
-at its unchanged URL; a book pushed from a tab staying in that tab (and back
-returning there); folder drilling inside the Library stack; `JUMP_TO` keeping each
-tab's stack; the account screen opening in the tab that pushed it; the player as
-a root modal over the tabs; a cold book link owned by Home with Home underneath
-and no link params left on `/` after back; and onboarding leaving exactly one
-`(app)` under the stack, both through `leaveOnboarding()` (`dismissTo`, not
-`replace`) and through `<LeaveOnboarding />` at render time.
+under test rather than a hand-copied list.
+
+Between them the suites cover:
+
+- each tab root at its unchanged URL;
+- a book pushed from a tab staying in that tab, and back returning there;
+- folder drilling inside the Library stack;
+- `JUMP_TO` keeping each tab's stack;
+- the account screen opening in the tab that pushed it;
+- the player as a root modal over the tabs;
+- a cold book link owned by Home, with Home underneath and no link params left on
+  `/` after back;
+- onboarding leaving exactly one `(app)` under the stack, both through
+  `leaveOnboarding()` (`dismissTo`, not `replace`) and through
+  `<LeaveOnboarding />` at render time.
 
 Harness notes, forced by RNTL 14 and expo-router 58:
 
 - **Read the navigation container, not `renderRouter`'s helpers.** RNTL 14 broke
-  the helpers `renderRouter` returns, so the suites read where the router is
-  through `routeInfo()` (route info from `navigationRef` in `src/lib/router-ref.ts`;
-  expo-router 58 removed its global store) and drive the global `router` inside
-  `nav(fn)`, an awaited `act` so each navigation commits before the assertion.
-  `renderRouter` itself returns the async render's promise; await it.
+  the helpers `renderRouter` returns. So the suites read where the router is
+  through `routeInfo()`, which takes the route info from `navigationRef` in
+  `src/lib/router-ref.ts` because expo-router 58 removed its global store. They
+  drive the global `router` inside `nav(fn)`, an awaited `act`, so each navigation
+  commits before the assertion. `renderRouter` itself returns the async render's
+  promise; await it.
 - **Read a tab's stack, not `canGoBack()`.** Since expo-router 58 the tab
   navigator's history keeps the first tab under a cold link into another tab, so
   `canGoBack()` is true at a tab root. `tabStack(tab)`, `rootRoutes()` and
   `stackRoutes(parent)` read the route names instead.
-- **The JS `Tabs` stand-in declares the five tabs** (`JsTabs`): since
+- **The JS `Tabs` stand-in declares the five tabs** (`JsTabs`). Since
   expo-router 58 a tab navigator shows only the screens its layout declares.
 - **A cold start gets its own file.** The router's previous segments leak
-  between renders in one file, which would make a cold deep link look warm - so
+  between renders in one file, which would make a cold deep link look warm. So
   the cold-link case and the cold-on-`/connect` case each live in a file of their
   own.
 
@@ -278,7 +302,7 @@ Assertions then inspect `mock.mock.calls` for URLs, headers and bodies.
 
 ### Mocking reachability
 
-Modules that gate on connectivity (`progress-sync`, the downloads/player
+Modules that gate on connectivity (`progress-sync`, the downloads and player
 stores) import `@/api/reachability`; tests replace it wholesale. From
 `src/playback/progress-sync.test.ts`:
 
@@ -297,8 +321,8 @@ Flipping `isReachable` per test is how the offline-queue branches are covered.
 ### Flipping `Platform.OS`
 
 jest-expo defaults `Platform.OS` to `ios`. Modules that branch on it **at call
-time** (not at import time) can be covered for both platforms by mutating it -
-the pattern from `src/lib/secure-store.test.ts`:
+time** (not at import time) can be covered for both platforms by mutating it.
+This is the pattern from `src/lib/secure-store.test.ts`:
 
 ```ts
 import { Platform } from 'react-native';
@@ -315,15 +339,15 @@ describe('secure-store (web)', () => {
 });
 ```
 
-The same trick covers the web-vs-native branches in `book-queue` (auth headers
-on tracks) and reachability (browser online/offline listeners).
+The same trick covers the web and native branches in `book-queue` (auth headers
+on tracks) and in reachability (the browser's online and offline listeners).
 
 ### Suites that need a real DOM
 
 Name `@jest-environment ./src/testing/jsdom-environment.js` in the file's docblock,
-never plain `jsdom`. On Jest 30 the stock jsdom environment breaks under React
-Native's jest setup (it redefines `window`) and when clearing Expo's lazy globals
-after a test; the file fixes both and says how.
+never plain `jsdom`. On Jest 30 the stock jsdom environment breaks in two places:
+under React Native's jest setup, which redefines `window`, and when clearing
+Expo's lazy globals after a test. The file fixes both and says how.
 
 ## What's covered today
 
@@ -331,8 +355,11 @@ Co-located suites exist for:
 
 | Area | Tested modules |
 |---|---|
-| API layer | `src/api/client.test.ts`, `hooks-queue.test.ts`, `hooks-capability.test.tsx` (capability gating and the Phase 1a/1b queries and mutations), `connection-clients.test.ts`, `hooks.test.ts`, `reachability.test.ts`, `provider.test.tsx`, `address-route.test.ts`, `address-runner.test.ts` (the home/away pick, leaving home, the playing book's restart), `startup-cache.test.ts` (what is kept, restore and drop on a 401, the size cap) |
-| Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts`, `transcode.test.ts` (the web negotiation rules), `up-next-resolver.test.ts` (what plays next), `up-next-sources.test.ts`, `jump-undo.test.ts`, `time-left.test.ts`, `drift.test.ts`, `drift-controller.test.ts`, `last-interaction.test.ts`, `use-shake-to-extend.test.ts` (the burst detector and sensitivity tunings), `place-reconcile.test.ts` (a loaded book picks up another device's place), `engine-ticks.test.ts` (`engineTicker`, a period read at each check), `store-away.test.ts` (the save's 15 s and 60 s paces, the device's own record at 15 s, leaving and coming back, the saves that still go at once, what the hook shows off screen), `src/lib/app-activity.test.ts`, `src/lib/visible-store.test.tsx` (`quietOffScreen`: a tick is not shown off screen, every other change is), `service.native.test.ts` (the native bridge: the newer events, `load`'s `book` only on a binary that takes it), `store-adopt.test.ts` (`adoptLoaded`: no engine reload, saves under the adopted book, the floor is the adopted place, the service's book read again; in the engine's file order: the server's chapters in that order, streaming a file the download lacks, else a reload at the same file and in-file place), `effects.test.ts` (where Smart speed and Voice boost apply), `time-saved.test.ts`, `book-source.test.ts` (where a book plays and resumes from), `store-race.test.ts` (the bridge created once however many callers race; a remote move while a book loads is ignored), `playing-claim.test.ts` and `store-tabs.test.ts` (one tab plays at a time, the place the tabs share and the answer of the tab that gave way: two tabs as two copies of the modules over `src/testing/fake-browser.ts`), `other-tab-notice.test.ts`, `listening-outbox-tabs.test.ts` (an Undo and a send in different tabs, the swept span); `src/lib/tab-channel.test.ts` (both transports) |
+| API layer | `src/api/client.test.ts`, `hooks-queue.test.ts`, `hooks-capability.test.tsx` (capability gating, and the gated queries and mutations with their cache updates), `connection-clients.test.ts`, `hooks.test.ts`, `reachability.test.ts`, `provider.test.tsx`, `address-route.test.ts`, `address-runner.test.ts` (the home/away pick, leaving home, the playing book's restart), `startup-cache.test.ts` (what is kept, restore and drop on a 401, the size cap) |
+| Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts`, `transcode.test.ts` (the web negotiation rules), `up-next-resolver.test.ts` (what plays next), `up-next-sources.test.ts`, `jump-undo.test.ts`, `time-left.test.ts`, `drift.test.ts`, `drift-controller.test.ts`, `last-interaction.test.ts`, `use-shake-to-extend.test.ts` (the burst detector and sensitivity tunings), `effects.test.ts` (where Smart speed and Voice boost apply), `time-saved.test.ts`, `book-source.test.ts` (where a book plays and resumes from) |
+| Playback: saves, the engine and the bridge | `src/playback/place-reconcile.test.ts` (a loaded book picks up another device's place), `engine-ticks.test.ts` (`engineTicker`, a period read at each check), `store-away.test.ts` (the save's 15 s and 60 s paces, the device's own record at 15 s, leaving and coming back, the saves that still go at once, what the hook shows off screen), `src/lib/app-activity.test.ts`, `src/lib/visible-store.test.tsx` (`quietOffScreen`: a tick is not shown off screen, every other change is), `service.native.test.ts` (the native bridge: the newer events, `load`'s `book` only on a binary that takes it), `store-race.test.ts` (the bridge created once however many callers race; a remote move while a book loads is ignored) |
+| Playback: adopting a book | `src/playback/store-adopt.test.ts` (`adoptLoaded`: no engine reload, saves under the adopted book, the floor is the adopted place, the service's book read again. In the engine's file order: the server's chapters in that order, streaming a file the download lacks, else a reload at the same file and in-file place) |
+| Playback: one tab at a time (web) | `src/playback/playing-claim.test.ts` and `store-tabs.test.ts` (one tab plays at a time, the place the tabs share and the answer of the tab that gave way; two tabs run as two copies of the modules over `src/testing/fake-browser.ts`), `other-tab-notice.test.ts`, `listening-outbox-tabs.test.ts` (an Undo and a send in different tabs, the swept span); `src/lib/tab-channel.test.ts` (both transports) |
 | Downloads | `src/downloads/store.test.ts`, `offline-meta.test.ts`, `offline-companion.test.tsx` (a downloaded book's community data end to end, offline), `keep-ahead.test.ts`, `keep-ahead-controller.test.ts`, `failure.test.ts`, `downloads-view.test.ts`, `use-download-controls.test.ts`; `src/components/downloads/downloads-screen.test.tsx` |
 | Car and widgets | `src/car/car-model.test.ts` (the snapshot, item ids, play specs), `car-artwork.test.ts`, `car-controller.test.ts` (writes, play requests, bookmarks, a kept bookmark's file across a re-ordered download, adopting), `car-task.test.ts`; `src/widgets/widget-model.test.ts`, `widget-sync.ios.test.ts`; `src/lib/bootstrap.test.ts` (the shared launch steps) |
 | Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over the SDK 58 fixture, the phone scene's `RCTLinkingManager` scene calls, the default-on entitlement and its `AUDIOSILO_CARPLAY=0` opt-out), `plugins/withCast.test.ts` (the Cast options, the Android expanded controller, both plugins in `app.json` order over the SDK 58 AppDelegate), `plugins/widgets-entitlements.test.ts` (no target carries `aps-environment`), `plugins/withWatchScheme.test.ts` (finding the watch target, a scheme that builds only it), `plugins/build-properties.test.ts` (the `expo-build-properties` options: cleartext http and R8 on Android, React Native from source on iOS) |
@@ -345,7 +372,8 @@ Co-located suites exist for:
 | Connection identity | `src/lib/connection-id.test.ts`, `src/lib/identity-migration.test.ts` (every store before and after, the abort paths before the plan, forward-only recovery after it (a failed file move or document write finished by the next try, never reversed), resumption, idempotency, the native file moves, the web keeping its files under the legacy id), `src/lib/storage-migration.test.ts` (readers held while a stored plan is retried, and released after the five tries) |
 | Stores | `src/stores/session.test.ts`, `settings.test.ts`, `series-orderings.test.ts`, `library-selection.test.ts`, `search.test.ts` |
 | Home | `src/components/home/home-model.test.ts`, `previously-on-model.test.ts`, `previously-on.test.tsx`, `listening.test.ts`, `now-card-model.test.ts`, `now-card.test.tsx`, `home-screen.test.tsx` |
-| Upcoming releases | `src/lib/upcoming.test.ts` (eligibility, the merge and cross-server order, the "New" window), `release-date.test.ts`, `format.test.ts` (`formatReleaseDate`); `src/api/hooks-upcoming.test.tsx` (no request to a server without the flag or for a kid, dedupe, statuses, failures), `client.test.ts`; `src/components/upcoming/upcoming.test.tsx` (the rail, the sections and the page's states, the cover over the ghost with and without `upcoming_covers` and the ghost after a failed load); the calendar (Track U3): `src/lib/upcoming-calendar.test.ts` (`calendarFeedUrl`, `canSubscribeWebcal`, `calendarConnections`, `calendarRowState`, the device copy), `src/components/upcoming/upcoming-calendar.test.tsx` (no link, made, active elsewhere, demo, error, Reset and Turn off confirmed, kids never asked), `src/stores/session.test.ts` (the copy forgotten on sign-out, a retired identity and the auth reset), `src/api/provider.test.tsx` (a `meta.local` query says nothing of the server); `src/components/series/series-model.test.ts`, `series-parts.test.tsx` (dated ghosts); `src/components/you/you-model.test.ts`, `you-hub.test.tsx` (the Upcoming section); fixtures in `src/testing/upcoming-fixtures.ts` |
+| Upcoming releases | `src/lib/upcoming.test.ts` (eligibility, the merge and cross-server order, the "New" window), `release-date.test.ts`, `format.test.ts` (`formatReleaseDate`); `src/api/hooks-upcoming.test.tsx` (no request to a server without the flag or for a kid, dedupe, statuses, failures), `client.test.ts`; `src/components/upcoming/upcoming.test.tsx` (the rail, the sections and the page's states, the cover over the ghost with and without `upcoming_covers` and the ghost after a failed load); `src/components/series/series-model.test.ts`, `series-parts.test.tsx` (dated ghosts); `src/components/you/you-model.test.ts`, `you-hub.test.tsx` (the Upcoming section); fixtures in `src/testing/upcoming-fixtures.ts` |
+| Upcoming releases: the calendar | `src/lib/upcoming-calendar.test.ts` (`calendarFeedUrl`, `canSubscribeWebcal`, `calendarConnections`, `calendarRowState`, the device copy), `src/components/upcoming/upcoming-calendar.test.tsx` (no link, made, active elsewhere, demo, error, Reset and Turn off confirmed, kids never asked), `src/stores/session.test.ts` (the copy forgotten on sign-out, a retired identity and the auth reset), `src/api/provider.test.tsx` (a `meta.local` query says nothing of the server) |
 | Search | `src/components/search/search-model.test.ts` (the spoiler rules), `use-search-sources.test.tsx`, `search-screen.test.tsx` |
 | Series and people | `src/components/series/series-model.test.ts`, `spine-fit.test.ts`, `people-model.test.ts`, `series-page.test.tsx`, `browse-pieces.test.tsx`, `keep-ahead-card.test.tsx` |
 | Up next | `src/components/upnext/up-next-model.test.ts`, `up-next-store.test.ts`, `use-up-next.test.tsx`, `queue-list.test.tsx`, `up-next-panel.test.tsx`, `up-next-button.test.tsx` |
@@ -360,32 +388,38 @@ Co-located suites exist for:
 | Book page | `src/components/book/book-page-model.test.ts` (layout, primary action, chapter list, facts, Your listening), `book-details-model.test.ts`, `book-about.test.tsx`, `hero-actions.test.tsx`, `book-page.test.tsx` |
 | Bookmarks and notes | `src/api/bookmark-labels.test.ts`; `src/components/annotations/editor-model.test.ts` (what Save sends), `labels.test.ts`, `drift-marker.test.ts`, `use-book-place.test.ts`, `annotation-editor.test.tsx`, `annotation-rows.test.tsx`; `src/components/player/player-sheets.test.ts` (editor requests) |
 | Journal | `src/lib/listening-sessions.test.ts` (sessions, days), `use-day-label.test.tsx`, `use-infinite-queries.test.tsx`; `src/components/journal/merge-model.test.ts`, `diary-model.test.ts` (days, bar colours, drift matching), `journal-model.test.ts`, `use-journal-sources.test.tsx`, `journal-screen.test.tsx`, `journal-route-cold.test.tsx`, `export-collect.test.ts`, `export-format.test.ts`, `export-save.test.ts`, `export-save.web.test.ts`, `export-actions.test.tsx`, `use-journal-export.test.tsx` |
-| UI primitives | `src/components/ui/` - `animated-pressable`, `badge`, `breadcrumbs`, `button`, `confirm-dialog`, `cover`, `cover-image.web` (the CORS attribute only cross-origin, `onError`), `dialog`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `input`, `notice`, `overlay` (root insets, `withFlatStyle`), `overlay-host`, `popover`, `progress-bar`, `progress-ring`, `row-surface`, `section-header`, `select`, `sheet`, `skeleton`, `slider`, `use-slider-control`, `switch`, `tabs`, `text`, `time-stepper`, `toast`, `touch-target`, `toggle-group` |
+| UI primitives | `src/components/ui/`: `animated-pressable`, `badge`, `breadcrumbs`, `button`, `confirm-dialog`, `cover`, `cover-image.web` (the CORS attribute only cross-origin, `onError`), `dialog`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `input`, `notice`, `overlay` (root insets, `withFlatStyle`), `overlay-host`, `popover`, `progress-bar`, `progress-ring`, `row-surface`, `section-header`, `select`, `sheet`, `skeleton`, `slider`, `use-slider-control`, `switch`, `tabs`, `text`, `time-stepper`, `toast`, `touch-target`, `toggle-group` |
 | `src/lib` helpers | `account`, `after-paint.web` (the capped wait), `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `batch-loader` (windows, chunks by count and size, per-chunk failures), `by-position`, `chapter-label`, `client-id`, `clipboard`, `content-key`, `cors-mode` (`corsModeFor`), `cover-tint`, `dedup`, `deferred` (the load after paint and its retry), `fnv1a`, `format`, `hhmm`, `keyboard`, `keyboard-lift`, `known-servers`, `layout`, `map-limit`, `monogram`, `names`, `native-intent` (app links keep their encoding), `network`, `pairing`, `paths`, `progress-view`, `published`, `register-sw.web`, `service-worker` (`public/sw.js`'s build precache), `rnw-button-fix`, `root-stack`, `same-origin`, `scroll-memory`, `secure-store`, `serial-queue`, `series-orderings`, `server-address` (the pick rule, `mergeAddresses`), `share`, `storage-migration`, `support`, `ticker`, `use-debounced-value`, `use-dom-id`, `use-latest`, `use-now`, `utils`, `when-active` |
 | Generators (Node, not jest) | `scripts/gen-tokens.test.mjs` |
 
-The shared test helpers live outside that list, in `src/testing/`: the
-player-store double (`player-store-mock.ts`), the native touch-target assertion (`touch-target.ts`, `expectNativeTarget`), `mountWithPortal`
-(`render-overlay.tsx`), the route-tree harness (`route-tree.tsx`), the
-`@/api/provider` stand-in (`api-provider-mock.ts`, `apiProviderMock`),
-`settleFlashList` (`flash-list.ts`), `notifyQueriesSynchronously`
-(`query-notify.ts`), the stand-in for one browser's tabs (`fake-browser.ts`,
-with `tabStorage` for a per-tab `@/lib/storage`) and `driveAppState`
-(`app-state.ts`: sets `AppState` and tells its listeners, for a suite that puts
-the app in the background). For the
-player-store double see
-[the section above](#the-shared-player-store-double-srctestingplayer-store-mockts).
+The shared test helpers live outside that list, in `src/testing/`:
 
-Not covered by Jest, by design or necessity: `src/app/**` screens (kept
-logic-free), the `'widget'` functions in `src/widgets/` (they run in the widget
-extension), and the **native module** (`modules/audiosilo-player`) - Swift and
-Kotlin are checked by the native checks below and, for everything with a device or OS
-in the loop, only by a native build on a device, an emulator or the Simulator, which is
-why its invariants are documented so heavily in [Playback](playback.md).
+- the player-store double (`player-store-mock.ts`), described in
+  [The shared player-store double](#the-shared-player-store-double-srctestingplayer-store-mockts);
+- the native touch-target assertion (`touch-target.ts`, `expectNativeTarget`);
+- `mountWithPortal` (`render-overlay.tsx`);
+- the route-tree harness (`route-tree.tsx`);
+- the `@/api/provider` stand-in (`api-provider-mock.ts`, `apiProviderMock`);
+- `settleFlashList` (`flash-list.ts`);
+- `notifyQueriesSynchronously` (`query-notify.ts`);
+- the stand-in for one browser's tabs (`fake-browser.ts`, with `tabStorage` for a
+  per-tab `@/lib/storage`);
+- `driveAppState` (`app-state.ts`), which sets `AppState` and tells its listeners,
+  for a suite that puts the app in the background.
+
+Not covered by Jest, by design or necessity:
+
+- `src/app/**` screens, which are kept logic-free;
+- the `'widget'` functions in `src/widgets/`, which run in the widget extension;
+- the **native module** (`modules/audiosilo-player`). The
+  [native checks](#native-checks) cover Swift and Kotlin. For everything with a
+  device or OS in the loop, only a native build on a device, an emulator or the
+  Simulator checks it. That is why its invariants are documented so heavily in
+  [Playback](playback.md).
 
 ## Native checks
 
-The pure parts of the native module have tests of their own; everything else needs a
+The pure parts of the native module have tests of their own. Everything else needs a
 build on a device, an emulator, the Android Auto Desktop Head Unit or the iOS
 Simulator. Jest and the web prove nothing about Swift or Kotlin.
 
@@ -431,12 +465,15 @@ Then exercise what the dependency does (playback, Cast, Android Auto) and watch
 
 ### The iOS self-check
 
-No Simulator, just the Xcode toolchain: it compiles `VoiceBoostDSP.swift` and
-`ChapterClips.swift` with `SelfCheck/main.swift` (excluded from the pod) and checks the
-chapter-clip maths and the Voice boost DSP: on synthetic signals (the ceiling holds, quiet
-speech comes up more than 8 dB) and on speech it makes with `say` (quiet, normal and loud must
-come up by more than 8, 6 and 3 dB). It prints the measured lifts and exits non-zero on a
-failure:
+This needs no Simulator, only the Xcode toolchain. It compiles `VoiceBoostDSP.swift` and
+`ChapterClips.swift` with `SelfCheck/main.swift` (excluded from the pod). It checks the
+chapter-clip maths and the Voice boost DSP:
+
+- on synthetic signals, the ceiling holds and quiet speech comes up more than 8 dB;
+- on speech it makes with `say`, quiet, normal and loud must come up by more than 8, 6
+  and 3 dB.
+
+It prints the measured lifts and exits non-zero on a failure:
 
 ```sh
 modules/audiosilo-player/ios/SelfCheck/run.sh
@@ -444,7 +481,7 @@ modules/audiosilo-player/ios/SelfCheck/run.sh
 
 ### The watch Core
 
-No Simulator either: SwiftPM builds the Apple Watch app's Foundation-only `targets/watch/Core/`
+This needs no Simulator either. SwiftPM builds the Apple Watch app's Foundation-only `targets/watch/Core/`
 through `watch-core/` and runs its XCTest on the host. It skips, and passes, without `swift`, and
 CI's `watch.yml` runs it on a macOS runner. See [Apple Watch](apple-watch.md#tests).
 
@@ -455,13 +492,13 @@ npm run test:watch
 ### Android Auto on the Desktop Head Unit
 
 1. Install the DHU from the Android SDK Manager (SDK Tools > Android Auto Desktop Head
-   Unit Emulator; it lands in `$ANDROID_HOME/extras/google/auto/`).
+   Unit Emulator). It lands in `$ANDROID_HOME/extras/google/auto/`.
 2. On the phone, install Android Auto, open its settings and tap **Version and permission
    info** ten times to enable developer mode. From the overflow menu, open **Developer
-   settings** and turn on **Unknown sources** (Auto lists only apps from Google Play
-   otherwise, and a dev build is sideloaded), then choose **Start head unit server**.
-3. Connect the phone by USB and install a dev build. Leave it running: `run:android` keeps
-   Metro in the foreground, and the debug build loads its JS from it:
+   settings** and turn on **Unknown sources**. Otherwise Auto lists only apps from Google
+   Play, and a dev build is sideloaded. Then choose **Start head unit server**.
+3. Connect the phone by USB and install a dev build. Leave it running, because
+   `run:android` keeps Metro in the foreground and the debug build loads its JS from it:
 
    ```sh
    npx expo run:android
@@ -485,9 +522,9 @@ Check:
 - on the phone, the lock screen row still shows five actions (`adb shell dumpsys
   notification` shows `actions=5`).
 
-Log lines from System UI's `ImageLoader` with `cover.jpg` and `ENOENT` are harmless: Android's
-app data isolation keeps System UI out of the app's files, and it falls back to the session's
-bitmap.
+Log lines from System UI's `ImageLoader` with `cover.jpg` and `ENOENT` are harmless. Android's
+app data isolation keeps System UI out of the app's files, and System UI falls back to the
+session's bitmap.
 
 ### CarPlay in the iOS Simulator
 
@@ -519,9 +556,9 @@ Check:
 
 - the tabs and covers;
 - a tap: the spinner, then Now Playing;
-- Now Playing's chapter info, elapsed time and rate (they rely on the Simulator-only
-  `playbackState`, see [Playback](playback.md#ios-avqueueplayer)), the Chapters list, the rate
-  and bookmark buttons;
+- Now Playing's chapter info, elapsed time and rate, which rely on the Simulator-only
+  `playbackState` (see [Playback](playback.md#ios-avqueueplayer));
+- the Chapters list, and the rate and bookmark buttons;
 - a CarPlay-first cold launch (quit the app, then open it from the CarPlay window);
 - the pairing deep link, cold and warm, on the phone window (the UIScene life cycle's riskiest
   regression).
@@ -535,13 +572,13 @@ Nothing else can show these:
   scrubbed place (both platforms);
 - Smart speed on real narration on Android (no clipped word edges) and its time saved;
 - Voice boost by ear, including a toggle mid-book (no dropout on iOS);
-- the widget and the sleep timer Live Activity (lock screen and Dynamic Island); the widget
-  extension in a dev build beside the store app needs its own ids (below);
+- the widget and the sleep timer Live Activity (lock screen and Dynamic Island). The widget
+  extension in a dev build beside the store app needs its own ids, listed after this list;
 - a token read with the iPhone locked, after the token has moved to the after-first-unlock
   store;
-- the watch's books arriving from the phone (`transferUserInfo` does not deliver between paired
-  simulators: [Apple Watch](apple-watch.md#what-paired-simulators-cant-do)), its background
-  playback with the wrist down, and its background sync.
+- the watch's books arriving from the phone, because `transferUserInfo` does not deliver
+  between paired simulators ([Apple Watch](apple-watch.md#what-paired-simulators-cant-do));
+- the watch's background playback with the wrist down, and its background sync.
 
 A dev build installed beside the store app (say `app.audiosilo.dev`) must not claim the
 store app's ids, and prebuild writes the store's ids into every target. After prebuild,
@@ -570,18 +607,24 @@ npx tsc --noEmit && npm run lint && npm run format && npm test
 npx expo install --check && node scripts/check-native-dupes.mjs
 ```
 
-CI (`.github/workflows/ci.yml`) gates all of them on every PR/push: the Expo SDK
-pins, one copy of each native module, typecheck, ESLint, **prettier `--check`**
-(the `format` script; fix with `npx prettier --write .`) and the Jest suite. CI reads the Node
-version from `.nvmrc` (`24.16.0`) via `node-version-file`, and installs with a
-frozen `npm ci` - keep `package-lock.json` committed in sync after dependency
-changes. See [Gates and CI](../contributing/gates-and-ci.md) for the
+CI (`.github/workflows/ci.yml`) gates all of them on every PR and push:
+
+- the Expo SDK pins;
+- one copy of each native module;
+- typecheck;
+- ESLint;
+- **prettier `--check`** (the `format` script; fix with `npx prettier --write .`);
+- the Jest suite.
+
+CI reads the Node version from `.nvmrc` (`24.16.0`) via `node-version-file`, and
+installs with a frozen `npm ci`. Keep `package-lock.json` committed in sync after
+dependency changes. See [Gates and CI](../contributing/gates-and-ci.md) for the
 workspace-wide picture.
 
 :::caution[Green gates ≠ verified]
 The gates run on Node with full `Intl` and no device: they cannot see
-Hermes-runtime crashes (see [the Intl caveat](i18n.md#the-hermes-intl-caveat)),
-native-module behavior, CSS/layout regressions, or live-API integration. For
-anything touching those seams, verify on the real surface (device build, web
-export, running server) before claiming it works.
+Hermes-runtime crashes (see [the Hermes Intl caveat](i18n.md#the-hermes-intl-caveat)),
+native-module behavior, CSS and layout regressions, or live-API integration. For
+anything touching those seams, verify on the real surface (a device build, the web
+export or a running server) before claiming it works.
 :::
