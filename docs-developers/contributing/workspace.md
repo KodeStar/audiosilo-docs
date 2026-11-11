@@ -4,16 +4,16 @@ description: "How the multi-repo workspace is laid out, the toolchain you need, 
 ---
 
 AudioSilo is one product across several repositories, and they are developed
-together from a single **workspace folder**. Get the layout right first - some of
-the build machinery assumes it.
+together from a single **workspace folder**. Get the layout right first, because
+some of the build scripts assume it.
 
 ## The layout
 
-The workspace root is itself a small git repo - the
-**`KodeStar/audiosilo` meta repo** - holding the cross-repo glue (the
-integration contract, code-health checklist, distribution/store runbooks, and
-the app-store asset pipeline). The code repos are independent clones **inside**
-it, gitignored by the meta repo:
+The workspace root is itself a small git repo, the
+**`KodeStar/audiosilo` meta repo**. It holds the cross-repo glue: the
+integration contract, the code-health checklist, the distribution and store
+runbooks, and the app-store asset pipeline. The code repos are independent
+clones **inside** it, gitignored by the meta repo:
 
 ```
 ~/dev/audiosilo/           github.com/KodeStar/audiosilo (the glue)
@@ -31,13 +31,19 @@ it, gitignored by the meta repo:
 ```
 
 Two former repos are **archived** (November 2026) and no longer part of the
-workspace: `audiosilo-manager`, the desktop manager, and `audiosilo-sidecars`,
-the contributor extraction tool; the [Bridge does their jobs now](../bridge/index.md#what-it-is-for).
-The bootstrap script doesn't clone them; an existing checkout of either stays
-gitignored, so it doesn't show up as untracked.
+workspace:
 
-Setting up from scratch is two commands - the bootstrap script clones any child
-repo that's missing (`PROTO=https` to clone over HTTPS instead of SSH):
+- `audiosilo-manager`, the desktop manager;
+- `audiosilo-sidecars`, the contributor extraction tool.
+
+The Bridge does their jobs now (see
+[What it is for](../bridge/index.md#what-it-is-for)). The bootstrap script
+doesn't clone them. An existing checkout of either stays gitignored, so it
+doesn't show up as untracked.
+
+Setting up from scratch takes two commands. The bootstrap script clones any
+child repo that's missing (set `PROTO=https` to clone over HTTPS instead of
+SSH):
 
 ```sh
 git clone https://github.com/KodeStar/audiosilo.git ~/dev/audiosilo
@@ -51,9 +57,9 @@ one it cannot clone and continues with the public repositories.
 
 - **Cross-repo work is the norm here.** Wire-format changes, pairing, media auth,
   and capability flags can touch several repos in one logical change (see
-  [cross-repo changes](cross-repo-changes.md)). Opening your editor/agent at the
-  workspace root puts every repo in scope at once and removes the cross-repo
-  permission friction of working in a single repo.
+  [Landing a cross-repo change](cross-repo-changes.md)). Opening your editor or agent at
+  the workspace root puts every repo in scope at once, and removes the
+  cross-repo permission prompts you get when you work in a single repo.
 - **Helper scripts assume the layout.** For example
   `audiosilo-server/scripts/build-web.sh` defaults `FRONTEND_DIR` to
   `$HOME/dev/audiosilo/audiosilo-frontend`.
@@ -62,13 +68,13 @@ one it cannot clone and continues with the public repositories.
 
 | Tool | Needed for | Install / notes |
 |---|---|---|
-| **Go 1.26+** | server, audiosilo-meta, the Bridge | Each `go.mod` sets the minimum `go` version (the server's also pins a `toolchain`); with the default `GOTOOLCHAIN=auto`, any Go 1.21+ fetches the toolchain it needs on first use. |
-| **Node 24** | frontend, the server's admin console, this docs site | `.nvmrc` pins `24.16.0` in `audiosilo-frontend` and in `audiosilo-server/admin-ui` - run `nvm use` in each. **Older Node breaks Expo**: React Native 0.88 needs Node `^22.13`, `^24.3` or `>= 26` (not 23 or 25), and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an old system `node` crashes the moment a `.env` file exists. |
-| **golangci-lint v2** | server and audiosilo-meta lint gates | v2 has been required since Go 1.25. Config is each repo's `.golangci.yml`, adopted at a *green baseline* (see [gates and CI](gates-and-ci.md)). |
-| **ffmpeg / ffprobe** | server scanner tests, transcoding | Optional at runtime (the server degrades gracefully), but a few scanner tests `t.Skip` without ffprobe - install it so they actually run (CI installs it). Use 7.1 or 8.1 to run the in-process probe's live comparison; regenerating its fixtures also needs `lame` and `metaflac` (see [gates and CI](gates-and-ci.md#the-in-process-probes-fixtures)). |
-| **Docker** | container images, `scripts/fetch-web-player.sh` | Only needed for image builds / release work, not day-to-day dev. |
-| **Playwright** | regenerating documentation screenshots | Only if you work on the docs screenshot pipeline (`audiosilo-docs/screenshots/`) or the marketing/store asset runbook (workspace `SCREENSHOTS.md`). See [documentation](documentation.md). |
-| **Xcode / Android Studio (JDK 17 + Android SDK 37)** | native frontend dev builds | Only for running the player on iOS/Android; web dev needs neither. |
+| **Go 1.26+** | server, audiosilo-meta, the Bridge | Each `go.mod` sets the minimum `go` version, and the server's also pins a `toolchain`. With the default `GOTOOLCHAIN=auto`, any Go 1.21+ fetches the toolchain it needs on first use. |
+| **Node 24** | frontend, the server's admin console, this docs site | `.nvmrc` pins `24.16.0` in `audiosilo-frontend` and in `audiosilo-server/admin-ui`. Run `nvm use` in each. **Older Node breaks Expo.** React Native 0.88 needs Node `^22.13`, `^24.3` or `>= 26` (not 23 or 25). The Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an old system `node` crashes the moment a `.env` file exists. |
+| **golangci-lint v2** | server and audiosilo-meta lint gates | v2 has been required since Go 1.25. Config is each repo's `.golangci.yml`, adopted at a *green baseline* (see [Quality gates and CI](gates-and-ci.md)). |
+| **ffmpeg / ffprobe** | server scanner tests, transcoding | Optional at runtime, since the server degrades gracefully. A few scanner tests `t.Skip` without ffprobe, so install it to make them run (CI installs it). Use 7.1 or 8.1 to run the in-process probe's live comparison. Regenerating its fixtures also needs `lame` and `metaflac` (see [The in-process probe's fixtures](gates-and-ci.md#the-in-process-probes-fixtures)). |
+| **Docker** | container images, `scripts/fetch-web-player.sh` | Only needed for image builds and release work, not day-to-day dev. |
+| **Playwright** | regenerating documentation screenshots | Only if you work on the docs screenshot pipeline (`audiosilo-docs/screenshots/`) or the marketing and store asset runbook (workspace `SCREENSHOTS.md`). See [Maintaining these docs](documentation.md). |
+| **Xcode / Android Studio (JDK 17 + Android SDK 37)** | native frontend dev builds | Only for running the player on iOS or Android. Web dev needs neither. |
 
 ## Run the whole stack locally
 
@@ -90,8 +96,8 @@ AUDIOSILO_WEB_DIR=~/dev/audiosilo/audiosilo-frontend/dist \
   ./bin/audiosilo --data ./data
 ```
 
-The **first run prints the admin credentials and an auth code once** - copy them
-then. You get the web player at `http://localhost:8080/web`, the admin console at
+The **first run prints the admin credentials and an auth code once**, so copy
+them then. You get the web player at `http://localhost:8080/web`, the admin console at
 `/admin`, and the public connect page at `/`.
 
 ### Or: a live frontend dev loop (hot reload)
@@ -105,13 +111,13 @@ cd ~/dev/audiosilo/audiosilo-frontend && npm run web   # http://localhost:8081
 
 The player and API are now different origins, so set the server's config
 `cors_origins` to include `http://localhost:8081` (see
-[server configuration](../server/configuration.md)). The server's default TLS is
-self-signed - either trust it in the browser or run with
+[Configuration reference](../server/configuration.md)). The server's default TLS is
+self-signed, so either trust it in the browser or run with
 `AUDIOSILO_TLS_MODE=off` locally.
 
 ## Per-repo dev commands
 
-Run commands **from each repo's own root** - the toolchains are fully
+Run commands **from each repo's own root**. The toolchains are fully
 independent.
 
 **audiosilo-server**
@@ -127,8 +133,12 @@ scripts/build-admin.sh                       # build the admin console (admin-ui
 npm --prefix admin-ui run dev                # admin console dev server (proxies to :8080)
 ```
 
-Useful flags: `--data` (config/db/certs dir), `--ffprobe`/`--ffmpeg` (`""`
-disables), `--setup` (choose the first admin's password on a browser page instead of the printed creds; the console's setup flow follows either way).
+Useful flags:
+
+- `--data`: the config, database and certificates directory.
+- `--ffprobe` and `--ffmpeg`: the tool paths (`""` disables one).
+- `--setup`: choose the first admin's password on a browser page instead of
+  the printed credentials. The console's setup flow follows either way.
 
 **audiosilo-frontend**
 
@@ -158,36 +168,37 @@ npm run build               # production build (fails on broken links)
 ```
 
 The full pre-merge quality gate for each repo is on
-[gates and CI](gates-and-ci.md).
+[Quality gates and CI](gates-and-ci.md).
 
 ## Environment gotchas
 
-These are the ones that repeatedly bite new setups - each is documented in the
+These are the ones that repeatedly bite new setups. Each is documented in the
 repos' own guides and verified here:
 
-- **Use Node 24 via nvm, every shell.** The frontend and the server's
-  `admin-ui` both pin `24.16.0` in `.nvmrc`. A machine's
-  default `node` being too old fails in confusing ways (the Expo env loader
-  crash above).
-- **Don't `cd` into `node_modules`.** Run tool commands from the repo root - in a
-  persistent shell a stray `cd` into `node_modules` breaks Expo's config
-  resolution for every subsequent command.
+- **Use Node 24 via nvm, in every shell.** The frontend and the server's
+  `admin-ui` both pin `24.16.0` in `.nvmrc`. A machine's default `node` that is
+  too old fails in confusing ways, such as the Expo env loader crash in the
+  [Toolchain matrix](#toolchain-matrix).
+- **Don't `cd` into `node_modules`.** Run tool commands from the repo root. In a
+  persistent shell, a stray `cd` into `node_modules` breaks Expo's config
+  resolution for every later command.
 - **Native runs need a dev build, not Expo Go.** The player has a custom native
   module (`modules/audiosilo-player`), plus `react-native-svg` and
-  `expo-secure-store` - Expo Go can't load them. Use `npx expo prebuild`, then
-  `npx expo run:ios` / `npx expo run:android`. Web (`npm run web`) needs no
-  native build at all.
-- **Editing native module code requires a full rebuild.** Changes under
-  `modules/audiosilo-player/{ios,android}` are **not** picked up by a Metro/JS
-  reload - rerun `npx expo run:ios` / `run:android` on a device or simulator.
-  Treat any native edit as unverified until a device build confirms it.
+  `expo-secure-store`, and Expo Go can't load them. Use `npx expo prebuild`,
+  then `npx expo run:ios` or `npx expo run:android`. Web (`npm run web`) needs
+  no native build at all.
+- **Editing native module code requires a full rebuild.** A Metro reload does
+  **not** pick up changes under `modules/audiosilo-player/{ios,android}`. Rerun
+  `npx expo run:ios` or `run:android` on a device or simulator. Treat any native
+  edit as unverified until a device build confirms it.
 - **No FontAwesome token is needed to build.** Icons are vendored as plain SVG in
-  the frontend (`src/components/ui/icon-data.ts`); `npm install` pulls nothing
-  private. A FontAwesome Pro token is only needed to *add or regenerate* an icon
-  via the isolated generator in `scripts/glyphs/`.
-- **Web dev needs CORS** (different origins, see above) or a same-origin export
-  via `build-web.sh`.
+  the frontend (`src/components/ui/icon-data.ts`), so `npm install` pulls
+  nothing private. A FontAwesome Pro token is only needed to *add or
+  regenerate* an icon via the isolated generator in `scripts/glyphs/`.
+- **Web dev needs CORS** when the player and the API are on different origins
+  (see [Or: a live frontend dev loop](#or-a-live-frontend-dev-loop-hot-reload)),
+  or a same-origin export via `build-web.sh`.
 
 Once you're set up, read the workspace `CODE-HEALTH.md` (Definition of Done) and
 the [invariants](../architecture/invariants.md) before writing code, and
-[gates and CI](gates-and-ci.md) before opening a PR.
+[Quality gates and CI](gates-and-ci.md) before opening a PR.
