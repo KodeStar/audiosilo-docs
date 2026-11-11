@@ -33,17 +33,19 @@ instead. See
 
 :::note
 First-run **admin bootstrap** is keyed off the database (does an admin
-exist?), not off config-file existence - pre-supplying a `config.yaml` does
-not suppress the credentials banner or the setup page.
+exist?), not off whether the config file exists. A `config.yaml` supplied in
+advance does not suppress the credentials banner or the setup page.
 
-The console's first-run setup flow is keyed off the database too: the
-`server_state` key `setup_state` (no row = a fresh server, flow not finished;
-an upgraded server is marked finished, see
-[Data model](data-model.md#server-state)). A library declared in `config.yaml` or the
-environment doesn't finish it: the flow lists it as already added
-(`GET /admin/setup`'s `config_libraries`) and its naming step can still switch
-that library's `metadata_source`, which survives restarts (the config sync
-updates only a declared library's root and default view).
+The console's first-run setup flow is keyed off the database too, through the
+`server_state` key `setup_state`. No row means a fresh server whose flow is not
+finished. An upgraded server is marked finished (see
+[Data model](data-model.md#server-state)).
+
+A library declared in `config.yaml` or the environment doesn't finish the flow.
+The flow lists it as already added (`GET /admin/setup`'s `config_libraries`),
+and its naming step can still switch that library's `metadata_source`. That
+choice survives restarts, because the config sync updates only a declared
+library's root and default view.
 :::
 
 ## CLI flags (`cmd/audiosilo`)
@@ -51,19 +53,20 @@ updates only a declared library's root and default view).
 | Flag | Default | Meaning |
 |---|---|---|
 | `--data` | `./data` | Data directory: config, SQLite database, generated certs, downloaded tools, the Matroska remux cache (`cache/remux/`), the watch rendition cache (`cache/renditions/watch/`) |
-| `--ffprobe` | `ffprobe` | Path to ffprobe (durations, chapters, codec detection). With FFmpeg 7.1 or 8.1 the scanner reads most files in-process by that release's rules and runs it only for the rest; with any other release ffprobe reads every file (see [The in-process probe](scanner.md#the-in-process-probe)). **`""` disables it**; the in-process probe still runs, by FFmpeg 8.1's rules, so most files keep their duration, codec and chapters, and a file it is unsure of gets none (its `codec` empty, so `direct_playable` defaults to true; see [With no ffprobe](scanner.md#with-no-ffprobe)) |
-| `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding, the MP3-in-Matroska remux and the watch renditions. **`""` disables it** - `?transcode=1` returns 503, the `transcode` capability reports false, an `.mka` is served as stored (no remux, `direct_playable: false`), and the `renditions` capability is false (`rendition=` answers `404 rendition_unavailable`) |
-| `--setup` | `false` | First-run **setup page**: instead of auto-creating the admin and printing credentials once, mint a one-time token and enable the guarded `/setup` page, where the admin's username and password are chosen in the browser (see [Built-in web UI](web-ui.md#first-run-setup-page-setup)). Either way the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) then adds the books folder and the rest on the first `/admin` visit |
+| `--ffprobe` | `ffprobe` | Path to ffprobe (durations, chapters, codec detection). With FFmpeg 7.1 or 8.1 the scanner reads most files in-process by that release's rules and runs ffprobe only for the rest. With any other release ffprobe reads every file (see [The in-process probe](scanner.md#the-in-process-probe)). **`""` disables it.** The in-process probe still runs, by FFmpeg 8.1's rules, so most files keep their duration, codec and chapters. A file the probe is unsure of gets none: its `codec` is empty, so `direct_playable` defaults to true (see [With no ffprobe](scanner.md#with-no-ffprobe)) |
+| `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding, the MP3-in-Matroska remux and the watch renditions. **`""` disables it.** Then `?transcode=1` returns 503 and the `transcode` capability reports false. An `.mka` is served as stored (no remux, `direct_playable: false`). The `renditions` capability is false, and `rendition=` answers `404 rendition_unavailable` |
+| `--setup` | `false` | First-run **setup page**. Instead of auto-creating the admin and printing credentials once, the server mints a one-time token and enables the guarded `/setup` page, where the admin's username and password are chosen in the browser (see [Built-in web UI](web-ui.md#first-run-setup-page-setup)). Either way, the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) then adds the books folder and the rest on the first `/admin` visit |
 
-**One command** (from 2.5.0, `command` in `cmd/audiosilo/main.go`): after the
-flags, `audiosilo version` prints `audiosilo <version>` and exits `0` before
-anything touches the data directory. Any other positional argument, or `version`
-with an argument after it, prints a usage error and exits `2`, as the flag package
-does for a bad flag (before, a stray argument was ignored and the server started).
+**One command** (`command` in `cmd/audiosilo/main.go`). After the flags,
+`audiosilo version` prints `audiosilo <version>` and exits `0` before anything
+touches the data directory. Any other positional argument, or `version` with an
+argument after it, prints a usage error and exits `2`, as the flag package does
+for a bad flag.
 
 A bare tool name (no path separator) is resolved **next to the server
-executable first**, then on `$PATH`; an explicit path is used as-is. If a tool
-is enabled but not found locally, the auto-download kicks in (below).
+executable first**, then on `$PATH`. An explicit path is used as it is. If a
+tool is enabled but not found locally, the launcher downloads it (see
+[ffmpeg/ffprobe resolution & auto-download](#ffmpegffprobe-resolution--auto-download)).
 
 ## YAML reference
 
@@ -71,49 +74,62 @@ is enabled but not found locally, the auto-download kicks in (below).
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `name` | string, `""` | The server's display name (at most 64 characters, no control characters): `GET /server`'s `name`, the pairing payload's `server_name` (the player's sign-in screen shows it), and the admin console's top bar and System/About pages. Empty means `"AudioSilo"` (`Config.DisplayName`). No environment variable |
+| `name` | string, `""` | The server's display name, at most 64 characters with no control characters. It is `GET /server`'s `name`, the pairing payload's `server_name` (the player's sign-in screen shows it), and the name in the admin console's top bar and System and About pages. Empty means `"AudioSilo"` (`Config.DisplayName`). No environment variable |
 | `update_check` | bool, `true` | Let the server ask GitHub Releases once a day whether a newer version exists (`internal/updates`; see [Update check](#update-check)). `false` means no request is ever made |
-| `activity.session_days` | int, `400` | How many days raw listening sessions (device, app, time of day, playback mode) are kept before the daily retention job (`pkg/launcher` `retention`, reading the live setting at each run) sums them into `listening_daily` and drops that detail. 30-3650. The default keeps a year of detail for Activity's longest range; Activity reads the daily totals for days past it |
-| `server_id` | string, minted | The stable per-install identity (see [`GET /server`](api/reference.md#get-apiv1server)). Minted on first start and never changed; not a setting |
+| `activity.session_days` | int, `400` | How many days raw listening sessions (device, app, time of day, playback mode) are kept, 30-3650. After that the daily retention job (`pkg/launcher` `retention`, which reads the live setting at each run) sums them into `listening_daily` and drops that detail. The default keeps a year of detail for Activity's longest range. Activity reads the daily totals for days past it |
+| `server_id` | string, minted | The stable per-install identity (see [`GET /server`](api/reference.md#get-apiv1server)). Minted on first start and never changed. It is not a setting |
 
 ### Server & network
 
 | Key | Type / default | Meaning |
 |---|---|---|
 | `bind` | string, `"0.0.0.0:8080"` | `host:port` to listen on. Must parse with `net.SplitHostPort` |
-| `public_url` | string, `""` | Externally reachable base URL, used in QR pairing payloads, invite links and the first-run banner's setup URL. Empty → derived per-request from scheme + `Host` header. Also the **away** address the apps use outside the home network (see [Home address](#home-address-lan_url)) |
-| `lan_url` | string, `""` | The server's **home** address on the household network, e.g. `http://192.168.1.20:8080`: see [Home address](#home-address-lan_url). Empty → derived per request when the request's `Host` is a home-network host |
+| `public_url` | string, `""` | Externally reachable base URL, used in QR pairing payloads, invite links and the first-run banner's setup URL. When empty, the server derives it per request from the scheme and the `Host` header. It is also the **away** address the apps use outside the home network (see [Home address](#home-address-lan_url)) |
+| `lan_url` | string, `""` | The server's **home** address on the household network, e.g. `http://192.168.1.20:8080` (see [Home address](#home-address-lan_url)). When empty, the server derives it per request when the request's `Host` is a home-network host |
 | `trusted_proxies` | []string (CIDRs), `[]` | Networks whose `X-Forwarded-For` is trusted when deriving the client IP (which keys the per-address [rate limit](#rate-limits-rate_limit) and the lockouts). Set when running behind a reverse proxy. Each entry must be a valid CIDR |
-| `cors_origins` | []string, `[]` | Browser origins granted CORS (methods `GET, POST, PUT, PATCH, DELETE, OPTIONS`). Empty = no cross-origin headers at all (native apps and same-origin web still work); `"*"` disables the check entirely. Needed for a hot-reload frontend dev server, e.g. `http://localhost:8081`. Once set, every authenticated media answer (covers, streams) is `Cross-Origin-Resource-Policy: cross-origin`, so a player on another site shows covers and plays audio (from 2.4.1; before, the browser blocked its covers): see [Transport hardening](auth-and-security.md#transport-hardening) |
-| `max_upload_bytes` | int64, `2147483648` (2 GiB) | Reserved for the planned `POST /uploads` (Phase B) - **not yet enforced**; JSON request bodies use a fixed 1 MiB cap regardless |
+| `cors_origins` | []string, `[]` | Browser origins granted CORS (methods `GET, POST, PUT, PATCH, DELETE, OPTIONS`). Empty means no cross-origin headers at all; native apps and same-origin web still work. `"*"` disables the check entirely. Needed for a hot-reload frontend dev server, e.g. `http://localhost:8081`. Once set, every authenticated media answer (covers, streams) is `Cross-Origin-Resource-Policy: cross-origin`, so a player on another site shows covers and plays audio (see [Transport hardening](auth-and-security.md#transport-hardening)) |
+| `max_upload_bytes` | int64, `2147483648` (2 GiB) | Reserved for the planned `POST /uploads` and **not yet enforced**. JSON request bodies use a fixed 1 MiB cap regardless |
 
 #### Home address (`lan_url`)
 
-`lan_url` (`AUDIOSILO_LAN_URL`, console **Settings > General > Home address**,
-`general.lan_url`; it applies without a restart) is the server's address on the home
-network, an absolute `http(s)` address with no query or fragment. With `public_url` (the
-**away** address) it makes the `addresses` capability: the apps learn both when they pair
-(and from [`GET /addresses`](api/reference.md#get-apiv1addresses) afterwards) and switch
-to the home address whenever they can reach it, using `public_url` when away. Wire shape
-and where it appears: [Home and away addresses](api/reference.md#home-and-away-addresses).
+`lan_url` is the server's address on the home network: an absolute `http(s)`
+address with no query or fragment. Its variable is `AUDIOSILO_LAN_URL`, and the
+console sets it at **Settings > General > Home address** (`general.lan_url`)
+without a restart.
+
+Together with `public_url` (the **away** address) it makes the `addresses`
+capability. The apps learn both addresses when they pair, and from
+[`GET /addresses`](api/reference.md#get-apiv1addresses) afterwards. They switch to
+the home address whenever they can reach it, and use `public_url` when away. For the
+wire shape and where it appears, see
+[Home and away addresses](api/reference.md#home-and-away-addresses).
 
 `config.Addresses(scheme, host)` is the pure core, wrapped per request by `api.addresses(r)`:
 
 - `away` is `public_url` without a trailing `/`.
-- `home` is `lan_url`, or, when that is empty, `scheme://Host` of **this request** when
-  `isHomeNetworkHost(Host)`: a private IP (RFC 1918, IPv6 ULA `fc00::/7`), a
-  link-local one, or a name ending in `.local`, `.lan`, `.home.arpa` or `.internal`, or a
-  single-label name. A bare IPv6 host is written in brackets in the address. Never loopback (`127.0.0.0/8`, `::1`, `localhost`): no other device can reach it.
-  Never carrier-grade NAT space (`100.64.0.0/10`, which Go's `IsPrivate` leaves out): it
-  is the ISP's network, not the household's. The scheme follows the same rule as the
-  pairing `base_url` (`https` on a TLS connection, else `http`), except on a server that
-  serves [home HTTP](#home-http-tlshome_http) (`config.ServesHomeHTTP`): there a derived
-  home is always `http://`, even for a request that came over https, and keeps the
-  request's port (`:443` is added when the `Host` has none, since that port is the one
-  answering http, never 80). A configured `lan_url` is used as it is. `X-Forwarded-*` is
-  not trusted. A request that came through a reverse proxy (it carries `Forwarded` or
-  any `X-Forwarded-*` header) never derives a home address: its `Host` is the proxy's
-  upstream, not an address a device can use.
+- `home` is `lan_url`. When that is empty, it is `scheme://Host` of **this request**
+  when `isHomeNetworkHost(Host)` holds. A home-network host is one of these:
+  - a private IP (RFC 1918, IPv6 ULA `fc00::/7`) or a link-local one;
+  - a name ending in `.local`, `.lan`, `.home.arpa` or `.internal`;
+  - a single-label name.
+
+  A bare IPv6 host is written in brackets in the address. Two kinds of host never
+  count:
+  - loopback (`127.0.0.0/8`, `::1`, `localhost`), because no other device can reach it;
+  - carrier-grade NAT space (`100.64.0.0/10`, which Go's `IsPrivate` leaves out),
+    because it is the ISP's network, not the household's.
+
+  The scheme follows the same rule as the pairing `base_url`: `https` on a TLS
+  connection, else `http`. The exception is a server that serves
+  [home HTTP](#home-http-tlshome_http) (`config.ServesHomeHTTP`). There a derived home
+  is always `http://`, even for a request that came over https, and it keeps the
+  request's port. When the `Host` has no port, `:443` is added, since that port is
+  the one answering http, never 80.
+
+  A configured `lan_url` is used as it is. `X-Forwarded-*` is not trusted. A request
+  that came through a reverse proxy (it carries `Forwarded` or any `X-Forwarded-*`
+  header) never derives a home address, because its `Host` is the proxy's upstream,
+  not an address a device can use.
 - A `home` equal to the `away` is dropped.
 
 :::caution[Reverse proxies and the derived home address]
@@ -131,54 +147,63 @@ plain `http` behind TLS). Set `lan_url` to give the apps a home address; a confi
 | `tls.hosts` | []string, `[]` | autocert: hostnames to obtain certificates for. **Required when mode is `autocert`** |
 | `tls.cache_dir` | string, `<data>/certs` | autocert: certificate cache directory (re-defaulted to `<data>/certs` whenever empty) |
 | `tls.home_http` | bool, `true` | selfsigned only: the bind port also answers plain HTTP to home-network clients, see [Home HTTP](#home-http-tlshome_http). Ignored in the other modes |
-| `tls.cert_file` / `tls.key_file` | string, `""` | selfsigned: explicit paths for the persisted cert/key. Empty → `<data>/selfsigned-cert.pem` / `<data>/selfsigned-key.pem` |
+| `tls.cert_file` / `tls.key_file` | string, `""` | selfsigned: explicit paths for the persisted cert and key. Empty means `<data>/selfsigned-cert.pem` and `<data>/selfsigned-key.pem` |
 
-Mode-related behaviors worth knowing: HSTS
-(`Strict-Transport-Security`) is sent **only** in `autocert` mode - never for
-`selfsigned` (pinning HSTS would make the certificate warning impossible to
-bypass), and with `off` the proxy owns HSTS. In `autocert` mode the server
-logs a warning when `bind` is not on port 443, since ACME validation will
-fail otherwise.
+How the modes differ beyond the certificate:
+
+- HSTS (`Strict-Transport-Security`) is sent **only** in `autocert` mode. It is
+  never sent for `selfsigned`, because pinning HSTS would make the certificate
+  warning impossible to bypass. With `off`, the proxy owns HSTS.
+- In `autocert` mode the server logs a warning when `bind` is not on port 443,
+  since ACME validation fails otherwise.
 
 #### Home HTTP (`tls.home_http`)
 
-The native apps can't trust a self-signed certificate (there is no "proceed anyway" in
-an app), so in `selfsigned` mode with `tls.home_http` on (the default;
-`AUDIOSILO_TLS_HOME_HTTP`, console `network.tls_home_http`, restart) the bind port
-serves both protocols. `internal/server`:
+The native apps can't trust a self-signed certificate, because an app has no
+"proceed anyway". So in `selfsigned` mode with `tls.home_http` on, the bind port
+serves both protocols. `tls.home_http` is on by default. Its variable is
+`AUDIOSILO_TLS_HOME_HTTP`, its console setting is `network.tls_home_http`, and a
+change needs a restart. In `internal/server`:
 
-- `splitListener` accepts each connection and, in its own goroutine (a silent client
-  never blocks the accept loop), reads the first byte under the 10 s header timeout:
-  `0x16` (a TLS handshake record) makes it a `*tls.Conn`, anything else stays plain. A
-  connection that sends nothing in time is closed, and so is one still being read when
-  the server shuts down. One `http.Server` serves both kinds with the usual timeouts
-  (ALPN offers `h2` and `http/1.1`, as `ServeTLS` would).
-- `homeHTTPGate` serves a plain HTTP request only when the **connection's own** remote
-  address (`r.RemoteAddr`; never `X-Forwarded-For`, which the client writes) is loopback,
-  or is `config.HomeNetworkIP` (private RFC 1918 / IPv6 ULA, link-local; not CGNAT
-  `100.64.0.0/10`) **and** the request's Host is a home-network host
-  (`config.HomeNetworkHost`: a private IP, a `.local`/`.lan`/`.home.arpa`/`.internal` or
-  single-label name). Any other plain request gets a `308` to the same URL on https (same
-  Host and port, `:80` for a Host without one), or a `400` when its Host can't make that
-  URL. TLS requests pass untouched.
+- `splitListener` accepts each connection and reads its first byte in its own
+  goroutine, under the 10 s header timeout, so a silent client never blocks the
+  accept loop. A first byte of `0x16` (a TLS handshake record) makes the connection
+  a `*tls.Conn`. Anything else stays plain. A connection that sends nothing in time
+  is closed, and so is one still being read when the server shuts down. One
+  `http.Server` serves both kinds with the usual timeouts (ALPN offers `h2` and
+  `http/1.1`, as `ServeTLS` would).
+- `homeHTTPGate` serves a plain HTTP request only when the **connection's own**
+  remote address (`r.RemoteAddr`) qualifies. It never reads `X-Forwarded-For`,
+  which the client writes. The request is served when either:
+  - the remote address is loopback; or
+  - the remote address is `config.HomeNetworkIP` (private RFC 1918 or IPv6 ULA,
+    or link-local; not CGNAT `100.64.0.0/10`) **and** the request's Host is a
+    home-network host (`config.HomeNetworkHost`: a private IP, a `.local`,
+    `.lan`, `.home.arpa` or `.internal` name, or a single-label name).
 
-Home HTTP is off, whatever `home_http` says, when `tls.cert_file` is set: a certificate
-the admin supplied may be one the devices trust (a private CA, mkcert), so they keep https.
+  Any other plain request gets a `308` to the same URL on https, with the same
+  Host and port (`:80` for a Host without one). When its Host can't make that URL,
+  it gets a `400`. TLS requests pass untouched.
+
+Home HTTP is off, whatever `home_http` says, when `tls.cert_file` is set. A
+certificate the admin supplied may be one the devices trust (a private CA,
+mkcert), so they keep https.
 
 The server logs at start that plain HTTP is served to home-network clients. The derived
 home address becomes `http://` (see [Home address](#home-address-lan_url)), so a device
 paired over the https QR still learns an address it can use. No HSTS is sent on
 self-signed, and no CSP carries `upgrade-insecure-requests`, so the console and the web
-player also work over http on the LAN (without the secure-context features: the service
-worker, the clipboard API).
+player also work over http on the LAN. Over http they lack the secure-context
+features, such as the service worker and the clipboard API.
 
 :::note[Gateways and the source address]
-Docker Desktop (Mac/Windows), rootless Docker, Docker's userland proxy (e.g. for IPv6
-connections to a published port) and routers that rewrite a forwarded port's source hand
-the server connections from a private address, such as `172.17.0.1`, whoever made them.
-The Host check is what keeps an internet client on https there: it names the server by
-its public name or address. A client that sends a home-network Host from outside (a
-forged one) only chooses cleartext for itself.
+Some setups hand the server connections from a private address, such as
+`172.17.0.1`, whoever made them: Docker Desktop (Mac and Windows), rootless
+Docker, Docker's userland proxy (for example for IPv6 connections to a published
+port), and routers that rewrite a forwarded port's source. There, the Host check
+is what keeps an internet client on https, because such a client names the server
+by its public name or address. A client outside that sends a forged home-network
+Host only chooses cleartext for itself.
 :::
 
 ### Rate limits (`rate_limit.*`)
@@ -198,11 +223,13 @@ bucket is answered `429 rate limit exceeded`.
 **Only what you set is kept.** A rate or burst left out, or `0`, is the
 release's default (`RateLimitConfig.Effective`, the `config.Default*RateLimit`
 values above). The fields are `omitempty`, so an unset value is never written
-into `config.yaml` and a later release's defaults reach an existing install;
-set one only to change it. Each has a variable (see
-[Environment variables](#environment-variables)) and none has a console setting.
-The token bucket's default is high on purpose: it is there to stop a runaway
+into `config.yaml`, and a later release's defaults reach an existing install.
+Set one only to change it. Each has a variable (see
+[Environment variables](#environment-variables)), and none has a console setting.
+
+The token bucket's default is high on purpose. It is there to stop a runaway
 client, not to pace a web player loading a whole library page by page.
+
 The lockouts on wrong passwords, invite codes and Bridge pairing codes, and the
 attempt caps on demo sessions and account changes, are separate and not
 configurable.
@@ -226,65 +253,72 @@ configurable.
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `web_dir` | string, `""` | Directory of the prebuilt web player served at `/web`. Empty (and no embedded player) → `/web` unmounted and the `web_player` capability reports false. The Docker image bakes a pinned build at `/app/web` |
+| `web_dir` | string, `""` | Directory of the prebuilt web player served at `/web`. When it is empty and no player is embedded, `/web` is not mounted and the `web_player` capability reports false. The Docker image bakes a pinned build at `/app/web` |
 | `app_links.apple_app_ids` | []string, `[]` | `"<TEAMID>.<bundleId>"` entries for `/.well-known/apple-app-site-association` |
 | `app_links.android_package` | string, `""` | Android package name for `/.well-known/assetlinks.json` |
 | `app_links.android_sha256` | []string, `[]` | Signing-cert SHA-256 fingerprints (colon-separated uppercase hex) |
 
-The well-known endpoints 404 until the relevant identifiers are set - see
-[Built-in web UI](web-ui.md). `app_links` is **YAML-only** (no env override).
+The well-known endpoints answer 404 until the relevant identifiers are set (see
+[Built-in web UI](web-ui.md)). `app_links` is **YAML-only** (no env override).
 
 ### Libraries
 
 | Key | Type / default | Meaning |
 |---|---|---|
 | `libraries[].name` | string, required | Display name; must be unique across the list |
-| `libraries[].root` | string, required | Local filesystem root of the library (mount network shares first - roots are always local paths) |
+| `libraries[].root` | string, required | Local filesystem root of the library. Roots are always local paths, so mount network shares first |
 
-Config-declared libraries are **upserted by name** into the database at every
-startup (`syncLibraries`, roots made absolute) and scanned in the background;
-libraries can equally be created at runtime through the admin API, in which
-case they live only in the database. Because the server never writes a
-library to `config.yaml`, a declared library's name and folder can't be changed
-at runtime: `PATCH /admin/libraries/{id}` answers `409 config_library` (from
-2.4.0; a rename used to come back as a second library at the next start) and
-the console locks both fields, while its other settings stay editable. Change
-them in `config.yaml` (or the app embedding the server) and restart. Deleting one
-is refused the same way (`DELETE /admin/libraries/{id}`, `409 config_library`
-from 2.4.1): the next start would add it back empty, with everyone's progress in
-it gone. Remove it from the config and restart instead. There is deliberately **no layout key**
-- folder shape is auto-detected per folder by the
-[scanner](scanner.md), with per-folder admin overrides for corrections.
+At every startup the server **upserts config-declared libraries by name** into
+the database (`syncLibraries`, roots made absolute) and scans them in the
+background. An admin can also create libraries at runtime through the admin API.
+Those live only in the database.
 
-A library's **scan schedule** and **ignore rules** have no config key either:
-they are per-library settings stored in the database and edited in the admin
-console (or `PATCH /admin/libraries/{id}`). The startup sync only updates a
+The server never writes a library to `config.yaml`, so a declared library's name
+and folder can't be changed at runtime:
+
+- `PATCH /admin/libraries/{id}` answers `409 config_library` for either field,
+  and the console locks both. The library's other settings stay editable. To
+  change the name or folder, edit `config.yaml` (or the app embedding the server)
+  and restart.
+- `DELETE /admin/libraries/{id}` is refused the same way, with
+  `409 config_library`. The next start would add the library back empty, with
+  everyone's progress in it gone. Remove it from the config and restart instead.
+
+There is deliberately **no layout key**. The [scanner](scanner.md) detects the
+folder shape per folder, and an admin can override it per folder to correct it.
+
+A library's **scan schedule** and **ignore rules** have no config key either.
+They are per-library settings stored in the database and edited in the admin
+console (or with `PATCH /admin/libraries/{id}`). The startup sync only updates a
 config-declared library's `root` and default view, so those settings survive
 restarts. See [Scheduled scans](scanner.md#scheduled-scans) and
 [Ignore rules](scanner.md#ignore-rules).
 
-Library `kind` is a database/API setting, fixed at create (`books` by default,
-`podcasts` explicitly through the admin API/console). It has no YAML library
-key. Podcast roots cannot overlap any other library. Per-show retention is
-also a database/API preference, not YAML; an admin changes it through the
-[storage API](api/reference.md#podcast-storage-admin). The Bridge owns
-feed/audio network limits, allowlists and the per-episode size cap in its
-[configuration](../bridge/configuration.md#podcasts), not this file.
+Podcast libraries are configured outside this file too:
+
+- Library `kind` is a database and API setting, fixed at create: `books` by
+  default, `podcasts` explicitly through the admin API or the console. It has no
+  YAML library key. Podcast roots cannot overlap any other library.
+- Per-show retention is also a database and API preference, not YAML. An admin
+  changes it through the [storage API](api/reference.md#podcast-storage-admin).
+- The Bridge owns the feed and audio network limits, the allowlists and the
+  per-episode size cap, in its
+  [configuration](../bridge/configuration.md#podcasts).
 
 ### Library scans (`scan.*`)
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `scan.concurrency` | int, `0` | How many audio files a scan reads at once (their tags and the in-process probe, then ffprobe for a file the probe leaves to it), `0` to `64`. `0` means one per CPU, up to 8 (`library.DefaultScanReaders`). CPUs are counted by `GOMAXPROCS`, so in a container that is its CPU limit, not the host's cores. Discovery lists folders and looks files up 8 at once, or fewer when this is set below 8 (see [A rescan that finds nothing changed](scanner.md#a-rescan-that-finds-nothing-changed)). Lower it for a library on a slow disk or a busy share; raise it for a fast disk on a machine with cores to spare. Read once at start (`Scanner.SetConcurrency`), with **no console setting**; `AUDIOSILO_SCAN_CONCURRENCY` sets it too |
+| `scan.concurrency` | int, `0` | How many audio files a scan reads at once, `0` to `64`. Reading a file means its tags and the in-process probe, then ffprobe for a file the probe leaves to it. `0` means one per CPU, up to 8 (`library.DefaultScanReaders`). CPUs are counted by `GOMAXPROCS`, so in a container that is its CPU limit, not the host's cores. Discovery lists folders and looks files up 8 at once, or fewer when this is set below 8 (see [A rescan that finds nothing changed](scanner.md#a-rescan-that-finds-nothing-changed)). Lower it for a library on a slow disk or a busy share. Raise it for a fast disk on a machine with cores to spare. Read once at start (`Scanner.SetConcurrency`), with **no console setting**. `AUDIOSILO_SCAN_CONCURRENCY` sets it too |
 
 The index comes out the same however many files a scan reads at once (see
 [Reading several files at once](scanner.md#reading-several-files-at-once)).
 The cap of 8 for the default is deliberate: past about eight, each ffprobe
 run costs more CPU as they contend. On a 20-core machine, 20 at once finished
 the same scan sooner than 8 (8.0 s against 13.4 s) but took about a third more
-CPU (141 against 104 CPU-seconds). Those figures are for ffprobe on every file;
-with the in-process probe, a first scan spends far less time per file
-reading, and the single writer and the tag reads are most of what is left.
+CPU (141 against 104 CPU-seconds). Those figures are for ffprobe on every file.
+With the in-process probe, a first scan spends far less time reading each file,
+and the single writer and the tag reads are most of what is left.
 
 ```yaml
 scan:
@@ -295,39 +329,49 @@ scan:
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `database.mmap` | `auto` (default, or empty) \| `on` \| `off`, any case | Whether the database's **reader** connections map the file into memory (SQLite `mmap_size`, 256 MiB, `store.WithReaderMmap`); the single writer never maps. `auto` maps only when the database file is on Linux on Unraid's shfs (a `/mnt/user` share); `on` always maps; `off` never does. Any other value is a config error naming the allowed ones, so the server doesn't start. Read once at start, with **no console setting**; `AUDIOSILO_DB_MMAP` sets it too |
+| `database.mmap` | `auto` (default, or empty) \| `on` \| `off`, any case | Whether the database's **reader** connections map the file into memory (SQLite `mmap_size`, 256 MiB, `store.WithReaderMmap`). The single writer never maps. `auto` maps only when the database file is on Linux on Unraid's shfs (a `/mnt/user` share). `on` always maps, and `off` never does. Any other value is a config error naming the allowed ones, so the server doesn't start. Read once at start, with **no console setting**. `AUDIOSILO_DB_MMAP` sets it too |
 
-`auto` decides from the database file's filesystem (`store.onMappableFUSE`,
-Linux only; every other platform says no). `statfs` must say FUSE
-(`0x65735546`), and then the `/proc/self/mountinfo` line for the file's device
-(the `major:minor` of its `st_dev`, so a symlinked data folder, a bind mount or
-a stacked mount needs no path matching) must name `fuse.shfs`. Any failure
-along the way, or no line for the device, means no mapping. Inside a container
-both checks see the bind mount's real filesystem: an Unraid appdata path under
-`/mnt/user` is shfs, one under `/mnt/cache` is the pool's btrfs or xfs (and so
-is a `/mnt/user` exclusive share, which Unraid hands straight to its pool).
+`auto` decides from the database file's filesystem (`store.onMappableFUSE`).
+Only Linux is checked; every other platform says no. Two checks must pass:
 
-Why only there: on shfs every page read (`pread`) is a round trip through the
-FUSE daemon, and mapping lets a reader take pages straight from the kernel's
+1. `statfs` must say FUSE (`0x65735546`).
+2. The `/proc/self/mountinfo` line for the file's device must name `fuse.shfs`.
+   The line is found by the `major:minor` of the file's `st_dev`, so a symlinked
+   data folder, a bind mount or a stacked mount needs no path matching.
+
+Any failure along the way, or no line for the device, means no mapping. Inside a
+container both checks see the bind mount's real filesystem. An Unraid appdata
+path under `/mnt/user` is shfs. One under `/mnt/cache` is the pool's btrfs or
+xfs, and so is a `/mnt/user` exclusive share, which Unraid hands straight to its
+pool.
+
+**Why only there.** On shfs every page read (`pread`) is a round trip through
+the FUSE daemon, and mapping lets a reader take pages straight from the kernel's
 file cache. Measured on an Intel N305 Unraid box, the authors list went from
 78.8 to 8.9 ms, the Health summary from 157 to 60 ms and a 200-book page from
 9.1 to 4.3 ms, with the database's integrity intact under a concurrent scan. On
 a local disk it gained little (search and a deep page were about 10% slower),
-so `auto` leaves it off there. It stays off on every other FUSE filesystem
-and on network shares too. mergerfs (with `cache.files=off`) runs `direct_io`,
-where a mapping fails or, on some kernels, can show readers stale pages after the
-writer's direct writes. On sshfs, rclone, s3fs, ntfs-3g, NFS or SMB a read can
-fail, and an I/O error under a mapping is a `SIGBUS`, which stops the
-server, where a plain read would fail one request. `on` takes those risks on
-purpose. The 256 MiB is a cap on address space, not memory: the mapped pages
-are the kernel's reclaimable file cache.
+so `auto` leaves it off there.
 
-The start logs the outcome once, `database readers: mmap` with `on`, `mode`,
-`mmap_size` (what SQLite took for a reader) and `asked`. It is the limit SQLite
-took, not a mapping made: a reader whose `mmap()` fails later falls back to
-plain reads without a log line. Truncating the open
-database file in place would also raise `SIGBUS`, so nothing does: backups are
-`VACUUM INTO` and a restore swaps the file before it opens (see
+It stays off on every other FUSE filesystem and on network shares too:
+
+- mergerfs (with `cache.files=off`) runs `direct_io`. There a mapping fails or,
+  on some kernels, can show readers stale pages after the writer's direct writes.
+- On sshfs, rclone, s3fs, ntfs-3g, NFS or SMB a read can fail. An I/O error under
+  a mapping is a `SIGBUS`, which stops the server, where a plain read would fail
+  one request.
+
+`on` takes those risks on purpose. The 256 MiB is a cap on address space, not
+memory. The mapped pages are the kernel's reclaimable file cache.
+
+The start logs the outcome once, as `database readers: mmap` with `on`, `mode`,
+`mmap_size` (what SQLite took for a reader) and `asked`. It reports the limit
+SQLite took, not a mapping made. A reader whose `mmap()` fails later falls back
+to plain reads without a log line.
+
+Truncating the open database file in place would also raise `SIGBUS`, so nothing
+does it. Backups use `VACUUM INTO`, and a restore swaps the file before it opens
+(see
 [Restore at the next start](backups-and-notifications.md#restore-at-the-next-start)).
 
 ```yaml
@@ -338,23 +382,25 @@ database:
 #### The SQLite engine (`AUDIOSILO_SQLITE`)
 
 On a build with the native C SQLite engine, `AUDIOSILO_SQLITE=modernc`
-(exactly, lowercase) runs that process on the pure-Go engine instead, to compare
-the two on one binary or as a fallback; the database file is the same either
-way. Which engine a build carries is decided by the build, not by a config key
-(see [SQLite choices](data-model.md#sqlite-choices) for which builds are
-native). A value naming any engine other than the
-one that runs (`native` on a pure-Go build, or a typo) changes nothing and logs
-a warning at start. Read once at start. The start logs the engine and its SQLite
-release, for example `msg="database: sqlite" engine=native version=3.53.4`.
+(exactly, lowercase) runs that process on the pure-Go engine instead. Use it to
+compare the two on one binary, or as a fallback. The database file is the same
+either way.
+
+The build decides which engine a binary carries, not a config key (see
+[SQLite choices](data-model.md#sqlite-choices) for which builds are native). A
+value naming any engine other than the one that runs (`native` on a pure-Go
+build, or a typo) changes nothing and logs a warning at start. The variable is
+read once at start. The start logs the engine and its SQLite release, for example
+`msg="database: sqlite" engine=native version=3.53.4`.
 
 ### Demo mode (`demo.*`)
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `demo.enabled` | bool, `false` | Let unauthenticated visitors mint throwaway accounts via `POST /api/v1/demo/session`; the site root then redirects to `/web/demo` when a player is mounted |
-| `demo.library` | string, `""` | Name of the library demo users are granted. **Required when demo is enabled** (a missing library is also warned about at boot) |
-| `demo.max_users` | int (optional), unset | Cap on concurrent live demo accounts. **Unset → safe default 200** (`config.DefaultDemoMaxUsers`); **explicit `0` = unlimited** (opt-in risk: per-IP creation limits are bypassable by rotating IPs) |
-| `demo.idle_ttl` | duration string, `"24h"` | Reap demo accounts idle longer than this (background reaper sweeps every 15 min). Must parse as a positive `time.Duration`; empty falls back to 24h |
+| `demo.enabled` | bool, `false` | Let unauthenticated visitors mint throwaway accounts via `POST /api/v1/demo/session`. The site root then redirects to `/web/demo` when a player is mounted |
+| `demo.library` | string, `""` | Name of the library demo users are granted. **Required when demo is enabled.** The server also logs a warning at boot when the library is missing |
+| `demo.max_users` | int (optional), unset | Cap on concurrent live demo accounts. **Unset means the safe default of 200** (`config.DefaultDemoMaxUsers`). **An explicit `0` means unlimited.** That is an opt-in risk, because rotating IPs bypasses the per-IP creation limits |
+| `demo.idle_ttl` | duration string, `"24h"` | Reap demo accounts idle longer than this. The background reaper sweeps every 15 min. Must parse as a positive `time.Duration`. Empty falls back to 24h |
 
 ### Household members (`household.*`)
 
@@ -364,64 +410,71 @@ Both are read per request through the API's live config, so a change applies at 
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `household.members_enabled` | bool, `true` | Any account but a demo account or a household member may add members (`POST /me/household/members`). Off refuses new ones only (`403 feature_off`); existing members keep working and their owners can still manage them. The per-person switch is the admin's `can_add_members` on each account (`PATCH /admin/users/{id}`), not a key here |
-| `household.max_members` | int, `6` | Members per person, `1` to `50` (`config.MinMaxMembers`/`MaxMaxMembers`); at it, adding is `409 member_limit`. Outside the range `Validate` refuses the config (a value from the environment included, so the server doesn't start) |
+| `household.members_enabled` | bool, `true` | Any account but a demo account or a household member may add members (`POST /me/household/members`). Off refuses new ones only (`403 feature_off`). Existing members keep working, and their owners can still manage them. The per-person switch is the admin's `can_add_members` on each account (`PATCH /admin/users/{id}`), not a key here |
+| `household.max_members` | int, `6` | Members per person, `1` to `50` (`config.MinMaxMembers`, `MaxMaxMembers`). At the cap, adding is `409 member_limit`. Outside the range `Validate` refuses the config, a value from the environment included, so the server doesn't start |
 
-A `config.yaml` written before the section keeps the defaults. The admin's settings
-envelope carries the cap's default and range beside the two settings, as read-only
-facts (`household.max_members_default`, `_min`, `_max`), so the console names the
-range and refuses a value outside it before saving (see
-[`GET /admin/settings`](api/reference.md#get-apiv1adminsettings)).
+A `config.yaml` written before the section keeps the defaults. The admin's
+settings envelope carries the cap's default and range beside the two settings,
+as read-only facts (`household.max_members_default`, `_min`, `_max`). The
+console uses them to name the range and to refuse a value outside it before
+saving (see [`GET /admin/settings`](api/reference.md#get-apiv1adminsettings)).
 
 ### Community metadata (`metadata.*`)
 
 The server can enrich a book with a description, production details and its
-series by resolving the book's ASIN/ISBN against the community metadata API
-([meta.audiosilo.app](https://meta.audiosilo.app)) and serving the result at
-`GET /libraries/{id}/meta` (players draw it as an "About this book" block plus
-the recaps/characters/series tabs). The same config also gates
+series. It resolves the book's ASIN or ISBN against the community metadata API
+([meta.audiosilo.app](https://meta.audiosilo.app)) and serves the result at
+`GET /libraries/{id}/meta`. Players draw it as an "About this book" block plus
+the recaps, characters and series tabs. The same config also gates
 `GET /meta/work?id=…`, which passes a single work document through so a player
-can catch a listener up on the earlier books of a series. The lookup is
-server-side by design - one cached seam, and one config key that turns off all
-outbound calls. By default each question goes to the service at `base_url`;
-with `metadata.mode: mirror` the server keeps a local copy of the service's
-database and answers the same questions itself (see
+can catch a listener up on the earlier books of a series.
+
+The lookup is server-side by design. That gives one cached seam, and one config
+key that turns off all outbound calls. By default each question goes to the
+service at `base_url`. With `metadata.mode: mirror` the server keeps a local copy
+of the service's database and answers the same questions itself (see
 [Mirror mode](#mirror-mode-metadatamode-mirror)).
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, `GET /libraries/{id}/meta` and `GET /meta/work` both return 404, and the `metadata` capability reports false so players hide the enriched-book material entirely. Seeds the initial state only - an admin can flip this at runtime (see below) |
-| `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled**. Still needed in mirror mode: it is the fallback, and the site links (`web_url`, the attribution's `source_url`) name it |
-| `metadata.mode` | string, `"remote"` | Where the lookups are answered: `remote` asks `base_url` for each book; `mirror` keeps a local copy of the service's database in `<data>/meta-mirror/` and answers from it ([below](#mirror-mode-metadatamode-mirror)). Any case, stored lower case; empty (a `config.yaml` written before the key existed) reads as `remote`; any other value is a config error naming the allowed ones. **Read at start** (a restart setting) |
-| `metadata.region` | string, `""` | The Audible marketplace a community match prefers when a recording sells in several: one of `us`, `uk`, `ca`, `au`, `de`, `fr`, `es`, `it`, `jp`, `in`, `br` (the community metadata's region vocabulary; any case, stored lower case). `""` = no preference: the US store's ASIN first. Orders each match candidate's `asins` (preferred store's, then `us`, then the rest), breaks a runtime tie between recordings for the one selling there, and is what a [bulk match](api/reference.md#bulk-community-matching) repick looks for. It says nothing about a library's language: a match sends only the book's own. Applies live |
-| `metadata.report_unknown` | bool, `false` | The opt-in daily report of unknown Audible ASINs (2.6.0; [below](#the-unknown-asin-report-metadatareport_unknown)). Runs only while `metadata.enabled` is on too, never on a demo server. Applies live (console: **Server > Settings > Community metadata**, *Help complete the community database*, setting id `metadata.report_unknown`, greyed out while the lookup is off); `AUDIOSILO_METADATA_REPORT_UNKNOWN` wins at every start and locks it |
+| `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, and `GET /libraries/{id}/meta` and `GET /meta/work` both return 404. The `metadata` capability reports false, so players hide the enriched-book material entirely. The key seeds the initial state only. An admin can switch it at runtime (see below) |
+| `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled.** Mirror mode still needs it, because it is the fallback and the site links (`web_url`, the attribution's `source_url`) name it |
+| `metadata.mode` | string, `"remote"` | Where the lookups are answered. `remote` asks `base_url` for each book. `mirror` keeps a local copy of the service's database in `<data>/meta-mirror/` and answers from it (see [Mirror mode](#mirror-mode-metadatamode-mirror)). Any case, stored lower case. Empty (a `config.yaml` written before the key existed) reads as `remote`. Any other value is a config error naming the allowed ones. **Read at start** (a restart setting) |
+| `metadata.region` | string, `""` | The Audible marketplace a community match prefers when a recording sells in several. One of `us`, `uk`, `ca`, `au`, `de`, `fr`, `es`, `it`, `jp`, `in`, `br` (the community metadata's region vocabulary), any case, stored lower case. `""` means no preference, so the US store's ASIN comes first. The region orders each match candidate's `asins` (the preferred store's, then `us`, then the rest). It breaks a runtime tie between recordings in favour of the one selling there, and it is what a [bulk match](api/reference.md#bulk-community-matching) repick looks for. It says nothing about a library's language, because a match sends only the book's own. Applies live |
+| `metadata.report_unknown` | bool, `false` | The opt-in daily report of unknown Audible ASINs (see [The unknown-ASIN report](#the-unknown-asin-report-metadatareport_unknown)). Runs only while `metadata.enabled` is on too, and never on a demo server. Applies live. In the console it is **Server > Settings > Community metadata**, *Help complete the community database* (setting id `metadata.report_unknown`), greyed out while the lookup is off. `AUDIOSILO_METADATA_REPORT_UNKNOWN` wins at every start and locks it |
 
-`metadata.enabled` applies **live**: an admin can switch the lookup on or off
-from the console's **Server > Settings > Community metadata** (or via
+**What applies live.** An admin can switch `metadata.enabled` on or off from the
+console's **Server > Settings > Community metadata** (or via
 [`PATCH /admin/settings`](api/reference.md#patch-apiv1adminsettings)) with no
-restart, and the change is written back to `config.yaml`. When
-`AUDIOSILO_METADATA_ENABLED` is set it wins at every start and the console
-shows the switch as locked. `metadata.base_url` is also editable there but is a
-**restart** setting: the metadata service (`meta.Service`) is built once at
-start from the boot value, and whether one was built (a valid absolute
-`http(s)` URL) decides whether the feature is *available* at all. The switch can
-only turn the lookup on when a service exists (else `400 invalid_setting`
-with `field: "metadata.enabled"`). `metadata.region` applies live too;
+restart, and the server writes the change back to `config.yaml`. When
+`AUDIOSILO_METADATA_ENABLED` is set, it wins at every start and the console shows
+the switch as locked. `metadata.region` applies live too.
+
+**What waits for a restart.** `metadata.base_url` is also editable in the
+console, but it is a **restart** setting. The server builds the metadata service
+(`meta.Service`) once at start from the boot value. Whether it built one (from a
+valid absolute `http(s)` URL) decides whether the feature is *available* at all.
+The switch can turn the lookup on only when a service exists. Otherwise it is
+refused with `400 invalid_setting` and `field: "metadata.enabled"`.
 `metadata.mode` is a restart setting like `base_url`.
 
-Turning it off is the one-key privacy switch: with the lookup disabled the server
-never contacts the metadata service (nor, in mirror mode, GitHub for a new copy),
-and every player connected to it stops
-showing the section (they gate on the `metadata` capability). The same switch
-gates the [community chapter checks](community-chapters.md): while it is on, the
-background pass checks matched books (sending only their ASIN or ISBN, then the
-community's work and recording ids; in mirror mode the local copy answers once it
-is ready, so nothing leaves the server), and finds pauses with the configured ffmpeg
-when there is one; while it is off nothing is checked and
-`POST /admin/libraries/{id}/book/community-chapters` is `404 metadata_off`.
-Chapters already in use stay until an admin switches a book back. Enrichment is
-strictly additive and cached - a slow or unreachable service degrades to no
-section, never a broken page.
+**Turning it off** is the one-key privacy switch. With the lookup disabled, the
+server never contacts the metadata service, nor, in mirror mode, GitHub for a new
+copy. Every player connected to it stops showing the section, because players
+gate on the `metadata` capability.
+
+The same switch gates the [community chapter checks](community-chapters.md):
+
+- While it is on, the background pass checks matched books. It sends only their
+  ASIN or ISBN, then the community's work and recording ids. In mirror mode the
+  local copy answers once it is ready, so nothing leaves the server. The pass
+  finds pauses with the configured ffmpeg when there is one.
+- While it is off, nothing is checked, and
+  `POST /admin/libraries/{id}/book/community-chapters` is `404 metadata_off`.
+  Chapters already in use stay until an admin switches a book back.
+
+Enrichment is strictly additive and cached. A slow or unreachable service means
+no section, never a broken page.
 
 #### The unknown-ASIN report (`metadata.report_unknown`)
 
@@ -431,37 +484,41 @@ server's books that the community database doesn't know, so the community's
 [reported-ASIN lane](../meta/sync-bot.md#the-reported-asin-lane) can import
 them. A run:
 
-- **Candidates**: books libraries only, upper-cased and format-checked. Each
-  book's `asin` (except one a community match gave it, which is known by
-  definition), plus a tag ASIN only for a book with no ASIN or ISBN of its own,
-  no admin edit of its ASIN (a cleared one too) and a tag no other book carries
-  (`catalog.UnknownASINCandidates`).
-- **Lookup first**: up to 500 candidates a run (never looked up, or looked up 30+
-  days ago) go through the ordinary lookup (`meta.Service.KnownASIN`); only a 404
-  counts as unknown, and any other failure stops the lookups until the next day
-  (the run is then `failed`, but the unknown ASINs already confirmed are still
-  reported).
-  In mirror mode the run waits until the local copy is ready, the copy answers the
-  lookups, and only the report goes to `base_url`.
-- **The report**: the unknown ASINs not sent in the last 30 days, shuffled, 200 to
-  a `POST <base_url>/api/v1/intake/unknown-asins` with the body exactly
-  `{"asins":[...]}`, at most 5 a run and none within 23 hours of the last. The only
-  headers it sets are `Content-Type: application/json` and a fixed
-  `User-Agent: AudioSilo` (beside the HTTP client's own `Host`, `Content-Length`
-  and `Accept-Encoding`): no `X-AudioSilo-Client`, server id, auth or version.
-  Redirects are never followed.
-- **HTTPS only**: a `base_url` with plain `http` is reported to only when its host
-  is loopback (`127.0.0.0/8`, `::1`, `localhost`); any other is `not_offered`
-  with no call.
-- **Answers**: a 202 with `accepted` marks that chunk sent; a 404, 405, 3xx or a
-  2xx without `accepted` (an older metaserve, or intake off; see
-  [the intake queue](../meta/api.md#unknown-asin-intake-queue-optional)) is
-  `not_offered` and the service is left alone for 7 days; 429, 5xx or anything
-  else marks nothing (`failed`, tried the next day).
-- **Schedule**: the first run an hour after the start (or a day after the last
-  run), then daily +-1 hour. Switching it (or metadata) on runs it at once unless
-  one ran in the last 23 hours. The run state is kept in `server_state`, so a
-  restart never runs it again early.
+- **Candidates**: books libraries only, upper-cased and format-checked
+  (`catalog.UnknownASINCandidates`). A candidate is either:
+  - a book's `asin`, except one a community match gave it, which is known by
+    definition; or
+  - a tag ASIN, only for a book with no ASIN or ISBN of its own, no admin edit
+    of its ASIN (a cleared one too), and a tag no other book carries.
+- **Lookup first**: up to 500 candidates a run go through the ordinary lookup
+  (`meta.Service.KnownASIN`). A candidate qualifies when it was never looked up,
+  or was looked up 30+ days ago. Only a 404 counts as unknown. Any other failure
+  stops the lookups until the next day. The run is then `failed`, but the
+  unknown ASINs already confirmed are still reported. In mirror mode the run
+  waits until the local copy is ready. The copy answers the lookups, and only
+  the report goes to `base_url`.
+- **The report**: the unknown ASINs not sent in the last 30 days, shuffled, 200
+  to a `POST <base_url>/api/v1/intake/unknown-asins` with the body exactly
+  `{"asins":[...]}`. A run sends at most 5 of these, and none within 23 hours of
+  the last. The only headers it sets are `Content-Type: application/json` and a
+  fixed `User-Agent: AudioSilo`, beside the HTTP client's own `Host`,
+  `Content-Length` and `Accept-Encoding`. It sends no `X-AudioSilo-Client`,
+  server id, auth or version. Redirects are never followed.
+- **HTTPS only**: the server reports to a `base_url` with plain `http` only when
+  its host is loopback (`127.0.0.0/8`, `::1`, `localhost`). Any other is
+  `not_offered` with no call.
+- **Answers**:
+  - A 202 with `accepted` marks that chunk sent.
+  - A 404, 405, 3xx or a 2xx without `accepted` is `not_offered`, and the
+    service is left alone for 7 days. These come from an older metaserve, or one
+    with intake off (see
+    [the intake queue](../meta/api.md#unknown-asin-intake-queue-optional)).
+  - A 429, a 5xx or anything else marks nothing. The run is `failed` and is
+    tried the next day.
+- **Schedule**: the first run comes an hour after the start (or a day after the
+  last run), then daily, give or take an hour. Switching the report (or
+  metadata) on runs it at once, unless one ran in the last 23 hours. The run
+  state is kept in `server_state`, so a restart never runs it again early.
 
 The console words the run from `GET /admin/settings`'s read-only
 `metadata.report_status` (see the
@@ -473,25 +530,28 @@ path.
 
 In mirror mode the server keeps a local copy of the metadata service's own
 database and answers its metadata questions in-process, so no book is looked up
-over the internet. The copy is audiosilo-meta's data release artifact (the
-SQLite `meta.sqlite`, the CC0 core and the CC BY-SA community layer in one
-file), and it is answered by metaserve's own code: the server imports
-audiosilo-meta's public [`pkg/query`](../meta/overview.md#public-go-packages)
-(`query.Open` and `query.NewHandler`, the very JSON API handler
-meta.audiosilo.app runs) and [`pkg/release`](../meta/overview.md#public-go-packages)
-(the release fetcher). Remote mode stays the default. Players see no
-difference: no wire change and no capability change.
+over the internet. The copy is audiosilo-meta's data release artifact: the
+SQLite `meta.sqlite`, with the CC0 core and the CC BY-SA community layer in one
+file. Metaserve's own code answers it. The server imports two of
+audiosilo-meta's public packages:
+
+- [`pkg/query`](../meta/overview.md#public-go-packages): `query.Open` and
+  `query.NewHandler`, the same JSON API handler meta.audiosilo.app runs;
+- [`pkg/release`](../meta/overview.md#public-go-packages): the release fetcher.
+
+Remote mode stays the default. Players see no difference: no wire change and no
+capability change.
 
 **Parity by construction.** `meta.Service.SetMirror` swaps the metadata client's
 transport for `fallbackTransport` (`internal/meta/mirror.go`). The client still
-builds the same `/api/v1/...` requests it sends in remote mode; the transport
-serves each one through the local handler (in memory, no listener) while a copy
-is ready, so every response shape, a retired slug's 301, and every match score
-are metaserve's, byte for byte, and nothing above the client (composition, the
+builds the same `/api/v1/...` requests it sends in remote mode. While a copy is
+ready, the transport serves each one through the local handler, in memory with
+no listener. So every response shape, a retired slug's 301, and every match
+score are metaserve's, byte for byte. Nothing above the client (composition, the
 rails, matching, both cache levels) knows which one answered. That covers the
 admin console's match search and bulk matching too, and the
 [community chapter checks](community-chapters.md). Cover images are not part of
-this: they still come from their own hosts (the Audible CDN, Open Library,
+this. They still come from their own hosts (the Audible CDN, Open Library,
 publishers) in both modes.
 
 **The fallback ladder.** The remote service at `base_url` stays the safety net:
@@ -500,97 +560,117 @@ publishers) in both modes.
 |---|---|
 | isn't ready (not downloaded yet, or not opened yet after a start) | goes to `base_url`, exactly as in remote mode |
 | answers `5xx` (a query this code can't run, e.g. on an artifact schema newer than it knows; a local answer over 15 s, over 32 MiB, or a panic counts the same) | goes to `base_url` unchanged |
-| answers `404` | the copy's answer is authoritative, with one exception: a "no match" never replaces a stored **positive** answer in `meta_cache` (a book's enrichment or a work). The stored answer is served, stale, and held in memory for 2 minutes, and its row is left alone, so a lagging or broken copy can't blank a companion that worked. The exception holds only for a "no match" the copy itself answered: one from `base_url` (no copy ready yet, or a request the copy failed and sent on) is authoritative and replaces the row as in remote mode |
+| answers `404` | the copy's answer is authoritative, with one exception. A "no match" never replaces a stored **positive** answer in `meta_cache` (a book's enrichment or a work). The stored answer is served, stale, and held in memory for 2 minutes, and its row is left alone, so a lagging or broken copy can't blank a companion that worked. The exception holds only for a "no match" the copy itself answered. A "no match" from `base_url` (no copy ready yet, or a request the copy failed and sent on) is authoritative and replaces the row as in remote mode |
 | and `base_url` both fail | the persistent cache serves the last known answer, as in a remote-mode outage |
 
-A `base_url` with a path (metaserve behind a proxy at `/meta`, say) works too:
-the copy is asked at its own root, and a retired slug's redirect gets the path
+A `base_url` with a path (metaserve behind a proxy at `/meta`, say) works too.
+The copy is asked at its own root, and a retired slug's redirect gets the path
 back. `meta_cache` rows keep `source` = `base_url` in both modes, so switching modes
 keeps the cache warm. A request the copy couldn't answer is logged at most once
 every ten minutes ("the local copy couldn't answer; asked the online service
 instead").
 
-**The copy.** `internal/metamirror` keeps it in `<data>/meta-mirror/` (`0700`):
-exactly one `meta-<tag>.sqlite` once a swap settles, and `state.json` (`tag`,
-`published_at`, `built_at`, `schema_version`, `sha256`, `size_bytes`, `etag`,
-`checked_at`, `downloaded_at`, `last_error`; written `0600` under a temporary
-name, then renamed). A download in progress is a temporary `.meta-*.tmp` file in
-the same folder. The folder is derived data: it is **not** in
+**The copy.** `internal/metamirror` keeps it in `<data>/meta-mirror/` (`0700`).
+Once a swap settles, the folder holds:
+
+- exactly one `meta-<tag>.sqlite`;
+- `state.json` (`tag`, `published_at`, `built_at`, `schema_version`, `sha256`,
+  `size_bytes`, `etag`, `checked_at`, `downloaded_at`, `last_error`), written
+  `0600` under a temporary name, then renamed.
+
+A download in progress is a temporary `.meta-*.tmp` file in the same folder. The
+folder is derived data. It is **not** in
 [database backups](backups-and-notifications.md#backups-internalbackup), which
 hold the database only.
 
-**Schedule.** The release list is asked at most once a day, measured from the
-`checked_at` recorded on disk, so a restart does not download again. A server
-with no copy checks 30 seconds after start; a failed check is retried after an
-hour; **Check now** in the console
-([`POST /admin/meta/mirror/check`](api/reference.md#post-apiv1adminmetamirrorcheck))
-wakes it at once (a no-op while a check is running). Nothing is checked or
-downloaded while `metadata.enabled` is off, and turning it off cancels a check
-already running, download included (nothing is recorded, so the check is due
-again when metadata is back on). Turning it back on wakes the mirror at once
-(`Mirror.Wake`), which runs a check only if one is due. The list request goes to
-`https://api.github.com/repos/KodeStar/audiosilo-meta/releases` with
-`User-Agent: AudioSilo/<version>` and no token, and is conditional
-(`If-None-Match` with the stored ETag, sent only while a copy is held, and
-dropped after a failed download, so a `304` can't hide a release that failed).
-The release taken is the newest data release, by
-[audiosilo-meta's selection rule](../meta/overview.md#release-artifacts);
-a tag that couldn't name a file is refused.
+**Schedule.** The mirror asks for the release list at most once a day, measured
+from the `checked_at` recorded on disk, so a restart does not download again.
 
-**Download and swap.** Before downloading, the disk guard needs free space on
-the folder's volume of at least the larger of 4.5 times the gz asset's declared
-size and the current copy's size, plus 512 MiB; otherwise the check fails with
-`not enough disk space: need X, have Y` (when the free space can't be read, it
-downloads anyway). The download is `release.DownloadData`'s (verified, from
-GitHub hosts only; see
-[`pkg/release`](../meta/overview.md#public-go-packages)) into
-`meta-<tag>.sqlite`. It is abandoned after 60 seconds without a byte. The new file is opened with `query.Open` (which
-runs metaserve's integrity checks; a file that doesn't open is deleted), then
-swapped in atomically; the replaced copy stays open for 60 seconds for the
-queries that started on it, then is closed and deleted. **Any failure keeps the
-current copy.**
+- A server with no copy checks 30 seconds after start.
+- A failed check is retried after an hour.
+- **Check now** in the console
+  ([`POST /admin/meta/mirror/check`](api/reference.md#post-apiv1adminmetamirrorcheck))
+  wakes it at once. It is a no-op while a check is running.
+- Nothing is checked or downloaded while `metadata.enabled` is off. Turning it
+  off cancels a check already running, download included. Nothing is recorded,
+  so the check is due again when metadata is back on.
+- Turning metadata back on wakes the mirror at once (`Mirror.Wake`), which runs
+  a check only if one is due.
+
+The list request goes to
+`https://api.github.com/repos/KodeStar/audiosilo-meta/releases` with
+`User-Agent: AudioSilo/<version>` and no token. It is conditional: it sends
+`If-None-Match` with the stored ETag only while a copy is held, and drops it after
+a failed download, so a `304` can't hide a release that failed. The mirror takes
+the newest data release, by
+[audiosilo-meta's selection rule](../meta/overview.md#release-artifacts). A tag
+that couldn't name a file is refused.
+
+**Download and swap.**
+
+1. Before downloading, the disk guard needs free space on the folder's volume.
+   It needs at least the larger of 4.5 times the gz asset's declared size and the
+   current copy's size, plus 512 MiB. Otherwise the check fails with
+   `not enough disk space: need X, have Y`. When the free space can't be read, it
+   downloads anyway.
+2. `release.DownloadData` downloads into `meta-<tag>.sqlite`. It verifies the
+   download and fetches from GitHub hosts only (see
+   [`pkg/release`](../meta/overview.md#public-go-packages)). A download is
+   abandoned after 60 seconds without a byte.
+3. The mirror opens the new file with `query.Open`, which runs metaserve's
+   integrity checks. A file that doesn't open is deleted.
+4. The new copy is swapped in atomically. The replaced copy stays open for 60
+   seconds for the queries that started on it, then is closed and deleted.
+
+**Any failure keeps the current copy.**
 
 **At start**, the mirror deletes leftover temporary files, a half-written state
-file and any copy other than the current one, and forgets a copy that is
-missing, changed size or doesn't open (a new one is downloaded at the next
-check). The copy is opened in the background, so a start isn't held up by it:
-until it is open (the status says `opening`), lookups go to `base_url`. A
+file and any copy other than the current one. It forgets a copy that is
+missing, changed size or doesn't open, and downloads a new one at the next
+check. The copy is opened in the background, so a start isn't held up by it.
+Until it is open (the status says `opening`), lookups go to `base_url`. A
 finished download is `opening` too, for the seconds before it is swapped in,
 while the current copy keeps answering.
 
-**Sizes and cost** (measured October 2026, schema 7, about 281,000 works): the
-gz asset is 444 MB and the copy about 1.8 GB on disk (1,755,340,800 bytes). The gz is
-streamed and never kept, so a first download peaks at about the copy's size; an
-update holds the old copy and the new one (about 3.5 GB) until the swap, and the
-disk guard wants about 2.5 GB free before it starts. Data releases come several
-times a day, so in practice every daily check downloads a new copy (about
-444 MB a day). Download, verification and opening took about 20 s on a fast
-connection; once the copy is ready, an uncached book lookup took 5-40 ms,
-against 170-350 ms from meta.audiosilo.app.
+**Sizes and cost** (measured October 2026, schema 7, about 281,000 works):
+
+- The gz asset is 444 MB, and the copy about 1.8 GB on disk (1,755,340,800 bytes).
+- The gz is streamed and never kept, so a first download peaks at about the
+  copy's size.
+- An update holds the old copy and the new one (about 3.5 GB) until the swap,
+  and the disk guard wants about 2.5 GB free before it starts.
+- Data releases come several times a day, so in practice every daily check
+  downloads a new copy (about 444 MB a day).
+- Download, verification and opening took about 20 s on a fast connection.
+- Once the copy is ready, an uncached book lookup took 5-40 ms, against
+  170-350 ms from meta.audiosilo.app.
 
 **Artifact schema.** A copy newer than this server's code knows still opens and
-answers; the console flags it (`schema_newer`) and says to update the server,
-and any query that breaks on it is a 5xx that falls back to `base_url` (why that
-works: the
-[cross-repo contract](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam)).
+answers. The console flags it (`schema_newer`) and says to update the server.
+Any query that breaks on it is a 5xx that falls back to `base_url` (the
+[cross-repo contract](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam)
+explains why that works).
 
 **Switching back.** A server started in remote mode (with a metadata service)
 deletes `<data>/meta-mirror/` if it exists, and logs that it did. A server with
 no metadata service (an empty or invalid `base_url`) builds no mirror in either
 mode. If the folder can't be prepared, the server logs it and lookups go to
-`base_url`: a metadata problem never stops the server.
+`base_url`. A metadata problem never stops the server.
 
-**A rate-limited answer is waited out** (from 2.5.0, server#247). The service
-limits how often one client asks; a `429` from it (`internal/meta/client.go`,
-`getJSON`) is not an outage: the client waits for its `Retry-After` (seconds or a
-date; 1 s when it gives none; capped at 10 s, `maxRetryAfter`) and asks again, up to
-3 times (`rateLimitRetries`), so a bulk match's burst slows down instead of failing
-books. A wait the caller's deadline would cut short isn't started, and a `429` still
-there after the retries is an upstream failure like any other. From 2.6.0 a
-[match run](api/reference.md#what-a-run-asks-of-the-community-service) also waits out a
-`503` this way, as metaserve answers one past a match's budget, and paces itself to about
-60 requests a second (no setting for either). Anywhere else a `503` is an outage at once:
-an admin or a listener is waiting on the answer.
+**A rate-limited answer is waited out.** The service limits how often one client
+asks. A `429` from it (`internal/meta/client.go`, `getJSON`) is not an outage.
+The client waits for its `Retry-After` and asks again, up to 3 times
+(`rateLimitRetries`), so a bulk match's burst slows down instead of failing
+books. `Retry-After` may be seconds or a date. The client waits 1 s when it gives
+none, and at most 10 s (`maxRetryAfter`). A wait the caller's deadline would cut
+short isn't started, and a `429` still there after the retries is an upstream
+failure like any other.
+
+A [match run](api/reference.md#what-a-run-asks-of-the-community-service) also
+waits out a `503` this way, because metaserve answers one past a match's budget.
+A match run paces itself to about 60 requests a second. Neither has a setting.
+Anywhere else a `503` is an outage at once, because an admin or a listener is
+waiting on the answer.
 
 #### The persistent cache
 
@@ -600,15 +680,18 @@ database, in the `meta_cache` table (migration `0024`; see
 [Data model](data-model.md#community-metadata-cache)). The second level is what
 makes the cache survive a restart and an outage:
 
-- **What it holds:** a book's enrichment (a match, a "no match", or an envelope
-  missing a series rail, the last for 2 minutes only and never over a stored
-  answer, which stays the outage fallback) keyed by its ASIN or ISBN, and works
-  fetched by id (`/meta/work`, and the previous books `/meta` adds), matches only.
-  Never a service error, and never a row for an unknown work id (an id is the
-  caller's choice, so storing misses would let any user grow the table); a
+- **What it holds:**
+  - A book's enrichment, keyed by its ASIN or ISBN: a match, a "no match", or an
+    envelope missing a series rail. An envelope missing a rail is kept for 2
+    minutes only, and never over a stored answer, which stays the outage fallback.
+  - Works fetched by id (`/meta/work`, and the previous books `/meta` adds),
+    matches only.
+
+  It never holds a service error, and never a row for an unknown work id. An id
+  is the caller's choice, so storing misses would let any user grow the table. A
   `404` from the service for a work already stored replaces its row, so a dropped
-  work isn't served again in a later outage (in mirror mode a `404` the local copy
-  gave never does: see [Mirror mode](#mirror-mode-metadatamode-mirror)).
+  work isn't served again in a later outage. In mirror mode a `404` the local copy
+  gave never does (see [Mirror mode](#mirror-mode-metadatamode-mirror)).
 - **How it is read:** after a memory miss. A row still within its TTL is served
   and warms memory for the rest of that TTL. A match past its TTL is not served
   while the service answers, but when the service fails it is served anyway
@@ -618,42 +701,43 @@ makes the cache survive a restart and an outage:
   the `metadata.base_url` it came from, so pointing the server at another
   metadata service never serves the old service's answers.
 - **Writes are bounded:** a row write waits at most 250 ms for the database's
-  single writer (a scan can hold it); one cut short costs only the row, never the
-  response.
+  single writer, which a scan can hold. A write cut short costs only the row,
+  never the response.
 - **Placement reads it too:** placing a caller's books on the rails reads each
   book's known work id from memory, else from its stored row, fresh or stale, so
   which entry a book lands on doesn't change with a restart.
 - **Retention:** the daily retention job keeps the newest 20,000 rows (a few KiB
   of JSON each), of which works fetched by id keep at most their newest 2,000, so
   browsing many works never pushes the books' enrichments out.
-- **No config key:** the cache is read and written only by the metadata service,
-  so it follows `metadata.enabled`: with the lookup off, nothing is read from it
-  or written to it. Rows already there are kept (retention only trims the table
-  to its newest rows) and unused until the lookup is switched back on.
-- **Privacy:** it holds community data only - the metadata service's public
+- **No config key:** only the metadata service reads and writes the cache, so
+  it follows `metadata.enabled`. With the lookup off, nothing is read from it or
+  written to it. Rows already there are kept (retention only trims the table to
+  its newest rows) and stay unused until the lookup is switched back on.
+- **Privacy:** it holds community data only, the metadata service's public
   answers keyed by ASIN, ISBN or work id. No user, progress, path or library
-  information is stored in it; which books a user owns is worked out per
-  request and never cached. Like every table, it is part of a database backup.
+  information is stored in it. Which books a user owns is worked out per request
+  and never cached. Like every table, it is part of a database backup.
 
 ### Upcoming releases (`upcoming.*`)
 
-[Upcoming releases](api/reference.md#upcoming-releases) (2.6.0): once a day the
-server reads the community metadata for the series it holds and works out, for
-each listener, the preorders, recent releases and missing volumes in the series
-they have ([`GET /me/upcoming`](api/reference.md#get-apiv1meupcoming), capability
-`upcoming`), and tells the admin about a new release in one (the `book_released`
-[notification](backups-and-notifications.md#events)). No Bridge is needed.
+[Upcoming releases](api/reference.md#upcoming-releases) is a daily job. Once a
+day the server reads the community metadata for the series it holds. For each
+listener it works out the preorders, recent releases and missing volumes in the
+series they have ([`GET /me/upcoming`](api/reference.md#get-apiv1meupcoming),
+capability `upcoming`). It tells the admin about a new release in one of those
+series with the `book_released`
+[notification](backups-and-notifications.md#events). No Bridge is needed.
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `upcoming.enabled` | bool, `true` | The job's switch. It runs only while `metadata.enabled` is on too, so the default follows the metadata lookup. Applies live (console: **Server > Settings > Community metadata**, *Check for upcoming releases*, setting id `metadata.upcoming`); `AUDIOSILO_UPCOMING_ENABLED` wins at every start and locks it |
-| `upcoming.window_days` | int, `90` | How many days back a release still counts as new (`released` rather than `missing`), 1-365 (the community feed's limit); anything else is a config error naming the key. Read at start: config file or `AUDIOSILO_UPCOMING_WINDOW_DAYS` only, never offered in the console |
+| `upcoming.enabled` | bool, `true` | The job's switch. It runs only while `metadata.enabled` is on too, so the default follows the metadata lookup. Applies live. In the console it is **Server > Settings > Community metadata**, *Check for upcoming releases* (setting id `metadata.upcoming`). `AUDIOSILO_UPCOMING_ENABLED` wins at every start and locks it |
+| `upcoming.window_days` | int, `90` | How many days back a release still counts as new (`released` rather than `missing`), 1-365 (the community feed's limit). Anything else is a config error naming the key. Read at start, from the config file or `AUDIOSILO_UPCOMING_WINDOW_DAYS` only. Never offered in the console |
 
-What it sends is what the metadata lookup already sends (a book's ASIN or ISBN,
-then community work and series ids), never who is listening; with metadata off
-it makes no call at all, and in [mirror mode](#mirror-mode-metadatamode-mirror)
-the local copy answers. The first run (and the first read of each series) is a
-silent baseline: releases already out are listed, never announced. Everything it
+The job sends what the metadata lookup already sends (a book's ASIN or ISBN, then
+community work and series ids), never who is listening. With metadata off it
+makes no call at all, and in [mirror mode](#mirror-mode-metadatamode-mirror) the
+local copy answers. The first run, and the first read of each series, is a silent
+baseline: releases already out are listed, never announced. Everything the job
 stores is derived and rebuilt by the next run (see
 [Data model](data-model.md#upcoming-releases)).
 
@@ -674,16 +758,16 @@ backup is written `0600`.
 
 ### Managed modules (`modules.*`)
 
-Optional features that ship off (see [Managed modules](modules.md)). Each module has
-one toggle, read per request through the API's live config, so turning one on or off
-applies at once with no restart: it starts or stops the module's background work,
-when it has any, and gates the module's routes and Bridge jobs.
+Optional features that ship off (see [Managed modules](modules.md)). Each module
+has one toggle, read per request through the API's live config, so turning one on
+or off applies at once with no restart. The toggle starts or stops the module's
+background work, when it has any, and gates the module's routes and Bridge jobs.
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `modules.podcasts.enabled` | bool, `false` | Follow/unfollow/check, new episode fetches, retention writes and feed/download/retention scheduling; needs an online Bridge offering `podcast` for the capability flag. Reads and valid present-pin reuse stay core. Toggle applies at once, starts/stops the scheduler and holds queued podcast jobs while off. See [Podcasts](../bridge/podcasts.md) |
-| `modules.contributions.enabled` | bool, `false` | The Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge (its flag needs the Bridge's `contribute` feature too). No routes or background work of its own: while it is off, the Bridge jobs it owns (`sidecars.contribute`, `meta.correct`, and a `sidecars.generate` with `contribute: "issue"`) are refused `404 module_off` and queued ones held (see [Managed modules](modules.md)) |
-| `modules.audible.enabled` | bool, `false` | The Audible module (Bridge Phase 4a): the console's Audible routes and pages, and the scheduler that queues each account's `audible.poll` every `poll_hours` (6; hourly while a released preorder is awaited), and (Phase 4b) the `audible.import` backups and the policy pass after each poll; its flag needs the Bridge's `audible` feature too. While off, the console's Audible routes answer `404 module_off` (all but `DELETE /admin/audible/accounts/{account}`) and queued polls and backups are held; the Bridge's own Audible routes work either way. `AUDIOSILO_MODULES_AUDIBLE_ENABLED`. See [Audible](../bridge/audible.md) |
+| `modules.podcasts.enabled` | bool, `false` | The follow, unfollow and check actions, new episode fetches, retention writes, and the scheduling of feeds, downloads and retention. The capability flag also needs an online Bridge offering `podcast`. Reads and valid present-pin reuse stay core. The toggle applies at once, starts or stops the scheduler, and holds queued podcast jobs while off. See [Podcasts](../bridge/podcasts.md) |
+| `modules.contributions.enabled` | bool, `false` | The Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Its flag needs the Bridge's `contribute` feature too. It has no routes or background work of its own. While it is off, the Bridge jobs it owns (`sidecars.contribute`, `meta.correct`, and a `sidecars.generate` with `contribute: "issue"`) are refused `404 module_off`, and queued ones are held (see [Managed modules](modules.md)) |
+| `modules.audible.enabled` | bool, `false` | The Audible module. It covers the console's Audible routes and pages, and the scheduler that queues each account's `audible.poll` every `poll_hours` (6, or hourly while a released preorder is awaited). It also covers the `audible.import` backups and the policy pass after each poll. Its flag needs the Bridge's `audible` feature too. While it is off, the console's Audible routes answer `404 module_off` (all but `DELETE /admin/audible/accounts/{account}`), and queued polls and backups are held. The Bridge's own Audible routes work either way. Variable: `AUDIOSILO_MODULES_AUDIBLE_ENABLED`. See [Audible](../bridge/audible.md) |
 
 A module's own settings, when it has any, go under its key
 (`modules.<id>.<name>`). A `config.yaml` written before the section keeps every
@@ -691,17 +775,17 @@ module off.
 
 ### Podcast discovery (`podcasts.discovery.*`)
 
-[Podcast directory search](api/reference.md#podcast-discovery) (Bridge Phase
-2c-3), separate from `metadata.*`: the audiobook metadata settings (lookup,
-mirror, marketplace region) never affect it.
+[Podcast directory search](api/reference.md#podcast-discovery) is separate from
+`metadata.*`. The audiobook metadata settings (lookup, mirror, marketplace
+region) never affect it.
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `podcasts.discovery.enabled` | bool, `true` | Builds the discovery service at start. Off: the discovery routes answer `404 discovery_off` and `podcast_discovery` is `false`. Read at start only, with **no console setting**; the Podcasts module (`modules.podcasts.enabled`) stays the live switch, so search is still off until that module is on. OPML import/export and feed fetching do not depend on it |
+| `podcasts.discovery.enabled` | bool, `true` | Builds the discovery service at start. When off, the discovery routes answer `404 discovery_off` and `podcast_discovery` is `false`. Read at start only, with **no console setting**. The Podcasts module (`modules.podcasts.enabled`) stays the live switch, so search is still off until that module is on. OPML import and export and feed fetching do not depend on it |
 
 The default directory is Apple's iTunes Search API, which needs no key. Podcast
-Index search additionally needs its key pair, which comes **only from the
-environment**, read once at start:
+Index search also needs its key pair, which comes **only from the environment**
+and is read once at start:
 
 | Variable | Meaning |
 |---|---|
@@ -709,15 +793,18 @@ environment**, read once at start:
 | `AUDIOSILO_PODCAST_INDEX_SECRET` | the Podcast Index API secret |
 
 Set both, each 1 to 256 printable ASCII characters without spaces (kept byte
-for byte). Neither set: Podcast Index is simply not configured
-(`available: false`). One missing or malformed: Podcast Index is off and the
-server logs one warning naming the variable and the reason (never the value);
-the server and iTunes search start normally. There is no startup probe and no
-bundled key, and the pair never appears in `config.yaml`, Settings, the audit
-log, the support bundle, logs, jobs or caches. Rotating or
-removing it needs a restart. This is a deliberate exception to keeping
-third-party credentials on the Bridge: the server makes these searches itself,
-and the Bridge has no Podcast Index setting.
+for byte).
+
+- With neither set, Podcast Index is not configured (`available: false`).
+- With one missing or malformed, Podcast Index is off and the server logs one
+  warning naming the variable and the reason, never the value. The server and
+  iTunes search start normally.
+
+There is no startup probe and no bundled key. The pair never appears in
+`config.yaml`, Settings, the audit log, the support bundle, logs, jobs or caches.
+Rotating or removing it needs a restart. This is a deliberate exception to keeping
+third-party credentials on the Bridge, because the server makes these searches
+itself and the Bridge has no Podcast Index setting.
 
 ```yaml
 podcasts:
@@ -736,27 +823,28 @@ a tagged binary; an ordinary build ignores the variable.
 ### The Bridge (no keys)
 
 The server has **no setting for the [Bridge](../bridge/index.md)**, and no
-environment variable: the pairing, the Bridge's token, its last heartbeat and its
+environment variable. The pairing, the Bridge's token, its last heartbeat and its
 jobs live in the database (`bridge_status`, `bridge_jobs` and a `tokens` row; see
-[Data model](data-model.md#the-bridge)) and are managed from the console's
-**Settings > Bridge**. Existing settings touch it in three places:
+[Data model](data-model.md#the-bridge)). An admin manages them from the console's
+**Server > Settings > Bridge**. Existing settings touch the Bridge in three places:
 
 - **The address the pairing dialog gives the Bridge** (`server_url` from
   [`POST /admin/bridge/pair`](api/reference.md#post-apiv1adminbridgepair)) is the
-  server's [home address](#home-address-lan_url) when it has one (plain `http` on
-  the local network for a self-signed server, whose certificate the Bridge can't
-  verify), else `public_url`, else the address the console was opened on. When the
-  Bridge runs in a container beside the server, it usually reaches the server by
-  another address (a compose service name), which it is given on its own side.
+  server's [home address](#home-address-lan_url) when it has one. For a
+  self-signed server that is plain `http` on the local network, because the Bridge
+  can't verify the certificate. Without a home address it is `public_url`, else
+  the address the console was opened on. When the Bridge runs in a container
+  beside the server, it usually reaches the server by another address (a compose
+  service name), which it is given on its own side.
 - **`libraries[].root`** is where the Bridge looks for each library unless it is
-  told otherwise, so mounting the libraries at the same path in both containers
-  needs no mapping on the Bridge.
+  told otherwise. Mounting the libraries at the same path in both containers
+  therefore needs no mapping on the Bridge.
 - **`metadata.enabled`** gates generating characters and recaps
-  ([`sidecars.generate`](../bridge/generating.md)): generated content reaches the
+  ([`sidecars.generate`](../bridge/generating.md)). Generated content reaches the
   players through `/meta`, which is `404` while metadata is off, so the console and
   the player offer the action only with it on.
 
-The Bridge's own settings are its business: see
+The Bridge's own settings are in
 [Bridge configuration](../bridge/configuration.md).
 
 ## Environment variables
@@ -815,8 +903,8 @@ overrides no key either (see
 [The SQLite engine](#the-sqlite-engine-audiosilo_sqlite)).
 
 List values are split on commas with whitespace trimmed and empties dropped
-(`splitList`). Numeric/boolean variables that fail to parse are **silently
-ignored** (the underlying key keeps its previous value) - only `Validate`
+(`splitList`). Numeric and boolean variables that fail to parse are **silently
+ignored**, and the underlying key keeps its previous value. Only `Validate`
 catches downstream inconsistencies.
 
 **The environment wins, and stays out of the file.** `Load` remembers which
@@ -835,9 +923,12 @@ environment was applied (`Config.file`). Two things follow:
 The admin console's **Server > Settings** (over
 [`GET`/`PATCH /admin/settings`](api/reference.md#admin-settings)) edits most of
 the keys above. The settings table in `internal/config/settings.go` is the one
-place that says, for each key, its console id (`<section>.<name>`, which is
-also where it sits in the envelope), its variable, whether a change waits for a
-restart, and whether the console may change it at all:
+place that says, for each key:
+
+- its console id (`<section>.<name>`, which is also where it sits in the envelope);
+- its variable;
+- whether a change waits for a restart;
+- whether the console may change it at all.
 
 | Setting id | Key | Variable | Takes effect |
 |---|---|---|---|
@@ -871,64 +962,103 @@ restart, and whether the console may change it at all:
 | `backups.schedule` | `backups.schedule` | `AUDIOSILO_BACKUP_SCHEDULE` | at once |
 | `backups.keep` | `backups.keep` | `AUDIOSILO_BACKUP_KEEP` | at once (pruning at the next scheduled backup) |
 | `backups.dir` | `backups.dir` | `AUDIOSILO_BACKUP_DIR` | restart; **read-only** in the console |
-| `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once; starts/stops feed/download/retention scheduling and gates writes; reads and present-pin reuse stay core |
+| `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once. Starts or stops the scheduling of feeds, downloads and retention, and gates writes. Reads and present-pin reuse stay core |
 | `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
 
-`podcasts.discovery.enabled`, `upcoming.window_days`, `scan.concurrency`, `database.mmap` and the six
-`rate_limit.*` values have no setting id: each is read at start from the file or its variable
-and never offered in the console.
+`podcasts.discovery.enabled`, `upcoming.window_days`, `scan.concurrency`,
+`database.mmap` and the six `rate_limit.*` values have no setting id. Each is read
+at start from the file or its variable and never offered in the console.
 
-Not in the console: `max_upload_bytes` (it has a variable but no setting),
-`tls.cache_dir`, `tls.cert_file`/`tls.key_file`, `server_id`, and `libraries`
-(libraries are managed on the console's Libraries page and live in the
-database). The ffmpeg/ffprobe paths are CLI flags; the console's Transcoding
-topic only shows what was found.
+Also not in the console:
+
+- `max_upload_bytes` (it has a variable but no setting);
+- `tls.cache_dir`, `tls.cert_file` and `tls.key_file`;
+- `server_id`;
+- `libraries`. Libraries are managed on the console's Libraries page and live in
+  the database.
+
+The ffmpeg and ffprobe paths are CLI flags. The console's Transcoding topic only
+shows what was found.
 
 **Locked settings.** A setting is locked when an `AUDIOSILO_*` variable set it
 (see [Environment variables](#environment-variables)). `Config.Locked` maps
-each locked setting id to the variable's name; the console disables locked
+each locked setting id to the variable's name. The console disables locked
 fields and shows why they can't be changed.
 
-**Live versus restart.** `api.API` keeps `boot`, the config the server
-started with (never changed), and `live`, an `atomic.Pointer[liveConfig]` that
-a settings save replaces whole. A `liveConfig` holds two configs: `saved`, what
-`config.yaml` now holds (the envelope shows it), and the embedded working
-config, `saved.Effective(boot)`: the saved settings with **every restart
-setting copied back from `boot`**. Handlers read the working config through
-`a.config()`, so a saved restart setting has no effect until the next start,
-while everything else applies to the next request: CORS and the trusted-proxy
-check (`liveConfig` parses both once per save, not per request), `public_url`
-in pairing and invite links, `lan_url` in the home and away addresses, the display name, the well-known app-link files,
-the metadata switch (`metadataOn`), the demo library and cap, the backup
-schedule and retention (the handler calls `backup.Service.SetSettings`), and each
-[managed module's](modules.md#background-work) toggle (the handler calls
-`syncModules` after the swap, which starts or stops the module's background work). Things set up
-once at start (the listener and TLS in `internal/server`, the `/web` mount and
-the site-root demo redirect in `Handler()`, the metadata service built in
-`api.New`, the metadata mirror the launcher builds in mirror mode, the demo reaper's TTL) are only built then, from the config the
-server started with. Turning `update_check` on or
-off also calls `updates.Checker.SetEnabled`. A saved restart setting whose
-value differs from `boot` is listed in the envelope's `restart_pending`
-(`Config.RestartPending`) until the server starts with it.
+**Live versus restart.** `api.API` keeps two configs:
 
-**A save.** `Config.WithSettings(patch, checks)` clones the saved config,
-refuses a setting that is unknown, read-only or locked, refuses JSON `null`
-for a setting that can't be unset (only a pointer field, `demo.max_users`,
-takes it: "enter a value" otherwise), decodes each value into its field, runs that field's normalizer, then `Validate`s the whole config.
-It also `Validate`s the config **as `config.yaml` will hold it** (`Config.asSaved`,
-what `Save` writes: the file's own values for keys an `AUDIOSILO_*` variable sets),
-and refuses a change that turns a valid file invalid, naming the variable. Without
-it, a change could save a file that only works while the variable stays set
-(`demo.enabled` on from the console, with the library only in
-`AUDIOSILO_DEMO_LIBRARY`), and the server would stop starting once the variable
-is removed. A file that already leans on the environment doesn't block unrelated
-changes.
-`config.Checks` carries what the config can't tell by itself: whether a
-metadata service exists (metadata can't be switched on without one) and
-whether a library has the `demo.library` name (the handler looks it up in the
-catalog). A refusal is a `*config.SettingError` naming the setting and the
-reason, and nothing is applied (all or nothing). The handler then writes
-`config.yaml` with `Config.Save` and swaps `live`, all under `settingsMu`. The normalizers, per setting:
+- `boot`, the config the server started with, which never changes;
+- `live`, an `atomic.Pointer[liveConfig]` that a settings save replaces whole.
+
+A `liveConfig` holds two configs in turn. `saved` is what `config.yaml` now holds,
+and the envelope shows it. The embedded working config is `saved.Effective(boot)`:
+the saved settings with **every restart setting copied back from `boot`**.
+Handlers read the working config through `a.config()`, so a saved restart setting
+has no effect until the next start.
+
+Everything else applies to the next request:
+
+- CORS and the trusted-proxy check (`liveConfig` parses both once per save, not
+  per request);
+- `public_url` in pairing and invite links;
+- `lan_url` in the home and away addresses;
+- the display name;
+- the well-known app-link files;
+- the metadata switch (`metadataOn`);
+- the demo library and cap;
+- the backup schedule and retention (the handler calls
+  `backup.Service.SetSettings`);
+- each [managed module's](modules.md#background-work) toggle. The handler calls
+  `syncModules` after the swap, which starts or stops the module's background
+  work.
+
+Turning `update_check` on or off also calls `updates.Checker.SetEnabled`.
+
+Some things are set up once at start, from the config the server started with,
+and only then:
+
+- the listener and TLS in `internal/server`;
+- the `/web` mount and the site-root demo redirect in `Handler()`;
+- the metadata service built in `api.New`;
+- the metadata mirror the launcher builds in mirror mode;
+- the demo reaper's TTL.
+
+A saved restart setting whose value differs from `boot` is listed in the
+envelope's `restart_pending` (`Config.RestartPending`) until the server starts
+with it.
+
+**A save.** `Config.WithSettings(patch, checks)` works in these steps:
+
+1. It clones the saved config.
+2. It refuses a setting that is unknown, read-only or locked.
+3. It refuses JSON `null` for a setting that can't be unset. Only a pointer
+   field, `demo.max_users`, takes `null`. Any other setting answers "enter a
+   value".
+4. It decodes each value into its field and runs that field's normalizer.
+5. It `Validate`s the whole config.
+6. It also `Validate`s the config **as `config.yaml` will hold it**
+   (`Config.asSaved`, what `Save` writes: the file's own values for keys an
+   `AUDIOSILO_*` variable sets). It refuses a change that turns a valid file
+   invalid, naming the variable.
+
+Without step 6, a change could save a file that only works while the variable
+stays set, and the server would stop starting once the variable is removed. An
+example is `demo.enabled` switched on from the console, with the library only in
+`AUDIOSILO_DEMO_LIBRARY`. A file that already leans on the environment doesn't
+block unrelated changes.
+
+`config.Checks` carries what the config can't tell by itself:
+
+- whether a metadata service exists, because metadata can't be switched on
+  without one;
+- whether a library has the `demo.library` name. The handler looks it up in the
+  catalog.
+
+A refusal is a `*config.SettingError` naming the setting and the reason, and
+nothing is applied (all or nothing). After a successful check, the handler writes
+`config.yaml` with `Config.Save` and swaps `live`, all under `settingsMu`.
+
+The normalizers, per setting:
 
 | Setting | Accepted, and how it is stored |
 |---|---|
@@ -1000,20 +1130,28 @@ console's Server > About and Health > System. `pkg/launcher` starts one
 - a `rate_limit.*.rate` that is negative, infinite or not a number, or a
   negative `rate_limit.*.burst` (`0` is unset: the default).
 
-Secure-by-default choices baked into `Default()` and first-run: TLS on
-(`selfsigned`) out of the box, no default passwords (credentials are minted
-and printed once, or set via the guarded setup page), config written
-`0600`, no trusted proxies and no CORS grants until configured. See
-[Auth & security](auth-and-security.md) for the app-layer hardening these
+Secure-by-default choices baked into `Default()` and first-run:
+
+- TLS on (`selfsigned`) out of the box;
+- no default passwords (credentials are minted and printed once, or set via the
+  guarded setup page);
+- config written `0600`;
+- no trusted proxies and no CORS grants until configured.
+
+See [Auth & security](auth-and-security.md) for the app-layer hardening these
 feed into.
 
 ## `pkg/launcher` is not an embedding API {/* #launcher-options-for-embedders */}
 
 `pkg/launcher.Run(ctx, opts)` is the run loop behind the headless `audiosilo`
-command. Its `Options` are only what the command's flags set: `DataDir`
-(`--data`), `FFprobePath` / `FFmpegPath` (`--ffprobe` / `--ffmpeg`, `""` turns
-the tool off), `Log` and `Setup` (`--setup`: the token-guarded `/setup` page
-for the admin account instead of the printed credentials banner).
+command. Its `Options` are only what the command's flags set:
+
+- `DataDir` (`--data`);
+- `FFprobePath` and `FFmpegPath` (`--ffprobe` and `--ffmpeg`; `""` turns the
+  tool off);
+- `Log`;
+- `Setup` (`--setup`: the token-guarded `/setup` page for the admin account
+  instead of the printed credentials banner).
 
 It takes no configuration overrides and pins no setting: `config.yaml` and the
 `AUDIOSILO_*` variables are the only configuration. (The bind, TLS, public URL,
@@ -1027,71 +1165,80 @@ admin PWA.
 
 ## ffmpeg/ffprobe resolution & auto-download
 
-The binaries are **not bundled** (large, and usually already present).
-`pkg/launcher.resolveTools` resolves each enabled tool in order:
+The binaries are **not bundled**, because they are large and usually already
+present. `pkg/launcher.resolveTools` resolves each enabled tool in order:
 
-1. an **explicit path** from the flag/Options;
+1. an **explicit path** from the flag or `Options`;
 2. a copy **next to the server executable** (bare names only; `.exe` appended
-   on Windows) - so a tool dropped beside the binary is found without
+   on Windows), so a tool dropped beside the binary is found without
    touching `PATH`;
 3. **`$PATH`** (`exec.LookPath`).
 
 Only when an enabled tool is found nowhere locally does the launcher fall
-back to `internal/toolfetch.Ensure`, which downloads a static build into
-**`<data>/tools/`** and reuses it forever (one archive download yields both
-tools):
+back to `internal/toolfetch.Ensure`. It downloads a static build into
+**`<data>/tools/`** and reuses it forever. One archive download yields both
+tools.
 
-- **Sources are pinned and HTTPS-only**: BtbN's `FFmpeg-Builds` GitHub
-  release assets for Linux/Windows (amd64 + arm64; `tar.xz`/`zip`), and
-  evermeet.cx per-tool zips for macOS (x86_64 builds - they run under
-  Rosetta 2 on Apple Silicon, which is fine to exec from an arm64 server).
+- **Sources are pinned and HTTPS-only**:
+  - Linux and Windows: BtbN's `FFmpeg-Builds` GitHub release assets (amd64 and
+    arm64; `tar.xz` or `zip`).
+  - macOS: evermeet.cx per-tool zips. These are x86_64 builds. They run under
+    Rosetta 2 on Apple Silicon, which an arm64 server can exec without trouble.
 - **Self-check**: every downloaded binary must successfully run `-version`
-  (15 s timeout) before it is adopted; a failing binary is deleted.
-- **The Linux/Windows download is a release branch** (2.5.1, server#269):
-  BtbN's `ffmpeg-n8.1-latest-<platform>-lgpl-8.1` asset (`btbnBranch`,
-  `btbnAsset`), rebuilt at each 8.1 point release, whose `-version` reads
-  `n8.1...`, so the scanner's [in-process probe](scanner.md#the-in-process-probe)
-  runs with it. Before 2.5.1 it was FFmpeg master (`ffmpeg-master-latest-*`),
-  whose `N-...` version is no release, so the probe stayed off. `btbnBranch`
-  moves only to a branch `metadata`'s `knownRules` has. evermeet's macOS
-  download is the latest release when it was fetched (and is kept), so the
-  probe runs with it only while that is 7.1 or 8.1. A local ffprobe of a known
-  release found first avoids both. If the pinned 8.1 asset is gone (a 404) in
-  the foreground download, with no tools cached, it falls back to BtbN's master
-  build: the tools work, the probe stays off, and a warning says so.
-- **A cached master build is replaced in the background** (`replaceMaster`):
-  when the cached ffprobe's version starts `N-` (an older server's download),
-  that pair serves this run, and the 8.1 build is fetched in a goroutine into
-  `<data>/tools/next` and self-checked; the next start's `promoteStaged` moves it
-  into `<data>/tools/`, ffprobe first (an incomplete or failing one is removed;
-  a rename that fails keeps `next/`, so the following start finishes it). A failed fetch
-  touches `<data>/tools/.release-fetch-failed` (an empty file whose modification
-  time is the failure's) and is retried no sooner than `releaseRetry` (24 hours)
-  after that time; a shutdown mid-fetch leaves the marker as it was, and a
-  success removes it. The start never waits for it. A download unpacks into a
+  (15 s timeout) before it is adopted. A failing binary is deleted.
+- **The Linux and Windows download is a release branch**: BtbN's
+  `ffmpeg-n8.1-latest-<platform>-lgpl-8.1` asset (`btbnBranch`, `btbnAsset`),
+  rebuilt at each 8.1 point release. Its `-version` reads `n8.1...`, so the
+  scanner's [in-process probe](scanner.md#the-in-process-probe) runs with it.
+  - Before 2.5.1 the download was FFmpeg master (`ffmpeg-master-latest-*`), whose
+    `N-...` version is no release, so the probe stayed off.
+  - `btbnBranch` moves only to a branch that `metadata`'s `knownRules` has.
+  - evermeet's macOS download is the latest release when it was fetched, and it
+    is kept. So the probe runs with it only while that is 7.1 or 8.1.
+  - A local ffprobe of a known release, found first, avoids both.
+  - If the pinned 8.1 asset is gone (a 404) in the foreground download, with no
+    tools cached, the launcher falls back to BtbN's master build. The tools work,
+    the probe stays off, and a warning says so.
+- **A cached master build is replaced in the background** (`replaceMaster`).
+  This happens when the cached ffprobe's version starts `N-`, which is an older
+  server's download:
+  1. That pair serves this run.
+  2. The launcher fetches the 8.1 build in a goroutine into `<data>/tools/next`
+     and self-checks it. The start never waits for this.
+  3. The next start's `promoteStaged` moves it into `<data>/tools/`, ffprobe
+     first. An incomplete or failing one is removed. A rename that fails keeps
+     `next/`, so the following start finishes it.
+
+  A failed fetch touches `<data>/tools/.release-fetch-failed`, an empty file
+  whose modification time is the failure's. The fetch is retried no sooner than
+  `releaseRetry` (24 hours) after that time. A shutdown mid-fetch leaves the
+  marker as it was, and a success removes it. A download unpacks into a
   `.download-*` folder inside the one it fills (never the system temp folder),
   and a start removes one an exit left behind.
 - **The start-up log** says which way the probe went
-  (`pkg/launcher.resolveTools`, `metadata.ProbeRelease`): "in-process probe on"
-  with the rules' release, "in-process probe off: ffprobe is not a release it
-  knows, so ffprobe reads every file", or, with no ffprobe, that the probe is on
-  by 8.1's rules with no ffprobe for the rest. The probe's per-file fallback reason is
-  logged at debug (`metadata.SetLogger`).
-- **Hardening**: extraction only takes files named `ffmpeg`/`ffprobe`
+  (`pkg/launcher.resolveTools`, `metadata.ProbeRelease`). It logs one of:
+  - "in-process probe on", with the rules' release;
+  - "in-process probe off: ffprobe is not a release it knows, so ffprobe reads
+    every file";
+  - with no ffprobe, that the probe is on by 8.1's rules with no ffprobe for the
+    rest.
+
+  The probe's per-file fallback reason is logged at debug (`metadata.SetLogger`).
+- **Hardening**: extraction only takes files named `ffmpeg` or `ffprobe`
   (basename-only, so no zip-slip), capped at 300 MiB per binary
   (decompression-bomb guard). Pinning per-asset SHA-256 is noted in the
   package as a future hardening step.
 - **Graceful degradation**: offline, an unsupported platform, or a failed
-  check just means running without the tool - durations, chapters and codecs
-  only from the in-process probe without ffprobe, transcoding off without ffmpeg - with a
-  warning logged and a retry on the next start. Nothing is fatal.
+  check means running without the tool. Without ffprobe, durations, chapters and
+  codecs come only from the in-process probe. Without ffmpeg, transcoding is off.
+  The launcher logs a warning and retries on the next start. Nothing is fatal.
 
 ## What ends up in the data directory
 
 | Path | What it is |
 |---|---|
 | `<data>/config.yaml` | This configuration (written on first run) |
-| `<data>/audiosilo.db` | The SQLite index - rebuildable; the filesystem is the source of truth (see [Data model](data-model.md)) |
+| `<data>/audiosilo.db` | The SQLite index. It is rebuildable, because the filesystem is the source of truth (see [Data model](data-model.md)) |
 | `<data>/certs/` | autocert certificate cache |
 | `<data>/selfsigned-cert.pem`, `<data>/selfsigned-key.pem` | Persisted self-signed certificate (mode `selfsigned`, default paths) |
 | `<data>/tools/` | Auto-downloaded ffmpeg/ffprobe, when no local copy was found |
