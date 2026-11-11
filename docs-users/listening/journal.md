@@ -25,6 +25,8 @@ There's one card for each day you listened, newest first. Each card says how lon
 - **A 24 hour bar**, with each stretch of listening drawn where it happened in the day.
 - **The sessions**: the book, when you started, how long you listened, and where you went in the book.
 
+Listening this device hasn't synced to your server yet shows too, marked **Waiting to sync**. Once it syncs, the server's own session takes its place.
+
 Tap a cover to open that book's [History tab](book-page.md#history).
 
 ### Drift-offs

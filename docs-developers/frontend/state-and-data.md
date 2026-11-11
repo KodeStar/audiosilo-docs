@@ -1071,7 +1071,9 @@ is**, in a framework-free module of pure functions:
 
 The saved-progress side comes from `useBookProgress(libraryId, path, cid?)`. It
 reuses the existing `qk.progress(cid, lib, path)` key rather than introducing a
-second progress cache.
+second progress cache. Its answer is the place Resume plays, which can be this
+device's own newer record (see
+[The place Resume plays](#the-place-resume-plays)).
 
 A work's positions are numbered on its own scale. When the book splits finer than
 the work's scale, `/meta` answers them
@@ -1247,6 +1249,13 @@ The models:
     being down says nothing about the place. The greeting's servers pill names
     that server, on a phone too, where the pill gets a row of its own under the
     date.
+  - The progress list is read through `useWithLocalPlaces`
+    (`src/playback/use-local-places.ts`, over `withLocalPlaces`), read again as the
+    outbox changes, so a book this device played on since shows its newer place
+    ([The place Resume plays](#the-place-resume-plays)). The Now card reads a loaded
+    book on the player's own queue (its chapters and total, never its synthetic
+    slices), so Home's percent is the player's after an offline run and after a
+    server reorder.
   - `nextCandidates` is the Now book, other books in progress, then recently
     finished books, at most `NEXT_CANDIDATES` (6). Each takes one `/next` on the
     candidate's own server.
@@ -1982,6 +1991,33 @@ The offline-safe write path for listening progress:
   book. A record identical to the stored one writes nothing. An offline resume
   then knows a place another device reached, even when the book's page was never
   opened online. A failed mirror write never fails the list.
+
+### The place Resume plays
+
+The book's page, Home and every other reader of a book's saved place show the place
+Resume would play from, never only the server's row. So a page never shows another
+device's older row while Resume starts at this device's newer place, and Home's
+percent after an offline run is the player's.
+
+- **`bookPlace(server, cid, lib, path)`** (`progress-sync.ts`) is the resume lookup's
+  pick of the server's row and this device's own records (the mirror and the offline
+  queue), with the file place a resume plays. `fetchBookProgress` answers with it, so
+  the `qk.progress` cache holds it. Offline (no server answer) it is this device's
+  records alone.
+- **This device's record keeps the server's row beside it.** A local record reads as
+  version 0 and carries none of the row's fields, so when it is the pick, the row goes
+  with it (`PlacedProgress.server`, read through `serverRowOf`). The book's dates,
+  another device's place to offer (`ListeningOfferLine`) and the version an explicit
+  start acknowledges (`knownProgress`) come from that row.
+- **A sync answer** stores `bookPlace` of each row in the same cache (`applyAnswer`),
+  never the row alone.
+- **`useBookProgress` reads the place on the shown file order.** Its `select` turns
+  the record's file place into whole-book seconds on the chapters the cache holds
+  (`positionOn`, never fetching them; the cached entry keeps the record's own
+  seconds). After a server reorder with a download in the old order, the book and
+  episode pages, the end credits, the companion, the reveal listener and `usePlaceIn`
+  then all show the place Resume plays. Read its `.position`, never the raw record's.
+- **Home's progress list** is read the same way, row by row (`withLocalPlaces`).
 
 :::note[No realtime sync]
 Progress sync is REST-only. The server advertises a `websocket` capability flag

@@ -76,7 +76,7 @@ Very little changes:
 - Chapters, the sleep timer and speed all work the same. So do bookmarks and notes while the app can reach your server (see [With no connection](#with-no-connection)).
 - It starts where you left off, even offline. If you listened later on another device, it starts there, as long as you've opened the app online since.
 - Your listening is saved on the device and syncs the next time the app reaches your server. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
-- If a book's chapters change on the server, the download picks them up next time you're online. The audio isn't downloaded again.
+- If a book's chapters change on the server, the download picks them up next time you're online. The audio isn't downloaded again. See [When the book on the server has more files](#when-the-book-on-the-server-has-more-files).
 - **Read the ebook** opens the downloaded ebook with no connection. See [Read the ebook](reading-the-ebook.md#reading-offline).
 - A book's [read-along](companion.md#text) comes with the download, so **Text** and **Follow narration** work offline too.
 - The book's page still opens offline, and its **Details** tab says **Plays from this device**.
@@ -117,6 +117,16 @@ You can install the web player as an app. It gets its own icon and window, and i
 Installing it also makes the browser less likely to clear your downloads. The iOS and Android apps add more than this. See [Get the apps](mobile-apps.md).
 
 ## Good to know
+
+### When the book on the server has more files
+
+If audio files were added to a book on your server after you downloaded it, your download doesn't have them. The book still plays:
+
+- **Online**, the player plays what's on your device and streams the rest from your server.
+- **Offline**, when the download is missing the end of the book, playback pauses where the downloaded part ends. The player says **The rest of this book isn't downloaded**, and the book isn't marked finished. Pressing play there shows the message again.
+- A download that's missing only an earlier file, such as an intro added later, still has the book's end. Offline, reaching that end finishes the book as usual.
+
+To hear the rest offline, remove the download and download the book again.
 
 ### Books in MKA files
 

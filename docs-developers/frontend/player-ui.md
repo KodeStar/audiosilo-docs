@@ -475,7 +475,7 @@ foot (`followPillRoom`), so the pill never covers the last line.
 | any other 401 | "Sign in to this server again to load the read-along" |
 | `denied` | "This read-along isn't yours to open" |
 | `missing` | "This book isn't on the server any more" |
-| `ebookChanged` | "The read-along is for a newer ebook" (remove the download and download the book again) |
+| `ebookChanged` | "The read-along is for a different edition of the ebook" (remove the download and download the book again) |
 
 **The admin's empty state**, when there is no map to follow:
 

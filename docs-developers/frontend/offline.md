@@ -543,22 +543,27 @@ each answer does:
 - **Another `generated_at`** (the map was made again) fetches the map again, **only
   if it was made from the download's own ebook**. `fitsEbook` checks that against
   `ebookSha256`. A download that never kept a map asks only while the server's
-  `ebook.size` is the one it saved (`knowsEbook`). So a map of a replaced ebook never
-  joins the old `book.epub`, and the matching copy stays. A failed fetch keeps the
-  copy and the manifest as they were.
+  `ebook.size` is the one it saved (`fitsDownload`, the reader's rule too). So a map
+  of a replaced ebook never joins the old `book.epub`, and the matching copy stays. A
+  failed fetch keeps the copy and the manifest as they were.
 - **No ready map any more** drops the file, and the book then says what the server
-  said. The exception is a stale map under the same `knowsEbook` rule. It still fits
-  the download's own EPUB and audio, so it stays.
+  said. The exception is a stale map: the kept map was paired with the download's
+  own EPUB when it was kept, and that EPUB never changes under it (a new copy is a
+  new download). So it stays, whatever size the server's ebook has now, and the
+  reader keeps showing it online
+  ([The ebook reader](reader.md#the-map)).
 - **Anything else** keeps the copy.
 
-Each answer's map is tried once per launch (`readalongTried`). A map the download
-refused is tried again at the next launch (a known follow-up).
+Each answer's map is tried once per launch (`readalongTried`). A map refused because
+it was made from another ebook is remembered on the manifest (`readalongRefused`, its
+`generated_at`, cleared once a map is kept), so it is not fetched again at every
+launch. A map made again has another `generated_at`, so it is tried.
 
 **Read offline.** The Text tab reads the copy with `readDownloadedReadalong`
 (`qk.readalongLocal`, `networkMode: 'always'`) with the EPUB on the device. A copy
 that can't be read gives way to the server's map when the server has one ready. A
 server map made from another ebook than the download's is never used with it. The
-Text tab says "The read-along is for a newer ebook" instead
+Text tab says "The read-along is for a different edition of the ebook" instead
 ([The ebook reader](reader.md#the-map)).
 
 A download made by an app that did not yet keep maps, or one whose map fetch failed,
@@ -667,9 +672,10 @@ Each answer is handled like this:
   `413` moves to the list as `too_large`.
 - Any other `400` sends that chunk's events one by one, once. One refused alone moves
   to the list as `invalid`.
-- An event older than 89 days is not sent. It moves to the list as `too_old`, since
-  the server refuses 90. So an event that never gets an answer can't hold its book
-  "pending" forever.
+- An event older than 90 days is not sent. It moves to the list as `too_old`, the
+  server's own bound (`syncRejectAge`), so the list's "over 90 days old" is true
+  whether the device or the server gave it up. So an event that never gets an answer
+  can't hold its book "pending" forever.
 - A `404` or `405` is a **rollback** only when the server's own `/server` answers
   without `listening_sync`. Anything else at the address keeps the outbox. A
   rollback:
@@ -710,6 +716,10 @@ open span while its server can't be reached.
   last sync, and the couldn't-sync list with Discard.
 - A book's history merges this device's unsent listens as sessions marked "Waiting to
   sync" (`usePendingListens`) until the server's rows replace them.
+- The Journal's Diary shows every connection's unsent listens the same way
+  (`useWaitingListens`, [The Diary](journal.md#the-diary)).
+- The book's page and Home show this device's newer place before it syncs
+  ([The place Resume plays](state-and-data.md#the-place-resume-plays)).
 
 **Sign-out, removing a server and removing a person** first send what they can
 (`unsentListens`, when the server is reachable). When listens are still unsent, they
@@ -1211,6 +1221,64 @@ file order (see
 [Native integrations](native-integrations.md#adopting-a-book-the-service-loaded)).
 [The engine's file order](native-integrations.md#the-engines-file-order) covers an
 engine that a JS restart left on the server's new order.
+
+### A download that ends early
+
+A file added to a book on the server after it was downloaded is not on the device,
+and the audio is never downloaded again. Online the queue streams it
+(`buildBookQueue` points a file the download lacks at the server), so the book plays
+on. Offline there is nothing to stream.
+
+**Only an early end counts.** A download that lacks the book's **last** file ends
+before the book does. One that lacks only an earlier file (an intro added later)
+still holds the book's end, and reaching that end finishes the book as usual
+(credits, `finishBook`, the finished save).
+
+**The download keeps the fact** as `DownloadManifest.endsBefore`, the book's last
+file's `rel_path` while the download lacks it. Every server chapters answer for the
+book sets or clears it (`startChapterRefresh`). An Android adoption with no answer
+sets it from the engine's own order (`noteDownloadEnd`), and leaves it alone for an
+order made only of the download's own files (a JS restart after an offline start).
+
+**A partial queue.** A queue built from the download that lacks the book's last
+file is partial (`partialQueues` in `store.ts`):
+
+- `playBook` reads `endsBefore`. Started with the device offline, such a download
+  plays its own files and chapters whatever chapters it was given (a cold start's
+  cached server chapters name the files it lacks, and streaming them would stall into
+  a stream error at the downloaded part's end). Online it is given the server's
+  chapters, streams the rest, and is not partial.
+- `adoptLoaded` with no server answer reads the last file of the engine's order and
+  `endsBefore`.
+
+Its end is the downloaded part's, so:
+
+- The engine's `ended` there reads as a pause, never a finish: no credits, no
+  `finishBook`, no finished save.
+- The listener is told "The rest of this book isn't downloaded"
+  (`onPartialDownloadEnd`, shown as a toast by `partial-download-notice.ts` once the
+  app is looked at). A stop with no listener yet, such as a car start before the root
+  layout mounted, is told as the listener registers.
+- A place past that end lands short of it and stays paused, with the same notice.
+- Play pressed at that end (`toggle`, while the engine's last word is that `ended`:
+  `atPartialEnd`) starts no play attempt, since the ended engine never reports
+  `playing` and the [stall watchdog](playback.md#the-stall--error-watchdog) would call
+  it an error. It shows the notice again.
+- The end credits' Play never finishes such a book by its place
+  (`selectEndsPartial`): it stops, unfinished.
+- Each mirror capture in a partial queue says so (`ProgressSave.partial`), so a span
+  recovered after a kill in the last seconds (`mirrorSpanEnd`) never makes the record
+  finished.
+
+**Online adoption streams on.** When an Android adoption's engine holds a file the
+download lacks and the server's chapters answer, the queue is built from those
+chapters, streaming what the download lacks, and the book plays on. A file the
+server no longer has is gone from the book. See
+[The engine's file order](native-integrations.md#the-engines-file-order).
+
+The regression tests are `store-adopt.test.ts`, `end-credits.test.tsx`,
+`listening-outbox.test.ts` (span recovery) and `downloads/store.test.ts`
+(`endsBefore`).
 
 ## The PWA layer
 

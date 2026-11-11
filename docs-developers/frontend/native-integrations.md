@@ -208,6 +208,14 @@ for a book that no longer holds that file, or that is neither loaded nor downloa
 A kept bookmark of the older form (whole-book seconds alone, written by 2.4.1) is still read.
 Only one whose place could not be read yet stays in file coordinates.
 
+**A press names its file by path.** The Android service's pending list and
+`onRemoteBookmark` (Android and iOS) carry `relPath`, the file's `rel_path` taken from the
+item's media id, beside the engine's file index and the seconds into that file. JS reads the
+press in that file (`engineIndexOn`, by `trackIndexById`). So a press made before an adoption
+reloaded the engine in the download's order (a car start with no JS, say) still lands in the
+file it was pressed in. A press an older binary made has no `relPath` and is read by its
+index, as before.
+
 **Adopting** (Android) is described in
 [Adopting a book the service loaded](#adopting-a-book-the-service-loaded).
 
@@ -450,6 +458,14 @@ Otherwise:
   streamed book, which asks nothing; being offline; no answer; and the server's chapters in
   another order or with other files than the engine's. The details follow this list.
 - **Not while casting.** The receiver streams the book, and a load would cut it.
+
+A downloaded book whose engine plays a file the download lacks (the playing one or a
+later one) is a special case. Online, when the server's chapters hold that file in
+another order, the queue is built from those chapters, streaming what the download
+lacks, and the engine is reloaded into it, so the book plays on. Offline, or with no
+answer, a queue that lacks the book's last file is partial: its end is a pause with
+"The rest of this book isn't downloaded", never a finish. See
+[A download that ends early](offline.md#a-download-that-ends-early).
 
 `reloadAdopted` loads at the same file (`trackIndexById`, by the path-keyed track id) and
 in-file place. For a file the queue lacks, it loads at the same whole-book seconds, short of

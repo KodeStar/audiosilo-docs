@@ -123,19 +123,29 @@ neither is ever shown.
    `SESSION_GAP_MS` (10 min), and picking up within 120 s (content) of where it stopped.
    Another book in between ends the session. A session carries the whole stretch's
    fields, `listened` (the spans' sum, without the pauses) and its parts.
-3. **Days** (`groupByDay`, `diary-model.ts`): sessions are grouped by the device's local
+3. **Waiting listens** (`waitingSessions`, `diary-model.ts`): this device's listen
+   events still in the [outbox](offline.md#listening-sync-the-outbox), from every
+   connection (`useWaitingListens` in `src/playback/use-listening-sync.ts`, kept
+   current as the outbox changes), become sessions of their own with `waiting` set.
+   Only the servers the Diary lists take part. They are grouped among themselves,
+   never into a server's session, since a session is one server's record. One the
+   server's rows already hold (the same book, `from` and `to` within 2 s, started
+   within 5 minutes, since the server corrects the device's clock) is left out, so a
+   listen whose answer is on the way never shows twice. The server's sessions are
+   grouped only when its rows change; an outbox change regroups only the waiting ones.
+4. **Days** (`groupByDay`, `diary-model.ts`): sessions are grouped by the device's local
    day they started on, newest first, with the day's total. A session past midnight
    stays on its start day. `useDayLabel` names the days as of `useToday`: Today,
    Yesterday, a weekday within the last week, else the date.
-4. **The day bar** (`dayBars`): every span of the day is placed by wall clock as a
+5. **The day bar** (`dayBars`): every span of the day is placed by wall clock as a
    fraction of the day, cut at midnight and at least `MIN_BAR_WIDTH` wide. Hairlines
    mark 06, 12 and 18. `barColor` colours each span with the book's cover accent or
    dominant colour, whichever stands off the theme's track best. When neither reaches
    3:1, or the book has no cover colours, it uses a theme token. The bar is one image to
    a screen reader, with a summary of the sessions' times.
-5. **Rows** show:
+6. **Rows** show:
    - the book's `RowCover`, which opens its History tab;
-   - "title · 21:12, 21 min";
+   - "title · 21:12, 21 min", followed by "· Waiting to sync" for a waiting session;
    - the chapter range (`spanRange` through `useChapterNamer`, else positions);
    - `ServerFlag` when there's more than one server;
    - the drift strip;

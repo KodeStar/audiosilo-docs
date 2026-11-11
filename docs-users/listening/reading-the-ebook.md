@@ -63,7 +63,7 @@ While it follows:
 
 While the reader follows the narration, it doesn't save your reading place.
 
-**Follow narration** only appears while the book is in the player, and only when its read-along still matches the ebook and the audio. The same text follows the narration in the player too, in the companion's [Text tab](companion.md#text).
+**Follow narration** only appears while the book is in the player, and only when its read-along still matches the ebook and the audio. A [downloaded](offline-downloads.md) book keeps its own read-along as long as it matches the downloaded ebook, even once the server's is out of date. The same text follows the narration in the player too, in the companion's [Text tab](companion.md#text).
 
 ## Your place, on every device
 
