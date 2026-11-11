@@ -247,7 +247,7 @@ answers, with and without ffprobe installed:
   (`src/api/client.ts`, `src/lib/*`, `src/playback/book-queue.ts`,
   `src/playback/progress-sync.ts`, `src/stores/*`). Keep logic out of
   `src/app/**` screens so it stays unit-testable. See
-  [Frontend testing](../frontend/testing.md).
+  [Testing the player](../frontend/testing.md).
 
 ## Two gate gotchas
 
@@ -279,7 +279,7 @@ catches the drift, so read it before adding code. The digest:
 - Any doc or comment the change contradicts is **updated in the same commit**.
   Grep the symbol, flag or route you changed across `*.md` and doc-comments.
   Docs updates are part of done. That includes this documentation site (see
-  [Writing the docs](documentation.md)) and, for seam changes, the workspace
+  [Maintaining these docs](documentation.md)) and, for seam changes, the workspace
   `CROSS-REPO.md`.
 
 **If you touched the wire format** (any JSON a handler emits or a client decodes)
@@ -290,7 +290,7 @@ catches the drift, so read it before adding code. The digest:
 - Tests on **both** sides.
 - `CROSS-REPO.md` is updated if the seam changed.
 
-Full walkthrough: [Cross-repo changes](cross-repo-changes.md).
+Full walkthrough: [Landing a cross-repo change](cross-repo-changes.md).
 
 **If you touched a security-critical path**
 
