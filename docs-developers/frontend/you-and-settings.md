@@ -57,7 +57,7 @@ re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
   Stats is the bare `/you`, and leaving the Journal drops its `tab`.
 
 The section control is `SubNavSections tab="(me)"`, so on tablet and desktop it is
-published into the sub-nav ([Sub-nav sections and actions](overview.md#sub-nav-sections-and-actions)).
+published into the sub-nav ([Sub-nav sections and actions](shell.md#sub-nav-sections-and-actions)).
 Stats, Year, Household and Account are plain columns with no scroller or gutters of
 their own. The hub puts them in a `TabPageScroll`
 (`src/components/shell/tab-page-scroll.tsx`), which supplies the page gutters, the mini
@@ -79,7 +79,7 @@ link. `section` is one of the hub's own (`CoreYouSection`); a module's key is no
 target. Open it only through `openYou(section)` / `openJournal(tab)`
 (`src/lib/open.ts`, also on `useOpen`), never `pushInShell`. They pop the Me tab to its
 root (`popTabToRoot`) rather than pushing a copy (see
-[Routing rules](overview.md#routing-rules)). `/journal?tab=` (the array-group route
+[Routing rules](routes.md#routing-rules)). `/journal?tab=` (the array-group route
 `journal.tsx`) also renders the Journal for older links.
 
 **Settings** is a page of the array group

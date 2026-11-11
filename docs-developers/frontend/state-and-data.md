@@ -282,7 +282,7 @@ reload of the web player paints from them at once and asks again behind them (a
 `/server`, the libraries and the first page of books before it drew a single
 cover. A start with nothing kept (a first visit, a private window) asks for the
 same first answers as the gate opens instead (see
-[the web start](overview.md#the-web-start-a-split-build)).
+[the web start](web-build.md#the-web-start-a-split-build)).
 
 - **What is kept** (`isStartupQuery`): `/server`, the libraries, favourites, the
   queue, collections, the listening goal, the household, the author, narrator and
@@ -1583,7 +1583,7 @@ screen keys its input on the counter, so a fresh mount with `autoFocus` takes th
 focus even when the tab was already open. On web that field opens the command
 palette instead. The palette's open state and query are `usePalette` in
 `src/components/shell/palette-store.ts` (see
-[the shell](overview.md#command-palette-web)).
+[the shell](shell.md#command-palette-web)).
 
 The shell (`useShellEffects`) clears the query when you leave the Search tab.
 Within the tab it is kept, so opening a result and coming back shows the same

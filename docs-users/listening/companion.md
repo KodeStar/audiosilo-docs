@@ -3,7 +3,7 @@ title: Use the player's companion
 description: See who's who, the story so far, the ebook text and your bookmarks beside the book you're listening to.
 ---
 
-The companion keeps everything about the book you're playing one tap away, without leaving the [full player](full-player.md). Its tabs are:
+The companion is a set of tabs about the book you're playing, inside the [full player](full-player.md):
 
 - **Who's who** - the people you've met so far.
 - **Story so far** - what's happened up to where you are.
@@ -16,20 +16,20 @@ On a computer it's a column beside the player. On a tablet it's under the contro
 
 ## Who's who and Story so far
 
-These come from the community database, [AudioSilo Meta](../community/meta-site.md), so your server needs community metadata switched on. Your server's [Bridge](../admin/generating-characters-and-recaps.md) can also write them, marked **Generated on this server**.
+These come from the community database, [AudioSilo Meta](../community/meta-site.md), so your server needs community metadata switched on. Your server's Bridge can also write them, marked **Generated on this server** (see [Generate characters and recaps](../admin/generating-characters-and-recaps.md)).
 
 Both tabs only show what you've heard. They follow [where you are as you listen](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it), moving on chapter by chapter. **Show anyway** reveals what's held back.
 
 - **Who's who** lists the people you've met, most recent first. Tap a card to read about the character. Descriptions stay closed because they can give away later events.
 - **Story so far** shows the recaps up to where you are. A whole-book summary stays behind a **Spoiler** row until you finish.
 
-When the book reaches someone new, a note tells you, such as *"New in Who's who: Teft, Rock"*. Tap **Show** to open Who's who.
+When the book reaches someone new, a message tells you, such as *"New in Who's who: Teft, Rock"*. Tap **Show** to open Who's who.
 
 A line under both tabs credits the people who wrote them.
 
 ## Text
 
-For a book with a **read-along**, the **Text** tab shows the ebook following what you hear. It highlights the sentence being read and turns the pages by itself. An admin makes a book's read-along with a [Bridge](../admin/making-read-along.md).
+For a book with a **read-along**, the **Text** tab shows the ebook following what you hear. It highlights the sentence being read and turns the pages by itself. An admin makes a book's read-along with a Bridge (see [Make a read-along](../admin/making-read-along.md)).
 
 ![The companion on its Text tab, following the narration](/img/screenshots/web-player/player-text.png)
 

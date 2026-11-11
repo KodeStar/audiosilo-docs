@@ -3,8 +3,8 @@ title: "See who is listening"
 description: "Use the admin console's Activity pages to see listening over time, who is playing right now, every session, and a year in review."
 ---
 
-**Activity** in the [admin console](console-tour.md) shows what your household
-listens to. It has four sections: **Overview**, **Live now**, **Sessions** and
+**Activity** in the [admin console](console-tour.md) shows what people on your
+server listen to. It has four sections: **Overview**, **Live now**, **Sessions** and
 **Year in listening**. Only admins can see it.
 
 Everything here is built from **listening sessions**: a stretch of listening on
@@ -34,7 +34,7 @@ Below the tiles:
   same chapter.
 - **How it played**: how much listening played directly and how much was
   transcoded.
-- **Apps in use**: the apps and versions people listen with. A note points out
+- **Apps in use**: the apps and versions people listen with. A notice points out
   devices running an older build.
 - **Library growth** and **Storage and coverage**: how your collection grew,
   the space it takes, and how many books are matched, have chapters and have a
@@ -74,15 +74,15 @@ started, how long they listened, the device and app, and how it played.
 Listening [imported from Audiobookshelf](import.md) is marked "Imported from
 Audiobookshelf".
 
-Sessions are kept for 400 days unless you [change it](server.md#general).
-After that they are summarised by day. They still count in the totals and
-charts, but no longer appear in this list.
+After the time set in **Days to keep sessions**, the server summarises sessions
+by day (see [What the server records](#what-the-server-records)). They still
+count in the totals and charts, but no longer appear in this list.
 
 ## Year in listening
 
 ![Activity > Year in listening](/img/screenshots/admin/activity-year.png)
 
-**Activity > Year in listening** tells a calendar year as a story. Pick the
+**Activity > Year in listening** sums up one calendar year. Pick the
 **Year**. You see how many people listened and for how long, the book of the
 year and books finished. You also see the longest run of days with some
 listening, the busiest hour, the most played books and each person's hours.
@@ -106,11 +106,13 @@ server.
 - **Listening sessions**: who listened to which book, when, for how long, how
   far, on which device and app, and whether it was transcoded.
 - **Start and finish dates** for each book a person reads. An admin can
-  [correct them](users-and-invites.md#editing-someones-progress).
+  correct them from a person's
+  [progress menu](users-and-invites.md#editing-someones-progress).
 
-Detailed sessions are kept for 400 days unless you set another time (30 days to
-10 years) in [Server > Settings > General](server.md#general). After that they
-are reduced to daily totals: how long each person listened to which book on
+Detailed sessions are kept for 400 days unless you change **Days to keep
+sessions** (30 days to 10 years) in
+[Server > Settings > General](server.md#general). After that the server reduces
+them to daily totals: how long each person listened to which book on
 which day.
 
 Deleting an account removes all of its records. Deleting a library removes the

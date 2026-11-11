@@ -44,7 +44,7 @@ On native it is **one** `FloatingMiniPlayer`, rendered once by the native shell
 `src/app/(app)/_layout.tsx` re-exports) as the shell frame's `phoneBottom` over
 NativeTabs. It is never one per tab stack: NativeTabs keeps visited tabs alive, and
 a card per stack ticked up to five times. The card sits on the native bar's measured
-`bar` edge (see [Toasts](overview.md#toasts)). It renders nothing until that edge is
+`bar` edge (see [Toasts](shell.md#toasts)). It renders nothing until that edge is
 known, so it never flashes over the bar. On web it rides on the web tab bar.
 
 Once its own top edge is known, the card **publishes it** as the `mini` piece, and

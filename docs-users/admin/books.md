@@ -33,8 +33,8 @@ Each view has its own address, so you can bookmark a filtered list.
 ## Matching with community metadata
 
 When [community metadata](server.md#community-metadata) is on, you can match a
-book to its entry in the free community catalogue at
-[meta.audiosilo.app](https://meta.audiosilo.app). Matching fills in missing
+book to its entry in the free community database at
+[AudioSilo Meta](https://meta.audiosilo.app). Matching fills in missing
 details, such as the description, series, publisher and cover. It also gives
 listeners chapter recaps and the book's community chapters.
 
@@ -63,10 +63,25 @@ To match many books at once, use **Match automatically** on the Health page
 
 If the dialog says "meta.audiosilo.app isn't answering", try again in a minute.
 
+### What matching sends
+
+The server sends search terms to AudioSilo Meta only when you open **Match
+with community metadata** or run [Match automatically](health.md#matching-every-book-at-once):
+
+- the book's tagged title, author, series, narrators and language, and its
+  length;
+- any ASIN or ISBN, and what you type;
+- up to three names from its path (the author, series and book folders), never
+  the full path.
+
+It sends nothing about your server or who listens. With a
+[local copy](server.md#keeping-a-local-copy), lookups use the copy when it can
+answer, but can still fall back to asking online.
+
 ### Books matched to a store listing
 
-The community holds some books as a store listing with no ASIN or ISBN. A
-match to one of them still counts: the book shows as **Matched**, and
+The community database holds some books as a store listing with no ASIN or
+ISBN. A match to one of them still counts. The book shows as **Matched**, and
 [Match automatically](health.md#store-listings-with-no-asin-or-isbn) skips it.
 Its **Community metadata** card says "No ASIN or ISBN: matched to its store
 listing".
@@ -102,7 +117,7 @@ Click any book to open its page.
 Besides **Match with community metadata** and **Change cover**, the top of the
 page has **Listen in player**, which opens the book in the web player already
 signed in. The **⋯** menu has **Read the files again**, which re-reads the
-book's files at once, handy after you fix its tags.
+book's files at once. Use it after you fix its tags.
 
 Further down are the book's files, its ebook and
 [Read-along](making-read-along.md#the-read-along-card) card if it has one, and
@@ -116,9 +131,9 @@ published date, genres, tags, description, ASIN, ISBN and more. To change one:
 1. Click the value and type the new one. Press Enter to keep it, or Escape to
    cancel. (In **Description**, press Ctrl+Enter or ⌘+Enter.)
 2. Click **Review and save** in the bar at the bottom of the screen.
-3. Check the changes and confirm.
+3. Check the changes and confirm. The value now shows the **Edited** marker.
 
-**Genres** and **Tags** are lists: press Enter or a comma after each label.
+**Genres** and **Tags** are lists. Press Enter or a comma after each label.
 Use tags however you like, for example "Owned" or "Book club".
 
 A book in more than one series has a main **Series** and **Series number**, and
@@ -155,21 +170,21 @@ back.
 
 #### Community chapters
 
-The [community database](https://meta.audiosilo.app) has chapter lists for most
+The community database on [AudioSilo Meta](https://meta.audiosilo.app) has chapter lists for most
 of the recordings it knows. When community metadata is on, AudioSilo checks
 each [matched](#matching-with-community-metadata) book against the chapter list
 of its recording. The **Community chapters** panel on the Chapters card says
 what it found.
 
-A book with no chapters of its own uses the community's **automatically**.
+A book with no chapters of its own uses the community chapters **automatically**.
 Otherwise the panel offers a button to use them when they are more detailed or
 better titled, or says why they can't be used (another edition, say). **Use the
 file's chapters** always goes back to the book's own.
 
 AudioSilo fits each community chapter onto the pause in the audio where it
-starts. This needs ffmpeg: without it, starts may be a few seconds off. Checks
+starts. This needs ffmpeg. Without it, starts may be a few seconds off. Checks
 run in the background; **Check now** runs one straight away. An ASIN in the
-tags alone isn't enough: the book must be
+tags alone isn't enough. The book must be
 [matched](health.md#asin-and-isbn-tags-are-hints) first.
 
 #### Chapters found in the narration
@@ -201,7 +216,7 @@ With a [Bridge](bridge.md) paired, the **Community metadata** card can also
 **Generate characters and recaps** for the book (see
 [Generating characters and recaps](generating-characters-and-recaps.md#which-books-offer-it)).
 With the Contributions module on, it can
-[suggest corrections](bridge.md#suggest-corrections) to the community or
+[suggest corrections](bridge.md#suggest-corrections) to the community database or
 [share what the Bridge wrote](bridge.md#share-with-the-community).
 
 ![The Community metadata card with Generate characters and recaps](/img/screenshots/admin/book-generate.png)
@@ -253,8 +268,8 @@ author** to narrow the list.
 ![Library > Series](/img/screenshots/admin/series.png)
 
 Spellings that differ only in capitals, accents, punctuation or spaces count as
-one series. Other differences ("The Expanse" and "Expanse") make two series:
-fix those with a [bulk edit](#changing-many-books-at-once), or use
+one series. Other differences ("The Expanse" and "Expanse") make two series.
+Fix those with a [bulk edit](#changing-many-books-at-once), or use
 [Series spelled several ways](health.md#series-spelled-several-ways) in Health.
 
 With community metadata on, a series with a matched book also shows the books
@@ -270,12 +285,7 @@ for listeners too, edit its **Series number** on
 
 ## Good to know
 
-- **What matching sends.** The book's tagged details, length, ASIN or ISBN,
-  what you type, and up to three names from its path (the author, series and
-  book folders) go to the metadata service as search terms, never the full path. Nothing about your server or who listens is sent. With a
-  [local copy](server.md#keeping-a-local-copy), lookups use the copy when it
-  can answer, but can still fall back to the online service.
 - **An ASIN or ISBN you leave unticked, or revert, stays off.**
   [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
   doesn't write it back.
-- **The community has no genres or tags yet**, so matching never changes them.
+- **The community database has no genres or tags yet**, so matching never changes them.

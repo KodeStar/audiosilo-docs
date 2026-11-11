@@ -13,12 +13,12 @@ holds the outside accounts the Bridge uses:
 - **Audible** (optional), to back up the books you bought.
 
 You sign in only on the Bridge's own page. The console's **Server > Settings >
-Bridge** shows these accounts read-only. A credential you enter is never shown
-again: the page only says whether one is set.
+Bridge** shows these accounts read-only. After you enter a credential, the page
+never shows it again. It only says whether one is set.
 
 ## GitHub
 
-The Bridge files what it shares as **issues** on the community metadata
+The Bridge files what it shares as **issues** on the community database's
 repositories, under **your** GitHub account, through a GitHub app called
 **AudioSilo Contributions**. A free GitHub account is fine.
 
@@ -35,12 +35,12 @@ Then turn on the [Contributions module](../admin/server.md#modules) in the
 console. What is shared, and how it is reviewed, is in
 [Contributing from your server](../community/contributing-from-your-server.md).
 
-The app can open issues on the community repositories and use your gists (for a
+The app can open issues on the community database's repositories and use your gists (for a
 file too long for an issue). It can't change code or read your private
 repositories. Your password never reaches the Bridge.
 
-If the card says **Sign in again**, GitHub stopped accepting the sign-in: sign in
-again. If GitHub just can't be reached for a while, the Bridge can't share until it
+If the card says **Sign in again**, GitHub stopped accepting the sign-in. Sign in
+again. If GitHub can't be reached for a while, the Bridge can't share until it
 can, and recovers by itself.
 
 **Sign out** revokes the sign-in on GitHub. You can also revoke **AudioSilo
@@ -57,9 +57,9 @@ it is **Ready**, and a field for each kind of credential:
 | `claude` (the default) | **Claude subscription token** (from `claude setup-token`), **Anthropic API key** (billed per use) |
 | `codex` | **OpenAI API key** (billed per use) |
 
-Paste the credential and press **Save**. With both Claude fields set, the
-subscription token is used. A ChatGPT subscription is signed in in the agent
-container instead (see [Add a Bridge](running-a-bridge.md#7-the-agents-credential)).
+Paste the credential and press **Save**. With both Claude fields set, the agent
+uses the subscription token. For a ChatGPT subscription, you sign the agent
+container in instead (see [Add a Bridge](running-a-bridge.md#7-the-agents-credential)).
 
 The Bridge keeps the credential encrypted and hands it to the agent only for each
 run. Replacing a refused credential lets paused jobs carry on.
@@ -68,11 +68,11 @@ run. Replacing a refused credential lets paused jobs carry on.
 
 The **Audible** card signs the Bridge in to one or more Audible accounts. The
 Bridge then lists each account's books, finds the ones already on your server and
-backs up the ones you choose. You manage them in the console: see
+backs up the ones you choose. You manage them in the console. See
 [Back up your Audible books](../admin/audible.md).
 
 Each account belongs to **one person** on your server and goes with **one books
-library**. The sign-in stays on the Bridge: the server never sees it. Pair the
+library**. The sign-in stays on the Bridge, and the server never sees it. Pair the
 Bridge first.
 
 ![The Bridge's Accounts tab: the Audible card with one account signed in](/img/screenshots/bridge/accounts-audible.png)
@@ -118,7 +118,7 @@ it off again.
 |---|---|
 | **Not checked yet** | signed in, not checked yet (or the Audible module is off) |
 | **Signed in** | checked at least once; **Last checked** says when |
-| **Sign in again** | Audible refused the sign-in or its downloads, for example after a password change or a Bridge update. Press **Sign in again**: the account's settings are kept |
+| **Sign in again** | Audible refused the sign-in or its downloads, for example after a password change or a Bridge update. Press **Sign in again**. The account's settings are kept |
 | **Mapped on another server** | set up while the Bridge was paired with another server. Press **Change** and save |
 
 ### Removing an account
@@ -127,7 +127,7 @@ it off again.
 from the server and from your Amazon device list. Books already in your library
 stay. If the server or Amazon can't be reached, the card says what didn't happen.
 
-Backing up is for a personal backup of books you bought: read the note at the top
+Backing up is for a personal backup of books you bought. Read the note at the top
 of [Back up your Audible books](../admin/audible.md) first.
 
 ## Settings that take precedence

@@ -5,7 +5,7 @@ description: "Speed up the Bridge's transcription with a worker on a faster comp
 
 Before the Bridge can [generate characters and recaps](../admin/generating-characters-and-recaps.md),
 find chapters or make a read-along, it transcribes the book's audio (speech
-recognition). In its container that runs on the processor, which is slow: hours
+recognition, or ASR). In its container that runs on the processor, which is slow: hours
 for a long book on a typical NAS.
 
 A **worker** does the transcribing on another, faster computer instead:
@@ -44,7 +44,7 @@ recognition.
 2. Under **Add a worker**, give it a name, such as the computer's, and press
    **Add worker**.
 3. The page shows a command with the worker's **token**. Press **Copy** before
-   you press **Done**: the token is shown only once.
+   you press **Done**. The page shows the token only once.
 
 The command uses the Bridge's **public address** from its Settings. If the page
 says it is open at a local-only address like `localhost`, set the public address
@@ -64,7 +64,7 @@ when you log in, and starts it.
 
 Within a few seconds the worker shows as **Connected** on the Bridge's **Workers**
 tab. The console lists it too, under
-[Settings > Bridge > Workers](../admin/bridge.md#workers).
+[Server > Settings > Bridge > Workers](../admin/bridge.md#workers).
 
 - On a Mac, its log is `~/.audiosilo-bridge-worker/worker.log`.
 - On Linux, `journalctl --user -u audiosilo-bridge-worker -f` shows its log. To
@@ -85,12 +85,12 @@ When no worker is connected (its computer is asleep, say), the Bridge follows
 - **Wait for a worker**: the job waits, shown as **Waiting for an ASR worker**,
   and carries on when a worker connects.
 
-If the worker stops in the middle of a piece, only that piece is done again.
+If the worker stops in the middle of a piece, only that piece is transcribed again.
 
 ## Updating
 
 After you update the Bridge, paste the command again on the worker computer. The
-token is remembered, so you can leave out `--token` and what follows:
+installed worker keeps the token, so you can leave out `--token` and what follows:
 
 ```bash
 curl -fsSL http://192.168.1.20:8091/worker/install.sh | sh -s

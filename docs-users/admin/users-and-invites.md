@@ -40,10 +40,10 @@ The code is shown only this once. To send a fresh one later,
 [rotate](#rotating-and-revoking) the invite.
 
 The new account has no password and isn't an admin. Most listeners never need a
-password: they pair their devices instead.
+password, because they pair their devices instead.
 
-**All libraries** gives them each library you have now. A library you add later
-must be given separately, from their page.
+**All libraries** gives them each library you have now. Give them any library
+you add later from their page.
 
 ## The People page
 

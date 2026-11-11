@@ -12,7 +12,7 @@ The sleep timer stops the book for you, so you can fall asleep listening without
 Pick one of these to start the timer:
 
 - **Minutes**: 5, 10, 15, 30, 45 or 60.
-- **End of chapter**: stops when the current chapter ends. A book without chapter marks uses its files or [virtual chapters](playback.md#books-without-chapters).
+- **End of chapter**: stops when the current chapter ends. A book without chapter marks uses its files or its [parts](playback.md#books-without-chapters).
 - **Or stop after**: this chapter and up to three more, each with the clock time it ends.
 
 The times are real time at your current speed.
@@ -56,7 +56,7 @@ The web player can't feel the phone move, so it doesn't offer this.
 When the timer stops a book and nobody kept it going, AudioSilo assumes you fell asleep:
 
 - A [**Fell asleep** bookmark](bookmarks-and-notes.md#fell-asleep) goes where the timer stopped the book.
-- If you play the book again on that device soon after, near where it stopped, a note offers once to take you back: *"You drifted off around 23:41. Jump back 4 minutes?"* **Jump back** returns to the last moment you touched the player.
+- If you play the book again on that device soon after, near where it stopped, a message offers once to take you back: *"You drifted off around 23:41. Jump back 4 minutes?"* **Jump back** returns to the last moment you touched the player.
 - The [Journal's Diary](journal.md#drift-offs) shows it under that listening.
 
 ## Starting a timer automatically at night

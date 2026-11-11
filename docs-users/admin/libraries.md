@@ -23,7 +23,10 @@ have to wait: books appear as the scan finds them.
 ![Adding a library with the folder picker open](/img/screenshots/admin/library-add.png)
 
 The form also has a scan schedule, files to skip and where book details come
-from. You can leave them as they are and set them later (see below).
+from. You can leave them as they are and set them later. See
+[Scanning on a schedule](#scanning-on-a-schedule),
+[Skipping files and folders](#skipping-files-and-folders) and
+[Where book details come from](#where-book-details-come-from).
 
 There is no layout to choose for a **Books** library. AudioSilo works out which
 folders are books by itself (see [Folder detection](#folder-detection)).
@@ -39,7 +42,7 @@ container and use the path inside the container (see
 ### Podcast libraries
 
 [Podcasts](podcasts.md) need a Bridge and the Podcasts module. A podcast library
-needs its own folder: it can't share, contain or sit inside another library's
+needs its own folder. It can't share, contain or sit inside another library's
 folder. Mount the same folder read-write in the Bridge. See
 [Set up a podcast library](podcasts.md#set-up-a-podcast-library).
 
@@ -64,8 +67,8 @@ Changing the folder or the skipped files rescans the library. When you change
 the folder, listening progress follows the books found at the same place
 inside the new folder.
 
-If you're reorganising, prefer moving files *within* the library's folder:
-progress follows them (see
+If you're reorganising, move files *within* the library's folder where you
+can. Progress follows them (see
 [Organize your audiobook files](../getting-started/organizing-your-library.md)).
 
 A library set in the server's `config.yaml` has a **From your config** badge.
@@ -90,8 +93,8 @@ A rescan never touches your files. Listening progress and bookmarks survive
 rescans, and follow a book when you move or rename its folder.
 
 :::tip[Faster scans]
-A first scan is much faster with FFmpeg 7.1 or 8.1, which the official Docker
-images have (see
+With ffmpeg 7.1 or 8.1, which the official Docker images have, the server
+reads most files itself, so a first scan finishes much sooner (see
 [ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe)).
 On a slow disk or busy network share you can make scans do fewer things at
 once with `scan.concurrency` in `config.yaml`, then restart (see the
@@ -125,13 +128,13 @@ Some folders hold audio that isn't an audiobook, such as sample clips or an
 | `Podcasts/*` | everything inside the `Podcasts` folder at the top of the library |
 | `/Extras` | only the `Extras` folder at the top of the library |
 | `metadata.json` | the `metadata.json` files Audiobookshelf leaves in book folders (see [Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)) |
-| `# publisher samples` | nothing: a line starting with `#` is a note |
+| `# publisher samples` | nothing: a line starting with `#` is a comment |
 
 `*` stands for any run of characters and `?` for one character. Upper and lower
 case don't matter.
 
-Saving rescans the library. Skipped books are removed from the library, but
-your files stay where they are.
+Saving rescans the library. The scan removes skipped books from the library,
+but your files stay where they are.
 
 ## Where book details come from
 
@@ -142,8 +145,7 @@ take their title, author, series and series number from:
   tags leave empty (see
   [Where titles, authors and series come from](../getting-started/organizing-your-library.md#where-titles-authors-and-series-come-from)).
 - **Folder names first**: for a library whose folders are named well but whose
-  tags aren't. Folders are read as `Author / Series / 03 - Title`, with a
-  leading number read as the book's place in the series. Names like
+  tags aren't. Names like
   [`Author; Series; Book 04; Title`](../getting-started/organizing-your-library.md#names-like-author-series-book-04-title)
   are read by their parts.
 
@@ -226,7 +228,7 @@ button that joins them.
 ## Exporting a library
 
 **⋯ > Export book list** downloads the library's book list as a `.json` file.
-It is meant for [AudioSilo Meta](../community/meta-site.md): import it on the
+It is meant for [AudioSilo Meta](../community/meta-site.md). Import it on the
 site's **Watching** page to see which books of a series you are missing and
 what is coming next.
 
@@ -237,7 +239,7 @@ is safe to share.
 
 **⋯ > Export with file paths and tags...** makes a fuller list for your own
 scripts, with each copy's path, tags and description. Keep this file to
-yourself: don't post it publicly or upload it to the community site.
+yourself. Don't post it publicly or upload it to AudioSilo Meta.
 
 Both exports cover the **whole** library, not just the parts shared with one
 person.

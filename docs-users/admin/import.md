@@ -52,7 +52,8 @@ passwords, and books that aren't in your AudioSilo libraries.
    minute, and you can leave the page.
 6. Under **Imports to review**, check each person's figures: hours, sessions,
    books matched and books not matched.
-7. Press **Apply for *person*** and confirm.
+7. Press **Apply for *person*** and confirm. The import then moves to **Past
+   imports**.
 
 **Discard** drops an import you don't want. Nothing was written, so you can
 fetch it again.
@@ -62,8 +63,8 @@ also press **Change** during review to pick another cutoff and recount.
 
 ## Books that didn't match
 
-Books are matched by their folder path first, then by ASIN or ISBN, then by
-title and author. The review lists each skipped book with the reason:
+The import matches books by their folder path first, then by ASIN or ISBN,
+then by title and author. The review lists each skipped book with the reason:
 
 | Reason | What to do |
 |---|---|
@@ -100,12 +101,12 @@ start again. Nothing was written.
 
 ## Good to know
 
-- **The token is never stored.** It is held in memory only while the history
-  is fetched. If the server restarts mid-fetch, start again.
+- **The token is never stored.** The server holds it in memory only while it
+  fetches the history. If the server restarts mid-fetch, start again.
 - Sessions older than [**Days to keep sessions**](server.md#general) go straight
   into daily totals.
-- Where Audiobookshelf's progress goes further than its sessions explain, an
-  estimate is added to the totals.
+- Where Audiobookshelf's progress goes further than its sessions explain, the
+  import adds an estimate to the totals.
 - With [Audible sync](audible.md#syncing-listening-places) on, places set by an
   import or an undo are sent to Audible too.
 - Each person can have only one import being fetched or applied at a time.

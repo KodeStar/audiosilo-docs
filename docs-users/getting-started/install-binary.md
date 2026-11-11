@@ -14,7 +14,7 @@ For an always-on, multi-user or reverse-proxied setup, [Docker](./quickstart-doc
 Download your system's file from [GitHub releases](https://github.com/KodeStar/audiosilo-server/releases):
 
 - a `.tar.gz` for Linux or macOS, or a `.zip` for Windows (`amd64` or `arm64`);
-- or a `.deb` or `.rpm` package for Linux, which also sets up a system service (see [below](#linux-packages-and-systemd)).
+- or a `.deb` or `.rpm` package for Linux, which also sets up a system service (see [Linux packages and systemd](#linux-packages-and-systemd)).
 
 `checksums.txt` lets you verify the download. Unpack the archive and you have one program, `audiosilo`.
 

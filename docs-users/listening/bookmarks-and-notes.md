@@ -7,7 +7,7 @@ A **bookmark** marks a moment in a book: a line you loved, or a scene to hear ag
 
 ## Adding a bookmark
 
-Tap the bookmark button in the [full player](full-player.md) or on the [player bar](playback.md#the-mini-player-and-the-player-bar). In the web player, you can press **B**. A note confirms *"Bookmark added"*, and the book keeps playing.
+Tap the bookmark button in the [full player](full-player.md) or on the [player bar](playback.md#the-mini-player-and-the-player-bar). In the web player, you can press **B**. A message confirms *"Bookmark added"*, and the book keeps playing.
 
 To say why you marked the moment:
 
@@ -55,4 +55,4 @@ When the [sleep timer](sleep-timer.md#if-you-fell-asleep) stops a book and you d
 
 ## Good to know
 
-Adding bookmarks and notes works on every AudioSilo server. Labels, editing and the Journal's lists need a recent server. Ask whoever runs your server to update it.
+Adding bookmarks and notes works on every AudioSilo server. Labels, editing and the Journal's lists need server version 1.17.4 or later. Ask whoever runs your server to update it.

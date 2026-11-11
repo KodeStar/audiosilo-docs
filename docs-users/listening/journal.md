@@ -1,9 +1,9 @@
 ---
 title: Look back at your listening
-description: Your Journal - a diary of every day you listened, and every bookmark and note in one place, ready to export.
+description: "Your Journal: a diary of every day you listened, and every bookmark and note in one place, ready to export."
 ---
 
-The **Journal** is your listening, looked back on. It has a **Diary** of every day you listened, and every **bookmark** and **note** you've made, from every book on every server you use.
+The **Journal** has a **Diary** of every day you listened, and every **bookmark** and **note** you've made, from every book on every server you use.
 
 ## Opening it
 
@@ -22,7 +22,7 @@ It has three tabs: **Diary**, **Bookmarks** and **Notes**.
 
 There's one card for each day you listened, newest first. Each card says how long you listened and shows:
 
-- **A 24 hour bar**, with each stretch of listening drawn where it happened in the day. You can see at a glance whether it was your commute or a late night.
+- **A 24 hour bar**, with each stretch of listening drawn where it happened in the day.
 - **The sessions**: the book, when you started, how long you listened, and where you went in the book.
 
 Tap a cover to open that book's [History tab](book-page.md#history).
@@ -31,7 +31,7 @@ Tap a cover to open that book's [History tab](book-page.md#history).
 
 When the [sleep timer](sleep-timer.md#if-you-fell-asleep) stopped a book you'd fallen asleep to, a strip under that session says so.
 
-On the device you were listening on, it offers **Jump back** for a day and a half, or until you play the book again. That takes you to the last moment you touched the player, when you were surely still awake. Elsewhere, **Play from where you drifted off** starts the book where the timer stopped it.
+On the device you were listening on, it offers **Jump back** for a day and a half, or until you play the book again. That takes you to the last moment you touched the player. Elsewhere, **Play from where you drifted off** starts the book where the timer stopped it.
 
 ## Bookmarks and notes
 
@@ -44,7 +44,7 @@ The **Bookmarks** and **Notes** tabs gather every one you've made, newest first.
 - On **Bookmarks**, the **label chips** narrow the list to one kind, such as **Quote** or **Fell asleep**.
 - **Edit** and **Delete** work as on a book's page. See [Add bookmarks and notes](bookmarks-and-notes.md).
 
-These two tabs need a recent server. An older server's bookmarks stay on each book's page.
+These two tabs need server version 1.17.4 or later. On an older server, bookmarks stay on each book's page.
 
 ## Exporting your bookmarks and notes
 

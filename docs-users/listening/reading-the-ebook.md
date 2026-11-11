@@ -1,6 +1,6 @@
 ---
 title: Read the ebook
-description: Read a book's EPUB in the web player or the apps, follow the narration with read-along, and keep your place on every device.
+description: Read a book's EPUB in the web player or the iOS and Android apps, follow the narration with read-along, and keep your place on every device.
 ---
 
 When a book's folder on your server also holds its ebook, tap **Read the ebook** on the book's page to read it. The reader remembers your page on every device, and works offline for a downloaded book.
@@ -71,7 +71,7 @@ The reader saves your place a couple of seconds after you stop on a page, and wh
 
 Your reading place is separate from your listening place. Reading doesn't move where you are in the audiobook, and listening doesn't move where you are in the ebook.
 
-If another device read further, a note offers that place, such as *"On Pixel 8 you were at 60%. Jump there?"* **Jump** goes there. **Stay** keeps your page.
+If another device read further, a message offers that place, such as *"On Pixel 8 you were at 60%. Jump there?"* **Jump** goes there. **Stay** keeps your page.
 
 ## Reading offline
 

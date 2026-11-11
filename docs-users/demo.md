@@ -9,7 +9,7 @@ To try AudioSilo before you install it, visit **[demo.audiosilo.app](https://dem
 
 ![The demo landing page: a fresh account, a QR code to continue on your phone, and a button to browse in the browser](/img/screenshots/web-player/demo.png)
 
-To try the phone app too, scan the **QR code** with the AudioSilo app. Your phone joins as the same demo user, so you can watch your place sync between the browser and the app.
+To try the iOS and Android apps too, scan the **QR code** with the app. Your phone joins as the same demo user, so you can watch your place sync between the browser and the app.
 
 ## What a demo account is
 

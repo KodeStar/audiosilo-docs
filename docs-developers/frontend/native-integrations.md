@@ -82,7 +82,7 @@ keys: `continue`, `chapters`, `bookmark`, `bookmarkSaved`, `empty`, `signedOut` 
 | Tab | What it holds | Limit |
 |---|---|---|
 | `continue` | Home's rule (`isInProgress`, newest first, every server of the person listening), with the loaded book first (`continueRefs`) | 20 |
-| `upnext` | The queue the app's Up next shows. `queueConnectionId` picks the loaded book's connection, else the default, else the first (see [Overview](overview.md#up-next-drawer-and-sheet)). Left out when that server has no `queue` capability. | 20 |
+| `upnext` | The queue the app's Up next shows. `queueConnectionId` picks the loaded book's connection, else the default, else the first (see [Overview](shell.md#up-next-drawer-and-sheet)). Left out when that server has no `queue` capability. | 20 |
 | `downloads` | The person listening's downloaded books, newest download first | 50 |
 | `library` | The library the Library tab shows (`resolveLibrarySelection`, as in [State and data](state-and-data.md#library-selection-srcstoreslibrary-selectionts)), `sort: 'recent'` | 50 |
 

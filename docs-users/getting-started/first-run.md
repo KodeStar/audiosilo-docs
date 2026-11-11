@@ -55,7 +55,7 @@ The first time you open the admin console, it opens **Set up your server**, with
 
 ![Step 1 of Set up your server: the books folder](/img/screenshots/setup/folder.png)
 
-- Every step has **Skip**. A skipped step waits for you on the Overview (see [below](#the-finish-setting-up-card)).
+- Every step has **Skip**. A skipped step waits for you on the Overview (see [The Finish setting up card](#the-finish-setting-up-card)).
 - **Finish later** takes you to the console. The flow opens again in your next browser session.
 - Everything you choose is an ordinary setting. You can change it later in [Server > Settings](../admin/server.md#settings) and [Libraries](../admin/libraries.md).
 - A setting fixed by an `AUDIOSILO_*` environment variable shows a lock and can't be changed here.
@@ -86,11 +86,11 @@ Either way, the other fills in what the first leaves empty. Changing this later 
 
 ![Step 3: community metadata, the marketplace and a local copy](/img/screenshots/setup/metadata.png)
 
-Community metadata adds descriptions, series and covers from the AudioSilo metadata service.
+Community metadata adds descriptions, series and covers from the community database on AudioSilo Meta.
 
 - **Look up community metadata** turns it on or off. Off, nothing about your books leaves the server for it.
 - **Audible marketplace** is the store you buy from. The wrong one matches the wrong edition.
-- **Metadata source** asks the service for each book, or keeps a [local copy](../admin/server.md#keeping-a-local-copy) (about 1.8 GB).
+- **Metadata source** asks AudioSilo Meta for each book, or keeps a [local copy](../admin/server.md#keeping-a-local-copy) (about 1.8 GB).
 
 **Continue** (or **Skip**) adds your library and starts its first scan. You can carry on while it runs.
 
@@ -104,7 +104,7 @@ Invite links and QR codes use the server's addresses. A wrong address is the usu
 - **Public address** works from anywhere, like `https://books.example.com`.
 - The buttons under **This browser reaches the server at** fill either one with the address you're using now.
 - If your requests come through a reverse proxy, **Trust** adds it to the trusted proxies.
-- **Plain HTTP at home** lets the phone apps connect at home ([why](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect)).
+- **Plain HTTP at home** lets the iOS and Android apps connect at home (see [Plain HTTP at home](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect)).
 
 See [Reach your server from outside your home](./remote-access.md).
 
@@ -128,7 +128,7 @@ Copy backups to another disk now and then. See [Backups](../admin/backups.md).
 
 ![Step 7: a pairing QR code for your phone](/img/screenshots/setup/phone.png)
 
-Scan the code with your phone's camera. It opens the AudioSilo app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. See [Connect the app to your server](../listening/connecting.md).
+Scan the code with your phone's camera. It opens the app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. See [Connect the app to your server](../listening/connecting.md).
 
 If you opened the console on the server itself (`localhost`), the code needs a home or public address from [step 4](#step-4-how-will-people-reach-the-server). The step tells you if one is missing.
 

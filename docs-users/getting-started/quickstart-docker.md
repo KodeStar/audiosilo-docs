@@ -6,13 +6,13 @@ description: "Run the AudioSilo server with Docker Compose, get your first-run p
 Docker is the recommended way to run AudioSilo on a NAS, home server or VPS. One container holds the server, the web player and ffmpeg. The image is **`ghcr.io/kodestar/audiosilo-server`**.
 
 :::tip[On Unraid?]
-Install from Community Applications instead: see [Install on Unraid](./install-unraid.md).
+Install from Community Applications instead. See [Install on Unraid](./install-unraid.md).
 :::
 
 ## What you need
 
 - Docker **20.10.10 or newer** with the Compose plugin (`docker compose`). Run `docker version` to check. Older Docker stops the container straight away (see [Troubleshooting](../troubleshooting.md#the-container-stops-at-start-up-with-pthread_create-failed)).
-- A folder of audiobooks on the host, for example `/srv/audiobooks`. Its layout can wait: see [Organize your audiobook files](./organizing-your-library.md).
+- A folder of audiobooks on the host, for example `/srv/audiobooks`. Its layout can wait. See [Organize your audiobook files](./organizing-your-library.md).
 
 ## 1. Create a compose file
 
@@ -74,7 +74,7 @@ Browse to `https://your-server:8080`. The server uses a self-signed certificate 
 - **`/web`** is the web player.
 - **`/`** is the connect page, where a listener enters an invite code.
 
-The phone apps connect over plain HTTP at home instead (see [plain HTTP at home](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect)). To listen away from home, see [Reach your server from outside your home](./remote-access.md).
+The iOS and Android apps connect over plain HTTP at home instead (see [Plain HTTP at home](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect)). To listen away from home, see [Reach your server from outside your home](./remote-access.md).
 
 ## 4. Set up your server
 
@@ -105,7 +105,7 @@ This updates the server and the web player together. Your books are never change
 The **`:edge`** tag is built from the latest development code. It can break. Stay on `:latest` for everyday listening.
 :::
 
-Run edge as a **second** container on a **copy** of your data folder. Never point it at the original: it may change the database in a way a release can't undo.
+Run edge as a **second** container on a **copy** of your data folder. Never point it at the original, because it may change the database in a way a release can't undo.
 
 1. Copy the data folder while the server is stopped (delete any older `./data-edge` first):
 
@@ -132,7 +132,7 @@ Run edge as a **second** container on a **copy** of your data folder. Never poin
 
 3. Start it with `docker compose up -d audiosilo-edge`. To get the newest build, run `docker compose pull audiosilo-edge && docker compose up -d audiosilo-edge`.
 
-Try the edge server in a browser at `https://your-server:8081/web`. Don't pair a phone app that already uses your normal server: the copy has the same identity, so the app would move its sign-in over to it. Notifications set up in the console may come from the edge server too.
+Try the edge server in a browser at `https://your-server:8081/web`. Don't pair an app that already uses your normal server. The copy has the same identity, so the app would move its sign-in over to it. Notifications set up in the console may come from the edge server too.
 
 To stop testing, run `docker compose rm -sf audiosilo-edge`, then delete its block from the compose file and delete `./data-edge`.
 

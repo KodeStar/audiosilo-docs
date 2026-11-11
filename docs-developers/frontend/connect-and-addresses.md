@@ -17,7 +17,7 @@ wire is in the [API reference](../server/api/reference.md#get-apiv1addresses) an
 
 The routes are `src/app/connect/{_layout,index,sign-in,ready,scan}.tsx`. The screens and
 their rules live in `src/components/connect/`, with the pure rules in `connect-model.ts`.
-The route table is in the [overview](overview.md#route-map). The flow has three steps,
+The route table is in the [overview](routes.md#route-map). The flow has three steps,
 counted by `StepDots` (`CONNECT_STEPS`): Start, Sign in and Ready.
 
 ### Step 1: Start

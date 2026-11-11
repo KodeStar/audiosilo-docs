@@ -1238,7 +1238,7 @@ has exactly two jobs.
      206 path downloaded books wouldn't play there at all.
 
 **Precaching the split build** (`precacheBuild`). The web build is split by route
-(see [the web start](overview.md#the-web-start-a-split-build)). A page's chunk loads
+(see [the web start](web-build.md#the-web-start-a-split-build)). A page's chunk loads
 when the page is first opened, so a page never opened online would not boot offline.
 The worker therefore:
 
