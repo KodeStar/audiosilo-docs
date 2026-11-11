@@ -79,7 +79,7 @@ Meanwhile, your downloaded books still play. [With no connection](./listening/of
 
 ### A bookmark, note or rating won't save
 
-These are stored on your server. In the iOS and Android apps, one you make with no connection fails straight away with a message. The app doesn't send it later, so add it again once you're back online. See [With no connection](./listening/offline-downloads.md#with-no-connection).
+These are stored on your server. In the iOS and Android apps, one you make with no connection fails straight away with a message, so add it again once you're back online. [With no connection](./listening/offline-downloads.md#with-no-connection) names the one bookmark the app keeps for later.
 
 ### The app can't connect, but the browser can
 
