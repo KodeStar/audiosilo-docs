@@ -46,8 +46,8 @@ A few tables belong to neither half:
 - The server's own records: the admin audit log, the notification destinations
   and the event feed (`0019`). They hang off no library or book and are
   trimmed by age (see [Audit and notifications](#audit-and-notifications)).
-- The community metadata cache (`meta_cache`, `0024`): answers to community
-  metadata lookups, keyed by identifier and rebuildable by asking again (see
+- The community metadata cache (`meta_cache`, `0024`): answers from the metadata
+  service, keyed by identifier and rebuildable by asking again (see
   [Community metadata cache](#community-metadata-cache)).
 - `server_state` (`0040`): small server-wide facts the server keeps for
   itself. They name no book and aren't rebuildable (see
@@ -1064,9 +1064,10 @@ The rules for saves:
     therefore not read as listening.
   - The last save is within 12 hours (`resumeWindow`).
 
-  This covers Android, which pauses the player's JS timers while the screen is
-  off. The player keeps playing without saving, and its next save arrives
-  late. Otherwise the save starts a new session. While the person shares
+  Otherwise the save starts a new session. The long-gap rule exists because
+  Android pauses the player's JS timers while the screen is off. The player
+  keeps playing without saving, and its next save arrives late. While the
+  person shares
   [Listening in the house](auth-and-security.md#listening-in-the-house-what-other-people-see),
   a session started before they last turned sharing on
   (`household_sharing.updated_at`) is never continued either, so no session
@@ -1078,8 +1079,8 @@ The rules for saves:
   offline queue.
 - **Only sessions with listening count.** The first save of a session only
   opens it, so the time before it isn't counted (about 15 s, up to 60 s at the
-  player's slower pace). A session with no listening recorded (`listened = 0`,
-  such as a single "mark finished" save) is left out of the live list, the
+  player's slower pace). A session with no listening recorded (`listened = 0`:
+  a single save, such as a "mark finished") is left out of the live list, the
   history and every total (`listenedSQL`). A session therefore appears from its
   second save.
 - **State.** A session is `playing` with a save in the last 60 s
@@ -1958,8 +1959,8 @@ holding a book for its series even when it is a disc folder's book, so
 title always keeps a value.
 
 The position goes with the series. It is the layout's own position, or else
-the scanned one only while the series it numbers stays (the same series, in
-any case). A tag title that IS the leaf's name, number and all
+the scanned one only while the series it numbers stays (the same series,
+compared ignoring letter case). A tag title that IS the leaf's name, number and all
 (`13 Reasons Why`), is kept whole with no position read from it. The exception
 is a `LeafSeries` leaf, whose parts the layout reads even when the title is the
 whole leaf (an untagged book's).
@@ -2220,7 +2221,10 @@ credential:
 - an invite or recovery code revoked, rotated, replaced, cleared or used;
 - a pairing token used;
 - a Bridge pairing code replaced, or a Bridge paired or unpaired;
-- a share deleted, a share's path rule removed, or a user's share revoked.
+- a share deleted, a share's path rule removed, or a user's share revoked;
+- a share made read-only, a library's share deletes (`DeleteLibrary`), or a
+  viewer removed from a collection (see
+  [Taking access away is durable](auth-and-security.md#authorization-shares--scope)).
 
 A Bridge job claim also takes it, because its attempt number must never be
 handed out twice. Such a transaction commits durably whatever else it changes

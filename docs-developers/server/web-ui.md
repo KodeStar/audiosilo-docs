@@ -1145,7 +1145,7 @@ Missing, Off, Waiting, Downloading, Opening, Update available or Failed.
   `certificateLook` is shared with Settings.
 - **The Backups row** reads the answer's `backups` block. It is Failed, with
   the reason, when the last attempt failed. It is Off when nothing is
-  scheduled, and a warning when there is no backup at all. Otherwise it is
+  scheduled, in warning tone when there is no backup at all either. Otherwise it is
   Healthy, with the latest backup and the next one.
 - **Notices** above the list cover unreachable library folders, and community
   metadata that doesn't answer, with a link to its settings (`metadataDown`).
@@ -1249,8 +1249,8 @@ Server > Logs (`features/logs/logs-page.tsx`) runs on
 (All, Warnings, Errors), a search box debounced 300 ms, and a Live tail switch.
 
 - The tail polls every 2 s with `after=<last_seq>` and appends
-  (`appendPage` in `logs-model.ts`). The first page has 500 lines, the page
-  holds at most 1000, and a gap marker shows when the answer says `truncated`.
+  (`appendPage` in `logs-model.ts`). The first page has 500 lines, the panel
+  holds at most 1000 lines, and a gap marker shows when the answer says `truncated`.
 - A filter change starts a fresh tail.
 - The panel is a `role="log"` deep-ink block (`.log` in `globals.css`, the
   same in both themes). It follows new lines while scrolled to the bottom.
@@ -1338,7 +1338,7 @@ The Bridge topic (`features/bridge/`) runs on two polls:
   every 15 seconds, or every 3 while a pairing code waits;
 - [`GET /admin/bridge/jobs`](api/reference.md#get-apiv1adminbridgejobs), in
   pages of 30. Every loaded page is asked again every 3 seconds while a job on
-  it is open, else every 30.
+  any of them is open, else every 30.
 
 `bridge-model.ts` holds the pure rules, and they are tested.
 

@@ -1100,7 +1100,7 @@ The scanner does record:
 
 ### ffprobe is optional
 
-Every path still works without ffprobe:
+Every code path degrades without ffprobe rather than failing:
 
 - path-derived metadata still works;
 - durations fall back to chapter ends, or stay 0;
@@ -1725,7 +1725,7 @@ A folder with audio is one book, which is right for almost every library. The
 exception worth flagging is a folder that collects whole books
 (`Series/Book 1.m4b`, `Series/Book 2.m4b`). `suspectParts` decides it while
 `buildMultiFileChapters` reads the parts, and stores the answer in
-`books.suspect_parts`. A folder is suspect when:
+`books.suspect_parts`. A folder is suspect when all of these hold:
 
 - it has **at least two** parts;
 - **every** part is at least **one hour** long (`minSuspectPart`). A part of
@@ -1777,7 +1777,7 @@ Duplicates are groups, found in Go (`DuplicateGroups`, a union-find over every
 book) and only **within one library**. A copy in another library is
 deliberate, such as a kids' library holding a book that is also in the main
 one, and players already show such copies once. Two books join a group when
-they have:
+they have any of these:
 
 - the same audio fingerprint (`content_hash`) and the same total size. The
   reason is `same_files` only when every member of the group shares that audio
@@ -1970,10 +1970,9 @@ A path that is not a book returns `ErrNotIndexable`, which handlers map to 404:
 
 - a directory with no direct audio;
 - a directory the detector treats as a collection;
-- a path the library's [ignore rules](#ignore-rules) cover;
-- a path with a hidden segment.
+- a path the library's [ignore rules](#ignore-rules) cover.
 
-`library.ContentPath` is the one statement of the hidden-segment rule.
+So does a path with a hidden segment. `library.ContentPath` is the one statement of the hidden-segment rule.
 `ContentJoin` is `SafeJoin` with that rule first. `IndexPathWithin`, `listDir`
 and every path-taking content route (`scopedPathIn`, which answers it `404`
 after the scope check) share it. So nothing indexes, lists, streams or serves a
@@ -1987,7 +1986,8 @@ share's `.Trash`. `library.ErrHidden` is both `fs.ErrNotExist` and
 Bridge's [`POST /bridge/rescan`](api/reference.md#post-apiv1bridgerescan) with
 `from`. It carries the durable state from `from` exactly as
 [move detection](#move-detection) does (`carryMove`, then the favourites of the
-folders it left), and drops the old row. It does so only when:
+folders it left), and drops the old row. It does so only when all of these
+hold:
 
 - no book resolves at `from` on disk any more (`bookOnDisk`, which errs toward
   present: a path it can't check keeps its state);
@@ -2028,7 +2028,7 @@ then. A path with no book any more is `404` with `code: "not_indexable"`.
 ## The unavailable-root guard
 
 `ErrLibraryUnavailable` protects the index when a network share (SMB or NFS)
-drops. The scanner **aborts without pruning** when:
+drops. The scanner **aborts without pruning** when any of these holds:
 
 1. the root doesn't answer the bounded root probe within 2 seconds. A hung
    hard mount would otherwise hold the one scan worker and every scan queued

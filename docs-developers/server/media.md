@@ -20,7 +20,7 @@ For the request and response shapes, see the [API reference](api/reference.md).
 |---|---|---|
 | `GET /api/v1/libraries/{id}/stream?path=` | `handleStream` | Serve one audio **file** with Range streaming. `?download=1` forces a download and `?transcode=1&t=` transcodes. An MP3-in-Matroska `.mka` is served as its cached [remux to MP3](#remuxing-matroska-medianewremuxer) unless `?original=1`. `?rendition=watch` serves the file's cached [watch rendition](#watch-renditions-medianewrenditioncache) |
 | `POST`/`GET /api/v1/libraries/{id}/renditions?path=` | `handlePrepareRenditions` / `handleRenditionStatus` | Queue (`POST`) or report (`GET`) the watch renditions of every audio file of a book |
-| `GET /api/v1/libraries/{id}/cover?path=` | `handleCover` | Serve a book's cover: the custom cover, else a sidecar image, else embedded art. With `?size=96\|160\|320\|640`, a JPEG thumbnail of it (`handleCoverThumbnail`). The server takes `96` from 2.5.1 |
+| `GET /api/v1/libraries/{id}/cover?path=` | `handleCover` | Serve a book's cover: the custom cover, else a sidecar image, else embedded art. With `?size=96\|160\|320\|640`, a JPEG thumbnail of it (`handleCoverThumbnail`). Size `96` is accepted from 2.5.1 |
 | `POST /api/v1/admin/covers` | `handleAdminCovers` | Admin only: JPEG thumbnails of many books' covers as `data:` URLs, for the admin console |
 | `GET /api/v1/libraries/{id}/chapters?path=` | `handleChapters` | The normalized playable-units envelope `{chapters, files, duration, …}`. Warms the book's remuxes |
 | `GET /api/v1/libraries/{id}/item?path=` | `handleItem` | Book detail. Carries `direct_playable` and warms the book's remuxes |

@@ -33,7 +33,7 @@ memory well above the OWASP floor.
 - Hashes are stored PHC-style (`$argon2id$v=19$m=65536,t=2,p=4$<salt>$<key>`).
   `VerifyPassword` reads the cost from the hash itself and compares with
   `subtle.ConstantTimeCompare`.
-- A non-empty password is at least 8 characters (`auth.MinPasswordLen`).
+- The minimum length for a non-empty password is 8 (`auth.MinPasswordLen`).
 - Test binaries may lower the cost with `auth.UseCheapHashingForTests()`. It
   panics outside a test binary (`testing.Testing()`).
 - Every hash and verify goes through `argonKey`. Once hashing has been quiet for
@@ -113,7 +113,7 @@ it to the code that minted it.
 |---|---|
 | An invite | Inherits the invite's uses and expiry. Each exchange claims one use per device, so one QR can pair several devices. It dies with the code: a delete or supersede cascades, and a rotate revokes it. |
 | A recovery code | Lasts `pairingTTL` = 10 minutes. It can be scanned several times within that window, since recovery codes are unlimited. |
-| `/auth/pair`, a household member's code (`POST /me/household/members/{id}/pair`), a demo session | Unlinked. Single-use (revoked on exchange), with the same 10-minute TTL. |
+| `/auth/pair`, a household member's code (`POST /me/household/members/{id}/pair`), demo tokens | Unlinked. Single-use (revoked on exchange), with the same 10-minute TTL. |
 
 `/auth/pair` can ask for a shorter lifetime with `ttl_seconds`, which `pairTTL`
 clamps to between 30 seconds and 10 minutes. The console's Listen in player
@@ -186,8 +186,8 @@ stays valid while the database's
   generation alone. So the touch drops that token's cached row itself
   (`auth.Service.resolve`).
 - Expiry needs no write, so the cache checks it on every hit.
-- The cache never holds a cast token (it checks its grant and parent) or a
-  pairing token (it checks its one use), and holds nothing for a refusal.
+- The cache never holds a cast token (its grant and parent) or a pairing token
+  (its one use), and holds nothing for a refusal.
 
 A write that bypassed the generation would leave a revoked token honoured.
 
@@ -676,8 +676,8 @@ disabled, `can_add_members`. A refused field therefore changes nothing.
   a kid. Clearing a password is fine. So is a password beside a Make independent
   or an assign as a grown-up, because this one check reads the request's
   household change first.
-- **The Assign refusals.** `ErrSelfManaged` refuses assigning the account to
-  itself; it is checked with the kind and access before the transaction. Inside
+- **The Assign refusals.** `ErrSelfManaged` refuses the account itself as its
+  owner; it is checked with the kind and access before the transaction. Inside
   the transaction, `checkAssign` refuses:
   - an unknown owner (`404`);
   - an owner who is a member (`ErrOwnerIsMember`) or a demo account
@@ -1056,7 +1056,7 @@ Adding or rating a book checks scope on the path and on the book it resolves to
 (`bookForPath`, as `item` does). Removing one entry doesn't, since it only
 deletes the caller's own row.
 
-#### Collections are shared read-only
+### Collections are shared read-only
 
 An owner can share a collection with named accounts on the same server. The
 viewer sees it through their own access:
@@ -1073,7 +1073,7 @@ viewer sees it through their own access:
   only leave it.
 - The owner's `shared_with` list is never sent to a viewer.
 
-#### The share picker
+### The share picker
 
 The share picker shows usernames, so demo accounts are kept out of it.
 
@@ -1095,7 +1095,7 @@ These two routes and `PUT /me/household` (see
 [Listening in the house](#listening-in-the-house-what-other-people-see)) are the
 only `/me/*` routes with a demo refusal. None has its own rate-limit class.
 
-#### Listening sync
+### Listening sync
 
 [`POST /me/listening/sync`](api/reference.md#post-apiv1melisteningsync)
 (capability `listening_sync`) checks each event's path.
@@ -1112,7 +1112,7 @@ only `/me/*` routes with a demo refusal. None has its own rate-limit class.
 - The device name stored on the row is the token's, never one from the body.
 - Event ids are deduplicated per user only.
 
-#### Stats never cross users
+### Stats never cross users
 
 `/me/stats` and `/me/listening` are computed for the caller alone, with the admin
 Activity code's accumulator limited to the caller. The server computes and sends
@@ -1128,7 +1128,7 @@ figure.
   the caller's, including books they can no longer open, but only as a number,
   with no path or title.
 
-#### Writes
+### Writes
 
 - **Progress edits use the caller's scope.** `PATCH /libraries/{id}/progress` is
   `catalog.EditProgress` with the caller's own scope, behind `authorizedPath`. A
@@ -1146,7 +1146,7 @@ figure.
   entries the caller can see. Hidden entries are evicted, oldest first and for
   good, only when they alone would overflow the cap.
 
-#### Revoking your own device
+### Revoking your own device
 
 `DELETE /me/devices/{id}` revokes one of the caller's session or API-key tokens.
 
