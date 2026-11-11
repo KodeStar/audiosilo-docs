@@ -506,7 +506,7 @@ Only a map with a sentence (`hasSpans`) reaches the reader. It returns:
 | `map` | the sections and spans to send, or null: none to follow |
 | `pending` | still reading it |
 | `failure` | why there is no map when its read failed (`ReadalongFailure`), else null. It never means "no read-along" (see the failure reasons below the table) |
-| `offline` | the device holds no copy, and the server's map either waits for the network or its read failed with no network on the device ([`offlineState`](state-and-data.md#offline-states-srcliboffline-statets)). `pending` is false and `failure` is null, so a surface shows nothing (no spinner, no Make), and a map already shown stays meanwhile |
+| `offline` | the device holds no copy, and the server's map either waits for the network or its read got no answer with no network on the device ([`offlineState`](state-and-data.md#offline-states-srcliboffline-statets)). `pending` is false and `failure` is null, so a surface shows nothing (no spinner, no Make), and a map already shown stays meanwhile. A read the server refused is a `failure`, never `offline` |
 | `retry` | read it again (offered only when `failure` is `retry`) |
 
 Only the server's 404 `no_readalong` and 409 `readalong_stale`, or the flag off (a
@@ -514,7 +514,7 @@ Only the server's 404 `no_readalong` and 409 `readalong_stale`, or the flag off 
 
 | Reason | Cause |
 |---|---|
-| `retry` | a reason that says nothing about the map: offline, a 5xx, a timeout, a copy that won't read |
+| `retry` | a reason that says nothing about the map: a server that doesn't answer while the device has a network, a 5xx, a timeout, a copy that won't read. With no network on the device the read is `offline` instead |
 | `signedOut` | a 401, and any failure while the connection needs signing in again |
 | `denied` | a 403 |
 | `missing` | a 404 without the read-along's own code |
