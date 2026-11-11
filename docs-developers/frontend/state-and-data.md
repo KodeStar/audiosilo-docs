@@ -287,11 +287,16 @@ platform follows these rules:
   progress edit made with no network is sent, fails at once, and shows its
   screen's own error with the form still open. A held mutation lives only in
   memory, so Save would spin, and the write would be lost if the app closed
-  before the network returned. Two writes are not mutations and keep their own
-  queues. The listening place waits in
-  [Progress sync](#progress-sync-srcplaybackprogress-syncts), and a bookmark
-  pressed in the car waits under `audiosilo.carBookmarks`
-  ([Native integrations](native-integrations.md#what-the-controller-answers)).
+  before the network returned. Three writes are not mutations and keep their own
+  queues:
+  - the listening place, in
+    [Progress sync](#progress-sync-srcplaybackprogress-syncts) or, on a
+    `listening_sync` server, in
+    [the outbox](offline.md#listening-sync-the-outbox);
+  - the reading place, in its own queue
+    ([The ebook reader](reader.md#the-reading-place));
+  - a bookmark pressed in the car, under `audiosilo.carBookmarks`
+    ([Native integrations](native-integrations.md#what-the-controller-answers)).
 - **The web keeps TanStack's default for writes.** A write waits for the browser
   to come back online. A write that must work offline on the web too says so
   itself (`useMarkFinished`).
