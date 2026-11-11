@@ -36,7 +36,7 @@ The seek bar covers the **current chapter**, so a small movement is a small jump
 - **Tap** the bar to jump there.
 - **Drag** to scrub. A label shows where you'll land.
 
-Under the bar you'll see the time into the chapter, the time left in it, and when it ends by the clock. A book without chapter marks uses its files or [virtual chapters](playback.md#books-without-chapters) instead.
+Under the bar you'll see the time into the chapter, the time left in it, and when it ends by the clock. A book without chapter marks uses its files or its [parts](playback.md#books-without-chapters) instead.
 
 The **whole-book timeline** below shows each chapter as a segment. Pins mark your bookmarks and notes. Tap a pin to jump to it, or tap anywhere else to jump in the book.
 

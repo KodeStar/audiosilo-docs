@@ -37,7 +37,7 @@ Downloads belong to each device. What you downloaded on your phone isn't on your
 
 The **Automatic downloads** card holds three settings. They're the same ones as in [Settings](settings.md#up-next-and-downloads).
 
-- **Download automatically**: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to downloads as you play it. The apps start at **On Wi-Fi** and the web player at **Never**. A browser can't tell Wi-Fi from mobile data, so there On Wi-Fi downloads on any connection.
+- The picker at the top: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to downloads as you play it. The apps start at **On Wi-Fi** and the web player at **Never**. A browser can't tell Wi-Fi from mobile data, so there On Wi-Fi downloads on any connection.
 - **Keep the next books ready**: **Off**, **1**, **2** or **3** (below).
 - **Remove a download when you finish the book**, to free up space as you go. Your place is kept. It's on unless you turn it off.
 
@@ -47,7 +47,7 @@ Set this to 1, 2 or 3, and while you listen AudioSilo downloads that many of you
 
 - **Which books**: the top of your [Up next](up-next.md) queue first, then the next books in the series you're playing. Finished books are skipped.
 - **When**: only while a book is playing or loaded.
-- **On what connection**: it follows **Download automatically**. With **Never**, it does nothing.
+- **On what connection**: it follows the picker at the top of the card. With **Never**, it does nothing.
 - **How much room**: it always leaves at least 1 GB free, or a tenth of your storage if that's more.
 
 A line under the setting says what it's doing. Books it downloaded are marked **Kept ahead**.
