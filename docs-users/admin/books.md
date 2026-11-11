@@ -65,8 +65,8 @@ If the dialog says "meta.audiosilo.app isn't answering", try again in a minute.
 
 ### What matching sends
 
-The server sends search terms only when you open **Match with community
-metadata** or run [Match automatically](health.md#matching-every-book-at-once):
+The server sends search terms to AudioSilo Meta only when you open **Match
+with community metadata** or run [Match automatically](health.md#matching-every-book-at-once):
 
 - the book's tagged title, author, series, narrators and language, and its
   length;

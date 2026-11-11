@@ -103,7 +103,7 @@ With the self-signed certificate, the server also answers **plain HTTP**, but on
 
 There's nothing to set up. Connect the app while your phone is on the same Wi-Fi as the server. Scan the pairing QR code or open an invite link. The app signs in over `http://` and remembers it as the [home address](#tell-the-server-its-home-address). To type the address instead, include `http://`, like `http://192.168.1.20:8080`.
 
-Plain HTTP isn't encrypted, so anyone watching your home network could see sign-ins. On a shared network, turn it off and use a trusted certificate. To turn it off, switch off **Plain HTTP at home** under **Server > Settings > Network & HTTPS** (or `tls.home_http: false`). The apps then can't connect to a self-signed server.
+Plain HTTP isn't encrypted, so anyone watching your home network could see sign-ins. That's the usual trade-off on a trusted home Wi-Fi. On a shared network, turn it off and use a trusted certificate. To turn it off, switch off **Plain HTTP at home** under **Server > Settings > Network & HTTPS** (or `tls.home_http: false`). The apps then can't connect to a self-signed server.
 
 Plain HTTP at home is also off when you give the server your own certificate file (`tls.cert_file`).
 
@@ -117,7 +117,7 @@ The protections are always on; there's nothing to enable:
 - **No sign-ups.** Nobody can create their own account. Accounts come from an admin's invite, or from a person adding a member of their household. Devices join with short-lived invite codes. See [Invite people](../admin/users-and-invites.md).
 - **Rate limits and lockouts.** Repeated wrong passwords or invite codes lock the sender out for a while.
 - **Secrets are stored scrambled**, and every sign-in can be revoked.
-- **Only library files are served.** The server streams nothing outside your library folders.
+- **Streaming stays inside your libraries.** The server streams nothing outside your library folders.
 
 ### Settings you can leave alone
 

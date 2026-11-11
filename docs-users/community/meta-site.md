@@ -57,7 +57,7 @@ More detail is on the site's [languages page](https://meta.audiosilo.app/docs/la
 ## Characters and story-so-far recaps
 
 Where the community has written them, a book page has two extra tabs, the same
-ones the player shows (see [See recaps and characters](../listening/recaps-and-characters.md)):
+ones the player shows (see [Recaps and characters in the player](../listening/recaps-and-characters.md)):
 
 - **Characters** - a card for each character. The description stays hidden
   until you open the card.

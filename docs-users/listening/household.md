@@ -24,7 +24,7 @@ The page has three parts:
 
 - **On this device** - everyone who listens on this device. See [Share a device](profiles.md#on-the-household-page).
 - **Your household** - the people you've added, with **Add someone to your household**.
-- **Listening in the house** - whether you share what you're listening to. See [See what others are listening to](in-the-house.md#turning-it-on).
+- **Listening in the house** - whether you share what you're listening to. See [Turning it on](in-the-house.md#turning-it-on).
 
 ![The Household page at Your household: a kid's card, a grown-up's card, and Add someone to your household](/img/screenshots/web-player/household.png)
 
@@ -46,7 +46,7 @@ The section shows how many you've added, out of the most the server allows (6 un
 
 The kid is now signed in on this device in [kids mode](kids-mode.md). You stay the person listening.
 
-If your own profile has no [PIN](profiles.md#a-pin-for-a-person), the app offers to set one. Set one. Without a PIN, a child who leaves kids mode can switch to you.
+If your own profile has no [PIN](profiles.md#a-pin-for-a-person), the app offers to set one. Say yes, because without a PIN a child who leaves kids mode can switch to you.
 
 A kids account has no password. It can't make API keys, pair a device, share collections or join Listening in the house. It signs in only on devices you set up for it.
 

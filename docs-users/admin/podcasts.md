@@ -84,8 +84,8 @@ OPML file in the player. A show already in the library is followed at once; a ne
 feed waits for the Bridge to check it. Each person can have five follow requests
 waiting at once. Kids accounts and the demo account can't follow shows.
 
-The server has the Bridge check each followed show's feed for new episodes,
-recently active shows more often than quiet ones. The console's Bridge job list
+The server has the Bridge check each followed show's feed for new episodes. It
+checks recently active shows more often than quiet ones. The console's Bridge job list
 leaves these routine checks out.
 
 Turning the Podcasts module off stops following, feed checks and downloads.

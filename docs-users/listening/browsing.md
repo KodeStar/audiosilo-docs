@@ -151,7 +151,7 @@ A series page lays the series out like a bookcase.
 
 - **At the top**: the series name, the author, how many books it has and how many you have.
 - **A progress track**: finished books in green, the one you're on in pink, missing ones hatched.
-- **A reading-order switch** (**Publication**, **Chronological** or **Recommended**), for series with more than one order. The [book page's Series tab](recaps-and-characters.md#series-with-more-than-one-reading-order) shares your choice.
+- **A reading-order switch** (**Publication**, **Chronological** or **Recommended**), for series with more than one order. Your choice is remembered per series on that device. The [book page's Series tab](recaps-and-characters.md#series-with-more-than-one-reading-order) shares your choice.
 - **The bookcase**: a spine for each book, in order. Books you don't have are pale "ghost" spines. One that isn't out yet shows its [release date](upcoming.md#on-series-pages).
 - **Under the shelf**: the chosen book and one action, such as **Resume**, **Queue it** (adds it to [Up next](up-next.md)), or **View on AudioSilo Meta** for a book you don't have.
 - **Every book in the series**, listed below.
