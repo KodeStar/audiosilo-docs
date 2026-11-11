@@ -449,8 +449,8 @@ Three storage documents, all plain storage, scoped per connection, re-keyed by t
 
 | Key | Holds |
 |---|---|
-| `audiosilo.listeningOutbox` | the closed events waiting for their server, each with its `connectionId`, append-only: an event never changes once it is here (its id and content are fixed once a send was tried). Another tab's change follows by the `storage` event (`refreshOutboxFrom`) |
-| `audiosilo.listeningOpenSpan` | the spans being played, one per playing web tab, each with its `owner` and `keptAt` (a bare span is the pre-W2 form), stored every 5 s online or offline, so a span a kill left open is closed at its last stored values on the next launch (`recoverOpenSpan`). On the web another tab's span is left to it while it is live (kept within 30 s of now, `LIVE_SPAN_MS`; a tab on an older build, with no `owner`, while its end is under 45 s old); a tab whose span another tab took that way plays on under a new id from where the copy ended (`takenFrom` / `goingOnFrom`), so what it played since is not a `duplicate` |
+| `audiosilo.listeningOutbox` | the closed events waiting for their server, each with its `connectionId`, append-only: an event never changes once it is here (its id and content are fixed once a send was tried). A `finish` entry also carries its sends' marks, `out` and `maybeReached` ([Across tabs](#across-tabs)). Another tab's change follows by the `storage` event (`refreshOutboxFrom`) |
+| `audiosilo.listeningOpenSpan` | the spans being played, one per playing web tab, each with its `owner` and `keptAt` (a bare span is the pre-W2 form), stored every 5 s online or offline, so a span a kill left open is closed at its last stored values on the next launch (`recoverOpenSpan`). On the web another tab's span is left to it while it is live (kept within 30 s of now, `LIVE_SPAN_MS`; a tab on an older build, with no `owner`, while its end is under 45 s old); a tab whose span another tab took that way plays on under a new id from where the copy ended (`takenFrom` / `goingOnFrom`), so what it played since is not a `duplicate`. A tab that closes a span another tab left (`sweepLeftBehind`) sends it at once ([Across tabs](#across-tabs)) |
 | `audiosilo.listeningSync` | per connection: when it last synced (`lastSyncAt`), the "couldn't sync" list (rejected events with their reason, kept 30 days, at most 100), the server's clock skew from the answers' `server_time` (`clockSkewMs`, which `progress-sync` reads through `stored-skews.ts`) and the last `listening_sync` answer (`listeningSync`) |
 
 The three documents' read-modify-writes run in a serial queue and under `tabLock`
@@ -495,7 +495,9 @@ headless task). Per answer:
 The web's `pagehide` sends what waits (oldest first, up to about 60 KB, `fitKeepalive`)
 with `keepalive`, the span closes still queued behind a lock included (a lease's timer
 never fires on a page that is going); an answer that still arrives is applied, and anything unanswered stays
-(a resend is a `duplicate`).
+(a resend is a `duplicate`). A `finish` another tab's Undo took back a moment ago is left
+out. The ones that go while their server looks reachable are marked in the stored
+outbox for 5 s ([Across tabs](#across-tabs)).
 
 **What the listener sees.** `pendingSaves` counts the outbox's listen events (not a
 finish or unfinish) plus the open span while its server can't be reached: Home's pill reads "N listens waiting to sync"
@@ -529,7 +531,8 @@ the book again. `undoFinish` (`finish-route.ts`) therefore calls
 `{ unsent, restore }`:
 
 - the book's waiting `finish` events leave the outbox;
-- one whose request is out is waited for;
+- one whose request is out is waited for, from this tab or, on the web, from
+  another ([Across tabs](#across-tabs));
 - a chunk read before the withdrawal drops the withdrawn events.
 
 Then one of two things happens:
@@ -564,7 +567,8 @@ could not be read. Any other HTTP error is the server's own answer. The web's
 page-close keepalive send (`sendOnPageHide`) counts as soon as it leaves: the page is
 going, so its answer may never be seen. Such finishes are noted in `maybeReached` for
 this launch, only when the request left while the server looked reachable
-(`looksReachable`: not marked down, and the browser not offline).
+(`looksReachable`: not marked down, and the browser not offline). On the web the
+stored entry is marked too, for an Undo in another tab ([Across tabs](#across-tabs)).
 
 **The mirror going back** (`unrecordFinish`, `store.ts`): this device's record from
 before the finish (kept by `recordFinish` in `beforeFinish`) replaces the finished one.
@@ -576,6 +580,89 @@ rewritten unfinished at the place before. A place saved since the finish (the re
 no longer finished) is left as it is.
 
 A withdrawal that fails still lets the edit through, with nothing taken back.
+
+### Across tabs
+
+The tabs of a browser are one device (fe#123, fe#211). They share the three
+documents and the device id, but not each other's memory. `sendingNow`, `withdrawn`
+and the `maybeReached` set are each tab's own, and are all there is in the app.
+
+The saved place is shared the same way. A tab that another tab has played past
+saves nothing of its own, and takes the mirror's place before it plays again:
+[The tabs stay at one place](playback.md#the-tabs-stay-at-one-place).
+
+So what a tab's Undo must know of another tab's sends is written in the stored
+outbox, on the `finish` entry (`OutboxEntry`):
+
+| Mark | Means | Written |
+|---|---|---|
+| `out` | requests carrying the finish are out: one time per tab (the outbox's `tabId`), the latest each is over by | before the request (`markOut`), for 45 s (`OUT_MARK_MS`); as a page goes (`markOutNow`), for 5 s (`PAGE_HIDE_MARK_MS`) |
+| `maybeReached` | a request carried it while its server looked reachable and got no answer | when the request ends (`markSettled`), in the same write that takes the tab's `out` mark off |
+
+**Why the stored document and not the channel.** Every tab reads the outbox under
+its lock (`tabLock`), and the lock gives a send and an Undo one order. The Undo
+either took the finish back first, or finds it out and waits. A message on the
+[tab channel](playback.md#one-tab-plays-at-a-time-web) could arrive after the send
+it was meant to stop.
+
+**A send that carries a finish** (`sending`), on the web:
+
+1. Under the lock, `markOut` finds the finishes no longer stored (taken back by an
+   Undo in another tab, or answered there) and leaves them out of the request.
+2. It marks the rest `out` until 45 s from now. That is past the request's 15 s
+   timeout and the read of its answer. So a mark that ran out was left by a tab
+   that went away with its request, never by one still waiting.
+3. When the request ends, `markSettled` takes this tab's mark off the finishes
+   still stored (an answered one has left the outbox) and marks the ones that got
+   no answer `maybeReached`. One write does both, so a waiting Undo never reads a
+   finish as neither.
+
+**An Undo** (`withdrawFinish`) reads the marks:
+
+- A live `out` mark is waited for (`isOut`). Another tab's answer shows as a
+  change of the stored outbox; with no change the Undo looks again every 200 ms
+  (`OUT_POLL_MS`).
+- A finish gone from the outbox after the wait was answered: the server has it,
+  and the edit is sent.
+- A finish taken back with `maybeReached`, or with an `out` mark left standing
+  past its time, is one the server may hold (`serverMayHold`). The edit is sent
+  when the server looks reachable.
+- A mark further ahead than 45 s (the clock was set back since) counts as run
+  out. Read as live, the Undo would wait until the clock caught up.
+- `restore` puts a finish back with `maybeReached` when it had either mark, so
+  every tab still knows the server may hold it.
+
+**A page that is going** (`sendOnPageHide`) cannot wait for a lock, and nobody may
+see its request's answer:
+
+- It reads the stored outbox straight from `localStorage` (`storedOutboxNow`) and
+  leaves out a finish another tab took back.
+- It marks the finishes it sends `out` for 5 s (`markOutNow`), written at once,
+  outside the lock. Only a finish whose server looks reachable is marked
+  (`finishesLeaving`), and only when the stored outbox could be read.
+- An Undo in another tab waits that long for the request to land. It then reads
+  the mark left standing as "the server may hold it" and sends its edit, which a
+  finish landing later would have undone.
+
+**A swept span is sent.** A tab that closes the span another tab left
+(`sweepLeftBehind`) sends that connection's outbox at once. The tab that would
+have sent it is gone, so no send of its own follows. The sweep runs:
+
+- on the tab's launch;
+- once another tab's live span would be stale;
+- before a flush of every outbox;
+- before the sign-out count.
+
+**Known limit.** An Undo can wait up to 45 s on the mark of a tab that died with
+its request out and sent nothing as it went. A crash does that, and so does a tab
+the browser discarded. The edit is then sent when the server looks reachable.
+Otherwise the Undo is done on this device, as for a finish no request carried. A page that goes with a `pagehide` writes its 5 s mark over its own 45 s
+one for the finishes its keepalive request carries.
+
+In a test, two tabs are two copies of the modules (`jest.isolateModules`) over
+`src/testing/fake-browser.ts`, with `@/lib/storage` mocked per tab (`tabStorage`).
+The AsyncStorage package can't be the per-tab mock: Babel requires it lazily,
+after `isolateModules` has returned, so every copy would share the first tab's.
 
 ## The offline companion (`offline-meta.ts`)
 
