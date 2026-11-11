@@ -69,5 +69,5 @@ To edit, label or delete them, see [Add bookmarks and notes](bookmarks-and-notes
 
 - If the text can't load, the Text tab says why, usually with **Try again** or **Reconnect**.
 - **The read-along is for a newer ebook** means the ebook on the server changed after you downloaded the book. Remove the download and download the book again.
-- In the web player, a book that isn't downloaded has no Text tab while you're offline.
+- A book that isn't downloaded has no Text tab while you're offline.
 - Bookmarks, notes and history need the book's server. If it isn't connected, the lists say so until it is.

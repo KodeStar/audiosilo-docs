@@ -81,6 +81,16 @@ Very little changes:
 - A book's [read-along](companion.md#text) comes with the download, so **Text** and **Follow narration** work offline too.
 - The book's page still opens offline, and its **Details** tab says **Plays from this device**.
 
+## With no connection
+
+When your device has no network, downloaded books play and everything else waits for your server:
+
+- **Home, the Library, Folders** and any other page or list show **You're offline** in place of what they haven't loaded yet. Anything already loaded stays on screen.
+- **When the network comes back**, they load by themselves. There's nothing to press.
+- **Wi-Fi with no internet isn't offline.** The apps still reach a server on the same network. If a server doesn't answer, the page says so and offers **Retry**.
+- **Bookmarks, notes and ratings** aren't kept for later in the iOS and Android apps. One you make with no connection fails straight away with a message, so add it again once you're online. Only a bookmark made [from the car's screen](in-the-car.md#while-it-plays) is kept and sent later.
+- **The player's [Text tab](companion.md#text)** is hidden for a book that isn't downloaded.
+
 ## Community notes offline
 
 When your server has [community metadata](book-page.md#about-this-book) switched on, a downloaded book keeps its description, [recaps and characters](recaps-and-characters.md) and Series tab. They still [hide what you haven't reached](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). They're refreshed when the copy is over a week old and the app can reach your server.

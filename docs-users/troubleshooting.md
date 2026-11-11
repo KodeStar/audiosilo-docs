@@ -71,6 +71,16 @@ The server stopped accepting this device: an admin signed it out, your password 
 
 That server stopped answering. Books from your other servers keep working, and its lists fill in again once it's back. If it stays, see [I can't reach the server at all](#i-cant-reach-the-server-at-all).
 
+### A page says "You're offline"
+
+Your phone, tablet or computer has no network, so the page can't ask your server. Turn on Wi-Fi or mobile data. The page loads by itself once the network is back.
+
+Meanwhile, your downloaded books still play. [With no connection](./listening/offline-downloads.md#with-no-connection) lists what works offline.
+
+### A bookmark, note or rating won't save
+
+These are stored on your server. In the iOS and Android apps, one you make with no connection fails straight away with a message. The app doesn't send it later, so add it again once you're back online. See [With no connection](./listening/offline-downloads.md#with-no-connection).
+
 ### The app can't connect, but the browser can
 
 The iOS and Android apps can't accept the default self-signed certificate. At home they use [plain HTTP](./getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect) instead. Check:

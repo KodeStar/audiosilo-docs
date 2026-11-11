@@ -72,6 +72,8 @@ The **Library** tab holds everything on your server. Its sections are **Books**,
 
 If you have more than one library or server, use the **Library** picker beside the controls. Every section except Folders shows one library at a time. A [podcast library](podcasts.md#shows-in-the-library) has just **Shows** and **Folders**.
 
+With more than one server, the picker names each library with its server, like **Books · Home**. The Library stays on the library you chose, and starts on your first server until you choose. See [when that server doesn't answer](#good-to-know).
+
 ### Books
 
 Every book in the library, as a cover grid or a list:
@@ -209,4 +211,6 @@ Favourites belong to your account, so they follow you to every device.
 
 - **Older servers.** Authors, Series, Narrators, Collections, Up next, This week, Next in your series, **Mark as not finished**, Listening in the house and the Cast button need a recent server. On an older one they don't appear. Ask whoever runs your server to update it.
 - **A server that doesn't answer.** The Library and Folders say so, with **Retry**. If your sign-in ended, they offer **Reconnect** instead. Your other servers keep working.
+- **Two servers, and the one you chose doesn't answer.** The Library stays on your library. It waits while that server loads, and names the server if it doesn't answer or your sign-in ended. It never shows another server's books in its place. To browse another server meanwhile, choose one of its libraries in the picker.
+- **No connection.** Pages show **You're offline** and load again by themselves. See [With no connection](offline-downloads.md#with-no-connection).
 - **Sharing a collection** isn't offered on a demo account.
