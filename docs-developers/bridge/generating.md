@@ -1,24 +1,28 @@
 ---
 title: Characters and recaps (sidecars.generate)
-description: "Bridge Phase 1a's job: who may queue it and where, its params, the estimate and the heartbeat's figures, how the Bridge runs it through the sidecars engine, its progress, parks, result and notifications; Phase 1c's own-words description step and the description-only job (sidecars.describe); resuming after a restart, contributing, the budgets and the transcript retention."
+description: "The sidecars.generate job: who may queue it and where, its params, the estimate and the heartbeat's figures, how the Bridge runs it through the sidecars engine, its progress, parks, result and notifications; the own-words description step and the description-only job (sidecars.describe); resuming after a restart, contributing, the budgets and the transcript retention."
 ---
 
-`sidecars.generate` is the job that makes the Bridge useful: an admin presses
-**Generate characters and recaps** on a book, and the Bridge transcribes it (or
-reads its ebook), runs the sidecars engine's agent passes, validates the result,
-writes it into the book's [`.audiosilo/` folder](attachments.md) and asks the
-server to read it, after which `/meta` serves it to the players. Since Phase 1c
-the same run also writes an own-words, spoiler-free **description** of the book
-([the description step](#the-description-step)), and `sidecars.describe` writes
-one alone for a book generated earlier
-([below](#a-description-on-its-own-sidecarsdescribe)). Since Phase 1d a book with
-no chapter markers runs too: the engine finds its chapters in the narration first
-and the job writes them as `chapters.json` straight away
-([Chapterless books](chapters.md)). The job model it
-rides on (states, leases, attempts, cancel) is Phase 0's:
-[Pairing and jobs](pairing-and-jobs.md#the-job-model). Server code is
+`sidecars.generate` makes a book's characters and recaps. An admin presses
+**Generate characters and recaps** on a book, and the Bridge:
+
+1. transcribes the book, or reads its ebook;
+2. runs the sidecars engine's agent passes and validates the result;
+3. writes it into the book's [`.audiosilo/` folder](attachments.md);
+4. asks the server to read it. `/meta` then serves it to the players.
+
+The same run also writes an own-words, spoiler-free **description** of the book
+([the description step](#the-description-step)). `sidecars.describe` writes one
+alone for a book generated earlier
+([A description on its own](#a-description-on-its-own-sidecarsdescribe)). A book
+with no chapter markers runs too. The engine finds its chapters in the narration
+first, and the job writes them as `chapters.json` straight away
+([Chapterless books](chapters.md)).
+
+The job model it rides on (states, leases, attempts, cancel) is in
+[Pairing and jobs](pairing-and-jobs.md#the-job-model). The server's code is
 `internal/bridge` (`jobs.go`, `estimate.go`, `status.go`),
-`api/handlers_bridge.go` and `handlers_bridge_estimate.go`; the Bridge's is
+`api/handlers_bridge.go` and `handlers_bridge_estimate.go`. The Bridge's is
 `internal/generate`, wired in `internal/app/engine.go`.
 
 ## Who sees the action
@@ -42,10 +46,10 @@ the book page's Community card (`GenerateSection`), on each series card
 book. The player offers it on the book page's action row and in the companion's
 empty Who's who and Story so far; see
 [the book page](../frontend/book-page.md#the-primary-action-and-the-action-row).
-For a single book both UIs follow one offer rule (Phase 1e; a series batch has
-its own, [below](#queueing-it)), since generated content only ever
-fills a dimension the community lacks
-([`/meta`'s per-dimension merge](../server/api/reference.md#generated-content)):
+For a single book both UIs follow one offer rule, because generated content only
+ever fills a dimension the community lacks
+([`/meta`'s per-dimension merge](../server/api/reference.md#generated-content)). A
+series batch has its own rule ([Queueing it](#queueing-it)).
 
 | The community has | Generated here | Offered |
 |---|---|---|
@@ -69,7 +73,7 @@ Characters tab. The companion's empty Who's who and Story so far never show the
 line: an empty panel means the community lacks that half.
 
 The other guards (a job open, the Bridge offline, the four gates above) are
-unchanged. A `chapters.detect` or (Phase 2b) `sidecars.contribute` job queued or
+unchanged. A `chapters.detect` or `sidecars.contribute` job queued or
 working still hides the console's action (not a share held while the
 `contributions` module is off, which a generate job cancels), while the player
 keeps its button and the confirmation holds back (see
@@ -88,21 +92,28 @@ defaults filled in, so the Bridge reads one complete object:
 | `contribute` | `local`, `issue` | `local` | `local` keeps the results on this server (decision 6); `issue` also offers them to the community as an intake issue |
 | `work_id` | text, at most 200 bytes, no control characters | none | the community work the results are for, when the caller knows it |
 
-The kind **writes**, so on top of Phase 0's checks the server refuses it with
-`409 library_not_writable` unless the last heartbeat reports the library mapped
-**and** writable, and a `contribute: "issue"` with `409 cannot_contribute` unless
-the Bridge can contribute (`Status.CanContribute()`: the heartbeat's `setup`
-block, else `estimates.sidecars.can_contribute`; none counts as false). Both checks
-come after the dedupe: an open job of the book is returned (`200`) whatever they
-would say. Since Phase 2b a `contribute: "issue"` job also needs the
-`contributions` module: `404 module_off` while it is off, and held in the queue
-meanwhile (see [Jobs of a managed module](pairing-and-jobs.md#jobs-of-a-managed-module)).
+The kind **writes**. So on top of the [job model's checks](pairing-and-jobs.md#the-job-model),
+the server refuses:
+
+- any generate job with `409 library_not_writable`, unless the last heartbeat
+  reports the library mapped **and** writable;
+- a `contribute: "issue"` job with `409 cannot_contribute`, unless the Bridge can
+  contribute (`Status.CanContribute()`: the heartbeat's `setup` block, else
+  `estimates.sidecars.can_contribute`; none counts as false).
+
+Both checks come after the dedupe, so an open job of the book is returned (`200`)
+whatever they would say. A `contribute: "issue"` job also needs the
+`contributions` module. It gets `404 module_off` while the module is off, and is
+held in the queue meanwhile (see
+[Jobs of a managed module](pairing-and-jobs.md#jobs-of-a-managed-module)).
+
 A generate job is refused `409 contribute_open` while a `sidecars.contribute` job
-is queued or working for the book, and cancels a parked one, or a queued one held
-while the module is off. The player always sends
-`{source: "auto", contribute: "local"}`; only the console offers contributing, and
-its dialog's switch (shown while the module's flag is on and the estimate's
-`can_contribute` is true) starts on `issue`.
+is queued or working for the book. It cancels a parked one, or a queued one held
+while the module is off.
+
+The player always sends `{source: "auto", contribute: "local"}`. Only the console
+offers contributing. Its dialog's switch shows while the module's flag is on and
+the estimate's `can_contribute` is true, and starts on `issue`.
 
 **A series batch** is the client queueing each book on its own, in reading
 order, earliest first. Job ids ascend and the claim takes the oldest queued job,
@@ -145,8 +156,8 @@ The server costs the run from the figures in the Bridge's last heartbeat
   its own `asr_hours` and `agent_cost_usd` from its audio.
 - **`open_job`** is the book's open `sidecars.generate` job, else the open job of
   another kind that refuses one now (`Service.Blocker`): a queued or working
-  `chapters.detect` job (Phase 1d) or `sidecars.contribute` job (Phase 2b; not a
-  queued one held while the `contributions` module is off); omitted for neither.
+  `chapters.detect` job or `sidecars.contribute` job (not a queued one held while
+  the `contributions` module is off); omitted for neither.
 
 `brief=1` is the cheap answer for a label or a batch: the same shape without the
 look into the book's folder (`source` audio, no `ebook`) and without the series
@@ -189,43 +200,46 @@ or parked. One run:
    maps the server job id to the engine book, and is trusted only for the same
    library and book (another server, or a reinstalled one, hands out ids an older
    mapping still holds; that run is stopped and this job starts its own).
-3. **Refuses an impossible contribution before any spend**: `contribute: issue`
+3. **Refuses an impossible contribution before any spend.** `contribute: issue`
    on a Bridge with no GitHub token fails at once (`Options.ContribCredential`),
-   worded for why: not signed in ("...but the Bridge isn't signed in to GitHub:
+   worded for why. The cause is either not signed in ("...but the Bridge isn't signed in to GitHub:
    sign in on the Bridge's Accounts tab, or generate the book with contribute set
    to local"), or signed in but the sign-in couldn't be refreshed
    (`contrib.ErrSignInUnrefreshed`: "...but the Bridge's GitHub sign-in couldn't
    be refreshed because GitHub couldn't be reached: generate the book again once
    it can, or with contribute set to local"). A resumed job is checked only when
-   it has to start a new engine book after all (its id maps to another book's
-   run, as in step 2, or its engine book is gone: deleted, or swept since it was
-   cancelled): that is a new spend.
-4. **Prepares** (`prepare`): the library must be one the server listed, with a
-   mapping check that found it mapped and writable at the mount the Bridge uses
-   now (a new job fails otherwise; a resumed one parks `library_not_writable` and
-   waits); the book comes from
-   [`GET /bridge/libraries/{id}/book?path=`](../server/api/reference.md#get-apiv1bridgelibrariesidbook)
-   with its `book` facts (an unreachable server or a `5xx` is waited out, backing
-   off to a minute; a `4xx` fails the job); its files must match the server's
-   sizes through the mount; and the book's **own** folder must take a write probe,
-   else the job parks `book_not_writable` and looks again every minute (or at
-   once on **Retry**).
-5. **Creates the engine book** (`create`): it picks the source (`chooseSource`:
-   `audio` as asked; `ebook` needs a readable `.epub`, else the job fails; `auto`
-   takes a readable one and falls back to the audio, logging why: several `.epub`
-   files, or one whose OPF doesn't parse, as a DRM-wrapped one doesn't). An engine
-   book left by an earlier run at the same source path is deleted first, unless
-   another open job follows it (the job fails: cancel that one first) or a stage
-   of it stays busy through up to 40 polls, about two minutes (`deleteEarlier`,
-   `giveWayTries`, the same bound as the
-   [give-way wait](chapters.md#a-generate-job-after-a-detect-job); the job fails:
-   try again in a minute). A
-   `chapters.detect` run at the same path (finished, or stopped at its detection)
-   is **continued** instead, so its transcription is reused ([A generate job after a detect job](chapters.md#a-generate-job-after-a-detect-job)). The new book takes
-   its identity from the server's facts (title, authors, narrators, series and
-   position, ASIN, ISBN), its `work_id` from the params or else the server's
-   metadata cache, its kind (audio or ebook) and the job's `contribute` as its
-   `contrib_mode`.
+   it has to start a new engine book after all, because that is a new spend. That
+   happens when its id maps to another book's run, as in step 2, or its engine book
+   is gone (deleted, or swept since it was cancelled).
+4. **Prepares** (`prepare`). It checks, in order:
+   - the library is one the server listed, with a mapping check that found it
+     mapped and writable at the mount the Bridge uses now. A new job fails
+     otherwise; a resumed one parks `library_not_writable` and waits;
+   - the book, read from
+     [`GET /bridge/libraries/{id}/book?path=`](../server/api/reference.md#get-apiv1bridgelibrariesidbook)
+     with its `book` facts. An unreachable server or a `5xx` is waited out,
+     backing off to a minute; a `4xx` fails the job;
+   - the book's files match the server's sizes through the mount;
+   - the book's **own** folder takes a write probe. Otherwise the job parks
+     `book_not_writable` and looks again every minute, or at once on **Retry**.
+5. **Creates the engine book** (`create`).
+   - **The source** (`chooseSource`). `audio` is taken as asked. `ebook` needs a
+     readable `.epub`, else the job fails. `auto` takes a readable one and falls
+     back to the audio, logging why: several `.epub` files, or one whose OPF
+     doesn't parse, as a DRM-wrapped one doesn't.
+   - **An earlier run.** An engine book left by an earlier run at the same source
+     path is deleted first (`deleteEarlier`). The job fails instead if another
+     open job follows that book (cancel that one first), or if a stage of it stays
+     busy through up to 40 polls, about two minutes (`giveWayTries`, the same
+     bound as the [give-way wait](chapters.md#a-generate-job-after-a-detect-job);
+     try again in a minute). A `chapters.detect` run at the same path (finished,
+     or stopped at its detection) is **continued** instead, so its transcription
+     is reused
+     ([A generate job after a detect job](chapters.md#a-generate-job-after-a-detect-job)).
+   - **The new book** takes its identity from the server's facts (title, authors,
+     narrators, series and position, ASIN, ISBN), its `work_id` from the params or
+     else the server's metadata cache, its kind (audio or ebook), and the job's
+     `contribute` as its `contrib_mode`.
 6. **Follows it** (`follow`): every 3 seconds while a stage works, every 30
    while it is queued, paused or parked (a **Retry** looks at once), turning the
    book into the job's progress and parks (below).
@@ -249,7 +263,7 @@ server stores it opaquely; at most 16 KiB):
 
 | Field | Meaning |
 |---|---|
-| `step` | always set: the engine state (`inspecting`, `asr`, `chapter_detecting` since Phase 1d, `fact_pass`, `synthesizing`, `auditing`, `contributing`...), or the job's own `waiting` (the engine book is queued, or the job waits on the engine, the server or the mapping), `writing` (writing into `.audiosilo/`), `rescanning` (asking the server to read them) and, since Phase 1c, `describing` (the description step) |
+| `step` | always set: the engine state (`inspecting`, `asr`, `chapter_detecting`, `fact_pass`, `synthesizing`, `auditing`, `contributing`...), or the job's own `waiting` (the engine book is queued, or the job waits on the engine, the server or the mapping), `writing` (writing into `.audiosilo/`), `rescanning` (asking the server to read them) and `describing` (the description step) |
 | `message` | the step in words ("Transcribing (12 of 40)"; "Needs attention: ..." while parked, "Paused: ..." while paused) |
 | `done`, `total` | the current stage's counts, when it has some |
 | `stage` | the engine state |
@@ -284,33 +298,40 @@ waiting on its own park look again now.
 
 A change on the page that answers a park resumes everything parked on it, engine
 books and [description jobs](#a-description-on-its-own-sidecarsdescribe) alike.
-For the agent's parks: a monthly budget saved on the **Settings** tab answers `budget_exceeded`, an agent
-credential changed on the **Accounts** tab `agent_credential_refused` and
-`agent_unavailable`. A cap set in `config.yaml` or the environment is read at the
-next start, and that start re-admits, once, the `budget_exceeded` parks (engine
-books through the scheduler's `restartReadmitCodes`, a description job because
-the restart resumes it and it checks the caps before spending), except an engine
-book's park the caps would make again with the same reason, figures included
-(`budgetParkHolds` compares the text), which stays paused. So a changed cap,
-raised or lowered, re-admits the job even while it is still short of the spend,
-and an unchanged one re-admits a monthly park whose month's spend grew after it
-(a run already under way finished); a book still over a cap parks again before
-it spends anything. A raised cap needs no **Retry**. The same start gives the
-availability parks (`agent_unavailable`, `agent_rate_limited`,
-`asr_unavailable`, `media_tools_unavailable`), and a `supervisor_escalated` park
-whose message names an authentication, rate or usage limit, credits or backend
-failure (`restartRecoverablePark`), one more try each.
+For the agent's parks:
+
+- a monthly budget saved on the **Settings** tab answers `budget_exceeded`;
+- an agent credential changed on the **Accounts** tab answers
+  `agent_credential_refused` and `agent_unavailable`.
+
+**After a restart.** A cap set in `config.yaml` or the environment is read at the
+next start. That start re-admits the `budget_exceeded` parks once: engine books
+through the scheduler's `restartReadmitCodes`, and a description job because the
+restart resumes it and it checks the caps before spending. The exception is an
+engine book's park that the caps would make again with the same reason, figures
+included (`budgetParkHolds` compares the text). That one stays paused.
+
+So a changed cap, raised or lowered, re-admits the job even while it is still
+short of the spend. An unchanged cap re-admits a monthly park whose month's spend
+grew after it (a run already under way finished). A book still over a cap parks
+again before it spends anything. A raised cap needs no **Retry**.
+
+The same start gives one more try each to the availability parks
+(`agent_unavailable`, `agent_rate_limited`, `asr_unavailable`,
+`media_tools_unavailable`), and to a `supervisor_escalated` park whose message
+names an authentication, rate or usage limit, credits or backend failure
+(`restartRecoverablePark`).
 
 | Code | Means | Resumes by itself |
 |---|---|---|
 | `agent_unavailable` | the agent container isn't answering, has no CLI or no credential, or didn't claim the job within `agent.claim_timeout_seconds` | yes, 10 minutes later when the container said why (`retry_at`), or at once when the agent's credential changes on the Accounts tab |
 | `agent_rate_limited` | the agent account hit its usage limit | yes, when it resets |
-| `agent_credential_refused` | the provider refused the CLI's credential (new in Phase 1a) | it looks again every 30 minutes, or at once when the agent's credential changes on the Accounts tab |
+| `agent_credential_refused` | the provider refused the CLI's credential | it looks again every 30 minutes, or at once when the agent's credential changes on the Accounts tab |
 | `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one on the 1st, or at once on a **Settings** save that changes it; the per-book one, or a cap the environment sets, once it is changed and the Bridge restarted, with no **Retry** (with an unchanged cap it stays paused, or parks again before it spends anything; see above and [The budgets](#the-budgets)) |
 | `agent_validation_exhausted`, `qa_no_converge`, `spelling_gate_failure`, `fix_loop_exhausted`, `asr_decode_timeout`, `markers_not_confident`, `ebook_chapters_not_confident`, `supervisor_escalated`, `supervisor_budget` | an engine stage gave up after its bounded retries | the supervisor's automatic actions (on by default, [The engine wiring](#the-engine-wiring)) retry them by themselves, except `asr_decode_timeout`, `markers_not_confident` and `ebook_chapters_not_confident`, while a job follows the book: at most 3 times for the same problem (`supervisor.max_attempts`) and 3 automatic recoveries a day per book. After that, or for those three: **Retry** |
-| `chapters_not_detected` | a book with no chapter markers whose chapters couldn't be found in the narration with confidence (Phase 1d; the message says why: no headings heard, a chapter too long, numbers missing). See [Chapterless books](chapters.md#the-park-chapters_not_detected) | no: add chapter markers to the file, cancel and generate again |
+| `chapters_not_detected` | a book with no chapter markers whose chapters couldn't be found in the narration with confidence (the message says why: no headings heard, a chapter too long, numbers missing). See [Chapterless books](chapters.md#the-park-chapters_not_detected) | no: add chapter markers to the file, cancel and generate again |
 | `media_tools_unavailable`, `asr_unavailable` | ffmpeg/ffprobe is missing, or the Bridge's own speech recognition failed to set up | no: fix it, then **Retry** (the stage looks for ffmpeg/ffprobe again and sets the speech recognition up again); a fix in `config.yaml` or the environment, or the tools' download, needs a restart, and the Bridge's next start tries once more by itself |
-| `asr_worker_waiting` | no [ASR worker](workers.md) is connected and the fallback is `wait` (or the Bridge has no speech recognition of its own) (new in Phase 1b) | yes, as soon as a worker connects (or the fallback is `local` with a usable backend) |
+| `asr_worker_waiting` | no [ASR worker](workers.md) is connected and the fallback is `wait` (or the Bridge has no speech recognition of its own) | yes, as soon as a worker connects (or the fallback is `local` with a usable backend) |
 | `manifest_changed` | the book's audio changed since it was transcribed | no: cancel and generate again |
 | `ebook_unreadable`, `ebook_no_chapters` | the ebook can't be used | no: cancel and generate from the audio |
 | `contrib_unavailable` | contributing has no GitHub token it can use: none resolves, GitHub refused it, or a signed-in token needed a refresh and GitHub couldn't be reached (same code, its own reason: `pipeline.ContribUnrefreshedMsg`) | yes, on a sign-in on the Accounts tab (every book with this code, whatever its reason); the unrefreshed one not by itself, since the Bridge stays signed in and a refresh that later succeeds re-admits nothing: **Retry** once GitHub can be reached |
@@ -342,7 +363,7 @@ On `done` (at most 64 KiB):
 single-file book; `chapters.json` too for a book whose chapters were found in the
 narration), `work_id` the resolved community work (or the pipeline's
 placeholder slug), `contributed` only with `contribute: issue`, naming each
-dimension's intake issue. `description` (Phase 1c) says whether
+dimension's intake issue. `description` says whether
 `description.json` was written; when it is `false`, `description_error` says why
 in a few plain words ("the agent account hit its usage limit", "the book has a
 single chapter, so no description leaves out its ending"...), which the console
@@ -380,11 +401,11 @@ and once more when its park comes back, unless that park is transient. See
 
 ## The description step
 
-Phase 1c: a book's **own-words, spoiler-free description**, the paragraph a
-stranger reads before deciding to listen, written by the agent and saved as
-[`description.json`](attachments.md#the-formats). It is **local only**:
-meta-community takes descriptions by pull request, so a `contribute: issue` run
-never files one. The Bridge's code is `pipeline.Executor.Describe`
+The description step writes a book's **own-words, spoiler-free description**:
+the paragraph a stranger reads before deciding to listen. The agent writes it, and
+the Bridge saves it as [`description.json`](attachments.md#the-formats). It is
+**local only**. meta-community takes descriptions by pull request, so a
+`contribute: issue` run never files one. The Bridge's code is `pipeline.Executor.Describe`
 (`internal/pipeline/describe_stage.go`, its prompt `internal/agent/prompts/description.md`)
 and `describeOnce` (`internal/generate/describejob.go`).
 
@@ -479,16 +500,17 @@ which the transcript purge keeps.
 
 ## A description on its own: `sidecars.describe`
 
-Phase 1c's second kind (family `sidecars`, so the same `bridge.features` entry):
-a description for a book the Bridge generated earlier, written from the notes
-it kept (no new speech recognition). The notes outlive the transcripts: the
-retention deletes the transcript text but keeps the fact notes, the chapter
-positions and the sidecars. The player has no such action; the console offers it.
+`sidecars.describe` writes a description for a book the Bridge generated
+earlier, from the notes it kept, with no new speech recognition. Its family is
+`sidecars`, so it shares the same `bridge.features` entry. The notes outlive the
+transcripts: the retention deletes the transcript text but keeps the fact notes,
+the chapter positions and the sidecars. The player has no such action; the console
+offers it.
 
 **Queueing:** `POST /admin/bridge/jobs` with `kind: "sidecars.describe"`, a
 `library_id`, a **required** book `path` and `params` `{}` or none (any field is
 `400`; stored as `{}`). It writes, so `409 library_not_writable` as for a
-generate job, and a Bridge that doesn't advertise it (a 1a or 1b Bridge) is
+generate job, and a Bridge that doesn't advertise it (an older Bridge) is
 `409 kind_unavailable`. It is refused with **`409 generate_open`** while a
 `sidecars.generate` job is open for the book (that run writes the description
 itself); a second press returns the open describe job (its own dedupe key).
@@ -498,34 +520,46 @@ parked, else by `cancel_requested`, its error "a generate job for the book
 replaced it"), since the generate run writes the description from fresher notes.
 See [Kinds are allow-listed twice](pairing-and-jobs.md#kinds-are-allow-listed-twice).
 
-**The console** (`admin-ui/src/features/bridge/describe-section.tsx`): the book
+**The console** (`admin-ui/src/features/bridge/describe-section.tsx`). The book
 page's Community card has a **Description** part. It shows a generated
 description (from the admin book detail's `generated_description`) with the
-"Generated on this server" mark and its time, clamped behind **Show more**, and
+"Generated on this server" mark and its time, clamped behind **Show more**. It
 says when listeners see another description in the player instead (the book's
-own, or the community's). **Write a description** confirms, then queues the job
-(`describeOffered`): offered only when the estimate says `can_describe` and
-`writable`, the book has generated characters or recaps (their notes are the
-source), no description from either side (`has.local.description`,
-`has.community.description`, with `community_unknown` unset), no description of
-its own, and no generate or describe job open (the estimate's `open_job`
-included). The describe job's status shows in the same part.
+own, or the community's).
+
+**Write a description** confirms, then queues the job (`describeOffered`). It is
+offered only when all of these hold:
+
+- the estimate says `can_describe` and `writable`;
+- the book has generated characters or recaps, whose notes are the source;
+- there is no description from either side (`has.local.description`,
+  `has.community.description`, with `community_unknown` unset), and the book has
+  no description of its own;
+- no generate or describe job is open (the estimate's `open_job` included).
+
+The describe job's status shows in the same part.
 
 **The Bridge** (`DescribeJob`, the `pipeline` lane) prepares as a generate job
-does (strict when new; a resumed job parks `library_not_writable`), then finds
-the engine book whose notes describe the book: the latest at its source path,
-else the latest generate job's book at its library path (a book that moved
-while that job ran), else the run the book's own `bridge.json` names (a book that
-moved after). It runs the description step until it writes one; the agent's parks
-(rate limit, budget, credential, unavailable) are the job's park
-(`needs_attention`, with `code`, `hint` and `retry_at`), tried again at
-`retry_at`, on **Retry**, or at once when a change on the page answers it
-([Parks](#parks); `Handler.WakeParked`: these jobs wait in their own loop, not as
-engine books, so the engine's re-admit doesn't reach them). Each wake is
-numbered, so a try that parks on a code woken while it ran tries again at once
-instead of losing the wake. A parked job is still running on the Bridge, so a
-restart resumes it and it tries again at once: a cap raised in `config.yaml` or
-the environment needs only the restart. Then it saves `description.json` and `bridge.json`
+does (strict when new; a resumed job parks `library_not_writable`). Then it finds
+the engine book whose notes describe the book, the first of:
+
+- the latest engine book at its source path;
+- the latest generate job's book at its library path (a book that moved while
+  that job ran);
+- the run the book's own `bridge.json` names (a book that moved after).
+
+It runs the description step until it writes one. The agent's parks (rate limit,
+budget, credential, unavailable) are the job's park (`needs_attention`, with
+`code`, `hint` and `retry_at`). The job tries again at `retry_at`, on **Retry**,
+or at once when a change on the page answers it ([Parks](#parks)).
+`Handler.WakeParked` does this, because these jobs wait in their own loop, not as
+engine books, so the engine's re-admit doesn't reach them. Each wake is numbered,
+so a try that parks on a code woken while it ran tries again at once instead of
+losing the wake.
+
+A parked job is still running on the Bridge, so a restart resumes it and it tries
+again at once. A cap raised in `config.yaml` or the environment needs only the
+restart. Then the job saves `description.json` and `bridge.json`
 ([how](attachments.md#how-the-bridge-writes-them)) and asks for the attachments
 rescan. It fails, with a sentence the console shows as it is, when:
 
@@ -557,9 +591,10 @@ An audio book past its transcript retention, or an ebook (its text went at
 
 ## Resuming after a restart
 
-Phase 0's rules hold (a running job is resumed under its claim, a lapsed claim is
-taken again as the next attempt): see
-[Resuming after a restart](pairing-and-jobs.md#resuming-after-a-restart). On top:
+The job model's rules hold: a running job is resumed under its claim, and a
+lapsed claim is taken again as the next attempt (see
+[Resuming after a restart](pairing-and-jobs.md#resuming-after-a-restart)). On top
+of those:
 
 - **The engine book survives**: `generate_books` (store migration `0003`) maps
   the job to it, so a resumed job follows the same book rather than starting
@@ -582,24 +617,27 @@ taken again as the next attempt): see
 
 ## Contributing
 
-With `contribute: issue` the engine's `contributing` stage files the community
-intake issues, as audiosilo-sidecars did, with the token `contrib.TokenSource`
-resolves (`AUDIOSILO_BRIDGE_GITHUB_TOKEN`, else the Accounts tab's GitHub sign-in,
-else `gh`; see [Configuration](configuration.md#contributing-github)). The local
-files are written before that stage can park: a book parked at `contributing`
-(`core_needed`, `contrib_unavailable`, say) already has its `.audiosilo/` files,
-and the job writes them again only when the engine's sidecars change. A sign-in
-on the Accounts tab re-admits every book parked `contrib_unavailable`, whatever
-its reason. One parked because a signed-in token couldn't be refreshed gets no
-sign-in: the page still shows the Bridge signed in, and a refresh that later
-succeeds re-admits nothing, so it waits for **Retry** once GitHub can be reached
-([Parks](#parks)); signing out and in again re-admits it too.
-`can_contribute` in the heartbeat is "a token resolves and isn't refused", which,
-with the Contributions module on, is all the server checks of the Bridge's GitHub
-access before it queues such a job. An issue filed with the App's user token
-skips the labels check (`AppFiled`): GitHub drops the labels a non-collaborator
-sets, and the community repository's `route.yml` (audiosilo-meta-community) labels
-it.
+With `contribute: issue`, the engine's `contributing` stage files the community
+intake issues, as audiosilo-sidecars did. It uses the token `contrib.TokenSource`
+resolves: `AUDIOSILO_BRIDGE_GITHUB_TOKEN`, else the Accounts tab's GitHub sign-in,
+else `gh` (see [Configuration](configuration.md#contributing-github)).
+
+The local files are written before that stage can park. A book parked at
+`contributing` (`core_needed`, `contrib_unavailable`, say) already has its
+`.audiosilo/` files, and the job writes them again only when the engine's sidecars
+change.
+
+A sign-in on the Accounts tab re-admits every book parked `contrib_unavailable`,
+whatever its reason. A book parked because a signed-in token couldn't be refreshed
+gets no sign-in, because the page still shows the Bridge signed in. A refresh that
+later succeeds re-admits nothing, so the book waits for **Retry** once GitHub can
+be reached ([Parks](#parks)). Signing out and in again re-admits it too.
+
+`can_contribute` in the heartbeat means "a token resolves and isn't refused". With
+the Contributions module on, that is all the server checks of the Bridge's GitHub
+access before it queues such a job. An issue filed with the App's user token skips
+the labels check (`AppFiled`). GitHub drops the labels a non-collaborator sets, and
+the community repository's `route.yml` (audiosilo-meta-community) labels it.
 
 Contributing **later**, after a run kept local, is its own kind,
 `sidecars.contribute`: see [Contributions](contributions.md#sharing-later-sidecarscontribute).
@@ -646,11 +684,12 @@ repair logs). It keeps what a sequel builds on (the facts in
 `knowledge-final.md`, the spelling ledger and rules, the series glossary), the
 fact notes a [`sidecars.describe`](#a-description-on-its-own-sidecarsdescribe)
 reads, the description step's `chapter_positions.json`, the manifest and the
-sidecars (`description.json` included). Since Phase 1d it also removes
-`windows/` (a chapterless book's window transcripts and detection) and keeps
-`chapters_detected.json` (titles only, which `chapters.detect` reuses). Each purge takes the engine's hold on
-the book: the daily sweep leaves a held book (a description being written) for
-its next run.
+sidecars (`description.json` included). It also removes `windows/` (a
+chapterless book's window transcripts and detection) and keeps
+`chapters_detected.json` (titles only, which `chapters.detect` reuses).
+
+Each purge takes the engine's hold on the book. The daily sweep leaves a held book
+(a description being written) for its next run.
 
 ## The engine wiring
 
