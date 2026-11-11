@@ -1283,8 +1283,9 @@ span was last kept, under the mirror's own rule that the newest record wins:
 
 - only a record older than the span's end is changed, and only forward;
 - never a finished book's record, and never a book with no record;
-- never finished at the end of a download that ends early
-  ([A download that ends early](offline.md#a-download-that-ends-early));
+- never finished at the end of a download that ends early (`ProgressSave.partial`, or
+  `downloadEndsBefore` unless the span ended in the book's last file; see
+  [A download that ends early](offline.md#a-download-that-ends-early));
 - so a place written since stands: the listener's own move, another tab's play, a
   server row.
 

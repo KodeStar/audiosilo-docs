@@ -1242,11 +1242,12 @@ order made only of the download's own files (a JS restart after an offline start
 **A partial queue.** A queue built from the download that lacks the book's last
 file is partial (`partialQueues` in `store.ts`):
 
-- `playBook` reads `endsBefore`. Started with the device offline, such a download
-  plays its own files and chapters whatever chapters it was given (a cold start's
-  cached server chapters name the files it lacks, and streaming them would stall into
-  a stream error at the downloaded part's end). Online it is given the server's
-  chapters, streams the rest, and is not partial.
+- `playBook` reads `endsBefore`. Started with the device offline (`isDeviceOnline`),
+  such a download builds its queue from the download's own copy (its files and
+  chapters) whatever chapters its caller gave it (a cold start's cached server
+  chapters name the files it lacks, and streaming them would stall into a stream
+  error at the downloaded part's end). Online it plays the chapters it
+  was given, streams the rest, and is not partial.
 - `adoptLoaded` with no server answer reads the last file of the engine's order and
   `endsBefore`.
 
@@ -1265,9 +1266,12 @@ Its end is the downloaded part's, so:
   it an error. It shows the notice again.
 - The end credits' Play never finishes such a book by its place
   (`selectEndsPartial`): it stops, unfinished.
-- Each mirror capture in a partial queue says so (`ProgressSave.partial`), so a span
-  recovered after a kill in the last seconds (`mirrorSpanEnd`) never makes the record
-  finished.
+- A span recovered after a kill in the last seconds (`mirrorSpanEnd`) never makes
+  the record finished. Each mirror capture in a partial queue says so
+  (`ProgressSave.partial`), and `mirrorSpanEnd` also asks the download
+  (`downloadEndsBefore` in `kept-offline.ts`), since a server row written into the
+  mirror since the capture carries no `partial`. Only a span that ended in the
+  book's last file (streamed, so its end is the book's) finishes it.
 
 **Online adoption streams on** too: an Android adoption that holds a file the
 download lacks builds its queue from the server's chapters
