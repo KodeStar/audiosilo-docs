@@ -65,7 +65,8 @@ If the connection drops while you listen:
 
 - A **downloaded** book keeps playing. See [Listen offline](offline-downloads.md).
 - A **streamed** book pauses with **Retry** once it runs out of buffered audio. Offline, Home shows **Not downloaded** for it instead of Resume.
-- Progress, bookmarks and finished books, **Mark as finished** included, wait on the device and sync once the server is back.
+- Progress and finished books, **Mark as finished** included, wait on the device and sync once the server is back.
+- Bookmarks and notes need your server. See [With no connection](offline-downloads.md#with-no-connection).
 
 ## Lock-screen and headphone controls
 

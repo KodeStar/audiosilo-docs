@@ -77,9 +77,11 @@ Your phone, tablet or computer has no network, so the page can't ask your server
 
 Meanwhile, your downloaded books still play. [With no connection](./listening/offline-downloads.md#with-no-connection) lists what works offline.
 
+Search says the same when none of your servers answer. If your device has a network, see [I can't reach the server at all](#i-cant-reach-the-server-at-all).
+
 ### A bookmark, note or rating won't save
 
-These are stored on your server. In the iOS and Android apps, one you make with no connection fails straight away with a message, so add it again once you're back online. [With no connection](./listening/offline-downloads.md#with-no-connection) names the one bookmark the app keeps for later.
+These are stored on your server, so saving one needs a connection to it. Check the connection, then add it again. [With no connection](./listening/offline-downloads.md#with-no-connection) says what the apps do with one made offline.
 
 ### The app can't connect, but the browser can
 
