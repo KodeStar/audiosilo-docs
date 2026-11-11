@@ -56,8 +56,8 @@ section of the repo's `GOVERNANCE.md`.
 - **It never adds a second work at an occupied position.** A new work from the
   feeds only ever fills a free position in a catalogued series.
   - A row for a volume the catalogue already holds is attached to that work only
-    when its series, position, authors and title match the incumbent, so that
-    audiosilo-meta's own work-identity rules resolve it to exactly that work.
+    when its series, position, authors and title match the incumbent, that is,
+    when audiosilo-meta's own work-identity rules resolve it to exactly that work.
     The attachment is another recording, or another ASIN on an existing
     recording.
   - `metaimport libex-select` refuses every other row at an occupied position,
@@ -670,7 +670,8 @@ last.
 
 `metaimport libex` takes these flags:
 
-- `--attach-editions` attaches those rows. It also makes the import refuse a row
+- `--attach-editions` attaches the rows the selector kept as another edition of
+  the work at their position. It also makes the import refuse a row
   at an occupied position that is not another edition of the work there.
 - `--existing-series-only` separately forbids founding a series.
 - `--skipped <path>` lists every row the import refused for a reason that has a

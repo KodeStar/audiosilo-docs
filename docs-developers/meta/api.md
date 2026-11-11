@@ -159,8 +159,9 @@ apostrophe, and such a query would otherwise find nothing.
   ignores a possessive's apostrophe as well, so `enders game` leads with "Ender's
   Game".
 
-A query with neither form is matched exactly. A query containing a possessive also
-matches the other spelling, so its page can differ slightly from an exact match.
+A query with neither form gets no second spelling, so this rule leaves its page
+unchanged. A query containing a possessive also matches the other spelling, so its
+page can differ slightly from the one its own spelling alone would give.
 
 ## `/api/v1/works/search`, `/api/v1/people/search`, `/api/v1/series/search`
 
@@ -385,14 +386,15 @@ text says the book is one. A dramatization here is any of these:
 - a recording stating no publisher, on a work still titled with the adaptation
   label.
 
-The work still matches and scores the same, because a dramatization is a recording
-of its book. Only `recording_id` is omitted when nothing else fits. A narrator
-credited on both a plain reading and a dramatization names the plain reading.
+The work still matches and scores as it would otherwise, because a dramatization is
+a recording of its book, but `recording_id` is omitted when nothing else fits. A
+narrator credited on both a plain reading and a dramatization names the plain
+reading.
 
 ### Match bounds
 
 Like every catalogue route, `works/match` is unauthenticated and CORS-open, so a
-request can't price itself. These bounds keep its cost fixed:
+request can't price itself. These bounds cap its cost:
 
 - each text value is cut to 256 bytes;
 - an author resolves through a bounded window of people;
@@ -1043,8 +1045,8 @@ well-formed request. A malformed parameter is still the 400.
 
 **`since` means "reached the mirror since".** LibriVox compares `since` with the day
 it catalogued a project. The mirror compares it, at the same day granularity, with
-the day the mirror **imported** the recording (its `added_at`). The day starts from
-the first UTC midnight at or after `since`. A client syncing LibriVox's newly
+the day the mirror **imported** the recording (its `added_at`), counting from the
+first UTC midnight at or after `since`. A client syncing LibriVox's newly
 catalogued projects reads LibriVox's own `since`. This one trails LibriVox by however
 long a project takes to be imported. For the backfill, that is the day its tranche
 was imported.
@@ -1253,20 +1255,10 @@ the same verified refresh path as polling. It never trusts or installs data from
 request body. A missed delivery is non-fatal, because the fallback poller still
 discovers the release.
 
-:::warning[History: the payload was malformed until 2026-09-24]
-From the webhook's introduction until 2026-09-24, `release.yml` composed the
-notification body with a shell `printf` inside single quotes. Its backslash escapes
-were sent as literal characters instead of JSON escapes, so the body was never valid
-JSON. `webhook.go` rejected **every** delivery with 400. It did so silently, since
-delivery failure is non-fatal by design. Any operator who had
-`METASERVE_WEBHOOK_SECRET` configured was in practice running on the hourly fallback
-poller the whole time.
-
-The sender now composes the payload with `jq`. A test runs the sender against the
-real handler, which pins the two together so they cannot drift apart again. The
-`release.yml` workflow log reports the delivery status: the HTTP response code, or
-the reason the notification could not be sent.
-:::
+`webhook.go` answers a body that is not valid JSON with 400. `release.yml` composes
+the payload with `jq`, and a test runs the sender against the real handler, so the
+two cannot drift apart. The `release.yml` workflow log reports the delivery status:
+the HTTP response code, or the reason the notification could not be sent.
 
 ## Unknown-ASIN intake queue (optional)
 
@@ -1290,7 +1282,7 @@ request is the only way a report reaches the catalogue.
 | Variable | What it does |
 |---|---|
 | `METASERVE_INTAKE_DB` | The path of the queue's SQLite file. Setting it registers the `POST`. The shipped compose file has it commented out as `/data/intake/queue.sqlite`, on the volume and outside the artifact cache. A file that cannot be opened or written is logged and leaves both routes off. The catalogue API stays up. |
-| `METASERVE_INTAKE_TOKEN` | A random value of at least 32 bytes once trimmed (`openssl rand -hex 32`). Together with `METASERVE_INTAKE_DB`, it also registers the bearer-token `GET`. A shorter value is logged without its value and leaves only the `GET` off. Set without `METASERVE_INTAKE_DB`, it is logged and both routes stay off. Never commit it. |
+| `METASERVE_INTAKE_TOKEN` | A random value of at least 32 bytes once trimmed (`openssl rand -hex 32`). Together with `METASERVE_INTAKE_DB`, it also registers the bearer-token `GET`. A shorter token is logged without its value and leaves only the `GET` off. Set without `METASERVE_INTAKE_DB`, it is logged and both routes stay off. Never commit it. |
 
 Unsetting `METASERVE_INTAKE_DB` is the kill switch. The file is disposable, because
 it holds nothing of the catalogue's and a client can report again.

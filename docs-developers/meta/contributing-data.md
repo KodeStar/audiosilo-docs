@@ -343,12 +343,12 @@ verdict is:
 
 ## Issues filed through the AudioSilo App
 
-A Bridge files its issues **under the server admin's own GitHub account**:
-characters and recaps on the community repository, correction batches here. How
-it files depends on its sign-in:
+A Bridge files characters and recaps on the community repository, and correction
+batches here. How it files depends on its sign-in:
 
-- **With its Accounts sign-in**, it files through the public **AudioSilo
-  Contributions** GitHub App (id `5387686`, slug `audiosilo-contributions`; see
+- **With its Accounts sign-in**, it files **under the server admin's own GitHub
+  account**, through the public **AudioSilo Contributions** GitHub App (id
+  `5387686`, slug `audiosilo-contributions`; see
   [Contributions](../bridge/contributions.md)).
 - **With a token from its environment or `gh`**, it files a plain issue, which
   this workflow leaves alone. Its routing labels stick only for an account with
@@ -989,7 +989,7 @@ run writes the packs, then validates the whole tree. For each selected project:
   - For every project that landed, the run stamps its readers' and authors'
     LibriVox ids onto the people they resolved to. A translator's id is a
     LibriVox author id. On an attach, only the people the work names are stamped
-    (see [Which work a LibriVox project joins](#which-work-a-librivox-project-joins)).
+    (see the attach rule later in this list).
   - A person already carrying a different id in that namespace keeps it, and an id
     already on another person is not recorded twice. The run warns about both.
     That is the case for an author who is two LibriVox ids but one person here. A
@@ -1257,8 +1257,9 @@ Then these rules decide the work, in order:
    - A volume number is one key however it is spelled: "Vol. 1 of 3" joins
      "Volume 1".
    - Two stated totals that differ are two volume sets. "Vol. 1 of 3" never joins
-     "Vol. 1 of 5". Nor does it join a work titled "Volume 1" that already holds a
-     "Vol. 1 of 3" recording; that project is the worklist's `volume-total`.
+     "Vol. 1 of 5". Nor does a "Vol. 1 of 5" project join a work titled "Volume 1"
+     that already holds a "Vol. 1 of 3" recording. That project is the worklist's
+     `volume-total`.
    - Numbers stay apart: "Vol. 1, 2" is not "Vol. 12", and "Vol. 1" is not
      "Vol. 2".
    - Two or more such works is the worklist's `several-works`, even when one of
@@ -1413,10 +1414,11 @@ catch-all person record every such name shares. Instead:
   once the project lands.
 
 If the project also credits another author ("Yordan Yovkov"), its work is decided
-on that author alone. No individual author may be left: the name was the
-project's only author, or only a translator or a collective such as "Anonymous"
-remains. Then the project is the worklist's `author-unsluggable`, since a work by
-"Anonymous" alone would merge two authors' same-titled books.
+on that author alone. When no individual author is left, the project is the
+worklist's `author-unsluggable`, since a work by "Anonymous" alone would merge two
+authors' same-titled books. No individual author is left when the name was the
+project's only author, or when only a translator or a collective such as
+"Anonymous" remains.
 
 **Mostly non-Latin titles.** This covers a title that slugs to nothing, or one in
 which more than half of the letters are not Latin script. Digits, punctuation and
