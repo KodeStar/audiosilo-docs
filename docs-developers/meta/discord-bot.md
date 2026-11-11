@@ -29,10 +29,11 @@ character sheets. Announcements wait until both conditions hold:
 - The earliest known audiobook recording release is at least 30 UTC days old.
 
 Core composes the community repository into its data release, so the bot waits
-for publication after the community merge. Year/month-only release dates use
-the last day of that period; unknown release dates remain pending. Existing
-eligible content is silently baselined on first startup, while newer books
-remain queued until day 30. A given work/content type announces only once.
+for publication after the community merge. A release date stating only a year,
+or only a year and month, uses the last day of that period. Unknown release dates
+remain pending. Existing eligible content is silently baselined on first startup,
+while newer books remain queued until day 30. Each content type of a given work
+announces only once.
 
 When a catalogue repair merges duplicate works, the retired slug answers `301`
 with its survivor, where the community content reappears. The survivor inherits
@@ -69,7 +70,7 @@ the private image; it is not passed into the running container.
 
 Successful main-branch checks publish `latest` and `sha-<full-commit>` image tags.
 The Go build, vet, race tests and lint run before publication. The repository's
-AGENTS.md additionally requires simplification and review/fix passes before pushes.
+AGENTS.md additionally requires simplification and review-and-fix passes before pushes.
 
 ## Operational limits
 
