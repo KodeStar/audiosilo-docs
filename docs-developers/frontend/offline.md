@@ -658,6 +658,9 @@ Each answer is handled like this:
   `keptMine`: applied, or diverged with `kept: "event"`, and the row's `device_id` is
   this device's. The place reconcile is told of the rows (`onSyncAnswer`) so it can
   offer another device's place.
+- An answer that arrives while the cached `listening_sync` flag is `false` makes the
+  query cache ask `/server` again. The server took the events, so the cached answer
+  is older than the server.
 - A network error, `401`, `403` or `5xx` keeps everything for the next trigger. A
   network error also notes the failure for reachability.
 - A `413` or `too_many_events` halves the chunk. One event alone that still gets a
