@@ -7,13 +7,13 @@ The complete HTTP surface, derived from the route table in
 `internal/api/api.go`. Conventions (auth, errors, pagination, rate limits) are
 in the [API conventions](index.md) page and are not repeated per endpoint.
 
-**Auth legend** - *Public*: no token. *Session*: bearer session token.
+**Auth legend.** *Public*: no token. *Session*: bearer session token.
 *Session (media)*: session token via header **or** `?token=` query parameter
 (a book's cover and stream also take a [cast token](#cast-tokens-as-media-auth)
 as the `?token=`).
 *Admin*: session token + `admin` role. A personal **API key** authenticates as
-its owner anywhere a *Session* token does - so an admin's key also satisfies
-*Admin* - with one carve-out: it is refused on the credential-minting routes (see
+its owner anywhere a *Session* token does, so an admin's key also satisfies
+*Admin*. There is one carve-out: it is refused on the credential-minting routes (see
 [Personal API keys](#personal-api-keys)).
 *Bridge token*: the paired Bridge's own token, accepted only on the
 [`/bridge/*` routes](#the-bridge) and refused everywhere else.
@@ -256,14 +256,14 @@ container healthchecks).
 
 ## Authentication & pairing
 
-See [API conventions - Authentication](index.md#authentication) for the flow
+See [API conventions: Authentication](index.md#authentication) for the flow
 overview and [Auth & security](../auth-and-security.md) for the trust model.
 
 ### `POST /api/v1/auth/redeem`
 
 *Public.* Validates an auth code (admin-minted invite **or** user-owned
-recovery code - both redeem identically) and returns a pairing payload
-**without consuming a use** - the use is claimed when a device actually
+recovery code; both redeem identically) and returns a pairing payload
+**without consuming a use**. The use is claimed when a device actually
 completes `/auth/exchange`, so opening an invite link costs nothing.
 Rate-limited: 10 failed attempts per IP per 15 minutes.
 
@@ -273,7 +273,7 @@ Request body:
 |---|---|---|---|
 | `code` | string | yes | human-typable code, e.g. `9M4K-P2TQ-WX7V-3RHD`; common look-alikes (O/0, I/L/1) are normalized |
 
-Response `200` - the pairing payload (`PairingPayload` in `internal/api/qr.go`):
+Response `200`: the pairing payload (`PairingPayload` in `internal/api/qr.go`):
 
 ```json
 {
@@ -626,14 +626,14 @@ carries no count. A client that wants to say what happened reads
 
 ### `POST /api/v1/auth/recovery`
 
-:::caution[Legacy - being retired]
+:::caution[Legacy: being retired]
 The frontend player no longer offers recovery codes; it nudges users to set a
 password and relies on the reconnect flow instead. This endpoint (and the two
 recovery revoke routes below) is kept only so older app builds keep working, and
 is slated for removal once those clients age out. New clients should not call it.
 :::
 
-*Session.* Mints (or replaces) the caller's durable **recovery code** - an auth
+*Session.* Mints (or replaces) the caller's durable **recovery code**: an auth
 code with unlimited uses and no expiry, owned by the user, redeemable through
 the normal `/auth/redeem` flow. Returned exactly once; only its hash is stored.
 
@@ -653,11 +653,11 @@ none). Response: `204 No Content`.
 ## Personal API keys
 
 User-minted, **non-expiring** bearer credentials ("API keys") for headless
-integrations - dashboards, cron jobs, monitoring. A key authenticates on any
+integrations such as dashboards, cron jobs and monitoring. A key authenticates on any
 *Session* or *Session (media)* route exactly like a session token and **acts as
 its owner**: an admin's key also passes *Admin* routes, a regular user's does
 not. A pairing token is never accepted as a bearer credential, and an API key is
-never valid for `/auth/exchange`. Revocation is the only lifecycle - a key never
+never valid for `/auth/exchange`. Revocation is the only lifecycle, because a key never
 expires. Creating and revoking share the [self-service](#self-service-account) rate
 limit (10 attempts per IP per 15 minutes; a refusal is `429` with `Retry-After`);
 listing does not spend it (from 2.4.0). All three are **refused for demo accounts**
@@ -665,18 +665,23 @@ listing does not spend it (from 2.4.0). All three are **refused for demo account
 
 **Containment.** A key cannot mint a *fresh durable credential*. A request that
 authenticates with an API key is refused (**403**) on the credential-minting
-routes - `POST /auth/tokens` (another key), `POST /auth/recovery`,
-`POST /auth/pair`, `POST /auth/password`, [`POST /cast/token`](#post-apiv1casttoken)
-(refused although a cast token would die with the key),
-[`POST`](#post-apiv1meupcomingcalendar) and
-[`DELETE /me/upcoming/calendar`](#delete-apiv1meupcomingcalendar) (a calendar link,
-which would outlive the key), and every
-[household member](#household-members) route (adding one with `sign_in_here`,
-`…/{id}/session` and `…/{id}/pair` make a member's session or pairing code) - so
-revoking a leaked key cuts off everything it could reach: it can't spawn a key,
+routes:
+
+- `POST /auth/tokens` (another key), `POST /auth/recovery`, `POST /auth/pair` and
+  `POST /auth/password`;
+- [`POST /cast/token`](#post-apiv1casttoken), refused although a cast token would
+  die with the key;
+- [`POST`](#post-apiv1meupcomingcalendar) and
+  [`DELETE /me/upcoming/calendar`](#delete-apiv1meupcomingcalendar), a calendar
+  link, which would outlive the key;
+- every [household member](#household-members) route. Adding one with
+  `sign_in_here`, `…/{id}/session` and `…/{id}/pair` make a member's session or
+  pairing code.
+
+So revoking a leaked key cuts off everything it could reach. It can't spawn a key,
 recovery code, pairing token, password or member session that would outlive its own
-revocation (mirrors GitHub's "a token cannot create tokens"). It may still **list and revoke** keys and clear a recovery code,
-since those only reduce access.
+revocation (this mirrors GitHub's "a token cannot create tokens"). It may still
+**list and revoke** keys and clear a recovery code, since those only reduce access.
 
 ### `POST /api/v1/auth/tokens`
 
@@ -700,7 +705,7 @@ Response `200`:
 }
 ```
 
-`token` is the bearer secret - only its SHA-256 hash is stored, so this is the
+`token` is the bearer secret. Only its SHA-256 hash is stored, so this is the
 one time it appears. `api_key.last_seen` is `null` until the key first
 authenticates a request.
 
@@ -712,7 +717,7 @@ authenticates a request.
 
 ### `GET /api/v1/auth/tokens`
 
-*Session.* The caller's live (non-revoked) API keys, newest first - **metadata
+*Session.* The caller's live (non-revoked) API keys, newest first. They are **metadata
 only** (never the secret or its hash):
 
 ```json
@@ -844,7 +849,7 @@ Request body (optional):
 |---|---|---|---|
 | `device_name` | string | no | defaults to `"Demo"` |
 
-Response `200` - a session **plus** a pairing payload so a phone can scan the
+Response `200`: a session **plus** a pairing payload so a phone can scan the
 QR and join as the same demo user:
 
 ```json
@@ -916,7 +921,7 @@ optional. The admin routes (`GET /admin/libraries`) keep it.
 
 ### `GET /api/v1/libraries/{id}/fs`
 
-*Session.* The filtered filesystem view - the real directory tree, scoped to
+*Session.* The filtered filesystem view: the real directory tree, scoped to
 the caller's share rules, requiring no prior indexing. Lists **audio files and
 directories only** (covers/NFOs are filtered out so every entry is actionable),
 with indexed-book metadata attached where available. Offset-paginated.
@@ -968,7 +973,7 @@ The podcast branch caps a page at 2,000 entries and applies private scope.
 (`is_book`, `title`, `author`, `series`, `series_index`, `series_index_end` for a
 range as on a book, `duration`) are
 omitted for plain directories/files; `override` (`"book"` or `"collection"`)
-appears when an explicit folder-detection override is set (admin concern - see
+appears when an explicit folder-detection override is set (an admin concern; see
 [Scanner](../scanner.md)). `split_discs: true` marks a folder whose audio is
 only in disc folders directly in it (`CD1`, `CD2`, ...), each indexed as its
 own book, which a `book` override would join into one (see
@@ -1142,7 +1147,7 @@ cursor is `400`.
 ### `GET /api/v1/libraries/{id}/authors` · `GET /api/v1/libraries/{id}/narrators`
 
 *Session.* The distinct authors (or narrators) of one library, with their book
-counts and total duration - the player's browse lists (`browse_people`
+counts and total duration. These are the player's browse lists (`browse_people`
 capability). The same aggregate as the admin console's
 [`/admin/authors`](#get-apiv1adminauthors--get-apiv1adminnarrators), but limited
 to the caller's share scope and without `merge_suggestions`.
@@ -1271,7 +1276,7 @@ order (`internal/catalog/dedup.go`).
 | `q` | string | - | alphanumeric tokens are AND-ed with prefix matching; empty/symbol-only queries return no results |
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
 
-Response `200`: `{ "books": [ … ] }` - Book objects as in `/books`, plus the
+Response `200`: `{ "books": [ … ] }`, Book objects as in `/books`, plus the
 de-duplication annotations:
 
 | Field | Type | Notes |
@@ -1284,7 +1289,7 @@ de-duplication annotations:
 
 *Session.* Most recently added books across accessible **books** libraries,
 merged and de-duplicated (same annotations as `/search`), newest `added_at`
-first - one call for a "recently added" shelf.
+first: one call for a "recently added" shelf.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
@@ -1917,13 +1922,17 @@ single follow's `private:true` for a member feed without a recognizable secret.
 Errors never echo the document, a title or a raw URL.
 
 Each row acts as the caller through the same follow-by-URL service as
-`POST /podcasts/follow`: the whole-library grant and the module are rechecked
-per row (a module switched off midway turns the remaining rows into
-`unavailable`/`module_off`, a revoked grant into `error`/`no_library_access`),
-a known show (current or previous URL) is followed at once, even with the
-Bridge offline, and only a new feed or a secret repair needs an online Bridge
-running `podcast.subscribe` and a writable mapping. Each row commits on its
-own: a later failure never undoes an earlier row.
+`POST /podcasts/follow`:
+
+- The whole-library grant and the module are rechecked per row. A module switched
+  off midway turns the remaining rows into `unavailable`/`module_off`, and a
+  revoked grant into `error`/`no_library_access`.
+- A known show (current or previous URL) is followed at once, even with the Bridge
+  offline.
+- Only a new feed or a secret repair needs an online Bridge running
+  `podcast.subscribe` and a writable mapping.
+
+Each row commits on its own, so a later failure never undoes an earlier row.
 
 **Recently failed feeds.** When the caller's last `podcast.subscribe` request
 for a feed in this library failed within the last hour
@@ -2075,7 +2084,7 @@ params/results, backoff, progress and recovery.
 ## Books & content
 
 These endpoints resolve `(library, path)` to a book via the index, **indexing
-on demand** if the background scan hasn't reached the path yet - so a freshly
+on demand** if the background scan hasn't reached the path yet, so a freshly
 added book is playable immediately.
 
 ### `GET /api/v1/libraries/{id}/item`
@@ -2086,7 +2095,7 @@ added book is playable immediately.
 |---|---|---|
 | `path` | string | yes |
 
-Response `200` - a Book including files, chapters, playability and, when there
+Response `200`: a Book including files, chapters, playability and, when there
 is one, its `description`:
 
 ```json
@@ -2208,7 +2217,7 @@ indexed on its behalf. The same holds for `/chapters`, `/cover`, `/meta` and `/n
 ### `GET /api/v1/libraries/{id}/chapters`
 
 *Session.* A book's normalized playable units. Every chapter carries
-`file_path` - the actual audio file to stream - plus its in-file `start`/`end`
+`file_path`, the actual audio file to stream, plus its in-file `start`/`end`
 and `book_offset` on the whole-book timeline, so single-file m4b chapters and
 multi-file mp3 parts render identically.
 
@@ -2248,13 +2257,16 @@ multi-file mp3 parts render identically.
 }
 ```
 
-`chapters_source` - `"community"` when `chapters` are a community recording's
-list fitted onto the book's audio (an admin chose them, or the files have no
-chapters of their own); `"generated"` when they are the
-chapters a Bridge found in the narration of a book with no chapters of its own
-(its `.audiosilo/chapters.json`); `"id3_chap"` for a podcast's validated MP3
-CHAP attachment; **absent** for other files' own chapters, and on
-servers before it. The chapters keep the same shape either way, so an old client
+`chapters_source`:
+
+- `"community"` when `chapters` are a community recording's list fitted onto the
+  book's audio (an admin chose them, or the files have no chapters of their own);
+- `"generated"` when they are the chapters a Bridge found in the narration of a
+  book with no chapters of its own (its `.audiosilo/chapters.json`);
+- `"id3_chap"` for a podcast's validated MP3 CHAP attachment;
+- **absent** for other files' own chapters, and on servers before it.
+
+The chapters keep the same shape either way, so an old client
 plays community or generated chapters as ordinary ones. See
 [Community chapters](../community-chapters.md) and
 [Generated chapters](../community-chapters.md#generated-chapters).
@@ -2630,7 +2642,7 @@ The extra fields are additive and `omitempty`:
 
 **Why server-side:** shipped native players lag the server. A player that predates
 reading orders reads only the top-level view, so it now sees one rail per family in
-the primary order - and its "previous books" catch-up can no longer offer a
+the primary order, and its "previous books" catch-up can no longer offer a
 chronological order's earlier books (The Magician's Nephew, before The Lion, the
 Witch and the Wardrobe) as books to catch up on. Against a metaserve that sends no
 ordering fields every series is its own family and the rails are exactly what they
@@ -2648,12 +2660,12 @@ route, for a book split finer than the work's own scale,
 
 - Each **character** carries an `id` (unique within the work, not global), a
   `name`, optional `aliases` and `role` (`protagonist`/`antagonist`/`supporting`/
-  `minor`), a `reveal` position (where the character is first disclosed - the
+  `minor`), a `reveal` position (where the character is first disclosed, the
   spoiler gate), and an own-words `description`. Recurring characters are
   re-described per book (Kindle-X-Ray style), so a client reveals only up to
   where the listener is.
 - Each **recap** carries a `through` position (safe to show once the listener has
-  finished that chapter), an optional `scope` (`book` or `series` - a
+  finished that chapter), an optional `scope` (`book` or `series`; a
   `chapter: 0` + `series` recap is the "previously, in earlier books" summary),
   and own-words `text`.
 - **`recap_summary`** is the whole-book refresher, not keyed to a position:
@@ -2669,7 +2681,7 @@ route, for a book split finer than the work's own scale,
 These fields are additive: they are passed straight through from the upstream
 `GET /works/{id}` (see the [three-repo seam](../../architecture/cross-repo-contract.md)),
 not composed or reshaped like `recording`/`series`. The one field the server
-drops is the character cross-reference (`xref`) - it is not exposed to clients. A
+drops is the character cross-reference (`xref`), which is not exposed to clients. A
 client that ignores these fields is unaffected.
 
 `work.community_description` (`{ "text": …, "license": … }`, `license` omitted
@@ -2810,7 +2822,7 @@ of the last saved one. `spoilers=hide` is for clients that cannot gate
 themselves.
 
 When the book has neither an `asin` nor an `isbn`, or the upstream reports no
-match, the response is `200 { "matched": false }` - a normal, non-error result
+match, the response is `200 { "matched": false }`. That is a normal, non-error result
 that the client treats as "nothing to show":
 
 ```json
@@ -3031,7 +3043,7 @@ Response `200`:
 
 `work` is exactly the same shape as `work` inside the `/libraries/{id}/meta`
 envelope (documented above, same `omitempty` rules, including
-`community_description` and [`attribution`](#attribution)) - there is deliberately
+`community_description` and [`attribution`](#attribution)). There is deliberately
 no second work type. The enrichment fields that only make sense for a matched local
 book (`matched`, `recording`, `series`, `web_url`) are **not** returned here. There
 is no book here either, so positions are the work's own, beside their `position_scale`.
@@ -3054,7 +3066,7 @@ the `?token=` (capability `cast`), for the book it was minted for. See
 ### `GET /api/v1/libraries/{id}/stream`
 
 *Session (media).* Streams one **audio file** by path. The path must be a real
-file - a chapter's `file_path` or a `files[].rel_path` - never a book/folder
+file (a chapter's `file_path` or a `files[].rel_path`), never a book/folder
 path.
 
 | Query param | Type | Default | Notes |
@@ -3216,7 +3228,7 @@ Response `200`: image bytes with the appropriate `Content-Type`; `404`
 **Thumbnails (`?size=`).** With `size`, the response is a JPEG of the same art
 (custom cover, sidecar image or embedded art, in the same order) scaled to fit
 within `size` x `size` pixels, never scaled up, from the server's in-memory
-thumbnail cache - the one the admin console's
+thumbnail cache, the one the admin console's
 [`POST /admin/covers`](#post-apiv1admincovers) uses. Its longer side is at most
 `size` pixels (a 2:3 portrait cover at `320` is 213 x 320). A JPEG already within
 `size` may be sent re-encoded at quality 80 when that is smaller (see
@@ -3383,13 +3395,16 @@ Response `200`: the map file's bytes as they are on disk.
 
 **Header auth only**, as [`/ebook`](#get-apiv1librariesidebook): `?token=` is
 never read, and a map is at most 16 MiB, so it stays under the request timeout.
-Every request reads the file again (a regular file in a real `.audiosilo` folder,
-never through a link; read once more when the Bridge renamed a new map in as it
-was opened) and checks it against the book **now**, never trusting the indexed
-copy for the bytes it sends: its head must pass the server's checks, its
-`ebook.sha256` must be the digest of the book's ebook (the stored one only while
-the file on disk still has the signature it was computed for, else hashed now),
-and its `audio.files` must be the book's files.
+Every request reads the file again: a regular file in a real `.audiosilo` folder,
+never through a link, and read once more when the Bridge renamed a new map in as it
+was opened. The server checks it against the book **now**, never trusting the
+indexed copy for the bytes it sends:
+
+- its head must pass the server's checks;
+- its `ebook.sha256` must be the digest of the book's ebook. The server uses the
+  stored digest only while the file on disk still has the signature it was
+  computed for, and otherwise hashes the file now;
+- its `audio.files` must be the book's files.
 
 | Status | Meaning |
 |---|---|
@@ -3502,7 +3517,7 @@ A save records no listening session (reading isn't listening).
 
 ## Listening state
 
-Per-user durable state, addressed by `(library, path)` - the **book** path.
+Per-user durable state, addressed by `(library, path)`, the **book** path.
 Positions are seconds on the whole-book timeline. Every path-scoped route below
 requires `?path=` and authorizes it against the caller's share scope (`400`
 missing path, `403` out of scope apply throughout). Cross-book list routes
@@ -3564,7 +3579,7 @@ under [`PUT`](#put-apiv1librariesidprogress); a listener corrects them with
 ### `GET /api/v1/libraries/{id}/progress`
 
 *Session.* Progress for one book. Response `200`:
-`{ "progress": { … } }` - or `{ "progress": null }` when none exists.
+`{ "progress": { … } }`, or `{ "progress": null }` when none exists.
 
 #### The progress path
 
@@ -3599,7 +3614,7 @@ caller's scope is a `403`.
 *Session.* Upserts progress with **last-write-wins** reconciliation: the newer
 `updated_at` wins; `version` breaks exact-timestamp ties. The comparison and the
 write are one database transaction, so an older save can never overwrite a newer
-one that landed in between. A stale write is not an error - the response
+one that landed in between. A stale write is not an error. The response
 returns the *effective stored* progress, so clients converge.
 
 | Body field | Type | Notes |
@@ -3917,7 +3932,7 @@ GET response: `{ "bookmarks": [ … ] }` (objects as below; `[]` when there are
 none, never `null`).
 
 POST body: `{ "position": 4211.5, "note": "great line", "label": "quote" }`
-(`note` and `label` optional). Response `201` - the created bookmark **unwrapped**:
+(`note` and `label` optional). Response `201`: the created bookmark **unwrapped**:
 
 ```json
 {
@@ -3951,7 +3966,7 @@ duration). `created_at` is server time in a fixed-width UTC millisecond form
 ### `DELETE /api/v1/bookmarks/{id}`
 
 *Session.* Deletes one of the **caller's own** bookmarks by id (another user's
-id is a silent no-op). Response: `204 No Content` (idempotent - no 404).
+id is a silent no-op). Response: `204 No Content` (idempotent, no 404).
 
 ### `PATCH /api/v1/bookmarks/{id}`
 
@@ -3968,7 +3983,7 @@ edited. The read, the checks and the write are one writer transaction, and only
 the fields sent are checked, so a label-only edit works on a bookmark whose note
 an older server let grow past 2,000 characters.
 
-Response `200` - the whole updated bookmark, unwrapped, the same object as POST
+Response `200`: the whole updated bookmark, unwrapped, the same object as POST
 answers.
 
 | Status | Meaning |
@@ -4024,7 +4039,7 @@ A field left out (or sent as `null`) stays as it is, and only the fields sent ar
 checked. Every edit stamps `updated_at` with server time; `created_at` never
 changes. One writer transaction, as for bookmarks.
 
-Response `200` - the whole updated note, unwrapped, the same object as POST
+Response `200`: the whole updated note, unwrapped, the same object as POST
 answers.
 
 | Status | Meaning |
@@ -4187,7 +4202,7 @@ first, enriched from the index where a book exists at the path:
 }
 ```
 
-A favourite may also be a plain navigation folder - then `is_book` is `false`
+A favourite may also be a plain navigation folder. Then `is_book` is `false`
 and the book fields are empty (render it by its path leaf). A book at a range
 position also carries `series_index_end`, as on a [book](#get-apiv1librariesidbooks).
 
@@ -4652,18 +4667,21 @@ zone, as on the admin Activity page.
 The fields mean what they mean in the admin's
 [`activity`](#range-listening-activity), for the caller alone:
 
-- `totals` - the caller's `listened` (wall-clock seconds), `sessions`, books
-  `finished` in the period (by the caller's own finish dates, **all** of them,
-  including books they can no longer open: a count, no paths, so
-  `totals.finished` can exceed `finished_books`' length) and `books` listened to
-  **or** finished in it (a book marked finished with no listening recorded
-  still counts, so `finished` is never more than `books`); `previous`
-  the same for the period of equal length just before;
-  `estimated` how many of `totals.listened`'s seconds are estimates.
+- `totals` - the caller's figures for the period:
+  - `listened` (wall-clock seconds) and `sessions`;
+  - `finished`: books finished in the period, by the caller's own finish dates.
+    It counts **all** of them, including books they can no longer open. It is a
+    count with no paths, so `totals.finished` can exceed `finished_books`' length;
+  - `books`: books listened to **or** finished in it. A book marked finished with
+    no listening recorded still counts, so `finished` is never more than `books`.
+
+  `previous` is the same for the period of equal length just before. `estimated`
+  is how many of `totals.listened`'s seconds are estimates.
 - `days` - every day of the period, oldest first, zero days included;
   `hour_weekday` - 7 rows (0 = Monday) of 24 hours, raw sessions only.
 - `top_books`, `top_authors`, `top_narrators`, `top_series` - up to 10 each, by
-  listened time. `top_series` is only here; the admin `activity` has none. `finished_books` - the books the caller finished in the period,
+  listened time. `top_series` is only here; the admin `activity` has none.
+- `finished_books` - the books the caller finished in the period,
   newest first, up to 100.
 - `playback` and `clients` - the caller's listening by codec and transcoding,
   and the caller's devices that listened, by app build.
@@ -5167,13 +5185,18 @@ the server's switch, the caller's switch, then the cap, in that order), then the
 password hash, the three member columns and the typed name), shares the collections
 and, with `sign_in_here`, issues a session. Anything refused changes nothing.
 
-- **The username** is the name lowercased and folded to ASCII letters and digits
-  (`Évie Marie` -> `evie-marie`, any run of anything else one `-`, at most 24 bytes,
-  `member` when nothing is left); if that is taken, that with the owner's username
-  folded the same way (`evie-sam`; skipped when nothing is left of it), then the first
-  part numbered (`evie-2`, `evie-3` and on) with no cap: the first one no account has,
-  ignoring case, read once inside the transaction, so there is always a free one and
-  the create never answers `username_taken`.
+- **The username** is the name lowercased and folded to ASCII letters and digits:
+  `Évie Marie` becomes `evie-marie`. Any run of anything else becomes one `-`, the
+  result is at most 24 bytes, and it is `member` when nothing is left. The server
+  tries, in order:
+  1. that name;
+  2. if it is taken, that name with the owner's username folded the same way
+     (`evie-sam`), skipped when nothing is left of it;
+  3. then the first part numbered (`evie-2`, `evie-3` and on), with no cap.
+
+  It takes the first one no account has, ignoring case, read once inside the
+  transaction. So there is always a free one, and the create never answers
+  `username_taken`.
 - **`sign_in_here`** issues a session for the member named as the caller's own
   device, recording the caller's token as its `created_on_token_id` (so the caller's
   [device list](#get-apiv1medevices) names the member under `member_sign_ins`, and
@@ -5419,7 +5442,7 @@ Create an account.
 Response `201`: the created account as the admin's user object above (re-read after
 the insert, so its stored defaults, `can_add_members` among them, are there). `409`
 `username already taken` (`code: "username_taken"`) on a duplicate username; `400`
-with a specific message on a validation failure - `admin_needs_password`,
+with a specific message on a validation failure: `admin_needs_password`,
 `password_too_short` (see [error codes](index.md#error-envelope-and-status-conventions)).
 
 ### `GET /api/v1/admin/users/{id}`
@@ -5473,13 +5496,13 @@ One account plus everything the console needs to manage it:
 
 `shares` marks whole-library grants with `whole_library_id` (see
 [`GET /admin/shares`](#get-apiv1adminshares)). `auth_codes` is **invite metadata only** (never the code itself, and never
-recovery codes - recovery presence surfaces as `user.has_recovery`).
+recovery codes; recovery presence surfaces as `user.has_recovery`).
 `expires_at` empty/omitted = no expiry; `max_uses: 0` = unlimited;
 `redeemed_at` omitted = never redeemed. `404` if the user doesn't exist.
 
 ### `PATCH /api/v1/admin/users/{id}`
 
-Edit an account in place - any subset of:
+Edit an account in place. Any subset of:
 
 | Body field | Type | Notes |
 |---|---|---|
@@ -5568,7 +5591,7 @@ remain as history). Body optional:
 | `max_uses` | int | `5` | explicit `0` = unlimited (negative values are clamped to 0) |
 | `ttl_days` | int | `1` | explicit `0` = never expires |
 
-Response `201` - shown once:
+Response `201`, shown once:
 
 ```json
 {
@@ -5618,7 +5641,7 @@ Audited as `user.sign_out_everywhere` with `signed_out` in the details
 
 ### `DELETE /api/v1/admin/users/{id}/recovery`
 
-*Legacy - being retired alongside `POST /auth/recovery` once old clients age
+*Legacy, being retired alongside `POST /auth/recovery` once old clients age
 out.* Revokes a user's recovery code (the admin's lever for a leaked one, since
 recovery codes are not listable; a password reset or
 [Sign out everywhere](#post-apiv1adminusersidsign-out) removes it too). No-op if none. `204 No Content`.
@@ -5629,7 +5652,7 @@ Regenerates an existing invite's secret in place (the console's **Rotate**): the
 code dies, no new row is created, the use counter resets, and `max_uses` is
 preserved with the expiry renewed for the invite's original window. In the same
 transaction it retires the user's **other** still-redeemable invites, so the
-rotated invite is their one active invite - rotating an expired (or used-up)
+rotated invite is their one active invite. Rotating an expired (or used-up)
 invite revives it as that one. No body. Response `200`: the same shape as
 creation (`auth_code`, `invite_url`, `max_uses`, `expires_at`). `404` if the
 invite doesn't exist. `409 code: "kid_account"` when the invite's account is a kid's
@@ -5676,7 +5699,7 @@ All *Admin*.
 
 ### `GET /api/v1/admin/libraries`
 
-All libraries in display order, wrapped as `{ "libraries": [ … ] }` - the
+All libraries in display order, wrapped as `{ "libraries": [ … ] }`, the
 library object of [`GET /api/v1/libraries`](#get-apiv1libraries) plus
 admin-only fields:
 
@@ -5708,8 +5731,8 @@ admin-only fields:
   timeout answers "not responding" at once for later requests.
 - `scan` - the library's scan progress, the same object as
   [`GET /admin/libraries/{id}/scan`](#get-apiv1adminlibrariesidscan). The
-  console polls this list - every second while any library is scanning or
-  waiting in the queue - instead of each library's scan endpoint, which
+  console polls this list (every second while any library is scanning or
+  waiting in the queue) instead of each library's scan endpoint, which
   remains available.
 - `scan_schedule` (string) - the library's scan schedule: `""` (none),
   `every:<N>h` (N = 1, 3, 6, 12 or 24 hours after the last scan started) or
@@ -5747,7 +5770,7 @@ works immediately; the index fills in behind).
 
 A new library goes last in the display order (`sort_order` one past the
 highest, from 2.5.1). Response `201`: the created library (the player's library object; the scan
-settings are not echoed - read them from
+settings are not echoed; read them from
 [`GET /admin/libraries`](#get-apiv1adminlibraries)).
 
 | Status | Meaning |
@@ -5834,7 +5857,7 @@ An id with no library is `404 not_found` (`library not found`), with no audit ro
 Forces how the auto-detector classifies a folder, then rescans. `?path=`
 required (must resolve inside the root).
 
-Body: `{ "mode": "collection" }` - `"book"` = the folder is one multi-file
+Body: `{ "mode": "collection" }`. `"book"` = the folder is one multi-file
 book; `"collection"` = one book per file inside it. On a folder with no audio
 of its own whose audio is only in two or more disc folders directly in it,
 `"book"` joins the discs into one book and the rescan carries their listening
@@ -5856,7 +5879,7 @@ Response `200`: `{ "status": "override cleared", "path": "…" }`.
 
 Downloads the library's book list as a JSON **file**, in the envelope the
 community metadata site ([meta.audiosilo.app](https://meta.audiosilo.app)) imports
-on its Watching page - so a user can mark which entries of a series they own.
+on its Watching page, so a user can mark which entries of a series they own.
 Advertised by the `export` [capability](#get-apiv1server).
 
 | Query param | Type | Default | Notes |
@@ -5904,7 +5927,7 @@ plain JSON body:
 
 **The file is meant to leave the server**, so by default it carries
 bibliographic facts only. It contains **no path, size, codec, format or any
-other filesystem detail** - not even the library's root - and **not the
+other filesystem detail**, not even the library's root, and **not the
 book's tags**, which are the owner's own notes ("Owned", "Read"). Genres are
 facts about the book and stay. A regression test pins that, both ways: no path
 or tag without its `include`, each with it.
@@ -5988,7 +6011,7 @@ Per-book notes:
   `published`, `description`, `tags`, `paths`), so the envelope's `version`
   stays `1`.
 - A multi-file (folder) book is **one** entry. By default (`copies=merged`)
-  copies of the same book within the library also collapse to one entry - the
+  copies of the same book within the library also collapse to one entry, the
   same grouping search and "recently added" de-duplicate on. The entry takes
   each fact (`published`, `description` and `series_list` included) from
   whichever copy has it, and holds every copy's paths and tags.
@@ -6010,7 +6033,7 @@ curl -OJ -H "Authorization: Bearer $TOKEN" \
 
 Queues a rescan in the [job queue](../scanner.md#the-job-queue) (trigger
 `manual`, started by the caller). Returns immediately: `202 Accepted` with the
-job that will scan the library - the waiting one if the library already waits,
+job that will scan the library: the waiting one if the library already waits,
 or a new one queued behind a running scan of it:
 
 ```json
@@ -6051,9 +6074,9 @@ Progress of the library's (possibly running) scan:
   [unavailable-root guard](../scanner.md#the-unavailable-root-guard), so
   nothing was pruned.
 
-A scan an admin request queues - `POST …/scan`, creating a library, an edit
+A scan an admin request queues (`POST …/scan`, creating a library, an edit
 that changes the root or ignore rules, or setting or clearing a folder
-override - reads as `queued` (or `running`) before that request
+override) reads as `queued` (or `running`) before that request
 returns, so a status poll made right after it sees the scan.
 
 ### `GET /api/v1/admin/fs/dirs`
@@ -6073,7 +6096,7 @@ filesystem root (`/`, or the working directory's drive on Windows).
 }
 ```
 
-- **Folders only**, never files - no sizes, owners or timestamps. Hidden
+- **Folders only**, never files: no sizes, owners or timestamps. Hidden
   (dot) folders are skipped; symlinks that resolve to folders are included.
 - Sorted case-insensitively by name; `path` values are absolute, in the
   server's own path syntax, and `path` itself is the cleaned request path.
@@ -6125,7 +6148,7 @@ users the share is granted to (`[]`, never `null`, when none). The single-share
 `whole_library_id` (omitted for ordinary shares) marks the shares a
 whole-library grant ([`POST /admin/library-access`](#post-apiv1adminlibrary-access))
 creates: the id of the library it grants whole. Clients list those as library
-access rather than as named shares, by this field - not by the share's name or
+access rather than as named shares, by this field, not by the share's name or
 rules (a share an admin fills with a whole library stays an ordinary share).
 `GET /admin/shares/{id}` and the `shares` of
 [`GET /admin/users/{id}`](#get-apiv1adminusersid) carry it too. Migration 0015
@@ -6133,7 +6156,7 @@ added the column and backfilled the existing `Library: <name>` grant shares.
 
 ### `POST /api/v1/admin/shares`
 
-Creates a share, optionally with initial path rules (inserted atomically - a
+Creates a share, optionally with initial path rules (inserted atomically; a
 bad rule rolls the whole thing back).
 
 | Body field | Type | Required | Notes |
@@ -6154,7 +6177,7 @@ One share with its `paths`. `404` if missing.
 
 Updates share metadata. An empty `name` keeps the current one, but
 `description` and `read_only` are **replaced with whatever the body says**
-(send the full desired values). Path rules are *not* editable here - use the
+(send the full desired values). Path rules are *not* editable here; use the
 `/paths` sub-routes. Response `200`: the updated share. `404` / `409`
 (`name_taken`).
 
@@ -6229,11 +6252,11 @@ sent together share one share. Errors: `404` for an unknown library; `409` with
 All *Admin*. The queries behind the admin console's Library and Book screens
 (see [Built-in web UI](../web-ui.md#what-the-console-has-today)). They
 see **every** library (no share scoping) and address books by
-`(library_id, path)` like everything else - the internal book id only ever
+`(library_id, path)` like everything else. The internal book id only ever
 travels inside an opaque cursor.
 
 Metadata edits are **overrides stored in the database**, keyed by path: no file
-on disk is ever modified. Each edit is a lock - a rescan re-reads the file but
+on disk is ever modified. Each edit is a lock: a rescan re-reads the file but
 re-applies the edit in the same transaction, so the edited value is what players,
 search and the export see until it is reverted. See
 [Data model](../data-model.md#metadata-overrides-and-effective-values) for how
@@ -6262,7 +6285,7 @@ Values are trimmed. The player's book JSON carries the effective `published`,
 book and `description` on [`/item`](#get-apiv1librariesiditem) only.
 
 Every field reports a **source**: `path` (a scanned value equal to what the
-folder and file names yield), `tag` (any other scanned value - it came from the
+folder and file names yield), `tag` (any other scanned value, from the
 file's embedded tags), `abs` (from an Audiobookshelf `metadata.json` in the
 book's folder), `edited` (typed by an admin), `community` (accepted from
 a community-metadata match, or an ASIN/ISBN attached through
@@ -6320,7 +6343,7 @@ orders by each book's position *in that series* (its main one or one of its
 
 A filter that can't be parsed (`has_cover=yes`, `min_duration=-1`,
 `added_after=last week`, an unknown `sort` or `order`) is a `400` with a message
-naming the parameter - it is never silently dropped, which would show an
+naming the parameter. It is never silently dropped, which would show an
 unfiltered list as if it were filtered. More than 50 `format` or `codec` values
 is a `400` too (`too many format or codec values`).
 
@@ -6483,7 +6506,7 @@ unparseable filter, as for the list.
 
 ### `POST /api/v1/admin/books/bulk`
 
-Applies the same field edit to many books in one transaction - **every book is
+Applies the same field edit to many books in one transaction: **every book is
 edited or none is**. Merging two spellings of an author is a bulk `set` of
 `author` over their books.
 
@@ -6507,7 +6530,7 @@ edited or none is**. Merging two spellings of an author is a bulk `set` of
 }
 ```
 
-Response `200`: `{ "updated": 2 }` - the number of distinct books edited
+Response `200`: `{ "updated": 2 }`, the number of distinct books edited
 (entries naming the same library and path, after the path is cleaned, count
 once).
 
@@ -6529,8 +6552,8 @@ no override written.
 Each is refused with `400` `code: "invalid_override"` and `field` set when it:
 
 - names a field other than `genres` or `tags` (`only genres and tags take add`);
-- names a field the request also sets or reverts (`cannot be set or reverted and
-  changed by add at once`);
+- names a field the request also sets or reverts
+  (`cannot be set or reverted and changed by add at once`);
 - names one label in both (`a label cannot be added and removed at once`);
 - would leave a book with more than 50 labels (`too many labels (at most 50)`). The
 single-book [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) takes `add` and
@@ -6596,7 +6619,7 @@ The narrators route uses the key `narrators` instead of `authors`.
   ones never group by accident. `suggested` is the spelling
   with the most books (ties: the `Given Surname` form over `Surname, Given`, then
   alphabetical); `books` is the group's total. The
-  server never merges on its own - applying a suggestion is a
+  server never merges on its own; applying a suggestion is a
   [bulk edit](#post-apiv1adminbooksbulk).
 
 ### `GET /api/v1/admin/series`
@@ -6624,7 +6647,7 @@ case-insensitively by name. Books with no series are not counted.
 
 ### `POST /api/v1/admin/books/works`
 
-Which community work each of many books is - how the console's Series cards
+Which community work each of many books is. This is how the console's Series cards
 place an owned book on a community series rail by identity, whatever its
 `series_index` says. Each book's ASIN (preferred) or ISBN is resolved to the id
 of the work it belongs to, the same ids as a rail's `series[].works[].id` from
@@ -6744,7 +6767,7 @@ book path).
 - `fields` carries **all sixteen** overridable fields, in the order of the
   table above (the example shows four).
   Each has the effective `value`, its `source`, the `scanned` value (what the
-  scan found - the revert target), `locked` (an admin edit holds it), and for an
+  scan found, the revert target), `locked` (an admin edit holds it), and for an
   edit `edited_by` (the username; omitted once that account is deleted) and
   `edited_at`. `series_index` is a string here (`"2.5"`, `"1-3"` for a range,
   `""` for none), `abridged` `"true"` / `"false"` / `""`, and `genres` / `tags`
@@ -6793,18 +6816,20 @@ book path).
   - `work_id`, `recording_id` - the community recording checked against;
     omitted for `no_match`.
   - `detail` - what the fit found (omitted for `no_match` and `unavailable`):
-    the two timelines' lengths (`local_duration`, `community_duration`,
-    seconds), `ratio` (the length-weighted median of local over community
-    length across the anchored stretches) and `worst` (the stretch furthest
-    from 1), both omitted when unmeasured, the two chapter counts
-    (`community_chapters` as fitted, after `omitted`), `anchors` (the book's
-    boundaries pinned to community ones), `snapped` (placed boundaries moved
-    onto a pause), `approximate` (ones that couldn't be and may be a few seconds
-    off), and when they apply `omitted[]` (community chapter titles not in this
-    copy), `title_diffs[]` (`{index, current, community}`, for `titles`) and
-    `straddle` (`{title, at, from, to}`: the chapter a file boundary falls
-    inside, the boundary's place on the book's timeline, and the files either
-    side, for `crosses_files`).
+    - the two timelines' lengths (`local_duration`, `community_duration`,
+      seconds);
+    - `ratio`, the length-weighted median of local over community length across
+      the anchored stretches, and `worst`, the stretch furthest from 1. Both are
+      omitted when unmeasured;
+    - the two chapter counts (`community_chapters` as fitted, after `omitted`);
+    - `anchors`: the book's boundaries pinned to community ones;
+    - `snapped`: placed boundaries moved onto a pause;
+    - `approximate`: ones that couldn't be, and may be a few seconds off;
+    - when they apply: `omitted[]` (community chapter titles not in this copy),
+      `title_diffs[]` (`{index, current, community}`, for `titles`) and
+      `straddle` (`{title, at, from, to}`, for `crosses_files`). `straddle` is the
+      chapter a file boundary falls inside, the boundary's place on the book's
+      timeline, and the files either side.
   - `checked_at` - when the check was recorded (or last renewed: a recheck
     that finds the same list for the same audio only moves it). The fitted
     list itself is not sent; once used, it is the book's `chapters`.
@@ -6869,7 +6894,7 @@ book path).
 ### `PATCH /api/v1/admin/libraries/{id}/book`
 
 Sets or reverts metadata edits (and chapter titles) on one book, then returns
-the updated book page - the same body as
+the updated book page, the same body as
 [`GET …/book`](#get-apiv1adminlibrariesidbook). `?path=` required. Everything in
 one request is applied in one transaction.
 
@@ -6938,7 +6963,7 @@ stop it or wait for it to finish before unlinking".
 }
 ```
 
-A revert restores the value from what the last scan stored - no rescan and no
+A revert restores the value from what the last scan stored, with no rescan and no
 disk access. Reverting an ASIN/ISBN falls back to any enrichment for it.
 
 **Making an other series the main one swaps them.** An edit may set `series` to a
@@ -6985,18 +7010,22 @@ main series is the series the file's number belongs to. So swapping and revertin
 { "error": "asin: must be 10 letters or digits", "code": "invalid_override", "field": "asin" }
 ```
 
-`invalid_override` covers an unknown field (`field` names it, e.g.
-`cover_path`), a value that fails its rule, a field both set and reverted, a
-series swap whose old main series can't be listed (`field: "series"`), a
-`source` other than the two above (`field: "source"`), a `chapter_source` other
-than the three above (`field: "chapter_source"`), chapter problems
-(`field: "chapters"`: a chapter the book doesn't have, an empty title, one index
-both renamed and reverted), and a `match` the server refuses (`field: "match"`:
-a nonempty work id without `source: "community"`, a whitespace-only work id,
-a `match` with no `work_id` (absent or null), an id over 200 characters or
-holding a control character, or from 2.7.0 a `match.asin` or `match.isbn` its
-field would refuse). An unknown key
-inside `match` is `invalid request`.
+`invalid_override` covers:
+
+- an unknown field (`field` names it, e.g. `cover_path`);
+- a value that fails its rule;
+- a field both set and reverted;
+- a series swap whose old main series can't be listed (`field: "series"`);
+- a `source` other than the two above (`field: "source"`);
+- a `chapter_source` other than the three above (`field: "chapter_source"`);
+- chapter problems (`field: "chapters"`): a chapter the book doesn't have, an empty
+  title, one index both renamed and reverted;
+- a `match` the server refuses (`field: "match"`): a nonempty work id without
+  `source: "community"`, a whitespace-only work id, a `match` with no `work_id`
+  (absent or null), an id over 200 characters or holding a control character, or
+  from 2.7.0 a `match.asin` or `match.isbn` its field would refuse.
+
+An unknown key inside `match` is `invalid request`.
 
 An edit is audited as `book.edit` (`chapter_source` in its details when
 sent, and `match`, the work id, `""` for an unlink). It also wakes the [community chapter checks](../community-chapters.md#when-a-book-is-checked),
@@ -7188,9 +7217,10 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
 
   A book is not plain when its title, series, folders, typed text or narrator
   credit says it is a dramatization (`GraphicAudio`, `full cast`, `dramatized`).
-  From 2.6.0 its author credit can say so too (`Michael J. Sullivan - Graphic
-  Audio`), or a genre that names a dramatized form (`Radio Drama`, `Audio-Drama`,
-  `Audio Play`, `Hörspiel`; `meta.MatchQuery.statesDramatization`). When a work
+  From 2.6.0 its author credit can say so too
+  (`Michael J. Sullivan - Graphic Audio`), or a genre that names a dramatized form
+  (`Radio Drama`, `Audio-Drama`, `Audio Play`, `Hörspiel`;
+  `meta.MatchQuery.statesDramatization`). When a work
   holds only dramatizations of other lengths, this field is absent and
   `dramatization_only: true` is set, so the dialog preselects no recording.
 
@@ -7345,16 +7375,20 @@ other is `review`. Applying it records the match (`how: "auto"`), which is what
 makes the book matched. On the LibraForge benchmark this moved 186 books from
 review to confident, none of them wrong.
 
-Run **statuses**: `matching` → `ready` (waiting for review; from 2.7.0 also a run
-the service's outage stopped early, `error: "metadata_unavailable"`) → `applying` →
-`applied`; `cancelled` (stopped while matching), `failed` (stopped by itself:
-`error` is `metadata_off` when community metadata was turned off, or `internal`;
-before 2.7.0 also `metadata_unavailable`), and
-`interrupted` (the server stopped mid-match; a run stopped mid-apply goes back
-to `ready` at the next start, its applied books marked). From 2.7.0 a stuck run,
-one left marked `matching` or `applying` with nothing working on it (its
-finishing write failed), is settled the same way (`matching` becomes
-`interrupted`, `applying` becomes `ready`) when a run starts or applies, on
+Run **statuses**. A run moves `matching` → `ready` → `applying` → `applied`:
+
+- `ready`: waiting for review. From 2.7.0 this is also a run the service's outage
+  stopped early, with `error: "metadata_unavailable"`.
+- `cancelled`: stopped while matching.
+- `failed`: stopped by itself. `error` is `metadata_off` when community metadata
+  was turned off, or `internal`; before 2.7.0 also `metadata_unavailable`.
+- `interrupted`: the server stopped mid-match. A run stopped mid-apply goes back to
+  `ready` at the next start, its applied books marked.
+
+From 2.7.0 a stuck run is settled the same way: `matching` becomes `interrupted`,
+and `applying` becomes `ready`. A stuck run is one left marked `matching` or
+`applying` with nothing working on it, because its finishing write failed. The
+server settles it when a run starts or applies, on
 [Stop](#post-apiv1adminmatch-runsidcancel), and on an Unlink it blocks.
 
 #### What a run asks of the community service
@@ -7680,13 +7714,17 @@ run).
 
 Undoes the community matches so the books can be matched from fresh (Server >
 Settings > Community metadata > Danger zone). `?library_id=` limits it to one
-library; without it, every library. In one transaction it removes every
-`source: "community"` override (whether a match dialog or a run wrote it) and
-every community cover (one kept from the match dialog or by a run) and, from
-2.6.0, every recorded community match (`book_matches`), rebuilds
-each book's effective metadata and cover, and removes the match runs with their
-reviews: every run, or for one library its runs and its books' items in runs
-over every library. An admin's own edits and uploaded covers, the tags and
+library; without it, every library. In one transaction it:
+
+- removes every `source: "community"` override, whether a match dialog or a run
+  wrote it;
+- removes every community cover, one kept from the match dialog or by a run;
+- from 2.6.0, removes every recorded community match (`book_matches`);
+- rebuilds each book's effective metadata and cover;
+- removes the match runs with their reviews: every run, or for one library its
+  runs and its books' items in runs over every library.
+
+An admin's own edits and uploaded covers, the tags and
 identifiers stored in `book_enrichment` all stay, so a book whose tags carry an
 ASIN or ISBN is still matched afterwards. It sends nothing out, so it works
 with community metadata off (and with no service configured).
@@ -7711,7 +7749,7 @@ every library).
 Uploads (`PUT`) or removes (`DELETE`) a book's **custom cover**. `?path=`
 required. The `PUT` body is the raw image (any `Content-Type` header is
 ignored; the type is sniffed from the bytes). The cover is stored in the
-database - never in the library folder - so it is part of any database backup
+database, never in the library folder, so it is part of any database backup
 and follows the book on a move. The ordinary
 [cover endpoint](#get-apiv1librariesidcover) serves it ahead of the book's own
 art.
@@ -7778,7 +7816,7 @@ Response `200`: `{ "status": "cover set", "path": "…" }`.
 
 ### `POST /api/v1/admin/covers`
 
-Cover thumbnails for many books in one request - how the admin console shows
+Cover thumbnails for many books in one request. This is how the admin console shows
 covers in its grids, without a session token in any image URL. Each cover is
 resolved like [`GET /libraries/{id}/cover`](#get-apiv1librariesidcover): a
 custom cover, then the sidecar image, then embedded art. It never indexes a
@@ -7838,7 +7876,7 @@ Response `200`, one entry per requested book, in request order:
 
 ### `POST /api/v1/admin/meta/covers`
 
-Thumbnails of community cover images - how the console's match dialog shows
+Thumbnails of community cover images. This is how the console's match dialog shows
 each candidate's `cover_url` (from
 [`GET …/book/match`](#get-apiv1adminlibrariesidbookmatch)), which its CSP
 can't load from the image's own host. Requires the `metadata`
@@ -8097,7 +8135,7 @@ console's Undo and "Show again"). For duplicates, ignore every copy of a group
 ### `POST /api/v1/admin/libraries/{id}/book/rescan`
 
 Reads one book's files again **now** (tags, ffprobe, cover, read problems) and
-returns its book page - the same body as
+returns its book page, the same body as
 [`GET /admin/libraries/{id}/book`](#get-apiv1adminlibrariesidbook). `?path=`
 required. It runs outside the job queue (one book is quick), so it never waits
 behind a library scan. The re-read runs detached from the request, for up to 10
@@ -8297,7 +8335,7 @@ The session object, shared by both session routes:
 
 - `title` / `author` come from the index; `""` when the book isn't indexed
   (any more), in which case `path` names it.
-- `device_id` is the token's id - the `id` that
+- `device_id` is the token's id, the `id` that
   [`GET /admin/devices`](#get-apiv1admindevices) lists. `device_name` and
   `client` are copied onto the session when it is recorded, so they survive the
   device's sign-out. `client` is `null` for an app that never named itself
@@ -8342,7 +8380,7 @@ The session object, shared by both session routes:
 ### `GET /api/v1/admin/sessions/live`
 
 Who is listening now: the open sessions (a save within the last 10 minutes),
-newest first, **one per device** - a device that moved on to another book shows
+newest first, **one per device**. A device that moved on to another book shows
 only the book it is on now. Each carries `ip`, and `chapter_index` and `chapter`
 as described [above](#admin-activity) for a book with more than one
 chapter.
@@ -8384,8 +8422,8 @@ without `before`); `400` `path needs library_id`.
 
 ### `GET /api/v1/admin/devices`
 
-Signed-in devices - live (not revoked, not expired) session tokens and API keys
-- of one person (`?user_id=`) or of everyone, most recently seen first.
+Signed-in devices: live (not revoked, not expired) session tokens and API keys
+of one person (`?user_id=`) or of everyone, most recently seen first.
 
 ```json
 {
@@ -8498,7 +8536,7 @@ An edit of a row an Audible account wrote (`device_id` `audible:<account>`)
 clears its device id, so the edit reaches Audible and Audible's next place
 can't undo it unseen.
 
-Response `200`: `{ "progress": { … } }` - the object of
+Response `200`: `{ "progress": { … } }`, the object of
 [`GET /admin/users/{id}/progress`](#get-apiv1adminusersidprogress), plus the
 `device_name` of the device that saved the place, when known. An older server
 omits `device_name`.
@@ -8596,18 +8634,23 @@ The fetched history is kept (gzipped, in `import_payloads`) only while the
 import can still be reviewed: it is deleted once the import is applied, undone
 or deleted.
 
-`summary` counts: `items` the ABS books the user has any history for (a
-session, progress or a bookmark); `matched` the matched ones by tier;
-`unmatched` the rest; `sessions` the sessions imported (matched books, before
-the cutoff, with listening; those already past the session retention are
-written as daily totals, still counted here) and `skipped_after_cutoff` those
-the cutoff drops; `listened` their seconds; `estimated` the seconds added as
-estimates (none for a book ABS has as finished without one listening session);
-`progress`
-the progress rows created or moved on; `finished` the books given a finish
-(or a missing finish date) from ABS; `bookmarks` the bookmarks added;
-`first_listen` / `last_listen` the earliest and latest imported session start
-(`null` without sessions).
+`summary` counts:
+
+- `items`: the ABS books the user has any history for (a session, progress or a
+  bookmark);
+- `matched`: the matched ones by tier, and `unmatched` the rest;
+- `sessions`: the sessions imported (matched books, before the cutoff, with
+  listening). Those already past the session retention are written as daily
+  totals and still counted here;
+- `skipped_after_cutoff`: the sessions the cutoff drops;
+- `listened`: their seconds;
+- `estimated`: the seconds added as estimates (none for a book ABS has as finished
+  without one listening session);
+- `progress`: the progress rows created or moved on;
+- `finished`: the books given a finish (or a missing finish date) from ABS;
+- `bookmarks`: the bookmarks added;
+- `first_listen` / `last_listen`: the earliest and latest imported session start
+  (`null` without sessions).
 
 `GET /admin/imports/{id}` adds the books that will be skipped, most listened
 first, at most 500:
@@ -10185,20 +10228,24 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
   record: a book's indexed path, `null` for a job about a whole library (or about
   no library). A job follows its book when the scanner sees it move, and goes with
   its library.
-- `params` - the kind's parameters as the server normalised them (`bridge.verify`
-  stores a `hold_seconds` of 0 as `{}`; `sidecars.generate` stores every field with
-  its default; `sidecars.describe`, `chapters.detect` and `readalong.align` store `{}`;
-  `sidecars.contribute` its `dimensions` in order; `meta.correct` the checked
-  changes with the server's `source`); `progress` and `result` - JSON objects the Bridge reported (`{}`
-  until it does; the server stores them as they are: `sidecars.generate`'s shapes
-  are in [Characters and recaps](../../bridge/generating.md#progress), `sidecars.describe`'s in
-  [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe),
-  `chapters.detect`'s in [Chapterless books](../../bridge/chapters.md#goal-chapters-and-the-chaptersdetect-job),
-  `readalong.align`'s in [Read-along](../../bridge/readalong.md#at-done-the-50-refusal-and-the-write),
-  `sidecars.contribute`'s and `meta.correct`'s results in [Contributions](../../bridge/contributions.md),
-  their progress a `{step, message, done, total}` with the steps `sharing` and
-  `done`, or `checking`, `filing` and `done`); `error` -
-  why it failed or was parked (`""` otherwise).
+- `params` - the kind's parameters as the server normalised them:
+  - `bridge.verify` stores a `hold_seconds` of 0 as `{}`;
+  - `sidecars.generate` stores every field with its default;
+  - `sidecars.describe`, `chapters.detect` and `readalong.align` store `{}`;
+  - `sidecars.contribute` stores its `dimensions` in order;
+  - `meta.correct` stores the checked changes with the server's `source`.
+- `progress` and `result` - JSON objects the Bridge reported, `{}` until it does.
+  The server stores them as they are. Their shapes are documented per kind:
+  - `sidecars.generate`'s in [Characters and recaps](../../bridge/generating.md#progress);
+  - `sidecars.describe`'s in
+    [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe);
+  - `chapters.detect`'s in [Chapterless books](../../bridge/chapters.md#goal-chapters-and-the-chaptersdetect-job);
+  - `readalong.align`'s in [Read-along](../../bridge/readalong.md#at-done-the-50-refusal-and-the-write);
+  - `sidecars.contribute`'s and `meta.correct`'s results in
+    [Contributions](../../bridge/contributions.md). Their progress is a
+    `{step, message, done, total}` with the steps `sharing` and `done`, or
+    `checking`, `filing` and `done`.
+- `error` - why it failed or was parked (`""` otherwise).
 - `state` - `queued`, `claimed`, `running`, `done`, `failed`, `needs_attention` or
   `cancelled` (see [Job states](#job-states)).
 - `requested_by` - the admin who queued it, `null` once that account is deleted.
@@ -10410,12 +10457,14 @@ The kinds:
   [fields]}`. See [Contributions](../../bridge/contributions.md#corrections-metacorrect).
 
 `sidecars.contribute`, `meta.correct` and a `sidecars.generate` job with
-`contribute: "issue"` belong to the `contributions` [module](../../bridge/pairing-and-jobs.md#jobs-of-a-managed-module):
-while it is off they are `404 module_off` (checked first, before the book), and one
-already queued is held (the Bridge isn't given it) until the module is on again,
-though a new `sidecars.generate` job for the book cancels a held
-`sidecars.contribute` one;
-while it is on they are `409 cannot_contribute` unless the Bridge can contribute.
+`contribute: "issue"` belong to the `contributions` [module](../../bridge/pairing-and-jobs.md#jobs-of-a-managed-module).
+
+- While the module is off they are `404 module_off`, checked first, before the
+  book. One already queued is held (the Bridge isn't given it) until the module is
+  on again, though a new `sidecars.generate` job for the book cancels a held
+  `sidecars.contribute` one.
+- While it is on they are `409 cannot_contribute` unless the Bridge can
+  contribute.
 
 A job being cancelled (`cancel_requested`) refuses nothing (it ends without
 writing). Which open kind refuses, or gives way to, which is one table:
@@ -11104,18 +11153,22 @@ the server knew it (the Bridge forgets locally first and may call again).
   stored for the account's library (not when the title's plan names another one:
   the account was mapped elsewhere while the poll ran) and cleared when a match is
   stored for the title.
-- `planned` is `null` or where a backup of an unmatched title
-  would go, as the Bridge planned it during the poll
+- `planned` is `null` or where a backup of an unmatched title would go, as the
+  Bridge planned it during the poll
   ([Planned destinations](../../bridge/audible.md#planned-destinations)):
-  `library_id` > 0; `path` a clean relative file path within the path limit and
-  `file` a name with no `/` (both `""` only when `state` is `error`); `kind`
-  `series_existing`, `series_new` or `standalone` (`""` only for `error`); `state`
-  `new`, `joins`, `exists` or `error`; `siblings` 0 to 100000; `template` (the
-  template the plan used) at most 500 bytes; `conflict` `file`, `book`, `audio`
-  or `""`, or for `error` the reason (cleaned and bounded). Anything else is
-  `400 invalid_request` for the whole call, except a `path` over the path limit,
-  stored as an `error` plan. A stored match drops it, and so does the final call
-  marking the title `gone`.
+  - `library_id` > 0;
+  - `path` a clean relative file path within the path limit, and `file` a name with
+    no `/` (both `""` only when `state` is `error`);
+  - `kind` `series_existing`, `series_new` or `standalone` (`""` only for `error`);
+  - `state` `new`, `joins`, `exists` or `error`;
+  - `siblings` 0 to 100000;
+  - `template` (the template the plan used) at most 500 bytes;
+  - `conflict` `file`, `book`, `audio` or `""`, or for `error` the reason (cleaned
+    and bounded).
+
+  Anything else is `400 invalid_request` for the whole call, except a `path` over
+  the path limit, which is stored as an `error` plan. A stored match drops the
+  plan, and so does the final call marking the title `gone`.
 - Free text is cleaned and bounded, never refused: `title` (500), `reason` (256),
   each author and series name (200), a position (32); authors past the first 20
   and series past the first 10 are dropped.
@@ -11128,13 +11181,16 @@ the server knew it (the Bridge forgets locally first and may call again).
   deleting the library clears it.
 - Each title replaces what an earlier poll said of it, keeping `first_seen` and the
   console's and an import's columns. A backup's match (`how` `import`) stays while
-  its book is indexed and the call names no other match for the title. On the
-  **final** call, every title of the account this `poll_id` didn't send becomes
-  `gone`, the account's `last_poll_at` is now (and, on its first complete poll, its
-  `policy_since`), its `refused_at` is cleared (Audible answered the account), and then, while the module is on and an online Bridge runs
-  `audible.import`, the server queues the backups the account's policy and pending
-  preorder requests ask for (at most 10 s of it; a failure is logged and the next
-  poll asks again: the call still answers `200`).
+  its book is indexed and the call names no other match for the title.
+- On the **final** call:
+  - every title of the account this `poll_id` didn't send becomes `gone`;
+  - the account's `last_poll_at` is now, and on its first complete poll so is its
+    `policy_since`;
+  - its `refused_at` is cleared, since Audible answered the account;
+  - then, while the module is on and an online Bridge runs `audible.import`, the
+    server queues the backups the account's policy and pending preorder requests
+    ask for. It spends at most 10 s on this. A failure is logged and the next poll
+    asks again, and the call still answers `200`.
 
 | Status | Meaning |
 |---|---|
@@ -11599,8 +11655,8 @@ when there was one. A bridge token is `401`.
 ## Well-known
 
 Native deep-link association files. Both are *Public*, config-driven
-(`app_links` in the YAML - see [Configuration](../configuration.md)), and
-**404 when the relevant identifiers are unset** - clients then fall back to the
+(`app_links` in the YAML; see [Configuration](../configuration.md)), and
+**404 when the relevant identifiers are unset**. Clients then fall back to the
 web player and the custom-scheme "Open in app" button.
 
 ### `GET /.well-known/apple-app-site-association`
@@ -11682,6 +11738,6 @@ archived desktop manager sent. Success is `201 { "user": { … } }`.
 `internal/api/api.go` also mounts the baked-in static UI via `web.Register`:
 `GET /` (connect page), `/connect`, `/admin`, `/assets/…`, `/favicon.ico`,
 `/sw.js`, `/manifest.webmanifest`, and the web player at `/web/…` (when
-configured). These are plain pages *over* the API - they hold no privilege of
+configured). These are plain pages *over* the API. They hold no privilege of
 their own and are documented in [Web UI](../web-ui.md), not here.
 :::
