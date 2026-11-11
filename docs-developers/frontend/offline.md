@@ -794,9 +794,12 @@ not offline). On the web the stored entry is marked too, for an Undo in another 
 before the finish (kept by `recordFinish` in `beforeFinish`) replaces the finished
 one.
 
-- It is stamped with the time of the record it replaces. For a downloaded book that
-  may be the server's row for the finish, newer than the finish's own time. The mirror
-  keeps the newest record, so an older stamp would be refused.
+- It is stamped one millisecond after the record it replaces. For a downloaded book
+  that may be the server's row for the finish, newer than the finish's own time. The
+  mirror keeps the newest record, so an older stamp would be refused. A tie goes to
+  the later write, so the finish's own refresh of the place, still on its way and
+  stamped as the finish, would make the record finished again; one millisecond later,
+  it loses.
 - The mirror's own `ack_version` and `answered` are kept.
 - With no earlier unfinished record, the finished record is rewritten unfinished at
   the place before.
