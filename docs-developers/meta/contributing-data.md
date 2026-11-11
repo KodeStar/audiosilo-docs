@@ -1,6 +1,6 @@
 ---
 title: Contributing data to Meta
-description: "How metadata enters audiosilo-meta: the GitHub issue forms (five in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, the LibriVox public-domain mirror and its work-matching rules, metascan, the in-browser site tools, and the authoring rules."
+description: "How metadata enters audiosilo-meta: the GitHub issue forms (five in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, the LibriVox public-domain mirror and its work-matching rules, metascan, the in-browser site tools, the authoring rules, and how CI runs the Go gate and the check verdict."
 ---
 
 ## The rules that govern everything
@@ -343,7 +343,7 @@ Every pull request touching `data/**` is checked twice:
   `metacheck` (schema, pack placement and caps, referential integrity,
   uniqueness, chapter/series rules, LibriVox id rules), and `metafmt --check`
   (canonical JSON + pack invariants) as parallel jobs, and its `check` job is
-  the verdict over all of them. A red pull request never merges. It uses
+  [the verdict](#check-is-the-verdict) over all of them. A red pull request never merges. It uses
   the plain `pull_request` trigger, so fork pull requests run with a read-only
   token and no secrets.
 - **`ai-verify.yml` (advisory, never blocking).** An AI judgement layer on top of
@@ -362,6 +362,97 @@ The one place that verdict is *not* advisory is the
 merge themselves once the required checks pass and `ai-verified` is applied, and
 every other batch import - opened by a person or composed from the "Import a
 library" form - still needs a maintainer's approval however green it is.
+
+## The Go gate in CI
+
+`check.yml` runs the same gate as the
+[local build](overview.md#build-validate-and-serve-locally) (build, vet,
+`go test -race`, golangci-lint) plus a `govulncheck` scan, in its `build`, `test`,
+`lint` and `vuln` jobs. It runs them only when a `changes` job classifies the diff
+as touching Go code. A data-and-prose-only pull request (most of them here, from
+the intake and sync bots) skips their steps straight through. The `metacheck` and
+`metafmt` jobs are never gated, since they are the data's own check whatever else
+changed.
+
+### Jobs, shards and caches
+
+The jobs run in parallel, each on its own runner, so a pull request waits for the
+slowest of them rather than their sum.
+
+- **`test` is three shards.** `.github/scripts/go-test-shard.sh` partitions
+  `go list ./...` so that every package runs in exactly one. Each shard takes 3 to
+  6 minutes.
+- **`advisories`** runs on a pull request only. It runs metacheck over the base
+  beside the head's run, for the advisory delta. A pull request touching no
+  `data/` skips it, since it cannot introduce one.
+- **Sparse checkouts.** The jobs that need only Go code (`build`, `lint`, `vuln`)
+  and the `site` job check out a sparse tree without `data/`, which skips most of
+  a full checkout's time. `advisories` does too, and reads the base's `data/` from
+  git.
+- **A shared `-race` build cache.** The test shards restore it with
+  `actions/cache`, keyed on the Go patch and `go.sum` and saved only on pushes to
+  `main`. setup-go's cache has one key for every Go job, and the non-race `build`
+  job saves it first, so the shards used to recompile everything under the race
+  detector on every run.
+
+### Real-data tests under `-race`
+
+Almost every test that walks the real data tree skips under the race detector.
+The fixture suites cover the concurrent code, and `metacheck` and `metafmt`
+validate the real tree anyway.
+
+The exception is `internal/recorddiff`'s real-checkout test, which diffs the last
+commit under `-race` too. Under `-race` it diffs only a bounded sample of the
+changed packs (every family the commit touched keeps one), so it takes a few
+seconds whatever merged last. Without `-race` it diffs the whole commit.
+
+### The real-data workflow
+
+The skipped real-data tests still run in CI, in the `real-data.yml` workflow. It
+runs the whole suite without `-race`:
+
+- every day;
+- on demand;
+- on every push to `main` that touches anything the Go gate would run on. A
+  `paths:` filter skips `data/**` other than `data/go.mod`, and `*.md`, so the
+  bots' data-only commits never trigger it. The one deliberate difference from
+  the Go gate is `site/**`, which no real-data test reads, so site-only pushes do
+  not trigger it either.
+
+It never runs on pull requests. A newer run cancels an older one, so the newest
+commit on `main` is what reports, and a cancelled run reports nothing. A failure
+opens or updates a single issue labelled `ci-real-data`, and the next green run
+closes it. Run the same tests locally with `go test -count=1 ./...`.
+
+### The pinned linter set
+
+The committed `.golangci.yml` pins the linter set (errcheck, govet, ineffassign,
+staticcheck, unused), so a new golangci-lint release cannot change which linters
+run. Adding one is an edit there, with its findings fixed in the same change.
+
+### `check` is the verdict
+
+The `check` job needs `changes`, `build`, `test`, `metacheck`, `metafmt` and
+`advisories`. It passes only when every one of them but `advisories` concluded
+`success` (`.github/scripts/check-verdict.sh`). A skipped or cancelled job counts
+as a failure.
+
+- **It runs under `always()`,** so a cancelled run reports a red `check`. A
+  skipped `check` would read as green to branch protection and the sync bot.
+- **`advisories` can never end red.** Every step continues on error, each under
+  its own timeout, because the sync bot treats any failed check run on a head as a
+  failure, required or not.
+- **Its summary and log.** `check` writes the advisories a pull request
+  introduces into its job summary. When it fails, its log ends with the tails of
+  the failing jobs' own output. It fetches those from the Actions API for the
+  current run attempt only (`.github/scripts/failed-job-logs.sh`, so it needs
+  `actions: read`). A re-run of the failed jobs therefore never prints a log from
+  an earlier attempt, as the old uploaded-artifact logs could.
+
+**The name is load-bearing.** Branch protection requires `check` and `compose`.
+The [sync bot](sync-bot.md) gates its merge on `check` (with `compose`, `site` and
+`verify`) by name, and hands the tail of a failed `check` log to its resolver.
+Renaming or dropping `check` leaves both waiting for a check that never comes.
 
 ## Bulk importers: metaimport
 
