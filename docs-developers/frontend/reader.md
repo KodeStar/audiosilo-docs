@@ -401,7 +401,9 @@ none of those either, it fails (the `fetch` notice; Try again looks again). It n
 opens at a guessed start whose save could replace a place read elsewhere. A 401
 always fails it.
 
-The query runs whatever the browser's online flag says (`networkMode: 'always'`).
+The query runs whatever
+[the online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets) says
+(`networkMode: 'always'`).
 So an offline reader opens at a local place, or says it can't, instead of waiting on
 a spinner. Opening at the server's row adopts its version.
 
