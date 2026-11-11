@@ -48,7 +48,7 @@ What happens when a book ends (see [The end of a book](end-of-book.md)), and wha
 | **Keep the next books ready** | Download the next 1, 2 or 3 books from Up next and the series. See [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) | Off |
 | **Remove a download when you finish the book** | Free up space when a book is marked finished | On |
 
-A browser can't tell Wi-Fi from mobile data, so in the web player **On Wi-Fi** downloads on any connection. You can always download a book by hand: see [Listen offline](offline-downloads.md).
+A browser can't tell Wi-Fi from mobile data, so in the web player **On Wi-Fi** downloads on any connection. You can always download a book by hand. See [Listen offline](offline-downloads.md).
 
 ## Appearance
 

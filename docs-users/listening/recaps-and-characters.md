@@ -23,32 +23,32 @@ Both tabs follow **where you are in the book**:
 The same rule keeps [search](browsing.md#search) from naming a character too early, and the player's [companion](companion.md) uses it as you listen.
 
 :::note
-Chapter numbers here are the community's, which can differ a little from your copy's. If something you've already heard is hidden, use **Show anyway**.
+Chapter numbers here come from the community database, and can differ a little from your copy's. If something you've already heard is hidden, use **Show anyway**.
 :::
 
 ## Catching up on earlier books in a series
 
-For a book in a series, both tabs end with **Previous books**: a row for each earlier book. Open one to see that book's summary under Recaps, or its characters under Characters. It's the "wait, who is this again?" fix before book four.
+For a book in a series, both tabs end with **Previous books**: a row for each earlier book. Open one to see that book's summary under Recaps, or its characters under Characters.
 
 ## Series with more than one reading order
 
 The **Series** tab lists the other books in the series.
 
-Some series can be read in more than one order, such as The Chronicles of Narnia. When the community knows other orders, the tab has a switch: **Publication**, **Chronological** or **Recommended**. Pick one, and the list follows that order.
+Some series can be read in more than one order, such as The Chronicles of Narnia. When the community database has other orders, the tab has a switch: **Publication**, **Chronological** or **Recommended**. Pick one, and the list follows that order.
 
 - Your choice is remembered per series, on that device. The [series page](browsing.md#series-pages) uses it too.
 - **Previous books** follows your choice, so a catch-up never gives away a book that comes later in your order.
 
 ## Generated on this server
 
-For a book the community hasn't covered, an admin can have the server's [Bridge](../admin/bridge.md) write characters and recaps (see [Generate characters and recaps](../admin/generating-characters-and-recaps.md)). They appear in the same tabs, follow the same spoiler rules, and carry a **Generated on this server** mark.
+For a book the community database doesn't cover, an admin can have the server's [Bridge](../admin/bridge.md) write characters and recaps (see [Generate characters and recaps](../admin/generating-characters-and-recaps.md)). They appear in the same tabs, follow the same spoiler rules, and carry a **Generated on this server** mark.
 
 ![A book's Recaps tab with recaps generated on the server, the whole-book summary kept closed, and Show anyway](/img/screenshots/web-player/book-recaps-generated.png)
 
-The community's material always comes first. The Bridge also writes a short, spoiler-free description for the book's [About card](book-page.md#about-this-book).
+Material from the community database always comes first. The Bridge also writes a short, spoiler-free description for the book's [About card](book-page.md#about-this-book).
 
 ## Good to know
 
-- A book only gets community material when it can be matched (it has an ASIN or ISBN) and someone has written it. Many books have a description and a Series tab, but no characters or recaps yet.
-- An admin switches the lookup on or off under **Server > Settings > Community metadata** in the admin console. See [Server settings](../admin/server.md#community-metadata).
+- A book only gets material from the community database when it can be matched (it has an ASIN or ISBN) and someone has written it. Many books have a description and a Series tab, but no characters or recaps yet.
+- An admin switches community metadata on or off under **Server > Settings > Community metadata** in the admin console. See [Server settings](../admin/server.md#community-metadata).
 - A [downloaded](offline-downloads.md#community-notes-offline) book keeps this material, so it works offline.

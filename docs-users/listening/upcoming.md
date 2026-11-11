@@ -5,7 +5,7 @@ description: "See preorders, new releases and missing books in the series you li
 
 AudioSilo watches the series in your library and shows what's coming: books you can preorder, books just released, and volumes your library is missing. They appear on Home, on an **Upcoming** page, and on each series page. You can also [add release days to your calendar](#add-to-your-calendar).
 
-The list comes from the [community metadata database](../community/meta-site.md). Your server checks it once a day, for series you have at least one book of. An admin can turn the check on or off in [Server settings](../admin/server.md#community-metadata).
+The list comes from the community database, [AudioSilo Meta](../community/meta-site.md). Your server checks it once a day, for series you have at least one book of. An admin can turn the check on or off in [Server settings](../admin/server.md#community-metadata).
 
 ## Coming up in your series on Home
 
@@ -41,7 +41,7 @@ To open it:
 | **Released Oct 2026** | It came out recently. |
 | **First released 2014** | A missing book, and when it first came out. |
 
-The date is the earliest audiobook release the database knows of. Your local store may get a new book a little later.
+The date is the earliest audiobook release the community database knows of. Your local store may get a new book a little later.
 
 A **New** badge marks a preorder or new release your server first listed in the last seven days.
 
@@ -78,7 +78,7 @@ Anyone with the link can see your upcoming releases, so don't share it. The link
 - **Reset link** makes a new link and stops the old one. Calendars on the old link stop updating until you subscribe again.
 - **Turn off** stops the link.
 
-Kids' accounts can't use the calendar, and the [demo](../demo.md) can't make a link.
+Kids accounts can't use the calendar, and the [demo](../demo.md) can't make a link.
 
 ## On series pages
 
@@ -89,9 +89,9 @@ A [series page](browsing.md#series-pages) shows books you don't have as pale "gh
 Upcoming releases don't appear when:
 
 - the server is older than 2.6,
-- the server's community metadata lookup is off, or
+- the server's community metadata is off, or
 - an admin turned off **Check for upcoming releases** in [Server settings](../admin/server.md#community-metadata).
 
-On a new server, the first full check runs about an hour after startup. Kids' accounts never see upcoming releases.
+On a new server, the first full check runs about an hour after startup. Kids accounts never see upcoming releases.
 
 Your server asks the community database only about series and books, never about who's listening.

@@ -39,7 +39,7 @@ If you listened further on another device, a line under the buttons offers that 
 
 ![A book's page offering another device's place, with Play from there](/img/screenshots/web-player/book-place-offer.png)
 
-If you're an admin and your server has a [Bridge](../admin/bridge.md), a book the community hasn't covered may also show **Generate characters and recaps**. See [Generating characters and recaps](../admin/generating-characters-and-recaps.md#which-books-offer-it).
+If you're an admin and your server has a [Bridge](../admin/bridge.md), a book the community database doesn't cover may also show **Generate characters and recaps**. See [Generating characters and recaps](../admin/generating-characters-and-recaps.md#which-books-offer-it).
 
 ## A book you've finished
 
@@ -68,13 +68,13 @@ Below the About card:
 Everything else sits in a row of tabs:
 
 - **Chapters** (or **Parts** or **Files**) - the default, below.
-- **Recaps** and **Characters** - the community's catch-ups and character cards, which never show more than you've heard. See [See recaps and characters](recaps-and-characters.md).
+- **Recaps** and **Characters** - catch-ups and character cards from the community database, which never show more than you've heard. See [See recaps and characters](recaps-and-characters.md).
 - **Bookmarks** and **Notes** - see [Add bookmarks and notes](bookmarks-and-notes.md).
 - **History** - your listening sessions, below.
 - **Series** - the other books in the series, in the [reading order you pick](recaps-and-characters.md#series-with-more-than-one-reading-order).
 - **Details** - how the book plays here and what its files are, below.
 
-Recaps, Characters and Series only appear when the community has that material for the book.
+Recaps, Characters and Series only appear when the community database has that material for the book.
 
 ### Chapters
 

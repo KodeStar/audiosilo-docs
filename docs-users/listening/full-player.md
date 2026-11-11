@@ -1,6 +1,6 @@
 ---
 title: Use the full player
-description: The big player view - the seek bar and timeline, time left, undoing a jump, speed, Smart speed and Voice boost.
+description: "The big player view: the seek bar and timeline, time left, undoing a jump, speed, Smart speed and Voice boost."
 ---
 
 The full player is the big view of the book you're listening to. On a phone it opens when you start a book. On a tablet or computer, open it from the [player bar](playback.md#the-mini-player-and-the-player-bar).

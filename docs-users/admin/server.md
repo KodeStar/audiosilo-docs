@@ -41,7 +41,7 @@ A few only apply after a restart, and carry a **Restart to apply** badge:
 
 - the listen address, the HTTPS mode and certificate names;
 - the web player folder and the backups folder;
-- the community metadata service address and **Source**;
+- the community metadata **Service address** and **Source**;
 - turning demo mode on or off, and how long idle demo guests are kept.
 
 After you save one, a notice at the top of
@@ -100,9 +100,9 @@ The **HTTPS** card chooses how the server secures connections (more in
   80 and 443 open to the internet. Enter each **Certificate name** (like
   `books.example.com`) on its own line.
 
-With **Self-signed**, leave **Plain HTTP at home** on. The phone apps can't
-trust a self-signed certificate, so they connect over plain HTTP on your home
-network. Turn it off and the apps can't connect. See
+With **Self-signed**, leave **Plain HTTP at home** on. Without it, the iOS and
+Android apps can't connect, because they can't trust a self-signed certificate.
+See
 [Plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect).
 
 The **Certificate** row shows whether the current certificate is valid and when
@@ -133,7 +133,7 @@ servers leave it empty.
 ![Server settings, Community metadata](/img/screenshots/admin/settings-metadata.png)
 
 **Look up community metadata** turns on extra book details from the free
-community catalogue at [meta.audiosilo.app](https://meta.audiosilo.app). Books
+community database at [AudioSilo Meta](https://meta.audiosilo.app). Books
 with an ASIN or ISBN gain an "About this book" section in the player: a
 description, series, and (where written) characters and recaps. See
 [A book's page](../listening/book-page.md#about-this-book).
@@ -142,22 +142,20 @@ What is sent:
 
 - **Looking up a book** sends only its ASIN or ISBN, never file paths or who
   is listening.
-- **Matching a book** in the console sends its tagged title, author, series,
-  length, narrators and language. It also sends any ASIN or ISBN, what you
-  type, and up to three of its folder names. This happens only when you open **Match with community
-  metadata** or run [Match automatically](health.md#matching-every-book-at-once).
-  See [Matching with community metadata](books.md#matching-with-community-metadata).
-- **Community chapters** are checked in the background for matched books (see
-  [Community chapters](books.md#community-chapters)).
-- **Cover images** are downloaded by your server from where the catalogue
-  keeps them. Listeners' devices never contact those hosts.
+- **Matching a book** in the console sends search terms from its tags, folder
+  names and length, only when you match. See
+  [What matching sends](books.md#what-matching-sends).
+- **Community chapters**: the server checks matched books in the background
+  (see [Community chapters](books.md#community-chapters)).
+- **Cover images**: your server downloads them from where the community
+  database keeps them. Listeners' devices never contact those hosts.
 
 Turning the switch **off** stops all of this at once, for everyone. The server
-then never contacts the metadata service or the cover hosts.
+then never contacts the **Service address** or the cover hosts.
 
 The other settings on this topic:
 
-- **Status** - whether the service (or your local copy) is answering.
+- **Status** - whether the **Service address** (or your local copy) is answering.
 - **Check for upcoming releases** - on by default. A daily check of the series
   you hold, for preorders, recent releases and missing books. Listeners (except
   kids) see them on [Upcoming releases](../listening/upcoming.md), and you can
@@ -165,7 +163,7 @@ The other settings on this topic:
   cloud, like Google Calendar, needs a public HTTPS **Public address** with a
   trusted certificate.
 - **Help complete the community database** - off by default. See
-  [below](#helping-complete-the-community-database).
+  [Helping complete the community database](#helping-complete-the-community-database).
 - **Audible marketplace** (in **Matching**) - the store you buy from. When a
   recording sells in several stores, a match takes this store's ASIN. It has
   nothing to do with your library's language. See
@@ -176,19 +174,19 @@ The other settings on this topic:
   match in one library or all of them, so you can match again from fresh. Your
   own edits and uploaded covers stay. It can't be undone.
 
-The upcoming-release check and the report below only work while the lookup is
-on.
+The upcoming-release check and the missing-books report only work while
+**Look up community metadata** is on.
 
 #### Helping complete the community database
 
-Turn on **Help complete the community database** to tell the community which of
-your books it is missing. Once a day, the server sends the metadata service the
-Audible ASINs of your books that the community database doesn't know. The
+Turn on **Help complete the community database** to report which of your books
+the community database is missing. Once a day, the server sends AudioSilo Meta
+the Audible ASINs of your books that the community database doesn't know. The
 community can then add those books.
 
-Only the ASINs are sent: no titles, file paths, server name or anything about
-listeners. The service doesn't store your IP address with them. Its
-[privacy page](https://meta.audiosilo.app/privacy) has the details.
+The server sends only the ASINs, with no titles, file paths, server name or
+anything about listeners. AudioSilo Meta doesn't store your IP address with
+them. Its [privacy page](https://meta.audiosilo.app/privacy) has the details.
 
 Good to know:
 
@@ -206,7 +204,7 @@ failed. A failed report is tried again the next day.
 The **Source** card chooses where lookups are answered:
 
 - **Ask the metadata service for each book** (the default). Each lookup goes
-  to the service online.
+  online, to the **Service address**.
 - **Keep a local copy.** The server downloads the whole community database and
   answers lookups, matching and chapter checks from it. Fewer requests leave
   your server.
@@ -219,8 +217,8 @@ How it behaves:
 
 - It applies after a restart. [Health > System](health.md#the-local-copy-of-community-metadata)
   shows the download's progress.
-- Until the copy is ready, or if it fails, lookups go to the online service, so
-  listeners don't lose anything.
+- Until the copy is ready, or if it fails, lookups go online, so listeners
+  don't lose anything.
 - A book the copy doesn't know is not looked up online.
 - Cover images still come from their hosts.
 - The copy isn't in your [backups](backups.md). It can always be downloaded
@@ -241,9 +239,8 @@ Nothing here can be changed in the console.
   AudioSilo can't read itself. See
   [ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe).
 
-The server finds them next to its own program, on the system's PATH, or
-downloads its own copy. To use other copies, start it with the `--ffmpeg` and
-`--ffprobe` options (see the
+To use other copies than the ones the server finds, start it with the
+`--ffmpeg` and `--ffprobe` options (see the
 [configuration reference](/developers/server/configuration#cli-flags-cmdaudiosilo)).
 
 Converted copies are kept in the data folder under `cache/`. They are capped in
@@ -259,8 +256,8 @@ kids and grown-ups people add from the player, with no invite from you.
 - **Members per person** - 6 by default (1 to 50). Lowering it never removes
   anyone.
 
-To stop just one person adding members, turn off **Can add household members**
-on their Account tab instead.
+To stop one person adding members, see
+[Household members](users-and-invites.md#household-members).
 
 ### Demo mode
 
@@ -282,13 +279,13 @@ Modules are optional features. Each one is off until you turn on its
 
 Some modules need a [Bridge](bridge.md). Their card says whether your Bridge is
 ready, and links to **Bridge settings** if it isn't. You can turn a module on
-before then: listeners see it once the Bridge is ready.
+before then. Listeners see it once the Bridge is ready.
 
 - **Podcasts** - follows shows by feed URL and downloads their episodes. Needs a
   Bridge. With it on, listeners can also search podcast directories and import
   OPML. See [Podcasts](podcasts.md).
 - **Contributions** - sends your book corrections, and the characters and
-  recaps your Bridge generates, to the community metadata database. Needs a
+  recaps your Bridge generates, to the community database. Needs a
   Bridge signed in to GitHub. See
   [Contribute from your server](../community/contributing-from-your-server.md).
 - **Audible** - shows the books in your Audible accounts and backs up the ones
@@ -313,7 +310,7 @@ update:
   Replace the program and start it with the same data folder (see
   [Install without Docker](../getting-started/install-binary.md)).
 
-Nothing is installed for you: updating is always your step. Before you update,
+The server never installs an update. You always update it yourself. Before you update,
 see [Before an upgrade](backups.md#before-an-upgrade).
 
 ![An update available, with the sponsor line](/img/screenshots/admin/update-notice.png)
