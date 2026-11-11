@@ -73,13 +73,22 @@ A watch has its own downloads, separate from your phone's. See [Apple Watch](app
 Very little changes:
 
 - A downloaded book plays from the device, so it starts instantly and never buffers.
-- Chapters, the sleep timer, speed, bookmarks and notes all work the same.
+- Chapters, the sleep timer and speed all work the same. So do bookmarks and notes while the app can reach your server (see [With no connection](#with-no-connection)).
 - It starts where you left off, even offline. If you listened later on another device, it starts there, as long as you've opened the app online since.
 - Your listening is saved on the device and syncs the next time the app reaches your server. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 - If a book's chapters change on the server, the download picks them up next time you're online. The audio isn't downloaded again.
 - **Read the ebook** opens the downloaded ebook with no connection. See [Read the ebook](reading-the-ebook.md#reading-offline).
 - A book's [read-along](companion.md#text) comes with the download, so **Text** and **Follow narration** work offline too.
 - The book's page still opens offline, and its **Details** tab says **Plays from this device**.
+
+## With no connection
+
+When your device has no network, downloaded books play and everything else waits for your server:
+
+- **Home, the Library, Folders** and any other page or list show **You're offline** in place of what they haven't loaded yet. Anything already loaded stays on screen. When the network comes back, they load by themselves.
+- **Wi-Fi with no internet isn't offline.** The apps still reach a server on the same network. If a server doesn't answer, the page says so and offers **Retry**.
+- **Bookmarks, notes and ratings** aren't kept for later in the iOS and Android apps. One you make with no connection fails straight away with a message, so add it again once you're online. Only a bookmark made [from the car's screen](in-the-car.md#while-it-plays) is kept and sent later.
+- **The player's [Text tab](companion.md#text)** is hidden for a book that isn't downloaded.
 
 ## Community notes offline
 

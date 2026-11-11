@@ -37,8 +37,10 @@ src/app/            Expo Router routes: (app) with its five tab groups, connect/
                     +not-found.tsx (any unknown path)
 src/api/            client.ts (typed fetch wrapper), types.ts (wire mirrors),
                     hooks.ts (React Query), provider.tsx (multi-connection registry),
-                    reachability.ts (online/offline tracking), address-route.ts +
-                    address-runner.ts + server-id-probe.ts (home and away addresses)
+                    reachability.ts (online/offline tracking), server-snapshots.ts
+                    (each server's last /server answer, kept for an offline launch),
+                    address-route.ts + address-runner.ts + server-id-probe.ts (home
+                    and away addresses)
 src/playback/       PlaybackService interface + per-platform engines, the player store,
                     book-queue (timeline math), progress-sync (offline-safe saves),
                     sleep-timer (+ auto-sleep, use-shake-to-extend, drift, last-

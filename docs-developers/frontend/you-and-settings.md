@@ -156,9 +156,11 @@ year's books came from, else the server's first library.
 `useYearStory(cid, range)` builds the story of one year on one server. `range` is
 `'year'` (this year, server time) or a past `'YYYY'`. It reads `useMyStats(range)`. For
 this year it also reads the running streak (`useMyListening('1y')`) and the goal
-(`useListeningGoal`). It returns `loading | unsupported | error | empty | ready`, the
-last with the cards and their copy. A server without `user_stats` is `unsupported`,
-never an error.
+(`useListeningGoal`). It returns
+`loading | offline | unsupported | error | empty | ready`, the last with the cards and
+their copy. A server without `user_stats` is `unsupported`, never an error. `offline`
+is a `/server` answer or a year's stats held for the network with nothing kept (see
+[Offline states](state-and-data.md#offline-states-srcliboffline-statets)).
 
 - **The cards:** `buildYearCards` (`year-model.ts`, pure) makes the cards in this
   order: `hours`, `books`, `book`, `voice`, `clock`, `streak`, `people`, `summary`. It

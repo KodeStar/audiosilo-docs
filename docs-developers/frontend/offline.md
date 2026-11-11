@@ -574,13 +574,12 @@ The spans themselves are described in
 [Playback](playback.md#listening-spans-sync-v2).
 
 **Which path** (`usesListeningSync(cid)`). The player reads the `listening_sync` flag
-from the first of these that has it:
-
-1. the flag the connection's server last answered to a `/server` request, kept in the
-   sync state (`listeningSync`), so an offline cold launch still knows it. A copy
-   seeded into the query cache says nothing;
-2. the cached `/server` answer;
-3. otherwise the flag is **unknown**, which records events too.
+from the cached `/server` answer (`cachedCapability`). On a launch that can't reach
+the server, that is
+[the kept `/server` answer](state-and-data.md#the-kept-server-answer-srcapiserver-snapshotsts),
+seeded before any screen, so an offline cold launch still knows the flag. The outbox
+keeps no copy of its own. A flag nobody has read is **unknown**, which records events
+too.
 
 Only `false`, or a rollback this launch, takes the `PUT` path. An older server is
 covered by the rollback below. A `404` that a fresh `/server` confirms turns what
@@ -596,7 +595,7 @@ and a cache reset wipes them with the rest of the scoped cache.
 |---|---|
 | `audiosilo.listeningOutbox` | the closed events waiting for their server |
 | `audiosilo.listeningOpenSpan` | the spans being played, one per playing web tab |
-| `audiosilo.listeningSync` | per connection: the last sync, the "couldn't sync" list, the clock skew and the last `listening_sync` answer |
+| `audiosilo.listeningSync` | per connection: the last sync, the "couldn't sync" list and the clock skew |
 
 **`audiosilo.listeningOutbox`.** Each event carries its `connectionId`. The outbox is
 append-only. An event never changes once it is here, and its id and content are fixed
@@ -625,8 +624,7 @@ end ([What a kill leaves behind](playback.md#what-a-kill-leaves-behind)). On the
 - the "couldn't sync" list: rejected events with their reason, kept 30 days, at most
   100;
 - the server's clock skew from the answers' `server_time` (`clockSkewMs`), which
-  `progress-sync` reads through `stored-skews.ts`;
-- the last `listening_sync` answer (`listeningSync`).
+  `progress-sync` reads through `stored-skews.ts`.
 
 **Locking.** The read-modify-writes of the three documents run in a serial queue and
 under `tabLock` (`src/lib/tab-lock.ts`), so two tabs can't lose each other's events.
@@ -660,6 +658,9 @@ Each answer is handled like this:
   `keptMine`: applied, or diverged with `kept: "event"`, and the row's `device_id` is
   this device's. The place reconcile is told of the rows (`onSyncAnswer`) so it can
   offer another device's place.
+- An answer that arrives while the cached `listening_sync` flag is `false` makes the
+  query cache ask `/server` again. The server took the events, so the cached answer
+  is older than the server.
 - A network error, `401`, `403` or `5xx` keeps everything for the next trigger. A
   network error also notes the failure for reachability.
 - A `413` or `too_many_events` halves the chunk. One event alone that still gets a
@@ -673,6 +674,8 @@ Each answer is handled like this:
   without `listening_sync`. Anything else at the address keeps the outbox. A
   rollback:
   - marks the connection rolled back for the launch;
+  - makes that `/server` answer the connection's from then on, in the query cache
+    and on the device (`keepServerAnswer`);
   - turns the outbox into one legacy `PUT` per book (`legacySavesOf`) and drops it.
     Each `PUT` takes the newest span's end, finished when the newest finish-state
     event is a `finish` not older than it;
@@ -902,15 +905,12 @@ place (`meta-gating.ts`); nothing here decides what to show.
 fetched again when possible.
 
 **The server's flags are kept apart.** Every reader of community metadata first waits
-on the `metadata` flag, and a cold start with no network never answers it. So each
-connection's last `/server` answer is kept once, in one small document keyed by
-connection id (`OFFLINE_SERVERS_KEY`, `audiosilo.offlineServers`):
-
-- `saveServerSnapshot` writes it after a book keeps its metadata, never over a newer
-  one;
-- `forgetServerSnapshot` removes it when the connection's downloads are purged;
-- a storage reset wipes it with the rest of the scoped cache (`SCOPED_STORAGE_KEYS`
-  in `stores/session.ts`).
+on the `metadata` flag, and a cold start with no network never answers it. The flag
+comes from
+[the kept `/server` answer](state-and-data.md#the-kept-server-answer-srcapiserver-snapshotsts),
+which every connection has whether or not it holds a download. An older `meta.json`
+can still hold a `/server` answer of its own (`OfflineMeta.server`). The app reads
+that answer only to copy it into the kept answer.
 
 **Where it lives.** The metadata goes in its own `meta.json` beside the book's audio
 (`writeText`), never in the registry. The registry is one JSON document, saved every
@@ -941,8 +941,9 @@ a marker (`DownloadManifest.meta = { savedAt }`).
 1. waits until the launch's first screens are up (the next idle moment,
    `requestIdleCallback`, else a moment later);
 2. reads the kept files, three at a time, and seeds every payload;
-3. seeds each such connection's kept `/server` answer where the cache has none. This
-   comes after the books, so a gate it opens finds their data;
+3. copies the `/server` answer an older `meta.json` holds into the kept answer,
+   taking the first such file for each connection (`seedServerSnapshot`,
+   `saveServerSnapshot`). Neither function replaces an answer read later;
 4. goes through the books one at a time, only for servers with `metadata` (each
    server's flags are read once). It fills in downloads that kept nothing or whose
    file can't be read, and refreshes copies older than a week
@@ -973,8 +974,11 @@ Every seed of a downloaded book goes through `seedQuery`, which follows three ru
 The `spoilers=hide` variant is never stored, because it is cut at the saved place
 when fetched.
 
-`seedServerSnapshot` seeds `qk.server(cid)` only where the cache has none. So the app
-holds the flags it held when it was last online until the server answers.
+The connection's `/server` answer is seeded before any screen
+([the kept `/server` answer](state-and-data.md#the-kept-server-answer-srcapiserver-snapshotsts)),
+so a reader may ask for a book's metadata before that book's seed lands. The reader
+takes the book's seed when it lands, because `seedQuery` fills any key that holds no
+data, a failed or waiting key included.
 
 A previous-book row with an answer in hand shows it even when its refetch fails
 (`book-meta.tsx`). That is how a kept work looks offline.
@@ -1063,6 +1067,11 @@ The controller publishes `{ status, slots }` to the `useKeepAhead` store. Then, 
 each `start`, it fetches the full item and chapters and calls
 `download(..., 'keep-ahead')`. It skips a book that was registered meanwhile, an
 errored entry too, because keep-ahead never retries a failure.
+
+Those reads are held while the device has no network
+([The online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets)), and the
+network that comes back may be mobile data. So `startOne` asks the network gate again
+after the reads, and a book the gate no longer allows is `declined`.
 
 - A `transcoded` outcome marks the book `unavailable`.
 - A `no-space` outcome marks it `tooBig` until the registry changes.
@@ -1327,6 +1336,9 @@ pins both paths.
 | The Text tab (read-along) for a **downloaded** book | its `readalong.json` (`readDownloadedReadalong`) with its `book.epub` |
 
 Not covered: live API data, such as browsing, search, and covers for books that are
-not downloaded. The service worker deliberately never caches API responses. Screens
-render their empty or error states behind the offline banner, and everything
-refetches on reconnect (see [State & data](state-and-data.md)).
+not downloaded. The service worker deliberately never caches API responses. A screen
+with nothing to show renders the shared offline state
+([Offline states](state-and-data.md#offline-states-srcliboffline-statets)) behind the
+offline banner, and everything refetches on reconnect. In the app the queries wait
+for the network the same way
+([The online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets)).

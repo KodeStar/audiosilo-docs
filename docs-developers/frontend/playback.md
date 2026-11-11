@@ -823,9 +823,10 @@ offer. A timed-out toast lifts nothing. The book page shows no line there.
 
 On a server with `listening_sync`, the place reaches the server as **listening
 events** instead of saves, and the capture only keeps this device's mirror.
-`usesListeningSync` decides which path applies. It reads the flag the connection's
-server last answered, kept across launches, else the cached `/server`'s. While the
-flag is unknown, the player sends events too (see
+`usesListeningSync` decides which path applies. It reads the flag from the cached
+`/server` answer, which a launch seeds from
+[the kept `/server` answer](state-and-data.md#the-kept-server-answer-srcapiserver-snapshotsts).
+While the flag is unknown, the player sends events too (see
 [the outbox](offline.md#listening-sync-the-outbox)).
 
 A span runs from where playing began to where it ended. It carries:

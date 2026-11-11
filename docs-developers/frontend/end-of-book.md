@@ -248,9 +248,10 @@ row, the car), the `/player` route's auto-start and Up next's Play now all call
 
 The resolver's reads go through `fetchFailFast` (`api/hooks.ts`): the
 capability read, the queue, the finished set and `/next` (all in
-`up-next-sources.ts`). TanStack holds a default fetch while the browser says it's
-offline, and waits to retry until a hidden tab is focused. So a background tab's
-end-of-book chain used to wait silently.
+`up-next-sources.ts`). TanStack holds a default fetch while
+[the online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets) says the
+device has no network, and waits to retry until a hidden tab is focused. So a
+background tab's end-of-book chain used to wait silently.
 
 The start reads the same way: `startBookInPlace`'s item and chapters come through
 `fetchBookSource` (`src/playback/book-source.ts`). Only `dropFromQueue`'s queue
