@@ -1242,12 +1242,15 @@ order made only of the download's own files (a JS restart after an offline start
 **A partial queue.** A queue built from the download that lacks the book's last
 file is partial (`partialQueues` in `store.ts`):
 
-- `playBook` reads `endsBefore`. Started with the device offline (`isDeviceOnline`),
-  such a download builds its queue from the download's own copy (its files and
-  chapters) whatever chapters its caller gave it (a cold start's cached server
-  chapters name the files it lacks, and streaming them would stall into a stream
-  error at the downloaded part's end). Online it plays the chapters it
-  was given, streams the rest, and is not partial.
+- `playBook` reads `endsBefore`. Started with no server to stream from (the device
+  offline, `isDeviceOnline`; no client for the connection; or the server marked
+  unreachable this launch, `isReachable`, where unknown counts as reachable), such a
+  download builds its queue from its own copy (its files and chapters) whatever
+  chapters its caller gave it (a cold start's cached server chapters name the files
+  it lacks, and streaming them would stall into a stream error at the downloaded
+  part's end). Online it plays the
+  chapters it was given, streams the rest, and is not partial. Given no chapters (the
+  chapters read failed), it plays the download's own copy, partial too.
 - `adoptLoaded` with no server answer reads the last file of the engine's order and
   `endsBefore`.
 
