@@ -905,9 +905,9 @@ fetched again when possible.
 on the `metadata` flag, and a cold start with no network never answers it. The flag
 comes from
 [the kept `/server` answer](state-and-data.md#the-kept-server-answer-srcapiserver-snapshotsts),
-which every connection has whether or not it holds a download. A `meta.json` written
-before that answer had its own module can still carry one (`OfflineMeta.server`). It is
-read only to carry it over.
+which every connection has whether or not it holds a download. An older `meta.json`
+can still hold a `/server` answer of its own (`OfflineMeta.server`). The app reads
+that answer only to copy it into the kept answer.
 
 **Where it lives.** The metadata goes in its own `meta.json` beside the book's audio
 (`writeText`), never in the registry. The registry is one JSON document, saved every
@@ -938,9 +938,9 @@ a marker (`DownloadManifest.meta = { savedAt }`).
 1. waits until the launch's first screens are up (the next idle moment,
    `requestIdleCallback`, else a moment later);
 2. reads the kept files, three at a time, and seeds every payload;
-3. carries over the `/server` answer an older `meta.json` holds, the first such
-   file's per connection (`seedServerSnapshot`, `saveServerSnapshot`). Neither
-   replaces an answer read later;
+3. copies the `/server` answer an older `meta.json` holds into the kept answer,
+   taking the first such file for each connection (`seedServerSnapshot`,
+   `saveServerSnapshot`). Neither function replaces an answer read later;
 4. goes through the books one at a time, only for servers with `metadata` (each
    server's flags are read once). It fills in downloads that kept nothing or whose
    file can't be read, and refreshes copies older than a week
@@ -971,10 +971,11 @@ Every seed of a downloaded book goes through `seedQuery`, which follows three ru
 The `spoilers=hide` variant is never stored, because it is cut at the saved place
 when fetched.
 
-The connection's `/server` answer was seeded before any screen
-(`restoreServerSnapshots`). A reader that asked for a book's metadata meanwhile takes
-the seed when it lands, because `seedQuery` fills a key with no data, a failed or
-waiting one too.
+The connection's `/server` answer is seeded before any screen
+([the kept `/server` answer](state-and-data.md#the-kept-server-answer-srcapiserver-snapshotsts)),
+so a reader may ask for a book's metadata before that book's seed lands. The reader
+takes the book's seed when it lands, because `seedQuery` fills any key that holds no
+data, a failed or waiting key included.
 
 A previous-book row with an answer in hand shows it even when its refetch fails
 (`book-meta.tsx`). That is how a kept work looks offline.

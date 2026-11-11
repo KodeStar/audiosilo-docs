@@ -28,16 +28,15 @@ plain link stays `/library`.
     `useSeriesList` and `useCollections`. Books and Folders have no count.
 - **One selected library.** Every mode but Folders shows one library.
   `useSelectedLibrary()` reconciles the device-local `useLibrarySelection` pick
-  (see [State & data](state-and-data.md#library-selection-srcstoreslibrary-selectionts))
   with every connection's library list. It never puts another server's library
-  in place of one whose server has not answered. While that server's list is not
-  in, the screen shows that server's state: a skeleton, the sign-in state, the
-  offline state, or the load error with Retry.
+  in place of one whose server has not answered. The screen shows that server's
+  state instead. The order of the pick, those states and the picker's labels are
+  under
+  [Library selection](state-and-data.md#library-selection-srcstoreslibrary-selectionts).
   - `LibraryPicker` (published with `SubNavActions`, order -100) chooses the
-    library, grouped by server. Among several servers each label carries its
-    server. It hides itself when there is only one library on one server.
-  - In Collections mode it is `by="server"`, because a collection belongs to a
-    server.
+    library, grouped by server.
+  - In Collections mode the picker is `by="server"`, because a collection belongs
+    to a server.
   - Each mode body is keyed on `connection:library`, so switching remounts it
     cleanly.
 - **Mode bodies** live in `src/components/library/modes/`:

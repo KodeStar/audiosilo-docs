@@ -506,7 +506,7 @@ Only a map with a sentence (`hasSpans`) reaches the reader. It returns:
 | `map` | the sections and spans to send, or null: none to follow |
 | `pending` | still reading it |
 | `failure` | why there is no map when its read failed (`ReadalongFailure`), else null. It never means "no read-along" (see the failure reasons below the table) |
-| `offline` | the server's map waits for the connection with no copy on the device, or its read failed with no network on the device (`offlineState`). It is neither pending nor failed, so a surface shows nothing (no spinner, no Make), and a map already shown stays meanwhile |
+| `offline` | the device holds no copy, and the server's map either waits for the network or its read failed with no network on the device ([`offlineState`](state-and-data.md#offline-states-srcliboffline-statets)). `pending` is false and `failure` is null, so a surface shows nothing (no spinner, no Make), and a map already shown stays meanwhile |
 | `retry` | read it again (offered only when `failure` is `retry`) |
 
 Only the server's 404 `no_readalong` and 409 `readalong_stale`, or the flag off (a

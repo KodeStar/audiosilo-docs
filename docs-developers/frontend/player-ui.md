@@ -424,7 +424,7 @@ The Text tab shows the playing book's ebook following its narration, through a
 | a listener | once the map is in with a sentence to follow. Never while the map is on its way (no tab that vanishes a moment later), and never for a stale or absent map |
 | an admin who may make one | always: a spinner while the map is on its way, and the Make offer where there is none to follow |
 | anyone | when the map's read failed (`failure`, [The ebook reader](reader.md#the-map)): a notice by its reason, listed under [What `TextPanel` renders](#what-textpanel-renders). Never the Make offer, since a map may well be there and making it again takes hours |
-| nobody, an admin included | while the server's map waits for the connection, or failed for want of one, with nothing on the device (`offline`). This holds in the app as on the web. Nothing can be said or made meanwhile |
+| nobody, an admin included | while the server's map waits for the network, or its read failed with no network, and the device holds no copy (`offline`). Nothing can be said or made meanwhile |
 
 The Text tab starts a reader, so the companion never lands on it unasked
 (`activeCompanionTab` falls back to the first tab that isn't Text). The tab picked

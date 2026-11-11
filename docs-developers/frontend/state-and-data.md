@@ -258,11 +258,11 @@ network at all. They never say whether the internet answers.
 - **On the web** the signal is the browser's `online` and `offline` events.
 - **In the app** it is expo-network's `isConnected`. `isInternetReachable` is not
   read. A phone on Wi-Fi with no internet still reaches a server on the same
-  network, and calling that offline hid Retry and the Library.
+  network. Calling that phone offline would hide Retry and the Library.
 - **Unknown counts as online.** That covers a state not yet read, a read that
   failed, and a network Android can't name (`type: UNKNOWN`, which Android reports
   with `isConnected: false`).
-- **The first read never undoes a change the listener already told.** iOS can
+- **The first read never undoes a change the listener already reported.** iOS can
   answer `getNetworkStateAsync` up to 5 s late.
 
 In the app the same source drives TanStack's `onlineManager`
@@ -275,9 +275,10 @@ platform follows these rules:
   paused query as offline, not as loading (see
   [Offline states](#offline-states-srcliboffline-statets)).
 - **A read that must settle either way** asks with `networkMode: 'always'` or
-  through `fetchFailFast`. A read with a copy on this device to fall back to is
-  one. `useBookProgress` falls back to the mirror, and a held read would never
-  reach it.
+  through `fetchFailFast`
+  ([Capability-gated reads](#capability-gated-reads-player-redesign-phase-1a)).
+  That is any read with a copy on this device to fall back to. `useBookProgress`
+  falls back to the mirror, and a held read would never reach the mirror.
 - **A framework-free `queryClient.fetchQuery` waits too**, unless it asks with
   `networkMode: 'always'`. Keep-ahead's item and chapters reads are held this way
   (see [Offline](offline.md#the-controller)).
@@ -286,7 +287,11 @@ platform follows these rules:
   progress edit made with no network is sent, fails at once, and shows its
   screen's own error with the form still open. A held mutation lives only in
   memory, so Save would spin, and the write would be lost if the app closed
-  before the network returned.
+  before the network returned. Two writes are not mutations and keep their own
+  queues. The listening place waits in
+  [Progress sync](#progress-sync-srcplaybackprogress-syncts), and a bookmark
+  pressed in the car waits under `audiosilo.carBookmarks`
+  ([Native integrations](native-integrations.md#what-the-controller-answers)).
 - **The web keeps TanStack's default for writes.** A write waits for the browser
   to come back online. A write that must work offline on the web too says so
   itself (`useMarkFinished`).
@@ -307,16 +312,17 @@ One rule says what a read with nothing to show is:
 
 | Answer | When | What the screen shows |
 |---|---|---|
-| `'offline'` | The read waits for the network (`isPaused`), or it failed with no network on the device. A reload offline sends the request before anything knows. | The offline state, with no Retry. The read is asked again by itself. |
+| `'offline'` | The read waits for the network (`isPaused`), or it failed with no network on the device. On a reload with no network the request is sent, and fails, before the query library hears there is none. | The offline state, with no Retry. The read is asked again by itself. |
 | `'failed'` | The read failed with a network on the device, so the trouble is the server's. | The server's error, with Retry. |
 | `null` | The read is loading, or loaded. | The screen's own states. |
 
 A signed-out refusal is decided before the rule and is never "offline".
 
 **Who asks the rule directly.** Home's hero (over `useAllProgressAll().offline`),
-the Library's server state, Folders (per server, over `LibrariesOfServer.paused`),
-Books mode (over `useAllLibraryBooks().offline`) and the read-along map
-(`useBookReadalong`).
+the Library's server state
+([Library selection](#library-selection-srcstoreslibrary-selectionts)), Folders
+(per server, over `LibrariesOfServer.paused`), Books mode (over
+`useAllLibraryBooks().offline`) and the read-along map (`useBookReadalong`).
 
 **A page or a list over one query** asks `useUnreadQuery(query)` with the query's
 `{ data, isPaused, error }`:
@@ -326,8 +332,8 @@ Books mode (over `useAllLibraryBooks().offline`) and the read-along map
   the screen's sign-in or not-in-library state stands, whatever the network did
   since.
 - The screen checks it **before its skeleton**. A held query stays `isPending`,
-  and `useAllLibraryBooks().isLoading` counts it. A skeleton drawn for that never
-  ends, where the screen used to fail with a Retry.
+  and `useAllLibraryBooks().isLoading` counts it. A skeleton drawn for a held
+  query never ends.
 
 A page over the whole-library list asks `useUnreadBooks(list)`. There, a list read
 to its end with no book in it counts as read, so its empty state shows. The
@@ -473,7 +479,7 @@ device. It is the one copy of a server's facts for a launch that cannot reach it
 
 So `useCapability`, `cachedCapability` and `fetchCapabilities` hold, offline, the
 flags they held when the app was last online. Never keep another copy of a flag
-beside it. A flag nobody has read stays unknown, and its reader decides what
+beside the kept answer. A flag nobody has read stays unknown, and its reader decides what
 unknown means. Listening sync counts it as on (`usesListeningSync`).
 
 The tests are in `src/api/server-snapshots.test.ts`.
@@ -502,7 +508,8 @@ Outside React, two functions read the flags:
   is `fetchQuery` with `networkMode: 'always'` and no retry. It first cancels a
   paused fetch that a mounted hook holds for the same key. So a framework-free
   reader (the play path, the end of a book, keep-ahead) always settles, instead
-  of waiting for the browser's online flag or a hidden tab's focus.
+  of waiting for [the online flag](#the-online-flag-srclibdevice-onlinets) or a
+  hidden tab's focus.
 
 `useServerInfo(connectionId?)` takes the same optional connection id as
 `useCapability`. It keeps its answer (`gcTime: Infinity`), so a gated hook
@@ -1782,10 +1789,10 @@ picked in this order:
    stands. A list that loads late then moves nothing under the listener;
 3. else, when the pick is gone from a server that answered, that server's first
    library;
-4. else the first connection, in the listener's order, that is not known to share
-   nothing. Its first library is the selection when its list is in. While its
-   list is loading or failed, there is no selection and `waitingOn` names it.
-   Only a server that answered with no libraries is passed over.
+4. else the first connection, in the listener's order, skipping only a server
+   that answered with no libraries. When that connection's list is in, its first
+   library is the selection. While its list is loading or failed, there is no
+   selection and `waitingOn` names the connection.
 
 `useSelectedLibrary().server` is the group of the selected library's server, or
 of the `waitingOn` server. The Library screen shows that server's state
@@ -1800,17 +1807,18 @@ of the `waitingOn` server. The Library screen shows that server's state
   when there are several.
 
 `LibraryPicker` offers every server's libraries whatever is shown, which is the
-way out of a server that does not answer. Among several servers its labels carry
-the server ("Books · Home"). With nothing else to choose it is a plain label
+way out of a server that does not answer. With several servers, each label names
+its server ("Books · Home"). With nothing else to choose it is a plain label
 (`library-picker-label`), so the shelf still says whose it is. It is hidden with
 one library on one server.
 
 **The car** has no picker and no state to show for a server, so it never waits on
 one (`resolveCarLibrary`). Where `resolveLibrary` would wait (no pick, or a pick
 whose server answered that it shares nothing), the car lists the first server
-that is read and has a library. It goes back to the first server once that
-answers, because nothing is remembered. A pick whose server has not answered, or
-still has a library, is never replaced by another server's there either.
+whose list is read and has a library. The car remembers nothing, so it goes back
+to the first server once that server answers. Like the Library, the car never
+replaces a pick whose server has not answered, or still has a library, with
+another server's library.
 
 ### Other device preferences
 
