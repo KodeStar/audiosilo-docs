@@ -14,7 +14,7 @@ addresses to talk to (capability `addresses`). The user-facing side is
 
 The routes are `src/app/connect/{_layout,index,sign-in,ready,scan}.tsx`; the screens and
 their rules live in `src/components/connect/` (pure rules in `connect-model.ts`). The
-route table is in the [overview](overview.md#route-map). Three steps, counted by
+route table is in the [route map](routes.md#route-map). Three steps, counted by
 `StepDots` (`CONNECT_STEPS`):
 
 1. **Start** (`/connect` → `ConnectStart`). The address field asks the server who it is

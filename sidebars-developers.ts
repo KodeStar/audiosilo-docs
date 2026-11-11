@@ -41,6 +41,10 @@ const sidebars: SidebarsConfig = {
       label: 'Player app (audiosilo-frontend)',
       items: [
         'frontend/overview',
+        'frontend/routes',
+        'frontend/shell',
+        'frontend/styling',
+        'frontend/web-build',
         'frontend/playback',
         'frontend/audio-effects',
         'frontend/native-integrations',
@@ -49,6 +53,7 @@ const sidebars: SidebarsConfig = {
         'frontend/end-of-book',
         'frontend/sleep-timer',
         'frontend/player-ui',
+        'frontend/library-and-browse',
         'frontend/book-page',
         'frontend/reader',
         'frontend/podcasts',

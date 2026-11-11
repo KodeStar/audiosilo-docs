@@ -27,7 +27,7 @@ timer have their own pages ([End of a book](end-of-book.md),
   frame's `phoneBottom` over NativeTabs - never one per tab stack, since NativeTabs
   keeps visited tabs alive and a card per stack ticked up to five times. It sits on
   the native bar's measured `bar` edge (see
-  [Toasts](overview.md#toasts)) and renders nothing until that edge is known, so it
+  [Toasts](shell.md#toasts)) and renders nothing until that edge is known, so it
   never flashes over the bar; on web it rides on the web tab bar. It **publishes its
   own top edge** as the `mini` piece once known, which the toasts and the floating
   grace card clear. Content scrolls behind it, so scroll screens reserve room with

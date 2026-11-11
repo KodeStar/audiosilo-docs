@@ -218,7 +218,7 @@ phone layout, where the sections render in place).
 
 `src/components/shell/route-tree.test.tsx`, `route-tree-cold.test.tsx` and
 `route-tree-connect.test.tsx` are the regression net for the
-[shell's routing rules](overview.md#the-shell-tabs-and-navigation). They drive
+[routing rules](routes.md#routing-rules). They drive
 expo-router's `renderRouter` over **the real `src/app` file list**:
 `realRouteTree()` (`src/testing/route-tree.tsx`) walks `src/app`, stubs every
 screen with its route key as text, and swaps each layout for a plain JS navigator

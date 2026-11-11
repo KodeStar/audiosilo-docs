@@ -216,7 +216,7 @@ while revalidate" start). Without it a reload waited for `/server`, the
 libraries and the first page of books before a single cover was drawn. A start
 with nothing kept (a first visit, a private window) asks the same first answers
 as the gate opens instead (see
-[the web start](overview.md#the-web-start-a-split-build)).
+[the web start](web-build.md#the-web-start-a-split-build)).
 
 - **What is kept** (`isStartupQuery`): `/server`, the libraries, favourites,
   the queue, collections, the listening goal, the household, the author,
@@ -1269,7 +1269,7 @@ field calls `requestFocus()` and jumps to the Search tab, and the screen keys it
 input on the counter so a fresh mount with `autoFocus` takes the focus even when
 the tab was already open. (On web that field opens the command palette, whose
 open state and query are `usePalette` in `src/components/shell/palette-store.ts`;
-see [the shell](overview.md#command-palette-web).) The shell (`useShellEffects`)
+see [the shell](shell.md#command-palette-web).) The shell (`useShellEffects`)
 clears the query when you leave the Search tab; within the tab it is kept, so
 opening a result and coming back shows the same results. The query is not
 persisted.
