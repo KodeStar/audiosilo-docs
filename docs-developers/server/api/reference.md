@@ -67,6 +67,7 @@ else and gate features on the flags.
     "bridge": false,
     "contributions": false,
     "podcasts": false,
+    "audible": false,
     "podcast_fetch": true,
     "podcast_discovery": false,
     "podcast_opml": true,
@@ -563,9 +564,9 @@ Either field is omitted when unknown, and the answer is `{}` when neither is.
 ## Self-service account
 
 The routes in this section and the [API keys](#personal-api-keys) routes share one
-rate limit and one demo refusal. Two routes are exempt from both:
-`DELETE /auth/recovery`, which only reduces access, and the key listing
-`GET /auth/tokens`, which is not counted.
+rate limit and one demo refusal. `DELETE /auth/recovery` only reduces access, so
+it is neither limited nor refused. The key listing `GET /auth/tokens` is not
+counted against the rate limit, but a demo account is still refused it.
 
 - **Rate limit:** 10 attempts per IP per 15 minutes. A refusal is `429` with
   `Retry-After`, the seconds until the lockout ends.
@@ -3319,7 +3320,7 @@ token id like any credential, so it has a bucket of its own.
 
 ## Ebooks and the reading place
 
-The reader has capability `ebooks`. A book whose folder holds its EPUB carries an
+The reader is gated by capability `ebooks`. A book whose folder holds its EPUB carries an
 [`ebook`](#get-apiv1librariesidbooks) field. The player fetches the file from
 [`/ebook`](#get-apiv1librariesidebook) and keeps the reader's place in it with
 [`/reading-progress`](#get-apiv1librariesidreading-progress). All three routes
@@ -3896,7 +3897,8 @@ opens one):
     offered place moves the offer to where it got to.
 - **`finish` and `unfinish`** apply only when newer than the row's last
   finish-state change, whoever made it: a `PUT`, an edit, an import or an earlier
-  sync event. Otherwise they are `not_applied` `older`. Both bump the version.
+  sync event. Otherwise they are `not_applied` `older`. When they apply, both bump
+  the version.
   - `finish` marks the book finished (`finished_at` its date to the second, kept
     when already finished). It moves the place to the end when the length is known
     and drops the offered place.
@@ -6911,7 +6913,7 @@ one request is applied in one transaction.
 
 **The `match` field.** The server records `match` as the book's
 [`community_match`](#get-apiv1adminlibrariesidbook) (how `accepted`) in the edit's
-transaction. When the console's dialog sends it:
+transaction. The console's dialog sends it:
 
 - with every accept of ticked fields;
 - alone (after any ticked cover) for a book with no ASIN or ISBN;
@@ -6966,10 +6968,10 @@ stop it or wait for it to finish before unlinking".
 A revert restores the value from what the last scan stored, with no rescan and no
 disk access. Reverting an ASIN/ISBN falls back to any enrichment for it.
 
-**Making an other series the main one swaps them.** An edit may set `series` to a
+**Making an other series the main one swaps them.** When an edit sets `series` to a
 series the book's `more_series` lists, in any spelling (case, accents, punctuation
-and spacing aside), without setting or reverting `more_series` itself. The server
-then swaps the two:
+and spacing aside), and does not set or revert `more_series` itself, the server
+swaps the two:
 
 - The old main series, at its old `series_index`, takes that entry's place in
   `more_series`. A book with no main series just drops the entry, and another entry
@@ -7654,12 +7656,12 @@ title of the community's words and nothing more is replaced only when it is all 
 one case. A reverted title has no `edited` source, so a later `fill` can tidy it
 again.
 
-Rules under every scope:
+The rules an apply follows:
 
-- A field an admin **edited** (`source: "edited"`) is never replaced.
-- A value the book already has isn't rewritten.
-- A series position is written only beside the series it numbers (the book's own,
-  or the one being set).
+- Under every scope, a field an admin **edited** (`source: "edited"`) is never
+  replaced, a value the book already has isn't rewritten, and a series position
+  is written only beside the series it numbers (the book's own, or the one being
+  set).
 - Only `overwrite` reverts, and only community values. A series an admin typed
   stays, and a revert never removes an edit made after the run looked (a
   [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) revert sent with
