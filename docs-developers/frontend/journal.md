@@ -35,7 +35,7 @@ the lists are merged. The user-facing page is [The Journal](/users/listening/jou
 | `journal-screen.tsx` | `JournalScreen`: header (title, export, the segmented tabs, the search box), `DiaryTab` |
 | `journal-model.ts` | Pure: `parseJournalTab`, the search (`searchWords`, `matchesWords`, `annotationHaystack`) |
 | `use-journal-sources.ts` | `useJournalSources`: every server's three lists as `Source` snapshots |
-| `merge-model.ts` | Pure: `mergeNewestFirst`, `overallStatus`, `Sourced<T>` |
+| `merge-model.ts` | Pure: `mergeNewestFirst`, `overallStatus`, `unreadSources`, `Sourced<T>` |
 | `diary-model.ts` | Pure: days, the day bar and its colours, chapter ranges, `matchDrifts`, `driftStrip` |
 | `diary.tsx` | `DiaryDayCard`, the session rows, the day bar, the drift strip, `DiarySkeleton` |
 | `annotations-tab.tsx` | `AnnotationsTab`: the Bookmarks or Notes list, its label chips and search |
@@ -73,6 +73,8 @@ with it. `keepFirstPage` trims a released list.
   - A server reading `false` is `unsupported`.
   - A server whose `/server` failed is an `error`, never an endless load. Its Retry asks
     `/server` again too.
+  - A server whose `/server` is held for the network with no answer kept is still
+    `loading`, and its source is `waiting`.
 - **Notes wait for their tab.** The Diary shows none, so `useJournalSources({ notes })`
   holds them back until the Notes tab is first opened. Held back means `enabled: false`:
   the cache is read and nothing is fetched. Until then the tab's count shows only what
@@ -99,6 +101,11 @@ back.
 | `error` | every able server failed |
 | `unsupported` | no server can list |
 | `ready` | otherwise |
+
+`unreadSources` says when the page shows the offline state in place of its skeleton or
+its error. It gives `overallStatus` and each loading source's `waiting` to
+[`offlineState`](state-and-data.md#offline-states-srcliboffline-statets). The Diary
+and both list tabs check it before their skeleton.
 
 The tab counts (`completeCount`) show only once every able server's list is complete.
 
@@ -169,7 +176,7 @@ through `useJumpTo`.
 
 Rows are the shared [`BookmarkRow` / `NoteRow`](annotations.md#rows) with `book` (the
 cover leads) and the server flag, in one card whose foot is the list's footer. The empty
-states tell apart unsupported (pointing to the Library), loading, error, "No bookmarks
+states tell apart unsupported (pointing to the Library), offline, loading, error, "No bookmarks
 match" and truly empty.
 
 ## Export
