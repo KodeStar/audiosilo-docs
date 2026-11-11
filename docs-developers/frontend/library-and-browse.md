@@ -72,8 +72,8 @@ The view is `books-view.ts`, which is pure:
 - `sortBooks` sorts. Title order folds accents and skips a leading article. An
   untitled book sorts, and shows, by its folder name through `bookTitle`.
 - `letterGrid` builds the title sort's letter heads and A-Z rail.
-- `lengthBucket` sorts books into the `len` chips, which Home's Short listens
-  shelf reuses.
+- `lengthBucket` places a book in one of the `len` chips. Home's Short listens
+  shelf reuses it.
 
 `books/label-filter.tsx` shows the genre and tag choices as a picker chip that
 opens a dialog. It shows only when a loaded book has a label or the URL names

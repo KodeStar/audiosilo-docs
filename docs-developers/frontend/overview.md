@@ -167,7 +167,9 @@ covers each one in full.
 1. **Node 24 is required.** `.nvmrc` pins `24.16.0`; run `nvm use` first. An
    older system Node crashes the Expo CLI as soon as a `.env` file exists (see the
    [toolchain matrix](../contributing/workspace.md#toolchain-matrix)).
-2. **Native runs need a dev build, not Expo Go.** Run `npx expo prebuild`, then
+2. **Native runs need a dev build, not Expo Go.** The `audiosilo-player` module,
+   `react-native-svg` and `expo-secure-store` are native code, which Expo Go
+   can't load. Run `npx expo prebuild`, then
    `npx expo run:ios` or `run:android`. The web (`npm run web`) needs no native
    build.
 3. **An edit under `modules/audiosilo-player/{ios,android}` needs a full

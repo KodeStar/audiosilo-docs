@@ -244,7 +244,7 @@ codes, but the app no longer mints them. Every sign-in ends in `finishConnect`.
 
 #### Lifetime services
 
-First the headless listeners, then the controllers, in this order:
+The headless listeners come first, then the framework-free controllers:
 
 | Service | What it does | Details |
 |---|---|---|
