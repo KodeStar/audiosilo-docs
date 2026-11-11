@@ -5,15 +5,16 @@ description: "Have your Bridge back up the Audible books you bought into your li
 
 Your [Bridge](bridge.md) can sign in to your Audible accounts and list the books
 each one owns. It shows which are already on your server, and **backs up** the
-rest into your library: it downloads each book, removes its copy protection
-(a lossless copy, chapters kept) and puts it beside your other books.
+rest into your library. It downloads each book, removes its copy protection
+(DRM) and puts it beside your other books. The copy is lossless and keeps its
+chapters.
 
 It can also keep each account's **listening places** in step with Audible, both
-ways. Needs an admin and a Bridge.
+ways. You need to be an admin and have a Bridge.
 
 :::note[A personal backup of books you bought]
 Audible backups are for **a personal backup of books you bought**, with your own
-account. Laws on removing DRM, even from your own purchases, differ from country to
+account. Laws on removing copy protection, even from your own purchases, differ from country to
 country, and in some places it is not allowed at all. Check your local law, and
 keep the copies for yourself.
 :::
@@ -28,7 +29,7 @@ keep the copies for yourself.
    is for and which library it goes with (see
    [Bridge accounts](../getting-started/bridge-accounts.md#audible)).
 4. Check that the library shows **Ready** in
-   [Settings > Bridge](bridge.md#libraries).
+   [Server > Settings > Bridge](bridge.md#libraries).
 5. Wait for the first check, or press [Check now](#check-now).
 6. Open **Server > Settings > Audible** and press **Back up** on a title, or
    [Back up everything](#back-up-everything) on the account.
@@ -53,8 +54,8 @@ and **Remove...**. **View titles** opens the titles page.
 
 ![The Account settings dialog](/img/screenshots/admin/audible-backup-settings.png)
 
-Who an account is for and its library are changed on the Bridge's Accounts tab.
-What it backs up, where, and whether it syncs are set here, in **Account
+You change who an account is for, and its library, on the Bridge's Accounts
+tab. You set what it backs up, where, and whether it syncs here, in **Account
 settings...**.
 
 An account marked **Paused** lost its library. Choose another library for it on
@@ -95,7 +96,7 @@ ASIN, so later checks match it exactly.
 
 When several titles match the same book, only one keeps it. A title that lost but
 may still be that book is **contested**: it shows **Not here** and says which book
-it matched. **Back up everything** and the policies skip it. Then:
+it matched. **Back up everything** and **Back up by itself** skip it. Then:
 
 - **If the book is this title**, give the book this title's ASIN
   ([Editing details](books.md#editing-details) > **ASIN**) and press
@@ -114,7 +115,7 @@ and has the server index it. The title then shows **On this server** with
 
 The backup shows in the Bridge's [Jobs](bridge.md#jobs) list, where **Cancel**
 stops it. The Bridge backs up one book at a time. A download cut off part way
-picks up where it stopped. Nothing in your library is ever overwritten.
+picks up where it stopped. The Bridge never overwrites anything in your library.
 
 ### When a backup fails
 
@@ -122,15 +123,15 @@ The reason under the title says what to do. Press **Back up** again to retry.
 
 | Reason | What to do |
 |---|---|
-| **Audible doesn't let it be downloaded yet.** | Wait: it isn't released yet. |
+| **Audible doesn't let it be downloaded yet.** | Wait until it is released. |
 | **This account doesn't have the right to download it.** | The title left the account, or Audible doesn't allow it. |
 | **Audible refused the download.** | [Sign in again](#sign-in-again-after-updating-the-bridge) on the Bridge. |
-| **The Bridge can't write to this library.** | Check the library is **Ready** in [Settings > Bridge](bridge.md#libraries), and that the destination is a normal path. |
+| **The Bridge can't write to this library.** | Check the library is **Ready** in [Server > Settings > Bridge](bridge.md#libraries), and that the destination is a normal path. |
 | **A different file is already where it would go.** | [Choose another destination](#choosing-a-destination), or move that file. |
 | **There isn't enough free space.** | The Bridge needs about twice the book's size in its data folder, and the book's size in the library. |
 | **The download link ran out twice.** | Back it up again. |
 | **The Bridge no longer has this account.** | Sign in again on the Bridge. |
-| **Audible offers this title only as a DRM-free MP3** | Nothing to do for now: the Bridge can't back these up yet. |
+| **Audible offers this title only as a DRM-free MP3** | Nothing to do for now. The Bridge can't back these up yet. |
 
 #### Sign in again after updating the Bridge
 
@@ -148,7 +149,7 @@ an account still lists its titles, but every backup fails, and the Bridge's
 
 **Not this book** is for a title the Bridge matched to the wrong book, or one you
 never want backed up by itself. The title then counts as not here, and **Back up
-everything** and the policies skip it. **Back up** still works for it.
+everything** and **Back up by itself** skip it. **Back up** still works for it.
 **Undo Not this book** removes the mark.
 
 ### Choosing a destination
@@ -188,7 +189,7 @@ each check, without being asked:
 | **New books in series you have** | a new book in a series already on the server for the account's person |
 | **Only books you choose** | nothing by itself |
 
-A policy only covers **new purchases**, after you chose it. For the books the
+**Back up by itself** only covers **new purchases**, made after you chose it. For the books the
 account already had, use [Back up everything](#back-up-everything).
 
 ## Where backups go
@@ -213,8 +214,8 @@ template.
 ## Preorders
 
 Preorders are listed with their release date. **Back up** on a preorder backs it
-up once Audible releases it: the title shows **Backs up on release**. A policy also
-covers a preorder once it comes out.
+up once Audible releases it. Until then the title shows **Backs up on release**.
+**Back up by itself** also covers a preorder once it comes out.
 
 From the release date, the server checks the account every hour. If the title
 still isn't out 14 days later, it shows **Still not released: check it on
@@ -225,8 +226,8 @@ may not be listed until it comes out.
 
 ## Syncing listening places
 
-With sync on, your place follows you between Audible and AudioSilo: listen in the
-Audible app and your place here moves on, and the other way round.
+With sync on, Audible and AudioSilo keep the same listening place. When you
+listen in the Audible app, your place here moves on, and the other way round.
 
 To turn it on, open **Account settings...** on the account, turn on **Sync
 listening places with Audible**, then press **Save**. It is off for every account
@@ -238,9 +239,9 @@ are on this server.
   back**.
 - **From here to Audible**, a few minutes after you stop listening.
 
-Only the place syncs: listening on Audible adds nothing to your history or stats.
-A title whose length on Audible is quite different from the book here doesn't
-sync. A preorder starts syncing once it is released.
+Only the place syncs. Listening on Audible adds nothing to your history or stats.
+A title whose length on Audible differs from the book here by more than 5% (plus
+2 minutes) doesn't sync. A preorder starts syncing once it is released.
 
 Sometimes the Audible app uploads an older place it still held over the one the
 Bridge wrote. The next sync writes your place to Audible again, once. If you then
