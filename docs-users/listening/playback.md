@@ -35,6 +35,8 @@ For a Chromecast, a TV with Google Cast or a Nest speaker, use the **Cast** butt
 
 AudioSilo saves your place to the server every 15 seconds while you listen, and straight away when you pause, seek or stop. Start a book on your phone, open the web player at your desk, and it's waiting at the right spot.
 
+When the app isn't on screen, or the book is downloaded, it saves once a minute to save battery. Your other devices and the admin console can then be up to a minute behind.
+
 The player shows whether your place is **Synced**, or **Saved on this device, will sync** while the server can't be reached.
 
 A few protections keep your place safe:

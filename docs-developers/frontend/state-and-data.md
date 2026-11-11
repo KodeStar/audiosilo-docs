@@ -1319,6 +1319,61 @@ is documented in [Playback](playback.md). `useDownloads`
 same shape: a Zustand store for reactive state, module-level variables for
 orchestration that must not trigger renders.
 
+### Off screen, a tick is not redrawn
+
+The player store's snapshot moves about once a second while a book plays. A
+mounted screen stays mounted with the phone locked or the tab hidden, so a full
+player left open redrew its seek bar, times and chapter list every second for
+nobody.
+
+So the hooks `usePlayer(selector)` and `useSleepTimer(selector)` read what is
+**shown**, not the live state (`quietOffScreen` in `src/lib/visible-store.ts`):
+
+- **In front**, the two are the same object.
+- **Off screen**, a change that is only a tick is not shown: no listener runs, no
+  selector runs, nothing renders. Off screen is `isOffScreen` in
+  `src/lib/app-activity.ts`: `AppState` is `background`, which on the web is a
+  hidden tab.
+- **iOS's `inactive` is not off screen.** The app is still seen behind the app
+  switcher, Control Centre or a system alert.
+- **Coming back** shows the live state at once.
+
+A tick is one field moving and nothing else:
+
+| Store | The ticking field | A tick is |
+|---|---|---|
+| `usePlayer` | `snapshot` | the same `state`, `trackIndex` and `rate`: the place and the file's length moved, a seek included |
+| `useSleepTimer` | `remaining` | any change of it |
+
+Every other change is shown at once and whole, the held field with it: a play, a
+pause, the end, the next file, another speed, another book, a load, an error, the
+timer's phase. So a component can still act in the background on what the hook
+gives it. `BookEndedListener` starts the next book, `useShakeToExtend` arms from
+the timer's phase, and a hidden tab's title follows play and pause.
+
+`getState()`, `setState()` and `subscribe()` on both stores are live as ever:
+
+- The store's own logic reads them: the saves, the spans, the tab rules.
+- So do the car, the widgets, the Live Activity, Cast, the reader's narration, the
+  reveal toast and the sleep timer's tickers.
+- The lock screen, Now Playing, the web Media Session, Android Auto's session and
+  the watch are fed by the native engine or `service.web.ts`, never by a render.
+
+**The rule this leaves.** Nothing that must happen in the background may depend on
+a component re-rendering for the place, the current chapter or the countdown's
+seconds. Read `getState()` or subscribe. A selector that derives from the place
+(`selectBookPosition`, `selectCurrentChapter`, `selectLivePosition`) is for
+drawing.
+
+A new store that ticks while a book plays gets its hook from `quietOffScreen` too,
+naming its ticking field. In a test, `driveAppState()` (`src/testing/app-state.ts`)
+sets the app's state. React Native's jest `AppState` is otherwise never
+`background`, so every other suite sees the hook show everything.
+
+**Known limit.** Android reports `background` while the activity is paused but
+still visible, behind a permission dialog or a share sheet. The seek bar holds
+still behind it until the app is in front again.
+
 ## Progress sync (`src/playback/progress-sync.ts`)
 
 The offline-safe write path for listening progress:
@@ -1336,7 +1391,10 @@ The offline-safe write path for listening progress:
 - **Durable mirror first.** `saveProgress` always upserts the local mirror
   (`audiosilo.progressMirror`, keep-newest per `(connectionId, libraryId, path)`)
   before touching the network. The mirror is never pruned on sync; it is the
-  resume fallback when the server can't be reached.
+  resume fallback when the server can't be reached. While a book plays it is
+  written every 15 s, also when the save itself runs every 60 s, and a span a
+  kill left open brings it forward at the next launch (`mirrorSpanEnd`):
+  [The periodic save's pace](playback.md#the-periodic-saves-pace).
 - **Offline replay queue.** If the server is known unreachable the save is
   queued locally (`audiosilo.progressQueue`, latest save per
   `(connectionId, libraryId, path)`) without firing a doomed request; a network

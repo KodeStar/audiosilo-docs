@@ -768,8 +768,11 @@ estimates; nothing can recover which day or device they were.
 
 ### Listening sessions: how they are derived
 
-Players already save progress every 15 s while playing, plus on pause, seek
-and stop (`PUT /libraries/{id}/progress`). `handlePutProgress` passes each save
+Players already save progress periodically while playing, plus on pause, seek
+and stop (`PUT /libraries/{id}/progress`). The player's pace is every 15 s with
+the app in front and the book streaming, and every 60 s with the app in the
+background or the book downloaded
+([the player's pace](../frontend/playback.md#the-periodic-saves-pace)). `handlePutProgress` passes each save
 to `catalog.RecordHeartbeat` with the token that made it, so a session knows its
 device and app and works for every client already shipped. The client-posted
 `listening_history` spans can't serve: they arrive only when playback stops,
@@ -790,7 +793,8 @@ own wall time and how far it moved, so a seek ahead or an inflated span is not
 listening; and only a span ending within 60 s of now is live or can be marked
 transcoded. A span older than the session's last record (one synced late) never
 moves the session's place, length or speed back; only a span at or after it does.
-The player cuts its span every 15 s while it plays online, so the live
+The player cuts its span at the same pace as it saves while it plays online
+(every 15 s, or every 60 s in the background or on a download), so the live
 list behaves as with saves. A span's recording is part of its batch's transaction,
 not best effort. A sync `finish` (applied, or `not_applied` `older`) marks the
 token's session on the book finished when that session's last span ended within
@@ -819,13 +823,18 @@ nothing.
   seek forward is not listening, and a seek back adds nothing. The same cap
   applies to any save, a replay from an offline queue included.
 - **Only sessions with listening count.** The first save of a session only
-  opens it, so the time before it (about 15 s) isn't counted, and a session with
+  opens it, so the time before it (about 15 s, up to 60 s at the player's slower
+  pace) isn't counted, and a session with
   no listening recorded (`listened = 0`: a single save, such as a "mark
   finished") is left out of the live list, the
   history and every total (`listenedSQL`). A session therefore appears from its
   second save.
-- **State.** `playing` with a save in the last 60 s, `paused` until 10 minutes,
-  then `ended` (and off the live list). A session continued after a long gap
+- **State.** `playing` with a save in the last 60 s (`livePlaying`), `paused`
+  until 10 minutes, then `ended` (and off the live list). A player in the
+  background or on a downloaded book saves every 60 s, right on that window. Its
+  session can read as `paused` for a moment before the next save lands, in the
+  console and in Listening in the house, until the window is widened
+  (KodeStar/audiosilo-server#364). A session continued after a long gap
   reads as `ended` during the gap and comes back with the late save.
 - **Transcoded.** `catalog.StreamMarks` remembers in memory which files each
   token streamed with `?transcode=1` in the last 10 minutes; a save on a book
