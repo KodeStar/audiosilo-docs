@@ -17,7 +17,7 @@ The book carries on there from where you were. On a tablet or computer, the Cast
 
 You can cast from:
 
-- the **iPhone and Android apps** (Android needs Google Play services);
+- the **iOS and Android apps** (Android needs Google Play services);
 - the **web player** in Chrome, Edge and other Chromium browsers, opened over **HTTPS**. Safari, Firefox and browsers on iPhone or iPad can't cast.
 
 On an iPhone, allow AudioSilo to use your **local network** when it asks. That's how it finds Cast devices.
@@ -31,7 +31,7 @@ If you don't see the Cast button, update the server and the app.
 
 Which addresses work:
 
-- **Plain HTTP on your home network** works from the iPhone and Android apps, for example `http://192.168.1.20:8080`. A server on its default self-signed certificate offers the apps this address at home ([plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect)).
+- **Plain HTTP on your home network** works from the app, for example `http://192.168.1.20:8080`. A server on its default self-signed certificate offers the apps this address at home ([plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect)).
 - **HTTPS with a trusted certificate** works, such as [Let's Encrypt](../getting-started/remote-access.md#a-real-certificate-with-autocert-lets-encrypt) or a [reverse proxy](../getting-started/remote-access.md#behind-a-reverse-proxy) with a real certificate.
 - **A self-signed `https://` address doesn't work.** A Cast device can't click through a certificate warning.
 - **`localhost` doesn't work.** Connect to the server by its network address instead.

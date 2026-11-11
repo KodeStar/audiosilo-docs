@@ -3,17 +3,17 @@ title: Connect the app to your server
 description: "Sign in to your AudioSilo server from the web player or the iOS and Android apps, with a QR code, an invite or a password."
 ---
 
-Before you can listen, the AudioSilo app or web player signs in to your server. If you run the server, scan a pairing code from the admin console. If someone invited you, open the invite link they sent.
+Before you can listen, the iOS and Android apps or the web player must sign in to your server. If you run the server, scan a pairing code from the admin console. If someone invited you, open the invite link they sent.
 
 You do this once per device. The app stays signed in until you sign out, your password changes, or an admin signs the device out.
 
 ## If you run the server
 
 1. Sign in to the [admin console](../admin/console-tour.md).
-2. Find a pairing QR code. The first-time setup ends with a **Connect a phone** step that shows one. Later, open **People**, then your own page, and select **Pair a device**.
-3. Point your phone's camera at the QR code and tap the link it finds.
+2. Find a pairing code, a QR code that signs a device in. The first-time setup ends with a **Connect a phone** step that shows one. Later, open **People**, then your own page, and select **Pair a device**.
+3. Point your phone's camera at the pairing code and tap the link it finds.
 
-The phone opens the AudioSilo app, or the web player, signed in as you. You can also sign in to the app with your admin username and password. See [First run](../getting-started/first-run.md#set-up-your-server).
+The phone opens the app, or the web player, signed in as you. You can also sign in to the app with your admin username and password. See [First run](../getting-started/first-run.md#set-up-your-server).
 
 ## If someone invited you
 
@@ -21,22 +21,22 @@ The phone opens the AudioSilo app, or the web player, signed in as you. You can 
 2. The server's connect page signs the invite in.
 3. Choose where to listen:
    - **Open web player** - listen in this browser, with nothing to install.
-   - **Open in app** - sign in the AudioSilo app on this device. If nothing happens, the app isn't installed: see [Get the apps](mobile-apps.md).
+   - **Open in app** - sign in the app on this device. If nothing happens, the app isn't installed. See [Get the apps](mobile-apps.md).
    - The QR code - scan it to sign in your other devices, such as your phone.
 
 ![The server's connect page with a pairing QR code and Open in app and Open web player buttons](/img/screenshots/server/connect-page.png)
 
 :::tip
-Treat an invite link like a key. Anyone who opens it can sign in as you, so don't post it publicly.
+Anyone who opens your invite link can sign in as you, so don't post it publicly.
 :::
 
 If the invite has expired or is used up, the page says so. Ask for a new one. The admin's side is in [Invite people](../admin/users-and-invites.md).
 
 ## Scanning the QR code with your phone
 
-Point your phone's camera at a pairing QR code and tap the link it finds. The phone opens signed in, in the web player or the AudioSilo app.
+Point your phone's camera at a pairing code and tap the link it finds. The phone opens signed in, in the web player or the app.
 
-Each device can scan the same invite code, up to the invite's number of uses. If the app is installed, you can also tap **Scan a QR code** on its connect screen. Only the iOS and Android apps can scan.
+Each device can scan the same invite's QR code, up to the invite's number of uses. If the app is installed, you can also tap **Scan a QR code** on its connect screen. Only the iOS and Android apps can scan.
 
 ## Connecting from the app
 
@@ -51,13 +51,13 @@ Each device can scan the same invite code, up to the invite's number of uses. If
 3. Choose **Invite code** or **Username and password**.
 4. Enter your code, or your username and password, and tap **Sign in**.
 
-The app adds `https://` to the address. Type `http://` yourself for a server that only answers plain HTTP. Do the same at home for a server on its default self-signed certificate (see [plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect)).
+The app adds `https://` to the address. Type `http://` yourself for a server that only answers plain HTTP. Do the same at home for a server on its default self-signed certificate (see [Plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect)).
 
 If the server can't be reached, check the address for typos and that the server is on. A home address like `192.168.1.20:8080` only works on your home network.
 
 Instead of an address, you can tap **Scan a QR code** in the apps, or **I have a pairing link** in the web player and paste the link.
 
-An **invite code** looks like `9M4K-P2TQ-WX7V-3RHD`. Many accounts have no password, which is normal: you can [set one](account.md#password) whenever you like.
+An **invite code** looks like `9M4K-P2TQ-WX7V-3RHD`. Many accounts have no password, which is normal. You can [set one](account.md#password) whenever you like.
 
 ### When signing in doesn't work
 
@@ -91,9 +91,9 @@ You don't need a new invite:
 
 - On a signed-in device, open your [account page](account.md#pair-another-device) and tap **Show a pairing code**. Scan it with the new device within 10 minutes.
 - Or sign in with your username and [password](account.md#password).
-- An Apple Watch signs in from your iPhone: see [Listen on your Apple Watch](apple-watch.md#setting-it-up).
+- An Apple Watch signs in from your iPhone. See [Listen on your Apple Watch](apple-watch.md#setting-it-up).
 
-To listen from **more than one server**, tap **Add a server** in your profile menu, or in [Settings > Accounts and devices](settings.md#accounts-and-devices). Home and search then cover all of them. Only the iOS and Android apps can do this: the web player only reaches its own server.
+To listen from **more than one server**, tap **Add a server** in your profile menu, or in [Settings > Accounts and devices](settings.md#accounts-and-devices). Home and search then cover all of them. Only the iOS and Android apps can do this, because the web player only reaches its own server.
 
 ## At home and away
 
@@ -101,7 +101,7 @@ A server can have two addresses. A **home address** works only on the same netwo
 
 When the server has both, the iOS and Android apps use the home address at home and the away address when you're out. They switch by themselves, and a playing book carries on from the same place. Before using the home address, the app checks the server there really is yours.
 
-Your [account page](account.md#at-home-and-away) lists both addresses. The web player doesn't switch: it keeps the address you opened it at. An Apple Watch [works the same way as the phone](apple-watch.md#at-home-and-away).
+Your [account page](account.md#at-home-and-away) lists both addresses. The web player doesn't switch. It keeps the address you opened it at. An Apple Watch [works the same way as the phone](apple-watch.md#at-home-and-away).
 
 To listen away from home at all, the server must be reachable from the internet. See [Reach your server from outside your home](../getting-started/remote-access.md).
 
@@ -116,5 +116,5 @@ To listen away from home at all, the server must be reachable from the internet.
 
 - On a device in [kids mode](kids-mode.md#links-in-kids-mode), the app doesn't open links or QR codes. It asks for a grown-up.
 - A link to a book, opened while you're signed out, takes you through signing in and then to the book.
-- Some servers offer a guest demo: the connect screen then shows **Try the demo**. There is also a [public demo](../demo.md).
+- Some servers offer a guest demo. The connect screen then shows **Try the demo**. There is also a [public demo](../demo.md).
 - A pairing code made on another device works once, for 10 minutes. A link from an invite works for as many devices as the invite has uses left.

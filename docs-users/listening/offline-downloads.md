@@ -3,7 +3,7 @@ title: Listen offline
 description: Download books to your phone, tablet or browser so they play with no connection to your server.
 ---
 
-Streaming needs your server; downloads don't. Download a book before a flight, a commute through tunnels or a weekend off-grid, and it plays entirely from your device. Downloads work in the iOS and Android apps and in the web player.
+A downloaded book plays entirely from your device, with no connection to your server. Downloads work in the iOS and Android apps and in the web player.
 
 ## Downloading a book
 
@@ -31,23 +31,23 @@ The **Downloads** tab shows everything stored on the device you're using.
 - **On your Apple Watch**, in the iPhone app with a paired watch: the books on your watch. See [Apple Watch](apple-watch.md#in-downloads-on-your-iphone).
 - **Ready offline**: the books on this device. Tap one to open it, or **Remove** to delete it from the device. The book, your progress and your bookmarks stay safe on the server.
 
-Downloads belong to each device: what you downloaded on your phone isn't on your tablet.
+Downloads belong to each device. What you downloaded on your phone isn't on your tablet.
 
 ## Automatic downloads
 
 The **Automatic downloads** card holds three settings. They're the same ones as in [Settings](settings.md#up-next-and-downloads).
 
-- **Download automatically**: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to downloads as you play it. The apps start at **On Wi-Fi** and the web player at **Never**. A browser can't tell Wi-Fi from mobile data, so there On Wi-Fi downloads on any connection.
+- The picker at the top: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to downloads as you play it. The apps start at **On Wi-Fi** and the web player at **Never**. A browser can't tell Wi-Fi from mobile data, so there On Wi-Fi downloads on any connection.
 - **Keep the next books ready**: **Off**, **1**, **2** or **3** (below).
 - **Remove a download when you finish the book**, to free up space as you go. Your place is kept. It's on unless you turn it off.
 
 ### Keep the next books ready
 
-Set this to 1, 2 or 3, and while you listen AudioSilo downloads that many of your **next** books. They're ready before you need them, which is handy before a trip. It's **Off** unless you turn it on.
+Set this to 1, 2 or 3, and while you listen AudioSilo downloads that many of your **next** books. They're ready before you need them. It's **Off** unless you turn it on.
 
 - **Which books**: the top of your [Up next](up-next.md) queue first, then the next books in the series you're playing. Finished books are skipped.
 - **When**: only while a book is playing or loaded.
-- **On what connection**: it follows **Download automatically**. With **Never**, it does nothing.
+- **On what connection**: it follows the picker at the top of the card. With **Never**, it does nothing.
 - **How much room**: it always leaves at least 1 GB free, or a tenth of your storage if that's more.
 
 A line under the setting says what it's doing. Books it downloaded are marked **Kept ahead**.
@@ -70,7 +70,7 @@ A watch has its own downloads, separate from your phone's. See [Apple Watch](app
 
 ## How downloaded playback differs
 
-Barely at all, and that's the point:
+Very little changes:
 
 - A downloaded book plays from the device, so it starts instantly and never buffers.
 - Chapters, the sleep timer, speed, bookmarks and notes all work the same.
@@ -87,11 +87,11 @@ When your server has [community metadata](book-page.md#about-this-book) switched
 
 ## Downloads in a web browser
 
-The web player can download books too, no app needed. Downloads are kept in the browser's own storage, so a laptop can go offline with a book on board.
+The web player can download books too, no app needed. Downloads are kept in the browser's own storage, so a laptop can play them with no connection.
 
 - It needs a **secure connection** (an `https://` address). On plain `http://`, the Downloads tab doesn't appear.
 - **Clearing the browser's site data deletes your downloads.** Your books and progress stay safe on the server.
-- A browser can clear stored data when the disk runs very low. Installing the web player as an app (below) makes the browser protect it more. For long trips, the [mobile app](mobile-apps.md) is the safest choice.
+- A browser can clear stored data when the disk runs very low. Installing the web player as an app (below) makes the browser protect it more. For long trips, the [iOS or Android app](mobile-apps.md) is the safest choice.
 - On an **iPhone or iPad**, Safari stops playback in the background. Use the iOS app to listen with the screen off.
 - A book the browser [can't play directly](playback.md#books-a-browser-cant-play-directly) can't be downloaded in the browser.
 
@@ -105,7 +105,7 @@ You can install the web player as an app. It gets its own icon and window, and i
 - **Android**: in Chrome's menu, choose **Add to Home screen** or **Install app**.
 - **iPhone or iPad**: in Safari, tap **Share**, then **Add to Home Screen**.
 
-Installing also tells the browser the site matters to you, so it guards your downloads more strongly. The native apps add more than this: see [Get the apps](mobile-apps.md).
+Installing it also makes the browser less likely to clear your downloads. The iOS and Android apps add more than this. See [Get the apps](mobile-apps.md).
 
 ## Good to know
 

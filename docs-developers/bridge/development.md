@@ -28,7 +28,7 @@ docker build --target slim .   # a Dockerfile change: slim | cuda | full | agent
   findings, don't widen the excludes.
 - A Go version bump is three edits: `go.mod`, `.go-version` and the Dockerfile's
   `golang:` tag.
-- **The Audible fake** (Phase 4a) and its tests build only with the
+- **The Audible fake** and its tests build only with the
   `audiblefake` tag, so the untagged gate skips them. A change to the Audible
   packages also runs:
 
@@ -165,11 +165,16 @@ Conventions that carry the design:
 - **Writes into a library** go only through typed operations, every path through
   `mapping.SafeJoin` against a **checked** mapping, written to a temporary file and
   renamed, umask 022, with a targeted rescan after (`POST /bridge/rescan`). A
-  library that isn't mapped and writable refuses them. The only write (Phase 1a,
-  and Phase 1c's `description.json`) is a
-  book's [`.audiosilo/` files](attachments.md#how-the-bridge-writes-them); deletes,
-  when a later phase needs them, move to `.audiosilo-trash/`.
-- **No agent CLI runs in the Bridge** (decision 15). The engine gets only
+  library that isn't mapped and writable refuses them. The generate, describe,
+  `chapters.detect` and `readalong.align` jobs write only a book's
+  [`.audiosilo/` files](attachments.md#how-the-bridge-writes-them), `description.json`
+  among them. The podcast jobs write a show's files in a podcast library
+  ([Podcasts](podcasts.md)), and `audible.import` installs a backed-up title
+  without replacing anything
+  ([The hardened transfer](audible.md#the-hardened-transfer-internaltransfer)).
+  A delete moves the files into `.audiosilo-trash/` first, as podcast retention
+  does ([Retention policy and deletion authority](podcasts.md#retention-policy-and-deletion-authority)).
+- **No agent CLI runs in the Bridge.** The engine gets only
   `agentbox`'s runner; the local claude and codex runners stay for their output
   parsers (`agent.ClaudeResult`, `agent.CodexResult`, shared with the container
   runs) and their tests.
@@ -181,31 +186,42 @@ address (`:8091`). It follows the system colour scheme: dark by default, and und
 `prefers-color-scheme: light` `index.css` redefines the brand tokens and the state
 shades it uses with the server console's light palette (`src/theme.test.ts` fails
 a token or a used shade the light block misses). `public/favicon.svg` (also in the
-placeholder page) is its icon. The page has seven tabs: **Status** (led by a **Get set up** card,
-the [setup checklist](pairing-and-jobs.md#the-setup-checklist) with an **Open**
-link to the tab of each step still to do, until every required step is done; pairing, the last heartbeat,
-the job kinds and lanes, where the secret key came from, and a **Characters and
-recaps** card: the agent container and each CLI's version and credential kind, the
-speech recognition, the monthly budget with this month's spend, the per-book cap
-and the transcript retention, noting that the monthly budget is set on the
-**Settings** tab and applies straight away (when
-`AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` sets it, that applies at the next
-start) while the per-book cap and the retention are `config.yaml` settings
-applied at the next start), **Libraries** (each server library, the folder the
-Bridge uses and its last check, with **Check now**), **Jobs** (the jobs it ran,
-with cancel, a `bridge.verify` result as a file table, and for a
-`sidecars.generate`, `sidecars.describe` or `chapters.detect` job its stage, progress, cost, the park's code, hint and
-retry time, and **Retry** while it is parked; once done, the files it saved and
-whether a description came, for a describe job what its check measured against, and
-for a chapters job how many chapters it found; a known kind is named in words
-only, its raw kind the label's tooltip, and a park leads with its hint for people,
-the engine's own message under a collapsed **Details** line), **Settings** (its public address,
-the check interval, the ASR fallback, the monthly agent budget, the password),
-**Accounts** (Phase 2b: the GitHub sign-in and the agent's credentials; see
-[Contributions](contributions.md#the-pages-routes)), **Workers** (the [ASR workers](workers.md): add one, its token shown once in the commands to run, its state and figures, remove) and **Logs**
-(recent lines). It has no router: the tab rides the URL hash, and `#/jobs/<id>`
-opens one job (the server's console links a parked job there, by its server job
-id).
+placeholder page) is its icon.
+
+The page has seven tabs:
+
+- **Status.** It leads with a **Get set up** card: the
+  [setup checklist](pairing-and-jobs.md#the-setup-checklist), with an **Open**
+  link to the tab of each step still to do, until every required step is done.
+  Below it are pairing, the last heartbeat, the job kinds and lanes, and where the
+  secret key came from. A **Characters and recaps** card shows the agent container
+  and each CLI's version and credential kind, the speech recognition, the monthly
+  budget with this month's spend, the per-book cap and the transcript retention.
+  It notes that the monthly budget is set on the **Settings** tab and applies
+  straight away (when `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` sets it, that
+  applies at the next start), while the per-book cap and the retention are
+  `config.yaml` settings applied at the next start.
+- **Libraries.** Each server library, the folder the Bridge uses and its last
+  check, with **Check now**.
+- **Jobs.** The jobs it ran, with cancel, and a `bridge.verify` result as a file
+  table. For a `sidecars.generate`, `sidecars.describe` or `chapters.detect` job
+  it shows the stage, progress, cost, the park's code, hint and retry time, and
+  **Retry** while it is parked. Once the job is done it shows the files it saved
+  and whether a description came, for a describe job what its check measured
+  against, and for a chapters job how many chapters it found. A known kind is
+  named in words only, with its raw kind in the label's tooltip. A park leads with
+  its hint for people, with the engine's own message under a collapsed
+  **Details** line.
+- **Settings.** Its public address, the check interval, the ASR fallback, the
+  monthly agent budget and the password.
+- **Accounts.** The GitHub sign-in and the agent's credentials (see
+  [Contributions](contributions.md#the-pages-routes)).
+- **Workers.** The [ASR workers](workers.md): add one (its token shown once in the
+  commands to run), its state and figures, and remove.
+- **Logs.** Recent lines.
+
+The page has no router. The tab rides the URL hash, and `#/jobs/<id>` opens one
+job; the server's console links a parked job there, by its server job id.
 
 | Route | What it does |
 |---|---|
@@ -213,14 +229,14 @@ id).
 | `POST /api/login` | `{ password }` -> `{ token }`; rate limited per address |
 | `POST /api/logout` | ends the session |
 | `POST /api/password` | `{ current, new }`; at least 8 characters. A wrong current password is `403`, not `401` (a `401` signs the page out); `409` when the current password was right but a reset or another change replaced it meanwhile (nothing changed: sign in with the new one) |
-| `GET /api/status` | the Bridge's state: version, pairing (with the reason when the server refuses its token), online, last heartbeat and error, kinds, lanes, the secret key's source, `public_url`, the server address the pairing form starts with, (Phase 2b) `setup` and `setup_complete`, and `worker_downloads` (true when the image's worker builds are there, so the [worker install](workers.md#installing-a-worker) is served) |
+| `GET /api/status` | the Bridge's state: version, pairing (with the reason when the server refuses its token), online, last heartbeat and error, kinds, lanes, the secret key's source, `public_url`, the server address the pairing form starts with, `setup` and `setup_complete`, and `worker_downloads` (true when the image's worker builds are there, so the [worker install](workers.md#installing-a-worker) is served) |
 | `POST /api/pair` | `{ server_url, code }`: pair with a server. `400` for an address that isn't an absolute `http(s)` URL; `422` when the server refused the code, is too old for a Bridge (`404`/`405`), refused the pairing otherwise, or has a certificate the Bridge can't verify (the message says to use its `http://` address); `502` for a server it can't reach (the message names the address and, for a lookup, refused or timed-out connection, the address to use instead), one that answered `5xx`, or an answer it can't use; `500` with its sentence when the server accepted the code but the Bridge couldn't save the pairing (the token is removed again; make a new code); `409` when already paired (the [pairing failure table](pairing-and-jobs.md#pairing)) |
 | `POST /api/unpair` | forget the token here |
 | `GET /api/libraries` | the server's libraries with the Bridge's folder, whether it is configured, and the last check |
 | `PUT /api/libraries/{id}` | `{ mount_path }` (absolute; `""` goes back to the server's path), then re-checks that library; `409 locked` when `AUDIOSILO_BRIDGE_LIBRARIES` sets the mappings |
 | `POST /api/libraries/check` | check the mappings now (`202`) |
-| `GET` / `PUT /api/settings` | `public_url`, `mapping_check_minutes`, `asr_worker_fallback` (`local` or `wait`; empty on a save keeps it), `monthly_budget_usd` (Phase 2b: `0` or more, applied live; a save records `agent.budget_reviewed_at`, and a value the environment locks can't change; absent on a save keeps it) with `budget_reviewed`, and which settings the environment locks (a locked one is never written to `config.yaml`) |
-| `GET /api/accounts`, `POST /api/accounts/github/device`, `DELETE /api/accounts/github`, `PUT` / `DELETE /api/accounts/agent` | Phase 2b's Accounts tab: see [Contributions](contributions.md#the-pages-routes). No route answers a credential back |
+| `GET` / `PUT /api/settings` | `public_url`, `mapping_check_minutes`, `asr_worker_fallback` (`local` or `wait`; empty on a save keeps it), `monthly_budget_usd` (`0` or more, applied live; a save records `agent.budget_reviewed_at`, and a value the environment locks can't change; absent on a save keeps it) with `budget_reviewed`, and which settings the environment locks (a locked one is never written to `config.yaml`) |
+| `GET /api/accounts`, `POST /api/accounts/github/device`, `DELETE /api/accounts/github`, `PUT` / `DELETE /api/accounts/agent` | the Accounts tab: see [Contributions](contributions.md#the-pages-routes). No route answers a credential back |
 | `GET /api/jobs` | the jobs it ran, newest first (`before`, `limit` up to 200) |
 | `GET /api/jobs/{id}` | one job (`404` when the Bridge has no such job) |
 | `POST /api/jobs/{id}/cancel` | stop a job it is running (`202`; `404` when it isn't running here) |

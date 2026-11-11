@@ -5,7 +5,7 @@ description: "The standalone watchOS app (targets/watch/) and the phone's side (
 
 A standalone SwiftUI watchOS 11 app: its own token, `device_id`, outbox and downloads,
 talking to the server directly. The phone hands it a pairing token and books over
-WatchConnectivity and nothing else. There is no sync relay through the phone: with the
+WatchConnectivity and nothing else. There is no sync relay through the phone. With the
 phone in reach, watchOS already routes the watch's `URLSession` through it. The listener's
 side is in the [User Guide](/users/listening/apple-watch).
 
@@ -70,7 +70,7 @@ these changes both sides, with tests on both:
 | `client-id.ts` | `Core/ClientHeader.swift` (`audiosilo-watch/<ver> (watchos)`) |
 
 Sync is [Sync v2](../architecture/cross-repo-contract.md#19-listening-sync-sync-v2) with no
-`PUT .../progress` fallback: a server without `listening_sync` and `"watch"` in `renditions` gets
+`PUT .../progress` fallback. A server without `listening_sync` and `"watch"` in `renditions` gets
 the "too old" screen. A server without only the rendition (ffmpeg gone) still takes the
 listening that waits.
 
@@ -81,31 +81,31 @@ listening that waits.
 always the [watch rendition](../server/media.md#watch-renditions-medianewrenditioncache).
 Preparing is polled in the foreground. Each ready file goes through the one background
 `URLSession` (`Net/BackgroundDownloads.swift`), after a free-space check of the rendition's
-bytes plus 200 MB. The server's encode runs under its own lifetime whoever is polling
-(`renditionsOfBook` queues every file under `baseCtx`, `FileCache.Queue`), so "Preparing on the
+bytes plus 200 MB. The server's encode runs under its own lifetime, whoever is polling:
+`renditionsOfBook` queues every file under `baseCtx` (`FileCache.Queue`). So "Preparing on the
 server" tells the listener the wrist can go down. The download itself waits for the app
 (`DownloadManager.active`).
 
 **Home on the watch** lists what is held, queued, preparing or downloading (`OnTheWaySection`) above
-On this watch and Continue listening, so a sent book is in plain sight. A book shows once: Continue
-listening leaves out what On the way lists.
+On this watch and Continue listening, so a sent book is in plain sight. A book shows once, because
+Continue listening leaves out what On the way lists.
 
 **Now Playing's figures** are both audio time and add up to the chapter (`Skips.figures`, the phone's
-seek bar). Away from 1x one more line gives the wall-clock time left in the phone's phrase
-(`Skips.wallClockLine`, `formatTimeLeft`), and at 1x nothing does.
+seek bar). Away from 1x, one more line gives the wall-clock time left in the phone's phrase
+(`Skips.wallClockLine`, `formatTimeLeft`). At 1x that line is absent.
 
 **Addresses.** The home rule is the [phone's](connect-and-addresses.md#the-pick-rule-srclibserver-addressts):
 no token before the `server_id` probe. The pick is dropped on backgrounding and probed again while active.
 The background upload goes to the away or paired address, never home
 (`AddressPicker.unattended`), so a server with only a home address syncs in the foreground.
 
-**Background sync.** Going to the background cuts the span and hands the outbox's first chunk to
-a background upload carrying `clock_offset`, not `sent_at`, plus a best-effort app refresh
-flush. Replays are safe (event ids are the idempotency keys), and an answer that arrives on a
+**Background sync.** Going to the background cuts the span. The watch hands the outbox's first
+chunk to a background upload carrying `clock_offset`, not `sent_at`, and adds a best-effort app
+refresh flush. Replays are safe (event ids are the idempotency keys). An answer that arrives on a
 wake is applied like a foreground one, for the account it was sent for. In the foreground the
-outbox is sent at launch, on the foreground, after each closed span and every 60 s while events
-wait. It never gates on `NWPathMonitor`, which W0 saw `unsatisfied` while `URLSession` worked:
-it tries, and a failure with no answer means offline.
+watch sends the outbox at launch, on the foreground, after each closed span, and every 60 s while
+events wait. It never gates on `NWPathMonitor`, which was seen reporting `unsatisfied` while
+`URLSession` worked. It tries, and a failure with no answer means offline.
 
 **Signing out, or replacing the account,** is blocked while events wait unless the listener
 discards them (`Core/AccountRules.swift`). Both delete the account's downloads and held books.
@@ -153,10 +153,10 @@ they have been.
 
 ## The message contract
 
-Every message carries `v: 1`. Unknown types and newer versions are ignored on both sides. They
-are built and parsed in `src/watch/watch-model.ts` and `Core/PhoneMessages.swift`: a field
-changed in one changes in the other, with tests on both. Plain property lists only (`addresses:
-{}`, never a null: the native side rejects the rest).
+Every message carries `v: 1`. Both sides ignore unknown types and newer versions. The messages
+are built and parsed in `src/watch/watch-model.ts` and `Core/PhoneMessages.swift`. A field
+changed in one changes in the other, with tests on both. Messages are plain property lists only, for
+example `addresses: {}`, never a null. The native side rejects the rest.
 
 **`pair`, phone to watch** (`sendMessage` when reachable, else `transferUserInfo`):
 
@@ -168,11 +168,16 @@ changed in one changes in the other, with tests on both. Plain property lists on
 ```
 
 The phone mints it with `POST /auth/pair {"ttl_seconds": 600}`. `expires_at` counts from before
-the request, but the server truncates its own to whole seconds, so this one can run under a second
-later: only a hint, since the watch's exchange is what decides. Past it the watch tries nothing and
-asks to send again. Otherwise it exchanges at once (`POST /auth/exchange {pairing_token, device_name}`):
-at `base_url`, then `away`, then the home http address under
-[`pairingFallback`'s rule](connect-and-addresses.md#pairing-at-a-self-signed-servers-home-http).
+the request, but the server truncates its own expiry to whole seconds, so this one can run under a
+second later. It is only a hint; the watch's exchange is what decides. Past it the watch tries
+nothing and asks to send again. Otherwise it exchanges at once
+(`POST /auth/exchange {pairing_token, device_name}`), trying in this order:
+
+1. `base_url`;
+2. `away`;
+3. the home http address, under
+   [`pairingFallback`'s rule](connect-and-addresses.md#pairing-at-a-self-signed-servers-home-http).
+
 A server's own answer at any address ends it, since the token is single use.
 
 **`book`, phone to watch** (always `transferUserInfo`, which survives the watch app being closed):
@@ -196,12 +201,13 @@ A server's own answer at any address ends it, since the token is single use.
 newer watch app names as `queued`, and leaves out a book without its ids.
 
 **When `watch-state` goes** (`Core/StatePublication.swift`, `Phone/PhoneLink.swift`). A launch owes
-the phone the state whatever it says (not before the first unlock, when nothing kept can be read),
-so a reinstall or a sign-out corrects a phone holding an older one. After that only a change is
-owed. A state counts as sent only once `updateApplicationContext` took it. A refusal stays owed and
-goes again at activation, `becameActive`, a reachability or companion change, or with the next
-changed state, never on a timer. Content identical to the session's last context returns success
-and sends nothing (seen in the watchOS 26.5 framework), so that is no error.
+the phone the state whatever it says, so a reinstall or a sign-out corrects a phone holding an
+older one. That waits for the first unlock, because before it nothing kept can be read. After the
+launch, only a change is owed. A state counts as sent only once `updateApplicationContext` took it.
+A refusal stays owed and goes again at activation, `becameActive`, a reachability or companion
+change, or with the next changed state, never on a timer. Content identical to the session's last
+context returns success and sends nothing (seen in the watchOS 26.5 framework), so that is no
+error.
 
 **`remove`, phone to watch** (always `transferUserInfo`):
 
@@ -209,36 +215,44 @@ and sends nothing (seen in the watchOS 26.5 framework), so that is no error.
 {"v": 1, "type": "remove", "server_id": "...", "user_id": 1, "library_id": 1, "path": "Author/Book"}
 ```
 
-The watch handles it in its turn behind any sign-in (`AppModel.receive`,
-`HeldBooks.noteRemove`/`finishRemove`), and only for the account it is signed in to, by
-`downloads.remove`: the path removing by hand takes, so `willRemove` stops a playing book and its
-span closes. It also clears a held row. Refused, it changes nothing, so a held book of that account
-still comes if it signs in. There is no reply: the phone reads the outcome from `watch-state`. A
-`book` is held the moment it arrives, so a `remove`'s ticket keeps the two apart: it clears only the
-row it arrived after, and until the record has gone that record settles no row, so a book sent again
-right after a Remove stands. An old watch ignores the unknown type.
+The watch handles it in its turn, behind any sign-in (`AppModel.receive`,
+`HeldBooks.noteRemove`/`finishRemove`), and only for the account it is signed in to. It removes the
+book by `downloads.remove`, the same path removing by hand takes, so `willRemove` stops a playing
+book and its span closes. It also clears a held row. A refused `remove` changes nothing, so a held
+book of that account still comes if it signs in. There is no reply; the phone reads the outcome
+from `watch-state`. An old watch ignores the unknown type.
+
+A `book` is held the moment it arrives, so a `remove`'s ticket keeps the two apart. The ticket
+clears only the row the `remove` arrived after. Until the record has gone, that record settles no
+row, so a book sent again right after a Remove stands.
 
 **Order is the rule of `pair` then `book`.** The watch handles messages one at a time, in order,
 so a `book` after its `pair` waits for that sign-in. `sendPair` answers only once the pair is ahead
-of what follows: the watch replied to `sendMessage`, or it fell back to `transferUserInfo`, FIFO
-with the books. After 10 s with no reply it transfers too. A second copy is harmless, since the
+of what follows. That is when the watch replied to `sendMessage`, or when the send fell back to
+`transferUserInfo`, FIFO with the books. After 10 s with no reply it transfers too. A second copy is harmless, since the
 token is single use and the watch ignores a failed sign-in again for an account it holds. A new
 pair cancels an undelivered older one and moves the queued books behind itself. Two sends at once
 for a connection share one pair (`setUpWatch`), and a book sent while a pair has over a minute
 left follows it rather than minting another.
 
-**A book's sends and Removes go one at a time**, in the order asked (`send.ts`, `inTurn`), or a
-Remove tapped while a send waits for its pair would overtake that `book`. `sendPair` moves what is
-still queued when it settles behind itself, in their order.
+**A book's sends and Removes go one at a time**, in the order asked (`send.ts`, `inTurn`).
+Otherwise a Remove tapped while a send waits for its pair would overtake that `book`. When
+`sendPair` settles, it moves what is still queued behind itself, in their order.
 
-**Who sees what** (`watch-model.ts`): the card for a paired watch and an account that can use one
-(not a kid's, 403 `kid_account`; not a demo's), with the install line in place of its button until the
-app is on the watch. The book action needs the app installed and `watch` in the server's
-`renditions`, and never shows on an episode. The Downloads section needs the app installed and an
-account that can use one (`watchSectionVisible`). The card keeps set-up, signed in as and what
-waits; the books are in Downloads, and both the card and the Send to watch toast link there
-(`openDownloads`, `?watch=<connection id>`: not `?connection=`, which scopes content, and this page
-is every server's; `&at=` tells one link from the next, so each scrolls to the section).
+**Who sees what** (`watch-model.ts`):
+
+- **The card** shows for a paired watch and an account that can use one: not a kid's
+  (403 `kid_account`) and not a demo's. Until the app is on the watch, the install line takes
+  the place of its button.
+- **The book action** needs the app installed and `watch` in the server's `renditions`. It never
+  shows on an episode.
+- **The Downloads section** needs the app installed and an account that can use one
+  (`watchSectionVisible`).
+
+The card keeps set-up, signed in as and what waits. The books are in Downloads, and both the card
+and the Send to watch toast link there (`openDownloads`). The link uses `?watch=<connection id>`,
+not `?connection=`, because `?connection=` scopes content and the Downloads page is every
+server's. `&at=` tells one link from the next, so each scrolls to the section.
 
 ## The watch in Downloads
 
@@ -260,14 +274,16 @@ The watch only says what it holds now, and `transferUserInfo` answers nothing, s
   the watch's own hold limit), with Send again.
 - **Once seen in `watch-state`, a book that leaves it is gone**, so the row goes: removed by hand on
   the watch, or the watch left that account.
-- **Remove** says removing until `watch-state` drops the book, surviving a restart, and never claims
-  it finished while the message is outstanding. A `remove` delivered while the watch says it is
-  signed out or on another account reads as refused (`remove_refused`: the row explains and can be
-  dismissed), and this heals itself if that was only a sign-in still running. Delivered, the row
-  offers Remove again through the same confirm (`rowActions`), since the watch keeps a `remove` not
-  yet handled only in memory and a kill loses it. The repeat restarts the row's hold limit. It does
-  nothing to a book already gone, but it can't tell a copy that came back on the watch since, and
-  stops and removes that one.
+- **Remove** says removing until `watch-state` drops the book, and that survives a restart. It
+  never claims the removal finished while the message is outstanding.
+  - A `remove` delivered while the watch says it is signed out or on another account reads as
+    refused (`remove_refused`). The row explains and can be dismissed. This heals itself if it
+    was only a sign-in still running.
+  - Once the `remove` is delivered, the row offers Remove again through the same confirm
+    (`rowActions`). The watch keeps a `remove` it has not yet handled only in memory, and a kill
+    loses it. The repeat restarts the row's hold limit. It does nothing to a book already gone,
+    but it can't tell a copy that came back on the watch since, so it stops and removes that
+    one.
 
 ## Held books
 
@@ -306,8 +322,8 @@ messages away. So each side has exactly one, and **nothing else may set
   so reads and sends wait for it (`whenActivated`, 5 s at most, then "no watch").
 
 The phone's cold-start copy of `watch-state` lives in `watchDirectoryURL`, the folder the system
-keeps for this very watch, never in `UserDefaults`: a watch paired while the app wasn't running
-would read the last one's sign-in.
+keeps for this very watch, never in `UserDefaults`. In `UserDefaults`, a watch paired while the app
+wasn't running would read the last one's sign-in.
 
 JS reaches the module only through `src/watch/link.ios.ts`. `watchLink.supported` is read once at
 load, so `useSendToWatch` and the card cost a platform without a watch nothing. Wear OS comes in

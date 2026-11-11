@@ -30,7 +30,7 @@ Setting a first password signs nothing out.
 To sign in another phone, tablet or browser without a new invite:
 
 1. Tap **Show a pairing code**.
-2. Scan the QR code with the other device's AudioSilo app or camera, or send it the link. The code works once, for 10 minutes.
+2. Scan the QR code with the iOS or Android app on the other device, or with its camera, or send it the link. The code works once, for 10 minutes.
 3. The other device signs straight in.
 
 If the code expires, tap **Make a new code**.
@@ -72,9 +72,9 @@ API keys let dashboards and tools reach your server for you, such as a Home Assi
 
 Signing out deletes this server's downloads on this device. Your books, progress and bookmarks stay on the server. To get back in, see [Getting back in after signing out](connecting.md#getting-back-in-after-signing-out).
 
-## A kid's account
+## A kids account
 
-A kid's account from someone's [household](household.md) has a simpler page. It has no password, no **Pair another device** and no API keys. The grown-up who manages it sets up its devices from their [Household page](household.md#their-devices).
+A kids account from someone's [household](household.md) has a simpler page. It has no password, no **Pair another device** and no API keys. The grown-up who manages it sets up its devices from their [Household page](household.md#their-devices).
 
 ## Server version
 

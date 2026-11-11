@@ -3,7 +3,7 @@ title: Set up kids mode for a child
 description: "Give a child a simple AudioSilo with big story covers, a big player and a bedtime, and choose what they can hear."
 ---
 
-**Kids mode** turns AudioSilo into something a child can use on their own: their stories as big covers, a big simple player, and a bedtime. There's no search, no settings and nothing else to wander into. It works in the iPhone and Android apps and the web player.
+**Kids mode** turns AudioSilo into something a child can use on their own: their stories as big covers, a big simple player, and a bedtime. There's no search, no settings and nothing else to wander into. It works in the iOS and Android apps and the web player.
 
 ## Setting it up
 
@@ -63,7 +63,7 @@ To stop using kids mode, turn **Kids mode** off for that person on the [Househol
 A kid in your household can have their own phone or tablet:
 
 1. On their card on the Household page, tap **Set up their own device**.
-2. Scan the code with the AudioSilo app on their device.
+2. Scan the code with the app on their device.
 
 The app there starts in kids mode by itself. See [Their devices](household.md#their-devices). A grown-up can hold **Grown-ups** and sign in with their own account to change settings, then remove themselves again.
 

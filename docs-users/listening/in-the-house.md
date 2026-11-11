@@ -3,7 +3,7 @@ title: See what others are listening to
 description: "Share what you're listening to with the other people on your server, and see what they're listening to on your Home page."
 ---
 
-**Listening in the house** shows what other people on your server are listening to: who, which book, and which chapter. It's for a household sharing one server.
+**Listening in the house** shows what other people on your server are listening to: who, which book, and which chapter. It's for people who share one server.
 
 It's **off by default** and works **both ways**. You see others only while you share too, and they see you only while they share.
 
@@ -34,7 +34,7 @@ The cards update about once a minute. Someone whose app [saves once a minute](pl
 - Only their most recent book, if they listened in the last 24 hours.
 - Only listening done while their sharing was on.
 - Only books you can open yourself. If you can't open their latest book, that person doesn't appear.
-- Never kids' accounts, demo accounts or disabled accounts.
+- Never kids accounts, demo accounts or disabled accounts.
 
 ## What is and isn't shared
 

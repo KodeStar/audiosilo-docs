@@ -123,7 +123,7 @@ A `changes` job classifies the diff first. Then these jobs run in parallel:
 - **check** is the verdict over the jobs above, not the ones below. It writes
   the advisories the PR introduces into its summary. It is the name branch
   protection and the sync bot require (see
-  [Build, validate and serve locally](../meta/overview.md#build-validate-and-serve-locally)).
+  [`check` is the verdict](../meta/contributing-data.md#check-is-the-verdict)).
 - **lint** runs `golangci-lint run` (v2.12, over the linter set `.golangci.yml`
   pins). Go-gated.
 - **vuln** runs `govulncheck` directly (pinned to v1.8.0). Go-gated.

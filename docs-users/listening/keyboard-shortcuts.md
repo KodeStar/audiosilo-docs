@@ -3,7 +3,7 @@ title: Use keyboard shortcuts
 description: Control the web player from the keyboard, and press ? to list every shortcut.
 ---
 
-In the **web player** you can control playback from the keyboard, on any page. Press **?** to see the list in the app. The mobile apps don't use these.
+In the **web player** you can control playback from the keyboard, on any page. Press **?** to see the list in the web player. The iOS and Android apps don't use these.
 
 | Key | What it does |
 |---|---|

@@ -54,7 +54,7 @@ Each app release on GitHub includes the Android app as an APK file, like `AudioS
 
 ### Install the APK yourself
 
-1. On your phone, open the [latest AudioSilo app release](https://github.com/KodeStar/audiosilo-frontend/releases/latest).
+1. On your phone, open the [latest app release](https://github.com/KodeStar/audiosilo-frontend/releases/latest).
 2. Under **Assets**, tap the `.apk` file to download it.
 3. Open the downloaded file.
 4. If Android asks, allow the app you opened it from to install unknown apps.

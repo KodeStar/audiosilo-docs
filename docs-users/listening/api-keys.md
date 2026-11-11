@@ -5,9 +5,9 @@ description: "Create a personal API key so a dashboard, script or monitoring too
 
 An **API key** is a secret token that lets another app reach your server as you, without your password. Use one for a home dashboard such as Heimdall, a script, or an uptime monitor. Create keys on your [account page](account.md#opening-it), under **Personal API keys**.
 
-A key can browse your libraries, read your books and save your progress. It can't manage your account: it can't make keys, set your password, manage your [household members](household.md#household-members) or start casting.
+A key can browse your libraries, read your books and save your progress. It can't manage your account. It can't make keys, set your password, manage your [household members](household.md#household-members) or start casting.
 
-Demo accounts and [kids' accounts](account.md#a-kids-account) can't have keys.
+Demo accounts and [kids accounts](account.md#a-kids-account) can't have keys.
 
 ## Creating a key
 
@@ -16,8 +16,8 @@ Demo accounts and [kids' accounts](account.md#a-kids-account) can't have keys.
 3. Give the key a name, such as *Home dashboard*, and tap **Create API key** again.
 4. Copy the key straight away and paste it into the app you're setting up.
 
-:::warning[Shown once - copy it now]
-The key is shown only when you create it. If you lose it, revoke it and make a new one. Treat a key like a password: anyone who has it can use your account.
+:::warning[Shown once, so copy it now]
+The key is shown only when you create it. If you lose it, revoke it and make a new one. Treat a key like a password. Anyone who has it can use your account.
 :::
 
 ## Using a key
@@ -39,4 +39,4 @@ Each key in the list shows when it was created and last used. To switch one off,
 
 A key can reach everything your account can. A key made by an **admin** can also reach admin information, such as the list of users.
 
-For a simple widget, make the key from a regular account with just the access it needs. Then a leaked key can't touch admin features. Your admin can set one up: see [Invite people](../admin/users-and-invites.md).
+For a simple widget, make the key from a regular account with just the access it needs. Then a leaked key can't touch admin features. Your admin can set one up. See [Invite people](../admin/users-and-invites.md).
