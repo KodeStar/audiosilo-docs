@@ -51,7 +51,7 @@ You can add shows yourself in three ways: search a podcast directory, paste a fe
 
 A show the library already has is followed at once. A new show takes a moment while your server fetches it. Until then it's listed under **Shows being added**, which says why if it couldn't be added.
 
-You need full access to the library to add shows. Kids' accounts and the demo can't add or follow shows. If **Add shows** is missing, your server can't fetch podcasts right now: ask your admin.
+You need full access to the library to add shows. Kids accounts and the demo can't add or follow shows. If **Add shows** is missing, your server can't fetch podcasts right now. Ask your admin.
 
 ### Search a podcast directory {/* #searching-a-podcast-directory */}
 
@@ -84,7 +84,7 @@ Every podcast has a feed address, usually ending in `.xml` or `/rss`. Find it on
 3. Pick the file. It can be up to 1 MB.
 4. Keep the page open while it works.
 
-Your server adds five new shows at a time, so a long list goes in batches. The player sends each batch by itself. If you leave the page, choose the same file again to carry on: shows already added are skipped.
+Your server adds five new shows at a time, so a long list goes in batches. The player sends each batch by itself. If you leave the page, choose the same file again to carry on. Shows already added are skipped.
 
 An import can't mark a feed private. Follow that one by its address with **Private feed** on.
 

@@ -9,7 +9,7 @@ To add someone, open the **Household** page and tap **Add someone to your househ
 
 How this differs from the other ways to share:
 
-- **Inviting someone** is done by the server's admin, and gives a full account of their own. See [Invite people](../admin/users-and-invites.md).
+- **Inviting someone**: the server's admin invites them, and they get a full account of their own. See [Invite people](../admin/users-and-invites.md).
 - **Profiles** let several people use one device. See [Share a device](profiles.md).
 
 ## Finding it
@@ -24,7 +24,7 @@ The page has three parts:
 
 - **On this device** - everyone who listens on this device. See [Share a device](profiles.md#on-the-household-page).
 - **Your household** - the people you've added, with **Add someone to your household**.
-- **Listening in the house** - whether you share what you're listening to. See [the house](in-the-house.md#turning-it-on).
+- **Listening in the house** - whether you share what you're listening to. See [See what others are listening to](in-the-house.md#turning-it-on).
 
 ![The Household page at Your household: a kid's card, a grown-up's card, and Add someone to your household](/img/screenshots/web-player/household.png)
 
@@ -46,7 +46,7 @@ The section shows how many you've added, out of the most the server allows (6 un
 
 The kid is now signed in on this device in [kids mode](kids-mode.md). You stay the person listening.
 
-If your own profile has no [PIN](profiles.md#a-pin-for-a-person), the app offers to set one. Do it: without a PIN, a child who leaves kids mode can switch to you.
+If your own profile has no [PIN](profiles.md#a-pin-for-a-person), the app offers to set one. Set one. Without a PIN, a child who leaves kids mode can switch to you.
 
 A kids account has no password. It can't make API keys, pair a device, share collections or join Listening in the house. It signs in only on devices you set up for it.
 
@@ -56,7 +56,7 @@ A kids account has no password. It can't make API keys, pair a device, share col
 2. Turn **Kids account** off.
 3. Choose what they can listen to.
 4. Tap **Add and show their code**.
-5. They scan the QR code with the AudioSilo app on their phone, or open the link. It works once, for 10 minutes.
+5. They scan the QR code with the iOS or Android app on their phone, or open the link. It works once, for 10 minutes.
 
 If they'll also listen on your device, tap **They'll also use this device**.
 
@@ -85,7 +85,7 @@ Each person you've added has a card on the Household page. On it you can:
 
 The card lists every device the member is signed in on, each with **Sign out**.
 
-- **Set up their own device** shows a code to scan with the AudioSilo app on their phone or tablet. A kid's own device starts in [kids mode](kids-mode.md#on-a-kids-own-device).
+- **Set up their own device** shows a code to scan with the app on their phone or tablet. A kid's own device starts in [kids mode](kids-mode.md#on-a-kids-own-device).
 - **Sign in on this device** signs them in here too, as a person of their own.
 
 ## When a member is signed out on this device

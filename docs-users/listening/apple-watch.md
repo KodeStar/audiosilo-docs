@@ -3,22 +3,22 @@ title: Listen on your Apple Watch
 description: "Set up AudioSilo on your Apple Watch, send it books from your iPhone, and listen without your phone."
 ---
 
-Leave the phone at home and take a book with you. The AudioSilo watch app plays books downloaded to your Apple Watch. It sends what you heard back to your server when it next has a connection, so your place stays right everywhere.
+The AudioSilo watch app plays books downloaded to your Apple Watch, with no phone needed. It sends what you heard back to your server when it next has a connection, so your other devices pick up the same place.
 
 The watch is a device of its own, with its own sign-in and its own copy of each book. Your iPhone only signs it in and sends it books.
 
 ## What you need
 
-- An **iPhone** with the AudioSilo app 2.6.0 or later, paired to an Apple Watch on watchOS 11 or later.
+- An **iPhone** with the iOS app 2.6.0 or later, paired to an Apple Watch on watchOS 11 or later.
 - A **server on 2.6 or later** with ffmpeg, which makes the watch's smaller copy of each book. See [Server > Transcoding](../admin/server.md#transcoding).
-- Headphones, unless you want everyone nearby to hear.
+- Headphones, or the watch speaker (see [Playing a book](#playing-a-book)).
 
 ## What it doesn't do
 
 - **No library browsing.** The watch lists only your Continue listening books and the books you send it.
 - **No podcasts**, only books.
 - **One account.** A watch signs in to one account on one server.
-- **No kids' accounts or demo.**
+- **No kids accounts or demo.**
 - **Bookmarks, notes, the ebook and casting stay on your other devices.**
 - **English only** for now.
 
@@ -27,7 +27,7 @@ There's no Wear OS app yet.
 ## Setting it up
 
 1. On your iPhone, open the **Watch** app and install AudioSilo on your watch.
-2. In the AudioSilo app, open your [account page](account.md#opening-it) for the server.
+2. In the iPhone app, open your [account page](account.md#opening-it) for the server.
 3. On the **Apple Watch** card, tap **Set up Apple Watch**.
 4. Open AudioSilo on your watch. It signs in by itself, with nothing to type.
 
@@ -53,7 +53,7 @@ The watch also shows under [Signed-in devices](account.md#signed-in-devices) as 
 
 ### From your iPhone: Send to watch
 
-On your iPhone, open a book's [menu](browsing.md#the-book-menu), or **More** on its [page](book-page.md), and tap **Send to watch**.
+On your iPhone, open a book's [book menu](browsing.md#the-book-menu), or **More** on its [book page](book-page.md), and tap **Send to watch**.
 
 ![The More sheet of a book page on an iPhone, with Send to watch](/img/screenshots/watch/phone-send-to-watch.png)
 
@@ -63,7 +63,7 @@ If the watch isn't ready for the book yet (still signing in, or on another accou
 
 ### How a download goes
 
-**On the way**, on the watch's home screen, shows each book coming and how far it has got. The server first prepares the watch's copy, about 430 MB for a 20-hour book. That can take a while for a long book the first time, but you can lower your wrist. When it's done, the book moves to **On this watch**.
+**On the way**, on the watch's home screen, shows each book coming and how far it has got. The server first prepares the watch's copy, about 430 MB for a 20-hour book. That can take a while for a long book the first time. You don't need to keep looking at the watch while it works. When it's done, the book moves to **On this watch**.
 
 ![On the way on the watch: Preparing on the server](/img/screenshots/watch/watch-on-the-way.png)
 
@@ -88,6 +88,8 @@ Books stay on the watch until you remove them, even finished ones. To remove one
 1. On the watch, open **On this watch**.
 2. Swipe the book and tap **Remove**.
 3. Tap **Remove from watch**.
+
+The book leaves **On this watch**.
 
 Or [remove it from your iPhone](#in-downloads-on-your-iphone). What you heard still syncs.
 
@@ -133,7 +135,7 @@ If the server is older than 2.6 or has no ffmpeg, the watch says so instead of s
 
 ## At home and away
 
-The watch uses home and away addresses [like the phone apps](connecting.md#at-home-and-away). **Address** on [Sync](#sync-status) shows which one is in use.
+The watch uses home and away addresses, like the iOS and Android apps (see [At home and away](connecting.md#at-home-and-away)). **Address** on [Sync](#sync-status) shows which one is in use.
 
 ### A self-signed server
 

@@ -3,13 +3,13 @@ title: Listen in the car
 description: "Play your audiobooks on your car's screen with Android Auto or Apple CarPlay."
 ---
 
-The AudioSilo apps put your books on your car's screen: **Android Auto** on Android, **CarPlay** on iPhone. The car plays through the app on your phone and saves your place as the phone does. The web player has no car mode.
+The iOS and Android apps put your books on your car's screen: **Android Auto** on Android, **CarPlay** on iPhone. The car plays through the app on your phone and saves your place as the phone does. The web player has no car mode.
 
 ## Getting AudioSilo into the car
 
 ### Android Auto
 
-1. Install the AudioSilo app on your phone and [sign in to your server](connecting.md).
+1. Install the app on your phone and [sign in to your server](connecting.md).
 2. Connect the phone to the car and open Android Auto.
 3. On the car's screen, open the app launcher and tap **AudioSilo**.
 

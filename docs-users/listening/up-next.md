@@ -5,13 +5,13 @@ description: Line up the books you want to hear next in Up next, a queue that fo
 
 **Up next** is your queue: the books you want to hear after the one you're on, in your order. It's kept on your server, so the same list follows you to every device. [Podcast episodes](podcasts.md) can go in it too.
 
-Up next needs a recent AudioSilo server. On an older one, the Up next buttons don't appear.
+Up next needs server version 1.17.2 or later. On an older server, the Up next buttons don't appear.
 
 ## Opening Up next
 
 ![The web player on a computer with the Up next drawer open on the right](/img/screenshots/web-player/up-next.png)
 
-**On a computer** (or any wide window), Up next is a **drawer** down the right-hand side, beside the page you're browsing. Drag its left edge to resize it, or use **Hide Up next** to tuck it away.
+**On a computer** (or any wide window), Up next is a **drawer** down the right-hand side, beside the page you're browsing. Drag its left edge to resize it, or use **Hide Up next** to close it.
 
 **On a tablet or phone**, Up next rises from the bottom of the screen as a **sheet**.
 
@@ -23,7 +23,7 @@ Open it from:
 - the Up next button on the [player bar](playback.md#the-mini-player-and-the-player-bar) or in the [full player](full-player.md);
 - the **Q** key, or **Open Up next** in [quick search](browsing.md#quick-search-in-the-web-player), in the web player.
 
-Up next shows one server's queue: the server of the book you're playing, or your main server when nothing is playing.
+Up next shows one server's queue. That's the server of the book you're playing, or your main server when nothing is playing.
 
 ## What's in it
 
@@ -40,7 +40,7 @@ Up next shows one server's queue: the server of the book you're playing, or your
 - In Up next, tap **+** beside a suggestion.
 - In the web player on a computer, drag a book cover onto the drawer.
 
-Each change shows a note with **Undo**, in case you picked the wrong book.
+Each change shows a message with **Undo**, in case you picked the wrong book.
 
 ## Changing the order
 

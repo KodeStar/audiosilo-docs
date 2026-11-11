@@ -3,7 +3,7 @@ title: Browse and search your library
 description: Find something to listen to from Home, the Library, Search and your favourites, on a phone, tablet or computer.
 ---
 
-Once you're [connected](connecting.md), there are four ways to find something to listen to: **Home**, the **Library**, **Search** and your **Favourites**. Tap any book to open its [page](book-page.md), where you can start it.
+Once you're [connected](connecting.md), there are four ways to find something to listen to: **Home**, the **Library**, **Search** and your **Favourites**. Tap any book to open its [book page](book-page.md), where you can start it.
 
 ## Getting around
 
@@ -27,7 +27,7 @@ From left to right:
 
 - The **AudioSilo** logo, which goes Home. Under it is the server you're using, with a warning if it isn't answering or needs you to sign in again.
 - **Home**, **Library**, **Downloads** and **You**. On narrower screens these are icons only.
-- A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player). In the tablet app it opens the Search page.
+- A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player). In the app on a tablet it opens the Search page.
 - **Up next**, with the number of books queued.
 - A **gear** for [Settings](settings.md).
 - Your **profile button**. Its menu switches between [people on this device](profiles.md), lists your servers, and links to your Journal, Household, Settings and account. It also switches between light and dark.
@@ -36,7 +36,7 @@ From left to right:
 
 Under the top bar, a slim row shows the page title, or **Back** once you've opened something. While a book plays, the [player bar](playback.md#the-mini-player-and-the-player-bar) runs along the bottom.
 
-In the web player, **Tab** moves between controls and **Space** presses the one you're on. The player also has [keyboard shortcuts](keyboard-shortcuts.md): press **?** to list them.
+In the web player, **Tab** moves between controls and **Space** presses the one you're on. The web player also has [keyboard shortcuts](keyboard-shortcuts.md). Press **?** to list them.
 
 :::note
 The **Downloads** tab only appears where downloading is possible. In the web player that needs a secure (`https://`) address.
@@ -46,10 +46,10 @@ The **Downloads** tab only appears where downloading is possible. In the web pla
 
 ![The home screen: the greeting, the book you're on, This week and the shelves](/img/screenshots/web-player/home.png)
 
-Home is built around what you're doing. From the top:
+From the top, Home shows:
 
 - **A greeting** with the date and whether your progress has synced. If listening is still waiting on this device, it says how much (see [Listening on more than one device](playback.md#listening-on-more-than-one-device)).
-- **Previously on** - when you come back to a book after 12 days or more, a card reminds you where you were, with the latest community recap you've already passed. **Resume, with 30 seconds of overlap** starts half a minute before where you stopped. It only appears for books the community has recaps for.
+- **Previously on** - for books with recaps in the community database. When you come back to a book after 12 days or more, a card reminds you where you were, with the latest recap you've already passed. **Resume, with 30 seconds of overlap** starts half a minute before where you stopped.
 - **The book you're on** - the chapter, a scale of the whole book, the time left at your speed, and when you'll finish at your pace. **Resume** carries on. **Who's who** and **Story so far** open its characters and recaps, which [never show more than you've heard](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it).
 - **This week** - books finished this year against your goal, hours listened this week, and your streak.
 - **Continue listening** - the other books you've started, most recent first.
@@ -119,7 +119,7 @@ A book in more than one series appears in each. *Guards! Guards!*, for example, 
 
 Collections are lists of books you make yourself, such as "Road trip" or "Book club". This section shows your **Favourites**, your own collections, any **shared with you**, and **New collection**. Collections belong to a server, not a library, so here the picker chooses a server.
 
-To add a book, choose **Add to collection** from its [book menu](#the-book-menu) or its [page](book-page.md#listening-and-the-buttons). You can add it to several collections at once, or create a new one there.
+To add a book, choose **Add to collection** from its [book menu](#the-book-menu) or its [book page](book-page.md#listening-and-the-buttons). You can add it to several collections at once, or create a new one there.
 
 ![A collection's page: its name, description, the owner's buttons and its books](/img/screenshots/web-player/collection.png)
 
@@ -139,9 +139,9 @@ On a collection someone shared with you, **Leave** removes it from your list.
 - Tap a folder to open it, or a book to open its page.
 - **Breadcrumbs** at the top take you back up.
 - Big folders get a **filter box** and an **A-Z rail**.
-- A book the server hasn't scanned yet shows as **Not scanned yet**. You can still open and play it: the server reads it on the spot.
+- A book the server hasn't scanned yet shows as **Not scanned yet**. You can still open and play it, because the server reads it on the spot.
 
-You only see what your account has been given. If something is missing, see [Sharing](../admin/sharing.md).
+You see only what an admin has shared with your account. If something is missing, see [Limit what someone can see](../admin/sharing.md).
 
 ## Series pages
 
@@ -151,13 +151,13 @@ A series page lays the series out like a bookcase.
 
 - **At the top**: the series name, the author, how many books it has and how many you have.
 - **A progress track**: finished books in green, the one you're on in pink, missing ones hatched.
-- **A reading-order switch** (**Publication**, **Chronological** or **Recommended**), for series with more than one order. Your choice is remembered per series on that device. The [book page's Series tab](recaps-and-characters.md#series-with-more-than-one-reading-order) uses it too.
+- **A reading-order switch** (**Publication**, **Chronological** or **Recommended**), for series with more than one order. The [book page's Series tab](recaps-and-characters.md#series-with-more-than-one-reading-order) shares your choice.
 - **The bookcase**: a spine for each book, in order. Books you don't have are pale "ghost" spines. One that isn't out yet shows its [release date](upcoming.md#on-series-pages).
 - **Under the shelf**: the chosen book and one action, such as **Resume**, **Queue it** (adds it to [Up next](up-next.md)), or **View on AudioSilo Meta** for a book you don't have.
 - **Every book in the series**, listed below.
 - **Keep ahead offline**, a shortcut to [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready).
 
-The ghost spines and reading orders come from the [community metadata database](../community/meta-site.md), so your server needs that lookup switched on. Without it, the page shows only the books you have.
+The ghost spines and reading orders come from the community database, [AudioSilo Meta](../community/meta-site.md), so your server needs community metadata switched on. Without it, the page shows only the books you have.
 
 An omnibus numbered as a range, such as books 1-3, fills the places of the books inside it (see [Numbering an omnibus](../admin/books.md#numbering-an-omnibus-or-box-set)).
 
@@ -178,7 +178,7 @@ Tap a result to open it. Going back returns you to the same results.
 
 ### Characters only once you've met them
 
-Character search can't spoil anything. It only looks at books you've started or finished, and only names characters you've already reached. It uses the [same rule as the Characters tab](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). A quiet line counts any matches it hid. Character search needs your server's community metadata lookup.
+Character search can't spoil anything. It only looks at books you've started or finished, and only names characters you've already reached. It uses the [same rule as the Characters tab](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). A quiet line counts any matches it hid. Character search needs community metadata switched on for your server.
 
 ### Quick search in the web player
 
