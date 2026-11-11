@@ -6214,8 +6214,8 @@ would hand this library to everyone who has that one.
 
 When no share qualifies, a new grant share is made. If `Library: <name>` is
 already taken (by a share that didn't qualify, or by another library's grant
-after a rename), it is named `Library: <name> (<library id>)` instead, and from
-2.5.0 (server#230) when that is taken too, `Library: <name> (<library id>) 2`,
+after a rename), it is named `Library: <name> (<library id>)` instead. From
+2.5.0, when that is taken too, it is named `Library: <name> (<library id>) 2`,
 `3` and so on (`grantName`, up to 20 names); the name is internal, since clients
 show the library's own name. From 2.5.0 the new share is created with its
 whole-library rule and its `whole_library_id` mark in one transaction
@@ -6766,7 +6766,7 @@ book path).
 - `chapter_source` - where `chapters` come from now: `"files"` (the scan's
   own), `"community"` (the community list below, fitted onto the audio) or
   `"generated"` (the chapters a Bridge found in the narration, its
-  `chapters.json`: Bridge Phase 1d, see
+  `chapters.json`; see
   [Generated chapters](../community-chapters.md#generated-chapters)).
 - `chapter_choice` - the admin's choice of source: `"files"`, `"community"`,
   or `""` when it is automatic (the community's chapters are used only for a
@@ -7373,13 +7373,14 @@ as it can.
   budget, a read that failed) costs the `works/{id}` and series reads for that result
   alone, and nothing at all when it scores under `ReviewFloor` and no identifier found
   it, as it would be dropped anyway. That is never a failure, and its outcomes are the
-  same. A best that is gone (`404`) gives way to the next; from 2.7.0 one that
-  can't be read for any other reason is an outage at once, and the book an `error`
-  item, so a weaker next candidate never stands in for it. A metaserve with no
+  same. A best that is gone (`404`) gives way to the next. From 2.7.0 one that can't
+  be read for any other reason is an outage at once, and the book an `error` item,
+  so a weaker next candidate never stands in for it. A metaserve with no
   `works/match` takes the search path under
-  [Older community service](#get-apiv1adminlibrariesidbookmatch), on its own scale. Through
-  a proxy adding 80 ms to a local metaserve, over 4,044 books, a run took 3.44 requests a
-  book before this, 1.00 with `expand` and 2.37 on the fetch path.
+  [Older community service](#get-apiv1adminlibrariesidbookmatch), on its own scale.
+  Measured through a proxy adding 80 ms to a local metaserve, over 4,044 books, a
+  run took 3.44 requests a book before this, 1.00 with `expand` and 2.37 on the
+  fetch path.
 - **6 workers, about 60 requests a second.** `workers` only fill the round trips:
   `maxRequestsPerSecond` (60, against metaserve's
   [per-client 100](../../meta/api.md#rate-limit-and-caching)) is what holds a run under
@@ -7531,22 +7532,27 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   or ISBN, or from 2.6.0 a recorded community match) and wasn't when the run
   looked: matched since, by hand or otherwise.
   Its `changes` are empty, and an apply leaves it alone under any scope.
-- `changes` is what applying would write under each scope the run's mode takes
-  (fields in display order, set or reverted, and whether the cover is taken),
-  worked out against the book now by the same rules the apply uses, so the
-  review can't disagree with it. From 2.7.0 a `refresh` item the run recorded
-  with nothing to change under a scope shows no change under it (no fields,
-  no cover) whatever the book would take now, as an apply under that scope
-  never takes it ([below](#post-apiv1adminmatch-runsidapply)). From 2.6.0 a change also carries `match: true`
-  (omitted otherwise) when applying records the book's community match (a new
-  match, or a refresh healing a merged work); the console lists it as "the
-  community match" when no ASIN or ISBN is written beside it. A `match` run's
-  items carry `ids`, `fill` and `overwrite`; a `refresh` run's `fill` and
-  `overwrite` (it writes no identifier the book has); a `repick` run's only `ids`
-  (its ASIN, whatever the scope). When a
-  scope changes the book's series, its change also carries `series`: the book's
-  series `from` (now) and `to` (after), each `[{ "name", "position", "position_end"? }]` with the
-  main series first (`position` 0 = none; `position_end` a range's end), so a series it removes is visible:
+- `changes` is what applying would write under each scope the run's mode takes:
+  fields in display order, set or reverted, and whether the cover is taken. The
+  server works it out against the book now by the same rules the apply uses, so
+  the review can't disagree with it.
+  - Which scopes an item carries: a `match` run's items carry `ids`, `fill` and
+    `overwrite`. A `refresh` run's carry `fill` and `overwrite`, because it writes
+    no identifier the book has. A `repick` run's carry only `ids` (its ASIN,
+    whatever the scope).
+  - From 2.7.0 a `refresh` item the run recorded with nothing to change under a
+    scope shows no change under it (no fields, no cover), whatever the book would
+    take now. An apply under that scope never takes it (see
+    [`POST …/apply`](#post-apiv1adminmatch-runsidapply)).
+  - From 2.6.0 a change also carries `match: true` (omitted otherwise) when
+    applying records the book's community match: a new match, or a refresh
+    healing a merged work. The console lists it as "the community match" when no
+    ASIN or ISBN is written beside it.
+  - When a scope changes the book's series, its change also carries `series`: the
+    book's series `from` (now) and `to` (after), each
+    `[{ "name", "position", "position_end"? }]` with the main series first
+    (`position` 0 = none; `position_end` a range's end). So a series it removes is
+    visible:
 
   ```json
   "overwrite": {
@@ -7559,19 +7565,24 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
     }
   }
   ```
-- `applied` is what applying did: `""` (not yet), `applied`, `skipped` (with
-  `detail` `nothing_to_change`, `matched_since` or `book_gone`) or `failed` (`edit_failed`,
-  `cover_failed`); an `applied` item can carry `cover_failed` when its fields
-  went on but its cover couldn't be fetched. A match item an apply's
-  stop cut short after its fields went in stays `""` with `detail`
-  `cover_pending`, so the next apply takes its cover (unless the book was
-  unlinked since: then it writes nothing, `nothing_to_change`). From 2.7.0
-  `cover_superseded` means the cover was not written because the book changed
-  since the apply planned it (a cover uploaded or found by a rescan, another
-  match accepted, an ASIN or ISBN edited, an Unlink): it is checked before the
-  fetch, and the write checks again, in its own transaction, that the book still
-  has no cover, the recorded match and the ASIN and ISBN the apply planned. It
-  is final: `applied` when the item's fields went in, else `skipped`.
+- `applied` is what applying did:
+  - `""`: not yet;
+  - `applied`;
+  - `skipped`, with `detail` `nothing_to_change`, `matched_since` or `book_gone`;
+  - `failed`, with `edit_failed` or `cover_failed`.
+
+  An `applied` item can carry `cover_failed` when its fields went on but its cover
+  couldn't be fetched. A match item that an apply's stop cut short after its fields
+  went in stays `""` with `detail` `cover_pending`, so the next apply takes its
+  cover. If the book was unlinked since, that apply writes nothing
+  (`nothing_to_change`).
+
+  From 2.7.0 `cover_superseded` means the cover was not written because the book
+  changed since the apply planned it: a cover uploaded or found by a rescan,
+  another match accepted, an ASIN or ISBN edited, or an Unlink. The server checks
+  this before the fetch. The write checks again, in its own transaction, that the
+  book still has no cover, the recorded match and the ASIN and ISBN the apply
+  planned. It is final: `applied` when the item's fields went in, else `skipped`.
 
 #### `POST /api/v1/admin/match-runs/{id}/apply`
 
@@ -7587,51 +7598,65 @@ book gets, under each **scope**:
 | `fill` | Also every field the book has empty, and the community cover when it has no cover (a checked book with none, and no custom cover). Replaces only one thing the book has: a title that is the community's plus clutter (`matchrun.tidyTitle`, below). |
 | `overwrite` | Also every field whose value differs, as accepting the dialog's default ticks does; the cover only when it has none. The book's series are **replaced** by the community's for its recording (the [series rules](#series-rules)): a `series`, `series_index` or `more_series` value the community wrote earlier that it no longer offers (a series it deleted or merged, an edition or a translation) is reverted to what the files say. |
 
-**Title tidy** (`matchrun.tidyTitle`, `fill` only, any applied item of a match or
-refresh run; the review lists it, as `changes` comes from the same `Plan`). The
-community title goes over the book's when the book's title isn't an admin edit and,
-with the community title's words taken out, what is left of it is only: the community
-subtitle; the series names, the community's and the book's own, as `match.SeriesForms`
-spells them; `clutterWords` (book, vol, volume, no, unabridged, novel, edition, series,
-audiobook, store labels such as litrpg and fantasy, and the joining words of, the, a,
-an); and numbers the positions (the community's and the book's own, in every series)
-or the community title state (`statedNumbers`: digits, ordinals, number words, roman
-numerals). Any other word or number keeps the
-file's title: "part" names a split of the book, "abridged" another edition, "Book 2"
-of a work at position 1 another volume. A title of the community's words and nothing
-more is replaced only when it is all in one case. A reverted title has no `edited`
-source, so a later `fill` can tidy it again.
+**Title tidy** (`matchrun.tidyTitle`). It applies under `fill` only, to any applied
+item of a match or refresh run. The review lists it, as `changes` comes from the
+same `Plan`. The community title goes over the book's when the book's title isn't
+an admin edit and, with the community title's words taken out, what is left of it
+is only:
 
-Under every scope a field an admin **edited** (`source: "edited"`) is never
-replaced, a value the book already has isn't rewritten, and a series position
-is written only beside the series it numbers (the book's own, or the one being
-set). Only `overwrite` reverts, and only community values: a series an admin
-typed stays, and a revert never removes an edit made after the run looked (a
-[`PATCH …/book`](#patch-apiv1adminlibrariesidbook) revert sent with `source:
-"community"` removes only a community value). A series position is put back from
-the files only beside the files' own series. A community position that is a
-range (an omnibus, `"1-3"`) is written as one: `series_index` `"1-3"`, or a
-`more_series` entry's `position_end`; one the field refuses (a span over 100) is
-no position. A
-retired work id is a redirect the server follows, so a merged record's series
-are the ones written. A repick writes its ASIN whatever the scope, and only while
-the book's ASIN is still the community override it found and still the ASIN it
-looked up (`found_by`), so a book matched again by hand since, to another
-record, keeps that match (from 2.7.0 a book with a recorded match records the
-repick's ASIN as offered); a refresh takes only
-`fill` or `overwrite` (`400` for `ids`: a refresh is for the details). Audited as
-`book.match_apply` (`run`, `books`, `scope`). Applying `ready` again after a
-stopped apply takes the rest.
+- the community subtitle;
+- the series names, the community's and the book's own, as `match.SeriesForms`
+  spells them;
+- `clutterWords`: book, vol, volume, no, unabridged, novel, edition, series,
+  audiobook, store labels such as litrpg and fantasy, and the joining words of,
+  the, a, an;
+- numbers that are the positions (the community's and the book's own, in every
+  series) or that the community title states (`statedNumbers`: digits, ordinals,
+  number words, roman numerals).
+
+Any other word or number keeps the file's title. "part" names a split of the book,
+"abridged" another edition, and "Book 2" of a work at position 1 another volume. A
+title of the community's words and nothing more is replaced only when it is all in
+one case. A reverted title has no `edited` source, so a later `fill` can tidy it
+again.
+
+Rules under every scope:
+
+- A field an admin **edited** (`source: "edited"`) is never replaced.
+- A value the book already has isn't rewritten.
+- A series position is written only beside the series it numbers (the book's own,
+  or the one being set).
+- Only `overwrite` reverts, and only community values. A series an admin typed
+  stays, and a revert never removes an edit made after the run looked (a
+  [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) revert sent with
+  `source: "community"` removes only a community value).
+- A series position is put back from the files only beside the files' own series.
+- A community position that is a range (an omnibus, `"1-3"`) is written as one:
+  `series_index` `"1-3"`, or a `more_series` entry's `position_end`. One the field
+  refuses (a span over 100) is no position.
+- A retired work id is a redirect the server follows, so a merged record's series
+  are the ones written.
+- A repick writes its ASIN whatever the scope. It does so only while the book's
+  ASIN is still the community override it found and still the ASIN it looked up
+  (`found_by`), so a book matched again by hand since, to another record, keeps
+  that match. From 2.7.0 a book with a recorded match records the repick's ASIN as
+  offered.
+- A refresh takes only `fill` or `overwrite` (`400` for `ids`), because a refresh
+  is for the details.
+
+Applying is audited as `book.match_apply` (`run`, `books`, `scope`). Applying
+`ready` again after a stopped apply takes the rest.
 
 **A refresh's no-op items** (from 2.7.0). The server leaves out a refresh item
 with nothing to change under the scope, so a client need not exclude each one.
 An item the run recorded with nothing to change under that scope (its review
 shows no fields and no cover under it) is never taken, even if the book changed
-since: nothing is written that the review didn't show. One that had a change
-when recorded but has none now is planned again and dropped from `apply_total`
-(in batches of up to 100, the rest before the run settles). Either way it stays
-unapplied (`applied` `""`, like an excluded item, so an `auto` one still counts
-as `pending`), not `skipped`, and `apply_done` ends at `apply_total`. The `202`'s run and the audit's `books` count every item taken.
+since, so nothing is written that the review didn't show. One that had a change
+when recorded but has none now is planned again and dropped from `apply_total`, in
+batches of up to 100, the rest before the run settles. Either way it stays
+unapplied (`applied` `""`, like an excluded item, so an `auto` one still counts as
+`pending`), not `skipped`, and `apply_done` ends at `apply_total`. The `202`'s run
+and the audit's `books` count every item taken.
 An item recorded before 2.7.0 is planned again as before. A `match` or `repick`
 item with nothing to change is still `skipped` with `nothing_to_change`.
 
@@ -7865,8 +7890,8 @@ Response `200`, one entry per requested URL, in request order:
 ## Admin: health & jobs
 
 All *Admin*. The queries behind the console's Health > Issues and Health > Jobs
-screens (admin console Phase 3). Issues are computed from the index on request;
-the only thing stored is an admin's "ignore this", path-keyed. Scans run through
+screens. The server computes issues from the index on request. The only thing
+stored is an admin's "ignore this", path-keyed. Scans run through
 one [job queue](../scanner.md#the-job-queue) and each is recorded in
 [`scan_runs`](../scanner.md#scan-history-scan_runs).
 
@@ -7892,25 +7917,27 @@ a scan last finished.
 
 - `categories` - one entry per kind, always in this order: `scan_error`,
   `suspect`, `split_discs`, `duplicate`, `no_cover`, `unmatched`,
-  `series_spellings`, `no_chapters`, `detailed_chapters`, `transcode`.
-  `series_spellings` is a book whose main series another book of its library
-  spells another way (the same series in a different case, accent, punctuation or
-  spacing; see [`/series`](#get-apiv1librariesidseries)); every book of such a
-  series is counted, and
-  [`/admin/issues/series-spellings`](#get-apiv1adminissuesseries-spellings) lists
-  them per series. `detailed_chapters` is a
-  book whose last [community chapter check](../community-chapters.md) found
-  finer community chapters that fit (`refine`) and whose chapter source no
-  admin has chosen; the console's fix is a bulk edit with
-  `chapter_source: "community"`. `split_discs` is a book split across disc
-  folders (a CD rip read as one book per disc), counted once and listed by its
-  first disc; the console's fix sets a `book`
-  [folder override](#put-apiv1adminlibrariesidfolder-override) on the folder
-  holding the discs, which joins them. Its discs are never also grouped as
-  `duplicate`.
-  `unmatched` is **left out while community metadata is off** (there is
-  nothing to match against). What puts a book in each kind is in
-  [Issues](../scanner.md#issues).
+  `series_spellings`, `no_chapters`, `detailed_chapters`, `transcode`. Some of
+  them need a word:
+  - `series_spellings` is a book whose main series another book of its library
+    spells another way: the same series in a different case, accent, punctuation
+    or spacing (see [`/series`](#get-apiv1librariesidseries)). Every book of such
+    a series is counted, and
+    [`/admin/issues/series-spellings`](#get-apiv1adminissuesseries-spellings)
+    lists them per series.
+  - `detailed_chapters` is a book whose last
+    [community chapter check](../community-chapters.md) found finer community
+    chapters that fit (`refine`) and whose chapter source no admin has chosen. The
+    console's fix is a bulk edit with `chapter_source: "community"`.
+  - `split_discs` is a book split across disc folders (a CD rip read as one book
+    per disc), counted once and listed by its first disc. The console's fix sets a
+    `book` [folder override](#put-apiv1adminlibrariesidfolder-override) on the
+    folder holding the discs, which joins them. Its discs are never also grouped
+    as `duplicate`.
+  - `unmatched` is **left out while community metadata is off**, since there is
+    nothing to match against.
+
+  What puts a book in each kind is in [Issues](../scanner.md#issues).
 - `count` - books that need attention, not counting the ones an admin ignored
   (for `duplicate`, the number of **groups**); `ignored` - how many an admin
   ignored (groups for `duplicate`).
@@ -8197,14 +8224,21 @@ One recorded scan, the same object with its `log`:
 Each event has `at`, `level` (`info`, `warn` or `error`) and `kind`, plus the
 facts the kind needs: `path`, `to` (a move's destination), `code` (a read
 problem's code, as `scan_error`), `detail` (a tool's or the OS's own message)
-and `count`. Kinds: `started`, `discovered`, `unreadable`, `moved`, `joined`
-(a disc book at `path` joined into the book at `to`; `code` `length_unknown`
-when its listening state stayed with the disc because an earlier disc's length
-is unknown), `split` (the joined book at `path` read as its discs again),
-`problem`, `error`, `removed`, `partial` and `truncated` (a log keeps at most 300 events,
-at most half of them problems; this line counts the ones dropped), then one closing event saying how the scan
-ended: `finished`, `unavailable`, `failed`, `cancelled` or `interrupted`. A removed book leaves nothing in the index but its `removed`
-line here - see [Prune](../scanner.md#prune-what-a-removed-book-leaves-behind).
+and `count`. The kinds:
+
+- `started`, `discovered`, `unreadable`, `moved`;
+- `joined`: a disc book at `path` joined into the book at `to`. `code` is
+  `length_unknown` when its listening state stayed with the disc because an
+  earlier disc's length is unknown;
+- `split`: the joined book at `path` read as its discs again;
+- `problem`, `error`, `removed`, `partial`;
+- `truncated`: a log keeps at most 300 events, at most half of them problems, and
+  this line counts the ones dropped;
+- then one closing event saying how the scan ended: `finished`, `unavailable`,
+  `failed`, `cancelled` or `interrupted`.
+
+A removed book leaves nothing in the index but its `removed` line here (see
+[Prune](../scanner.md#prune-what-a-removed-book-leaves-behind)).
 `404 no such scan`; `400 invalid run id`.
 
 ## Admin: activity
@@ -8212,15 +8246,17 @@ line here - see [Prune](../scanner.md#prune-what-a-removed-book-leaves-behind).
 All *Admin* (a non-admin gets `403`). Listening sessions, signed-in devices and
 an admin's edits of someone's progress: the API behind the admin console's
 Activity screens, People > Devices and the progress menus on a person's page
-and a book's page. Sessions are derived on the server from the
-progress saves players already make, and on a server with `listening_sync` from
-the listening a player [syncs](#post-apiv1melisteningsync), at the time it
-happened (offline listening included) - see
-[Listening sessions](../data-model.md#listening-sessions-how-they-are-derived)
-for the rules (session gap and continuation, listened time, what isn't
-counted). A session with no listening recorded yet (a single save, such as a
-"mark finished") is left out of both session routes and of the stats, so a
-session appears from its second save. A **device** is
+and a book's page.
+
+The server derives sessions from the progress saves players already make. On a
+server with `listening_sync` it derives them from the listening a player
+[syncs](#post-apiv1melisteningsync), at the time it happened, offline listening
+included. The rules (session gap and continuation, listened time, what isn't
+counted) are in
+[Listening sessions](../data-model.md#listening-sessions-how-they-are-derived).
+A session with no listening recorded yet (a single save, such as a "mark
+finished") is left out of both session routes and of the stats, so a session
+appears from its second save. A **device** is
 a signed-in token: a session (a paired phone, a browser) or a personal API key,
 never a pairing token. Its app comes from the
 [`X-AudioSilo-Client`](index.md#client-identification-x-audiosilo-client)
@@ -8421,10 +8457,10 @@ by shares (admin view).
 ```
 
 The [progress fields](#get-apiv1meprogress) plus `title` / `author` (`""` when
-not indexed) and the dates: `started_at` is the time of the first save (`null`
-for rows saved before the server recorded it), `finished_at` the time of the
-save that last marked it finished, or of the admin edit that did (`null` while unfinished; finished rows from before were given
-their last save time). `400 invalid user id`; `404 user not found`.
+not indexed) and the dates. `started_at` is the time of the first save (`null`
+for rows saved before the server recorded it). `finished_at` is the time of the
+save that last marked it finished, or of the admin edit that did. It is `null`
+while unfinished, and finished rows from before were given their last save time. `400 invalid user id`; `404 user not found`.
 
 ### `PATCH /api/v1/admin/libraries/{id}/progress`
 
@@ -8442,27 +8478,30 @@ A day-only finish date counts from the end of its day so that a book started
 and finished on the same day fits: a start at 15:00 and a finish "today" is a
 finish after the start, not at the midnight before it.
 
-A field left out stays as it is, and an edit that sets nothing (`{}`) writes
-nothing: it answers the current row, or `404 book_not_found` when there is none.
-An exact (RFC 3339) date may be at most 5 minutes ahead of the server's clock; a
-day-only date has a day of slack. When the person has no progress on the book
-yet but it is indexed, the row is created (its start stamped now), but only if
-**the person** can see the book: their own access (whole libraries and shares;
-an admin target sees everything), not the access of the admin making the call.
-Otherwise the edit is refused with `409` `no_access` and nothing is written.
-Progress the person already has stays editable after their access is taken
-away, so an admin can still tidy it. The write is
-stamped with the server's time (to the sub-second) and a higher `version`, so it beats what a
-device saved before it under last-write-wins, while a device still playing the
-book overrides it on its next save. Like the listener's own edit, it clears the
+A field left out stays as it is. An edit that sets nothing (`{}`) writes nothing.
+It answers the current row, or `404 book_not_found` when there is none. An exact
+(RFC 3339) date may be at most 5 minutes ahead of the server's clock, and a
+day-only date has a day of slack.
+
+When the person has no progress on the book yet but it is indexed, the row is
+created (its start stamped now), but only if **the person** can see the book. That
+is their own access (whole libraries and shares; an admin target sees everything),
+not the access of the admin making the call. Otherwise the edit is refused with
+`409` `no_access` and nothing is written. Progress the person already has stays
+editable after their access is taken away, so an admin can still tidy it.
+
+The write is stamped with the server's time (to the sub-second) and a higher
+`version`. So it beats what a device saved before it under last-write-wins, while a
+device still playing the book overrides it on its next save. Like the listener's own edit, it clears the
 row's [`other_place`](#get-apiv1meprogress) and records when it changed `finished`.
-An edit of a row an Audible account wrote (`device_id` `audible:<account>`, Phase
-4c) clears its device id, so the edit reaches Audible and Audible's next place
+An edit of a row an Audible account wrote (`device_id` `audible:<account>`)
+clears its device id, so the edit reaches Audible and Audible's next place
 can't undo it unseen.
 
 Response `200`: `{ "progress": { … } }` - the object of
-[`GET /admin/users/{id}/progress`](#get-apiv1adminusersidprogress), plus (from
-Track W2) the `device_name` of the device that saved the place, when known.
+[`GET /admin/users/{id}/progress`](#get-apiv1adminusersidprogress), plus the
+`device_name` of the device that saved the place, when known. An older server
+omits `device_name`.
 
 | Status | Meaning |
 |---|---|
@@ -8706,20 +8745,23 @@ written outside the import).
 
 ### `POST /api/v1/admin/imports/{id}/apply`
 
-Applies a `review` import: it moves to `applying`, then one transaction undoes
-the user's previous `applied` import from the same source (it becomes
-`undone`, so a re-import never double counts), matches and plans again against
-the user's state, writes it (sessions, a `listening_history` span per session,
-estimates, progress and bookmarks), and marks it `applied`. A session already
-older than the session retention (`activity.session_days` as set when the
-apply runs) is written as the `listening_daily` totals the daily prune would
-make of it rather than as a session, so it shows in the stats and history but
-not in `GET /admin/sessions`. A progress row an Audible account wrote (`device_id`
-`audible:<account>`, Bridge Phase 4c) that the apply moves on loses that device id
-and name (`importer.mergeProgress`, as an edit does), so the import's place reaches
-Audible. The request's cancellation
-doesn't stop it. A failure puts it back in `review`. Answers `200` with the
-import (`applied`, `summary` as written). Audited as `import.apply` (`import`,
+Applies a `review` import. The import moves to `applying`, then one transaction:
+
+1. undoes the user's previous `applied` import from the same source, which becomes
+   `undone`, so a re-import never double counts;
+2. matches and plans again against the user's state;
+3. writes it: sessions, a `listening_history` span per session, estimates,
+   progress and bookmarks;
+4. marks it `applied`.
+
+A session already older than the session retention (`activity.session_days` as
+set when the apply runs) is written as the `listening_daily` totals the daily
+prune would make of it, rather than as a session. So it shows in the stats and
+history but not in `GET /admin/sessions`. A progress row an Audible account wrote
+(`device_id` `audible:<account>`) that the apply moves on loses that device id and
+name (`importer.mergeProgress`, as an edit does), so the import's place reaches
+Audible. The request's cancellation doesn't stop it. A failure puts it back in
+`review`. Answers `200` with the import (`applied`, `summary` as written). Audited as `import.apply` (`import`,
 `sessions`, `listened`).
 
 | Status | Meaning |
@@ -8729,13 +8771,13 @@ import (`applied`, `summary` as written). Audited as `import.apply` (`import`,
 
 ### `POST /api/v1/admin/imports/{id}/undo`
 
-Takes an applied import back out: its sessions, rolled-up days, estimates,
-history spans and bookmarks are deleted (by `import_id`; a bookmark the person
-edited or labelled since is kept and becomes theirs), and each progress row it
-changed is restored to what it was before, unless it changed since (a player's
-save or an edit: then it stays). Answers `200` with the import (`undone`). Audited as
-`import.undo` (`import`). A row restored from one an Audible account wrote (Bridge
-Phase 4c) comes back under **no** device (`progressPrior.restored`), never as
+Takes an applied import back out. Its sessions, rolled-up days, estimates,
+history spans and bookmarks are deleted by `import_id`; a bookmark the person
+edited or labelled since is kept and becomes theirs. Each progress row it changed
+is restored to what it was before, unless it changed since through a player's save
+or an edit, in which case it stays. Answers `200` with the import (`undone`).
+Audited as `import.undo` (`import`). A row restored from one an Audible account
+wrote comes back under **no** device (`progressPrior.restored`), never as
 `Audible (<label>)` again, so the feed sends the undo to Audible too.
 
 | Status | Meaning |
@@ -9337,11 +9379,11 @@ probes or health check): what Health > System
 ### `POST /api/v1/admin/meta/mirror/check`
 
 *Admin.* Asks the mirror to look for a newer copy now (the console's **Check
-now**). It never waits for the check: it wakes the mirror and answers `202` with
+now**). It never waits for the check. It wakes the mirror and answers `202` with
 the copy's [status](#the-local-copys-status-metadatamirror), whose
-`next_check_at` is now (the check is due), and the check runs in the background
-(a download, if there is a newer copy, shows in `state` and `progress`). While a
-check is already running it does nothing more.
+`next_check_at` is now, because the check is due. The check runs in the
+background. If there is a newer copy, its download shows in `state` and
+`progress`. While a check is already running, the route does nothing more.
 The check is the scheduled one: the conditional release-list request, then a
 download only when the newest data release isn't the copy held (see
 [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)). Not
@@ -9378,19 +9420,20 @@ nothing is written to disk.
 }
 ```
 
-`entries` are oldest first, and each entry's `attrs` is always an array
-(empty when the line has none). `seq` increases by one per line logged, so the
-console polls with `after=<last_seq>` and appends what comes back. `last_seq`
-is the newest line in memory whether or not it matched. `truncated` is true
-when matching lines were left out: older ones past `limit`, or lines after
-`after` that were already dropped from memory. An `after` beyond the newest
-line (a cursor from before the server restarted, since `seq` starts over at 1)
-is answered as a fresh first page, marked `truncated`, so a live tail picks up
-the new process. Attributes in a group have dotted keys (`req.path`); an
-attribute whose dotted key names a secret (a word such as `token`, `password`,
-`code`, `key`, `secret`, `cookie` or `authorization`, so a group named `token`
-hides all its members) has the value `[redacted]`, and long messages and values
-are cut.
+- `entries` are oldest first, and each entry's `attrs` is always an array (empty
+  when the line has none).
+- `seq` increases by one per line logged, so the console polls with
+  `after=<last_seq>` and appends what comes back.
+- `last_seq` is the newest line in memory whether or not it matched.
+- `truncated` is true when matching lines were left out: older ones past `limit`,
+  or lines after `after` that were already dropped from memory. An `after` beyond
+  the newest line (a cursor from before the server restarted, since `seq` starts
+  over at 1) is answered as a fresh first page, marked `truncated`, so a live tail
+  picks up the new process.
+- Attributes in a group have dotted keys (`req.path`). An attribute whose dotted
+  key names a secret has the value `[redacted]`. A secret is a word such as
+  `token`, `password`, `code`, `key`, `secret`, `cookie` or `authorization`, so a
+  group named `token` hides all its members. Long messages and values are cut.
 
 | Status | Meaning |
 |---|---|
@@ -9735,8 +9778,7 @@ recorded in the [audit log](#admin-audit-log) as `settings.support`, with
 
 ## Admin: first-run setup
 
-The admin console's "Set up your server" flow (FIRST-RUN-PLAN.md Phase F1;
-`catalog/setup.go`, `library/preview.go`, `library/mounts.go`,
+The admin console's "Set up your server" flow (`catalog/setup.go`, `library/preview.go`, `library/mounts.go`,
 `api/handlers_admin_setup.go`). The flow writes every setting through the
 ordinary admin routes ([settings](#admin-settings), [library
 create and edit](#admin-libraries--shares)); these routes keep only its
@@ -9926,21 +9968,21 @@ On the Bridge's routes **only a missing or refused token is `401`** (`missing be
 token`, `invalid or expired token`): the Bridge reads it as "my token is refused",
 stops calling in and tries again every 5 minutes. A failure to **check** the token
 (the database) is `503 could not check the token, try again`, which the Bridge
-simply retries. The heartbeat and the claim also check the token again inside their
-own write, so a call authenticated just before a pairing or an unpair revoked its
-token (a long poll above all) saves nothing and claims nothing: `401`. A bridge
-token's calls never touch the token's `last_seen`: they are not its admin's
+retries. The heartbeat and the claim also check the token again inside their own
+write. So a call authenticated just before a pairing or an unpair revoked its token
+(a long poll above all) saves nothing, claims nothing and gets `401`. A bridge
+token's calls never touch the token's `last_seen`, because they are not its admin's
 activity.
 
 ### `GET /api/v1/server`: the `bridge` capability and block
 
 `capabilities.bridge` is `true` only while a Bridge is paired **and** its last
 heartbeat is under two minutes old (the Bridge beats every 30 seconds). While it
-is, a top-level `bridge` object sits beside `capabilities` (which stays all
-booleans), **for a signed-in caller only** (Phase 2b): a session or an API key in
-the `Authorization` header, of any role but a demo account's. The check records
-nothing on the token (`auth.Peek`), and a missing or refused token is simply
-anonymous, never a `401`. An anonymous, refused, demo or bridge token gets the
+is, a top-level `bridge` object sits beside `capabilities`, which stays all
+booleans. The object is sent **for a signed-in caller only**: a session or an API
+key in the `Authorization` header, of any role but a demo account's. The check
+records nothing on the token (`auth.Peek`), and a missing or refused token counts
+as anonymous, never a `401`. An anonymous, refused, demo or bridge token gets the
 flags alone. The console and the player's admin-only generate action, the clients
 that read the block, ask with their token.
 
@@ -9953,17 +9995,21 @@ that read the block, ask with their token.
 
 - `version` - the version the Bridge reported.
 - `features` - the job families the Bridge runs that this server knows: the part of
-  each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`,
-  `sidecars.describe` and `sidecars.contribute` are `sidecars`, `chapters.detect`
-  is `chapters`, `meta.correct` is `meta`, `readalong.align` is `readalong`, and
-  the podcast kinds give `podcast`, `audible.poll` and `audible.import` give
-  `audible`),
-  plus `contribute` while the Bridge can
-  file contributions (the last heartbeat's `setup.can_contribute`, else its
-  `estimates.sidecars.can_contribute`), which the `contributions`
-  [module](../modules.md) needs. Sorted, each once, always a list
-  (`[]` for none), never `null`. A kind the Bridge advertises that the
-  server doesn't know adds nothing.
+  each known kind before its dot.
+  - `bridge.verify` gives `bridge`.
+  - `sidecars.generate`, `sidecars.describe` and `sidecars.contribute` give
+    `sidecars`.
+  - `chapters.detect` gives `chapters`, `meta.correct` gives `meta`, and
+    `readalong.align` gives `readalong`.
+  - The podcast kinds give `podcast`, and `audible.poll` and `audible.import` give
+    `audible`.
+  - `contribute` is added while the Bridge can file contributions (the last
+    heartbeat's `setup.can_contribute`, else its
+    `estimates.sidecars.can_contribute`). The `contributions`
+    [module](../modules.md) needs it.
+
+  The list is sorted, each once, always a list (`[]` for none), never `null`. A
+  kind the Bridge advertises that the server doesn't know adds nothing.
 
 The server keeps the last heartbeat it read for up to 5 seconds, so `GET /server`,
 which every client calls often, rarely reads the database for it. A pairing or an
@@ -9971,8 +10017,8 @@ unpair made on this server drops it at once; a demoted admin's Bridge shows as
 offline here within those 5 seconds.
 
 With no Bridge online the flag is `false` and there is no `bridge` key, for any
-caller; an older server has neither, and a server before Phase 2b sends the block
-to every caller. A client never assumes the Bridge: it checks the flag **and**
+caller. An older server has neither, and some older servers send the block to
+every caller. A client never assumes the Bridge: it checks the flag **and**
 the feature it needs.
 
 ### `GET /api/v1/admin/bridge`
@@ -10055,7 +10101,7 @@ mapping of it. The console's Settings > Bridge reads this.
 - `estimates` - the last heartbeat's [costing figures](#put-apiv1bridgestatus),
   omitted when it sent none (or they were dropped as out of bounds). The console's
   agent, Paid by, This month and Estimates from rows read them.
-- `setup` - Phase 2b: the last heartbeat's [setup checklist](#put-apiv1bridgestatus)
+- `setup` - the last heartbeat's [setup checklist](#put-apiv1bridgestatus)
   as the server kept it (`items` in the Bridge's order, each `id`, `done`,
   `required`, `detail` when there is one and `library_ids` for the libraries
   still to fix; `can_contribute`; `github_login`, the GitHub account signed in on
@@ -10254,28 +10300,29 @@ The kinds:
   the Bridge waits before it finishes, so a cancel or a stopped Bridge can be
   tried mid-job. What it does and reports is in
   [Pairing and jobs](../../bridge/pairing-and-jobs.md#the-proof-job-bridgeverify).
-- **`sidecars.generate`** (Phase 1a) generates a book's characters and recaps and
-  writes them into its `.audiosilo/` folder. It needs `library_id` **and** a book
-  `path`, and takes `params`
-  `{ "source": "auto" | "audio" | "ebook", "contribute": "local" | "issue", "work_id": "…" }`,
-  all optional (stored as `{"source": "auto", "contribute": "local"}` plus a
-  `work_id` when given: at most 200 bytes, no control characters). It **writes**
-  into the library, so it is queued only for a library the last heartbeat reports
-  mapped and writable, and `contribute: "issue"` only while the Bridge can
-  contribute (the heartbeat's `setup.can_contribute`, else
-  `estimates.sidecars.can_contribute`). See
-  [Characters and recaps](../../bridge/generating.md). Queuing it while a
-  `sidecars.describe` job is open for the book cancels that job (at once when it
-  is queued or parked, else by asking the Bridge), since this run writes the
-  description too. It is refused while a `chapters.detect` job is queued or
-  working for the book (`detect_open`: cancelling it would throw its
-  transcription away, and a generate job queued after it reuses that), and cancels
-  a **parked** one in the same way, since this run finds the chapters itself. Since
-  Phase 2b it is likewise refused while a `sidecars.contribute` job is queued or
-  working for the book (`contribute_open`: it would replace what is being filed),
-  and cancels a parked one, or a queued one held while the `contributions` module
-  is off (no claim hands it out).
-- **`sidecars.describe`** (Phase 1c) writes a book's own-words description from
+- **`sidecars.generate`** generates a book's characters and recaps and writes them
+  into its `.audiosilo/` folder. See [Characters and recaps](../../bridge/generating.md).
+  - It needs `library_id` **and** a book `path`, and takes `params`
+    `{ "source": "auto" | "audio" | "ebook", "contribute": "local" | "issue", "work_id": "…" }`,
+    all optional. They are stored as `{"source": "auto", "contribute": "local"}`
+    plus a `work_id` when given (at most 200 bytes, no control characters).
+  - It **writes** into the library, so it is queued only for a library the last
+    heartbeat reports mapped and writable. `contribute: "issue"` is queued only
+    while the Bridge can contribute (the heartbeat's `setup.can_contribute`, else
+    `estimates.sidecars.can_contribute`).
+  - Queuing it while a `sidecars.describe` job is open for the book cancels that
+    job, since this run writes the description too. A queued or parked job is
+    cancelled at once, a running one by asking the Bridge.
+  - It is refused while a `chapters.detect` job is queued or working for the book
+    (`detect_open`). Cancelling that job would throw its transcription away, and a
+    generate job queued after it reuses that. It cancels a **parked**
+    `chapters.detect` job in the same way, since this run finds the chapters
+    itself.
+  - It is likewise refused while a `sidecars.contribute` job is queued or working
+    for the book (`contribute_open`), because it would replace what is being
+    filed. It cancels a parked one, or a queued one held while the `contributions`
+    module is off (no claim hands it out).
+- **`sidecars.describe`** writes a book's own-words description from
   the notes the Bridge kept when it generated the book (no new speech
   recognition) into its `.audiosilo/` folder. It needs `library_id` **and** a book
   `path`, and takes `params` `{}` or none (any field is refused; stored as `{}`).
@@ -10283,7 +10330,7 @@ The kinds:
   while a `sidecars.generate` job (`generate_open`) or a `chapters.detect` job
   (`detect_open`: both rewrite the book's `bridge.json`) is open for the book. See
   [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe).
-- **`chapters.detect`** (Phase 1d) finds the chapters of a book with no chapter
+- **`chapters.detect`** finds the chapters of a book with no chapter
   markers in its narration (speech recognition and detection only, no agent) and
   writes them into its `.audiosilo/` folder as
   [`chapters.json`](../../bridge/attachments.md#chaptersjson), which the server
@@ -10294,24 +10341,27 @@ The kinds:
   them itself), while a `sidecars.describe` job is (`describe_open`), and for a
   book whose chapter source an admin chose (`chapters_chosen`: the list would
   never be used). See [Chapterless books](../../bridge/chapters.md).
-- **`readalong.align`** (Phase 3c) makes a book's read-along map: the Bridge
-  reuses the transcript it kept for the book (else transcribes it; no agent),
-  lines the words up with the book's ebook, and writes
+- **`readalong.align`** makes a book's read-along map. The Bridge reuses the
+  transcript it kept for the book (else transcribes it; no agent), lines the words
+  up with the book's ebook, and writes
   [`readalong.json`](../../bridge/attachments.md#readalongjson) into its
-  `.audiosilo/` folder. It needs `library_id` **and** a book `path` in a books
-  library, and takes `params` `{}` or none (any field is refused; stored as `{}`).
-  It writes, so the same mapped-and-writable rule applies. It is refused for a
-  book the index holds no ebook for (`no_ebook`, checked before the queue), and
-  while a `sidecars.generate` (`generate_open`) or `chapters.detect`
-  (`detect_open`) job is open for the book, parked ones included. A new
-  `sidecars.generate` job is refused while a read-along job is queued or working
-  (`readalong_open`) and cancels a parked one; a new `chapters.detect` job is
-  refused while one is open. Re-aligning a book with a ready map is allowed. Its
-  progress is `chapters.detect`'s shape (`stage` including `readalong_aligning`);
-  its result is `{library_id, path, file, coverage: {text, audio}, sections, spans,
-  audio_gaps, heal_windows, transcribed, ebook_sha256}`. A map under 50% text
-  coverage fails the job and writes nothing. See [Read-along](../../bridge/readalong.md).
-- **`sidecars.contribute`** (Phase 2b) files the characters and recaps the Bridge
+  `.audiosilo/` folder. See [Read-along](../../bridge/readalong.md).
+  - It needs `library_id` **and** a book `path` in a books library, and takes
+    `params` `{}` or none (any field is refused; stored as `{}`).
+  - It writes, so the same mapped-and-writable rule applies.
+  - It is refused for a book the index holds no ebook for (`no_ebook`, checked
+    before the queue). It is also refused while a `sidecars.generate`
+    (`generate_open`) or `chapters.detect` (`detect_open`) job is open for the
+    book, parked ones included.
+  - A new `sidecars.generate` job is refused while a read-along job is queued or
+    working (`readalong_open`), and cancels a parked one. A new `chapters.detect`
+    job is refused while one is open.
+  - Re-aligning a book with a ready map is allowed.
+  - Its progress is `chapters.detect`'s shape (`stage` including
+    `readalong_aligning`). Its result is `{library_id, path, file, coverage: {text,
+    audio}, sections, spans, audio_gaps, heal_windows, transcribed, ebook_sha256}`.
+  - A map under 50% text coverage fails the job and writes nothing.
+- **`sidecars.contribute`** files the characters and recaps the Bridge
   generated for the book earlier on this server and kept (its own copy, not the
   book's `.audiosilo/` files), to the community metadata
   database as intake issues ("Share with the community"). It needs `library_id`
@@ -10323,34 +10373,40 @@ The kinds:
   (`generate_open`). Result: `{library_id, path, work_id, contributed, covered}`,
   where `contributed` is `{characters?, recaps?}` (the issue URLs) and `covered`
   lists the dimensions the community already had. See [Contributions](../../bridge/contributions.md#sharing-later-sidecarscontribute).
-- **`meta.correct`** (Phase 2b) files an admin's edits of the book's details to the
+- **`meta.correct`** files an admin's edits of the book's details to the
   community metadata database as one correction-batch issue ("Suggest
-  corrections"). It needs `library_id` **and** a book `path`, and takes `params`
+  corrections"). It writes nothing into the library. It needs `library_id` **and**
+  a book `path`, and takes `params`
   `{ "work_id": "…", "recording_id": "…", "asin": "…", "isbn": "…", "region": "…",
   "changes": [{ "field": "title", "current": "…", "corrected": "…" }], "evidence":
-  "…" }` (`work_id`, `changes` and `evidence` required): 1 to 25 changes, each
-  `field` once from `title`, `author`, `narrator`, `series`, `series_index`,
-  `more_series`, `published`, `isbn`; each value trimmed, one line, at most 500
-  characters, no control characters, `corrected` (as the community reads it,
-  below) set and different from `current` as sent; `evidence` (CRLF read as LF,
-  trimmed; line breaks and tabs kept) at most 2000 characters both as written and
-  as the issue carries it (a line starting with `#` loses its indent and counts
-  one more), not `_No response_` (the community reads that as a blank field) nor
-  reading as nothing; the lengths count the text as written, not decoded;
-  `recording_id` a community slug; and the params within this kind's 128 KiB cap
-  (`params too large`). The values and the evidence are checked as the community
-  reads them, each HTML character reference ending in `;` decoded (one naming
-  whitespace reads as a space): none may hold a control character, the
-  evidence's line breaks and tabs aside (`… holds a control character`), or a
-  bidirectional embedding, override or isolate control, `&#x202E;` included
-  (`… holds a bidirectional override character`; U+202A-U+202E, U+2066-U+2069;
-  the joiners and marks right-to-left scripts need are allowed). Each change must
-  be an **edit made on this server**: the field's source is `edited` on the book
-  and `corrected` is its value now, else `400 not_edited`. The server stores the
-  book's own spelling of each corrected value and stamps `source` as
-  `audiosilo-server/<version>`, whatever was sent (a sent `source` must still be
-  at most 128 bytes, with no control characters). It writes nothing into the
-  library. Result: `{issue_url, issue_number, changes, auto: [fields], maintainer:
+  "…" }`, with `work_id`, `changes` and `evidence` required. The rules:
+  - **Changes:** 1 to 25, each `field` once from `title`, `author`, `narrator`,
+    `series`, `series_index`, `more_series`, `published`, `isbn`.
+  - **Values:** each trimmed, one line, at most 500 characters, no control
+    characters. `corrected` (as the community reads it, below) must be set and
+    differ from `current` as sent.
+  - **`evidence`:** CRLF is read as LF, the text is trimmed, and line breaks and
+    tabs are kept. At most 2000 characters, both as written and as the issue
+    carries it (a line starting with `#` loses its indent and counts one more).
+    Not `_No response_`, which the community reads as a blank field, and not
+    reading as nothing.
+  - The lengths count the text as written, not decoded.
+  - `recording_id` is a community slug.
+  - The params stay within this kind's 128 KiB cap (`params too large`).
+  - **Characters, as the community reads them.** The server checks the values and
+    the evidence with each HTML character reference ending in `;` decoded; one
+    naming whitespace reads as a space. None may hold a control character, the
+    evidence's line breaks and tabs aside (`… holds a control character`). None
+    may hold a bidirectional embedding, override or isolate control, `&#x202E;`
+    included (`… holds a bidirectional override character`; U+202A-U+202E,
+    U+2066-U+2069). The joiners and marks right-to-left scripts need are allowed.
+  - **Each change must be an edit made on this server:** the field's source is
+    `edited` on the book and `corrected` is its value now, else `400 not_edited`.
+  - The server stores the book's own spelling of each corrected value and stamps
+    `source` as `audiosilo-server/<version>`, whatever was sent. A sent `source`
+    must still be at most 128 bytes, with no control characters.
+
+  Result: `{issue_url, issue_number, changes, auto: [fields], maintainer:
   [fields]}`. See [Contributions](../../bridge/contributions.md#corrections-metacorrect).
 
 `sidecars.contribute`, `meta.correct` and a `sidecars.generate` job with
@@ -10377,7 +10433,43 @@ the console says so. A new job is audited as `bridge.job`.
 | `200` | the open job of that kind for that library and path |
 | `400` | `invalid request` (not JSON, an unknown field, a body past the bound above); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `path is required`, `params too large`, or a params error (`hold_seconds must be 0-600`, `source must be auto, audio or ebook`, `contribute must be local or issue`, a `work_id` too long or with a control character, an unknown field, a `dimensions` entry that isn't `characters` or `recaps` or is repeated, a `meta.correct` params error (the kind's checks above): no `work_id` or `evidence` (or evidence reading as nothing), a field that can't be corrected or is listed twice, a corrected value that is empty or reads the same as the current one, a change or the evidence past its bounds (counted as written), a value or the evidence holding a control character (the evidence's line breaks and tabs aside) or a bidirectional override character, written or as a character reference that reads as one, a `recording_id` that isn't a community slug, an identifier too long); `code: "not_edited"` with `field` - a `meta.correct` change of a field that isn't an edit made on this server, or whose corrected value isn't the book's value now |
 | `404` | `library not found`; `code: "book_not_found"` - the path is not an indexed book; `code: "module_off"` - a job of the `contributions` module (`sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`) while the module is off |
-| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind (a Bridge from before Phase 1c doesn't run `sidecars.describe`, one from before Phase 1d `chapters.detect`, one from before Phase 2b `sidecars.contribute` or `meta.correct`, one from before Phase 3c `readalong.align`); `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge can't contribute; `code: "generate_open"` - `sidecars.describe`, `chapters.detect`, `sidecars.contribute` or `readalong.align` while a `sidecars.generate` job is open for the book ("a generate job is still open for this book; queue this once it has finished"); `code: "contribute_open"` - `sidecars.generate` while a `sidecars.contribute` job is queued or working for the book (a parked one, or a queued one held while the `contributions` module is off, is cancelled instead); `code: "detect_open"` - `sidecars.generate` while a `chapters.detect` job is queued or working for the book, or `sidecars.describe` or `readalong.align` while one is open ("a chapter detection job is still open for this book; queue this once it has finished"); `code: "describe_open"` - `chapters.detect` while a `sidecars.describe` job is open for the book; `code: "chapters_chosen"` - `chapters.detect` for a book whose chapter source an admin chose (`files` or `community`), checked before the queue ("an admin chose this book's chapter source, so chapters found in the narration would never be used; set it back to automatic first"); `code: "readalong_open"` - `sidecars.generate` while a `readalong.align` job is queued or working for the book (a parked one is cancelled instead), or `chapters.detect` while one is open ("a read-along job is still open for this book; queue this once it has finished"); `code: "no_ebook"` - `readalong.align` for a book the index holds no ebook for, checked before the queue ("this book has no ebook to align with its narration"). `library_not_writable`, `cannot_contribute` and the open-job codes are checked after the dedupe: an open job of the same kind for the book is still returned (`200`) |
+| `409` | one of the codes listed under the table |
+
+The `409` codes, each sent as `code`:
+
+- `kind_unavailable`: no Bridge has reported, or the paired one doesn't run that
+  kind. An older Bridge may not run `sidecars.describe`, `chapters.detect`,
+  `sidecars.contribute`, `meta.correct` or `readalong.align`.
+- `library_not_writable`: a kind that writes, for a library the last heartbeat
+  doesn't report mapped and writable.
+- `cannot_contribute`: `sidecars.generate` with `contribute: "issue"`,
+  `sidecars.contribute` or `meta.correct` while the Bridge can't contribute.
+- `generate_open`: `sidecars.describe`, `chapters.detect`, `sidecars.contribute`
+  or `readalong.align` while a `sidecars.generate` job is open for the book
+  ("a generate job is still open for this book; queue this once it has finished").
+- `contribute_open`: `sidecars.generate` while a `sidecars.contribute` job is
+  queued or working for the book. A parked one, or a queued one held while the
+  `contributions` module is off, is cancelled instead.
+- `detect_open`: `sidecars.generate` while a `chapters.detect` job is queued or
+  working for the book, or `sidecars.describe` or `readalong.align` while one is
+  open
+  ("a chapter detection job is still open for this book; queue this once it has finished").
+- `describe_open`: `chapters.detect` while a `sidecars.describe` job is open for
+  the book.
+- `chapters_chosen`: `chapters.detect` for a book whose chapter source an admin
+  chose (`files` or `community`), checked before the queue
+  ("an admin chose this book's chapter source, so chapters found in the narration would never be used; set it back to automatic first").
+- `readalong_open`: `sidecars.generate` while a `readalong.align` job is queued or
+  working for the book (a parked one is cancelled instead), or `chapters.detect`
+  while one is open
+  ("a read-along job is still open for this book; queue this once it has finished").
+- `no_ebook`: `readalong.align` for a book the index holds no ebook for, checked
+  before the queue
+  ("this book has no ebook to align with its narration").
+
+`library_not_writable`, `cannot_contribute` and the open-job codes are checked
+after the dedupe, so an open job of the same kind for the book is still returned
+(`200`).
 
 ### `GET /api/v1/admin/bridge/jobs/{id}`
 
@@ -10409,7 +10501,7 @@ How each figure is worked out is in
 | Param | Meaning |
 |---|---|
 | `library_id`, `path` | the book (required; an indexed book's path) |
-| `kind` | `sidecars.generate` (the default) or, Phase 3c, `readalong.align` (its own answer, below) |
+| `kind` | `sidecars.generate` (the default) or `readalong.align` (its own answer, below) |
 | `brief` | `1`: no look into the book's folder for an ebook (`source` is `audio`, no `ebook`) and no scan of the series (`earlier` is `[]`): the cheap answer for a label or a batch |
 
 ```json
@@ -10448,12 +10540,12 @@ How each figure is worked out is in
 | `subscription`, `agent_ready`, `can_contribute` | the Bridge's: its agent credential is a subscription (the cost is notional), the agent container is ready, and it can offer results to the community (`contribute: "issue"`; the heartbeat's `setup.can_contribute`, else its estimates'). `can_contribute` is `false` while the `contributions` module is off |
 | `figures` | the last heartbeat carried estimates. Without them every field above but `can_contribute` is a default, so a false `agent_ready` means "not known yet" |
 | `writable` | the Bridge last reported the library mapped and writable (else queueing is `409 library_not_writable`) |
-| `can_describe` | the Bridge is online and runs `sidecars.describe` (Phase 1c; a 1a or 1b Bridge doesn't). With `brief=1` too |
+| `can_describe` | the Bridge is online and runs `sidecars.describe` (an older Bridge may not). With `brief=1` too |
 | `has.community` | what the book's community work carries (metadata on and the book matched; `false` otherwise): `characters`, `recaps` (a recap list: a whole-book summary alone doesn't count, since generated recaps still fill the list beside it) and `description`, which is its `community_description` **or** its core `description` (the player shows either before a generated one, so a generated description would never be read) |
 | `has.community_unknown` | `true` when the community couldn't be asked right now, so `has.community` is no answer (never read it as "none"); omitted otherwise |
 | `has.local` | what the book's indexed [`.audiosilo/` files](../../bridge/attachments.md) carry: `characters`, `recaps` and `description` |
 | `earlier` | the books of the same library before this one in its first numbered series (any spelling), with no recaps generated here and, metadata on, none in the community (a book the community couldn't be asked about is left out): the nearest 10, in reading order, each with its own `asr_hours` and `agent_cost_usd` (costed from its audio). `[]` for none, and with `brief=1` |
-| `open_job` | the book's open `sidecars.generate` [job](#the-job-object), else (Phase 1d) the open job of another kind that refuses a generate job now: a queued or working `chapters.detect` job, (Phase 2b) `sidecars.contribute` job (not a queued one held while the `contributions` module is off) or (Phase 3c) `readalong.align` job, whose `kind` says so; omitted when there is neither |
+| `open_job` | the book's open `sidecars.generate` [job](#the-job-object), else the open job of another kind that refuses a generate job now, whose `kind` says so: a queued or working `chapters.detect`, `sidecars.contribute` (not a queued one held while the `contributions` module is off) or `readalong.align` job. Omitted when there is neither |
 
 | Status | Meaning |
 |---|---|
@@ -10463,7 +10555,7 @@ How each figure is worked out is in
 | `404` | `library not found`; `code: "book_not_found"` - no indexed book at that path |
 | `409` | `code: "kind_unavailable"` - no Bridge has reported, or it doesn't offer the kind |
 
-With `kind=readalong.align` (Phase 3c) the answer is the read-along confirmation's:
+With `kind=readalong.align` the answer is the read-along confirmation's:
 
 ```json
 {
@@ -10557,7 +10649,7 @@ found. The server keeps the last one only (one row, never a history).
 | `libraries` | its last check of each library it has checked (at most 512, each `library_id` once and above 0): `mount_path` where it looked, `mapped` (a known book's files were there with the server's sizes), `writable` (a probe file could be written and removed there), `checked_path` (the book it compared), `error` (why it isn't mapped or writable, `""` when it is); the three texts at most 1 KiB each |
 | `workers` | the transcription workers connected to it (at most 64; `name`, `version`, `platform`, `last_seen`, at most 128 bytes each; `[]` today) |
 | `ui_url` | its own page on the local network: an absolute `http(s)` URL without credentials, or `""` |
-| `setup` | optional, Phase 2b, sent only after a reply listed it in `accepts`: the Bridge's setup checklist, `{ items: [{ id, done, required, detail?, library_ids? }], can_contribute, github_login? }`. Read leniently like `estimates` (an unknown key ignored, a block that doesn't decode dropped, never refused) and bounded: the first 16 items kept (the rest left out); an item whose `id` doesn't match `^[a-z][a-z0-9_]{0,31}$`, or repeats one, is left out (an unknown id is kept); `detail` cleaned to 256 bytes; in `library_ids` a zero, negative or repeated id left out (at most 512 kept); a `github_login` that isn't GitHub's shape dropped. Its `can_contribute` wins over the estimates'. The ids a Phase 2b Bridge sends, their order and meaning: [The setup checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist) |
+| `setup` | optional, sent only after a reply listed it in `accepts`: the Bridge's setup checklist, `{ items: [{ id, done, required, detail?, library_ids? }], can_contribute, github_login? }`. Read leniently like `estimates` (an unknown key ignored, a block that doesn't decode dropped, never refused) and bounded: the first 16 items kept (the rest left out); an item whose `id` doesn't match `^[a-z][a-z0-9_]{0,31}$`, or repeats one, is left out (an unknown id is kept); `detail` cleaned to 256 bytes; in `library_ids` a zero, negative or repeated id left out (at most 512 kept); a `github_login` that isn't GitHub's shape dropped. Its `can_contribute` wins over the estimates'. The ids a Bridge sends, their order and meaning: [The setup checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist) |
 | `estimates` | optional: its figures for costing a job before it is queued, one block per job family. `sidecars`: `asr_seconds_per_audio_hour` (ASR wall time per hour of audio, learned or a seed), `agent_usd_per_audio_hour` and `agent_usd_per_ebook` (agent spend from finished books, `null` before any), `samples` (the finished books they come from), `agent_backend` (`""` when none), `agent_ready` (the agent container answers and has a credential), `subscription` (that credential is a subscription login), `can_contribute` (it can file community intake issues), `monthly_budget_usd` (`0` = no cap) and `month_spent_usd`. Read leniently: an unknown key is ignored, and a block that doesn't decode, or holds a number below 0 or past its bound, is **dropped**, never refused (`agent_backend` is cleaned like the other text) |
 
 The structure is checked and refused when wrong: a malformed kind, a repeated
@@ -10568,7 +10660,7 @@ text** (the version, each mapping's paths and error, the workers' fields) is
 a space, and the text is cut to its limit. Much of it comes from the outside world
 (a file's name, an OS error), and a refused heartbeat would leave the Bridge
 offline. The body is at most 64 KiB. The answer lists the server's libraries, so
-the Bridge can map the ones it hasn't checked yet, and (Phase 2b) `accepts`, the
+the Bridge can map the ones it hasn't checked yet, and `accepts`, the
 optional protocol features this server accepts:
 
 ```json
@@ -10610,11 +10702,14 @@ resends once on a `400` (an older server answers no `accepts`). See
 The server picks from the kinds the last heartbeat named **and** the server knows,
 narrowed to the `kind` values when there are any. It hands out the highest
 priority, then oldest, queued job of those kinds, leased for 2 minutes and with
-`attempts` one higher, and answers `200` with the [job](#the-job-object). With no
-job it waits up to `wait` (a job queued meanwhile, or one put back by a lapsed
-lease, wakes it) and then answers `204`; when no kind is left after the narrowing it answers
-`204` at once, and when the server is stopping it ends the wait with `204`. The
-token is checked again with every claim, so a Bridge that a pairing or an unpair
+`attempts` one higher, and answers `200` with the [job](#the-job-object).
+
+- With no job it waits up to `wait`, then answers `204`. A job queued meanwhile, or
+  one put back by a lapsed lease, wakes it.
+- When no kind is left after the narrowing, it answers `204` at once.
+- When the server is stopping, it ends the wait with `204`.
+
+The token is checked again with every claim, so a Bridge that a pairing or an unpair
 replaced during its long poll gets `401`, never a job. A claim with nothing to
 do (no job to hand out, no lease run out, no private follow request whose feed
 URL the server lost) writes nothing on the server.
@@ -10757,14 +10852,14 @@ answer): what a job about the book reads. The effective values; `authors` and
 `series_index` is the position as the server formats it (`"3"`, `"1-3"`, `""`
 for none); `duration` is in seconds; `work_id` is the community work the
 metadata cache already knows for the book's ASIN or ISBN, `""` otherwise (the
-cache only, never an upstream call; `""` while metadata is off). `ebook` (Phase 3c)
-is the book's ebook as the server indexed it (the reader's file, the one a
+cache only, never an upstream call; `""` while metadata is off). `ebook` is the
+book's ebook as the server indexed it (the reader's file, the one a
 `readalong.align` job aligns), omitted when it has none.
 
 File paths are relative to the library root. A single-file book (one audio file,
 indexed without separate parts) is listed as its own one file. `size` and
 `mod_time` (Unix seconds) are read from the disk on the request; a file the server
-can't stat keeps its indexed size and `mod_time` `0`. `duration` (Phase 3c) is the
+can't stat keeps its indexed size and `mod_time` `0`. `duration` is the
 file's indexed length in seconds (a single-file book's is the book's), from which a
 read-along map's whole-book times are built; an older Bridge ignores it. Only an indexed book answers:
 this never indexes a path on demand.
@@ -10799,15 +10894,13 @@ Bridge cannot map it through a sample episode. Use the marker route above.
   edits, covers, enrichment, Bridge jobs, the favourites of the folders it left),
   then drops the old row, but only when no book is at `from` on disk any more and
   the two fingerprints match; otherwise `from` is ignored (logged), never an
-  error. This closes Phase 0's gap where a rescan of a renamed book defeated move
-  detection.
+  error. So a rescan after a rename no longer defeats move detection.
 - **`attachments`** re-reads only the book's
   [`.audiosilo/` files](../../bridge/attachments.md), never its audio: the
   Bridge's call after writing characters, recaps, a description, chapters or a
   read-along map. The path is the book's, or a path inside it. A changed
   `chapters.json` re-resolves the book's chapters at once. It answers what is now
-  indexed (`description` since Phase 1c, `chapters` since Phase 1d, `readalong`
-  since Phase 3c):
+  indexed. An older server may omit `description`, `chapters` or `readalong`:
 
 ```json
 { "path": "Andy Weir/Project Hail Mary", "attachments": { "characters": true, "recaps": true, "description": true, "chapters": false, "bridge": true, "readalong": false } }
@@ -10833,18 +10926,19 @@ through a hidden (dot) folder is never indexed. The body is at most 8 KiB.
 
 ## Audible accounts
 
-Bridge Phases 4a, 4b and 4c (`api/handlers_audible.go`, `catalog/audible.go`,
-`catalog/audible_import.go`, `internal/audible`, and 4c's
-`api/handlers_audible_sync.go` and `catalog/audible_sync.go`; the design is in
-[Audible](../../bridge/audible.md)). The Bridge signs in to Audible accounts and
-holds every credential; the server keeps only what it reports: each account's
-mapping (a person, a books library), the titles its polls found, and (4b) what to
-back up: an account's policy and placement template, a title's "Not this book" and
-destination, and the backups it queued (`audible.import` jobs, see
-[Backing up a title](../../bridge/audible.md#backing-up-a-title-audibleimport)),
-and (4c) whether an account's listening places sync with Audible
-([Audible position sync](#audible-position-sync)). The server never talks to
-Audible.
+The code is in `api/handlers_audible.go`, `api/handlers_audible_sync.go`,
+`catalog/audible.go`, `catalog/audible_import.go`, `catalog/audible_sync.go` and
+`internal/audible`. The design is in [Audible](../../bridge/audible.md). The Bridge
+signs in to Audible accounts and holds every credential. The server never talks to
+Audible, and keeps only what the Bridge reports:
+
+- each account's mapping (a person, a books library);
+- the titles its polls found;
+- what to back up: an account's policy and placement template, a title's "Not
+  this book" and destination, and the backups it queued (`audible.import` jobs,
+  see [Backing up a title](../../bridge/audible.md#backing-up-a-title-audibleimport));
+- whether an account's listening places sync with Audible
+  ([Audible position sync](#audible-position-sync)).
 
 Two sets of routes, as for [the Bridge](#the-bridge):
 
@@ -10896,16 +10990,16 @@ one, an id that doesn't match is `404 unknown_account`.
 | `library_id`, `library` | the books library its titles are matched against; both `null` and `paused: true` once that library was deleted |
 | `paused` | its library was deleted: no poll is queued and Check now is `409 account_paused` until the Bridge maps it again |
 | `policy` | `all`, `series` or `manual`: what the account backs up by itself after a poll (every new title, new titles in a series the person has, only what an admin picks). The Bridge sets it when it creates the account; after that only [`PATCH /admin/audible/accounts/{account}`](#patch-apiv1adminaudibleaccountsaccount) changes it |
-| `sync` | whether the account's listening places sync with Audible (Phase 4c): the console's alone ([`PATCH`](#patch-apiv1adminaudibleaccountsaccount) `{sync}`), off for a new account, turned off when the Bridge maps the account to another person |
+| `sync` | whether the account's listening places sync with Audible: the console's alone ([`PATCH`](#patch-apiv1adminaudibleaccountsaccount) `{sync}`), off for a new account, turned off when the Bridge maps the account to another person |
 | `poll_hours` | how often the scheduler queues its poll (6) |
 | `last_poll_at` | when the Bridge last finished a poll (its `final` titles call), `null` before the first |
 | `last_queued_at` | when a poll was last queued (by the scheduler or Check now), `null` before the first |
-| `template` | the account's placement template for its backups, `""` for the Bridge's placement beside the series' other books (Phase 4b) |
-| `policy_since` | when its automatic policy began to act: a policy backs up only titles first seen after it. Set at the account's creation, when an automatic policy is turned on, and moved to the account's first complete poll (Phase 4b) |
+| `template` | the account's placement template for its backups, `""` for the Bridge's placement beside the series' other books |
+| `policy_since` | when its automatic policy began to act: a policy backs up only titles first seen after it. Set at the account's creation, when an automatic policy is turned on, and moved to the account's first complete poll |
 | `titles` | `GET /admin/audible/accounts` only: the titles counted by state, and how many are matched to a book here (`matched` leaves out a match marked "Not this book") |
-| `last_sync_at` | when its last `audible.sync` finished having read Audible's places, `null` before the first (and after a mapping to another person) (Phase 4c) |
-| `refused_at` | when a sync failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it (Phase 4c). A refused sync the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again |
-| `backup_estimate` | `GET /admin/audible/accounts` only: what [Back up everything](#post-apiv1adminaudibleaccountsaccountbackup-all) would queue now, `count` titles and about `bytes` (each title's `runtime_s` x 8000, 64 kbps AAXC: approximate) (Phase 4b) |
+| `last_sync_at` | when its last `audible.sync` finished having read Audible's places, `null` before the first (and after a mapping to another person) |
+| `refused_at` | when a sync failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it. A refused sync the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again |
+| `backup_estimate` | `GET /admin/audible/accounts` only: what [Back up everything](#post-apiv1adminaudibleaccountsaccountbackup-all) would queue now, `count` titles and about `bytes` (each title's `runtime_s` x 8000, 64 kbps AAXC: approximate) |
 
 ### `GET /api/v1/bridge/users`
 
@@ -10930,8 +11024,8 @@ account's only, the console sets it after that). The body is strict JSON, at mos
 ```
 
 `label` is cleaned and cut to 100 characters (`""` is fine: the console then names
-it after the person and the store). Since Phase 4c `sync` is read and ignored: a
-new account is created with sync off, and a PUT never turns it on. A PUT mapping
+it after the person and the store). `sync` is read and ignored. A new account is
+created with sync off, and a PUT never turns it on. A PUT mapping
 the account to **another person** turns its sync off, forgets its `last_sync_at`
 and cancels its open `audible.sync` ("sync with Audible was turned off for the
 account"); every PUT clears `refused_at`.
@@ -11037,8 +11131,7 @@ the server knew it (the Bridge forgets locally first and may call again).
   its book is indexed and the call names no other match for the title. On the
   **final** call, every title of the account this `poll_id` didn't send becomes
   `gone`, the account's `last_poll_at` is now (and, on its first complete poll, its
-  `policy_since`), its `refused_at` is cleared (Phase 4c: Audible answered the
-  account), and then, while the module is on and an online Bridge runs
+  `policy_since`), its `refused_at` is cleared (Audible answered the account), and then, while the module is on and an online Bridge runs
   `audible.import`, the server queues the backups the account's policy and pending
   preorder requests ask for (at most 10 s of it; a failure is logged and the next
   poll asks again: the call still answers `200`).
@@ -11167,14 +11260,14 @@ keyset-paged.
 }
 ```
 
-`next` is `""` on the last page. Phase 4b's fields:
+`next` is `""` on the last page. The backup fields:
 
 | Field | Meaning |
 |---|---|
 | `match.how` | `asin`, `fuzzy` (a poll's) or `import` (a done backup's) |
 | `rejected` | marked "Not this book": never backed up by Back up everything or a policy; a match it has isn't counted as on this server |
 | `ignored` | no route sets it yet; Back up everything and the policy skip an ignored title, and it doesn't sync |
-| `no_sync` | marked "Don't sync this book" (Phase 4c): neither direction of the account's sync touches its book. Separate from `rejected`; backups never read it |
+| `no_sync` | marked "Don't sync this book": neither direction of the account's sync touches its book. Separate from `rejected`; backups never read it |
 | `dest_path` | the console's destination for the title's backup, `""` for the account's placement |
 | `import_job_id` | the title's latest backup job, `null` for none |
 | `import` | the title's backup: `{job_id, state, code}` with `state` the job's ([job states](#the-job-object)) and `code` a failed or parked job's code (`not_released`, `no_rights`, `audible_refused`, `not_writable`, `exists`, `disk_full`, `offline_url_expired`, `unknown_account`, `drm_free` (Audible offers the title only as a DRM-free MP3, which the Bridge doesn't back up yet), or `""`); `{job_id: null, state: "pending"}` for a Back up on a preorder waiting for its release; `null` for none |
@@ -11215,7 +11308,7 @@ account is kept.
 
 ### `POST /api/v1/admin/audible/titles/{account}/{asin}/backup`
 
-*Admin, module on.* **Back up** one title (Phase 4b): queues its `audible.import`
+*Admin, module on.* **Back up** one title: queues its `audible.import`
 at a person's priority (`0`), with params built from the account and the title
 (`{account, asin, library_id, dest_path, template}`: the account's library and
 template and the title's `dest_path`, as they are now). No body. A preorder isn't
@@ -11236,7 +11329,7 @@ audited as `bridge.job` (with `job`, `kind`, `account`, `asin`), a pending one a
 
 ### `POST /api/v1/admin/audible/accounts/{account}/backup-all`
 
-*Admin, module on.* **Back up everything** (Phase 4b): queues an `audible.import`
+*Admin, module on.* **Back up everything**: queues an `audible.import`
 for every title of the account that is `available`, not on this server, not
 `rejected` or `ignored`, not contested (`reason` `contested`), with no backup
 waiting or running, and not already backed up (its latest backup `done` and the
@@ -11257,8 +11350,8 @@ count and size it would queue are the account's `backup_estimate`.
 
 ### `PATCH /api/v1/admin/audible/titles/{account}/{asin}`
 
-*Admin, module on.* **Not this book** and a title's **destination** (Phase 4b),
-and **Don't sync this book** (Phase 4c). Strict JSON, at most 8 KiB; a field left
+*Admin, module on.* **Not this book** and a title's **destination**,
+and **Don't sync this book**. Strict JSON, at most 8 KiB; a field left
 out is left as it is:
 
 ```json
@@ -11292,8 +11385,8 @@ Audited as **`bridge.audible.title`** (with `account`, `asin`, and `rejected`,
 
 ### `PATCH /api/v1/admin/audible/accounts/{account}`
 
-*Admin, module on.* An account's **settings**: its backups (Phase 4b) and whether
-its places sync (Phase 4c). Strict JSON, at most 8 KiB; a field left out is left as
+*Admin, module on.* An account's **settings**: its backups and whether
+its places sync. Strict JSON, at most 8 KiB; a field left out is left as
 it is:
 
 ```json
@@ -11337,21 +11430,26 @@ backups.
 
 ### Audible position sync
 
-Phase 4c ([Position sync](../../bridge/audible.md#position-sync-audiblesync-and-the-push-loop)):
-the Bridge keeps an account's listening places in step with Audible for the
-account's **person**, both ways, furthest wins. Audible's places come in through
-`audible.sync` and the listening route below; the person's places go back through
-the progress feed, which the Bridge's push loop reads every minute. An account
-syncs while the module is on, its `sync` is on, it isn't paused, `refused_at` is
-unset and its person may still be synced for (not disabled, a kid or a demo
-account). A title syncs when it is matched, not `rejected`, `ignored`, `no_sync`,
-`gone` or a `preorder` (a poll may match a preorder to another edition on disk,
-and Audible holds no place for an unreleased title). A preorder is in neither
-direction: not in the job's params, `not_synced` on the listening route, and not
-in the progress feed. Once it is released (`preorder` to `available`), its book's
-place is offered to Audible again, as for a title back from `gone`. Only places move: no listening session, `listening_daily` or history row
-is ever written for Audible's listening, and nothing is recorded against the
-bridge token.
+The Bridge keeps an account's listening places in step with Audible for the
+account's **person**, both ways, furthest wins (see
+[Position sync](../../bridge/audible.md#position-sync-audiblesync-and-the-push-loop)).
+Audible's places come in through `audible.sync` and the listening route below. The
+person's places go back through the progress feed, which the Bridge's push loop
+reads every minute.
+
+- **An account syncs** while the module is on, its `sync` is on, it isn't paused,
+  `refused_at` is unset and its person may still be synced for (not disabled, a
+  kid or a demo account).
+- **A title syncs** when it is matched, and not `rejected`, `ignored`, `no_sync`,
+  `gone` or a `preorder`. A poll may match a preorder to another edition on disk,
+  and Audible holds no place for an unreleased title.
+- **A preorder is in neither direction.** It is not in the job's params, it is
+  `not_synced` on the listening route, and it is not in the progress feed. Once it
+  is released (`preorder` to `available`), its book's place is offered to Audible
+  again, as for a title back from `gone`.
+- **Only places move.** No listening session, `listening_daily` or history row is
+  ever written for Audible's listening, and nothing is recorded against the bridge
+  token.
 
 Both routes are *bridge token*, header only, and share these refusals:
 
@@ -11461,21 +11559,27 @@ the start), `?limit=` (default 200, at most 500). `Cache-Control: no-store`.
 ```
 
 The rows are the person's progress rows on the books of the account's synced
-titles that the person can still reach, **one per title** (two titles on one book
-are two rows), leaving out the rows the account itself wrote (`device_id`
-`audible:<account>`: no echo) and, per title, a row whose own title's `runtime_s`
-disagrees with the book's length (5% of the longer plus 2 minutes, the listening
-route's `duration_mismatch`; the indexed duration, else the row's stored
-`duration`; both unknown agree): with two titles on one book, only the agreeing
-one is offered. They are ordered by `progress.change_seq`, the order this server
-wrote progress rows in (a server-wide counter that only goes up, also bumped when a
-title is newly matched, synced again or its runtime changes, so that book's place
-is offered again), then ASIN, after the opaque cursor `since`, so a row written
-late with an earlier `updated_at` (an offline backlog, a late finish, a client's
-clock behind) is still fed; `updated_at` is the row's own. `next` is the cursor of
-the last row read, a left-out one included (`since` again when there is none): the
-Bridge keeps it between polls. `more` is `true` for a full page read (its rows may
-be fewer): ask again at once.
+titles that the person can still reach, **one per title**: two titles on one book
+are two rows. Two kinds of row are left out:
+
+- the rows the account itself wrote (`device_id` `audible:<account>`), so nothing
+  echoes;
+- per title, a row whose own title's `runtime_s` disagrees with the book's length
+  (5% of the longer plus 2 minutes, the listening route's `duration_mismatch`).
+  The book's length is the indexed duration, else the row's stored `duration`,
+  and two unknown lengths agree. With two titles on one book, only the agreeing
+  one is offered.
+
+The rows are ordered by `progress.change_seq`, then ASIN, after the opaque cursor
+`since`. `change_seq` is the order this server wrote progress rows in: a
+server-wide counter that only goes up. It is also bumped when a title is newly
+matched, synced again or its runtime changes, so that book's place is offered
+again. So a row written late with an earlier `updated_at` (an offline backlog, a
+late finish, a client's clock behind) is still fed. `updated_at` is the row's own.
+
+`next` is the cursor of the last row read, a left-out one included (`since` again
+when there is none). The Bridge keeps it between polls. `more` is `true` for a full
+page read, whose rows may be fewer, so ask again at once.
 
 | Status | Meaning |
 |---|---|
