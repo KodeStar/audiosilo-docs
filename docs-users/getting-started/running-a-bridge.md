@@ -4,22 +4,21 @@ description: "Run the optional Bridge beside your server with Docker Compose, pa
 ---
 
 The **Bridge** is an optional companion container that runs beside your
-AudioSilo server. The server only reads your books; the Bridge may write to your
-library folders and runs the heavy jobs.
+AudioSilo server. The server only reads your books. The Bridge may write to your
+library folders, and it runs the heavy jobs. You add it to your compose file,
+pair it in the admin console, and work through its setup checklist.
 
-You don't need a Bridge to listen to your books. Add one when you want:
+You don't need a Bridge to listen to your books. Add one for:
 
-- [Podcasts](../admin/podcasts.md): following shows and downloading their episodes.
-- [Characters, recaps and descriptions](../admin/generating-characters-and-recaps.md)
-  for books the community hasn't covered yet, written by an AI agent.
-- [Chapters](../admin/generating-characters-and-recaps.md#books-without-chapters)
-  for a book that has none, found in its narration.
-- [Read-alongs](../admin/making-read-along.md), so listeners can follow the
-  narration in the book's ebook.
-- [Audible backups](../admin/audible.md) of the books you bought, and listening
-  places kept in step with Audible.
-- [Sharing with the community](../community/contributing-from-your-server.md):
-  the characters and recaps it writes, and your corrections to a book's details.
+- [podcasts](../admin/podcasts.md), following shows and downloading their episodes;
+- [characters, recaps and descriptions](../admin/generating-characters-and-recaps.md)
+  written by an AI agent;
+- [chapters](../admin/generating-characters-and-recaps.md#books-without-chapters)
+  found in a book's narration;
+- [read-alongs](../admin/making-read-along.md) in the book's ebook;
+- [Audible backups](../admin/audible.md) and listening places kept in step with
+  Audible;
+- [sharing with the community](../community/contributing-from-your-server.md).
 
 <a id="which-bridge-version"></a>
 
@@ -32,8 +31,9 @@ The Bridge runs as **two containers**:
 
 - **the Bridge**, which sees your library folders and does the work;
 - **the agent container**, which runs the AI agent (Anthropic's Claude Code or
-  OpenAI's Codex). It sees only a shared work folder, never your library, the
-  server or the Bridge. Only characters, recaps and descriptions use it.
+  OpenAI's Codex). It sees only the work folder (`staging`) it shares with the
+  Bridge, never your library, the server or the Bridge. Only characters, recaps
+  and descriptions use it.
 
 ## What you need
 
@@ -43,6 +43,10 @@ The Bridge runs as **two containers**:
 - Your audiobooks folder on the same machine, so both containers can mount it.
 - For characters and recaps: a **Claude** or **ChatGPT** subscription, or an API
   key. Give the Bridge an account of its own, so its usage and limits are its own.
+
+Steps 7 and 9 are optional, because only characters, recaps and descriptions
+need the agent. Podcasts use no speech recognition and no AI agent, so if you
+only want podcasts, skip steps 6 to 9.
 
 ## 1. Add the Bridge to your compose file
 
@@ -118,13 +122,12 @@ What matters:
   Bridge finds each library by itself. The console's **Server > Settings >
   Bridge** shows a snippet with one volume line per library.
 - **`PUID`/`PGID`** are the owner of your audiobooks folders, the same as for the
-  server. On Linux, run `id -u` and `id -g`; on Unraid, use `99` and `100`.
+  server. On Linux, run `id -u` and `id -g`. On Unraid, use `99` and `100`.
 - **`AUDIOSILO_BRIDGE_SERVER_URL`** is how the Bridge reaches the server. In one
   compose file that is `http://audiosilo:8080`, not the address in your browser.
-- **`AUDIOSILO_BRIDGE_PUBLIC_URL`** is the address of the Bridge's page on your
-  network (your machine's address and port 8091).
-- **The `staging` volume** is the only folder the Bridge and the agent share.
-  Keep it separate from `./bridge-data`.
+- **`AUDIOSILO_BRIDGE_PUBLIC_URL`** is your machine's address on your network,
+  with port 8091.
+- **Keep the work folder separate** from `./bridge-data`.
 - **Keep the agent's security settings** (`user`, `cap_drop`, `read_only` and the
   rest) as they are.
 
@@ -141,7 +144,7 @@ docker compose logs bridge
 On its first start, the Bridge prints the password for its page **once**, in its
 log. Copy it now. You can change it later on the page's **Settings** tab.
 
-Lost it? Run this as the owner of the Bridge's data folder (on Unraid, use
+If you lose it, run this as the owner of the Bridge's data folder (on Unraid, use
 `-u 99:100` with `docker exec` and the container's name):
 
 ```bash
@@ -154,19 +157,15 @@ settings stay as they are.
 ## 3. Open the Bridge's page
 
 Open `http://<your machine>:8091` and sign in with the password. The page is
-light or dark to match your device.
+light or dark to match your device. It answers only your local network (see
+[Good to know](#good-to-know)).
 
 ![The Bridge's sign-in page](/img/screenshots/bridge/sign-in.png)
-
-The page only answers your **local network**, and always asks for the password.
-It won't open from the internet or over a VPN like Tailscale. Don't put it behind
-a reverse proxy: the Bridge would see the proxy as local. If you do anyway, the
-proxy itself must accept only local connections.
 
 Until the Bridge is set up, its **Status** tab shows a **Get set up** card. It
 lists the steps below and ticks each one off, with a link to the tab where you do
 it. Once the Bridge is paired, the console shows the same list on
-[Settings > Bridge](../admin/bridge.md#the-setup-card).
+[Server > Settings > Bridge](../admin/bridge.md#the-setup-card).
 
 ![The Status tab of a new Bridge, with the Get set up card](/img/screenshots/bridge/status-unpaired.png)
 
@@ -178,8 +177,8 @@ it. Once the Bridge is paired, the console shows the same list on
    **Server address** (`http://audiosilo:8080` with the compose file above).
 4. Paste the **Pairing code** and press **Pair**.
 
-The code works once, for 15 minutes. The console then shows the Bridge as
-**Online**.
+The console then shows the Bridge as **Online**. The code works once, for 15
+minutes.
 
 ![The Status tab once paired](/img/screenshots/bridge/status-paired.png)
 
@@ -191,30 +190,14 @@ can write there. Within a few seconds, each library shows **Mapped** and
 the same folders at the same paths, there is usually nothing to do.
 
 If you mounted a library somewhere else, tell the Bridge where it is on the
-**Libraries** tab. A library that isn't ready says why: see
-[Libraries](../admin/bridge.md#libraries).
+**Libraries** tab. A library that isn't ready says why (see
+[Libraries](../admin/bridge.md#libraries)).
 
 ![The Bridge's Libraries tab](/img/screenshots/bridge/libraries.png)
 
 For a **podcast** library, mount its own folder the same way. An empty podcast
-library can be ready too: the Bridge writes a small hidden marker there. Leave it
-in place.
-
-Steps 7 and 9 are optional: only characters, recaps and descriptions need the
-agent. If you only want podcasts, you can skip steps 6 to 9: podcasts use no
-speech recognition and no AI agent.
-
-### Feeds on your local network
-
-Public feeds just work. To read a feed on your own network, allow its address
-range in the Bridge's environment, then restart it:
-
-```yaml
-AUDIOSILO_BRIDGE_PODCASTS_ALLOW_NETWORKS: "192.168.1.20/32"
-```
-
-Separate several ranges with commas. Allow only what you need: it also covers
-artwork and episode downloads.
+library can be ready too, because the Bridge writes a small hidden marker there.
+Leave it in place.
 
 ## 6. Speech recognition
 
@@ -234,9 +217,10 @@ Skip this step if you don't want characters, recaps or descriptions. Chapters,
 read-alongs, podcasts and Audible work without the agent.
 
 The agent needs a credential for an AI account. It runs **Claude Code** unless you
-switch it to Codex (below). You can set the credential on the Bridge's
-[Accounts tab](bridge-accounts.md#the-agents-credential), which is easiest, or in
-the agent container (see [Settings that take precedence](bridge-accounts.md#settings-that-take-precedence)).
+switch it to Codex (below). The easiest place to set the credential is the
+Bridge's [Accounts tab](bridge-accounts.md#the-agents-credential). You can also
+set it in the agent container (see
+[Settings that take precedence](bridge-accounts.md#settings-that-take-precedence)).
 
 **With a Claude subscription:**
 
@@ -252,7 +236,7 @@ Or put it in a `.env` file beside your compose file, then run
 CLAUDE_CODE_OAUTH_TOKEN=<the token>
 ```
 
-An Anthropic API key works too (billed per use): use the **Anthropic API key**
+An Anthropic API key works too, billed per use. Use the **Anthropic API key**
 field, or `ANTHROPIC_API_KEY` in place of `CLAUDE_CODE_OAUTH_TOKEN`.
 
 **With a ChatGPT subscription (Codex):**
@@ -268,8 +252,8 @@ field, or `ANTHROPIC_API_KEY` in place of `CLAUDE_CODE_OAUTH_TOKEN`.
 3. Add `AUDIOSILO_BRIDGE_AGENT_BACKEND: codex` to the **bridge** service's
    `environment`, then run `docker compose up -d bridge`.
 
-An OpenAI API key works too: the **OpenAI API key** field on the Accounts tab, or
-`OPENAI_API_KEY` in the agent's environment.
+An OpenAI API key works too. Use the **OpenAI API key** field on the Accounts
+tab, or `OPENAI_API_KEY` in the agent's environment.
 
 Within about 15 seconds, the **Characters and recaps** card on the Bridge's
 **Status** tab says the agent is **Ready**. If not, the line under it says why.
@@ -294,8 +278,8 @@ Once every required step is done, open a book in the console and
 ## Costs and limits
 
 Set these in the Bridge's `environment` (or `config.yaml` in its data folder),
-then restart it. The monthly budget can also be changed on the **Settings** tab,
-which applies at once.
+then restart it. You can also change the monthly budget on the **Settings** tab,
+where it applies at once.
 
 | Setting | Variable | Default | What it does |
 |---|---|---|---|
@@ -304,8 +288,8 @@ which applies at once.
 | `transcripts.retention_days` | `AUDIOSILO_BRIDGE_TRANSCRIPTS_RETENTION_DAYS` | `30` | Days a book's transcripts are kept after its job ends. `0` deletes them at once. |
 | `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` | Which tool the agent runs: `claude` or `codex`. |
 
-With a subscription, costs are counted as the same use would cost on an API key,
-so the limits still mean something. The **Status** tab shows this month's spend.
+With a subscription, the Bridge counts what the same use would cost on an API
+key, so the limits still apply. The **Status** tab shows this month's spend.
 
 ## On Unraid
 
@@ -329,15 +313,37 @@ once.
 
 ## Keeping it safe
 
-- The Bridge keeps its settings, data and secrets in `./bridge-data`. Secrets are
-  encrypted with a key kept in that folder. Back it up.
+- The Bridge keeps its settings, data and secrets in `./bridge-data`. It encrypts
+  the secrets with a key kept in that folder. Back the folder up.
 - To keep the key separately, set `AUDIOSILO_BRIDGE_SECRET_KEY` to 64 hex
   characters (for example from `openssl rand -hex 32`). Without the same key, a
-  paired Bridge won't start and its sign-ins have to be set again.
-- The page never shows a stored credential again. The agent gets a credential
-  only for the run that needs it, and it never appears in a log.
-- **Unpair...** in the console stops the Bridge. Removing the containers leaves
-  what it saved in your library.
+  paired Bridge won't start and you have to set its sign-ins again.
+- A credential never appears in a log. How the Bridge stores and hands out
+  credentials is in [The agent's credential](bridge-accounts.md#the-agents-credential).
+- [Unpair...](../admin/bridge.md#unpairing) in the console stops the Bridge.
+  Removing the containers leaves what it saved in your library.
+
+## Good to know
+
+- **The page answers only your local network**, and always asks for the
+  password. It won't open from the internet or over a VPN like Tailscale. If it
+  says it answers only the local network, open it from a computer on the same
+  network, by its local address.
+- **Don't put the page behind a reverse proxy**, because the Bridge would see the
+  proxy as local. If you do anyway, the proxy itself must accept only local
+  connections.
+
+### Feeds on your local network
+
+The Bridge reads public podcast feeds with no setting. To read a feed on your own
+network, allow its address range in the Bridge's environment, then restart it:
+
+```yaml
+AUDIOSILO_BRIDGE_PODCASTS_ALLOW_NETWORKS: "192.168.1.20/32"
+```
+
+Separate several ranges with commas. Allow only what you need, because the
+setting also covers artwork and episode downloads.
 
 ## Something not working?
 
@@ -348,14 +354,11 @@ once.
   `http://audiosilo:8080` only works in the same compose file.
 - **Pairing says the server's certificate isn't trusted.** Pair with the server's
   `http://` address on your network instead.
-- **The server refused the Bridge's token.** It was unpaired, another Bridge was
-  connected, or the admin who paired it is no longer an admin. Pair it again with
-  a new code.
+- **The server refused the Bridge's token.** Pair it again with a new code. The
+  causes are in [Online, offline and its details](../admin/bridge.md#online-offline-and-its-details).
 - **A library says Not found or Can't write.** Mount it at the server's path,
   read-write (`:rw`), and check `PUID`/`PGID`. See
   [Libraries](../admin/bridge.md#libraries).
 - **The agent isn't ready.** The line under the agent on the **Status** tab says
   why. Check that the agent container is running, has a credential, and is the
   same version as the Bridge.
-- **The page says it answers only the local network.** Open it from a computer on
-  the same network, by its local address.
