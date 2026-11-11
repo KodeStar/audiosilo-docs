@@ -201,7 +201,7 @@ older binary, and JS detects it.
 |---|---|---|
 | Event | `onRemoteMove { trackIndex, position }` | The engine moved for something outside the JS API: the lock screen or notification scrubber, its skip and chapter buttons, a headset, CarPlay or Android Auto, including their chapter lists. Sent once the move has landed, in file coordinates. Never sent for moves JS asked for (`seekTo`, `skipToTrack`, `load`), auto-rewind, Smart speed's skips, or a file running on into the next |
 | Event | `onRateChange { rate }` | The OS changed the speed (iOS `changePlaybackRateCommand`, CarPlay's rate button, an Android controller). Already applied |
-| Event | `onRemoteBookmark { trackIndex, position, connectionId?, libraryId?, path? }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action), with the engine's own book when it has one. The car controller listens for it, not the engine |
+| Event | `onRemoteBookmark { trackIndex, position, relPath?, connectionId?, libraryId?, path? }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action), with the engine's own book when it has one. The car controller listens for it, not the engine |
 | Event | `onCarConnection { connected }` | CarPlay or Android Auto connected or left |
 | Event | `onCarPlayRequest { id }` | The car asked for a book native can't start alone |
 | Field | `onProgress.silenceSaved` | Book seconds Smart speed removed since the app's process started, summed over every player the service builds. Monotonic ([Android only](audio-effects.md#why-smart-speed-isnt-on-iphone-yet)) |
@@ -363,6 +363,14 @@ The module's manifest sets `android:largeHeap="true"`. On the phones measured, t
 puts the line at about 41 hours of audio in one file, against about 4 without it.
 The heap varies by device. Known limit: two very long files that meet at a
 boundary can still overflow, since the budget counts one file's extractors.
+
+**A queue replaced by `load` is released first.** Setting new items on a prepared
+player keeps the old items' extractors alive while the new ones load, a heap peak a
+small device can't hold. So `load` `stop`s a prepared player before it sets the new
+queue. That stop's events (an idle, the old place) are the old queue's and never reach
+JS (`replacing`). The controller reports the stop as an idle only, with no
+`onIsPlayingChanged(false)` for a queue that was playing, so `load` stops the 1 s
+progress loop itself; the new queue's `playing` starts it again.
 
 - **`TimelineMap` keeps the bridge contract file-based.** The JS store and iOS
   think in `(fileIndex, positionInFile)`; the Android engine plays clip items.
@@ -604,7 +612,9 @@ order of importance:
 
 1. **It is armed by the play or retry *action*, not by interpreting engine
    events.** `beginPlaybackAttempt()` is called from `playBook`, `retry`, the play
-   half of `toggle`, and a playing adoption's reload (`reloadAdopted`). It sets two
+   half of `toggle` (not at the end of a download that ends early, `atPartialEnd`, see
+   [A download that ends early](offline.md#a-download-that-ends-early)), and a playing
+   adoption's reload (`reloadAdopted`). It sets two
    module-level flags, `wantsPlayback` (we intend to be playing) and
    `startingPlayback` (an attempt is in flight), and starts a `STALL_GRACE_MS` (3 s)
    timer. When the timer fires, the only test is *"are we `playing`?"*, so no
@@ -834,7 +844,9 @@ A span runs from where playing began to where it ended. It carries:
 - both ends in whole-book seconds **and**, for each end, the playing track's audio
   file (from its track id) and the seconds into it;
 - the audio's length (`queue.audio`, not the timeline's, because the server
-  fingerprints it);
+  fingerprints it). A queue over a download that ends early sends the book's length
+  on its server instead, or none when that is not known (`bookAudioOf`, see
+  [A download that ends early](offline.md#a-download-that-ends-early));
 - the speed and the device's times;
 - why it began (`start`);
 - the version this device has acknowledged for the book (`base_version`), read when
@@ -1281,6 +1293,9 @@ span was last kept, under the mirror's own rule that the newest record wins:
 
 - only a record older than the span's end is changed, and only forward;
 - never a finished book's record, and never a book with no record;
+- never finished at the end of a download that ends early (`ProgressSave.partial`, or
+  `downloadEndsBefore` unless the span ended in the book's last file; see
+  [A download that ends early](offline.md#a-download-that-ends-early));
 - so a place written since stands: the listener's own move, another tab's play, a
   server row.
 

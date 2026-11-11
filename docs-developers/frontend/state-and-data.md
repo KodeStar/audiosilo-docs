@@ -287,8 +287,8 @@ platform follows these rules:
   (see [Offline](offline.md#the-controller)).
 - **Writes are never held in the app.** The query client's `mutations` default
   there is `networkMode: 'always'`. A bookmark, note, rating, queue, collection or
-  progress edit made with no network is sent, fails at once, and shows its
-  screen's own error with the form still open. A held mutation lives only in
+  progress edit made with no network fails at once, unsent (see below), and shows
+  its screen's own error with the form still open. A held mutation lives only in
   memory, so Save would spin, and the write would be lost if the app closed
   before the network returned. Three writes are not mutations and keep their own
   queues:
@@ -303,6 +303,20 @@ platform follows these rules:
 - **The web keeps TanStack's default for writes.** A write waits for the browser
   to come back online. A write that must work offline on the web too says so
   itself (`useMarkFinished`).
+- **In the app the API client refuses a request with no network.** While
+  `isDeviceOnline()` reads false, `ApiClient.send` throws the `NetworkError` of no
+  answer before any fetch. Sent, a request could wait out its whole timeout first
+  (iOS in airplane mode): a bookmark's error came 20-30 s after the tap, and a
+  downloaded book's resume lookup held its start. Every request path gets it:
+  queries, writes, `fetchFailFast`, the save loops and the car's kept bookmarks,
+  which keep a `NetworkError` like any request with no answer. Unknown counts as
+  online, so a server on the same Wi-Fi is always asked. The web leaves it to the
+  browser, whose fetch fails at once offline.
+- **`isDeviceOnline()`** reads the same signal once, outside React. In the app it
+  is what the system said last (the query wiring always watches it there); on the
+  web it is `navigator.onLine`. A reconnect's reachability check
+  (`deviceNetworkChanged`) runs a microtask later, once every listener has heard
+  the new state, so the client does not refuse it on the old "no network".
 
 A held request neither fails nor marks its server down. So a surface that says
 "offline" asks this signal too, and not reachability alone (Search's results,
@@ -1071,7 +1085,9 @@ is**, in a framework-free module of pure functions:
 
 The saved-progress side comes from `useBookProgress(libraryId, path, cid?)`. It
 reuses the existing `qk.progress(cid, lib, path)` key rather than introducing a
-second progress cache.
+second progress cache. Its answer is the place Resume plays, which can be this
+device's own newer record (see
+[The place Resume plays](#the-place-resume-plays)).
 
 A work's positions are numbered on its own scale. When the book splits finer than
 the work's scale, `/meta` answers them
@@ -1247,6 +1263,13 @@ The models:
     being down says nothing about the place. The greeting's servers pill names
     that server, on a phone too, where the pill gets a row of its own under the
     date.
+  - The progress list is read through `useWithLocalPlaces`
+    (`src/playback/use-local-places.ts`, over `withLocalPlaces`), read again as the
+    outbox changes, so a book this device played on since shows its newer place
+    ([The place Resume plays](#the-place-resume-plays)). The Now card reads a loaded
+    book on the player's own queue (its chapters and total, never its synthetic
+    slices), so Home's percent is the player's after an offline run and after a
+    server reorder.
   - `nextCandidates` is the Now book, other books in progress, then recently
     finished books, at most `NEXT_CANDIDATES` (6). Each takes one `/next` on the
     candidate's own server.
@@ -1982,6 +2005,33 @@ The offline-safe write path for listening progress:
   book. A record identical to the stored one writes nothing. An offline resume
   then knows a place another device reached, even when the book's page was never
   opened online. A failed mirror write never fails the list.
+
+### The place Resume plays
+
+The book's page, Home and every other reader of a book's saved place show the place
+Resume would play from, never only the server's row. So a page never shows another
+device's older row while Resume starts at this device's newer place, and Home's
+percent after an offline run is the player's.
+
+- **`bookPlace(server, cid, lib, path)`** (`progress-sync.ts`) is the resume lookup's
+  pick of the server's row and this device's own records (the mirror and the offline
+  queue), with the file place a resume plays. `fetchBookProgress` answers with it, so
+  the `qk.progress` cache holds it. Offline (no server answer) it is this device's
+  records alone.
+- **This device's record keeps the server's row beside it.** A local record reads as
+  version 0 and carries none of the row's fields, so when it is the pick, the row goes
+  with it (`PlacedProgress.server`, read through `serverRowOf`). The book's dates,
+  another device's place to offer (`ListeningOfferLine`) and the version an explicit
+  start acknowledges (`knownProgress`) come from that row.
+- **A sync answer** stores `bookPlace` of each row in the same cache (`applyAnswer`),
+  never the row alone.
+- **`useBookProgress` reads the place on the shown file order.** Its `select` turns
+  the record's file place into whole-book seconds on the chapters the cache holds
+  (`positionOn`, never fetching them; the cached entry keeps the record's own
+  seconds). After a server reorder with a download in the old order, the book and
+  episode pages, the end credits, the companion, the reveal listener and `usePlaceIn`
+  then all show the place Resume plays. Read its `.position`, never the raw record's.
+- **Home's progress list** is read the same way, row by row (`withLocalPlaces`).
 
 :::note[No realtime sync]
 Progress sync is REST-only. The server advertises a `websocket` capability flag

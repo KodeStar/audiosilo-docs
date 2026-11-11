@@ -11,6 +11,11 @@ When the last track finishes, the engine reports `ended`. The store
 (`snapshot.state === 'ended'`) exposes it. The final `haltAndPersist` on that
 transition records `finished: true`.
 
+The exception is the end of a download that lacks the book's last file, played with
+no server to stream it from: that `ended` is a pause, never a finish, and the end
+credits' Play never finishes it (`selectEndsPartial`). See
+[A download that ends early](offline.md#a-download-that-ends-early).
+
 Five pieces then take over:
 
 | Piece | Role |
@@ -88,7 +93,9 @@ the book's queue entry off Up next.
 - `startBookInPlace` (`start-book.ts`) loads the item and chapters through the
   query cache, then calls `playBook`. For a downloaded book it asks the server
   first, for up to `FRESH_SOURCE_WAIT_MS` (3 s), and otherwise uses the
-  download's own copy. So the book starts offline and from the car.
+  download's own copy. So the book starts offline and from the car. With nothing
+  to ask (no network on the device, `isDeviceOnline`, or its server marked
+  unreachable, `isReachable`) it uses that copy at once, with no wait.
 - `startBookInPlace` is the one way a book starts outside the player route. The
   `/player` route only *shows* a book started that way.
 - An episode its server still has to fetch is the exception to the queue drop.

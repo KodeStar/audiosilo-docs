@@ -224,7 +224,16 @@ and a toast says "This episode can't be cast" ("Podcast episodes can't be cast y
 this one stays on this device.").
 
 Native renders the SDK's own `CastButton` in a 44 pt frame. The web draws our own,
-which opens Chrome's Cast chooser. When `castBlockReason` blocks the book, the button
+which opens Chrome's Cast chooser.
+
+**Native hides the pill while the SDK's button draws nothing** (`sdkButtonDraws` in
+`cast-button-model.ts`, read by `useSdkButtonDraws`). The SDK hides its button while
+no Cast device is found (`noDevicesAvailable`), which left an empty pill on a network
+with no Chromecast. On iOS the button still draws before discovery has run, since
+discovery starts on its first tap, so there the pill hides only while discovery runs
+(`getDiscoveryManager().isRunning()`, asked again every 2 s while it has not started).
+A cast state not read yet, or a read that fails, draws the button as before. A book
+that can't be cast keeps our own button, which says why. When `castBlockReason` blocks the book, the button
 explains why in a toast rather than casting. Strings are in the `cast` namespace.
 
 ## What doesn't apply while casting

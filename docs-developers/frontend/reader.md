@@ -495,11 +495,20 @@ spans (`readerMapOf`), nothing of the head.
 
 - **The download's copy** (`readalong.json`, see
   [Offline](offline.md#the-read-along-map-in-downloads)), while the server's book
-  names that map or none. It names none in a list row, or offline with the
-  capability unknown.
+  names that map, names none, or calls its map `stale`. It names none in a list
+  row, or offline with the capability unknown.
 - **Otherwise the server's** (`useReadalong`, keyed by the map's `generated_at`, no
   retry). A copy that can't be read also falls back to the server's.
-- **Never a stale map**, copy or not.
+- **Never a stale server map.** A stale book with no copy shows nothing. The copy
+  shown for a stale book was made for the download's EPUB, the one read, and is
+  still checked against the EPUB actually opened (with the server's EPUB opened
+  instead, there is none). The download's background refresh takes a map made again.
+
+A map is read once per book. The query last shown stays in the cache, held by an
+observer that never fetches (`pinMap`, one map per query client; another book's map,
+or one made again, lets the last one go). Its reader form is kept per map object
+(`readerMapOfOnce`). So the phone's Text chip, mounted with each full-player open,
+neither reads up to 16 MiB again nor walks it again.
 
 Only a map with a sentence (`hasSpans`) reaches the reader. It returns:
 
@@ -535,13 +544,11 @@ whose `ebook.sha256` differs is not used.
 
 With no sha kept (a download made before it, or one that never kept a map), a
 server ebook of another size than the one downloaded (`useDownloadedEbookSize`)
-counts as another ebook, as the download's refresh takes it. The download's own copy
-then stands in. With no copy, the failure is `ebookChanged`, and the surface says
-"The read-along is for a newer ebook" and asks the listener to remove the download
-and download the book again.
-
-Online, a book the server calls `stale` has no map here even when the download's
-kept copy fits it (a known follow-up). Offline the copy is used.
+counts as another ebook. The check is `fitsDownload`, the download refresh's own
+rule, where a size unknown on either side fits. The download's own copy then stands
+in. With no copy, the failure is `ebookChanged`, and the surface says "The
+read-along is for a different edition of the ebook" and asks the listener to remove
+the download and download the book again.
 
 ### The read-along messages
 
@@ -644,4 +651,4 @@ Known follow-ups:
 - pinch zoom;
 - checking a download whose `book.epub` won't read against the server's map by the
   download's sha;
-- using a stale book's kept map online when it still fits the download.
+- releasing the pinned map on sign-out.

@@ -47,7 +47,7 @@ The Text tab doesn't save a reading place. For that, use the [ebook reader](read
 
 Text needs your server on version 2.6.0 or later and, on a phone or tablet, the app on 2.6.0 or later. A book without a read-along has no Text tab. Neither does one whose ebook or audio changed since its read-along was made.
 
-A [downloaded](offline-downloads.md) book keeps its read-along, so Text works offline.
+A [downloaded](offline-downloads.md) book keeps its read-along, so Text works offline. It keeps working online too, even once the server's read-along is out of date, as long as it matches the downloaded ebook.
 
 If you're an admin with a [Bridge](../admin/bridge.md) that makes read-alongs, the Text tab offers to make one. See [Making a read-along from the player](../admin/making-read-along.md#from-the-player).
 
@@ -68,6 +68,6 @@ To edit, label or delete them, see [Add bookmarks and notes](bookmarks-and-notes
 ## Good to know
 
 - If the text can't load, the Text tab says why, usually with **Try again** or **Reconnect**.
-- **The read-along is for a newer ebook** means the ebook on the server changed after you downloaded the book. Remove the download and download the book again.
+- **The read-along is for a different edition of the ebook** means the read-along on the server was made from another ebook than the one you downloaded. Remove the download and download the book again.
 - A book that isn't downloaded has no Text tab while you're offline.
 - Bookmarks, notes and history need the book's server. If it isn't connected, the lists say so until it is.
