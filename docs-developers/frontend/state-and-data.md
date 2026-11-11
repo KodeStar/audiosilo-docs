@@ -171,6 +171,9 @@ across connections.
 - **Optimistic updates.** `useToggleFavourite` shows the full pattern. `onMutate`
   cancels, snapshots and patches the cached list; `onError` rolls back;
   `onSettled` invalidates to reconcile server-derived fields.
+  - When no list had been read before the toggle, `onError` has no snapshot to put
+    back. It resets the query to unread, so a failed heart doesn't stay shown as
+    saved.
   - The server derives a favourite's `is_book` from its index. So hearting a
     folder that `/fs` flags `pending_book` (`pendingBook` in
     `ToggleFavouriteVars`) also reads the book through the item query beside the
