@@ -319,8 +319,7 @@ Cancel whatever the flag says.
 
 ## Corrections: `meta.correct`
 
-This is "Suggest corrections" .
-Family and feature `meta`; a book `path` is required; it writes nothing into the
+`meta.correct` is "Suggest corrections". Family and feature `meta`; a book `path` is required; it writes nothing into the
 library.
 
 ### Params

@@ -655,7 +655,9 @@ the `audible` module too:
 - no book path;
 - params `{account, asin, library_id, dest_path, template}`, built by the server;
 - deduped per account and title;
-- **not** quiet: done and failed are notified, named by the title. The server sets its priority by who asked (a console Back
+- **not** quiet: done and failed are notified, named by the title.
+
+The server sets its priority by who asked (a console Back
 up, a policy or Back up everything; see
 [the priorities](audible.md#on-the-server-queueing-internalaudibleimportsgo-catalogaudible_importgo)).
 It runs in the `download` lane, one per account at a time, and its partial

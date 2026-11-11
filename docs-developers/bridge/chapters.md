@@ -160,8 +160,8 @@ words. Several number words count only as one cardinal, so "one hundred and twen
 one" is 121, while "one two" is never added up and reads as 1. The number never
 runs past a word that ends in punctuation, so "Chapter One. Two days later" is 1.
 
-Never `dedication`, and never a number that runs straight on into "of" ("Book 10
-of The Messenger" in a series' credits).
+A heading is never `dedication`, and never one whose number runs straight on into
+"of" ("Book 10 of The Messenger" in a series' credits).
 
 ### The rules
 

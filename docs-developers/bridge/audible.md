@@ -139,6 +139,8 @@ The Bridge registers with the current profile (`internal/audible/profile.go`):
   and download and on the identity calls (`/auth/register`, `/auth/token`,
   `/auth/deregister`).
 
+How the Bridge keeps track of the profile and handles a denial:
+
 - `audible.ProfileVersion` (`"4.60/26.2/46000856"`) is recorded in
   `Credentials.Profile` at `Register` and in the row's `device_profile` (Bridge
   migration `0010_audible_profile`, `''` for an account signed in before it was
@@ -427,8 +429,8 @@ title's rule; a pending preorder from the orders is one whatever its date (see
 
 `unavailableReason` decides in this order:
 
-1. the delivery type (`Periodical`, `PodcastParent`), so a show is never called a
-   preorder;
+1. the delivery type (`Periodical`, `PodcastParent`) comes first, so a show is
+   never called a preorder;
 2. a plausible release date still ahead (`ReleaseIsUpcoming`) is a preorder,
    whatever `customer_rights` says, because Audible grants no rights to a title
    not out yet;
@@ -1346,16 +1348,16 @@ preorders, 4 unavailable) and 7 places.
 - `/auth/register` checks the verifier and client id and issues a device key.
 - `/auth/token` and `/auth/deregister` (this device only, recorded).
 - Signed calls are verified against the issued key. An unknown or deregistered
-  device gets `401`, and `/_fake/refuse` makes it `403`.
+  device gets `401`, and after `/_fake/refuse` signed calls get `403`.
 - Register records each device's profile (its serial and app, os and software
   versions). Only the current profile with a 40-character serial gets licenses.
   Any other device lists its library, but every license is denied with the three
   throttled reasons, its customer id quoted, to prove the redaction.
   `POST /_fake/old-profile` ages every device registered so far.
 
-**Library and places.** Library paging; `lastpositions` with a `400` over its limit
-(10 by default); and `PUT lastpositions`, each recorded with its time
-(`put_positions[].at` on `/_fake/calls`).
+**Library and places.** The fake pages the library and answers `lastpositions`,
+with a `400` over its limit (10 by default). It records each `PUT lastpositions`
+with its time (`put_positions[].at` on `/_fake/calls`).
 
 **Content** (`content.go`):
 
@@ -1381,7 +1383,7 @@ against the fake.
 |---|---|
 | `GET /_fake/calls` | licenses, and downloads with their `Range`/`If-Range` |
 | `POST /_fake/refuse` | refuses signed calls (`403`) |
-| `GET /_fake/titles` | the fixture titles |
+| `GET /_fake/titles` | the fixture titles with their states |
 | `POST /_fake/cut?after=N` | the next download drops after N bytes |
 | `POST /_fake/expire` | the download URLs expire |
 | `POST /_fake/release?asin=` | a preorder out today: it joins the library, available, and its order closes |

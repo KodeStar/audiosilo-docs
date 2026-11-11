@@ -86,8 +86,8 @@ Seven behaviors are worth knowing:
 - **Mirror-seeded records are taken over by ASIN.** An Add a work or Add a
   recording submission may name, by ASIN, a recording that was seeded from a bulk
   mirror and that no user has attested (every `sources[]` entry is bulk-mirror
-  tier: `libex-import` or `librivox`). The bot does not close it as a duplicate.
-  It applies the submission over that record through `importer.AttestAt`, which
+  tier: `libex-import` or `librivox`). The bot does not close such a submission
+  as a duplicate. It applies the submission over that record through `importer.AttestAt`, which
   runs it as a one-row user-library import over the store `metaissue` already
   opened, and hands it to `attestExisting`, the hook a library import takes at its
   ASIN-dedup skip.
@@ -993,9 +993,9 @@ writes the packs, then validates the whole tree. For each selected project:
   - **An author record.** The exception is a person who is an **author record**:
     one carrying a catalogued `librivox_author_id`, or a life that ended before
     2005, when LibriVox began. A birth year alone counts, since no one born in
-    1840 read for LibriVox. That may be the person's own record, or that of a new
-    author id of the run landing on it, whether the run meets the author or the
-    reader first. The reader is then split off the same way: a reader called Adam
+    1840 read for LibriVox. The id or the life may be the person's own, or that
+    of a new author id of the run landing on them, whether the run meets the
+    author or the reader first. The reader is then split off the same way: a reader called Adam
     Smith is `adam-smith-librivox-19341`, never Adam Smith (1723-1790). A living
     or undated author id of the same run and a reader of the same name are one
     person, whichever project the run meets first.

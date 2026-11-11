@@ -473,7 +473,7 @@ poller. The rules it keeps:
   episode in place with `{fetched: true}`, which plays only while the fetch is
   still `starting` (a Cancel or another start since wins).
 
-**Exclusions.** Episodes are never downloaded. The
+**Exclusions.** The player never downloads an episode for offline listening. The
 downloads store refuses `book.episode` as `unsupported`, the download control
 and the tile menu leave it out, and auto-download and keep-ahead skip it (an
 absent episode would answer 503 to the native download engines, and nothing
@@ -482,7 +482,8 @@ never see podcasts; the server answers `403` to `POST /cast/token` for one,
 with `error.code: "not_a_book"` from 2.4.0), and starting an episode while a
 book is cast is refused before any token is asked for (`CastBlockedError`
 `episode`; a `not_a_book` refusal reads the same).
-An episode never opens the end credits. Kids mode lists no podcast library. Golden: the player keeps `wire-2b.json` byte-identical in
+An episode never opens the end credits. Kids mode lists no podcast library.
+Golden: the player keeps `wire-2b.json` byte-identical in
 `src/testing/podcast-fixtures/`.
 
 ## Discovery and OPML transfer

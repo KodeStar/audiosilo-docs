@@ -20,8 +20,9 @@ player's admin-only action.
 
 ## What it does
 
-Each job kind has its own page. The server offers a feature only when the job
-kinds in the Bridge's heartbeat include it (see [Compatibility](#compatibility)).
+Each item links to the page that covers it. The server offers a feature only when
+the job kinds in the Bridge's heartbeat include it (see
+[Compatibility](#compatibility)).
 
 - **Pairing and the proof job.** The Bridge pairs with the server, sends a
   heartbeat, claims jobs from a queue with leases and checks its library
@@ -214,8 +215,8 @@ the Audible compatibility target. See
 
 **Older servers.** Servers from before Bridge support have no Bridge routes and no
 `bridge` flag. Pairing gets a `404` (or `405`) and says the server is too old. The
-player's Bridge UI (admins only) is gated on the flag and the `sidecars` feature,
-so it never shows against an older server. Players shipped before it never see
+player's first Bridge UI, the admin-only generate action, is gated on the flag
+and the `sidecars` feature, so it never shows against an older server. Players shipped before it never see
 the Bridge. They do see generated characters and recaps for a book matched with
 community metadata, merged into its `/meta` work without the mark (see
 [generated content](../server/api/reference.md#generated-content)).

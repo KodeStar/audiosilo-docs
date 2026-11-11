@@ -165,10 +165,15 @@ Conventions that carry the design:
 - **Writes into a library** go only through typed operations, every path through
   `mapping.SafeJoin` against a **checked** mapping, written to a temporary file and
   renamed, umask 022, with a targeted rescan after (`POST /bridge/rescan`). A
-  library that isn't mapped and writable refuses them. The generate and describe
-  jobs' only write is a book's
+  library that isn't mapped and writable refuses them. The generate, describe,
+  `chapters.detect` and `readalong.align` jobs write only a book's
   [`.audiosilo/` files](attachments.md#how-the-bridge-writes-them), `description.json`
-  among them. Deletes, if a job ever needs them, go to `.audiosilo-trash/`.
+  among them. The podcast jobs write a show's files in a podcast library
+  ([Podcasts](podcasts.md)), and `audible.import` installs a backed-up title
+  without replacing anything
+  ([The hardened transfer](audible.md#the-hardened-transfer-internaltransfer)).
+  A delete moves the files into `.audiosilo-trash/` first, as podcast retention
+  does ([Retention policy and deletion authority](podcasts.md#retention-policy-and-deletion-authority)).
 - **No agent CLI runs in the Bridge.** The engine gets only
   `agentbox`'s runner; the local claude and codex runners stay for their output
   parsers (`agent.ClaudeResult`, `agent.CodexResult`, shared with the container

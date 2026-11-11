@@ -583,7 +583,7 @@ spelling, never add to a reading order:
 
 The narration-language profile (`check.NarrationProfile`) asks what language a
 work's narrators record in across their recordings of **other** works. It needs at
-least two, 80% in one language. Group, publisher and synthetic credits and the
+least two such recordings, 80% of them in one language. Group, publisher and synthetic credits and the
 shared catch-all person are not counted.
 
 The profile can withhold a change and put a question in front of a human. The
