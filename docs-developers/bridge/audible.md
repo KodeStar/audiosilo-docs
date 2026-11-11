@@ -700,7 +700,7 @@ row that add nothing** fail the job, so a long download over a link that drops n
 and then finishes. A `401`/`403`/`410` licenses once more (a URL that expired over
 a long wait or a restart), then `offline_url_expired`.
 
-**Who keeps the partial** (decision 6), from the gate on:
+**Who keeps the partial**, from the gate on:
 
 - a **stop** (`jobs.Resumes`: the Bridge shutting down, a refused token) or a **lost
   claim** (`jobs.Lost`: the lease lapsed and the server hands the job out again)
@@ -832,7 +832,7 @@ key, main or other series, in a library their scopes reach). A refusal of the qu
 that means none will be taken (`library_not_writable`, `kind_unavailable`) ends the
 pass quietly.
 
-**`policy_since`** makes policies new purchases only (decision 2): set to now at the
+**`policy_since`** makes policies new purchases only. It is set to now at the
 account's creation (the Bridge's first `PUT /bridge/audible/accounts`), when the
 console turns `all` or `series` on (`PatchAudibleAccount`; switching to `manual`
 leaves it), and moved to the account's **first complete poll** (`PutAudibleTitles`
@@ -936,8 +936,8 @@ Position sync keeps an account's listening places in step with Audible, both way
 `api/handlers_audible_sync.go` and `0066` on the server). **Furthest wins** in both
 directions. Audible's place never moves the server's back, and the Bridge never
 writes over a place Audible moved on from. Only places travel. No listening
-session, `listening_daily` or history row is ever written for Audible's listening
-(owner decision 2), and nothing is recorded against the bridge token.
+session, `listening_daily` or history row is ever written for Audible's listening,
+and nothing is recorded against the bridge token.
 
 ### The switches (server)
 

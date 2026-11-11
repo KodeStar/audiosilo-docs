@@ -89,7 +89,7 @@ defaults filled in, so the Bridge reads one complete object:
 | Field | Values | Default | Meaning |
 |---|---|---|---|
 | `source` | `auto`, `audio`, `ebook` | `auto` | what the run reads: `auto` takes the book's ebook when it has a readable one, else the audio |
-| `contribute` | `local`, `issue` | `local` | `local` keeps the results on this server (decision 6); `issue` also offers them to the community as an intake issue |
+| `contribute` | `local`, `issue` | `local` | `local` keeps the results on this server; `issue` also offers them to the community as an intake issue |
 | `work_id` | text, at most 200 bytes, no control characters | none | the community work the results are for, when the caller knows it |
 
 The kind **writes**. So on top of the [job model's checks](pairing-and-jobs.md#the-job-model),
@@ -650,7 +650,7 @@ Every agent run is preflighted against two caps (`pipeline.Executor`):
   parks `budget_exceeded` until the cap is raised (in `config.yaml` or the
   environment) and the Bridge restarted, with no **Retry** ([Parks](#parks) says
   what that start re-admits).
-- **`agent.monthly_budget_usd`** (default 100, `0` = none; decision 7): this
+- **`agent.monthly_budget_usd`** (default 100, `0` = none): this
   calendar month's (UTC) spend across every book, superseded runs included, and
   the spend of engine books a regenerate deleted (kept in
   `deleted_stage_spend`), so regenerating doesn't reset the month. Past it the
@@ -700,7 +700,7 @@ daemon did, minus its folder scan, and starts it in the background once the Brid
 - the media tools (`toolfetch`) and the ASR backend (`asr.Select`; a backend that
   can't be used leaves the engine running, and an `asr` stage parks
   `asr_unavailable`);
-- **only the agent container's runner** (`agentbox`, decision 15): the Bridge
+- **only the agent container's runner** (`agentbox`): the Bridge
   never runs an agent CLI itself, and the engine's local claude/codex runners
   stay as code for their output parsers and tests. The engine's agent
   concurrency follows the container's `slots` from `runner.json`;

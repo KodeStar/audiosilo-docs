@@ -1,6 +1,6 @@
 ---
 title: The agent container
-description: "Why the AI agents run in a separate container (decision 15), its image and hardening, and the staging protocol between it and the Bridge: runner.json, the job dir and its files, claim, heartbeat, cancel and done, the environment allow-list and the credentials, the harvest's limits, the credential hand-off from the Bridge's Accounts tab, and the failure modes."
+description: "Why the AI agents run in a separate container, its image and hardening, and the staging protocol between it and the Bridge: runner.json, the job dir and its files, claim, heartbeat, cancel and done, the environment allow-list and the credentials, the harvest's limits, the credential hand-off from the Bridge's Accounts tab, and the failure modes."
 ---
 
 The Bridge never runs an AI agent CLI itself. Every agent invocation of the
@@ -24,7 +24,7 @@ separate container holds on stock Docker seccomp:
 
 - it mounts only **`/staging`** (shared with the Bridge) and **`/agent`** (its
   own config volume: the credentials and codex's login). Never a library,
-  `/bridge-data` or the Bridge's secrets (the one exception since Phase 2b: an
+  `/bridge-data` or the Bridge's secrets (the one exception: an
   agent credential set on the Accounts tab, which each run receives, see
   [The credential hand-off](#the-credential-hand-off));
 - it runs as a fixed uid (`10002:10002`), with `cap_drop: [ALL]`,
@@ -105,8 +105,8 @@ is how the Bridge knows a credential the provider refused may work again. The
 runner looks for the CLIs at its start and every 10 minutes after (or at once when
 a run finds its CLI missing).
 
-`handoff` (Phase 2b, omitted by an older runner) says the runner takes the
-Bridge's credential for a run: see [The credential hand-off](#the-credential-hand-off).
+`handoff` (omitted by an older runner) says the runner takes the
+Bridge's credential for a run. See [The credential hand-off](#the-credential-hand-off).
 
 The Bridge counts the container **available** when `heartbeat_at` is under **30
 seconds** old (`RunnerFreshFor`, two intervals), the protocol matches, and the CLI
@@ -267,7 +267,7 @@ subscription, with the monthly budget on.
 
 ## The credential hand-off
 
-Phase 2b (decision 19): the admin can set the agent's credential on the
+The admin can set the agent's credential on the
 Bridge page's **Accounts** tab instead of in the container. The Bridge seals it in
 its vault (`claude_oauth_token`, `anthropic_api_key` or `openai_api_key`;
 `internal/accounts`) and hands it to **each run, for that run only** (runs at
@@ -324,7 +324,7 @@ override.
 `request.json` and the protocol version are unchanged: an older Bridge never
 writes the file, and an older runner never sees one written for it.
 
-Accepted for Phase 2b: the file sits `0444` in a world-writable directory between
+Accepted for now: the file sits `0444` in a world-writable directory between
 the Bridge writing it and the runner deleting it (before the CLI starts). A later
 change can share a group between the two uids and make it `0440`.
 

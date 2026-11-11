@@ -1,14 +1,13 @@
 ---
 title: "Podcasts"
-description: "Podcast jobs, on-demand fetch/status/Retry, discovery and OPML, the player (2d-1) and its discovery and OPML screens (2d-2), queue prefetch, pinned generations, guarded downloads, retention, publication recovery, CHAP attachments and private feed secrets."
+description: "Podcast jobs, on-demand fetch/status/Retry, discovery and OPML, the player and its discovery and OPML screens, queue prefetch, pinned generations, guarded downloads, retention, publication recovery, CHAP attachments and private feed secrets."
 ---
 
 ## Scope and ownership
 
-Bridge Phase 2c-2 adds `podcast.fetch` (ordinary `download` plus a reserved
-`interactive` slot, two downloads total) and
-`podcast.retain` (`light`), alongside `podcast.subscribe` and `podcast.poll`
-in `light`. All four are writing jobs needing a mapped, writable podcast
+The Bridge runs four podcast kinds. `podcast.fetch` runs in the `download` lane
+(an ordinary slot plus a reserved `interactive` slot, two downloads total), and
+`podcast.retain`, `podcast.subscribe` and `podcast.poll` run in `light`. All four are writing jobs needing a mapped, writable podcast
 library and the server's `podcasts` module (`RequiresBridge: "podcast"`). The module ships
 off. `capabilities.podcasts` is always present and is true only with the toggle
 on and an online Bridge advertising the `podcast` feature.
@@ -24,14 +23,15 @@ writes into the library. Implementations are the Bridge's `internal/podcast`,
 `internal/podcast`, `internal/catalog/podcasts.go` and `internal/library/podcasts.go`.
 
 Downloads are scheduled by policy, requested by an admin, or triggered by
-on-demand play and one-ahead queue preparation. Phase 2c-2b adds shared fetch
-intents, status/Retry routes and a bounded stream wait. Phase 2c-3 adds
-server-side [directory search and OPML import/export](#discovery-and-opml-transfer)
-with no Bridge change. Phase 2d-1 adds the [player](#player-phase-2d-1)
-(shows, show and episode pages, following, Home's New episodes, on-demand
-play) with no Bridge change; Phase 2d-2 adds [discovery, follow by URL, OPML
-and Check for new episodes](#player-discovery-and-opml-phase-2d-2) to the
-player, with a CORS change on the server only.
+on-demand play and one-ahead queue preparation. On-demand play uses shared fetch
+intents, status and Retry routes, and a bounded stream wait. Three further parts
+need no Bridge change:
+
+- server-side [directory search and OPML import/export](#discovery-and-opml-transfer);
+- the [player](#player-phase-2d-1): shows, show and episode pages, following,
+  Home's New episodes and on-demand play;
+- the player's [discovery, follow by URL, OPML and Check for new episodes](#player-discovery-and-opml-phase-2d-2),
+  which needed a CORS change on the server only.
 External chapters and transcripts arrive later.
 Players from **2.2.0** (`auth.PodcastPlayerMinVersion`), the admin console
 and `AudioSilo/dev` see podcast libraries; 2.1.x and older players, the
@@ -332,10 +332,10 @@ that same intent to 100. On demand permits this preparation, without
 feed-wide scheduled downloads. Demo requests start neither fetch nor prefetch;
 an existing shared fetch can still be promoted by a demo stream.
 
-### Player (Phase 2d-1)
+### Player {/* #player-phase-2d-1 */}
 
-Phase 2d-1 ships the player side of this protocol and sets
-`auth.PodcastPlayerMinVersion` to `"2.2.0"`: players from 2.2.0 (`app.json`
+The player side of this protocol sets `auth.PodcastPlayerMinVersion` to
+`"2.2.0"`: players from 2.2.0 (`app.json`
 `expo.version`, sent as `X-AudioSilo-Client: AudioSilo/2.2.0 (<os>)`) see
 podcast libraries; 2.1.x and older stay hidden
 ([client gate](../server/auth-and-security.md#podcast-visibility)). The
@@ -421,7 +421,7 @@ non-negative number, else `fetch.retry_after_seconds`, else 2). A non-JSON 503
 from a proxy stays a plain `ApiError`. `API_ERROR_CODES` gains `module_off`,
 `bridge_unavailable`, `fetch_limit`, `identity_changed` and `show_not_found`.
 A cross-origin page reads `Retry-After` only from a server that exposes it
-([CORS](../server/api/index.md#cors), Phase 2d-2); from an older one the
+([CORS](../server/api/index.md#cors)); from an older one the
 body's value is what it uses.
 
 **Hooks** (`src/api/hooks.ts`). Reads are core and never gated on `podcasts`:
@@ -473,7 +473,7 @@ poller. The rules it keeps:
   episode in place with `{fetched: true}`, which plays only while the fetch is
   still `starting` (a Cancel or another start since wins).
 
-**Exclusions.** Episodes are never downloaded in 2d-1 (decision 6.1): the
+**Exclusions.** Episodes are never downloaded. The
 downloads store refuses `book.episode` as `unsupported`, the download control
 and the tile menu leave it out, and auto-download and keep-ahead skip it (an
 absent episode would answer 503 to the native download engines, and nothing
@@ -482,17 +482,20 @@ never see podcasts; the server answers `403` to `POST /cast/token` for one,
 with `error.code: "not_a_book"` from 2.4.0), and starting an episode while a
 book is cast is refused before any token is asked for (`CastBlockedError`
 `episode`; a `not_a_book` refusal reads the same).
-An episode never opens the end credits. Kids mode lists no podcast library
-(decision 6.2). Golden: the player keeps `wire-2b.json` byte-identical in
+An episode never opens the end credits. Kids mode lists no podcast library. Golden: the player keeps `wire-2b.json` byte-identical in
 `src/testing/podcast-fixtures/`.
 
 ## Discovery and OPML transfer
 
-Phase 2c-3 adds two server-only flows, with **no Bridge change**: directory
-search, whose results are followed through the existing follow by URL, and
-OPML import and export of subscription lists. The player's screens for them
-are [Phase 2d-2](#player-discovery-and-opml-phase-2d-2) (the console has
-none); the routes, shapes and error codes are in the
+Two flows run on the server only, with **no Bridge change**:
+
+- directory search, whose results are followed through the existing follow by
+  URL;
+- OPML import and export of subscription lists.
+
+The player has screens for them
+([Player: discovery and OPML](#player-discovery-and-opml-phase-2d-2)); the console
+has none. The routes, shapes and error codes are in the
 [API reference](../server/api/reference.md#podcast-discovery).
 
 - **Search runs on the server.** `internal/podcast/discovery` asks Apple's
@@ -523,7 +526,7 @@ none); the routes, shapes and error codes are in the
   follow, an `invalid` row in an import), before anything is queued. The
   canonical hash bytes and the Bridge's URL vectors are unchanged.
 
-### Player: discovery and OPML (Phase 2d-2)
+### Player: discovery and OPML {/* #player-discovery-and-opml-phase-2d-2 */}
 
 The player (first released with these screens in 2.4.0) searches a
 directory, follows a feed by its address, imports and exports OPML lists and
@@ -1002,7 +1005,7 @@ variants exposed gaps: without TIT2 the title became the frame id `chp0`;
 chapter APIC images were absent from the server model; reversed ordered CTOC
 children did not change timestamp/physical CHAP order.
 
-Phase 2c-2a implements a bounded Bridge ID3v2.3/v2.4 CHAP reader rather than
+The Bridge implements a bounded ID3v2.3/v2.4 CHAP reader rather than
 using ffprobe's chapter titles/order. The Spike 6 decisions are:
 
 - Missing or blank TIT2 becomes `Chapter N` after chronological sorting, never

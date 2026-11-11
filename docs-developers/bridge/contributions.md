@@ -202,8 +202,8 @@ when a characters or recaps file is too long for an issue.
 
 ## Sharing later: `sidecars.contribute`
 
-This is "Share with the community" after a run kept its results on the server
-(decision 17). Family `sidecars`; a book `path` is required; it **writes nothing**
+This is "Share with the community" after a run kept its results on the server.
+Family `sidecars`; a book `path` is required; it **writes nothing**
 into the library.
 
 ### On the server
@@ -319,7 +319,7 @@ Cancel whatever the flag says.
 
 ## Corrections: `meta.correct`
 
-This is "Suggest corrections" (decision 18, CORRECTIONS-SPIKE sections 4.1 and 5).
+This is "Suggest corrections" .
 Family and feature `meta`; a book `path` is required; it writes nothing into the
 library.
 

@@ -1,6 +1,6 @@
 ---
 title: ASR workers
-description: "The Bridge's native ASR workers (Phase 1b): why they exist, the worker protocol (routes, the version check, tasks as segments, leases and adoption, results), the dispatcher and the engine's ASR router with its fallback, per-segment resume, the service install, installing a worker from its Bridge (install.sh, the image's worker builds, the release archives), security, and the spike 4 measurements."
+description: "The Bridge's native ASR workers: why they exist, the worker protocol (routes, the version check, tasks as segments, leases and adoption, results), the dispatcher and the engine's ASR router with its fallback, per-segment resume, the service install, installing a worker from its Bridge (install.sh, the image's worker builds, the release archives), security, and the spike 4 measurements."
 ---
 
 An **ASR worker** is `audiosilo-bridge worker`, the same binary as the Bridge run
@@ -49,8 +49,8 @@ The audio download and the result upload get longer deadlines than the page's ow
 The unit of work is a **segment**, not a chapter: a 16 kHz mono FLAC, its start
 and duration in the book, the decode options (`language`, `no_context`,
 `initial_prompt`) and an opaque `id`, with the FLAC's `size` and `sha256` (the
-worker checks both). A chapter is one kind of segment; Phase 1d's duration windows
-for chapterless books are another, through the same worker with no version bump.
+worker checks both). A chapter is one kind of segment. The duration windows for
+chapterless books are another, through the same worker with no version bump.
 The transcript's times stay relative to the segment.
 
 The id is a hash of the audio's sha256 and the decode options, so the same segment

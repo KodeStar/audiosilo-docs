@@ -41,8 +41,8 @@ for 15 minutes, and a paired Bridge ignores it. Remove it after pairing.
 
 The engine's settings (`tools`, `asr`, `agent`, `supervisor`, `contribution`,
 `metadata`, with `AUDIOSILO_BRIDGE_TOOLS_*`, `_ASR_*`, `_AGENT_*` and so on) came
-over from audiosilo-sidecars and apply since Phase 1a, when the engine started
-running behind `sidecars.generate`; they are read at the start (restart to apply),
+over from audiosilo-sidecars and apply to the engine that runs behind
+`sidecars.generate`. They are read at the start (restart to apply),
 except `asr.worker_fallback` and `agent.monthly_budget_usd`, which the page edits
 and which apply live (below).
 The full and cuda images set `AUDIOSILO_BRIDGE_ASR_BACKEND=whisper-cpp` and
@@ -101,15 +101,15 @@ The settings [`sidecars.generate`](generating.md) adds, or that matter most to i
 | `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` (empty is claude) | the CLI the [agent container](agent-container.md) runs for this Bridge: `claude` or `codex` |
 | `agent.staging_dir` | `AUDIOSILO_BRIDGE_AGENT_STAGING_DIR` | `<data>/staging` | the folder shared with the agent container (absolute). The compose example mounts a volume at `/staging`, outside `/bridge-data`, whose first-start ownership fix would otherwise reach it |
 | `agent.claim_timeout_seconds` | `AUDIOSILO_BRIDGE_AGENT_CLAIM_TIMEOUT_SECONDS` | `120` | how long an agent job waits for the container to claim it before the book parks `agent_unavailable` (10 to 3600) |
-| `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | the monthly agent spend cap across every book, the calendar month in UTC (decision 7); `0` = no cap. Since Phase 2b the page's **Settings** tab edits it (locked when the environment sets it) and it applies **live**: the engine reads it per run (`pipeline.Config.MonthlyBudget` is a func), and a save that changes it resumes the books and description jobs parked `budget_exceeded` ([Parks](generating.md#parks); one still over the new cap parks again until the next month) |
+| `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | the monthly agent spend cap across every book, the calendar month in UTC; `0` = no cap. The page's **Settings** tab edits it, locked when the environment sets it, and it applies **live**. The engine reads it per run (`pipeline.Config.MonthlyBudget` is a func). A save that changes it resumes the books and description jobs parked `budget_exceeded` ([Parks](generating.md#parks); one still over the new cap parks again until the next month) |
 | `agent.budget_reviewed_at` | | | when an admin last saved the monthly budget on the page (RFC 3339, `""` for never; written by the save, not meant to be set by hand). The setup checklist's `budget` item is done when it is set **or** the environment sets the budget (`Config.BudgetReviewed`) |
 | `agent.book_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_BOOK_BUDGET_USD` | `75` | one book's agent spend cap, read at the start (below) |
-| `transcripts.retention_days` | `AUDIOSILO_BRIDGE_TRANSCRIPTS_RETENTION_DAYS` | `30` | days a finished book's transcripts are kept after its job ends (0 to 3650; `0` = deleted when it ends; decision 5) |
-| `supervisor.automatic_actions` | `AUDIOSILO_BRIDGE_SUPERVISOR_AUTOMATIC_ACTIONS` | **on** | the supervisor's bounded recoveries (a retry, a readmit, a requeue, each capped per book per day). On by default since Phase 1a: the jobs are pressed in the console and left to run |
+| `transcripts.retention_days` | `AUDIOSILO_BRIDGE_TRANSCRIPTS_RETENTION_DAYS` | `30` | days a finished book's transcripts are kept after its job ends (0 to 3650; `0` = deleted when it ends) |
+| `supervisor.automatic_actions` | `AUDIOSILO_BRIDGE_SUPERVISOR_AUTOMATIC_ACTIONS` | **on** | the supervisor's bounded recoveries (a retry, a readmit, a requeue, each capped per book per day). On by default, because the jobs are pressed in the console and left to run |
 
 `supervisor.model_assisted`, `supervisor.model_automatic_actions` and the backend
 failover are **forced off**, whatever the file or the environment says: they would
-run an agent CLI inside the Bridge, which never does (decision 15). The Bridge's
+run an agent CLI inside the Bridge, which never does. The Bridge's
 page shows the agent, the speech recognition, the budgets with this month's
 spend and the retention on its Status tab (`GET /api/engine`), and says where
 each is set: the monthly budget on its Settings tab (or by its variable, read at
@@ -122,7 +122,7 @@ spends anything ([Parks](generating.md#parks)).
 
 ## Contributing: GitHub
 
-Phase 2b's contributions (`contribute: issue`, `sidecars.contribute`,
+Contributions (`contribute: issue`, `sidecars.contribute`,
 `meta.correct`) file issues on the community repositories with a GitHub token.
 `contrib.TokenSource.Resolve` picks one per use, in this order, and returns which
 as `from` (`env`, `device` or `gh`: the page's `from`), passing over a token GitHub
@@ -133,7 +133,7 @@ one):
    fine-grained one that can open issues on the community repos and create gists,
    since a body too long for an issue goes in a gist made with the same token).
    Read **live**
-   from the environment at each use and never sealed. Before Phase 2b a start
+   from the environment at each use and never sealed. An older Bridge's start
    sealed it as `github_pat`; a start now deletes that copy once
    (`forgetSealedGitHubPAT`, best effort: a copy sealed with another key, or a
    failed delete, never stops the start).
@@ -169,21 +169,21 @@ The **agent container** has no config file of its own: its flags (`--staging`,
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `CODEX_API_KEY`, from its environment or
 `/agent/secrets/<lowercase name>`) are in
 [The agent container](agent-container.md#the-environment-and-the-credentials).
-Since Phase 2b the Bridge can hold the agent's credential instead (the Accounts
-tab) and hand it to the container per run:
+The Bridge can hold the agent's credential instead (the Accounts
+tab) and hand it to the container per run. See
 [The credential hand-off](agent-container.md#the-credential-hand-off).
 
 ## Audible
 
-Audible accounts (Phase 4a, [Audible](audible.md)) have **no settings**: an admin
+Audible accounts ([Audible](audible.md)) have **no settings**. An admin
 signs in and maps each account on the Accounts tab, and its sign-in is sealed in
 the vault as `audible_<id>` (below). The server's `audible` module decides whether
 the accounts are polled and backed up (`modules.audible.enabled` on the server, see
 [its configuration](../server/configuration.md#managed-modules-modules)); an
-account's backup policy, placement template and position sync (Phase 4c) are set
+account's backup policy, placement template and position sync are set
 in the console.
 
-Backups (Phase 4b) download into `<data>/audible/tmp/` (`0700`), so the data
+Backups download into `<data>/audible/tmp/` (`0700`), so the data
 folder needs room for about 2.2 times the largest book being backed up; a partial
 download there is kept across a restart for up to 7 days (see
 [Resume and temp files](audible.md#resume-and-temp-files)). They decrypt with the
@@ -234,7 +234,7 @@ changed on the page's Settings tab. An owner who lost it runs
 prints a new generated password once and signs every session out, changing
 only the password hash and the sessions (`app.ResetPassword`), so the pairing,
 the mappings, the jobs and the sealed secrets stay, and a running Bridge takes
-it at once. From v0.4.0 (bridge#16) the first start's `auth.Manager.EnsureAdmin`
+it at once. From v0.4.0 the first start's `auth.Manager.EnsureAdmin`
 creates the password only while none is stored (`CreatePassword`, one statement),
 so a first start racing a reset on the same data folder never overwrites the
 reset's password (and prints none). It refuses a folder with no Bridge database (a mistyped `--data`)
@@ -288,7 +288,7 @@ ASR worker builds the Bridge serves to the computers that run a worker, in
 `/usr/local/share/audiosilo-bridge/workers` (see
 [Installing a worker](workers.md#installing-a-worker)).
 **Only the `agent` image carries an AI agent's command-line tool**: the Bridge's
-own images never do, and the Bridge never runs one (decision 15). Run the same
+own images never do, and the Bridge never runs one. Run the same
 version of the Bridge and its agent image: they check each other's protocol
 version.
 
