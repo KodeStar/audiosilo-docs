@@ -3,13 +3,13 @@ title: "Contribute from your server"
 description: "Send your Bridge's characters and recaps, and your corrections to book details, to the community metadata database."
 ---
 
-Every AudioSilo server reads the same free
-[community metadata database](meta-site.md). With a [Bridge](../admin/bridge.md),
-your server can give back to it:
+Every AudioSilo server reads the same free community database, which you can
+browse on [AudioSilo Meta](meta-site.md). With a [Bridge](../admin/bridge.md),
+your server can send it two things:
 
 - **Characters and recaps** your Bridge
   [generated](../admin/generating-characters-and-recaps.md) for a book the
-  community doesn't cover yet;
+  community database doesn't cover yet;
 - **Corrections** you made to a matched book's details, such as a misspelt
   title or the wrong narrator.
 
@@ -38,13 +38,13 @@ community database.
   metadata** card. Nothing is generated again. See
   [Share with the community](../admin/bridge.md#share-with-the-community).
 
-What the community already has is never sent again. Characters and recaps are
-shared under the **CC BY-SA 4.0** licence.
+What the community database already has is never sent again. Characters and
+recaps are shared under the **CC BY-SA 4.0** licence.
 
 ## Suggesting corrections
 
-When you edit a matched book and your values differ from the community's, the
-book's **Community metadata** card offers **Suggest corrections**. Pick which
+When you edit a matched book and your values differ from the community
+database, the book's **Community metadata** card offers **Suggest corrections**. Pick which
 edits to send and say where the right values come from. See
 [Suggest corrections](../admin/bridge.md#suggest-corrections).
 
@@ -52,9 +52,20 @@ Corrections are facts, released into the public domain (**CC0**).
 
 ## What happens next
 
-Each submission becomes an issue on GitHub. The community's bot checks it and
-opens a change with what it can apply. **Every change is reviewed** before it is
-merged. After that, the next release of the database carries it to every server.
+Each submission becomes an issue on GitHub. A bot on AudioSilo Meta checks it
+and opens a proposed change with what it can apply by itself.
+
+For corrections, the **Suggest corrections** dialog marks each field:
+
+- **Applied automatically**, such as a changed title. The bot writes it into
+  the proposed change.
+- **Reviewed by a maintainer**, such as authors, narrators and series. These
+  stay on the issue for a maintainer to apply.
+
+**Every change is reviewed before it is merged.** An automated AI check reads
+each proposed change first. Then a maintainer approves it, either in person or
+through an automated reviewer that acts for them. After that, the next release
+of the database carries it to every server.
 
 The book's page in the console links to each issue. Follow the link to see
 whether it has been reviewed.
@@ -63,8 +74,8 @@ whether it has been reviewed.
 
 - **Characters and recaps** - what the Bridge generated, and which book and
   edition they belong to.
-- **Corrections** - the fields you ticked, the community's value and yours,
-  your evidence, and your server's version.
+- **Corrections** - the fields you ticked, the community database's value and
+  yours, your evidence, and your server's version.
 - Your GitHub user name, which shows on the issue.
 
 Nothing about your listeners, your library or your other books is sent. The

@@ -15,7 +15,7 @@ Audible's protected `.aax` and `.aaxc` files are not supported. See [Supported f
 
 ### Do I need ffmpeg?
 
-No, but you'll want it. The Docker image includes it, and the standalone program downloads it if your system lacks it.
+It's optional, but recommended. The Docker image includes it, and the standalone program downloads it if your system lacks it.
 
 - **ffprobe** reads lengths and chapters for the few files AudioSilo can't read itself. Without it, those files have no length or chapter list.
 - **ffmpeg** converts formats a browser can't play, lets every player play an `.mka` book with MP3 inside, and places [community chapters](./admin/books.md#community-chapters) precisely. Without it, books a browser can't play work only in the apps, where the phone can decode them.
@@ -53,13 +53,19 @@ The server also backs up its database every night by itself (see [Backups](./adm
 
 ### Where does the extra "About this book" information come from?
 
-From **AudioSilo Meta**, a free, community-built audiobook database at [meta.audiosilo.app](https://meta.audiosilo.app). It adds descriptions, characters, recaps, series and chapters. Your admin can switch it off. You can browse and add to it yourself: see [The community metadata site](./community/meta-site.md).
+From the **community database**, a free audiobook database that people build together. It adds descriptions, characters, recaps, series and chapters. Your admin can switch these lookups off.
+
+Three names come up across these docs:
+
+- **AudioSilo Meta** is the website, [meta.audiosilo.app](https://meta.audiosilo.app). You can browse the database there and add to it yourself. See [Use the community metadata site](./community/meta-site.md).
+- **The community database** is the data: the descriptions, characters, recaps, series and chapters.
+- **Community metadata** is what your server looks up in the database and shows with your books. It is also the name of the settings section where your admin turns the lookups on or off.
 
 ### Does my server tell anyone which books I have?
 
 Only what a lookup needs:
 
-- **Community metadata** sends a book's ASIN or ISBN to meta.audiosilo.app. Matching a book also sends details like its title and author (see [Server settings](./admin/server.md#community-metadata)). No listener details or full file paths are ever sent: a match can send up to three names from the book's path (its author, series and book folders) as search terms.
+- **Community metadata** sends a book's ASIN or ISBN to meta.audiosilo.app. Matching a book also sends details like its title and author (see [Server settings](./admin/server.md#community-metadata)). The server never sends listener details or full file paths. A match can send up to three names from the book's path (its author, series and book folders) as search terms.
 - **Help complete the community database** (off by default) sends, once a day, the ASINs the database doesn't know. See [Helping complete the community database](./admin/server.md#helping-complete-the-community-database).
 - **Podcast search** sends the search text to Apple Podcasts or Podcast Index. See [Searching podcast directories](./admin/podcasts.md#searching-podcast-directories).
 - **The update check** asks GitHub once a day for the newest version. See [What the update check sends](./admin/server.md#what-the-update-check-sends).
@@ -87,7 +93,7 @@ The folder stays exactly as it is. The server adds:
 - **Your place everywhere.** Pause on your phone, carry on in the browser.
 - **Streaming from anywhere**, with chapters, covers and fast search.
 - **Separate accounts** for everyone, with their own progress.
-- **A player made for audiobooks**: sleep timer, speed, offline downloads.
+- **Audiobook features**: sleep timer, speed, offline downloads.
 
 Stop using AudioSilo and your library is still a folder of files.
 
