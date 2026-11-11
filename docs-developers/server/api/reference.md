@@ -28,7 +28,7 @@ that empty list fields may serialize as `null`.
 
 ### `GET /api/v1/server`
 
-*Public.* Server identity and capability discovery - call this before anything
+*Public.* Server identity and capability discovery. Call this before anything
 else and gate features on the flags.
 
 ```json
@@ -84,33 +84,41 @@ else and gate features on the flags.
 }
 ```
 
-`name` is the server's display name: the `name` key in `config.yaml`, which an
-admin sets in the console's Settings > General (it can change while the server
-runs); `"AudioSilo"` when unset.
-`server_id` is a stable, per-install identity minted once and persisted in
-`config.yaml` (so it survives a database rebuild). It never changes for the life of
-the install; clients use it as the identity for a paired server. The player keys its
-per-connection state (token, downloads, progress, cache) on `<server_id>.<user_id>`, one
-user on one server, so two people signed in to one server stay apart (see
-[Connection identity](../../frontend/state-and-data.md#connection-identity-server_iduser_id)). It is also returned by the
-pairing exchange (`POST /auth/exchange`) and login/demo responses, so a client has
-it the moment it pairs. `version` is stamped from the release tag (`"dev"` for local builds, `"dev-<short sha>"` for an `:edge` image).
-`transcode` is true only when ffmpeg is configured; `web_player` only when the
-`/web` mount is populated; `upload` and `websocket` are reserved for future
-phases and currently always false. `api_keys` is true on servers that support
-user-minted [personal API keys](#personal-api-keys). `metadata` reflects the
-**runtime** state of [community metadata lookup](#get-apiv1librariesidmeta): it
-is true only when a valid `metadata.base_url` is configured **and** the lookup is
-switched on. An admin can flip it on or off at runtime via
-[`PATCH /api/v1/admin/settings`](#patch-apiv1adminsettings) (no restart), so this
-flag can change during a server's lifetime; clients gate the enriched-book
-section on it and should re-read it after reconnecting. `export` is true on
-servers that support the admin
-[library export](#get-apiv1adminlibrariesidexport).
+- `name` is the server's display name, `"AudioSilo"` when unset. It is the `name`
+  key in `config.yaml`, which an admin sets in the console's Settings > General,
+  so it can change while the server runs.
+- `server_id` is a stable, per-install identity, minted once and persisted in
+  `config.yaml` so it survives a database rebuild. It never changes for the life of
+  the install, and clients use it as the identity for a paired server. The pairing
+  exchange (`POST /auth/exchange`) and the login and demo responses return it too,
+  so a client has it the moment it pairs. The player keys its per-connection state
+  (token, downloads, progress, cache) on `<server_id>.<user_id>`, one user on one
+  server, so two people signed in to one server stay apart (see
+  [Connection identity](../../frontend/state-and-data.md#connection-identity-server_iduser_id)).
+- `version` is stamped from the release tag: `"dev"` for local builds,
+  `"dev-<short sha>"` for an `:edge` image.
 
-The player-redesign data API (Phase 1a, and the series flags after it) adds
-these flags. An older server omits them, so a client treats a missing flag as false and never sends the request it
-gates:
+The first flags in `capabilities`:
+
+- `transcode` is true only when ffmpeg is configured.
+- `web_player` is true only when the `/web` mount is populated.
+- `upload` and `websocket` are reserved for future features and currently always
+  false.
+- `api_keys` is true on servers that support user-minted
+  [personal API keys](#personal-api-keys).
+- `metadata` reflects the **runtime** state of
+  [community metadata lookup](#get-apiv1librariesidmeta). It is true only when a
+  valid `metadata.base_url` is configured **and** the lookup is switched on. An admin
+  can flip it at runtime with
+  [`PATCH /api/v1/admin/settings`](#patch-apiv1adminsettings), with no restart, so
+  the flag can change during a server's lifetime. Clients gate the enriched-book
+  section on it and should re-read it after reconnecting.
+- `export` is true on servers that support the admin
+  [library export](#get-apiv1adminlibrariesidexport).
+
+The flags below are newer. An older server omits each one, so a client treats a
+missing flag as false and never sends the request it gates. The browse and
+series flags:
 
 | Flag | Value | Gates |
 |---|---|---|
@@ -121,8 +129,8 @@ gates:
 | `series_memberships` | always `true` | `memberships=1` on [`/books`](#get-apiv1librariesidbooks) and [`/series`](#get-apiv1librariesidseries): a book counts in every series it is in, not only its main one (an older server ignores the param and places books by their main series) |
 | `series_books` | always `true` | [`/series/books`](#get-apiv1librariesidseriesbooks): the first page of several series' books in one request (without it, ask `/books` once per series) |
 
-Phase 1b (the listener's own state and stats) adds six more, all always `true` on
-a server that has them and absent on an older one:
+The listener's own state and stats, all always `true` on a server that has them
+and absent on an older one:
 
 | Flag | Value | Gates |
 |---|---|---|
@@ -133,100 +141,103 @@ a server that has them and absent on an older one:
 | `user_stats` | always `true` | [Your listening](#your-listening): `/me/stats`, `/me/listening` and `/me/goal` |
 | `my_devices` | always `true` | [Your devices](#your-devices): `/me/devices` |
 
-`annotations` (always `true`, absent on an older server) gates bookmark labels, the
-owner's edits of bookmarks and notes, and the lists across books: see
-[Capability flags](index.md#capability-flags---gate-your-features) for what it
-covers. `addresses` (always `true`, absent on an older server) says the server reports
-its [home and away addresses](#home-and-away-addresses): on every pairing payload and
-its links, on the exchange, login and demo answers, and at
-[`GET /addresses`](#get-apiv1addresses).
-`meta_covers` (the same as `metadata`, absent on an older server) says the server
-serves the community covers a book's `/meta` envelope hands out, as thumbnails at
-[`GET /libraries/{id}/meta/cover`](#get-apiv1librariesidmetacover).
+Three more, each absent on an older server:
 
-The player redesign's Phase 8 adds two more, both always `true` on a server that
-has them and absent on an older one:
+- `annotations` (always `true`) gates bookmark labels, the owner's edits of
+  bookmarks and notes, and the lists across books. See
+  [Capability flags](index.md#capability-flags---gate-your-features) for what it
+  covers.
+- `addresses` (always `true`) says the server reports its
+  [home and away addresses](#home-and-away-addresses). They are on every pairing
+  payload and its links, on the exchange, login and demo answers, and at
+  [`GET /addresses`](#get-apiv1addresses).
+- `meta_covers` (the same as `metadata`) says the server serves the community
+  covers a book's `/meta` envelope hands out, as thumbnails at
+  [`GET /libraries/{id}/meta/cover`](#get-apiv1librariesidmetacover).
+
+Listening in the house and casting, both always `true` on a server that has them
+and absent on an older one:
 
 | Flag | Value | Gates |
 |---|---|---|
 | `household` | always `true` | [Listening in the house](#listening-in-the-house): `GET`/`PUT /me/household` and `GET /household/listening` |
 | `cast` | always `true` | [Casting](#casting): `POST /cast/token`, and a cast token as the `?token=` of a book's [cover](#get-apiv1librariesidcover) and [stream](#get-apiv1librariesidstream) |
 
-Phase 8b-1 adds one more, always `true` on a server that has it and absent on an older one:
+Household members, always `true` on a server that has it and absent on an older one:
 
 | Flag | Value | Gates |
 |---|---|---|
 | `household_members` | always `true` | [Household members](#household-members): `/me/household/members/**`; `managed_by`, `member_kind` and (for a member) `display_name` on the [`user`](#get-apiv1me); `member_sign_ins` and `?also_members=1` on [Your devices](#your-devices) |
 
-The flag never depends on the caller or on the admin's switches: whether **this**
+The flag never depends on the caller or on the admin's switches. Whether **this**
 caller may add a member is the members list's `allowed`.
 
-Phase 2c-2b adds another core flag, `podcast_fetch:true` (absent on older
-servers), for [on-demand fetch/status/Retry](#podcast-fetch-status-and-retry)
-and optional `fetch:Status` on episodes and `Book.episode`. It stays true
-independently of module/Bridge availability.
-
-Phase 2c-3 adds two more, both absent on older servers (treat absent as
-unsupported):
+Podcasts have three core flags, each absent on an older server (treat absent as
+unsupported). `podcast_fetch` is always `true`. It gates
+[on-demand fetch, status and Retry](#podcast-fetch-status-and-retry) and the
+optional `fetch:Status` on episodes and `Book.episode`. It stays true whether or
+not the module and the Bridge are available. The other two:
 
 | Flag | Value | Gates |
 |---|---|---|
 | `podcast_discovery` | `podcasts.discovery.enabled` at start **and** the Podcasts module's toggle on; sent `false` otherwise. It does not depend on the Bridge or on a directory key | [directory search](#podcast-discovery) (check `providers` for Podcast Index) |
 | `podcast_opml` | always `true` | the [OPML import and export](#opml-import-and-export) protocol, even offline or module-off; the import still needs the module (`404 module_off`), the export does not |
 
-Both describe the server's configuration, not the caller's permissions: a kid,
-demo account or unrecognized client is still refused by the routes.
+Both describe the server's configuration, not the caller's permissions. The
+routes still refuse a kid, a demo account or an unrecognized client.
 
-Bridge Phases 3b and 3c add two more, always `true` on a server that has them
-and absent on an older one:
+The reader and read-along, always `true` on a server that has them and absent on
+an older one:
 
 | Flag | Gates |
 |---|---|
 | `ebooks` | [the reader](#ebooks-and-the-reading-place): a book's `ebook` field, [`GET /libraries/{id}/ebook`](#get-apiv1librariesidebook) and [`GET`](#get-apiv1librariesidreading-progress)/[`PUT /libraries/{id}/reading-progress`](#put-apiv1librariesidreading-progress). A client offers Read only when the book has an `ebook` **and** it is `true` (the player also while it is unknown offline, for a book whose download holds the EPUB; never when `false`) |
-| `readalong` | [read-along](#get-apiv1librariesidreadalong) (Phase 3c): a book's `readalong` field on [`/item`](#get-apiv1librariesiditem) and [`GET /libraries/{id}/readalong`](#get-apiv1librariesidreadalong). It says the route exists, not that any book has a map: a client also needs the book's `readalong.state` to be `ready` (and its `ebook`). Making a map needs a [Bridge](#the-bridge) whose `features` list `readalong` |
+| `readalong` | [read-along](#get-apiv1librariesidreadalong): a book's `readalong` field on [`/item`](#get-apiv1librariesiditem) and [`GET /libraries/{id}/readalong`](#get-apiv1librariesidreadalong). It says the route exists, not that any book has a map: a client also needs the book's `readalong.state` to be `ready` (and its `ebook`). Making a map needs a [Bridge](#the-bridge) whose `features` list `readalong` |
 
-Track U (2.6.0) adds three that follow two settings: `upcoming`,
-`upcoming_calendar` and `upcoming_covers` are all `true` while community metadata
-is on **and** the upcoming releases job is switched on, and `false` (sent, not
-absent) otherwise; an older server omits them. See
+Upcoming releases has three flags that follow two settings: `upcoming`,
+`upcoming_calendar` and `upcoming_covers`. All three are `true` while community
+metadata is on **and** the upcoming releases job is switched on, and `false`
+(sent, not absent) otherwise. A server older than 2.6.0 omits them. See
 [Upcoming releases](#upcoming-releases) and
 [Capability flags](index.md#capability-flags---gate-your-features).
 
-`listening_sync` (Track W1, always `true` on a server that has it) gates
-[listening sync](#post-apiv1melisteningsync).
+Listening sync and the watch, each absent on an older server:
 
-`renditions` (Track W2) gates [watch renditions](#watch-renditions): `rendition=` on
-[`/stream`](#get-apiv1librariesidstream) and the
-[renditions routes](#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions),
-with the kinds in the top-level `renditions` list. When it is true is in
-[Capability flags](index.md#capability-flags---gate-your-features).
+- `listening_sync` (always `true` on a server that has it) gates
+  [listening sync](#post-apiv1melisteningsync).
+- `renditions` gates [watch renditions](#watch-renditions): `rendition=` on
+  [`/stream`](#get-apiv1librariesidstream) and the
+  [renditions routes](#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions),
+  with the kinds in the top-level `renditions` list. When it is true is in
+  [Capability flags](index.md#capability-flags---gate-your-features).
 
 `bridge` follows the Bridge rather than a setting, so it can change from one
-request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
-old, and only then, **for a signed-in caller**, does a top-level
-`bridge: {version, features}` object sit beside `capabilities`. An older server has
-neither. See
+request to the next. It is `true` only while a [Bridge](#the-bridge) is paired and
+its last heartbeat is under two minutes old. Only then, and only **for a signed-in
+caller**, does a top-level `bridge: {version, features}` object sit beside
+`capabilities`. An older server has neither. See
 [the `bridge` capability](#get-apiv1server-the-bridge-capability-and-block).
 
 Each [managed module](../modules.md#the-toggle-and-the-capability-flag) adds a flag
-named after it: `true` only while an admin has it on **and**, for a module that needs
-the Bridge, an online Bridge lists the feature it needs in `bridge.features`; sent as
-`false` otherwise, absent on an older server. Like `bridge`, it can change from one
-request to the next.
+named after it. The flag is `true` only while an admin has the module on **and**,
+for a module that needs the Bridge, an online Bridge lists the feature it needs in
+`bridge.features`. It is sent as `false` otherwise and is absent on an older
+server. Like `bridge`, it can change from one request to the next.
 
 | Flag | Value | Gates |
 |---|---|---|
 | `contributions` | the Contributions module on **and** a Bridge offering `contribute` | the console's contributing actions: the generate dialog's contribute switch, Share with the community and Suggest corrections (which also needs `meta` in `bridge.features`); the player doesn't read it. The module has no routes or background work of its own: its actions are [Bridge jobs it owns](#post-apiv1adminbridgejobs) (`404 module_off` while it is off) |
 
-`podcasts` is the other module flag: true only with its toggle on and an online
-Bridge offering `podcast`. It gates follow/check, new fetches, policy writes
-and scheduling. [Core reads and ready media](#podcasts) remain available
-offline/module-off; `podcast_fetch` advertises protocol support separately.
+`podcasts` is true only with its toggle on and an online Bridge offering
+`podcast`. It gates following and checking, new fetches, policy writes and
+scheduling. [Core reads and ready media](#podcasts) stay available while the
+Bridge is offline or the module is off. `podcast_fetch` advertises protocol
+support separately.
 
-`audible` (Bridge Phase 4a) is true only with its toggle on and an online Bridge
-offering `audible`. It gates the console's [Audible routes](#audible-accounts) and
-the scheduled polls; the Bridge's own Audible routes work either way. Only the
-console reads it: the player has no Audible surface and doesn't mirror it.
+`audible` is true only with its toggle on and an online Bridge offering `audible`.
+It gates the console's [Audible routes](#audible-accounts) and the scheduled polls.
+The Bridge's own Audible routes work either way. Only the console reads it. The
+player has no Audible surface and doesn't mirror it.
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -286,25 +297,33 @@ Response `200` - the pairing payload (`PairingPayload` in `internal/api/qr.go`):
 }
 ```
 
-`pairing_token` is **as redeemable as the code that minted it**: redeemed from
-an invite it inherits the invite's remaining uses and expiry (one QR can pair
-several devices, each exchange claiming one use); redeemed from a recovery code
-it lasts 10 minutes (multi-scan within that window, since recovery codes are
-unlimited). Complete it with `/auth/exchange`. `code_expires_at` and
-`uses_remaining` describe the parent invite's budget (advisory - concurrent
-exchanges may consume uses after the redeem); both are omitted for recovery
-codes and unlimited invites. `web_url` is what the QR encodes (opens the native
-app via Universal/App Links on claimed domains, else the embedded web player);
-`uri` is the custom-scheme equivalent for an explicit "Open in app" action.
-`links.ios`/`links.android` (store links) are omitted until the store apps ship.
-`base_url` honors the configured `public_url`, falling back to the request host.
-`server_name` is the server's display name, as `GET /server`'s `name`, and
-`server_id` its stable id, as `GET /server`'s `server_id`. Both links end with that id as
-`sid=` (after the address params below; absent only on a server without an id, which
-the launcher always mints), so a client can check who answers at an address before
-sending the token there.
-`addresses` is the server's [home and away addresses](#home-and-away-addresses), omitted
-when it has neither; both links then carry them too (below).
+`pairing_token` is **as redeemable as the code that minted it**. Complete it with
+`/auth/exchange`.
+
+- Redeemed from an invite, it inherits the invite's remaining uses and expiry. One
+  QR can pair several devices, and each exchange claims one use.
+- Redeemed from a recovery code, it lasts 10 minutes. Recovery codes are
+  unlimited, so several devices can scan it within that window.
+
+The other fields:
+
+- `code_expires_at` and `uses_remaining` describe the parent invite's budget. They
+  are advisory, because concurrent exchanges may consume uses after the redeem.
+  Both are omitted for recovery codes and unlimited invites.
+- `web_url` is what the QR encodes. On claimed domains it opens the native app
+  through Universal Links or App Links, and otherwise the embedded web player.
+- `uri` is the custom-scheme equivalent, for an explicit "Open in app" action.
+- `links.ios` and `links.android` (store links) are omitted until the store apps
+  ship.
+- `base_url` honors the configured `public_url`, falling back to the request host.
+- `server_name` is the server's display name, as `GET /server`'s `name`.
+- `server_id` is its stable id, as `GET /server`'s `server_id`. Both links end with
+  that id as `sid=`, after the address params described in
+  [Home and away addresses](#home-and-away-addresses), so a client can check who
+  answers at an address before sending the token there. `sid=` is absent only on a
+  server without an id, and the launcher always mints one.
+- `addresses` is the server's [home and away addresses](#home-and-away-addresses),
+  omitted when it has neither. Both links then carry them too.
 
 #### Home and away addresses
 
@@ -320,7 +339,7 @@ answers, and [`GET /addresses`](#get-apiv1addresses) carry the same object:
 
 A `home` equal to the `away` is dropped. On the pairing payloads and the sign-in answers
 the object is omitted when neither is known. Because `home` can be derived from the
-request, an answer read through the away address usually has no `home`: a client keeps a
+request, an answer read through the away address usually has no `home`. A client keeps a
 `home` it already knows rather than forgetting it.
 
 The two links carry the same addresses as extra query parameters **after** the existing
@@ -334,22 +353,28 @@ https://books.example.com/web/connect?token=…&away=https%3A%2F%2Fbooks.example
 Read them by name: the encoder sorts them (`away` before `home`), and `sid` comes last.
 
 On a self-signed server with [home HTTP](../configuration.md#home-http-tlshome_http) (the
-default), the port also answers plain HTTP to home-network clients, and a derived `home`
-is `http://` even when the request came over https: a device pairing at
-`https://192.168.1.20:8080` gets `home` `http://192.168.1.20:8080` (an https request
-without a port gets `http://<host>:443`, the port that answers). `base_url`, `web_url`
-and the `uri`'s `server=` stay https, even for a pairing asked for over plain HTTP
-(the https base on the same port, `:80` for a Host without one), so a link reads
+default), the port also answers plain HTTP to home-network clients. A derived `home`
+is then `http://` even when the request came over https:
+
+- A device pairing at `https://192.168.1.20:8080` gets `home`
+  `http://192.168.1.20:8080`.
+- An https request without a port gets `http://<host>:443`, the port that answers.
+
+`base_url`, `web_url` and the `uri`'s `server=` stay https, even for a pairing asked
+for over plain HTTP. They use the https base on the same port, or `:80` for a Host
+without one. A link then reads
 `…server=https%3A%2F%2F192.168.1.20%3A8080&token=…&home=http%3A%2F%2F192.168.1.20%3A8080&sid=…`.
+
 A native app that can't trust the certificate at `server` exchanges the token at that
-`home` instead, when it has the same host and port and a tokenless `GET <home>/api/v1/server`
-answers with the link's `sid` (the token then travels in cleartext, so it must reach this
-server and no other box at the same private address); the player's rule is in
+`home` instead. It does so only when the `home` has the same host and port and a
+tokenless `GET <home>/api/v1/server` answers with the link's `sid`. The token then
+travels in cleartext, so it must reach this server and no other box at the same
+private address. The player's rule is in
 [Connect and home/away addresses](../../frontend/connect-and-addresses.md).
 
 A client must not send a token to a `home` address until a tokenless
-`GET <home>/api/v1/server` there has answered with the same `server_id`: a private
-address can belong to a different machine on another network. The player's rule is in
+`GET <home>/api/v1/server` there has answered with the same `server_id`, because a
+private address can belong to a different machine on another network. The player's rule is in
 [Connect and home/away addresses](../../frontend/connect-and-addresses.md#the-pick-rule-srclibserver-addressts).
 
 | Status | Meaning |
@@ -427,17 +452,19 @@ attempts per IP per 15 minutes.
 stores only its SHA-256, on the session. A sign-in whose `device_id` an earlier
 session of the same person already carried, signed out or not, is not
 announced as a `new_device` [event](#get-apiv1adminevents); one without it
-always is. The admin console sends one; players may adopt it. An admin signing
-a session out (`DELETE /admin/devices/{id}`) forgets its `device_id` on every
-session of that person, and a new password,
-[Sign out everywhere](#post-apiv1adminusersidsign-out) or a disabled account forgets
-all of that person's, so the browser's next sign-in is announced again.
+always is. The admin console sends one, and players may adopt it. The server
+forgets `device_id`s so that the browser's next sign-in is announced again:
+
+- An admin signing a session out (`DELETE /admin/devices/{id}`) forgets that
+  session's `device_id` on every session of that person.
+- A new password, [Sign out everywhere](#post-apiv1adminusersidsign-out) or a
+  disabled account forgets all of that person's.
 
 A sign-in racing a password change gets no session, only `401 invalid credentials`
-(server#281, [the sign-in race](../auth-and-security.md#password-changes-end-sessions)).
+(see [Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
 
 Response `200`: `{ "token": "…", "user": { … }, "server_id": "…" }`, plus `addresses`
-on a server with that capability - the same shape as `/auth/exchange`.
+on a server with that capability. It is the same shape as `/auth/exchange`.
 
 From 2.5.0 a `username` with surrounding spaces (a pasted or autocompleted
 `"alex "`) signs in as the account without them, when no account has the name
@@ -450,23 +477,26 @@ exactly as typed (that one wins). Case still counts (`auth.Service.Authenticate`
 
 ### `POST /api/v1/auth/pair`
 
-*Session.* Issues a fresh pairing payload for the calling user - "add another
-device" from an existing session. The body is optional:
+*Session.* Issues a fresh pairing payload for the calling user, to add another
+device from an existing session. The body is optional:
 
 ```json
 { "ttl_seconds": 120 }
 ```
 
-Response `200`: a
-`PairingPayload` (same shape as `/auth/redeem`, without the invite budget fields). Its
-token is single-use and lasts 10 minutes (`pairingTTL`), so the player counts down from
-when the payload arrived. `ttl_seconds` (from 2.4.0) asks for a shorter life, clamped to
-30 seconds through 10 minutes (`pairTTL`): a caller can shorten a token's life, never
-lengthen it; no body or no field is the 10 minutes, and a malformed body is `400
-invalid request`. The admin console's **Listen in player** uses it too, to sign the
-web player in as the admin in a new tab, asking 120 seconds (`PLAYER_TAB_TTL_SECONDS`),
-since that token rides the tab's URL and history. An API key gets `403`. A kid's account (a [household member](#household-members)
-with `member_kind: "kid"`) gets `403` `code: "kid_account"`: its owner sets up its
+Response `200`: a `PairingPayload`, the same shape as `/auth/redeem` without the
+invite budget fields. Its token is single-use and lasts 10 minutes (`pairingTTL`),
+so the player counts down from when the payload arrived.
+
+`ttl_seconds` (from 2.4.0) asks for a shorter life, clamped to 30 seconds through
+10 minutes (`pairTTL`). A caller can shorten a token's life, never lengthen it. No
+body or no field gives the 10 minutes, and a malformed body is `400 invalid
+request`. The admin console's **Listen in player** uses it to sign the web player
+in as the admin in a new tab. It asks for 120 seconds (`PLAYER_TAB_TTL_SECONDS`),
+because that token rides the tab's URL and history.
+
+An API key gets `403`. A kid's account (a [household member](#household-members)
+with `member_kind: "kid"`) gets `403` `code: "kid_account"`. Its owner sets up its
 devices with [`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair).
 
 ### `POST /api/v1/auth/logout`
@@ -497,18 +527,21 @@ Content`.
 omitted when there is none. `role` is `"admin"` or `"user"`.
 
 On a server with `household_members`, `managed_by` and `member_kind` are always
-present: both `null` for an account nobody manages, and for a
-[household member](#household-members) the owner (`{ "id": 4, "username": "sam" }`)
-and `"kid"` or `"grownup"`. A member's `user` also carries `display_name`, the name
-the owner typed for them (`users.display_name`), so the member's own device can greet
-them by it; it is omitted while that is empty (a member the admin assigned, until the
-owner renames them) and for everyone else, a former member included (`api.meUser`).
-The same `user` object rides on every session envelope (exchange, login, demo, a
-member's session). The member's `member_access` is not on it: it is the owner's
-business (the [members list](#get-apiv1mehouseholdmembers)) and the admin's, and the
-player's `managed_by` never carries the owner's own typed name (only the admin's
-does). An older player ignores the new fields; the server limits a kid whatever the
-player shows.
+present. Both are `null` for an account nobody manages. For a
+[household member](#household-members) they are the owner
+(`{ "id": 4, "username": "sam" }`) and `"kid"` or `"grownup"`.
+
+A member's `user` also carries `display_name`, the name the owner typed for them
+(`users.display_name`), so the member's own device can greet them by it. It is
+omitted while that is empty (a member the admin assigned, until the owner renames
+them) and for everyone else, a former member included (`api.meUser`).
+
+The same `user` object rides on every session envelope: exchange, login, demo and a
+member's session. The member's `member_access` is not on it. That is the owner's
+business (the [members list](#get-apiv1mehouseholdmembers)) and the admin's. The
+player's `managed_by` never carries the owner's own typed name; only the admin's
+does. An older player ignores the new fields, and the server limits a kid whatever
+the player shows.
 
 ### `GET /api/v1/addresses`
 
@@ -529,23 +562,29 @@ Either field is omitted when unknown, and the answer is `{}` when neither is.
 
 ## Self-service account
 
-The routes in this section but `DELETE /auth/recovery` (which only reduces access, so
-it is neither limited nor refused), together with the [API keys](#personal-api-keys)
-below (but their listing, `GET /auth/tokens`, which is not counted), share one rate
-limit (10 attempts per IP per 15 minutes; a refusal is `429` with `Retry-After`, the
-seconds until the lockout ends) and are
-**refused for demo accounts** (403 `code: "demo_account"`, `not available for demo
-accounts`), so a throwaway session can't mint a durable credential. `POST
-/auth/password`, `POST /auth/recovery` and `POST /auth/tokens` (and `POST /auth/pair`)
-are also refused for a kid's account (403 `code: "kid_account"`, `not available for a
-kid's account`): a kid signs in only on devices its owner sets up (the admin can't
-mint or rotate a kid's invite either: `409 kid_account`, below). The refusal comes
-from one route wrapper (`api.notKid`) before the handler runs, and the recovery code,
-API key and pairing writes refuse a kid again inside their own transaction
-(`auth.refuseKid`), so a request that passed the wrapper just before the owner's
-switch to kid committed still gets `403 kid_account` and leaves nothing behind. A
-password racing that switch is refused inside `auth.UpdateUser` instead
-(`ErrKidNoPassword`), and the route answers it as `403 kid_account` too.
+The routes in this section and the [API keys](#personal-api-keys) routes share one
+rate limit and one demo refusal. Two routes are exempt from both:
+`DELETE /auth/recovery`, which only reduces access, and the key listing
+`GET /auth/tokens`, which is not counted.
+
+- **Rate limit:** 10 attempts per IP per 15 minutes. A refusal is `429` with
+  `Retry-After`, the seconds until the lockout ends.
+- **Demo accounts are refused** (403 `code: "demo_account"`, `not available for demo
+  accounts`), so a throwaway session can't mint a durable credential.
+
+`POST /auth/password`, `POST /auth/recovery`, `POST /auth/tokens` and
+`POST /auth/pair` are also refused for a kid's account (403 `code: "kid_account"`,
+`not available for a kid's account`). A kid signs in only on devices its owner sets
+up, and the admin can't mint or rotate a kid's invite either (`409 kid_account`,
+below). Where the refusal happens:
+
+- One route wrapper (`api.notKid`) refuses before the handler runs.
+- The recovery code, API key and pairing writes refuse a kid again inside their own
+  transaction (`auth.refuseKid`). A request that passed the wrapper just before the
+  owner's switch to kid committed still gets `403 kid_account` and leaves nothing
+  behind.
+- A password racing that switch is refused inside `auth.UpdateUser` instead
+  (`ErrKidNoPassword`), and the route answers it as `403 kid_account` too.
 
 ### `POST /api/v1/auth/password`
 
@@ -558,19 +597,24 @@ password racing that switch is refused inside `auth.UpdateUser` instead
 
 Response: `204 No Content`.
 
-**Changing a password ends the other sessions** (server#281). Replacing a password
-the account had revokes every `session` token of the caller but the one making the
-request, with their open pairing codes (unlinked `pairing` tokens from
-[`POST /auth/pair`](#post-apiv1authpair), or an owner's
-[`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair) for a member) and their recovery code (`has_recovery`
-turns `false`), and their household members' sessions made on the caller's other
-devices with every member's open pairing code (a member's own paired device stays);
-API keys, the [calendar feed token](#the-calendar-feed) and Bridge
-tokens stay, and a first password ends nothing
-([Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
-An ended token is refused (`401`) on its very next request, media `?token=` included;
-a shipped app takes its existing 401 path (signed out, pair again). The response
-carries no count: a client that wants to say what happened reads
+**Changing a password ends the other sessions.** Replacing a password the account
+had revokes:
+
+- every `session` token of the caller but the one making the request;
+- the caller's open pairing codes: unlinked `pairing` tokens from
+  [`POST /auth/pair`](#post-apiv1authpair), or an owner's
+  [`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair) for
+  a member;
+- the caller's recovery code (`has_recovery` turns `false`);
+- the caller's household members' sessions made on the caller's other devices, with
+  every member's open pairing code. A member's own paired device stays.
+
+API keys, the [calendar feed token](#the-calendar-feed) and Bridge tokens stay, and
+a first password ends nothing (see
+[Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
+An ended token is refused (`401`) on its very next request, media `?token=` included.
+A shipped app takes its existing 401 path: signed out, pair again. The response
+carries no count. A client that wants to say what happened reads
 [`GET /me/devices`](#get-apiv1medevices) again.
 
 | Status | Meaning |
@@ -763,18 +807,21 @@ anywhere else stay. The parameter is only meaningful on a server with
 `household_members`; an older server ignores it and answers `{ "current": … }`.
 
 Revoking the **current** device is allowed (unlike the admin route's
-`409 current_device`): the response says `"current": true`, and the token is
-dead for every later request. A player shouldn't offer it for that row, though:
-signing out the normal way (`POST /auth/logout` after the app's own teardown)
-lets it save the final position and flush queued progress first, which a revoke
-would refuse. An API-key caller
-may revoke too, since revoking only reduces access. A token of the caller's that
-has expired but isn't revoked yet can still be revoked (`200`), though the list
-already hides it. Revoking also clears that browser's sign-in key, so a later
-password sign-in from it is announced as a new device. A self-revoke is not
-written to the admin audit log, but each member `?also_members=1` signs out is:
-`member.device_revoke` with the caller as actor, the member as target and the
-caller's `device_id`, as on the [member route](#delete-apiv1mehouseholdmembersiddevicesdevice_id).
+`409 current_device`). The response says `"current": true`, and the token is
+dead for every later request. A player shouldn't offer it for that row, though.
+Signing out the normal way (`POST /auth/logout` after the app's own teardown)
+lets the app save the final position and flush queued progress first, which a
+revoke would refuse.
+
+- An API-key caller may revoke too, since revoking only reduces access.
+- A token of the caller's that has expired but isn't revoked yet can still be
+  revoked (`200`), though the list already hides it.
+- Revoking also clears that browser's sign-in key, so a later password sign-in from
+  it is announced as a new device.
+- A self-revoke is not written to the admin audit log, but each member that
+  `?also_members=1` signs out is. The entry is `member.device_revoke` with the
+  caller as actor, the member as target and the caller's `device_id`, as on the
+  [member route](#delete-apiv1mehouseholdmembersiddevicesdevice_id).
 
 | Status | Meaning |
 |---|---|
@@ -1036,8 +1083,8 @@ probed; `added_at` when unknown. Every book response (lists, search, recent,
 | `abridged` | boolean | whether the recording is abridged. **Absent means unknown**, never "unabridged": an Audiobookshelf file and a community match only ever say `true` (both write `false` for "not recorded"), so `false` comes only from an admin edit |
 | `genres` | string[] | the book's genres: the files' genre tag (split on `;` and NUL, never `,`; placeholders such as `Audiobook`, `Speech`, `Spoken Word` and `Other` dropped), an Audiobookshelf `metadata.json`, or an admin edit. Each label once, compared case-insensitively, the first spelling kept; at most 50, each at most 64 characters. Sent on list and search pages too, so a client can filter a loaded library on the device |
 | `tags` | string[] | freeform tags, as `genres`, from an Audiobookshelf `metadata.json` or an admin edit only (no audio tag carries them) |
-| `generated` | boolean | `true` when the book's `.audiosilo/` folder holds characters, recaps or (since Bridge Phase 1c) a description the [Bridge](#the-bridge) generated on this server (read from the book's attachment signature, so a file that failed its checks still counts); omitted otherwise. A client asks [`/meta`](#generated-content) for such a book even when it has no `asin` or `isbn` |
-| `ebook` | object | `{"path", "size"}`: the book's ebook (Bridge Phase 3b, capability `ebooks`), the one readable `.epub` the scan found beside its audio (DRM is not judged) (see [A book's ebook](../scanner.md#a-books-ebook)): its library-relative `path` (for display: the file is fetched by the **book's** path at [`/ebook`](#get-apiv1librariesidebook)) and its `size` in bytes when last scanned. Omitted when the book has none |
+| `generated` | boolean | `true` when the book's `.audiosilo/` folder holds characters, recaps or a description the [Bridge](#the-bridge) generated on this server (read from the book's attachment signature, so a file that failed its checks still counts); omitted otherwise. A client asks [`/meta`](#generated-content) for such a book even when it has no `asin` or `isbn` |
+| `ebook` | object | `{"path", "size"}`: the book's ebook (capability `ebooks`), the one readable `.epub` the scan found beside its audio (DRM is not judged) (see [A book's ebook](../scanner.md#a-books-ebook)): its library-relative `path` (for display: the file is fetched by the **book's** path at [`/ebook`](#get-apiv1librariesidebook)) and its `size` in bytes when last scanned. Omitted when the book has none |
 
 A book at a range, here as the omnibus of Mistborn 1-3 that is also book 1 of a
 box-set series:
@@ -1069,25 +1116,28 @@ not a content hash.
 [`/cover?size=`](#get-apiv1librariesidcover) request or the console's
 [`POST /admin/covers`](#post-apiv1admincovers)) and stored tagged with the
 `cover_version` it was read for. It is sent only while that tag is the book's
-current `cover_version`, so it appears after the first thumbnail of the current
-art and disappears, without anything being cleared, when the art identity moves,
-until the next thumbnail. The long `description` is not on list responses: only
+current `cover_version`. So it appears after the first thumbnail of the current
+art. When the art identity moves it disappears, without anything being cleared,
+until the next thumbnail. The long `description` is not on list responses. Only
 [`/item`](#get-apiv1librariesiditem) reads and sends it.
 
 Metadata fields (`title`, `subtitle`, `author`, `narrator`, `series`,
 `series_index`, `published`, `publisher`, `language`, `abridged`, `genres`,
-`tags`, `asin`, `isbn`) and chapter titles carry the **effective** values: what the scan
-found, with any admin metadata edits layered on top. A book with a `series` and
-no position takes the one its title gives when the title is the series' name
-and then a number ("He Who Fights with Monsters 4: A LitRPG Adventure" is
-`series_index` 4); a number run on from the name, a range ("1-12") or one
-followed by more words gives none. A range comes only from an edit, a community
-match or a `series-part` tag such as `1-3` (see `series_index_end`). The shape is unchanged; a
-player simply sees the edited value. The same holds for every book-shaped
-response, search, the `/fs` annotations and the export.
+`tags`, `asin`, `isbn`) and chapter titles carry the **effective** values: what the
+scan found, with any admin metadata edits layered on top. The shape is unchanged,
+and a player sees the edited value. The same holds for every book-shaped response,
+search, the `/fs` annotations and the export.
+
+A book with a `series` and no position takes the one its title gives, when the
+title is the series' name and then a number ("He Who Fights with Monsters 4: A
+LitRPG Adventure" is `series_index` 4). A number run on from the name, a range
+("1-12") or a number followed by more words gives none. A range comes only from an
+edit, a community match or a `series-part` tag such as `1-3` (see
+`series_index_end`).
+
 List responses omit `files`, `chapters`, and `direct_playable` (single-book
-responses include them). `next_cursor` is omitted on the last page. Invalid
-cursor → `400`.
+responses include them). `next_cursor` is omitted on the last page. An invalid
+cursor is `400`.
 
 ### `GET /api/v1/libraries/{id}/authors` · `GET /api/v1/libraries/{id}/narrators`
 
@@ -1244,16 +1294,28 @@ Response `200`: `{ "books": [ … ] }`.
 
 ## Podcasts
 
-Phase 2c-2 exposes feed following, indexed show/episode reads, scheduled and
-admin-requested downloads, retention, CHAP chapters and on-demand fetch/status/Retry.
-Phase 2c-3 adds [directory search](#podcast-discovery) and
-[OPML import and export](#opml-import-and-export), API only.
-Phase 2d-1 adds the [player](../../bridge/podcasts.md#player-phase-2d-1)
-(no new route). The recognized clients, through `X-AudioSilo-Client`, are the
-console's `AudioSilo Admin`, the player's `AudioSilo` with version `dev`, and
-released players from **`AudioSilo/2.2.0`** (`auth.PodcastPlayerMinVersion`). A
-missing or other client, or a player older than 2.2.0, is denied podcast
-content even for an admin. See [visibility](../auth-and-security.md#podcast-visibility).
+The podcast API covers:
+
+- feed following;
+- indexed show and episode reads;
+- scheduled and admin-requested downloads, and retention;
+- CHAP chapters;
+- on-demand fetch, status and Retry;
+- [directory search](#podcast-discovery) and
+  [OPML import and export](#opml-import-and-export), API only.
+
+The [player's podcasts](../../bridge/podcasts.md#player-phase-2d-1) use these routes
+and add none.
+
+Only recognized clients see podcast content. They identify themselves through
+`X-AudioSilo-Client`:
+
+- the console's `AudioSilo Admin`;
+- the player's `AudioSilo` with version `dev`;
+- released players from **`AudioSilo/2.2.0`** (`auth.PodcastPlayerMinVersion`).
+
+A missing or other client, or a player older than 2.2.0, is denied podcast content
+even for an admin. See [Podcast visibility](../auth-and-security.md#podcast-visibility).
 
 ### Podcast read routes
 
@@ -1315,30 +1377,39 @@ An **Episode**:
 }
 ```
 
-`duration` is seconds; `duration_source` is `file` (present file and positive
-`fetch.duration_ms`), `feed` or `none` (zero duration). `published`, `season`
-and `episode` may be `null`; `episode_type` is `full`, `trailer` or `bonus`.
-`removed` means the episode disappeared from the feed, independently of whether
-its audio is present. `GET /libraries/{id}/item?path=<episode>` adds `episode`
-to the normal Book JSON, with `show_path`, `published`, `season`, `episode`,
-`episode_type`, `explicit`, `downloaded`, `duration_source` and `removed`.
-That object is omitted for books. Both the episode list and `Book.episode`
-add optional `generation` (integer), `sha256` (string) and `timeline_changed`
-(boolean) when a valid Fetch exists, including a deleted generation. The flag
-is explicitly false for an unchanged first generation and latches true after
-different bytes are fetched. It does not rescale/reset saved progress or
-bookmarks. `downloaded` needs committed regular audio of the expected size,
-with no deletion timestamp or publication barrier; absent size is zero.
-Both also add optional `fetch:Status`, independently of those generation fields,
-from one batched status query per page. Older servers omit it. This public
-summary differs from the on-disk Fetch pin; see [status and Retry](#podcast-fetch-status-and-retry).
-An episode without a file has empty `chapters` and `files`; a stream request
-triggers shared work and waits up to two seconds before a status-bearing 503.
-The server never indexes podcast audio on demand itself. Present episodes
-use probed duration/codec. Valid MP3 CHAP is served
-through the existing chapters/files envelope with optional
-`chapters_source:"id3_chap"`; without usable CHAP a present file gets one
-whole-file chapter.
+The episode fields:
+
+- `duration` is seconds.
+- `duration_source` is `file` (present file and positive `fetch.duration_ms`),
+  `feed` or `none` (zero duration).
+- `published`, `season` and `episode` may be `null`.
+- `episode_type` is `full`, `trailer` or `bonus`.
+- `removed` means the episode disappeared from the feed, whether or not its audio
+  is present.
+- `downloaded` needs committed regular audio of the expected size, with no deletion
+  timestamp or publication barrier. An absent size is zero.
+
+`GET /libraries/{id}/item?path=<episode>` adds `episode` to the normal Book JSON,
+with `show_path`, `published`, `season`, `episode`, `episode_type`, `explicit`,
+`downloaded`, `duration_source` and `removed`. That object is omitted for books.
+
+Both the episode list and `Book.episode` add optional fields:
+
+- `generation` (integer), `sha256` (string) and `timeline_changed` (boolean), when
+  a valid Fetch exists, including a deleted generation. `timeline_changed` is
+  explicitly false for an unchanged first generation and latches true after
+  different bytes are fetched. It does not rescale or reset saved progress or
+  bookmarks.
+- `fetch:Status`, independently of those generation fields, from one batched status
+  query per page. Older servers omit it. This public summary differs from the
+  on-disk Fetch pin; see [status and Retry](#podcast-fetch-status-and-retry).
+
+An episode without a file has empty `chapters` and `files`. A stream request for it
+triggers shared work and waits up to two seconds before a status-bearing 503. The
+server never indexes podcast audio on demand itself. Present episodes use the
+probed duration and codec. Valid MP3 CHAP is served through the existing chapters
+and files envelope with optional `chapters_source:"id3_chap"`. Without usable CHAP
+a present file gets one whole-file chapter.
 
 Direct podcast streams/downloads use
 `ETag: "podcast-g<generation>-<sha256>"`, `Cache-Control: private, no-cache` and
@@ -1469,10 +1540,11 @@ Unexpected faults remain sanitized 500s. GET reports availability/failure in
 Status, not as a scheduling error. Ordinary stream retries honor terminal
 cooldown; GET never retries a failed job. Clients repeat one request (GET
 status, or the media request) no sooner than every two seconds, and only
-while queued/fetching. Stop at ready/failed/unavailable; failure needs explicit POST Retry or a later
-scheduled attempt. An unavailable retry interval is not permission for a POST
-loop. The player's mirrors, hooks, cache refresh and generation/CHAP rules
-are in [Player (Phase 2d-1)](../../bridge/podcasts.md#player-phase-2d-1).
+while it is queued or fetching. Stop at ready, failed or unavailable. A failure
+needs an explicit POST Retry or a later scheduled attempt. An unavailable retry
+interval is not permission for a POST loop. The player's mirrors, hooks, cache
+refresh and generation and CHAP rules are in the Bridge podcasts page's
+[Player section](../../bridge/podcasts.md#player-phase-2d-1).
 
 ### Podcast follow requests
 
@@ -1544,12 +1616,12 @@ sends a finished/failed notification. See [the Bridge implementation](../../brid
 ### Podcast discovery
 
 *Session, adult, not demo; Podcasts module.* Directory search finds public
-shows by name; following one is the ordinary
-[`POST /podcasts/follow`](#podcast-actions) with `{library_id, feed_url}`
-(there is no provider-id follow and no new follow field). The player's Add
-shows page calls them (the player from 2.4.0,
-[Phase 2d-2](../../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2));
-the console does not.
+shows by name. Following one is the ordinary
+[`POST /podcasts/follow`](#podcast-actions) with `{library_id, feed_url}`.
+There is no provider-id follow and no new follow field. The player's Add shows
+page calls these routes (the player from 2.4.0; see
+[Player: discovery and OPML](../../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2)).
+The console does not.
 
 | Route | Query | Success |
 |---|---|---|
@@ -1693,33 +1765,46 @@ Error messages are safe text; they never carry a directory's body, headers,
 URL or the credentials. Logs name the provider and a short reason only.
 
 **Artwork.** `id` is 64 lowercase hex characters naming an image URL a recent
-search result registered (its SHA-256). The caller can never name a URL: an id
+search result registered (its SHA-256). The caller can never name a URL. An id
 of the wrong shape, unknown, expired or evicted is `404 artwork_not_found` and
-fetches nothing. The server fetches the image itself (public addresses only,
-checked at connect time, at most three redirects and never from HTTPS down to
-HTTP, no credentials, cookies or caller headers, five seconds, at most 2 MiB)
-and re-encodes it as a JPEG of at most 320 px. SVG, HTML and anything that does
-not decode as an image fail. Success is `image/jpeg` with
-`X-Content-Type-Options: nosniff` and `Cache-Control: private, max-age=300`.
-A failed fetch is `502 artwork_unavailable`, answered again for a minute
-without refetching. Registrations last 15 minutes (at most 4,096; eviction can
-404 an id before its search expires), images are cached up to 32 MiB. Budgets
-(from 2.5.1: artwork's own, sized by a results page of 20, and never
-shared with search's): 120 artwork requests/minute per user (burst 40, hits
-included), 120 image fetches/minute server-wide (burst 40), four fetching at once
-and up to 40 more misses waiting for a slot, each for up to the five-second fetch
-budget. A miss past those 44, or one that got no slot in time, is `503
-discovery_busy` (`Retry-After: 1`; a miss that never fetched gives its image token
-back); a spent bucket is the same `429` codes as search. Show a placeholder when
-the artwork 404s or fails.
+fetches nothing.
+
+The server fetches the image itself and re-encodes it as a JPEG of at most 320 px.
+The fetch has these limits:
+
+- public addresses only, checked at connect time;
+- at most three redirects, and never from HTTPS down to HTTP;
+- no credentials, cookies or caller headers;
+- five seconds, and at most 2 MiB.
+
+SVG, HTML and anything that does not decode as an image fail. Success is
+`image/jpeg` with `X-Content-Type-Options: nosniff` and
+`Cache-Control: private, max-age=300`. A failed fetch is `502 artwork_unavailable`,
+answered again for a minute without refetching. Registrations last 15 minutes, with
+at most 4,096, so eviction can 404 an id before its search expires. Images are
+cached up to 32 MiB.
+
+Artwork has its own budgets, sized by a results page of 20 and never shared with
+search's (from 2.5.1):
+
+- 120 artwork requests a minute per user (burst 40, hits included);
+- 120 image fetches a minute server-wide (burst 40);
+- four fetching at once, and up to 40 more misses waiting for a slot, each for up
+  to the five-second fetch budget.
+
+A miss past those 44, or one that got no slot in time, is `503 discovery_busy`
+(`Retry-After: 1`). A miss that never fetched gives its image token back. A spent
+bucket gives the same `429` codes as search. Show a placeholder when the artwork
+404s or fails.
 
 ### OPML import and export
 
 OPML is how podcast apps move subscription lists. The import follows each feed
 of an uploaded list as the caller; the export writes the caller's followed
 public shows. The player imports from its Add shows page and exports from the
-Shows library mode ([Phase 2d-2](../../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2));
-the console has no screen for either.
+Shows library mode (see
+[Player: discovery and OPML](../../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2)).
+The console has no screen for either.
 
 #### `POST /api/v1/podcasts/opml/import`
 
@@ -1734,22 +1819,33 @@ curl -X POST "$SERVER/api/v1/podcasts/opml/import?library_id=7" \
   -H "Content-Type: text/x-opml" --data-binary @subscriptions.opml
 ```
 
-(`--data-binary @-` reads it from standard input.) The checks before the
-body is read, in order: authentication, `403 kid_account`, `403 demo_account`,
-`404 module_off`, the client gate (`403 no_library_access`), unknown or
-repeated parameters (`400 invalid_request`), a missing or non-positive
-`library_id` (`400 invalid_request`), `404 library_not_found`, no whole-library
-grant (`403 no_library_access`, checked before the kind so an ungranted
-library's kind is not revealed), `409 not_podcast_library`, then the content
-type: `application/xml`, `text/xml`, `text/x-opml` or `application/x-opml+xml`,
-with no parameter but `charset=utf-8` and no `Content-Encoding` but `identity`,
-else `415 unsupported_opml_type`. Then the caller's import budget (2/minute,
-burst 1: `429 opml_rate_limited` with `Retry-After`, or `503 opml_busy` with
-`Retry-After: 1` while the server's per-user budget table is full), whether one of
-two server-wide import slots is free (`503 opml_busy`, `Retry-After: 1`, answered
-before the body is read), the body (read whole, at most 1 MiB), then the slot. A
-busy answer refunds the budget it took, so the `Retry-After` retry runs rather than
-meeting `429`.
+(`--data-binary @-` reads it from standard input.) The server runs these checks
+in order:
+
+1. authentication;
+2. `403 kid_account`;
+3. `403 demo_account`;
+4. `404 module_off`;
+5. the client gate (`403 no_library_access`);
+6. unknown or repeated parameters (`400 invalid_request`);
+7. a missing or non-positive `library_id` (`400 invalid_request`);
+8. `404 library_not_found`;
+9. no whole-library grant (`403 no_library_access`), checked before the kind so an
+   ungranted library's kind is not revealed;
+10. `409 not_podcast_library`;
+11. the content type: `application/xml`, `text/xml`, `text/x-opml` or
+    `application/x-opml+xml`, with no parameter but `charset=utf-8` and no
+    `Content-Encoding` but `identity`, else `415 unsupported_opml_type`;
+12. the caller's import budget, 2 a minute with burst 1: `429 opml_rate_limited`
+    with `Retry-After`, or `503 opml_busy` with `Retry-After: 1` while the server's
+    per-user budget table is full;
+13. whether one of two server-wide import slots is free (`503 opml_busy`,
+    `Retry-After: 1`, answered before the body is read);
+14. the body, read whole, at most 1 MiB;
+15. then the slot.
+
+A busy answer refunds the budget it took, so the `Retry-After` retry runs rather
+than meeting `429`.
 
 The whole document is validated before any row acts, so a refused document
 changes nothing:
@@ -2053,17 +2149,20 @@ not the community-written `community_description` on
 `generated` and `ebook` when they apply) are described under
 [`/books`](#get-apiv1librariesidbooks); each is omitted when empty or unknown.
 
-`chapters_source` is `"community"` when the book's `chapters` are a community
-recording's chapter list fitted onto its audio rather than the files' own (see
-[Community chapters](../community-chapters.md)), `"generated"` when they are the
-chapters a Bridge found in the narration of a book with none of its own (Bridge
-Phase 1d; see [Generated chapters](../community-chapters.md#generated-chapters)),
-`"id3_chap"` for a podcast's validated MP3 CHAP attachment, and absent otherwise. It is
-additive: the chapters have the same shape either way, and only this
+`chapters_source` says where the book's `chapters` come from:
+
+- `"community"`: a community recording's chapter list fitted onto its audio rather
+  than the files' own (see [Community chapters](../community-chapters.md)).
+- `"generated"`: the chapters a Bridge found in the narration of a book with none
+  of its own (see [Generated chapters](../community-chapters.md#generated-chapters)).
+- `"id3_chap"`: a podcast's validated MP3 CHAP attachment.
+- absent otherwise.
+
+It is additive. The chapters have the same shape either way, and only this
 single-book response (and [`/chapters`](#get-apiv1librariesidchapters)) carries
 it.
 
-`readalong` (Phase 3c, capability `readalong`) is the state of the book's
+`readalong` (capability `readalong`) is the state of the book's
 read-along map, the file a Bridge's `readalong.align` job wrote beside it (see
 [Read-along](../../bridge/readalong.md)):
 
@@ -2151,7 +2250,7 @@ multi-file mp3 parts render identically.
 
 `chapters_source` - `"community"` when `chapters` are a community recording's
 list fitted onto the book's audio (an admin chose them, or the files have no
-chapters of their own); `"generated"` (Bridge Phase 1d) when they are the
+chapters of their own); `"generated"` when they are the
 chapters a Bridge found in the narration of a book with no chapters of its own
 (its `.audiosilo/chapters.json`); `"id3_chap"` for a podcast's validated MP3
 CHAP attachment; **absent** for other files' own chapters, and on
@@ -2210,73 +2309,87 @@ its other series (`series_list`) in their order. The community rails answer firs
 but only when they can **place** the next entry on one of the caller's books.
 Otherwise the local steps decide, in order, and the first one with an answer wins:
 
-1. **`community`** - community metadata is on and the book matches a work with at
-   least one series rail. The rails are taken in the book's own order: a rail
-   named like its main series first (by the rail's name or one of its orderings',
-   ignoring case, accents, punctuation and spacing), then rails named like its
-   other series in list order, then the rest as the envelope lists them. On each
-   the server reads the entry after the current work on the rail's **main view**
-   (the smallest numeric position above the current one; an entry at a range
-   such as an omnibus `1-3` counts by its start, and a current work at a range
-   by its end, so after the omnibus comes `4`; a single entry wins a tie with a
-   range starting at the same number; unnumbered entries are skipped), passing over any entry that comes at or
-   before the current work on a rail ranked above it, so two orders of the same
-   books (a chronological series and a publication-order one) can't step
-   backwards or loop. The **first rail with a next entry decides**, and a later
-   rail's entry never answers in its place: the server
-   places that entry for the caller exactly as `/meta` places
-   [`local`](#owned-entries-local), and when it is placed the answer is `next` +
-   `book` + `work`. When it is not (the caller's copy is untagged, or filed under
-   a series named unlike the rail, or they don't have it), failing to place proves
-   nothing, so the steps below answer and the entry rides along as `work` without
-   `local`. Nothing comes from this step (no `work`) when the book has no
-   ASIN/ISBN, has no match or no rails, the metadata service fails, or no rail has
-   a next entry (no current position is a number, the current work is last on
-   every rail, or every later entry steps back; a rail can lag the library). A
-   failure reading the caller's books leaves the entry unplaced, as `/meta`
-   degrades.
-2. **`series`** - the book's series with a position above 0, main series first
-   (`series` at `series_index`, then each other series at its position there). For
-   each, the candidate is the book of that series (in any spelling, as
-   [`/series`](#get-apiv1librariesidseries) groups them) in the same library
-   (by its main series or one of its other series, at its position in that
-   series) with the smallest higher position (ties: a single position before a
-   range starting there, then by path), within the caller's scope, passing over
-   any book that comes at or before the current book in a series ranked above in
-   which both books are numbered. A book at a range counts from its end (after an
-   omnibus of 1-3, the next is 4) and a candidate by its start (from book 2, an
-   omnibus of 1-3 is no step forward); a book inside the current omnibus in a
-   series ranked above is passed over. The first series with a
-   later book that isn't passed over answers. When none has a later book but some other book in one of them is
-   numbered, the series has ended: in the series' own folder (every other indexed
-   book there shares a series with this one, and there is at least one), a
-   folder no scan has reached after the book (the pending rule of step 3) answers
-   as a `folder` answer with `next` and no `book`, so a series still being
-   scanned is walked book by book. Otherwise, or with nothing pending, the answer
-   is `{"source": "series"}`, the end of the series. When nothing else is
-   numbered the step falls through.
-3. **`folder`** - the book's parent folder, listed whole as the caller may open it
-   (their share scope and the library's ignore rules): the first book or folder
-   whose name sorts after the current one, preferring a book: an indexed one or,
-   from 2.5.0 (server#211, `markPendingNext`), a folder no scan has reached that a
-   scan would make a book of (`library.MarkPendingBooks`, the folder listing's
-   [`pending_book`](#get-apiv1librariesidfs) rule; only folders before the first
-   indexed book after the current one are read). A pending answer has `next` but no
-   `book`; opening it indexes it on demand, as `/item` does. Names are
-   compared the way the player's `localeCompare` (numeric, base sensitivity) does:
-   case and accents folded, numbers by value, so `Book 2` comes before `Book 10`;
-   ties by path. A folder that is not indexed is offered only when nothing in the
-   folder, the current book included, is indexed (a folder mid-scan); loose files
-   that are not books are never offered. Ordering is by name, not `series_index`.
-   An unreadable folder falls through.
+1. **`community`**: community metadata is on and the book matches a work with at
+   least one series rail.
+   - **Rail order.** The rails are taken in the book's own order. First comes a
+     rail named like its main series (by the rail's name or one of its orderings',
+     ignoring case, accents, punctuation and spacing). Then come rails named like
+     its other series, in list order, then the rest as the envelope lists them.
+   - **The next entry on a rail.** On each rail the server reads the entry after
+     the current work on the rail's **main view**: the smallest numeric position
+     above the current one. Unnumbered entries are skipped. An entry at a range
+     such as an omnibus `1-3` counts by its start, and a current work at a range
+     counts by its end, so after the omnibus comes `4`. A single entry wins a tie
+     with a range starting at the same number.
+   - **No steps back.** The server passes over any entry that comes at or before
+     the current work on a rail ranked above it. So two orders of the same books
+     (a chronological series and a publication-order one) can't step backwards or
+     loop.
+   - **The first rail with a next entry decides.** A later rail's entry never
+     answers in its place. The server places that entry for the caller exactly as
+     `/meta` places [`local`](#owned-entries-local). When it is placed, the answer
+     is `next` + `book` + `work`.
+   - **An entry the server can't place.** The caller's copy may be untagged, or
+     filed under a series named unlike the rail, or the caller may not have it.
+     Failing to place proves nothing, so the steps below answer, and the entry
+     rides along as `work` without `local`. A failure reading the caller's books
+     also leaves the entry unplaced, as `/meta` degrades.
+   - **Nothing from this step** (no `work`) when the book has no ASIN or ISBN, has
+     no match or no rails, or the metadata service fails. The same holds when no
+     rail has a next entry: no current position is a number, the current work is
+     last on every rail, or every later entry steps back. A rail can lag the
+     library.
+2. **`series`**: the book's series with a position above 0, main series first
+   (`series` at `series_index`, then each other series at its position there).
+   - **The candidate.** For each series, the candidate is the book of that series
+     with the smallest higher position, within the caller's scope. It counts the
+     series in any spelling, as [`/series`](#get-apiv1librariesidseries) groups
+     them, in the same library, by a book's main series or one of its other series
+     at its position in that series. Ties go to a single position before a range
+     starting there, then by path.
+   - **Ranges.** A book at a range counts from its end: after an omnibus of 1-3,
+     the next is 4. A candidate counts by its start: from book 2, an omnibus of
+     1-3 is no step forward.
+   - **No steps back.** The server passes over any book that comes at or before
+     the current book in a series ranked above in which both books are numbered.
+     A book inside the current omnibus in a series ranked above is passed over
+     too.
+   - **The answer.** The first series with a later book that isn't passed over
+     answers.
+   - **The end of a series.** When none has a later book but some other book in
+     one of them is numbered, the series has ended. In the series' own folder
+     (every other indexed book there shares a series with this one, and there is
+     at least one), a folder no scan has reached after the book (the pending rule
+     of step 3) answers as a `folder` answer with `next` and no `book`. So a series
+     still being scanned is walked book by book. Otherwise, or with nothing
+     pending, the answer is `{"source": "series"}`, the end of the series.
+   - When nothing else is numbered, the step falls through.
+3. **`folder`**: the book's parent folder, listed whole as the caller may open it
+   (their share scope and the library's ignore rules).
+   - **The candidate.** The answer is the first book or folder whose name sorts
+     after the current one, preferring a book. That is an indexed book or, from
+     2.5.0 (`markPendingNext`), a folder no scan has reached that a scan would make
+     a book of (`library.MarkPendingBooks`, the folder listing's
+     [`pending_book`](#get-apiv1librariesidfs) rule). Only folders before the first
+     indexed book after the current one are read.
+   - **A pending answer** has `next` but no `book`. Opening it indexes it on
+     demand, as `/item` does.
+   - **Name order.** Names are compared the way the player's `localeCompare`
+     (numeric, base sensitivity) does: case and accents folded, numbers by value,
+     so `Book 2` comes before `Book 10`. Ties go by path. Ordering is by name, not
+     `series_index`.
+   - A folder that is not indexed is offered only when nothing in the folder, the
+     current book included, is indexed (a folder mid-scan). Loose files that are
+     not books are never offered.
+   - An unreadable folder falls through.
 4. **`none`** - `{"source": "none"}`.
 
 After a **podcast episode** (a path in a podcast library) none of those steps
-run: the answer is the next episode of its show in the
-[episode order](#podcast-read-routes) oldest first (whichever way the show
-lists), among the episodes in scope that can still play (in the feed, or kept
-on disk), as a `folder` answer with `next` and `book`; `{"source": "none"}` at
-the show's end. Episode file names say nothing about their order, so the
+run. The answer is the next episode of its show in the
+[episode order](#podcast-read-routes), oldest first whichever way the show lists.
+It is chosen among the episodes in scope that can still play (in the feed, or kept
+on disk), and comes as a `folder` answer with `next` and `book`. At the show's end
+the answer is `{"source": "none"}`. Episode file names say nothing about their order, so the
 folder's name order is never used (`catalog.NextPodcastEpisode`).
 
 | Status | Meaning |
@@ -2288,19 +2401,18 @@ folder's name order is never used (`catalog.NextPodcastEpisode`).
 
 ### `GET /api/v1/libraries/{id}/meta`
 
-*Session.* Community metadata enrichment for a book - a description, production
-details, and the series it belongs to - composed server-side from the community
-metadata API ([meta.audiosilo.app](https://meta.audiosilo.app)) and cached. The
-path is authorized against the caller's share scope exactly like `/item`. Gated
-by the `metadata` [capability](#get-apiv1server): when it is false the route
-returns 404, so a client that honours the flag never calls this.
+*Session.* Community metadata enrichment for a book: a description, production
+details, and the series it belongs to. The server composes it from the community
+metadata API ([meta.audiosilo.app](https://meta.audiosilo.app)) and caches it. The
+path is authorized against the caller's share scope exactly like `/item`. The route
+is gated by the `metadata` [capability](#get-apiv1server). When it is false the
+route returns 404, so a client that honours the flag never calls this.
 
-The server resolves the book's `asin`/`isbn` (the effective fields on the
-indexed book: stored in `book_enrichment`, or set by an
-admin edit, which wins), looks the recording up
-upstream, and folds the matched recording plus up to three series rails (one per
-reading-order family - see [Reading-order families](#reading-order-families)) into
-one envelope. Every series-rail entry carries its own `web_url`, so a client links
+The server resolves the book's `asin` or `isbn`. These are the effective fields on
+the indexed book: stored in `book_enrichment`, or set by an admin edit, which wins.
+It looks the recording up upstream and folds the matched recording plus up to three
+series rails into one envelope, one rail per reading-order family (see
+[Reading-order families](#reading-order-families)). Every series-rail entry carries its own `web_url`, so a client links
 to the metadata site without ever building a URL itself. Answers are cached in
 memory and in the server's database (see
 [Configuration](../configuration.md#community-metadata-metadata)), so a restart
@@ -2391,21 +2503,24 @@ Response `200` on a match:
 }
 ```
 
-`work` is always present on a match; `recording` and `series` are omitted when
-the upstream has none, and every `omitempty` string/number field (`subtitle`,
+`work` is always present on a match. `recording` and `series` are omitted when
+the upstream has none. Every `omitempty` string or number field (`subtitle`,
 `first_published`, `description`, `abridged`, `runtime_min`, `release_date`,
 `publisher`, `cover_url`, `chapter_count`) is dropped when empty.
-`recording.chapter_count` is the matched recording's chapter count, omitted when
-the metadata service does not know it. `series[].position` is this
-work's position in that series; `series[].works` is the full ordered rail,
-**including the current work** (the client filters it out before drawing a "more
-in this series" row). Positions are strings ("1", "2.5", "1-3.5"). Each rail entry
-(in `series[].works[]` and `series[].orderings[].works[]`) carries `release_date`
-(2.6.0, additive): the work's first release, the earliest across its recordings and
-marketplaces, at the precision the community states it (`YYYY`, `YYYY-MM` or
-`YYYY-MM-DD`), omitted when unknown. A cached envelope gains it once its entry is
-next refreshed (within a day). The console's Series page dates its gaps by it, and
-[upcoming releases](#upcoming-releases) classify by the same date.
+
+- `recording.chapter_count` is the matched recording's chapter count, omitted when
+  the metadata service does not know it.
+- `series[].position` is this work's position in that series. Positions are
+  strings ("1", "2.5", "1-3.5").
+- `series[].works` is the full ordered rail, **including the current work**. The
+  client filters it out before drawing a "more in this series" row.
+- Each rail entry (in `series[].works[]` and `series[].orderings[].works[]`)
+  carries `release_date` (2.6.0, additive). It is the work's first release, the
+  earliest across its recordings and marketplaces, at the precision the community
+  states it (`YYYY`, `YYYY-MM` or `YYYY-MM-DD`), and is omitted when unknown. A
+  cached envelope gains it once its entry is next refreshed (within a day). The
+  console's Series page dates its gaps by it, and
+  [upcoming releases](#upcoming-releases) classify by the same date.
 
 #### Series rules
 
@@ -2423,12 +2538,15 @@ match writes onto a book:
   out;
 - an **edition** is a series named exactly like another of the work's series plus a
   bracketed qualifier or a "narrated by" tail. The community API links no series to
-  a recording, so the qualifier says which recordings hold it: `abridged` (the
-  abridged recordings), a full cast or dramatisation (a recording with four or more
-  narrators, or one named "Full Cast"), "Narrated by X" / "Gesprochen von X" (the
-  recordings X narrates). An "(Unabridged)" edition repeats its base, and a language
-  edition or an ordering note holds no recording, so those are left out. A book is
-  in an edition only as one of its recordings, and then it is its main series.
+  a recording, so the qualifier says which recordings hold it:
+  - `abridged`: the abridged recordings;
+  - a full cast or dramatisation: a recording with four or more narrators, or one
+    named "Full Cast";
+  - "Narrated by X" or "Gesprochen von X": the recordings X narrates.
+
+  An "(Unabridged)" edition repeats its base, and a language edition or an ordering
+  note holds no recording, so those are left out. A book is in an edition only as
+  one of its recordings, and then it is its main series.
 - A name that only extends another ("Discworld: Tiffany Aching") is a series of its
   own.
 
@@ -2438,9 +2556,9 @@ read once per series and cached as long as an enrichment.
 #### Reading-order families
 
 Some series come in more than one reading order: a **primary** series (usually
-publication order) plus **variant** series whose `ordering_of` names it - a
-chronological order, the author's recommended order (metaserve's artifact
-`schema_version` 7 fields; see the [metadata API](../../meta/api.md)). A primary
+publication order) plus **variant** series whose `ordering_of` names it, such as a
+chronological order or the author's recommended order. These are metaserve's
+artifact `schema_version` 7 fields; see the [metadata API](../../meta/api.md). A primary
 and its variants are one **ordering family**. The server collapses each family the
 work belongs to into **one** rail rather than one rail per order (`seriesRails` /
 `familyMains` in `internal/meta/service.go`):
@@ -2460,22 +2578,26 @@ work belongs to into **one** rail rather than one rail per order (`seriesRails` 
 - **The three-rail cap counts families** (`maxSeriesRails`), not series, so a work
   in "Narnia" and "Narnia (Chronological)" spends one slot.
 - **The cap goes to the book's own series** (the [series rules](#series-rules)).
-  Before the cap, an **edition** named for a kind of recording ("Discworld
-  (abridged)", "Harry Potter (Full-Cast Editions)") is kept only when the envelope's
-  recording is that kind (the recording the lookup named, or the work's only one;
-  never a guess of the first recording), and then goes first, since it is the
-  book's main series; other editions are left out. Without this, a Discworld novel
-  listed in six series, three of them "(abridged)" editions, lost its "Discworld:
-  Tiffany Aching" rail to them. An edition named for anything else (an ordering note
-  from a metaserve that predates `ordering_of`) keeps its place, so a pre-v7 upstream
-  still yields the same rails. A series known to be **foreign** (another language
-  than the work, or a translation of another of its series) is left out: before the
-  cap when the server already holds its record, else once its record is fetched, and
-  then it hands its slot to the next family (at most twice, `maxForeignRails`). One
-  enrichment issues at most (3 + 2) main-view requests plus 3 x 2 alternates.
+  - Before the cap, an **edition** named for a kind of recording ("Discworld
+    (abridged)", "Harry Potter (Full-Cast Editions)") is kept only when the
+    envelope's recording is that kind. That recording is the one the lookup named,
+    or the work's only one, never a guess of the first recording. A kept edition
+    goes first, since it is the book's main series. Other editions are left out.
+    Without this, a Discworld novel listed in six series, three of them
+    "(abridged)" editions, lost its "Discworld: Tiffany Aching" rail to them.
+  - An edition named for anything else (an ordering note from a metaserve that
+    predates `ordering_of`) keeps its place, so a pre-v7 upstream still yields the
+    same rails.
+  - A series known to be **foreign** (another language than the work, or a
+    translation of another of its series) is left out. That happens before the cap
+    when the server already holds its record, else once its record is fetched. It
+    then hands its slot to the next family, at most twice (`maxForeignRails`).
+  - One enrichment issues at most (3 + 2) main-view requests plus 3 x 2
+    alternates.
 - **Failures are partial, not fatal.** A failed alternate ships the rail without
-  it; like a failed rail, it makes the envelope partial, which is cached for the
-  2-minute transport-error TTL rather than 24 h, so the missing order reappears soon.
+  it. Like a failed rail, it makes the envelope partial. A partial envelope is
+  cached for the 2-minute transport-error TTL rather than 24 h, so the missing order
+  reappears soon.
 
 The extra fields are additive and `omitempty`:
 
@@ -2697,39 +2819,43 @@ that the client treats as "nothing to show":
 
 #### Generated content
 
-Characters, recaps and (since Bridge Phase 1c) the description the
-[Bridge](#the-bridge) generated for the book on this server (its
-[`.audiosilo/` files](../../bridge/attachments.md), checked and indexed by the
-scan) are laid into the answer **per request**, after the shared cache and
-`local`, on the request's own copy: never into the cache. Community content wins
-**per dimension**:
+The [Bridge](#the-bridge) can generate characters, recaps and a description for a
+book on this server. They live in the book's
+[`.audiosilo/` files](../../bridge/attachments.md), which the scan checks and
+indexes. The server lays them into the answer **per request**, after the shared
+cache and `local`, on the request's own copy, never into the cache. Community
+content wins **per dimension**:
 
-- **A matched book.** When the community work has no characters,
-  `work.characters` are the generated ones; when it has no recap list,
-  `work.recaps` are the generated recaps and, when it has no `recap_summary`
-  either, `work.recap_summary` the generated `{in_short, ending}` (omitted when
-  both are blank); when it has no `community_description`,
-  `work.generated_description` is the generated description (below). A
-  community work with a summary but no list keeps its own summary beside the
-  generated list. `work.generated` then names what came from the files:
+- **A matched book.** The server fills each dimension the community work lacks:
+  - no characters: `work.characters` are the generated ones;
+  - no recap list: `work.recaps` are the generated recaps. When it has no
+    `recap_summary` either, `work.recap_summary` is the generated
+    `{in_short, ending}` (omitted when both are blank). A community work with a
+    summary but no list keeps its own summary beside the generated list;
+  - no `community_description`: `work.generated_description` is the generated
+    description (see the generated description below).
+
+  `work.generated` then names what came from the files:
 
   ```json
   "generated": { "characters": false, "recaps": true, "recap_summary": true, "description": true,
                  "generated_at": "2026-10-16T09:12:44Z" }
   ```
 
-  `recaps` is `true` when the recap list or the summary was generated, as before
-  Phase 1e, so an older client reads it unchanged. `recap_summary` (Bridge Phase
-  1e) is `true` only when `work.recap_summary` itself came from the files:
-  `false` beside a generated list means the summary is the community's, so a
-  client credits it to the community; a client that finds it absent (an older
-  server) reads `recaps` for both. The four booleans are always sent together
-  (`description` since Phase 1c, `recap_summary` since Phase 1e); `generated_at`
-  is the provenance's time (`bridge.json`'s `generated_at`, or its `description`
-  object's when the description is all the object names, so a description
-  written later by a `sidecars.describe` job shows its own time), omitted when
-  unknown; the whole object is omitted when nothing was generated (or the
-  community has it all).
+  - `recaps` is `true` when the recap list or the summary was generated. That is
+    its meaning on an older server too, so an older client reads it unchanged.
+  - `recap_summary` is `true` only when `work.recap_summary` itself came from the
+    files. `false` beside a generated list means the summary is the community's,
+    so a client credits it to the community. A client that finds it absent (an
+    older server) reads `recaps` for both.
+  - The four booleans are always sent together, except that an older server may
+    lack `description` or `recap_summary`.
+  - `generated_at` is the provenance's time, omitted when unknown. It is
+    `bridge.json`'s `generated_at`, or its `description` object's when the
+    description is all the object names, so a description written later by a
+    `sidecars.describe` job shows its own time.
+  - The whole object is omitted when nothing was generated, or the community has
+    it all.
 - **A book with no match** (no `asin`/`isbn`, or none upstream) but generated
   content answers `matched: false` **with a work** of its own: `id` empty,
   `title` the book's, `authors` `[]`, the generated `characters`, `recaps`,
@@ -2754,16 +2880,17 @@ scan) are laid into the answer **per request**, after the shared cache and
   content; with some, the answer is the unmatched one above (the server's own
   content doesn't depend on the upstream).
 
-**The generated description** (Phase 1c) is the book's own-words, spoiler-free
-description, `work.generated_description: { "text": … }` (no licence, no
-attribution). It rides in its **own** field, never in `community_description`:
-the shipped 2.0 app shows `community_description` first in About, over the
-book's own description, and credits it to the community, so a generated text
-there would replace real blurbs on old apps; those apps ignore the new field.
-The server fills it only when the community work has no `community_description`;
-the work's core `description` (the publisher's kind) doesn't block it, since the
-player orders those itself (the book's own description, then the core one, then
-the generated one).
+**The generated description** is the book's own-words, spoiler-free
+description, `work.generated_description: { "text": … }`, with no licence and no
+attribution. It rides in its **own** field, never in `community_description`. The
+shipped 2.0 app shows `community_description` first in About, over the book's own
+description, and credits it to the community. A generated text there would replace
+real blurbs on old apps, and those apps ignore the new field.
+
+The server fills it only when the community work has no `community_description`.
+The work's core `description` (the publisher's kind) doesn't block it, since the
+player orders those itself: the book's own description, then the core one, then
+the generated one.
 
 **Attribution is the community's alone.** `work.attribution` is decided from
 the community content before anything generated is laid in, so generated
@@ -2771,26 +2898,25 @@ characters, recaps or a description never make the server claim the CC BY-SA
 credit, and a work whose only content is generated carries none. A client shows
 the credit beside the community's dimension only (the player's `communityCredit`).
 
-**Spoiler gates:** `spoilers=hide` gates the generated characters and recaps
-exactly as it gates the community's (a gate that leaves an unmatched book nothing
-answers plain `{ "matched": false }`), and **keeps** the generated description:
-it is spoiler-free by construction (the Bridge writes it from the opening
-chapters' notes only). `include=previous` stays community only.
+**Spoiler gates.** `spoilers=hide` gates the generated characters and recaps
+exactly as it gates the community's. A gate that leaves an unmatched book nothing
+answers plain `{ "matched": false }`. The gate **keeps** the generated
+description, which is spoiler-free by construction: the Bridge writes it from the
+opening chapters' notes only. `include=previous` stays community only.
 
-Metadata off, `/meta` is `404` as ever: generated content needs metadata on, as
-the generate action does. A book whose row names no generated file
-(`generated` absent) isn't looked up, so this costs nothing for other books, and
+With metadata off, `/meta` is `404` as ever. Generated content needs metadata on,
+as the generate action does. A book whose row names no generated file (`generated`
+absent) isn't looked up, so this costs nothing for other books. The server reads
 only the parts the community work leaves to fill **and** the book's signature
-names are read (a work with community characters and recaps reads just the
-description).
+names. A work with community characters and recaps reads just the description.
 
 **Older players.** A player that predates the field ignores everything beside
 `matched: false`, so it shows nothing for an unmatched book. For a matched book
 it shows the merged work as it would the community's: the generated dimension
 without a mark, and the work's community credit beside it when the community
-has the other dimension. The owner kept that behaviour as built (Bridge Phase
-1a): newer players mark the generated dimension and drop the credit there. No
-older player shows a generated description: it is a field they don't know.
+has the other dimension. The owner kept that behaviour as built. Newer players
+mark the generated dimension and drop the credit there. No older player shows a
+generated description, because it is a field they don't know.
 
 | Status | Meaning |
 |---|---|
@@ -2943,26 +3069,33 @@ path.
 
 Direct serving (default) supports HTTP **Range** (`206 Partial Content`) and
 sets the audio `Content-Type` from the file. Transcoded output is MP3 and **not
-byte-seekable** - no Range, no `Content-Length`; a client seeks by re-requesting
+byte-seekable**: no Range and no `Content-Length`. A client seeks by re-requesting
 with a new `t`. The ffmpeg process is bound to the request, so disconnecting
 kills it. A `HEAD` with `transcode=1` gets the headers without running ffmpeg.
 
-**Matroska holding MP3** (server#174). While ffmpeg is configured, a request
-for an `.mka` file without `transcode=1` or `original=1` is answered with a
-cached lossless copy of its audio as plain MP3: `Content-Type: audio/mpeg`,
-`Accept-Ranges: bytes`, Range honoured, chapters as ID3 `CHAP` frames, a strong
-`ETag: "remux-<key>"` and the copy's own `Last-Modified` (so a validator kept
-from the stored Matroska never earns a `304` or a spliced range). It is the
-same URL that served the Matroska before, so shipped clients stream the MP3 with
-no change. A podcast library's stream is never remuxed. A copy not made yet is
-waited for up to 2 seconds; past that (or when the server is short of disk, or the copy fails) that request gets
-the live MP3 transcode instead, as `transcode=1` would, and the copy goes on
-for the next one. From 2.5.0 (server#212) a `download=1` request, and a stream
-that finds every transcode slot busy, keep waiting for a copy still being made,
-up to 45 seconds (`remuxDownloadWait`), so a download saves the lossless copy
-rather than the transcode and a busy server doesn't answer `503`; past that they
-are transcoded after all. An `.mka` holding another codec (AAC, Opus, FLAC) is served
-as stored, `audio/x-matroska`. See
+**Matroska holding MP3.** While ffmpeg is configured, a request for an `.mka`
+file without `transcode=1` or `original=1` is answered with a cached lossless copy
+of its audio as plain MP3:
+
+- `Content-Type: audio/mpeg`, `Accept-Ranges: bytes`, and Range honoured;
+- chapters as ID3 `CHAP` frames;
+- a strong `ETag: "remux-<key>"` and the copy's own `Last-Modified`, so a validator
+  kept from the stored Matroska never earns a `304` or a spliced range.
+
+It is the same URL that served the Matroska before, so shipped clients stream the
+MP3 with no change. A podcast library's stream is never remuxed.
+
+The server waits up to 2 seconds for a copy not made yet. Past that, or when the
+server is short of disk, or the copy fails, that request gets the live MP3
+transcode instead, as `transcode=1` would. The copy goes on for the next request.
+From 2.5.0, a `download=1` request and a stream that finds every transcode slot
+busy keep waiting for a copy still being made, up to 45 seconds
+(`remuxDownloadWait`). So a download saves the lossless copy rather than the
+transcode, and a busy server doesn't answer `503`. Past that wait they are
+transcoded after all.
+
+An `.mka` holding another codec (AAC, Opus, FLAC) is served as stored,
+`audio/x-matroska`. See
 [Remuxing Matroska](../media.md#remuxing-matroska-medianewremuxer).
 
 | Status | Meaning |
@@ -2977,7 +3110,7 @@ as stored, `audio/x-matroska`. See
 
 #### Watch renditions
 
-Track W2, capability `renditions`. With `rendition=watch` the answer is a small
+Capability `renditions`. With `rendition=watch` the answer is a small
 copy of the audio file for a watch to download and keep: AAC-LC, mono, 48 kb/s,
 44.1 kHz, in MP4 (`.m4a`, the index first), about 430 MB for 20 hours. Its
 duration is the source file's, so whole-book positions, chapters and file places
@@ -3002,10 +3135,10 @@ directory (never into the library) and keeps it in a size-capped cache
 
 ### `POST /api/v1/libraries/{id}/renditions` · `GET /api/v1/libraries/{id}/renditions`
 
-*Session or API key* (header only: no `?token=`). Capability `renditions`
-(Track W2). The [watch renditions](#watch-renditions) of a whole book: `POST`
-queues every audio file whose rendition is missing and answers `202`; `GET`
-queues nothing and answers `200`. A watch asks once, then downloads each file
+*Session or API key* (header only: no `?token=`). Capability `renditions`.
+The [watch renditions](#watch-renditions) of a whole book. `POST` queues every
+audio file whose rendition is missing and answers `202`. `GET` queues nothing and
+answers `200`. A watch asks once, then downloads each file
 from [`/stream?rendition=watch`](#get-apiv1librariesidstream) as it turns
 `ready`.
 
@@ -3174,15 +3307,14 @@ token id like any credential, so it has a bucket of its own.
 
 ## Ebooks and the reading place
 
-The reader (Bridge Phase 3b, capability `ebooks`): a book whose folder holds its
-EPUB carries an [`ebook`](#get-apiv1librariesidbooks) field, the player fetches
-the file from [`/ebook`](#get-apiv1librariesidebook) and keeps the reader's place
-in it with [`/reading-progress`](#get-apiv1librariesidreading-progress). All three
-routes address the **book** by its own path (`?path=`, as
-[`/item`](#get-apiv1librariesiditem)), never the `.epub`'s path or a track's, and
-all take *Session* auth from the `Authorization` header only. Which file is a
-book's ebook is the scan's call: see
-[A book's ebook](../scanner.md#a-books-ebook). The web player's reader is the
+The reader has capability `ebooks`. A book whose folder holds its EPUB carries an
+[`ebook`](#get-apiv1librariesidbooks) field. The player fetches the file from
+[`/ebook`](#get-apiv1librariesidebook) and keeps the reader's place in it with
+[`/reading-progress`](#get-apiv1librariesidreading-progress). All three routes
+address the **book** by its own path (`?path=`, as
+[`/item`](#get-apiv1librariesiditem)), never the `.epub`'s path or a track's. All
+take *Session* auth from the `Authorization` header only. The scan decides which
+file is a book's ebook; see [A book's ebook](../scanner.md#a-books-ebook). The web player's reader is the
 document at [`/web/reader.html`](../web-ui.md#the-reader-document-readercsp).
 
 ### `GET /api/v1/libraries/{id}/ebook`
@@ -3231,8 +3363,7 @@ bucket ([rate limiting](index.md#rate-limiting)).
 
 ### `GET /api/v1/libraries/{id}/readalong`
 
-*Session* (a session token or an API key), capability `readalong` (Bridge Phase
-3c). The read-along map of the book at `?path=`: where each sentence of its ebook
+*Session* (a session token or an API key), capability `readalong`. The read-along map of the book at `?path=`: where each sentence of its ebook
 is spoken in its audio, as a Bridge wrote it into the book's `.audiosilo/` folder
 (the format, `audiosilo-readalong/v1`, is in
 [Read-along](../../bridge/readalong.md#the-map-audiosilo-readalongv1)).
@@ -3499,17 +3630,21 @@ them), so a client changes them only through
 
 On a server with `listening_sync` the `PUT` is otherwise unchanged (last-write-wins,
 `finished` included, its listening session at server time), so a shipped player
-behaves exactly as before. Three things are added: the save is logged as a `put`
-event in [the listening-event log](#post-apiv1melisteningsync) (id `put-<16 hex>`,
-`applied` or `not_applied` `older`, in the same transaction), the row stores the
-saving token's name as `device_name`, and a save that changes `finished` records
-when it did (`finish_changed_at`: the save's `updated_at`, never past the server's
-clock), so an older sync `finish` or `unfinish` can't undo it. A `device_name` or
-`other_place` in the body (a client echoing a row back) is accepted and ignored. A
-`device_id` starting `audible:` (an Audible account's row echoed back, Phase 4c) is
-saved as none, so the place still reaches Audible through
-[`GET /bridge/progress`](#get-apiv1bridgeprogress). A
-player that syncs listening sends no `PUT` for its listening.
+behaves exactly as before. Three things are added:
+
+- The save is logged as a `put` event in
+  [the listening-event log](#post-apiv1melisteningsync), in the same transaction.
+  Its id is `put-<16 hex>`, and its status `applied` or `not_applied` `older`.
+- The row stores the saving token's name as `device_name`.
+- A save that changes `finished` records when it did (`finish_changed_at`: the
+  save's `updated_at`, never past the server's clock), so an older sync `finish`
+  or `unfinish` can't undo it.
+
+A `device_name` or `other_place` in the body (a client echoing a row back) is
+accepted and ignored. A `device_id` starting `audible:` (an Audible account's row
+echoed back) is saved as none, so the place still reaches Audible through
+[`GET /bridge/progress`](#get-apiv1bridgeprogress). A player that syncs listening
+sends no `PUT` for its listening.
 
 ### `PATCH /api/v1/libraries/{id}/progress`
 
@@ -3528,23 +3663,25 @@ admin's [edit of someone's progress](#patch-apiv1adminlibrariesidprogress)
 | `finished_at` | string \| null | RFC 3339 or `YYYY-MM-DD` (the **end** of that day, server time, or now if that is sooner); `null` clears it; needs the book to be (or become) finished |
 
 A field left out stays as it is. With no progress on the book yet, an indexed
-book in the caller's scope gets a new row (its start stamped now). An edit that
-sets nothing (`{}`) writes nothing: it answers the current row, or `404
-book_not_found` when there is none (it never starts the book). An exact
-(RFC 3339) date may be at most 5 minutes ahead of the server's clock, for a
-client clock running a little fast; a day-only date keeps a day of slack, since
-the client's today can be the server's tomorrow. The write is
-stamped with the server's time (to the sub-second, so a device save made just
-before the edit can't outrank it) and a higher `version`, so under last-write-wins
-it beats what a device saved before it, while a device that has the book loaded
-overrides it on its next save. It is not playback, so it records no
-[listening session](#admin-activity). On a server with `listening_sync` it also
-clears the row's `other_place` and, when it changes `finished`, records the
+book in the caller's scope gets a new row, its start stamped now. An edit that
+sets nothing (`{}`) writes nothing. It answers the current row, or `404
+book_not_found` when there is none; it never starts the book.
+
+An exact (RFC 3339) date may be at most 5 minutes ahead of the server's clock, for
+a client clock running a little fast. A day-only date keeps a day of slack, since
+the client's today can be the server's tomorrow.
+
+The write is stamped with the server's time and a higher `version`. The time is to
+the sub-second, so a device save made just before the edit can't outrank it. Under
+last-write-wins the edit beats what a device saved before it, while a device that
+has the book loaded overrides it on its next save. It is not playback, so it
+records no [listening session](#admin-activity). On a server with `listening_sync`
+it also clears the row's `other_place`. When it changes `finished`, it records the
 change's time (now), so an older sync `finish` or `unfinish` can't undo it.
 
-Response `200`: `{ "progress": { … } }` - the player's progress object, with
-its dates and (from Track W2) the `device_name` of the device that saved the place,
-as the player's progress reads carry it.
+Response `200`: `{ "progress": { … } }`, the player's progress object, with its
+dates and the `device_name` of the device that saved the place, as the player's
+progress reads carry it. An older server omits `device_name`.
 
 | Status | Meaning |
 |---|---|
@@ -3555,13 +3692,13 @@ as the player's progress reads carry it.
 ### `POST /api/v1/me/listening/sync`
 
 *Session or API key* (cast, calendar feed and Bridge tokens are `401`; kids and
-demo accounts may sync). Capability `listening_sync`. **Sync v2** (Track W1): a
-player posts what it listened to as **events**, each with its own id, and the
-server derives the book's progress, the [listening sessions](#admin-activity) and
-the [history](#get-apiv1librariesidhistory) from them. Each event is resolved on
-its own and answered with a status, so one batch can carry a day of offline
-listening across several books. A player uses it only while `GET /server` says
-`listening_sync: true`; otherwise it keeps `PUT .../progress` and
+demo accounts may sync). Capability `listening_sync`. In **Sync v2** a player
+posts what it listened to as **events**, each with its own id. The server derives
+the book's progress, the [listening sessions](#admin-activity) and the
+[history](#get-apiv1librariesidhistory) from them. Each event is resolved on its
+own and answered with a status, so one batch can carry a day of offline listening
+across several books. A player uses it only while `GET /server` says
+`listening_sync: true`. Otherwise it keeps `PUT .../progress` and
 `POST .../history`, which stay unchanged for shipped apps.
 
 ```json
@@ -3601,7 +3738,7 @@ listening across several books. A player uses it only while `GET /server` says
 
 | Body field | Type | Notes |
 |---|---|---|
-| `device_id` | string | required, 1-200 bytes: the device's own id (the player's `getDeviceId()`), the same one its progress rows carry. One starting `audible:` is refused: it is the [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening)'s alone (Phase 4c) |
+| `device_id` | string | required, 1-200 bytes: the device's own id (the player's `getDeviceId()`), the same one its progress rows carry. One starting `audible:` is refused: it is the [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening)'s alone |
 | `sent_at` | string | RFC 3339: the device's clock at **this** send attempt (set per attempt, never when the batch was built) |
 | `clock_offset` | float | seconds, server minus device, as a relay that measured it would send (at most `1e9` either way) |
 | `events` | array | 0-500 events; `[]` (or none) is a valid clock probe, answered with `server_time` |
@@ -3666,7 +3803,7 @@ even when its place didn't move (listening that happened always counts).
 |---|---|
 | `400` | `invalid request` (not JSON, an unknown top-level field); `device_id is required`; `device_id is too long`; `device_id is reserved` (one starting `audible:`); `send sent_at or clock_offset` (neither, both, an unparseable `sent_at`, or a `clock_offset` beyond `1e9` either way); `code: "too_many_events"` (more than 500 events) |
 | `401` | no token, or one that isn't a session or an API key |
-| `413` | `code: "too_large"`: the body is over 1 MiB (a `400` before Track W2); send fewer events per batch (the player halves its batch) |
+| `413` | `code: "too_large"`: the body is over 1 MiB (an older server answers `400`); send fewer events per batch (the player halves its batch) |
 | `500` | `could not sync listening`: nothing of the batch is stored, so a retry applies it once |
 
 A bad **event** never fails the batch: each event is decoded on its own and
@@ -3701,60 +3838,68 @@ opens one):
   the same file. The stored event keeps the placed values.
 - **A listen's place** resolves against the stored row by
   [the conflict rule](#the-conflict-rule-sync-v2) (`catalog.ResolvePlace`, with
-  whole-book seconds as the progression and the span's corrected end as its time):
-  `applied`, `not_applied` `older`, or `diverged` (the further place kept). Within one
-  batch a `base_version` of `0` on a book the batch already wrote resolves on that
-  version, so a device's first spans in one post don't diverge from each other.
-  **The backstop:** a `resume` or `continue` span ending more than 60 s before an
-  unfinished stored place is `not_applied` `resume_behind`, so a device that started
-  playing before it had the stored place (a cold start) never pulls the book back;
-  a deliberate move (`moved_back`, `jump`, `restart`) skips it. A span that diverged
-  from a place its device had seen (`base_version` > 0, another device's row since)
-  is real listening elsewhere, so it is resolved instead (the further place kept,
-  the span's offered). A listen writes the position, the length (when known), the
-  speed, the device, its `device_name`, `updated_at` and `version + 1`, and never
-  touches `finished`. `updated_at` is the corrected end, or the row's own when that
-  is later: an apply never moves the row's time back (a diverged one included), so an older app's
-  `PUT` dated in between can't win last-write-wins against it (the device's later
-  spans compare with the end of its own last span, in this batch or a later one:
-  below).
+  whole-book seconds as the progression and the span's corrected end as its time).
+  The result is `applied`, `not_applied` `older`, or `diverged` (the further place
+  kept).
+  - Within one batch, a `base_version` of `0` on a book the batch already wrote
+    resolves on that version, so a device's first spans in one post don't diverge
+    from each other.
+  - **The backstop.** A `resume` or `continue` span ending more than 60 s before an
+    unfinished stored place is `not_applied` `resume_behind`. So a device that
+    started playing before it had the stored place (a cold start) never pulls the
+    book back. A deliberate move (`moved_back`, `jump`, `restart`) skips the
+    backstop.
+  - A span that diverged from a place its device had seen (`base_version` > 0,
+    another device's row since) is real listening elsewhere. It is resolved
+    instead: the further place is kept and the span's is offered.
+  - A listen writes the position, the length (when known), the speed, the device,
+    its `device_name`, `updated_at` and `version + 1`. It never touches `finished`.
+  - `updated_at` is the corrected end, or the row's own when that is later. An
+    apply, a diverged one included, never moves the row's time back, so an older
+    app's `PUT` dated in between can't win last-write-wins against it. The
+    device's later spans compare with the end of its own last span, in this batch
+    or a later one (see the next item).
 - **The span chain across posts** (migration `0062`). The row keeps the end of the
-  span its place came from (`span_at`) at its version, so while no other writer has
-  touched it, the same device's next span in a **later** post compares with that
-  end too: a backlog split across posts (a `413` halving, a long outbox) isn't
-  answered `older`. Across posts a span with no base (`base_version` `0`) joins the
-  chain only when it starts within 60 s after the chain's end or within 5 s of its
-  place; otherwise it is judged on its own, and may diverge. **Send a
+  span its place came from (`span_at`) at its version. While no other writer has
+  touched the row, the same device's next span in a **later** post compares with
+  that end too. So a backlog split across posts (a `413` halving, a long outbox)
+  isn't answered `older`. Across posts, a span with no base (`base_version` `0`)
+  joins the chain only when it starts within 60 s after the chain's end or within
+  5 s of its place. Otherwise it is judged on its own, and may diverge. **Send a
   `base_version` on every span.** Any other writer (a `PUT`, an edit, an import, a
   move or join) ends the chain.
 - **The offered place.** On `diverged`, the place not kept is stored on the row as
-  [`other_place`](#get-apiv1meprogress), unless it is the kept row's own device or
-  within 30 s of the kept place, so a device that never saw this answer (the phone,
-  after the watch synced) can still offer it. A device that sends a `base_version` at
-  or after the version it was recorded at, and applies, clears it (it had seen it);
-  so do a `finish`, an edit and a move or join. A newer diverged event replaces it
-  only when it records an offer of its own (by the same two conditions); otherwise
-  the offer stays. A
-  `resume_behind` span that carries on (within 5 s) from its own device's offered
-  place moves the offer to where it got to.
-- **finish / unfinish** apply only when newer than the row's last finish-state change
-  (else `not_applied` `older`), whoever made it: a `PUT`, an edit, an import or an
-  earlier sync event. `finish` marks the book finished (`finished_at` its date to
-  the second, kept when already finished), moves the place to the end when the
-  length is known and drops the offered place; `unfinish` clears the finish and
-  keeps the place (as `PATCH` does), and takes a finished row for its own device.
-  Both bump the version. A later listen never unfinishes a book: a device that never
-  saw the finish keeps playing without undoing it.
+  [`other_place`](#get-apiv1meprogress), so a device that never saw this answer
+  (the phone, after the watch synced) can still offer it. It is not stored when it
+  is the kept row's own device or within 30 s of the kept place.
+  - A device that sends a `base_version` at or after the version the offer was
+    recorded at, and applies, clears it, because it had seen it. A `finish`, an
+    edit and a move or join clear it too.
+  - A newer diverged event replaces it only when it records an offer of its own,
+    by the same two conditions. Otherwise the offer stays.
+  - A `resume_behind` span that carries on (within 5 s) from its own device's
+    offered place moves the offer to where it got to.
+- **`finish` and `unfinish`** apply only when newer than the row's last
+  finish-state change, whoever made it: a `PUT`, an edit, an import or an earlier
+  sync event. Otherwise they are `not_applied` `older`. Both bump the version.
+  - `finish` marks the book finished (`finished_at` its date to the second, kept
+    when already finished). It moves the place to the end when the length is known
+    and drops the offered place.
+  - `unfinish` clears the finish and keeps the place (as `PATCH` does), and takes a
+    finished row for its own device.
+  - A later listen never unfinishes a book. A device that never saw the finish
+    keeps playing without undoing it.
 - **Sessions.** A stored listen is folded into the token's session on the book at
   its corrected times (`recordSpan`, the rules in
   [the data model](../data-model.md#listening-sessions-how-they-are-derived)).
   A `finish` marks the token's session on the book finished when its last span
   ended within 10 minutes before the finish; it opens none. `unfinish` records
   nothing.
-- **History.** A listen with at least 1 s listened extends the newest history row on
-  the book that ended up to 60 s before it began (2 s of overlap allowed) within 5 s
-  of where it starts, else it adds a row, so a run of 15 s or 60 s spans is one row and
-  offline listening reaches history at the time it happened. A syncing player
+- **History.** A listen with at least 1 s listened extends the newest history row
+  on the book when that row ended up to 60 s before the listen began (2 s of
+  overlap allowed) and within 5 s of where it starts. Otherwise it adds a row. So a
+  run of 15 s or 60 s spans is one row, and offline listening reaches history at
+  the time it happened. A syncing player
   posts no `POST .../history`.
 
 **The event log.** Stored events (migration `0061`, `listening_events`) are kept 120
@@ -4048,15 +4193,15 @@ position also carries `series_index_end`, as on a [book](#get-apiv1librariesidbo
 
 ### `POST /api/v1/libraries/{id}/favourites` · `DELETE /api/v1/libraries/{id}/favourites`
 
-*Session.* Heart / un-heart a path (`?path=` required on both; one favourite
-per user+library+path). Both are idempotent. POST → `201 Created` (empty body);
-DELETE → `204 No Content`.
+*Session.* Heart or un-heart a path (`?path=` required on both; one favourite
+per user, library and path). Both are idempotent. `POST` answers `201 Created`
+(empty body), and `DELETE` answers `204 No Content`.
 
-From 2.5.0 (server#211) a `POST` on a book no scan has reached yet (a pending
-folder) also indexes it on demand (`indexFavourite`), so it shows on
+From 2.5.0 a `POST` on a book no scan has reached yet (a pending folder) also
+indexes it on demand (`indexFavourite`). So it shows on
 [`/me/favourites`](#get-apiv1mefavourites), which reads the index, without being
-opened first. It is best-effort: the read runs detached from the request, which
-waits for it up to 5 s (`favouriteIndexWait`); the favourite is saved either way,
+opened first. It is best-effort. The read runs detached from the request, which
+waits for it up to 5 s (`favouriteIndexWait`). The favourite is saved either way,
 and a path that is no book (an author's folder) stays a bare favourite. Podcast
 libraries are never indexed this way.
 
@@ -4090,22 +4235,25 @@ picker, `ratings` for ratings. Rules shared by every route in this section:
 - **Replacing a whole list doesn't.** A `PUT` of a whole list must name its
   list: `items` (or `user_ids` for shares). A missing or `null` key is `400`
   (`items is required`, `user_ids is required`), because a whole replace deletes
-  every row not listed; only an explicit `[]` clears the list. It indexes nothing:
-  each entry must be a book already indexed at exactly that path and inside the
-  caller's current access. Any other entry is **skipped**, not an error, and the
-  response is the stored result, so a client reconciles with what it gets back.
-  Duplicates collapse (the first wins). It is a whole replace: every stored row
-  not in the list is deleted, **including** rows the caller can't currently see,
-  with one exception. **A caller the [podcast client gate](../auth-and-security.md#podcast-visibility)
-  hides podcasts from** (a 2.1.x or older player) keeps the stored podcast
-  episodes it could see if it passed the gate: each stays just after the listed
-  entry it followed, or all go after the new list, in their stored order, when
-  the new order would shuffle them. They count toward the list's cap (the
-  oldest of them go when the list and they together exceed it). Episodes hidden
-  for another reason (a revoked share, an unfollowed private show) are deleted as
-  before, and a replace from a podcast-seeing client deletes every unlisted row.
-  So an old device reordering Up next can't drop a newer player's episodes.
-  A whole-list body may be up to 4 MiB (other bodies keep the default limit).
+  every row not listed. Only an explicit `[]` clears the list. A whole-list body
+  may be up to 4 MiB (other bodies keep the default limit).
+  - It indexes nothing. Each entry must be a book already indexed at exactly that
+    path and inside the caller's current access. Any other entry is **skipped**,
+    not an error. The response is the stored result, so a client reconciles with
+    what it gets back. Duplicates collapse (the first wins).
+  - It is a whole replace. Every stored row not in the list is deleted,
+    **including** rows the caller can't currently see, with one exception.
+  - **The exception.** A caller that the
+    [podcast client gate](../auth-and-security.md#podcast-visibility) hides
+    podcasts from (a 2.1.x or older player) keeps the stored podcast episodes it
+    could see if it passed the gate. Each stays just after the listed entry it
+    followed. When the new order would shuffle them, all go after the new list in
+    their stored order. They count toward the list's cap, and the oldest of them go
+    when the list and they together exceed it. So an old device reordering Up next
+    can't drop a newer player's episodes.
+  - Episodes hidden for another reason (a revoked share, an unfollowed private
+    show) are deleted as before. A replace from a podcast-seeing client deletes
+    every unlisted row.
 - **Removing one entry is never scoped.** `DELETE …?library_id=&path=` removes
   only the caller's own row, so it needs no access check and a revoked path can
   still be cleaned up. It matches the path exactly (a part path is not resolved
@@ -4347,14 +4495,18 @@ Content`, idempotent, with no access check on the path (one over 4096 bytes is
 *Session.* Replaces who the collection is shared with (owner only), body
 `{ "user_ids": [6, 9] }` (`[]` stops sharing it; a missing or `null` key is
 `400 user_ids is required`). Each id must be an existing, enabled, non-demo
-account other than the owner, or someone it is already shared with (a viewer
+account other than the owner, or someone it is already shared with. A viewer
 disabled since stays valid, so the `shared_with` the owner was shown can be sent
-back); a new disabled, demo or unknown id rejects the whole request. A kid (a
-[household member](#household-members) with `member_kind: "kid"`) is a valid id only
-for their own owner: from anyone else it is `unknown user`, whatever the collection
-held before, so the answer never says who is a kid. A kid caller can't share at all. After the
-demo check and the body, ownership is settled before the ids are checked. Response `200`: `{ "collection": { … } }`, its `shared_with`
-updated (`updated_at` doesn't move).
+back. A new disabled, demo or unknown id rejects the whole request.
+
+A kid (a [household member](#household-members) with `member_kind: "kid"`) is a
+valid id only for their own owner. From anyone else it is `unknown user`, whatever
+the collection held before, so the answer never says who is a kid. A kid caller
+can't share at all. After the demo check and the body, ownership is settled before
+the ids are checked.
+
+Response `200`: `{ "collection": { … } }`, its `shared_with` updated
+(`updated_at` doesn't move).
 
 | Status | Meaning |
 |---|---|
@@ -4688,7 +4840,7 @@ is `false`, so a client that honours it never asks.
 
 ### The calendar feed
 
-Capability `upcoming_calendar` (Track U3, 2.6.0; `true` exactly when `upcoming`
+Capability `upcoming_calendar` (from 2.6.0; `true` exactly when `upcoming`
 is). A listener subscribes a calendar app to their own upcoming releases through
 one secret link per user per server: `GET /me/upcoming/releases.ics?token=<secret>`.
 The secret is a token of its own kind, `feed`, accepted on that route **only**
@@ -4928,18 +5080,25 @@ current access for `all`, the collections the owner shares with them for
 `collections`, plus their own grants), and the one-level rule, are the member rule in
 [Auth & security](../auth-and-security.md#household-members).
 
-**Guards, in the order they answer.** Anonymous is `401` (`requireAuth`). On the
-`{id}` routes the ids are read first: one that isn't a number is `400` (`invalid
-member id`, or `invalid device id` for `{device_id}`). Then `memberOwner`: an API key
-is `403` (`denyAPIKey`; the list too), a demo account `403` `code: "demo_account"`, a
-member caller `403` `code: "member_cannot_manage"`. Create, session and pair then
-spend the account [rate limit](../auth-and-security.md#rate-limiting) (`429`). The body comes next
-(decoded strictly: an unknown field, such as `role`, is `400 invalid request`), and
-last the route's own transaction. Someone else's member (or no such account) is `404`
-`member not found` on every `{id}` route, so the answer never says whether the id
-exists. Only **adding** checks the server's switch, the owner's switch and the cap:
-every other route keeps working on the caller's existing members when the feature is
-off, so an owner can always rename, sign out and delete them.
+**Guards, in the order they answer:**
+
+1. Anonymous is `401` (`requireAuth`).
+2. On the `{id}` routes the ids are read first. One that isn't a number is `400`
+   (`invalid member id`, or `invalid device id` for `{device_id}`).
+3. Then `memberOwner`: an API key is `403` (`denyAPIKey`; the list too), a demo
+   account `403` `code: "demo_account"`, a member caller `403`
+   `code: "member_cannot_manage"`.
+4. Create, session and pair then spend the account
+   [rate limit](../auth-and-security.md#rate-limiting) (`429`).
+5. The body comes next, decoded strictly: an unknown field, such as `role`, is
+   `400 invalid request`.
+6. Last comes the route's own transaction.
+
+Someone else's member (or no such account) is `404` `member not found` on every
+`{id}` route, so the answer never says whether the id exists. Only **adding**
+checks the server's switch, the owner's switch and the cap. Every other route keeps
+working on the caller's existing members when the feature is off, so an owner can
+always rename, sign out and delete them.
 
 **The member object** (`HouseholdMember`), as the list, the create and the `PATCH`
 answer it:
@@ -5357,7 +5516,7 @@ always is, or it is `400 admin_needs_password`).
   [Moving between households](../auth-and-security.md#household-members). A no-op on
   an account that isn't a member.
 
-- **A password reset ends the person's sessions** (server#281): replacing or clearing
+- **A password reset ends the person's sessions.** Replacing or clearing
   a password the account had ends their sessions exactly as a
   [self-service change](#post-apiv1authpassword) does, in the same transaction. Only
   the admin's own session survives, when the account is the admin's.
@@ -5435,10 +5594,10 @@ invite.
 
 ### `POST /api/v1/admin/users/{id}/sign-out`
 
-The console's **Sign out everywhere** (server#281): ends the person's sessions as a
+The console's **Sign out everywhere**. It ends the person's sessions as a
 [password change](#post-apiv1authpassword) does (the same tokens end and stay),
-keeping the admin's own when the account is the admin's, without changing the
-password. It also forgets the browsers they signed in from, so each one's next
+without changing the password. It keeps the admin's own session when the account
+is the admin's. It also forgets the browsers they signed in from, so each one's next
 password sign-in is announced as a `new_device`. API keys stay, revoked one at a time
 with [`DELETE /admin/devices/{id}`](#delete-apiv1admindevicesid). No body.
 
@@ -5644,38 +5803,31 @@ library is re-resolved from what the last scan stored, in the edit's own
 transaction, before the response is sent, so no reader sees the new setting
 with the old values. Admin edits and accepted community values stay on top.
 
-:::note[Behaviour change]
-Before admin console Phase 3, every `PATCH` rescanned the library, a rename
-included.
-:::
-
 Response `200`: the updated library (without the scan settings, as for
-create), plus `job` - the queued scan, as for
-[`POST …/scan`](#post-apiv1adminlibrariesidscan) - when the edit queued one
-(omitted otherwise). `400` (including `invalid_schedule` / `invalid_pattern` /
-`invalid_metadata_source`) /
-`404` / `409` as for create.
+create). When the edit queued a scan it adds `job`, the queued scan, as for
+[`POST …/scan`](#post-apiv1adminlibrariesidscan); otherwise `job` is omitted.
+Errors are `400` (including `invalid_schedule`, `invalid_pattern` and
+`invalid_metadata_source`), `404` and `409`, as for create.
 
 ### `DELETE /api/v1/admin/libraries/{id}`
 
 Removes the library and everything indexed under it (books, files, chapters,
-FTS rows), and - by cascade - every user's state keyed to it: progress,
-bookmarks, notes, listening history and favourites, plus its folder overrides,
+FTS rows). The cascade also removes every user's state keyed to it (progress,
+bookmarks, notes, listening history and favourites), plus its folder overrides,
 enrichment, metadata edits, custom covers and any share path rules pointing into
-it. Its whole-library grant
-shares (`whole_library_id` = this library) are deleted too, unless one also
-holds rules for another library, which it keeps granting. Audio files on disk are
+it. Its whole-library grant shares (`whole_library_id` = this library) are deleted
+too, unless one also holds rules for another library, which it keeps granting. Audio files on disk are
 untouched. `204 No Content`.
 
 A library the server's config declares (see
 [`PATCH`](#patch-apiv1adminlibrariesid) above) is `409 config_library` (from
-2.4.1, server#176): every start upserts it by name, so it would come back empty,
-with everyone's progress, bookmarks and notes in it gone. Remove it from
+2.4.1). Every start upserts it by name, so it would come back empty, with
+everyone's progress, bookmarks and notes in it gone. Remove it from
 `config.yaml` (or the app embedding the server) and restart instead. The console
 disables its **Delete library...** with the reason.
 
 An id with no library is `404 not_found` (`library not found`), with no audit row
-(from 2.5.0, server#198; before, the delete answered `204` and recorded one).
+(from 2.5.0; before, the delete answered `204` and recorded one).
 
 ### `PUT /api/v1/admin/libraries/{id}/folder-override`
 
@@ -6042,17 +6194,23 @@ whole-library share under the hood. Body:
 
 The grant share is found by `whole_library_id` first, so it survives a library
 rename. Failing that, an **unmarked** share the grant itself could have made is
-reused as a fallback (and then marked): description `Whole library`, named
-`Library: <name>` (made before the column existed) or `Library: <name> (<library
-id>)` (left by an interrupted grant). Marked or not, a share is reused only when
-its one path rule is this library's whole-library rule (`""`), or when it has no
-rules and nobody holds it. Anything else - an admin's own share that happens to be
-named `Library: <name>` and covers a folder, a grant since narrowed to a folder, a
-share that also covers another library, or an empty share someone holds - is left
-exactly as it is, because adding the whole-library rule to it would widen what its
-holders see or hand its other rules to the new user. A share marked for a
-*different* library is never reused either: that would hand this library to
-everyone who has that one.
+reused as a fallback (and then marked). Such a share has the description
+`Whole library` and is named `Library: <name>` (made before the column existed) or
+`Library: <name> (<library id>)` (left by an interrupted grant).
+
+Marked or not, a share is reused only when its one path rule is this library's
+whole-library rule (`""`), or when it has no rules and nobody holds it. Anything
+else is left exactly as it is, because adding the whole-library rule to it would
+widen what its holders see or hand its other rules to the new user. That covers:
+
+- an admin's own share that happens to be named `Library: <name>` and covers a
+  folder;
+- a grant since narrowed to a folder;
+- a share that also covers another library;
+- an empty share someone holds.
+
+A share marked for a *different* library is never reused either, because that
+would hand this library to everyone who has that one.
 
 When no share qualifies, a new grant share is made. If `Library: <name>` is
 already taken (by a share that didn't qualify, or by another library's grant
@@ -6144,15 +6302,19 @@ what the first does).
 
 Text sorts are case-insensitive. The `author`, `surname`, `series`, `narrator`
 and `published` sorts put books with that field blank **last** in either
-direction (`order=desc` reverses the named books, not where the blanks go) and
-break ties sensibly: `author` sorts by author, then series, series position and
-title; `surname` by the author's surname first (the first name of a co-credit;
-"Ursula K. Le Guin" and "Le Guin, Ursula K." under L, a "Jr." ignored), then
-author as written, series, position and title; `series` by series, position,
-then title; `narrator` by narrator, then title; `published` oldest first by the
-book's release date - its `published` value, else the date its file tags give
-(usually the recording's, never shown on the wire) - then series, position and
-title, with a bare year before that year's dates. With `series=`, `sort=series`
+direction (`order=desc` reverses the named books, not where the blanks go). They
+break ties as follows:
+
+- `author`: by author, then series, series position and title.
+- `surname`: by the author's surname first (the first name of a co-credit;
+  "Ursula K. Le Guin" and "Le Guin, Ursula K." under L, a "Jr." ignored), then
+  author as written, series, position and title.
+- `series`: by series, position, then title.
+- `narrator`: by narrator, then title.
+- `published`: oldest first by the book's release date, then series, position and
+  title, with a bare year before that year's dates. The release date is its
+  `published` value, else the date its file tags give (usually the recording's,
+  never shown on the wire). With `series=`, `sort=series`
 orders by each book's position *in that series* (its main one or one of its
 `more_series`), unnumbered last, then title.
 
@@ -6243,36 +6405,38 @@ is a `400` too (`too many format or codec values`).
   value), `[]` when none; `edited` is also true for a chapter-title edit alone.
 - `file_count` is `1` for a single-file book.
 - `scan_error` - the first problem reading the book's files on its last
-  indexing: `unreadable` (a file couldn't be opened, or its read was cut short
-  on a share that stopped answering: `reading it timed out`, or `too many
-  earlier reads are stuck (on this or another library), so it wasn't tried`),
-  `empty_file` (0 bytes) or `probe_failed` (ffprobe couldn't read it).
-  `scan_error_file` is the library-relative file, `scan_error_detail` the OS's,
-  the scan's or ffprobe's own message (may be empty for `empty_file`). An ffprobe
-  message keeps every distinct line ffprobe printed, joined with `"; "`, at most
-  300 bytes, with FFmpeg's context address (`@ 0x...`) dropped. When a read of
-  an already-indexed book is cut short, the book keeps its stored length,
-  chapters and names, and only the problem is recorded. A
-  recorded problem is re-checked on every scan, so it clears once the file
-  reads (fixed permissions, a share back online). See
-  [Read problems](../scanner.md#read-problems).
+  indexing:
+  - `unreadable`: a file couldn't be opened, or its read was cut short on a share
+    that stopped answering (`reading it timed out`, or `too many earlier reads are
+    stuck (on this or another library), so it wasn't tried`);
+  - `empty_file`: 0 bytes;
+  - `probe_failed`: ffprobe couldn't read it.
+
+  `scan_error_file` is the library-relative file. `scan_error_detail` is the OS's,
+  the scan's or ffprobe's own message, and may be empty for `empty_file`. An
+  ffprobe message keeps every distinct line ffprobe printed, joined with `"; "`, at
+  most 300 bytes, with FFmpeg's context address (`@ 0x...`) dropped. When a read of
+  an already-indexed book is cut short, the book keeps its stored length, chapters
+  and names, and only the problem is recorded. A recorded problem is re-checked on
+  every scan, so it clears once the file reads (fixed permissions, a share back
+  online). See [Read problems](../scanner.md#read-problems).
 - `suspect_parts` - set (to 2 or more) when a folder book's parts look like
   that many separate books (see
   [Folders that may hold several books](../scanner.md#folders-that-may-hold-several-books)).
 - `chapters_source` - where the book's chapters come from now: `files` (the
   scan's own), `community` (a community chapter list fitted onto the audio) or
-  `generated` (the chapters a Bridge found in the narration, Phase 1d).
+  `generated` (the chapters a Bridge found in the narration).
 - `chapter_choice` - the admin's choice of chapter source on the book page,
   `files` or `community`; omitted when it is automatic. Chapters found in the
   narration stand in only with no choice, so the console's Health `no_chapters`
   rows offer no **Detect chapters** for a book with one (and a `chapters.detect`
   job for it is `409 chapters_chosen`).
 - `ebook` - from 2.5.0, the book's ebook as on the player's `Book`:
-  `{"path", "size"}` (`books.ebook_path` and, since `0058`, `books.ebook_size`,
-  recorded with it), omitted when the book has none. The book page's `book` carries it too
-  (its Files card and hero chip, and the Read-along card's gate). The book page's
-  `book` also carries `readalong` (Phase 3c), as on the player's
-  [`/item`](#get-apiv1librariesiditem): never a list row.
+  `{"path", "size"}`, omitted when the book has none. It comes from
+  `books.ebook_path` and, since `0058`, `books.ebook_size`, recorded with it. The
+  book page's `book` carries it too, for its Files card and hero chip and the
+  Read-along card's gate. The book page's `book` also carries `readalong`, as on
+  the player's [`/item`](#get-apiv1librariesiditem); a list row never does.
 - `chapters_check` - the status of the book's last
   [community chapter check](../community-chapters.md): `fill`, `titles`,
   `refine`, `restructure`, `same`, `length_mismatch`, `structure_mismatch`,
@@ -6357,15 +6521,18 @@ Reverting a field that has no edit is a no-op.
 
 `add` and `remove` exist because a bulk `set` of `tags` would give every book the
 same list, wiping each one's own. For each book they merge into its current
-effective list (the labels removed, then the new ones appended in the order
-given) and write the result as an `edited` (or `community`) override of that
-field, only where the list changes: adding a tag a book already has leaves it
-untouched (no override written). Each is refused with `400`
-`code: "invalid_override"` and `field` set when it names a field other than
-`genres` / `tags` (`only genres and tags take add`), names a field the request
-also sets or reverts (`cannot be set or reverted and changed by add at once`),
-names one label in both (`a label cannot be added and removed at once`), or would
-leave a book with more than 50 labels (`too many labels (at most 50)`). The
+effective list: the labels removed, then the new ones appended in the order given.
+The result is written as an `edited` (or `community`) override of that field, only
+where the list changes. Adding a tag a book already has leaves it untouched, with
+no override written.
+
+Each is refused with `400` `code: "invalid_override"` and `field` set when it:
+
+- names a field other than `genres` or `tags` (`only genres and tags take add`);
+- names a field the request also sets or reverts (`cannot be set or reverted and
+  changed by add at once`);
+- names one label in both (`a label cannot be added and removed at once`);
+- would leave a book with more than 50 labels (`too many labels (at most 50)`). The
 single-book [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) takes `add` and
 `remove` too, by the same rules.
 
@@ -6652,35 +6819,43 @@ book path).
   `community_chapters` is then the check before it.
 - `match_query` - the text the console's
   [match dialog](#get-apiv1adminlibrariesidbookmatch) opens its search box
-  with (`meta.SearchPrefill`): the book's title and author, unless the tags
-  look swapped or junk, or the title is a whole `Author; Series; Book NN`
-  leaf (an untagged book's), where the folders' reading of the path
-  (`metadata.FromPathLayout`) replaces them. Swapped means the title is the
-  author folder's name, or the author, cleaned of series and numbering, is the
-  path's title; a tag that matches its own path fact is never swapped
-  (`Dune/Dune` by Frank Herbert). A junk title (`Unknown`, `Untitled`,
-  `Track 01`, `03`) or a junk author (`Unknown`, `Various Artists`) is replaced
-  on its own. A fact the path doesn't give keeps the tag's value. A path with
-  no title (`Stormlight Archive/03`, or `Bruno Miller; Dark Road; Book 01-05`)
-  gives the series and its position or range instead (`Dark Road 1-5`; the
-  series alone for `Book XX`). It only fills the box: the match itself always
-  sends the book's own facts, and `q` is what the admin then searches for.
-  Always present (`""` for a book with nothing to say).
-- `community_match` - the book's recorded community match (from 2.6.0, the
-  `book_matches` row, [data model](../data-model.md#durable-per-library-config-path-keyed-no-fk-to-books)):
-  the `work_id` and `recording_id` (omitted for none) an accept or a match run's
-  apply took, `how` (`"auto"`: a run's confident item applied unasked;
-  `"accepted"`: the match dialog, or a review item the admin included; a
-  refresh that heals a merged work keeps it),
-  `matched_at`, and `web_url`, the work's page on the community site (omitted when
-  no service is configured). Recorded whether or not the match gave the book an
-  ASIN or ISBN; for a store listing with neither it is what makes the book
-  `matched`. The console's Community card shows it, with Unlink, whenever it is
-  present (from 2.7.0; in 2.6.0 only for a book with no ASIN or ISBN). Omitted
-  when the book has none (no backfill: a book matched before 2.6.0 has none
-  until it is matched again).
+  with (`meta.SearchPrefill`). Always present (`""` for a book with nothing to
+  say). It is the book's title and author, with these exceptions:
+  - When the tags look swapped or junk, or the title is a whole
+    `Author; Series; Book NN` leaf (an untagged book's), the folders' reading of
+    the path (`metadata.FromPathLayout`) replaces them.
+  - Swapped means the title is the author folder's name, or the author, cleaned of
+    series and numbering, is the path's title. A tag that matches its own path
+    fact is never swapped (`Dune/Dune` by Frank Herbert).
+  - A junk title (`Unknown`, `Untitled`, `Track 01`, `03`) or a junk author
+    (`Unknown`, `Various Artists`) is replaced on its own.
+  - A fact the path doesn't give keeps the tag's value.
+  - A path with no title (`Stormlight Archive/03`, or
+    `Bruno Miller; Dark Road; Book 01-05`) gives the series and its position or
+    range instead (`Dark Road 1-5`; the series alone for `Book XX`).
+
+  It only fills the box. The match itself always sends the book's own facts, and
+  `q` is what the admin then searches for.
+- `community_match` - the book's recorded community match, from 2.6.0 (the
+  `book_matches` row; see the
+  [data model](../data-model.md#durable-per-library-config-path-keyed-no-fk-to-books)).
+  Omitted when the book has none. There is no backfill, so a book matched before
+  2.6.0 has none until it is matched again. Its fields:
+  - `work_id` and `recording_id` (omitted for none): what an accept or a match
+    run's apply took;
+  - `how`: `"auto"` for a run's confident item applied unasked, `"accepted"` for
+    the match dialog or a review item the admin included. A refresh that heals a
+    merged work keeps it;
+  - `matched_at`;
+  - `web_url`: the work's page on the community site, omitted when no service is
+    configured.
+
+  It is recorded whether or not the match gave the book an ASIN or ISBN. For a
+  store listing with neither, it is what makes the book `matched`. The console's
+  Community card shows it, with Unlink, whenever it is present (from 2.7.0; in
+  2.6.0 only for a book with no ASIN or ISBN).
 - `generated_description` - the description the [Bridge](#the-bridge) generated
-  for the book (its checked `.audiosilo/description.json`, Phase 1c), with
+  for the book (its checked `.audiosilo/description.json`), with
   `generated_at` the time `bridge.json`'s `description` object gives (omitted when
   unknown). Omitted when the book has none. It is read only when the book's
   attachment signature names a description, and never the characters or recaps.
@@ -6707,7 +6882,21 @@ one request is applied in one transaction.
 | `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
 | `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`, else chapters a Bridge found in the narration when they fit). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included. `"generated"` is not a choice: `"files"` turns found chapters off and `"auto"` brings them back |
-| `match` | object | from 2.6.0: `{ "work_id", "recording_id"?, "asin"?, "isbn"? }`, the community match the edit was taken from, recorded as the book's [`community_match`](#get-apiv1adminlibrariesidbook) (how `accepted`) in the edit's transaction. Needs `source: "community"`, and may come alone (no `set`): the console's dialog sends it with every accept of ticked fields, and alone (after any ticked cover) for a book with no ASIN or ISBN, and after a ticked cover when the pick is the book's recorded match (work and recording; with nothing ticked the dialog's accept is off); a cover-only accept of any other book sends none. From 2.7.0, `asin` and `isbn` are the identifiers the match offered, ticked or not (`""` or absent for none), stored as the fields store theirs, so a [refresh](#bulk-community-matching) never fills one back; an unlink ignores them. `{ "work_id": "" }` unlinks the book (below). One book at a time: the bulk edit refuses it |
+| `match` | object | from 2.6.0: `{ "work_id", "recording_id"?, "asin"?, "isbn"? }`, the community match the edit was taken from. Needs `source: "community"`, and may come alone (no `set`). `{ "work_id": "" }` unlinks the book. One book at a time: the bulk edit refuses it. More under the table |
+
+**The `match` field.** The server records `match` as the book's
+[`community_match`](#get-apiv1adminlibrariesidbook) (how `accepted`) in the edit's
+transaction. When the console's dialog sends it:
+
+- with every accept of ticked fields;
+- alone (after any ticked cover) for a book with no ASIN or ISBN;
+- after a ticked cover when the pick is the book's recorded match (work and
+  recording). With nothing ticked the dialog's accept is off.
+
+A cover-only accept of any other book sends none. From 2.7.0, `asin` and `isbn`
+are the identifiers the match offered, ticked or not (`""` or absent for none).
+They are stored as the fields store theirs, so a
+[refresh](#bulk-community-matching) never fills one back. An unlink ignores them.
 
 **Unlinking** (from 2.6.0). `match: { "work_id": "" }`, from any edit (no
 `source` needed), removes the book's recorded match, every `source: "community"`
@@ -6724,18 +6913,22 @@ nothing else is `400 invalid_override` with `field: "match"`; nothing in the
 request is written. A `recording_id` that holds nothing else is stored as none.
 
 Unlink returns `409 match_run_busy` only while a run that covers the book's
-library (or every library) is `applying` (from 2.7.0; in 2.6.0 any run that was
-`matching` or `applying`): "a match run is applying to this library; stop it or
-wait for it to finish before unlinking". A run that is only `matching`, or one
-over another library, doesn't block it: every apply checks each item against
-the book as it is then, and a community cover is written only to the book it
-was planned for (`cover_superseded`, see [the items](#get-apiv1adminmatch-runsiditems)).
-The status check and clear share the edit's writer transaction, so a refused
-Unlink also refuses any other edits in the request. Ordinary field edits remain
-allowed. After a stop request, Unlink stays blocked until the apply's workers
-finish, including cover writes. A stuck run (see the
-[statuses](#bulk-community-matching)) is settled first and the Unlink tried once
-more, so a stuck run never blocks it (a failed settle still answers `409`).
+library (or every library) is `applying` (from 2.7.0). In 2.6.0 it did so for any run that was
+`matching` or `applying`. The message is "a match run is applying to this library;
+stop it or wait for it to finish before unlinking".
+
+- A run that is only `matching`, or one over another library, doesn't block it.
+  Every apply checks each item against the book as it is then, and a community
+  cover is written only to the book it was planned for (`cover_superseded`, see
+  [the items](#get-apiv1adminmatch-runsiditems)).
+- The status check and clear share the edit's writer transaction, so a refused
+  Unlink also refuses any other edits in the request. Ordinary field edits remain
+  allowed.
+- After a stop request, Unlink stays blocked until the apply's workers finish,
+  including cover writes.
+- A stuck run (see the [statuses](#bulk-community-matching)) is settled first and
+  the Unlink tried once more, so a stuck run never blocks it. A failed settle
+  still answers `409`.
 
 ```json
 {
@@ -6748,30 +6941,38 @@ more, so a stuck run never blocks it (a failed settle still answers `409`).
 A revert restores the value from what the last scan stored - no rescan and no
 disk access. Reverting an ASIN/ISBN falls back to any enrichment for it.
 
-**Making an other series the main one swaps them.** When an edit sets `series` to
-a series the book's `more_series` lists (in any spelling: case, accents, punctuation and spacing aside), and does not set
-or revert `more_series` itself, the server swaps the two: the old main series,
-at its old `series_index`, takes that entry's place in `more_series` (a book with
-no main series just drops the entry, and another entry already naming the old
-main series gives way), and `series_index` becomes the entry's position (unless
-the edit sets or reverts `series_index` itself). A range moves with it both ways:
-a main series at `1-3` becomes an entry with `position_end` 3, and an entry with
-one becomes `series_index` `"1-3"`. Reverting `series` swaps back
-the same way when the series it returns to is listed. The swapped `more_series` and `series_index` are written as the edit's
-own overrides, so they read as edited and can be reverted like any other edit,
-except that a value equal to what the book has without an edit goes back to
-following the scan instead (for `series_index`, only when the new main series is
-the series the file's number belongs to). So swapping and reverting `series`
-leaves the number read off the file again, as it was.
-An edit that sets `more_series` never swaps, and neither does a community edit
-(`source: "community"`): a match lays out the series itself. If the old main
-series can't be listed (a name too long for a list entry, or a position out of
-range), the edit is refused: `400` `invalid_override` with `field: "series"`.
-The console's Book page drafts the same swap before saving, so the fields and the
-save dialog show it, and its save sends the drafted `more_series` and
-`series_index` itself. As that edit names `more_series`, the server swaps nothing
-and writes the values as edits, even one equal to the file's; reverting `series`
-afterwards is an ordinary revert, so it swaps back as above.
+**Making an other series the main one swaps them.** An edit may set `series` to a
+series the book's `more_series` lists, in any spelling (case, accents, punctuation
+and spacing aside), without setting or reverting `more_series` itself. The server
+then swaps the two:
+
+- The old main series, at its old `series_index`, takes that entry's place in
+  `more_series`. A book with no main series just drops the entry, and another entry
+  already naming the old main series gives way.
+- `series_index` becomes the entry's position, unless the edit sets or reverts
+  `series_index` itself.
+- A range moves with it both ways. A main series at `1-3` becomes an entry with
+  `position_end` 3, and an entry with one becomes `series_index` `"1-3"`.
+- Reverting `series` swaps back the same way when the series it returns to is
+  listed.
+
+The swapped `more_series` and `series_index` are written as the edit's own
+overrides, so they read as edited and can be reverted like any other edit. The
+exception is a value equal to what the book has without an edit, which goes back
+to following the scan instead. For `series_index` that holds only when the new
+main series is the series the file's number belongs to. So swapping and reverting
+`series` leaves the number read off the file again, as it was.
+
+- An edit that sets `more_series` never swaps, and neither does a community edit
+  (`source: "community"`), because a match lays out the series itself.
+- If the old main series can't be listed (a name too long for a list entry, or a
+  position out of range), the edit is refused with `400` `invalid_override` and
+  `field: "series"`.
+- The console's Book page drafts the same swap before saving, so the fields and the
+  save dialog show it, and its save sends the drafted `more_series` and
+  `series_index` itself. As that edit names `more_series`, the server swaps nothing
+  and writes the values as edits, even one equal to the file's. Reverting `series`
+  afterwards is an ordinary revert, so it swaps back as above.
 
 | Status | Meaning |
 |---|---|
@@ -6966,35 +7167,45 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   in several stores appears once per region. `asin_region` names the store of
   `asins[0]`.
 - `default_recording_id` is the recording the book most likely is
-  (`meta.DefaultRecording`): the one an identifier named, else, among the
-  recordings one of the book's narrators reads that fit its length
-  (`meta.PlausibleRuntimeOff`; all of them when none does), the one whose runtime
-  is closest to the book's, a recording selling in the preferred marketplace
-  winning a tie. The console's dialog and a bulk run both start from it. An ASIN
-  an identifier hit was found by leads its marketplace's in `asins`, so a book the
-  store lists under two keeps its tags' when that store is the preferred one.
-  A plain book never takes a dramatization this way, unless an identifier or one of
-  its narrators names it, or (from 2.6.0) the work holds only dramatizations and one
-  is within max(1%, 2 minutes) of the book's length, which says the book is that
-  production (see [the contract](../../architecture/cross-repo-contract.md)). A book
-  is not plain when its title, series, folders, typed text or narrator credit says it
-  is a dramatization (`GraphicAudio`, `full cast`, `dramatized`), or, from 2.6.0,
-  its author credit does (`Michael J. Sullivan - Graphic Audio`) or a genre names a
-  dramatized form (`Radio Drama`, `Audio-Drama`, `Audio Play`, `Hörspiel`;
-  `meta.MatchQuery.statesDramatization`). When a work holds only dramatizations of other
-  lengths, this field is absent and `dramatization_only: true` is set, so the dialog
-  preselects no recording.
+  (`meta.DefaultRecording`). The console's dialog and a bulk run both start from
+  it. The server picks:
+  1. the recording an identifier named;
+  2. else, among the recordings one of the book's narrators reads that fit its
+     length (`meta.PlausibleRuntimeOff`; all of them when none does), the one
+     whose runtime is closest to the book's. A recording selling in the preferred
+     marketplace wins a tie.
 
-  A match run (from 2.6.0; never a refresh or a repick, whose identifier is the
-  book's own) then checks the length (`meta.FitRecording`): when that recording is
-  more than 10% (`meta.PlausibleRuntimeOff`) off the book's length and none of the
-  book's narrators reads it, while another recording of the same work is within 10%,
-  the run proposes the recording this rule picks among those, `auto` when it has an
+  An ASIN an identifier hit was found by leads its marketplace's in `asins`, so a
+  book the store lists under two keeps its tags' when that store is the preferred
+  one.
+
+  **Dramatizations.** A plain book never takes a dramatization this way, with
+  these exceptions:
+  - an identifier or one of its narrators names it;
+  - from 2.6.0, the work holds only dramatizations and one is within
+    max(1%, 2 minutes) of the book's length, which says the book is that
+    production (see [the contract](../../architecture/cross-repo-contract.md)).
+
+  A book is not plain when its title, series, folders, typed text or narrator
+  credit says it is a dramatization (`GraphicAudio`, `full cast`, `dramatized`).
+  From 2.6.0 its author credit can say so too (`Michael J. Sullivan - Graphic
+  Audio`), or a genre that names a dramatized form (`Radio Drama`, `Audio-Drama`,
+  `Audio Play`, `Hörspiel`; `meta.MatchQuery.statesDramatization`). When a work
+  holds only dramatizations of other lengths, this field is absent and
+  `dramatization_only: true` is set, so the dialog preselects no recording.
+
+  **The length check in a match run** (from 2.6.0). A match run then checks the
+  length (`meta.FitRecording`); a refresh or a repick never does, because its
+  identifier is the book's own. The check applies when the recording is more than
+  10% (`meta.PlausibleRuntimeOff`) off the book's length, none of the book's
+  narrators reads it, and another recording of the same work is within 10%. The run
+  then proposes the recording this rule picks among those, `auto` when it has an
   ASIN or ISBN (an identifier hit whose length now fits). A tag hint can name
-  another edition of the right work. A narrator reading the named recording keeps it
-  (`auto` within 20%, else held as `length_differs`; see
-  [the outcomes](#bulk-community-matching)), and a plain book never moves onto a
-  dramatization the rule above refuses. The dialog keeps the identifier's recording.
+  another edition of the right work.
+  - A narrator reading the named recording keeps it: `auto` within 20%, else held
+    as `length_differs` (see [the outcomes](#bulk-community-matching)).
+  - A plain book never moves onto a dramatization the rule above refuses.
+  - The dialog keeps the identifier's recording.
 - No hits is `200 { "candidates": [] }`.
 
 `cover_url` is an image on its own host (Audible's CDN, Open Library), which
@@ -7017,84 +7228,102 @@ many books at once, see [Bulk community matching](#bulk-community-matching).
 ### Bulk community matching
 
 The console's **Match automatically** (Health > Not matched). A **match run**
-matches many books against the community service in the background, exactly
-as [`…/book/match`](#get-apiv1adminlibrariesidbookmatch) matches one (the same
-facts, the preferred marketplace's ASIN), but asks for only the best two works per
-book, reads the details of the first alone, and asks six books at a time
-([what that costs the service](#what-a-run-asks-of-the-community-service)). It only **looks**: each book's
-best candidate and what it offers are recorded for the admin to review, and
-nothing changes until the run is **applied**. Applying writes community
-overrides (as [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) with
-`source: "community"` does) and, for a book with no cover, the community cover
-(as [`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity)), so
-every change is reversible. From 2.6.0 a `match` run's apply also records each
-book's match (its [`community_match`](#get-apiv1adminlibrariesidbook), as the
-dialog's `match` does), under every scope, whenever the proposal's work or
-recording isn't the book's already: how `auto` for a confident item, `accepted`
-for an included review item. A `refresh` only heals a match the book already has
-(a refresh by the recorded match, below; it keeps the `how`), and a `repick`
-records none. Admin only; every endpoint answers `404 code:
-"metadata_off"` while community metadata is off. One run works at a time
-(server-wide); the newest 10 runs are kept, with their books.
+matches many books against the community service in the background, exactly as
+[`…/book/match`](#get-apiv1adminlibrariesidbookmatch) matches one: the same facts,
+and the preferred marketplace's ASIN. It differs in three ways: it asks for only
+the best two works per book, reads the details of the first alone, and asks six
+books at a time (see
+[What a run asks of the community service](#what-a-run-asks-of-the-community-service)).
 
-A run is a `match` run (the books not matched: no ASIN, no ISBN and, from 2.6.0,
-no recorded community match; the Health page's "Not matched", less those ignored
-there), a `repick` run (the books whose
-ASIN is a **community** override, never one from an Audiobookshelf
-`metadata.json`, an admin's edit or an enrichment write: each is looked up, and when its recording now sells
-in the preferred marketplace under another ASIN, that is offered) or a
-`refresh` run (every matched book: one with an ASIN or ISBN, whoever set it, is
-looked up by its own identifier first, the ISBN when the ASIN finds nothing, and
-from 2.6.0 one with neither, or whose identifiers are all unknown and none is an admin
-edit, by its recorded
-community match when present, below; the
-record it names is the book, `auto` whatever its score unless its recording's
-length is more than 10% from the book's, which makes it `review` (from 2.6.0, 20%
-when the book's own narrator credit names a reader of that recording,
-`matchrun.readsRecording`, a placeholder credit never counting, as the lookup
-sends no narrator: a book a run applied on its narrator's say-so stays up to
-date); unknown identifiers with an admin edit or no recorded match are `none` with
-`detail: "identifier_unknown"`, never a fuzzy match by title). A refresh fills
-in, or with `overwrite` replaces, the
-details an identifier alone didn't bring (an enrichment write, an `ids`
-apply), and cleans up the series an earlier match wrote (see the `overwrite`
-scope below); it never changes an identifier the book has. Only books a scope would
-change are recorded (a book already up to date leaves no item, as a repick
-records only books with a new ASIN), and each refresh proposal found by an
-identifier names it (`proposal.found_by`, `"asin:<ASIN>"` or
-`"isbn:<ISBN>"`), as each repick proposal names the ASIN it looked up (from
-2.4.0; a repick recorded earlier has none): applying it changes nothing on a
-book that no longer has that identifier (matched again since, by hand).
+A run only **looks**. It records each book's best candidate and what it offers for
+the admin to review, and nothing changes until the run is **applied**. Applying
+writes community overrides (as [`PATCH …/book`](#patch-apiv1adminlibrariesidbook)
+with `source: "community"` does) and, for a book with no cover, the community
+cover (as [`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity)),
+so every change is reversible.
+
+From 2.6.0 a `match` run's apply also records each book's match (its
+[`community_match`](#get-apiv1adminlibrariesidbook), as the dialog's `match`
+does), under every scope, whenever the proposal's work or recording isn't the
+book's already. `how` is `auto` for a confident item and `accepted` for an included
+review item. A `refresh` only heals a match the book already has (a refresh by the
+recorded match, below; it keeps the `how`), and a `repick` records none.
+
+Admin only. Every endpoint answers `404 code: "metadata_off"` while community
+metadata is off. One run works at a time (server-wide), and the newest 10 runs are
+kept, with their books.
+
+A run is one of three kinds:
+
+- **`match`**: the books not matched. That is no ASIN, no ISBN and, from 2.6.0, no
+  recorded community match: the Health page's "Not matched", less those ignored
+  there.
+- **`repick`**: the books whose ASIN is a **community** override, never one from an
+  Audiobookshelf `metadata.json`, an admin's edit or an enrichment write. Each is
+  looked up, and when its recording now sells in the preferred marketplace under
+  another ASIN, that is offered.
+- **`refresh`**: every matched book.
+  - A book with an ASIN or ISBN, whoever set it, is looked up by its own
+    identifier first, the ISBN when the ASIN finds nothing.
+  - From 2.6.0, a book with neither, or whose identifiers are all unknown and none
+    is an admin edit, is looked up by its recorded community match when present
+    (see the refresh by the recorded match, below).
+  - The record the lookup names is the book. It is `auto` whatever its score,
+    unless its recording's length is more than 10% from the book's, which makes it
+    `review`. From 2.6.0 the limit is 20% when the book's own narrator credit names
+    a reader of that recording (`matchrun.readsRecording`). A placeholder credit
+    never counts, as the lookup sends no narrator. So a book a run applied on its
+    narrator's say-so stays up to date.
+  - Unknown identifiers with an admin edit or no recorded match are `none` with
+    `detail: "identifier_unknown"`, never a fuzzy match by title.
+
+A refresh fills in, or with `overwrite` replaces, the details an identifier alone
+didn't bring (an enrichment write, an `ids` apply). It also cleans up the series an
+earlier match wrote (see the `overwrite` scope below). It never changes an
+identifier the book has.
+
+Only books a scope would change are recorded. A book already up to date leaves no
+item, as a repick records only books with a new ASIN. Each refresh proposal found
+by an identifier names it (`proposal.found_by`, `"asin:<ASIN>"` or
+`"isbn:<ISBN>"`), as each repick proposal names the ASIN it looked up (from 2.4.0;
+a repick recorded earlier has none). Applying it changes nothing on a book that no
+longer has that identifier because it was matched again since, by hand.
 
 **A refresh by the recorded match** (from 2.6.0). A book with neither an ASIN
-nor an ISBN is looked up by its `community_match`. This is also the fallback
-when the identifier lookup would otherwise give `identifier_unknown`: the
-ASIN, and then the ISBN when present, found no record, and neither nonempty identifier
-is an admin edit (`source: "edited"`). Tag, scan and community identifiers still allow
-the fallback. An admin-edited identifier keeps `none` / `identifier_unknown` and writes
-nothing. A service error or a successful lookup never triggers the fallback, even when
-the identifier resolves to a different work. The recorded work lookup uses
-`meta.MatchQuery.WorkID`:
-the service's `works/{id}`, a retired slug's `301` followed online and in mirror
-mode. The proposal's `found_by` is `"work:<work id>"` or
-`"work:<work id>/<recording id>"`. A fallback after unknown identifiers appends
-`";asin:<ASIN>;isbn:<ISBN>"`, including empty values: applying it requires both
-identifiers to remain unchanged as well as the recorded work and recording, and neither
-identifier may have become an admin edit since the lookup, even with the same value.
-The recorded recording is kept while the work still lists it (else the likeliest by
-length, as for an identifier). It is classified as an identifier's record is:
-`auto`, or `review` when its length is off. A work the community no longer has (`404`) is
-`none` with `detail: "work_unknown"`, and the book keeps its match. The proposal
-may fill an ASIN or ISBN the recording gained since (dropped once the book has
-one of its own), and a merged work's new slug is a change by itself (the change's
-`match`), healing the recorded match; a book matched by its own identifier with no
-recorded match never gets one from a refresh. Applying it is a no-op once the
-book was matched again since, to another work or recording. From 2.7.0 the
-proposal also drops the identifier the recorded match
-[offered](#patch-apiv1adminlibrariesidbook) (the admin unticked or reverted
-it), so a book with nothing else to change is not listed. Another value the
-recording gained still fills, and applying it records it as offered. A match
-recorded without them (before 2.7.0, or by an older console) fills as before.
+nor an ISBN is looked up by its `community_match`.
+
+- **The fallback.** This is also the fallback when the identifier lookup would
+  otherwise give `identifier_unknown`: the ASIN, and then the ISBN when present,
+  found no record, and neither nonempty identifier is an admin edit
+  (`source: "edited"`). Tag, scan and community identifiers still allow the
+  fallback. An admin-edited identifier keeps `none` / `identifier_unknown` and
+  writes nothing. A service error or a successful lookup never triggers the
+  fallback, even when the identifier resolves to a different work.
+- **The lookup** uses `meta.MatchQuery.WorkID`: the service's `works/{id}`, with a
+  retired slug's `301` followed online and in mirror mode.
+- **`found_by`** is `"work:<work id>"` or `"work:<work id>/<recording id>"`. A
+  fallback after unknown identifiers appends `";asin:<ASIN>;isbn:<ISBN>"`,
+  including empty values. Applying it then requires both identifiers to remain
+  unchanged, as well as the recorded work and recording. Neither identifier may
+  have become an admin edit since the lookup, even with the same value.
+- **The recording.** The recorded recording is kept while the work still lists it,
+  else the likeliest by length, as for an identifier. It is classified as an
+  identifier's record is: `auto`, or `review` when its length is off.
+- **A missing work.** A work the community no longer has (`404`) is `none` with
+  `detail: "work_unknown"`, and the book keeps its match.
+- **What it fills.** The proposal may fill an ASIN or ISBN the recording gained
+  since, dropped once the book has one of its own. A merged work's new slug is a
+  change by itself (the change's `match`), healing the recorded match. A book
+  matched by its own identifier with no recorded match never gets one from a
+  refresh.
+- **Applying** it is a no-op once the book was matched again since, to another
+  work or recording.
+- **Offered identifiers** (from 2.7.0). The proposal also drops the identifier the
+  recorded match [offered](#patch-apiv1adminlibrariesidbook) when the admin
+  unticked or reverted it, so a book with nothing else to change is not listed.
+  Another value the recording gained still fills, and applying it records it as
+  offered. A match recorded without them (before 2.7.0, or by an older console)
+  fills as before.
 
 Each book's **outcome**:
 
