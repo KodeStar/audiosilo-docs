@@ -251,7 +251,7 @@ job; the server's console links a parked job there, by its server job id.
 | `GET /api/libraries` | the server's libraries with the Bridge's folder, whether it is configured, and the last check |
 | `PUT /api/libraries/{id}` | `{ mount_path }` (absolute; `""` goes back to the server's path), then re-checks that library; `409 locked` when `AUDIOSILO_BRIDGE_LIBRARIES` sets the mappings |
 | `POST /api/libraries/check` | check the mappings now (`202`) |
-| `GET` / `PUT /api/settings` | `public_url`, `mapping_check_minutes`, `asr_worker_fallback`, `monthly_budget_usd` with `budget_reviewed`, and which settings the environment locks. A locked one is never written to `config.yaml`. `asr_worker_fallback` is `local` or `wait`, and an empty one on a save keeps it. `monthly_budget_usd` is `0` or more and applies live. A save records `agent.budget_reviewed_at`, a value the environment locks can't change, and an absent value on a save keeps it |
+| `GET` / `PUT /api/settings` | `public_url`, `mapping_check_minutes`, `asr_worker_fallback`, `monthly_budget_usd` with `budget_reviewed`, and which settings the environment locks. A locked one is never written to `config.yaml`. `asr_worker_fallback` is `local` or `wait`, and an empty one on a save keeps it. `monthly_budget_usd` is `0` or more and applies live. A save of it records `agent.budget_reviewed_at`. A save can't change a value the environment locks, and a save without it keeps it |
 | `GET /api/accounts`, `POST /api/accounts/github/device`, `DELETE /api/accounts/github`, `PUT` / `DELETE /api/accounts/agent` | the Accounts tab: see [Contributions](contributions.md#the-pages-routes). No route answers a credential back |
 | `GET /api/jobs` | the jobs it ran, newest first (`before`, `limit` up to 200) |
 | `GET /api/jobs/{id}` | one job (`404` when the Bridge has no such job) |
@@ -272,10 +272,10 @@ page's API mirrors these shapes by hand in `web/src/api/types.ts`.
 
 | Status | When |
 |---|---|
-| `400` | the address isn't an absolute `http(s)` URL |
+| `400` | the address isn't an absolute `http(s)` URL, or the address or the code is empty |
 | `422` | the server refused the code, is too old for a Bridge (`404`/`405`), refused the pairing otherwise, or has a certificate the Bridge can't verify. For the certificate, the message says to use the server's `http://` address |
 | `502` | the Bridge can't reach the server, the server answered `5xx`, or its answer can't be used. For a server it can't reach, the message names the address, and for a failed lookup, a refused connection or a timeout, the address to use instead |
-| `500` | the server accepted the code, but the Bridge couldn't save the pairing. The message is a sentence. The token is removed again, so make a new code |
+| `500` | the server accepted the code, but the Bridge couldn't save the pairing. The answer carries a sentence that says so. The token is removed again, so make a new code |
 | `409` | the Bridge is already paired |
 
 ### The local-network guard

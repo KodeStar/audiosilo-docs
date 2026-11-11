@@ -992,6 +992,8 @@ Per-episode process and filesystem locks keep reclaimed writers from overlapping
   while still holding it, as it lets go (`releaseLock`).
 - A waiter that then gets a lock on a file no longer at that path opens the path
   again (`lockedAt`). So the files never pile up, and no two jobs hold one.
+- A `.fetch.lock` that an earlier Bridge left behind is opened and locked like any
+  other, and removed when its new holder lets go.
 
 The short show mutation lock is shared by subscribe, poll, fetch and retain, and
 never spans an audio GET. Before committing, a writer recovers journals, confirms

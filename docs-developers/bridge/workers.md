@@ -196,8 +196,8 @@ with the same flag set that wrote it (`carryForward` in
 - Each written flag the command line didn't give keeps its installed value. Those
   are `--bridge`, `--data`, `--backend`, `--model` and `--whisper-cli`, never
   `--token`, which is never in the file.
-- The command prints which flags it kept, except with `--print`. Unless given, it
-  always keeps `--data` and `--bridge`, since `Render` writes both.
+- The command prints which flags it kept, except with `--print`. Unless they were
+  given, the list always holds `--data` and `--bridge`, since `Render` writes both.
 - An explicit flag wins, an empty one included.
 - No file means a first install.
 - A file that doesn't read back the way `worker install` writes it keeps nothing.

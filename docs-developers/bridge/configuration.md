@@ -170,7 +170,7 @@ token resolves and GitHub hasn't refused it".
 |---|---|---|---|
 | | `AUDIOSILO_BRIDGE_GITHUB_TOKEN` | | a GitHub token that wins over the sign-in while GitHub accepts it (above). Never logged, never sealed |
 | `github.client_id` | `AUDIOSILO_BRIDGE_GITHUB_CLIENT_ID` | the App's (`ghauth.DefaultClientID`, `Iv23likw0zS13hG4spdo`) | the GitHub App the Accounts tab signs in to: letters, digits, `.`, `_`, `-`, at most 64. Empty uses the built-in one at each use, so a saved `config.yaml` never pins it. Set it only for a fork running its own App |
-| `github.web_base_url` | `AUDIOSILO_BRIDGE_GITHUB_WEB_BASE_URL` | `https://github.com` | where the device-code and token endpoints live (an absolute `http(s)` URL). For a test against a fake GitHub |
+| `github.web_base_url` | `AUDIOSILO_BRIDGE_GITHUB_WEB_BASE_URL` | `https://github.com` | where the device-code and token endpoints live (an absolute `http(s)` URL), set for a test against a fake GitHub |
 | `contribution.api_base_url` | `AUDIOSILO_BRIDGE_CONTRIBUTION_API_BASE_URL` | `https://api.github.com` | the GitHub REST API root the issues, the user lookup and the revoke go to |
 
 **The App itself:**

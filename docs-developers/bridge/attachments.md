@@ -319,8 +319,8 @@ or from a scan's backfill, re-resolves the book (`refreshEffective`) and fires t
 scan's change listener. It does that only when:
 
 - the book's stored `chapters` changed; or
-- its stored reading wasn't made for this index. An older server re-indexed the
-  book, and rebuilt its chapter rows without the list.
+- its stored reading wasn't made for this index. That happens when an older
+  server re-indexed the book and rebuilt its chapter rows without the list.
 
 `404 not_indexable` when no indexed book is there. The route is in
 [the reference](../server/api/reference.md#post-apiv1bridgerescan).

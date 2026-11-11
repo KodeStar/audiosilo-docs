@@ -1114,7 +1114,7 @@ A poll may match a preorder to another edition on disk, and Audible holds no pla
 for an unreleased ASIN. So the server leaves a preorder out of both directions:
 
 - it is not in `audible.sync`'s params;
-- the listening route rejects it with `not_synced`;
+- the listening route answers its events `rejected`, reason `not_synced`;
 - it is not in the progress feed.
 
 The Bridge's own `skipped_preorder` stays as a second guard. Once the title is
@@ -1349,8 +1349,8 @@ and the next sync brings Audible's place in. Otherwise it writes the place:
 
 The server's place is sent as it is, so a move back on the server reaches Audible.
 
-**Errors never refuse the account.** All the waits below are in memory, for this
-loop only.
+**Errors never refuse the account.** Except for Audible's `429`/`503`, the waits
+below are in memory, for this loop only.
 
 | Answer | What the loop does |
 |---|---|
