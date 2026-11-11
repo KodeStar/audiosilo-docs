@@ -577,10 +577,11 @@ table, with what each one gates and when it is `true`, is owned by
 [API conventions](../server/api/index.md#capability-flags---gate-your-features).
 By what decides their value, the flags are:
 
-- **Server setup:** `admin_ui`, `web_player` (whether `/web` is populated),
-  `transcode` (ffmpeg availability), `api_keys` (the server accepts user-minted API
-  keys), `export`, and `renditions` (true with ffmpeg and a data directory, else
+- **Server setup:** `web_player` (whether `/web` is populated), `transcode` (ffmpeg
+  availability) and `renditions` (true with ffmpeg and a data directory, else
   `false`; the kinds are a top-level `renditions` list, seam 5).
+- **Always true:** `admin_ui`, `api_keys` (the server accepts user-minted API keys)
+  and `export`.
 - **The runtime metadata switch:** `metadata`, `meta_bundle` and `meta_covers`.
 - **Always true on a server that has them:** `browse_people`, `cover_sizes`,
   `next_book` and every flag added after it, including `household` and `cast`
@@ -594,11 +595,12 @@ By what decides their value, the flags are:
   only (a session or API key of any role, not a demo account). The `bridge` flag
   itself stays public.
 - **A managed module:** one flag per [managed module](../server/modules.md),
-  `contributions` and `podcasts`. A module flag is `true` when the module's toggle
-  **and** its Bridge requirement are met, and is sent `false` otherwise. The console
-  reads `contributions` to offer contributing. `podcasts` needs the `podcast` Bridge
-  feature and gates actions, while reads stay core and players older than 2.2.0 are
-  excluded.
+  `contributions`, `podcasts` and `audible`. A module flag is `true` when the
+  module's toggle **and** its Bridge requirement are met, and is sent `false`
+  otherwise. The console reads `contributions` to offer contributing. `podcasts`
+  needs the `podcast` Bridge feature and gates actions, while reads stay core and
+  players older than 2.2.0 are excluded. Only the console reads `audible`
+  ([seam 16](#audible-accounts)).
 - **Podcast protocol flags:** `podcast_fetch:true` is an independent protocol flag,
   sent even when the Bridge is offline or the module is off. Older servers omit it
   ([seam 17](#17-podcast-shows-feeds-and-client-visibility)). `podcast_discovery` is
@@ -632,7 +634,7 @@ feature lands on the server, and gate the new UI on it in the client. Never assu
 capability is present. The one exception is `listening_sync` while unknown (see
 [The gate](#the-gate) in seam 19). A module's flag is its id. It is
 mirrored in `Capabilities` (`types.ts`) like any other flag and named in the player's
-`ModuleFlag` too (see
+`ModuleFlag` too, except `audible`, which the player doesn't mirror (see
 [Player modules](../frontend/state-and-data.md#player-modules-srcmodules)).
 
 ## 9. The web player is served *by* the server at `/web`
@@ -894,9 +896,9 @@ only a server that sends `upcoming`, and never for a kid.
 - An item opens its series page by its `local` view.
 - The series page dates its not-yet-released ghosts from the rails' `release_date`
   ("Out Nov 12, 2026").
-- Each item's real cover (`upcoming_covers`) and a calendar feed
-  (`upcoming_calendar`, a `feed` token) use media auth (see
-  [seam 3](#3-media-auth-rides-in-the-url---token)).
+- The player also shows each item's real cover (`upcoming_covers`) and offers a
+  calendar feed (`upcoming_calendar`, a `feed` token). Both carry their token in the
+  URL (see [seam 3](#3-media-auth-rides-in-the-url---token)).
 
 See [Upcoming releases](../frontend/state-and-data.md#upcoming-releases).
 
@@ -960,7 +962,8 @@ other series.
 2. That rail answers when it places that work on one of the caller's books, possibly
    in another library. A later rail never answers in its place.
 3. Otherwise the local series answer (each in turn), then the folder, then none.
-4. An unplaced community next work rides along as `work` without `local`.
+4. When one of those answers, an unplaced community next work rides along as `work`
+   without `local`.
 
 The wire shape is the same as for one series.
 
