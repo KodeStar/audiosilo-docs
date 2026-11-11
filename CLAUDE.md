@@ -51,10 +51,14 @@ Node 24 (workspace convention; `.nvmrc` in the sibling repos).
 - **User Guide readability rules**: every User Guide change follows the
   "User Guide readability rules" section of
   `docs-developers/contributing/documentation.md` (the single copy).
-- **Hyphens, not em dashes**: use `-` or restructure the sentence; do not use the
-  em dash character (em dashes read as an AI tell and produce messy heading
-  anchors). The sole exception is a code block that reproduces literal program
-  output. Full note in `docs-developers/contributing/documentation.md`.
+- **Wording rules**: every page, in both guides, follows the "Wording" section
+  of the same file (say what it does, name who does what, plain and literal,
+  one name per thing, whole sentences).
+- **No em dashes, and few spaced hyphens**: do not use the em dash character
+  (em dashes read as an AI tell and produce messy heading anchors). A spaced
+  hyphen mid-sentence is the same habit, so prefer a full stop or a comma. The
+  sole exception is a code block that reproduces literal program output. Full
+  note in `docs-developers/contributing/documentation.md`.
 - The change→page mapping table lives in
   `docs-developers/contributing/documentation.md` - it is the single copy;
   don't duplicate it here.
