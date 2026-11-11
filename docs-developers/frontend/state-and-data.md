@@ -347,15 +347,18 @@ These screens ask it:
   pages;
 - a book's bookmarks, notes and history sections;
 - Signed-in devices (`DevicesSection`) and Your household (`HouseholdMembers`);
-- Your listening (`StatsSection`), for both of its reads. Either one held with
-  nothing kept is the offline state;
+- Your listening (`StatsSection`), for both of its reads and for its server's
+  `/server` answer. Any of the three held with nothing kept is the offline
+  state. Until the `user_stats` flag is known neither read is asked, so neither
+  is ever held;
 - Year in listening, through `useYearStory`'s `offline` status, in the section
   and in the full-screen story. A streak or a goal held for the network is left
   out, like one that failed, so stats that are kept still tell their story;
-- Favourites and Home's See all. With no row in, each hands `useUnreadQuery` its
-  fan-out's `offline` (`useFavouritesAll`, `useRecentAll`, `useAllProgressAll`),
-  which says a server's list is held with nothing kept. So one server's empty
-  answer is not "none" while another's is held.
+- Favourites and Home's See all. With no row to show, each hands
+  `useUnreadQuery` its fan-out's `offline` (`useFavouritesAll`, `useRecentAll`,
+  `useAllProgressAll`), which says a server's list is held with nothing kept. So
+  one server's empty answer is not "none" while another's is held. Nor is one
+  server's progress with no finished book "none finished".
 
 Where a screen has a sign-in state, the order is signed out, then offline, then
 the error.
