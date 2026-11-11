@@ -57,10 +57,16 @@ words a failed pairing:
 | another refusal (a `4xx`) | the server refused the pairing, with the server's message |
 | the server's certificate can't be verified (a self-signed one) | pair with the server's `http://` address on the local network (the server also answers plain HTTP on the same port there) |
 | an address that isn't an absolute `http(s)` URL | a `400` on the page's own API |
-| no answer (the request itself failed, or the answer didn't finish in time) | `Couldn't reach <address>` with the reason in a few words (no such host, its name couldn't be looked up, nothing answered on that port, no route to that address, it didn't answer in time) and, for those, the address to use instead: the server's as this computer reaches it, like `http://192.168.1.10:8080` (a compose service name given to a Bridge outside that compose project is the usual cause). A `502` on the page's API |
+| no answer (the request itself failed, or the answer didn't finish in time) | `Couldn't reach <address>` with the reason in a few words, and the address to use instead (below the table). A `502` on the page's API |
 | a `5xx` from the server | the server at that address answered with an error (its status and message): try again, then check the server's log. A `502` |
 | an answer the Bridge can't use (not JSON, no token) | check the address is the AudioSilo server's and that it is up to date. A `502` |
 | the server accepted the code, but the Bridge couldn't keep its token or the pairing (`pairNotSaved`) | the pairing wasn't saved: fix the cause (the Bridge's log), make a new code and pair again, since the code is spent. A `500` that shows this sentence (`api.ErrFailed`); the token is forgotten again, so a restart never comes back half paired |
+
+For no answer, the reason is one of: no such host, its name couldn't be looked
+up, nothing answered on that port, no route to that address, or it didn't answer
+in time. For those, the message also gives the address to use instead: the
+server's as this computer reaches it, like `http://192.168.1.10:8080`. A compose
+service name given to a Bridge outside that compose project is the usual cause.
 
 `pairError` (`internal/app/backend.go`) does the wording, from v0.4.0. Once the
 server has accepted the code, `Conn.Pair` saves without the caller's cancellation
@@ -71,15 +77,18 @@ token and forgets the Bridge's status (its jobs stay). The Bridge's own Unpair o
 forgets the token on its side, so the console still shows it paired until it is
 unpaired there too.
 
-**A refused token.** A `401` on any call means the server refuses the token: it was
-unpaired in the console, another Bridge was paired, or the admin who paired it is no
-longer an enabled admin. The Bridge **keeps the token** but stops calling in (no
-heartbeat, no claims), says why on its page, and tries a heartbeat again every **5
-minutes**. If the server takes the token again (the admin was made an admin again),
-the Bridge carries on by itself, resuming the jobs the refusal stopped; an unpair or
-a new pairing revoked the token for good, so it has to be paired again. A `503`
-(the server couldn't check the token) is not a refusal: the Bridge just tries
-again.
+**A refused token.** A `401` on any call means the server refuses the token. It
+was unpaired in the console, another Bridge was paired, or the admin who paired it
+is no longer an enabled admin. The Bridge **keeps the token** but stops calling in
+(no heartbeat, no claims), says why on its page, and tries a heartbeat again every
+**5 minutes**.
+
+- If the server takes the token again (the admin was made an admin again), the
+  Bridge carries on by itself, resuming the jobs the refusal stopped.
+- An unpair or a new pairing revoked the token for good, so the Bridge has to be
+  paired again.
+- A `503` (the server couldn't check the token) is not a refusal. The Bridge
+  tries again.
 
 ## The bridge token
 
@@ -114,31 +123,35 @@ pairing and after a mapping check finishes:
 | Field | What it carries |
 |---|---|
 | `version` | the Bridge's version |
-| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, `chapters.detect` since Phase 1d, `sidecars.contribute` and `meta.correct` since Phase 2b, `readalong.align` since Phase 3c, `audible.poll` since Phase 4a, `audible.import` since Phase 4b, and `audible.sync` since Phase 4c) |
+| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate`, `sidecars.describe`, `chapters.detect`, `sidecars.contribute`, `meta.correct`, `readalong.align`, `audible.poll`, `audible.import` and `audible.sync`; an older Bridge lists fewer) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
 | `workers` | its [ASR workers](workers.md) that have connected at least once: `name`, `version`, `platform` (the GOOS/GOARCH and the speech recognition in one line, e.g. `darwin/arm64, mlx-whisper (metal)`) and `last_seen` |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
 | `estimates` | its figures for costing a job before it is queued, one block per family (`sidecars`: [the Bridge's figures](generating.md#the-bridges-figures)); absent until its engine has started |
-| `setup` | Phase 2b, **only once the server accepts it** (below): the setup checklist (`items`), `can_contribute` and `github_login` |
+| `setup` | **only once the server accepts it** (below): the setup checklist (`items`), `can_contribute` and `github_login` |
 
-The server checks its structure and refuses it when that is wrong (kinds of the
-form `family.name`, listed once; library ids above 0, listed once; `ui_url` an
-absolute `http(s)` URL, since the console renders it as a link). Its **free text**
-(the version, the mappings' paths and errors, the workers) is **cleaned rather than
-refused**: control characters become spaces and each text is cut to its limit. Much
-of it comes from the outside world (a file name, an OS error), and a refused
-heartbeat would leave the Bridge offline. The server keeps **only the last one**,
-in `bridge_status`. Its answer lists the
+The server checks the heartbeat's structure and refuses it when that is wrong:
+
+- kinds of the form `family.name`, listed once;
+- library ids above 0, listed once;
+- `ui_url` an absolute `http(s)` URL, since the console renders it as a link.
+
+Its **free text** (the version, the mappings' paths and errors, the workers) is
+**cleaned rather than refused**. Control characters become spaces, and each text
+is cut to its limit. Much of it comes from the outside world (a file name, an OS
+error), and a refused heartbeat would leave the Bridge offline.
+
+The server keeps **only the last one**, in `bridge_status`. Its answer lists the
 server's libraries (`id`, `name`, `root`), which is how the Bridge learns which
-libraries to map, and since Phase 2b `accepts`.
+libraries to map, and `accepts`.
 
 ### Optional blocks: `accepts`
 
 The server decodes the heartbeat **strictly** (an unknown field is a `400`), so a
-newer Bridge can't simply add a field. Phase 2b negotiates instead: the reply
+newer Bridge can't simply add a field. The two sides negotiate instead. The reply
 carries `accepts`, the optional protocol features this server reads
-(`bridge.HeartbeatAccepts`, `["setup", "claim_min_priority"]` today; an older
-server sends none). `setup` names a heartbeat block; `claim_min_priority`
+(`bridge.HeartbeatAccepts`, `["setup", "claim_min_priority"]` today). An older
+server sends none. `setup` names a heartbeat block; `claim_min_priority`
 permits a claim query option, not a new heartbeat request field. The
 Bridge (`link.StatusReply.Accepting`, `internal/app`):
 
@@ -150,8 +163,9 @@ Bridge (`link.StatusReply.Accepting`, `internal/app`):
 - forgets all of it on every pair and unpair, and when the server refuses its
   token or takes it again.
 
-So a Phase 2b Bridge works with an older server (no checklist in the console) and
-an older Bridge with a Phase 2b server (no `setup` sent, none shown).
+So a Bridge that sends `setup` works with an older server (no checklist in the
+console), and an older Bridge works with a server that accepts it (no `setup`
+sent, none shown).
 The link separately remembers `claim_min_priority` for that pairing. Without
 it, the runner makes ordinary claims and uses two ordinary download slots.
 
@@ -168,7 +182,7 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
 | `agent` | no | the agent container is available (with its own or a handed-over credential); only characters, recaps and descriptions need it | the backend, or why it isn't ready in plain words (below) |
 | `budget` | yes | the monthly budget was saved on the page or is set by the environment (`Config.BudgetReviewed`) | "$100 a month" or "no monthly cap" |
 | `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token" |
-| `audible` | no | Phase 4a: at least one Audible account signed in, none refused and none on an older device profile (an additive id: older servers and pages leave it out) | "1 account signed in", "1 account needs signing in again", or "... signing in again to keep backups working" when any is on an older profile; Phase 4c adds "; places don't sync until then" while one is refused, and "; places not syncing for 1 account: " and the reason when an account's last position sync failed (that alone never makes it not done) |
+| `audible` | no | at least one Audible account signed in, none refused and none on an older device profile (an additive id: older servers and pages leave it out) | "1 account signed in", "1 account needs signing in again", or "... signing in again to keep backups working" when any is on an older profile; it adds "; places don't sync until then" while one is refused, and "; places not syncing for 1 account: " and the reason when an account's last position sync failed (that alone never makes it not done) |
 
 ```json
 "setup": {
@@ -233,10 +247,31 @@ The server counts the Bridge **online** while the last heartbeat is under **two
 minutes** old (`bridge.OnlineWindow`). Then, and only then, `GET /server` says
 `capabilities.bridge: true`, with a top-level `bridge: {version, features}` beside
 `capabilities`. `features` are the job families the Bridge runs **that the server
-knows**: the part of each known kind before its dot, so `bridge.verify` gives
-`bridge`, `sidecars.generate` (or `sidecars.describe`, `sidecars.contribute`) gives `sidecars`, `chapters.detect` gives `chapters`, `meta.correct` gives `meta` and `readalong.align` gives `readalong`; `podcast.subscribe` and `podcast.poll` give `podcast` (a list, `[]` for none, never `null`). `features` also lists `contribute` while the Bridge can contribute (`Status.CanContribute()`, above; `bridge.FeatureContribute`), the first feature that is not a job family. The server's `contributions` [module](../server/modules.md) needs that feature. **The `bridge` block goes only to a signed-in caller** (Phase 2b): a session or an API key of any role, not a demo account's (`api.signedIn` over `auth.Peek`, which records nothing on the token); an anonymous, refused, demo or bridge token sees the flag alone. The capability flags stay public. The server reuses the heartbeat it
-read for up to **5 seconds**, so `GET /server`, which every client calls often,
-rarely reads the database for it; a pairing or an unpair drops that copy at once. A
+knows**: the part of each known kind before its dot. It is a list, `[]` for none,
+never `null`.
+
+| Kind | Feature |
+|---|---|
+| `bridge.verify` | `bridge` |
+| `sidecars.generate`, `sidecars.describe`, `sidecars.contribute` | `sidecars` |
+| `chapters.detect` | `chapters` |
+| `meta.correct` | `meta` |
+| `readalong.align` | `readalong` |
+| `podcast.subscribe`, `podcast.poll` | `podcast` |
+
+`features` also lists `contribute` while the Bridge can contribute
+(`Status.CanContribute()`, above; `bridge.FeatureContribute`). It is the first
+feature that is not a job family, and the server's `contributions`
+[module](../server/modules.md) needs it.
+
+**The `bridge` block goes only to a signed-in caller**: a session or an API key of
+any role, not a demo account's (`api.signedIn` over `auth.Peek`, which records
+nothing on the token). An anonymous, refused, demo or bridge token sees the flag
+alone. The capability flags stay public.
+
+The server reuses the heartbeat it read for up to **5 seconds**, so
+`GET /server`, which every client calls often, rarely reads the database for it. A
+pairing or an unpair drops that copy at once. A
 client checks the flag **and** the feature it needs; a feature the Bridge doesn't
 advertise is off even while the flag is on. The console reads `GET /admin/bridge`
 for its Bridge page, and both the console and the player gate
@@ -294,13 +329,16 @@ job back in the queue.
 
 The Bridge long-polls `GET /bridge/jobs/next?wait=25&kind=…`. The server picks the
 highest-priority, oldest queued job among the kinds the last heartbeat named that
-the server knows, narrowed to the `kind` values (the kinds the Bridge has a free
-**lane** for), and leases it to the Bridge for **2 minutes** (`bridge.Lease`),
-incrementing `attempts`. With none queued it waits up to 25 seconds, and a job
-queued meanwhile (or one put back by a lapsed lease) wakes it; with no kind left after the
-narrowing it answers `204` at once, and a server that is stopping ends the wait
-with `204`. Before the first heartbeat a claim is `409 no_heartbeat`, and a claim
-whose token a pairing or an unpair revoked during the wait is `401`.
+the server knows. It narrows them to the `kind` values, the kinds the Bridge has a
+free **lane** for. It leases the job to the Bridge for **2 minutes**
+(`bridge.Lease`) and increments `attempts`.
+
+- With none queued, the server waits up to 25 seconds. A job queued meanwhile, or
+  one put back by a lapsed lease, wakes it.
+- With no kind left after the narrowing, it answers `204` at once.
+- A server that is stopping ends the wait with `204`.
+- Before the first heartbeat, a claim is `409 no_heartbeat`.
+- A claim whose token a pairing or an unpair revoked during the wait is `401`.
 
 **An idle claim writes nothing.** Each try first reads, on the reader pool
 (`bridge.claimDue`), whether the token is still live and whether the claim has
@@ -354,7 +392,7 @@ changes at most every 2 seconds, and a keepalive at least every **30 seconds** e
 with nothing new (`jobs.DefaultKeepalive`), so a lease only runs out when the
 Bridge stops; four keepalives fit in the 2-minute lease. A report that only
 renews the lease or carries progress is a user-state write on the server, which
-leaves the caches keyed on the content generation warm (server#258); a new
+leaves the caches keyed on the content generation warm. A new
 state, result or error, or a report that expires another job's lease, is a
 content write. After a report that didn't reach the server (no answer, a 5xx, a
 408 or a 429) the next goes after **10 seconds** (`jobs.DefaultReportRetry`) until
@@ -398,48 +436,57 @@ The Bridge's own page can cancel a job it is running too; that is reported to th
 server as `cancelled`, the same as an admin's cancel.
 
 A **parked** job the server cancels at once is still held by the Bridge until its
-next keepalive (up to 30 seconds), so a book job queued for the same book right
-after would meet it as an open job and be refused ("cancel it first"). From
-v0.5.0 a new `sidecars.generate`, `sidecars.describe`, `chapters.detect` or
-`readalong.align` job that finds another open job on its engine book first asks
-that job to report now (`jobs.Reporter.Refresh`), and when the answer stopped it
-(or it couldn't be asked) waits for its end, up to `openJobWait` (30 s), with the
-progress message "Waiting for the book's earlier job to end"
-(`Handler.awaitOpenJobEnd`). A job the server still holds open is refused at
-once, as before. An ending job stops its engine book before its end is recorded
-(`release`), so the waiting job starts only once the engine's cancel has
-returned.
+next keepalive (up to 30 seconds). So a book job queued for the same book right
+after would meet it as an open job and be refused ("cancel it first").
 
-**The server's cancel reasons** (server 2.5.1). When the server stops a
-job itself it writes the reason as the job's `error`: the kinds' `cancelsOpen`
-strings ("a generate job for the book replaced it", "... replaced it; it finds the
-chapters itself", "... replaced what it was sharing", "... replaced it; make the
-read-along again after"), `CancelMoved` ("the book moved onto another job of this
-kind", `MoveJobs`) and `CancelReplacedRequest` ("a newer request replaced it", a
-podcast request replaced by `Enqueue` through `cancelOpenTx`). `IsCancelReason`
-names them. `MoveJobs` cancels the old path's open job at once in any state
-(no `cancel_requested`; a Bridge still working on it learns at its next report,
-`ErrNotHeld`). Through `cancelOpenTx`, a queued or parked job is cancelled at
-once with the reason; for a claimed or running one `cancelOpenTx` sets `cancel_requested` and records the reason now
-(unless an admin asked first, whose cancel keeps its own error), and
-`UpdateHeld` keeps it through the Bridge's reports, which always send an error of
-their own, while the job works and when it ends `cancelled`. A job that ends
-`done`, `failed` or `needs_attention` anyway carries the Bridge's own error (or
-none), never the reason.
+From v0.5.0, a new `sidecars.generate`, `sidecars.describe`, `chapters.detect` or
+`readalong.align` job that finds another open job on its engine book first asks
+that job to report now (`jobs.Reporter.Refresh`). When the answer stopped it, or it
+couldn't be asked, the new job waits for its end, up to `openJobWait` (30 s), with
+the progress message "Waiting for the book's earlier job to end"
+(`Handler.awaitOpenJobEnd`). A job the server still holds open is refused at once.
+An ending job stops its engine book before its end is recorded (`release`), so the
+waiting job starts only once the engine's cancel has returned.
+
+**The server's cancel reasons** (server 2.5.1). When the server stops a job itself,
+it writes the reason as the job's `error`. `IsCancelReason` names the reasons:
+
+- the kinds' `cancelsOpen` strings: "a generate job for the book replaced it",
+  "... replaced it; it finds the chapters itself", "... replaced what it was
+  sharing", "... replaced it; make the read-along again after";
+- `CancelMoved` ("the book moved onto another job of this kind", `MoveJobs`);
+- `CancelReplacedRequest` ("a newer request replaced it", a podcast request
+  replaced by `Enqueue` through `cancelOpenTx`).
+
+`MoveJobs` cancels the old path's open job at once in any state, with no
+`cancel_requested`. A Bridge still working on it learns at its next report
+(`ErrNotHeld`).
+
+Through `cancelOpenTx`, a queued or parked job is cancelled at once with the
+reason. For a claimed or running one, `cancelOpenTx` sets `cancel_requested` and
+records the reason now, unless an admin asked first, whose cancel keeps its own
+error. `UpdateHeld` keeps the reason through the Bridge's reports, which always
+send an error of their own, while the job works and when it ends `cancelled`. A
+job that ends `done`, `failed` or `needs_attention` anyway carries the Bridge's own
+error (or none), never the reason.
 
 The console words a cancelled row (`cancelledView` in `generate-model.ts`, which
 keeps a copy of those strings, `SERVER_CANCEL_REASONS`; `CancelledStatus` in
-`generate-status.tsx`; `en.json` `bridge.jobs.*`): a server reason as it is;
-else `bridge.jobs.cancelledByAdmin` "Cancelled by an admin." when
-`cancel_requested` (an admin's cancel), or `bridge.jobs.cancelledOther`
-"Cancelled." (the Bridge ended it itself), plus, for a job cancelled from a park,
-`bridge.jobs.cancelledPark` ("It was waiting for attention:" and the park's reason) and the
-park's plain hint. A working job with `cancel_requested` and a server reason
-(`isServerCancelReason`) shows that reason muted, not as an error
-(`bridge-jobs.tsx`), for a kind outside `BOOK_KINDS` (a podcast request); a book
-kind's row (every `cancelsOpen` kind among them) is `GenerateStatus`, which keeps
-its progress until the job ends `cancelled`. Any other `error` on a cancelled job (a supervisor's text,
-say) is never shown.
+`generate-status.tsx`; `en.json` `bridge.jobs.*`):
+
+- a server reason as it is;
+- else `bridge.jobs.cancelledByAdmin` "Cancelled by an admin." when
+  `cancel_requested` (an admin's cancel);
+- else `bridge.jobs.cancelledOther` "Cancelled." (the Bridge ended it itself);
+- plus, for a job cancelled from a park, `bridge.jobs.cancelledPark` ("It was
+  waiting for attention:" and the park's reason) and the park's plain hint.
+
+A working job with `cancel_requested` and a server reason (`isServerCancelReason`)
+shows that reason muted, not as an error (`bridge-jobs.tsx`), for a kind outside
+`BOOK_KINDS` (a podcast request). A book kind's row (every `cancelsOpen` kind among
+them) is `GenerateStatus`, which keeps its progress until the job ends
+`cancelled`. Any other `error` on a cancelled job (a supervisor's text, say) is
+never shown.
 
 ### Resuming after a restart
 
@@ -503,7 +550,7 @@ it is queued or parked, else `cancel_requested`, its error "a generate job for t
 book replaced it"). A generate job is never refused for an open describe job. See
 [A description on its own](generating.md#a-description-on-its-own-sidecarsdescribe).
 
-Phase 1d's `chapters.detect` and Phase 3c's `readalong.align` join them. `kindSpec`'s `refusedWhileOpen` and
+`chapters.detect` and `readalong.align` join them. `kindSpec`'s `refusedWhileOpen` and
 `cancelsOpen` are the one statement of which open kind refuses, or gives way to,
 which:
 
@@ -517,42 +564,47 @@ which:
 | `readalong.align` | `sidecars.generate` (`409 generate_open`), `chapters.detect` (`409 detect_open`), parked ones too: the Bridge runs one engine book per audio source, so runs over the same audio never overlap | nothing |
 
 A job being cancelled (`cancel_requested`) refuses nothing, since it ends without
-writing (so a detect job queues behind a generate job being cancelled), and the
+writing. So a detect job queues behind a generate job being cancelled. The
 blocker kinds are asked in name order, so the answer is stable.
-`Service.Blocker` names the open job that refuses a new job of a kind now (the
-estimate's `open_job` uses it). The api also refuses `chapters.detect` with `409
-chapters_chosen` for a book whose chapter source an admin chose (the catalog holds
-the choice), since a found list stands in only with no choice, and
-`readalong.align` with `409 no_ebook` for a book whose index holds no ebook
-(before the queue). See [Read-along](readalong.md#the-job).
+`Service.Blocker` names the open job that refuses a new job of a kind now, and the
+estimate's `open_job` uses it.
+
+The api also refuses two kinds before the queue:
+
+- `chapters.detect` with `409 chapters_chosen` for a book whose chapter source an
+  admin chose (the catalog holds the choice), since a found list stands in only
+  with no choice;
+- `readalong.align` with `409 no_ebook` for a book whose index holds no ebook. See
+  [Read-along](readalong.md#the-job).
 
 ### Jobs of a managed module
 
-Phase 2b's community jobs belong to the `contributions`
-[module](../server/modules.md): `kindSpec.module` names it for `sidecars.contribute`
-and `meta.correct`, and `bridge.ModuleFor(kind, params)` also names it for a
-`sidecars.generate` job with `contribute: "issue"`. For such a job:
+The community jobs belong to the `contributions` [module](../server/modules.md).
+`kindSpec.module` names it for `sidecars.contribute` and `meta.correct`, and
+`bridge.ModuleFor(kind, params)` also names it for a `sidecars.generate` job with
+`contribute: "issue"`. For such a job:
 
 - `POST /admin/bridge/jobs` answers **`404 module_off`** while the module's toggle
   is off, before anything else about the job is checked (as the module's own
   routes would);
 - `Enqueue` refuses it **`409 cannot_contribute`** unless `Status.CanContribute()`;
-- while the toggle is off, a **queued** one is **held**: `nextQueued` passes over
+- while the toggle is off, a **queued** one is **held**. `nextQueued` passes over
   it (`bridge.Service.ModuleOn`, wired by `SetBridge`), so turning the module off
-  leaves its queued jobs at rest, a requeued one included, until it is on again;
-  a held `sidecars.contribute` job still gives way to a new `sidecars.generate`
-  job for the book like a parked one (no `409 contribute_open`, not the estimate's
-  `open_job`, cancelled). "Off" is the toggle alone: with it on, a queued share
-  refuses a generate job even while the Bridge can't contribute. A job the Bridge
-  already holds (claimed, running or parked) carries on.
+  leaves its queued jobs at rest, a requeued one included, until it is on again.
+  A held `sidecars.contribute` job still gives way to a new `sidecars.generate`
+  job for the book like a parked one: no `409 contribute_open`, not the
+  estimate's `open_job`, and cancelled;
+- "off" is the toggle alone. With it on, a queued share refuses a generate job
+  even while the Bridge can't contribute;
+- a job the Bridge already holds (claimed, running or parked) carries on.
 
-On the Bridge, each kind has a handler and a **lane**: how many jobs of that lane
-run at once. `light` has room for 2 (`bridge.verify`, and Phase 2b's
-`sidecars.contribute` and `meta.correct`, a few reads and HTTP calls each); `pipeline` for 25
-(`sidecars.generate`, whose jobs mostly wait on the engine's own scheduler, which
-decides what actually runs, `sidecars.describe`, which can wait a long time
-on an agent park, `chapters.detect`, which follows an engine book like
-generate, and Phase 3c's `readalong.align`, likewise).
+On the Bridge, each kind has a handler and a **lane**, which sets how many jobs
+of that lane run at once:
+
+| Lane | Room | Kinds |
+|---|---|---|
+| `light` | 2 | `bridge.verify`, `sidecars.contribute` and `meta.correct`: a few reads and HTTP calls each |
+| `pipeline` | 25 | `sidecars.generate`, whose jobs mostly wait on the engine's own scheduler, which decides what actually runs; `sidecars.describe`, which can wait a long time on an agent park; `chapters.detect`, which follows an engine book like generate; and `readalong.align`, likewise |
 
 ### Podcast jobs
 
@@ -568,7 +620,7 @@ kind as `books`. Private subscribe URLs are injected only into the claim
 response, sealed before local claim recording, and redacted on other reads.
 Default admin job lists omit polls unless `kind=podcast.poll` is requested;
 fetch and retain jobs are listed.
-Phase 2c-3's OPML import queues the same `podcast.subscribe` jobs as a single
+The OPML import queues the same `podcast.subscribe` jobs as a single
 follow, so the Bridge sees no new kind or params; directory search runs on
 the server ([Discovery and OPML](podcasts.md#discovery-and-opml-transfer)).
 All podcast kinds are quiet and send no notifications. Fetch/retain outcomes
@@ -582,35 +634,39 @@ listener routes.
 
 ### Audible jobs
 
-`audible.poll` (Phase 4a) belongs to the `audible` module: internal (refused by
-`POST /admin/bridge/jobs` with `400`), quiet, params `{"account", "template"}`
-(`template` the account's placement template, omitted when empty) with no library
-or path, deduped per account, and it promotes an open poll to a person's priority
-when Check now asks. It runs in the `light` lane and writes nothing into a
-library (an ASIN it backfills goes through the server). A refused poll fails
-with a code in its result, `audible_refused` (the device) or `audible_sign_in`
-(the sign-in, for now); the server folds neither, and the console's Bridge jobs
-list words both. The module's scheduler queues it; queued polls are held while
-the module is off. See
+`audible.poll` belongs to the `audible` module. It is internal (refused by
+`POST /admin/bridge/jobs` with `400`) and quiet. Its params are
+`{"account", "template"}` (`template` the account's placement template, omitted
+when empty), with no library or path. It is deduped per account, and it promotes
+an open poll to a person's priority when Check now asks. It runs in the `light`
+lane and writes nothing into a library; an ASIN it backfills goes through the
+server. A refused poll fails with a code in its result, `audible_refused` (the
+device) or `audible_sign_in` (the sign-in, for now). The server folds neither, and
+the console's Bridge jobs list words both. The module's scheduler queues it, and
+queued polls are held while the module is off. See
 [Audible](audible.md#the-poll-audiblepoll).
 
-`audible.import` (Phase 4b) backs up one title into the account's library. It
-belongs to the `audible` module too: internal, a **writing** kind (a writable
-mapping of a books library, `library_not_writable` otherwise), no book path,
-params `{account, asin, library_id, dest_path, template}` built by the server,
-deduped per account and title, and **not** quiet (done and failed are notified,
-named by the title). The server sets its priority by who asked (a console Back
+`audible.import` backs up one title into the account's library. It belongs to
+the `audible` module too:
+
+- internal;
+- a **writing** kind: it needs a writable mapping of a books library, else
+  `library_not_writable`;
+- no book path;
+- params `{account, asin, library_id, dest_path, template}`, built by the server;
+- deduped per account and title;
+- **not** quiet: done and failed are notified, named by the title. The server sets its priority by who asked (a console Back
 up, a policy or Back up everything; see
 [the priorities](audible.md#on-the-server-queueing-internalaudibleimportsgo-catalogaudible_importgo)).
 It runs in the `download` lane, one per account at a time, and its partial
 download survives a restart. See
 [Backing up a title](audible.md#backing-up-a-title-audibleimport).
 
-`audible.sync` (Phase 4c) brings an account's places on Audible to the server. It
-belongs to the `audible` module: internal, quiet, no library or book path, params
-`{account, titles: [{asin, library_id, path, runtime_s}]}` built by the server (at
-most 1 MiB), deduped per account (a queued one takes the newest titles), only the
-newest ended one kept. The scheduler queues it every 15 minutes for each account
+`audible.sync` brings an account's places on Audible to the server. It belongs to
+the `audible` module. It is internal and quiet, with no library or book path. Its
+params, `{account, titles: [{asin, library_id, path, runtime_s}]}`, are built by
+the server (at most 1 MiB). It is deduped per account (a queued one takes the
+newest titles), and only the newest ended one is kept. The scheduler queues it every 15 minutes for each account
 whose sync is on, at priority `-10`, and the console queues it at once when sync is
 turned on or a title's sync changes. It runs in the `light` lane and writes nothing
 into a library. Its failure codes are `audible_refused` (the server stops queueing
@@ -633,7 +689,7 @@ was is never news. The rules (which parks are transient) are in
 
 ## The proof job: `bridge.verify`
 
-Phase 0's one kind proves the loop end to end without changing anything: the
+`bridge.verify` proves the loop end to end without changing anything. The
 console's **Verify** button on a library queues it.
 
 | | |
