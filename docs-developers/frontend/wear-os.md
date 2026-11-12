@@ -256,8 +256,8 @@ After `npx expo prebuild -p android`, from `android/`:
 listening, the Media3 constants and the screens' words. `.github/workflows/wear.yml` runs the
 core tests, then a prebuild and
 `:wear:assembleDebug :wear:testDebugUnitTest :wear:assembleRelease :app:assembleDebug`. It then
-checks that the release dex holds no debug sign-in and keeps its capability. It does not run the
-phone module's `:audiosilo-watch:testDebugUnitTest`. The phone's TS side is ordinary jest with the
+checks that the release dex holds no debug sign-in and keeps its capability, and runs the phone
+module's `:audiosilo-watch:testDebugUnitTest`. The phone's TS side is ordinary jest with the
 module mocked ([the list](testing.md#whats-covered-today)).
 
 **The debug sign-in** (debug builds only) reads intent extras on `MainActivity`: `debug_pair`,
