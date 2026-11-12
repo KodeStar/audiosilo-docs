@@ -75,7 +75,9 @@ with black corners. They show layout only: nothing in them was run on a real wat
 
 The `phone-` filename prefix caps a shot at 320px (`custom.css`). Watch shots are
 capped by page, not by name, since most are under Docusaurus's 10 KB limit and
-inlined as data URIs with no filename to match.
+inlined as data URIs with no filename to match. A `phone-` shot on a watch page
+would be inlined too, so the Wear OS page links its phone shots with `pathname://`,
+which keeps the filename.
 
 No shot shows this machine's folders. `capture-admin.mjs` and
 `capture-setup.mjs` route every `/api/` answer through `showDockerPaths` in

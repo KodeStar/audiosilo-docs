@@ -32,12 +32,12 @@ The Wear OS app has been tested on the Wear OS emulator, not yet on a real watch
 1. On your phone, open your [account page](account.md#opening-it) for the server.
 2. On the **Wear OS watch** card, tap **Install on watch**. Google Play opens on your watch at AudioSilo. Install it there.
 
-   ![The Wear OS watch card before AudioSilo is on the watch, with Install on watch](/img/screenshots/wear/phone-card-install.png)
+   ![The Wear OS watch card before AudioSilo is on the watch, with Install on watch](pathname:///img/screenshots/wear/phone-card-install.png)
 
 3. Back on the card, tap **Set up your watch**.
 4. Keep the watch close. It signs in by itself, with nothing to type and no need to open the app.
 
-![The Wear OS watch card on an Android phone, with Set up your watch and Books on your watch](/img/screenshots/wear/phone-card.png)
+![The Wear OS watch card on an Android phone, with Set up your watch and Books on your watch](pathname:///img/screenshots/wear/phone-card.png)
 
 You can also install AudioSilo from Google Play on the watch itself. The card then offers **Set up your watch** straight away.
 
@@ -63,7 +63,7 @@ Once signed in, the card shows the account and how syncing is going. **Books on 
 
 On your phone, open a book's [book menu](browsing.md#the-book-menu), or **More** on its [book page](book-page.md), and tap **Send to watch**. If the watch isn't signed in to this account yet, the phone signs it in first.
 
-![The More sheet of a book page on an Android phone, with Send to watch](/img/screenshots/wear/phone-send-to-watch.png)
+![The More sheet of a book page on an Android phone, with Send to watch](pathname:///img/screenshots/wear/phone-send-to-watch.png)
 
 You don't need to open AudioSilo on the watch. The watch takes the book and starts the download in the background.
 
@@ -87,11 +87,11 @@ Wear OS can hold background work back to save battery. If a book stays waiting, 
 
 The [Downloads](offline-downloads.md#the-downloads-page) page on your phone has an **On your watch** section. It lists every book you sent and every book the watch holds.
 
-![On your watch in Downloads on an Android phone: a book with its size](/img/screenshots/wear/phone-downloads-section.png)
+![On your watch in Downloads on an Android phone: a book with its size](pathname:///img/screenshots/wear/phone-downloads-section.png)
 
 Each row says how far the book has got: sent, delivered to your watch, waiting on your watch, preparing on the server, downloading, then on your watch. A row can lag behind the watch's own screen. If your watch hasn't taken a book in 7 days, tap **Send again**.
 
-![On your watch in Downloads on an Android phone: one book downloading to the watch, one preparing on the server](/img/screenshots/wear/phone-downloads-preparing.png)
+![On your watch in Downloads on an Android phone: one book downloading to the watch, one preparing on the server](pathname:///img/screenshots/wear/phone-downloads-preparing.png)
 
 To take a book off the watch from your phone, tap **Remove** on its row. If the book is playing on the watch, it stops. Your place in the book is kept.
 
