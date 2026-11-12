@@ -47,7 +47,7 @@ Until it is signed in, the watch asks you to set it up from your phone. If your 
 
 ![The watch before it is set up: Open AudioSilo on your phone, and Get AudioSilo on your phone](/img/screenshots/wear/watch-set-up.png)
 
-After the first sign-in, the watch asks whether AudioSilo may show notifications. Allow it to see how a download is going.
+After the first sign-in, a watch on Wear OS 4 or later asks whether AudioSilo may show notifications. Allow it to see how a download is going.
 
 Once signed in, the card shows the account and how syncing is going. **Books on your watch** opens them in [Downloads on your phone](#in-downloads-on-your-phone). The watch also shows under [Signed-in devices](account.md#signed-in-devices) as a Wear OS device.
 
@@ -97,7 +97,7 @@ To take a book off the watch from your phone, tap **Remove** on its row. If the 
 
 ## Storage
 
-The watch needs room for the book plus 200 MB spare. If there isn't room, the download doesn't start and says how much space it needs.
+The watch needs room for the book plus 200 MB spare. If there isn't room, the download stops, and the book's row in **On this watch** says how much space it needs.
 
 Books stay on the watch until you remove them, even finished ones. To remove one:
 

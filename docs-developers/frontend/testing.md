@@ -494,7 +494,7 @@ npm run test:watch
 ### The Wear OS core
 
 This needs no emulator. Gradle builds the Wear OS app's pure Kotlin `wear-core/` and runs its
-JUnit suites on the JVM. It skips, and passes, without JDK 17, and CI's `wear.yml` runs it
+JUnit suites on the JVM (JDK 17 or later). It skips, and passes, with no JDK, and CI's `wear.yml` runs it
 before building the app. See [Wear OS](wear-os.md#tests).
 
 ```sh

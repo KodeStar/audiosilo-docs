@@ -68,16 +68,18 @@ Not ported, because they are Apple-only: `Outbox.backgroundBody` and `applyBackg
 `ClockSkew.clockOffset`, `BackgroundSync`, `AddressPicker.unattended` and
 `RenditionPlan.keepsTransfer`. Wear's `SyncSchedule` says when a send runs instead.
 
-Wear's own pure files are `Downloads.kt` (the account, the item cache, the downloads index,
-Continue listening's rows), `BookDownload` (one book's run), `SystemPause`, `PhoneInbox`,
-`FileSpanStore` and `Labels` (the screens' words).
+`PlaybackAttempt` is ported too, its failures read from Media3's error codes (mirrored as
+constants, checked against Media3 by `:wear`'s PlaybackTest). Wear's own pure pieces are
+`Downloads.kt` (the account, the item cache, the downloads index, Continue listening's rows),
+`BookDownload` (one book's run), `SystemPause` (in `PlaybackAttempt.kt`), `PhoneInbox`,
+`FileSpanStore` (in `SpanRecorder.kt`) and `Labels` (the screens' words).
 
 **Durable files.** `JsonFile(durable = true)` syncs the bytes before its rename and the folder
 after, so a battery death never leaves an empty file. Only `outbox.json`, `open-span.json` and
 `places.json` are durable, since losing them loses listening. Everything else is rebuilt from the
 server or the phone. While playing, a plain 5 s tick syncs only the open span, and the 15 s cut
 syncs the outbox, then the next span, then the place. `places.json` is synced on a pause, seek,
-stop, rate change, the end, a closed span, the background, a removal and sign-out. On the plain
+stop, rate change, the end, a call's hold, a closed span, the background, a removal and sign-out. On the plain
 tick the place changes in memory only, and at launch `PlaceStore.recover` takes a newer place
 from the span a kill left behind. An outbox with nothing waiting removes its file.
 
@@ -110,7 +112,8 @@ Each run picks its own address over its own network (`AddressPicker.pick`, home 
 again once it is 90 s old.
 
 The worker runs in the foreground (`dataSync`) with a "Getting (title) ready" notification. The
-watch asks for `POST_NOTIFICATIONS` once, after the first sign-in.
+watch asks for `POST_NOTIFICATIONS` once, after the first sign-in (Wear OS 4 and later; Wear OS 3
+has no such question).
 
 ## Sync
 
@@ -182,7 +185,7 @@ node, so a watch ignores items addressed to another.
 |---|---|---|
 | `pair` | `/audiosilo/v1/to/<node>/pair` (one path, so a new pair replaces an undelivered one) | the phone |
 | `book`, `remove` | `/audiosilo/v1/to/<node>/book/<key>`, `<key>` the hex SHA-256 of `<server_id>.<user_id>\|<library_id>\|<path>` (one path per book, so the latest intent wins) | the phone |
-| receipt | `/audiosilo/v1/from/<node>/taken/<key>`, `{v:1, type:"taken", path, sent_at}` | the watch |
+| receipt | `/audiosilo/v1/from/<node>/taken/<last>`, `<last>` the item's last path segment (`pair` or the book's key), `{v:1, type:"taken", path, sent_at}` | the watch |
 | `watch-state` | `/audiosilo/v1/watch-state` (the latest only) | the watch |
 
 **Receipts, not deletes.** The watch never deletes the phone's items: a cross-device delete
@@ -220,7 +223,7 @@ services being there. A Data Layer that fails or gives no answer in 5 s is not "
 
 **One watch at a time.** The target is the node with the app (the capability or a
 `watch-state`) whose `watch-state` this phone saw last (kept in prefs), else a connected one
-nearby, else a connected one. `watch_id` is its node id. A new pair drops any pair held for
+nearby, else a connected one, else any of them. `watch_id` is its node id. A new pair drops any pair held for
 another watch.
 
 **Pairs expire.** The phone prunes a `pair` past `expires_at` at every snapshot, send and start,
@@ -241,7 +244,7 @@ card, the action and the section hide for a kid's or demo account, as on iOS.
 ## Tests
 
 ```sh
-npm run test:wear    # wear-core's JUnit suites; skips, and passes, without JDK 17
+npm run test:wear    # wear-core's JUnit suites (JDK 17 or later); skips, and passes, with no JDK
 ```
 
 After `npx expo prebuild -p android`, from `android/`:
@@ -255,7 +258,7 @@ After `npx expo prebuild -p android`, from `android/`:
 listening, the Media3 constants and the screens' words. `.github/workflows/wear.yml` runs the
 core tests, then a prebuild and
 `:wear:assembleDebug :wear:testDebugUnitTest :wear:assembleRelease :app:assembleDebug`. It then
-checks that the release dex holds no debug sign-in and keeps its capability, and runs the phone
+checks that the release dex holds no debug sign-in and the release APK keeps its capability, and runs the phone
 module's `:audiosilo-watch:testDebugUnitTest`. The phone's TS side is ordinary jest with the
 module mocked ([the list](testing.md#whats-covered-today)).
 
