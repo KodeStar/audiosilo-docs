@@ -13,7 +13,7 @@ A downloaded book plays entirely from your device, with no connection to your se
 
 The cover comes too, and so does the book's ebook, when it has one. To free the space later, tap **Downloaded**, then **Remove download**.
 
-[Podcast episodes](podcasts.md) can't be downloaded yet. They always stream from your server.
+You can download [podcast episodes](podcasts.md#download-an-episode) the same way.
 
 :::tip
 Audiobooks are big, often hundreds of megabytes each. Download on Wi-Fi when you can.
@@ -30,16 +30,18 @@ The **Downloads** tab shows everything stored on the device you're using.
 - **In progress**: downloads running now, waiting, or stopped.
 - **On your Apple Watch**, in the iPhone app with a paired watch: the books on your watch. See [Apple Watch](apple-watch.md#in-downloads-on-your-iphone).
 - **Ready offline**: the books on this device. Tap one to open it, or **Remove** to delete it from the device. The book, your progress and your bookmarks stay safe on the server.
+- **Podcast episodes**: the episodes on this device, each with its show.
 
 Downloads belong to each device. What you downloaded on your phone isn't on your tablet.
 
 ## Automatic downloads
 
-The **Automatic downloads** card holds three settings. They're the same ones as in [Settings](settings.md#up-next-and-downloads).
+The **Automatic downloads** card holds four settings. They're the same ones as in [Settings](settings.md#up-next-and-downloads).
 
 - The picker at the top: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to downloads as you play it. The apps start at **On Wi-Fi** and the web player at **Never**. A browser can't tell Wi-Fi from mobile data, so there On Wi-Fi downloads on any connection.
-- **Keep the next books ready**: **Off**, **1**, **2** or **3** (below).
-- **Remove a download when you finish the book**, to free up space as you go. Your place is kept. It's on unless you turn it off.
+- **Download podcast episodes when you start them**: the same for episodes, under the picker's rule. It's off unless you turn it on.
+- **Keep the next books ready**: **Off**, **1**, **2** or **3** (below). It never downloads episodes.
+- **Remove a download when you finish the book**, to free up space as you go. It removes finished episodes too. Your place is kept. It's on unless you turn it off.
 
 ### Keep the next books ready
 
@@ -69,8 +71,6 @@ Each download belongs to the server you downloaded it from, and to the person wh
 A watch has its own downloads, separate from your phone's. See [Apple Watch](apple-watch.md#storage).
 
 ## How downloaded playback differs
-
-Very little changes:
 
 - A downloaded book plays from the device, so it starts instantly and never buffers.
 - Chapters, the sleep timer and speed all work the same. So do bookmarks and notes while the app can reach your server (see [With no connection](#with-no-connection)).
@@ -114,7 +114,7 @@ You can install the web player as an app. It gets its own icon and window, and i
 - **Android**: in Chrome's menu, choose **Add to Home screen** or **Install app**.
 - **iPhone or iPad**: in Safari, tap **Share**, then **Add to Home Screen**.
 
-Installing it also makes the browser less likely to clear your downloads. The iOS and Android apps add more than this. See [Get the apps](mobile-apps.md).
+The iOS and Android apps add more than this. See [Get the apps](mobile-apps.md).
 
 ## Good to know
 

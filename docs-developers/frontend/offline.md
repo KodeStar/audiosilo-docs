@@ -160,10 +160,12 @@ Implementation notes worth knowing before you change it:
 
 ## The registry store (`src/downloads/store.ts`)
 
-Podcast episodes are never downloaded. The store answers `unsupported` for a
-`book.episode`. Auto-download and keep-ahead skip episodes; keep-ahead tells them
-apart by the entry's library kind. See
-[Podcasts](podcasts.md#what-episodes-never-do).
+A podcast episode downloads like a one-file book. Its `rel_path` is its file, so its
+key and its folder on disk follow the same rules. One that is not on its server yet
+waits there first, outside the queue
+([An episode not on its server yet](#an-episode-not-on-its-server-yet)). Keep-ahead
+never plans episodes. It tells them apart by the entry's library kind. See
+[Podcasts](podcasts.md#downloading-episodes).
 
 `useDownloads` is a Zustand store. It keeps a `Registry` of `DownloadEntry` keyed by
 `downloadKey(connectionId, libraryId, path)`, which is
@@ -180,6 +182,7 @@ apart by the entry's library kind. See
 | `error` | an optional message |
 | `failure` | a classified `DownloadFailure` for an `error` status ([Failure classification](#failure-classification)) |
 | `origin` | `listener` (the default when absent), `auto` (the playback store's download of the book you start) or `keep-ahead` |
+| `serverFetch` | set only while a podcast episode waits for its server to fetch it: `{percent}`, the server's share done, or `null` while it doesn't know the size |
 | `manifest` | the offline source of truth (below) |
 
 The **manifest** is everything the player needs to build a queue and render with no
@@ -198,6 +201,9 @@ network:
   `totalBytes`;
 - `ebookSha256?`, the sha256 of the ebook the first kept map was made from, which is
   `book.epub`. It stays when the map is dropped;
+- `showTitle?`, a podcast episode's show title as the app knew it when the download
+  started. The Downloads page shows it under the episode, and falls back to the
+  show's folder name when it is absent;
 - `savedAt`.
 
 ### Lifecycle
@@ -233,6 +239,47 @@ No `ApiClient` is passed in. `runOne` resolves the entry's **own** server client
 downloads from two servers never race a shared client. When a queued download's
 connection was removed, `runOne` errors the entry instead of downloading against the
 wrong server.
+
+#### An episode not on its server yet
+
+An episode row hands `download()` a list shape with no chapters. When its server has
+the file, the store reads the item and its chapters first, so the download gets the
+file's own size and `id3_chap` chapters. It keeps the show's title from the cache in
+`manifest.showTitle`.
+
+An episode its server doesn't have answers `503` to the stream until the server has
+fetched it, and the queue runs one book at a time. One such episode on the queue would
+hold up every download behind it, so it waits in `src/downloads/episode-ready.ts`
+instead (`waitForEpisode`). The store sends an episode there when `isAbsentEpisode`
+says so, when its last try failed as `serverFetch`, or when its last try got a `503`.
+
+- The entry stays `queued` with `serverFetch: {percent}`. The row, the control and the
+  progress line read "Getting it on your server" (`serverFetchLabel`).
+- The wait asks the stream once (`prepareEpisodeStream`), which starts the server's
+  fetch. The listener's Retry after a failed fetch POSTs instead. An automatic
+  download's own retry never POSTs, so it respects the server's cool-down.
+- It then follows the fetch status every `max(2, Retry-After)` seconds, in the
+  foreground only. A step due in the background runs when the app comes back.
+- At most three waits ask one connection at once (`MAX_WAITING`). The rest wait
+  their turn, which leaves room under the server's limit of five fetches for the
+  listener's own plays.
+- The fetch limit, a `429` and network blips wait and ask again (`blipDelay`). A
+  fetch that failed or can't be made ends the entry in `error` with a `serverFetch`
+  failure carrying the server's code. `identity_changed` also marks the item and the
+  library's episode lists stale.
+- A cancel or remove stops the wait (`stopWaiting`). The server's fetch carries on.
+- A launch turns a saved waiting entry into an interrupted download (`reviveEntry`).
+
+When the server has the file, `episodeWaitEnded` reads the item and chapters again
+(`fetchFailFast`), marks the show's episode lists stale and puts the entry on the
+queue. The wait can be long, so it decides again what `download()` decided before
+it. An `auto` download that the network rule no longer allows is dropped with no
+decline mark (`canAutoDownload`), so the next start asks again. So is one this
+browser turns out to play transcoded.
+
+The poll and back-off rules are shared with the player's fetch in
+`src/playback/episode-fetch-rules.ts`. That file imports almost nothing, because the
+downloads store loads at launch and must not pull in the player's start path.
 
 #### Run
 
@@ -295,6 +342,7 @@ messages, a `QuotaExceededError` and the web engine's `Download failed (404)`.
 | `unservable` | the store | saved, but the web worker can't serve it yet |
 | `removed` | the store | the entry's connection is gone |
 | `interrupted` | the store, on hydrate | the app closed mid-download |
+| `serverFetch` | the store, when an episode's wait ends | the server couldn't fetch the podcast episode, or can't now. `code` holds the server's code, which `failureText` words through `fetchReasonKey` after `{{server}} couldn't get this episode.` |
 
 The Downloads page words each kind for the listener.
 
@@ -1124,6 +1172,10 @@ reached means it plans nothing this time.
 - `splitDownloads` - **In progress** (running, then waiting in the order asked, then
   failed) and **Ready offline** (newest first). `groupByServer` groups the ready ones
   in connection order, with unknown connections last.
+- `isEpisodeEntry` - a ready podcast episode goes in its own **Podcast episodes**
+  section instead of Ready offline, with its show as the second line
+  (`episodeShowTitle`). The Ready offline count leaves episodes out. The storage bar
+  counts both. Kids mode's offline stories leave episodes out too (`kidsDownloads`).
 - `storageBar` builds the storage bar:
   - one segment per server, taking the chart colours in `CHART_ORDER`: `chart-2..5`,
     then `chart-1`. The brand pink comes last, so the page keeps one pink thing. A
@@ -1146,7 +1198,8 @@ why ("This browser can't play this book offline. Remove it to free the space.") 
 leaves only Cancel.
 
 The **Automatic downloads** card (`rules-card.tsx`) edits `autoDownloadNext`,
-`keepAhead` and `autoDeleteFinished`. Settings and the series page's `KeepAheadCard`
+`autoDownloadEpisodes` ("Download podcast episodes when you start them"), `keepAhead`
+and `autoDeleteFinished`. Settings and the series page's `KeepAheadCard`
 show the same control and status line (`KeepAheadControl`, `KeepAheadStatusLine`).
 The page publishes its summary line into the sub-nav with `SubNavActions`.
 
@@ -1185,7 +1238,8 @@ Home's progress list seeds every downloaded book the same way
 A `useDownloads.subscribe` listener watches for the playing book turning
 `downloaded`, then calls `switchCurrentBookToLocal`. That rebuilds the queue against
 the manifest and prefers the engine's **gapless `swapTo`**: it buffers the local
-source in parallel, then switches at the same position.
+source in parallel, then switches at the same position. A podcast episode streaming
+from its server moves onto its download the same way.
 
 - A refused swap leaves the streaming queue untouched, for example when the web
   service worker isn't controlling the page. Playback never dies from trying to go

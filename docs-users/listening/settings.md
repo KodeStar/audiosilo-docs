@@ -45,6 +45,7 @@ What happens when a book ends (see [The end of a book](end-of-book.md)), and wha
 |---|---|---|
 | **Automatically play next book** | When a book finishes, start [what plays next](end-of-book.md#what-plays-next) | Off |
 | **Automatic downloads** | Download the book you start, so it's ready offline. **Never**, **On Wi-Fi** or **Always** | On Wi-Fi in the apps, Never in the web player |
+| **Download podcast episodes when you start them** | Download the [episode](podcasts.md#download-an-episode) you start too, under the same network rule as books | Off |
 | **Keep the next books ready** | Download the next 1, 2 or 3 books from Up next and the series. See [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) | Off |
 | **Remove a download when you finish the book** | Free up space when a book is marked finished | On |
 

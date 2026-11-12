@@ -175,7 +175,7 @@ every other book of the library in the server's order, finished ones included.
 ### Offline
 
 When the server can't be reached, `kidsDownloads` shows the finished downloads of that
-connection, newest first. `kidsOfflineScope(mode, library, connectionId, kids)` names
+connection, newest first, leaving out podcast episodes. `kidsOfflineScope(mode, library, connectionId, kids)` names
 the library they come from:
 
 - **A one-library shelf:** the library shown, when known. Else (when `GET /libraries`

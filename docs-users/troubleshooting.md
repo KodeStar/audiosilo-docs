@@ -130,6 +130,10 @@ An episode marked **Plays on demand** downloads first, which can take a minute o
 
 No podcasts at all? Update the app, and ask your admin whether you can see the podcast library.
 
+### An episode download says the server couldn't get it
+
+An episode that isn't on your server yet has to be fetched there before it can download. The message under the download says why your server couldn't fetch it. Tap **Retry download** to ask again. If it says your server can't fetch episodes now, ask your admin.
+
 ### My book restarted from the beginning
 
 Your place is saved on the server and on the device, so losing it is very unlikely. If a book shows 0:00 with an error, don't scrub. Press **Retry** to fetch your real place.

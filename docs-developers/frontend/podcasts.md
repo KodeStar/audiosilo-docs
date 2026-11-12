@@ -1,6 +1,6 @@
 ---
 title: Podcasts
-description: "The player's podcast views: who sees them, the Shows library mode, the show and episode pages, Follow, Home's New episodes, the episode-fetch controller that plays an episode not on the server yet, finding shows (directory search, a feed address, OPML import and export, Check for new episodes), and what episodes never do."
+description: "The player's podcast views: who sees them, the Shows library mode, the show and episode pages, Follow, Home's New episodes, the episode-fetch controller that plays an episode not on the server yet, downloading episodes to the device, finding shows (directory search, a feed address, OPML import and export, Check for new episodes), and what episodes never do."
 ---
 
 ## Scope
@@ -32,7 +32,8 @@ keys) is documented once, with the server protocol it follows, in
 This page covers the screens and the controllers. The code is in:
 
 - `src/components/podcasts/`
-- `src/playback/episode-fetch.ts`
+- `src/playback/episode-fetch.ts` and `episode-fetch-rules.ts`
+- `src/downloads/episode-ready.ts`
 - `src/components/home/{new-episodes-model,use-new-episodes,new-episodes-rail}.ts*`
 - `src/lib/library-kind.ts`
 - `src/lib/podcast-requests.ts`
@@ -125,7 +126,7 @@ tab and renders:
     shared (`409`, `404`, `403` on the show list), says the link points nowhere
     (`library.detail.badLink`). It has no Retry, which could not mend the link.
   - `visibleEpisodes` drops `removed && !downloaded`. A removed episode whose file
-    is kept stays, marked "No longer in the feed".
+    its server keeps stays, marked "No longer in the feed".
 
 #### The episode row
 
@@ -136,9 +137,13 @@ tab and renders:
   `duration_source !== 'none'`, and `episodeLabel`'s `S2 E5` / `E5`;
 - Trailer / Bonus / Explicit marks;
 - progress, or Finished;
-- the state line, from `episodeRowState(ep, pending, canFetch)`: Ready on your
-  server, Plays on demand, Getting it (with a percentage when the size is known),
-  Couldn't get it, or Not available now.
+- the state line. An episode downloaded to this device reads "On this device"
+  (`useDownloadState`). This is not `episode.downloaded`, which means its server
+  has the file. One on its way to the device reads how that download is going,
+  "Getting it on your server" while its server still fetches it. Otherwise the line
+  comes from `episodeRowState(ep, pending, canFetch)`: Ready on your server, Plays on
+  demand, Getting it (with a percentage when the size is known), Couldn't get it, or
+  Not available now.
 
 The two stopped states carry the server's `code`. `rowStateReasonKey(state)` turns
 it into the reason line under them (`fetchReasonKey`), on a finished episode too. A
@@ -155,10 +160,12 @@ The row has one button:
   one).
 
 A known reason (the module off, no Bridge online, the library not writable) needs a
-person first. So Play stays disabled with the reason beside it.
+person first. So Play stays disabled with the reason beside it. An episode on this
+device shows no reason and no Try again, and Play stays enabled, because it plays
+from the device.
 
-The row's menu is `BookActionsButton` with Add to Up next and Mark as finished,
-never Download. Tapping the row opens `bookHref`.
+The row's menu is `BookActionsButton` with Add to Up next, Download for offline or
+Remove download, and Mark as finished. Tapping the row opens `bookHref`.
 
 ### The episode page
 
@@ -168,17 +175,20 @@ library. The page has:
 
 - a hero with cover, title, a link to the show, date, duration and marks;
 - the primary Resume / Play / Try again (`canRetryFetch`, as on a row). A stopped
-  state's reason (`rowStateReasonKey`) sits beside the disabled primary button;
+  state's reason (`rowStateReasonKey`) sits beside the disabled primary button. On
+  this device (`useIsDownloaded`) there is no reason and no Try again;
+- the book page's `DownloadControl` and `DownloadProgress`
+  ([Downloading episodes](#downloading-episodes));
 - the description;
 - the chapters, through `BookChaptersTab` with `episode`. Its card reads "The whole
   episode", its parts notice speaks of the episode, and its `id3_chap` caption reads
   "Chapters from the episode file";
-- `usePodcastFetchStatus` while the episode is not downloaded.
+- `usePodcastFetchStatus` while the episode is not on its server.
 
 When `timeline_changed === true` and the listener has a position, a Notice says the
 audio changed and the place is kept. Nothing is rescaled.
 
-There is no Generate, community metadata, rating, series or Download. The player's
+There is no Generate, community metadata, rating or series. The player's
 companion chips and tabs are off for an episode (`useCompanionData` reads
 `book.episode` as `off`). The player never asks for community metadata for an
 episode: `metaEnabledFor` in `meta-gating.ts` is false for `book.episode`, because
@@ -231,7 +241,10 @@ fetch; they get an ordinary start at the end.
 (`src/app/player.tsx`) hand an episode that needs a fetch to `requestEpisodeFetch`,
 never to `playBook`. An episode needs a fetch (`needsEpisodeFetch(book,
 podcastFetch)`) when it is not `downloaded` and its server's `podcast_fetch` is
-true. A local (downloaded) source never does.
+true. An episode downloaded to this device never does, whatever its server holds.
+`startBookInPlace` checks `downloadedEntryOf`, because a downloaded item's source is
+its server's own when the server answers, with no `local`. The player route checks
+`useIsDownloaded`.
 
 - Any other start ends a fetch in flight first (`cancelEpisodeFetchUnless`), so the
   last tap wins.
@@ -518,13 +531,42 @@ All copy for these screens is under `podcasts.find.*`, `podcasts.import.*`,
 `podcasts.export.*`, `podcasts.check.*` and `podcasts.requests.*` in all six
 locales. None of it says "Bridge" or shows the server's English.
 
+## Downloading episodes
+
+An episode downloads to the device like a one-file book, through the downloads
+store ([Offline](offline.md#an-episode-not-on-its-server-yet)).
+
+- **Where.** The episode page's `DownloadControl`, and the row's `...` menu
+  (`useBookActions`). Both follow `offersEpisodeDownload`: always for an episode on
+  its server, and otherwise not while its state is `unavailable`. The control is
+  disabled then. A row hands the menu a list shape, so the menu looks the item up
+  once it opens.
+- **Not on its server yet.** The download waits for its server to fetch it, outside
+  the one-at-a-time queue (`episode-ready.ts`), then joins the queue. The control
+  reads "Getting it on your server · Cancel", and the progress line
+  `Getting it on your server {{percent}}%` once the server knows the size.
+- **On start.** `maybeAutoDownloadCurrent` downloads a started episode only when
+  `autoDownloadEpisodes` is on ("Download podcast episodes when you start them",
+  default off). It then follows the books' network rule, `autoDownloadNext`, so
+  Never means never. An absent episode goes through the same wait.
+- **Playing.** An episode on the device plays from it with no server fetch, from
+  every start path ([One choke point](#one-choke-point)). A streaming episode moves
+  onto its download when it lands, as a book does
+  ([Downloaded while streaming](offline.md#downloaded-while-streaming)).
+- **Finishing.** "Remove a download when you finish the book"
+  (`autoDeleteFinished`) removes a finished episode's download as it does a book's.
+- **Downloads page.** Episodes have their own "Podcast episodes" section
+  ([The Downloads page](offline.md#the-downloads-page)). The car's Downloads tab
+  lists them with the books.
+- **The server.** Nothing changes on the wire. The device's copy is invisible to the
+  server, so it never holds the server's file against the show's retention.
+
 ## What episodes never do
 
-- **Download** (decision 6.1). The downloads store refuses `book.episode` as
-  `unsupported`. `DownloadControl` and the tile menu leave it out.
-  `maybeAutoDownloadCurrent` and keep-ahead skip it. Keep-ahead tells a queued
-  episode by its library, since the queue's list shape has no `episode`. See
-  [Offline](offline.md).
+- **Keep-ahead.** It plans books only. It tells a queued episode by its library,
+  since the queue's list shape has no `episode`.
+- **Send to watch.** The tile menu leaves it out for an episode
+  ([Apple Watch](apple-watch.md)).
 - **Cast.** `NowPlaying.episode` hides the Cast button (`castButtonModel`), except
   while a session is already connected, so it can be stopped. Cast tokens never
   cover podcasts. An episode started while a book is cast is refused before a token
@@ -540,7 +582,9 @@ locales. None of it says "Bridge" or shows the server's English.
   (or with `episode`) in a shared collection (decision 6.2). A collection's items
   carry no `episode`, so collections mode waits for the library list. When the list
   can't be read, it falls back as an unreadable shelf does (downloads, else the
-  error), on the kids screen and in the car.
+  error), on the kids screen and in the car. Its offline stories leave out a
+  downloaded episode (`kidsDownloads`), even one a grown-up on the same account
+  downloaded.
 - **Join Home's book shelves.** `bookRowTest(groups)` (`home-model.ts`) tells a
   progress row's kind by its library. Next in your series (and the `/next`
   questions behind it), the smart shelves and Recently finished hold books only. A
@@ -569,7 +613,12 @@ read through `fetchReasonKey` and the follow error keys, in all six locales
 - **`episode-fetch.test.ts`** drives the controller on fake timers: ready, polling,
   failed with no POST, one POST on Try again, background pause, abort, profile
   switch and connection removal, `fetch_limit`, and `identity_changed`.
-- **`start-book.test.ts`** and **`player-route.test.tsx`** cover the choke point.
+- **`start-book.test.ts`** and **`player-route.test.tsx`** cover the choke point,
+  including an episode on the device starting with no fetch.
+- **`episode-ready.test.ts`** drives the downloads wait on fake timers: the probe,
+  the poll, the turn limit of three, the background pause, a failed fetch, the Retry
+  POST and a cancel. **`store.test.ts`** in `src/downloads/` covers an episode's
+  download through the queue and through the wait.
 - **`podcast-model.test.ts`**, **`library-modes.test.ts`** and
   **`new-episodes-model.test.ts`** cover the rules.
 - Component tests cover the show page, rows, the panel and strip, the Library and
