@@ -1892,8 +1892,9 @@ through one controller:
 - At ready, it refreshes the item and chapters, and marks the episode lists stale.
 
 It preserves generation warnings without rescaling state, and recognizes
-`chapters_source:id3_chap`. There are no download, cast or kids-mode podcasts, and no
-server route changed. See [Frontend podcasts](../frontend/podcasts.md).
+`chapters_source:id3_chap`. There are no cast or kids-mode podcasts, and no server
+route changed. From 2.7.0 an episode also downloads to the device, with no wire change
+([Downloading episodes](../frontend/podcasts.md#downloading-episodes)). See [Frontend podcasts](../frontend/podcasts.md).
 
 ### Podcast discovery and OPML
 
