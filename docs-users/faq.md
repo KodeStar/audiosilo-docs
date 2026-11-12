@@ -103,20 +103,20 @@ Yes, on a 64-bit OS. Releases include Linux builds for **amd64** and **arm64**. 
 
 ### Why does `docker stats` show more memory than the server uses?
 
-`docker stats` adds file cache to the server's own memory. Linux keeps recently read parts of your books and the database in memory, and counts some of that against the container. The kernel hands it back as soon as anything else needs memory.
+`docker stats` adds file cache to the server's own memory. Linux keeps recently read parts of your books and the database in memory, and counts some of that against the container. Linux frees it as soon as anything else needs memory.
 
-The first scan reads every book's tags, chapters and covers, so the cache can be as big as the server itself. Playing a book adds very little. The server streams the file from disk without loading it into memory.
+The first scan reads every book's tags, chapters and covers, so the cache can be as big as the server's own memory. Playing a book adds very little. The server streams the file from disk without loading it into memory.
 
-To see the split, run this from your AudioSilo folder:
+To see the split, run this from your AudioSilo folder (on Unraid, use `docker exec` and the container's name):
 
 ```sh
-docker compose exec audiosilo sh -c 'grep -E "VmRSS|RssAnon" /proc/$(pidof audiosilo)/status; grep -E "^(anon|file|active_file) " /sys/fs/cgroup/memory.stat'
+docker compose exec audiosilo grep -E "^(anon|file|active_file) " /sys/fs/cgroup/memory.stat
 ```
 
-- **RssAnon** (or **anon**) is the memory the server itself holds.
+- **anon** is the memory the server itself holds.
 - **file** is the file cache. Its **active_file** part is what `docker stats` adds on top.
 
-Without Docker, run `grep -E "VmRSS|RssAnon" /proc/$(pidof audiosilo)/status`. Other apps' `docker stats` figures include their file cache too, so compare them the same way.
+Other apps' `docker stats` figures include their file cache too. To compare two apps, run the same command for each and compare the **anon** lines.
 
 ## The project
 
