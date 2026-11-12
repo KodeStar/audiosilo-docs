@@ -11,7 +11,7 @@ Everything else works with the server alone.
 
 - [Play a book](listening/playback.md): start, pause and skip from any screen, and pick up where you left off on any device.
 - [The full player](listening/full-player.md): chapters, time left, speed, Voice boost, and Smart speed on Android.
-- [Listen offline](listening/offline-downloads.md): download books to your phone, tablet or browser.
+- [Listen offline](listening/offline-downloads.md): download books and podcast episodes to your phone, tablet or browser.
 - [Sleep timer](listening/sleep-timer.md): stop after some minutes or chapters, and shake to keep going.
 - [Bookmarks and notes](listening/bookmarks-and-notes.md): mark a moment with one tap and add a note.
 - [Up next](listening/up-next.md): a queue of the books you want to hear next.
@@ -28,7 +28,7 @@ Everything else works with the server alone.
 - [Follow the narration](listening/reading-the-ebook.md#follow-the-narration) in the ebook, sentence by sentence, once an admin [makes a read-along](admin/making-read-along.md). **(Bridge)**
 - [Recaps and characters](listening/recaps-and-characters.md): catch up without spoilers past where you are.
 - [Upcoming releases](listening/upcoming.md): new and coming books in your series, with a calendar feed.
-- [Podcasts](listening/podcasts.md): follow and play shows, and import them from another app. **(Bridge)**
+- [Podcasts](listening/podcasts.md): follow and play shows, download episodes, and import shows from another app. **(Bridge)**
 - [Your listening stats](listening/you.md): time listened, streaks, goals and your top authors.
 - [Your year in listening](listening/year-in-listening.md): a yearly story of cards you can share.
 - [Journal](listening/journal.md): every day you listened, and all your bookmarks and notes.

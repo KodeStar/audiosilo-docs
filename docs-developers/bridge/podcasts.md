@@ -562,8 +562,10 @@ The query keys are `['podcastShows', cid, lib]`,
 `['podcastFetch', cid, lib, path]`. Home's one page is
 `[..., show, 'latest', limit]`, under the same show prefix.
 
-**The episode-fetch controller** (`src/playback/episode-fetch.ts`) is the one
-poller. The rules it keeps:
+**The episode-fetch controller** (`src/playback/episode-fetch.ts`) polls for a
+play. The downloads store's wait (`src/downloads/episode-ready.ts`) polls for a
+download, and shares the timing rules (`episode-fetch-rules.ts`). The rules the
+controller keeps:
 
 - **The probe is the play trigger.** A start of an episode that is not
   downloaded, on a server with `podcast_fetch === true`, goes to
@@ -602,10 +604,12 @@ poller. The rules it keeps:
 
 **Exclusions.**
 
-- The player never downloads an episode for offline listening. The downloads store
-  refuses `book.episode` as `unsupported`, the download control and the tile menu
-  leave it out, and auto-download and keep-ahead skip it. An absent episode would
-  answer 503 to the native download engines, and nothing would clean the files up.
+- A device download of an episode not on its server waits outside the player's
+  download queue until the server has the file. It probes and polls on the same
+  timing, but waits and asks again at `fetch_limit`, and asks at most three at once
+  per server ([Offline](../frontend/offline.md#an-episode-not-on-its-server-yet)). Keep-ahead
+  never plans an episode, and a device's copy never holds a file against the show's
+  retention.
 - The Cast button hides for an episode, because cast tokens never see podcasts.
   From 2.4.0 the server answers `403` to `POST /cast/token` for an episode, with
   `error.code: "not_a_book"`.

@@ -38,8 +38,12 @@ live in shared JS, so all three platforms behave identically.
 - `play`, `pause`, `seekTo(positionInTrack)`, `skipToTrack(index, pos?)`, `setRate`
   and `reset`.
 - `swapTo?(…)` is an optional gapless queue swap. It moves a streaming book onto its
-  just-finished download without an audible gap, and returns `false` when it
-  refuses (see [Offline](offline.md)).
+  just-finished download without an audible gap. It resolves a `SwapOutcome`:
+  `'swapped'`, `'moved'` when a seek or a move to another file came while the copy
+  buffered (the caller may swap again from the new place), or `'refused'`. Its
+  optional `onSwitch` is called as the engine switches, before the first report from
+  the new source (see
+  [Downloaded while streaming](offline.md#downloaded-while-streaming)).
 - `setVolume(volume)` is a **required** linear output gain (0-1). It applies to the
   engine's own volume, **not** the device volume. It exists for the sleep timer's
   fade-out on **duration** timers ([The sleep timer](sleep-timer.md#the-timer-sleep-timerts)).
@@ -143,7 +147,11 @@ since there is no native queue. Key points:
   - It treats an 8 s buffering timeout as a failed swap.
   - It reads its own intent after the copy has buffered, not before. A pause made
     meanwhile stands, whether the listener's or the tab's own
-    [giving way to another tab's play](#one-tab-plays-at-a-time-web).
+    [giving way to another tab's play](#one-tab-plays-at-a-time-web). A speed or a
+    volume set meanwhile reached only the old element, so it is applied to the copy.
+  - A `load` or a `reset` while the copy buffers (`queueSeq`) discards the copy and
+    resolves `'refused'`. A move to another file (`loadSeq`) or a seek (`seekSeq`)
+    discards it and resolves `'moved'`, since the copy sits at the place before.
 - **A `playing` from an element that is paused by then is not reported.** The
   browser can queue a `playing` before a pause lands. If the engine reported it,
   the store would read it as a play begun here and take the connection back from
@@ -551,6 +559,9 @@ timeline. Speed is clamped to 0.5–2×.
   - `adoptLoaded` also sets it while it reloads the engine in the adopted queue's
     order. Until then a tick still counts in the engine's old order
     ([The engine's file order](native-integrations.md#the-engines-file-order)).
+  - A download that lands meanwhile is not swapped in until the load is over
+    (`swapDue`), so the swap starts from the new book's place
+    ([What happens during the switch](offline.md#what-happens-during-the-switch)).
 - **`startEngine`** is the play step of `playBook`, `toggle` and `retry`.
   - It treats `AutoplayBlockedError`, a browser refusing `play()` without a user
     gesture (a cold `/player` deep link), as a pause. It clears the play intent so

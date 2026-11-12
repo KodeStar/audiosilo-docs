@@ -318,12 +318,16 @@ also covers a series: the next book downloads as soon as it starts.
 
 The guards run in this order:
 
-1. `autoDownloadNext === 'never'` skips.
-2. An existing download entry whose `status` isn't `error` skips: the book is
+1. A podcast episode skips unless `autoDownloadEpisodes` is on ("Download podcast
+   episodes when you start them", default off). An episode its server doesn't have
+   yet waits for the server to fetch it
+   ([Offline](offline.md#an-episode-not-on-its-server-yet)).
+2. `autoDownloadNext === 'never'` skips.
+3. An existing download entry whose `status` isn't `error` skips: the book is
    already downloaded, queued or downloading. Only an errored entry is retried,
    which matches the downloads store's own guard.
-3. The network policy `canAutoDownload(mode)` must allow it.
-4. Then it asks `download(..., 'auto')`.
+4. The network policy `canAutoDownload(mode)` must allow it.
+5. Then it asks `download(..., 'auto')`.
 
 The automatic rules it must agree on with
 [keep-ahead](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts)

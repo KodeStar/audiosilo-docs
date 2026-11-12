@@ -27,9 +27,9 @@ A show's page has its description, its episodes, and a **Follow** button.
 
 A show told in order (a serial) lists its oldest episode first, so you start at the beginning. Other shows list the newest first. Switch with **Newest first** / **Oldest first**.
 
-Each episode has a **Play** button (or **Resume**) and a **...** menu with **Add to Up next** and **Mark as finished**. Tap an episode to open its own page, with its description and chapters.
+Each episode has a **Play** button (or **Resume**) and a **...** menu with **Add to Up next**, **Download for offline** and **Mark as finished**. Tap an episode to open its own page, with its description and chapters.
 
-Under each episode, a line says where its audio is. **Ready on your server** plays at once. **Plays on demand** means the server downloads it when you press Play.
+Under each episode, a line says where its audio is. **Ready on your server** plays at once. **Plays on demand** means the server downloads it when you press Play. **On this device** means you [downloaded it](#download-an-episode).
 
 ![A show's page on a phone](/img/screenshots/web-player/phone-podcast-show.png)
 
@@ -121,6 +121,19 @@ An episode leaves Up next when it ends. With **auto-play** on, the next item in 
 
 To hear a show's episodes in a row, add them to Up next. While an episode plays, Up next suggests the show's **Next episode**.
 
+## Download an episode
+
+A downloaded episode plays with no connection to your server, like a [downloaded book](offline-downloads.md). This works in the iOS and Android apps and in the web player.
+
+1. Open the episode's page, or the **...** menu on its row.
+2. Tap **Download for offline**. When it's done, the line under the episode reads **On this device**.
+
+An episode that isn't on your server yet is fetched there first, then downloads to your device. Meanwhile the download reads **Getting it on your server**. Keep the app open on screen until it moves on. If you download several, a few are fetched at a time and the rest wait their turn.
+
+Downloaded episodes are listed under **Podcast episodes** on the [Downloads page](offline-downloads.md#the-downloads-page). To free the space, choose **Remove download**. A finished episode's download is removed by itself, unless you turned off **Remove a download when you finish the book**.
+
+To download every episode you start, turn on **Download podcast episodes when you start them** in [Settings](settings.md#up-next-and-downloads). It's off unless you turn it on. It follows the same network rule as books, so **Automatic downloads** must be **On Wi-Fi** or **Always** too. The web player starts at **Never**.
+
 ## Private feeds
 
 A private feed is a show only its followers can see, such as a paid feed. Its address works like a password. A **Private feed** badge marks it.
@@ -129,8 +142,8 @@ Nobody else sees a private show, admins included. So a library can look empty to
 
 ## Good to know
 
-- **No offline downloads.** Episodes can't be downloaded to your device. They stream from your server.
 - **No casting.** The Cast button doesn't appear while an episode plays.
+- **Not on Apple Watch.** Episodes can't be sent to a watch.
 - **No podcasts in kids mode.** See [Set up kids mode for a child](kids-mode.md).
 - **Changed audio.** If a show replaces an episode's audio after you start it, your place stays where it was, so you may land a little early or late.
 - **Gone from the feed.** An episode that left the show's feed stays listed while its file is still on the server.

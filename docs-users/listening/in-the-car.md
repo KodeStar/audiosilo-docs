@@ -32,7 +32,7 @@ The car shows up to four lists:
 
 - **Continue listening** - books you're part-way through, on every server.
 - **Up next** - your [Up next](up-next.md) queue.
-- **Downloads** - books downloaded to the phone.
+- **Downloads** - books and podcast episodes downloaded to the phone.
 - **Library** - the most recently added books in the library your phone's Library tab is on. If you never chose one, the car lists the first of your servers it can reach.
 
 When several people share the phone ([profiles](profiles.md)), the car shows only the books of the person listening now.

@@ -57,11 +57,16 @@ Downloads by policy stop while nobody follows a show. An episode is never delete
 while someone has it as a favourite, in their queue, or is playing it. Deleting
 keeps the episode's listing, progress and bookmarks; only the audio goes.
 
+A listener can also [download an episode](../listening/podcasts.md#download-an-episode)
+to their own device. Retention still deletes the server's file as usual, and the
+listener's copy stays on their device.
+
 ### Playing an episode that isn't downloaded
 
 When someone plays an episode that isn't downloaded, the Bridge fetches it first.
 The player shows **Getting this episode** until it is ready. These fetches go ahead
-of other downloads.
+of other downloads. A listener downloading such an episode to their device gets it
+fetched the same way first.
 
 A saved episode still plays while the Bridge is offline or the module is off.
 

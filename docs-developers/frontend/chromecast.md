@@ -28,8 +28,13 @@ So `book-queue.ts` and `progress-sync.ts` drive a cast exactly as they drive the
 UI work unchanged. The store asks about the route in one place, the download hot-swap
 (`switchCurrentBookToLocal`). It checks `isCasting()`, and while casting it only hands
 the route the phone's local copy (`rememberLoad`) instead of reloading, since the
-receiver streams from the server whatever the phone holds. `adoptLoaded` also hands the
-route the adopted book's queue (`rememberLoad`). `isCasting` and `rememberLoad` are
+receiver streams from the server whatever the phone holds. It hands it over, and
+commits the copy's queue, only when the download holds the receiver's files in the
+receiver's order, because the receiver's track indices are read through the store's
+queue. Any other copy changes nothing, and the next start uses it. While a session
+is handed back to the phone, the route's own `swapTo` refuses such a copy too, as it
+refuses a copy of a book no longer loaded. `adoptLoaded` also hands the route the
+adopted book's queue (`rememberLoad`). `isCasting` and `rememberLoad` are
 optional `PlaybackService` members that only the route switch implements.
 
 Switching routes is a pause on one side and a paused load on the other:
@@ -38,7 +43,10 @@ Switching routes is a pause on one side and a paused load on the other:
   `paused` snapshot at its place, which the store saves as any pause. It then unloads
   the local engine, loads the book on the receiver at that place and the same speed,
   and plays it when the phone was playing. A book that can't be cast stays on the
-  device, paused, and `onCastFailed` explains why and ends the session.
+  device, paused, and `onCastFailed` explains why and ends the session. The phone
+  then loads the copy the route last remembered for that book, so a download that
+  landed while the receiver was asked plays from the device. A start the receiver
+  refuses mid-session (`load`) does the same.
 - **`endCast`** runs when the session ends. It reads the receiver's last place once more
   while the session can still answer. That place comes back as a `paused` snapshot and
   is loaded into the local engine there. The device never starts playing by itself
