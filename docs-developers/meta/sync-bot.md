@@ -256,9 +256,12 @@ nothing from a copy's credits or series, so an earlier selector refusal of the
 row, such as a doubled author credit or a claimed position, does not keep the
 copy out. It still refuses a copy that does not fit the recording, and the
 service memoizes that refusal under the run's refusal code, so the copy is not
-sent again until the memo entry expires. Only that memo entry, a review's
-refusal (an `ai-verify` exclusion, a dispute or a resolver's removal) or an
-open pull request holding the copy keeps it out of the copies run.
+sent again until the memo entry expires. Only a memo entry under one of the
+copies run's refusal codes, a review's refusal (an `ai-verify` exclusion, a
+dispute or a resolver's removal) or an open pull request holding the copy keeps
+it out of the copies run. Those codes include `ai-narrator`, `malformed-asin`,
+`unmapped-region` and `unmapped-language`, so an earlier selector refusal under
+one of them keeps the copy out too.
 
 A store that answers without the book is asked again after 1, 2, 4 and 7 days,
 then every 14 days. A copy that was found but did not attach (refused, kept out
