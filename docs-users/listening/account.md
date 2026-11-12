@@ -35,9 +35,9 @@ To sign in another phone, tablet or browser without a new invite:
 
 If the code expires, tap **Make a new code**.
 
-## Apple Watch
+## Your watch {/* #apple-watch */}
 
-On an iPhone with a paired Apple Watch, the **Apple Watch** card signs the watch in to this server. See [Listen on your Apple Watch](apple-watch.md).
+On a phone with a paired watch, a card signs the watch in to this server. On an iPhone it's the **Apple Watch** card. See [Listen on your Apple Watch](apple-watch.md). On an Android phone it's the **Wear OS watch** card. See [Listen on your Wear OS watch](wear-os.md).
 
 ## At home and away
 

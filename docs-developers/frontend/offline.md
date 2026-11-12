@@ -1204,9 +1204,10 @@ show the same control and status line (`KeepAheadControl`, `KeepAheadStatusLine`
 The page publishes its summary line into the sub-nav with `SubNavActions`.
 
 In the iOS app the page also holds **On your Apple Watch** (`WatchSection`), between
-In progress and Ready offline. Those are the watch's copies, not this device's, and
-none of the above applies to them
-([The watch in Downloads](apple-watch.md#the-watch-in-downloads)).
+In progress and Ready offline, and in the Android app **On your watch**. Those are the
+watch's copies, not this device's, and none of the above applies to them
+([The watch in Downloads](apple-watch.md#the-watch-in-downloads),
+[The phone in Downloads](wear-os.md#the-phone-in-downloads)).
 
 ## Playing downloaded content
 

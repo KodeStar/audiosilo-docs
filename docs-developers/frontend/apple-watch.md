@@ -18,9 +18,9 @@ page is the map.
 | Pure rules, the tested part | `targets/watch/Core/` |
 | Host tests | `watch-core/` (SwiftPM, `Sources/WatchCore` is a symlink to `Core/`) |
 | The watch's end of the messages | `targets/watch/Phone/PhoneLink.swift`, `Core/PhoneMessages.swift` |
-| The phone's module | `modules/audiosilo-watch` (apple only): `WatchLink.swift`, `AudiosiloWatchModule.swift`, the `AudiosiloWatchAppDelegateSubscriber` |
-| The phone's TS surface | `src/watch/`: `watch-model.ts` (messages and visibility, pure), `watch-rows.ts` (the Downloads rows, pure), `watch-ledger.ts`, `send.ts`, `use-watch.ts`, `watch-store.ts`, `link.ios.ts`, and `link.ts` (the no-op for web and Android) |
-| The phone's UI | `src/components/account/apple-watch-card.tsx`, `src/components/downloads/watch-section.tsx`, the `'watch'` action in `src/components/library/books/book-actions.tsx` |
+| The phone's module | `modules/audiosilo-watch` (its `ios/` half; the `android/` half is [Wear OS](wear-os.md)): `WatchLink.swift`, `AudiosiloWatchModule.swift`, the `AudiosiloWatchAppDelegateSubscriber` |
+| The phone's TS surface | `src/watch/`: `watch-model.ts` (messages and visibility, pure), `watch-rows.ts` (the Downloads rows, pure), `watch-ledger.ts`, `send.ts`, `use-watch.ts`, `watch-store.ts`, `link.native.ts` (iOS and Android), and `link.ts` (the no-op for web) |
+| The phone's UI | `src/components/account/watch-card.tsx` (`WatchCard`), `src/components/downloads/watch-section.tsx`, the `'watch'` action in `src/components/library/books/book-actions.tsx` |
 | The scheme | `plugins/withWatchScheme.js` |
 
 ## The target
@@ -157,6 +157,11 @@ Every message carries `v: 1`. Both sides ignore unknown types and newer versions
 are built and parsed in `src/watch/watch-model.ts` and `Core/PhoneMessages.swift`. A field
 changed in one changes in the other, with tests on both. Messages are plain property lists only, for
 example `addresses: {}`, never a null. The native side rejects the rest.
+
+Every message from the phone also carries `sent_at` (RFC 3339, when the phone sent it).
+The Apple Watch reads and ignores it for now. A Wear OS watch needs it. It makes each send a new
+Data Layer item and orders a `remove` against a later download
+([Wear OS](wear-os.md#the-data-layer-contract)). The examples below leave it out.
 
 **`pair`, phone to watch** (`sendMessage` when reachable, else `transferUserInfo`):
 
@@ -325,9 +330,9 @@ The phone's cold-start copy of `watch-state` lives in `watchDirectoryURL`, the f
 keeps for this very watch, never in `UserDefaults`. In `UserDefaults`, a watch paired while the app
 wasn't running would read the last one's sign-in.
 
-JS reaches the module only through `src/watch/link.ios.ts`. `watchLink.supported` is read once at
-load, so `useSendToWatch` and the card cost a platform without a watch nothing. Wear OS comes in
-behind the same `WatchLink`.
+JS reaches the module only through `src/watch/link.native.ts`. `watchLink.supported` is read once at
+load, so `useSendToWatch` and the card cost a platform without a watch nothing. On Android the same `WatchLink`
+reaches a Wear OS watch over the Data Layer ([Wear OS](wear-os.md#the-data-layer-contract)).
 
 ## The release check
 

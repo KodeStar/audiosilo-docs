@@ -232,8 +232,8 @@ How it behaves:
 Nothing here can be changed in the console.
 
 - **ffmpeg** converts formats a browser can't play while someone listens, and
-  makes the small copies the [Apple Watch app](../listening/apple-watch.md)
-  downloads. Without it, some books won't play in a browser and watches get no
+  makes the small copies the [Apple Watch](../listening/apple-watch.md) and
+  [Wear OS](../listening/wear-os.md) apps download. Without it, some books won't play in a browser and watches get no
   copies.
 - **ffprobe** reads lengths, chapters and codecs during a scan, for the files
   AudioSilo can't read itself. See

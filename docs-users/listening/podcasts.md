@@ -143,7 +143,7 @@ Nobody else sees a private show, admins included. So a library can look empty to
 ## Good to know
 
 - **No casting.** The Cast button doesn't appear while an episode plays.
-- **Not on Apple Watch.** Episodes can't be sent to a watch.
+- **Not on a watch.** Episodes can't be sent to an Apple Watch or a Wear OS watch.
 - **No podcasts in kids mode.** See [Set up kids mode for a child](kids-mode.md).
 - **Changed audio.** If a show replaces an episode's audio after you start it, your place stays where it was, so you may land a little early or late.
 - **Gone from the feed.** An episode that left the show's feed stays listed while its file is still on the server.

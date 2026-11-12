@@ -37,7 +37,9 @@ each of these.
 | Widgets and the Live Activity (iOS) | `src/widgets/`, `expo-widgets`, `plugins/withXcode26SwiftUICoreFix.js`, `plugins/widgets-entitlements.test.ts`; their links open through `src/app/+native-intent.tsx` |
 
 The Apple Watch app is a Swift target of its own, with a WatchConnectivity module on the
-phone. It is described in [Apple Watch](apple-watch.md).
+phone. It is described in [Apple Watch](apple-watch.md). The Wear OS app is a Gradle module of
+its own (`wear/`, wired by `plugins/withWearApp.js`), with a Data Layer half in the same phone
+module. It is described in [Wear OS](wear-os.md).
 
 Not built, deliberately for now:
 

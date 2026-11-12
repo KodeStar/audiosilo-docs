@@ -38,6 +38,7 @@ Everything else works with the server alone.
 - [Get the apps](listening/mobile-apps.md): the web player, iPhone and iPad, and Android.
 - [Connect the app](listening/connecting.md): sign in with a QR code, an invite or a password.
 - [Apple Watch](listening/apple-watch.md): send books to your watch and listen without your phone.
+- [Wear OS](listening/wear-os.md): the same on a Wear OS watch, from an Android phone.
 - [In the car](listening/in-the-car.md): Apple CarPlay and Android Auto.
 - [Cast](listening/chromecast.md): play on a Chromecast, TV or Nest speaker.
 - [App settings](listening/settings.md): playback, downloads, appearance and language.

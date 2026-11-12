@@ -9,7 +9,7 @@ You can listen to AudioSilo in three places. All three are the same player, with
 
 - **Web player** - open `/web` on your server, for example `https://books.example.com/web`. Nothing to install. On a phone you can [add it to your home screen](offline-downloads.md).
 - **iPhone and iPad** - get AudioSilo from the **[App Store](https://apps.apple.com/us/app/audiosilo/id6783431375)**. It includes the [Apple Watch](apple-watch.md) app.
-- **Android** - get AudioSilo from **[Google Play](https://play.google.com/store/apps/details?id=app.audiosilo)**, or install it [without Google Play](#android-without-google-play).
+- **Android** - get AudioSilo from **[Google Play](https://play.google.com/store/apps/details?id=app.audiosilo)**, or install it [without Google Play](#android-without-google-play). It includes the [Wear OS](wear-os.md) watch app.
 
 Then [connect the app to your server](connecting.md). A QR code is quickest.
 
@@ -24,7 +24,7 @@ The iOS and Android apps do a few things a browser can't do as well:
 - **Background playback.** Books keep playing with the screen off. A phone call pauses the book, and it resumes afterwards only if it was playing.
 - **Lock-screen and headphone controls.** See [Lock-screen and headphone controls](playback.md#lock-screen-and-headphone-controls).
 - **In the car.** Books on the car's screen with [CarPlay and Android Auto](in-the-car.md).
-- **Apple Watch.** Send books to your watch and leave the phone at home. See [Listen on your Apple Watch](apple-watch.md).
+- **Watches.** Send books to your watch and leave the phone at home. See [Listen on your Apple Watch](apple-watch.md) or [Listen on your Wear OS watch](wear-os.md).
 - **Casting.** Play on a Chromecast, a Google Cast TV or a Nest speaker. See [Cast to a speaker or TV](chromecast.md).
 - **Downloads** that live on your phone. See [offline downloads](offline-downloads.md).
 
@@ -55,12 +55,14 @@ Each app release on GitHub includes the Android app as an APK file, like `AudioS
 ### Install the APK yourself
 
 1. On your phone, open the [latest app release](https://github.com/KodeStar/audiosilo-frontend/releases/latest).
-2. Under **Assets**, tap the `.apk` file to download it.
+2. Under **Assets**, tap the phone's `.apk`, like `AudioSilo-2.7.0.apk`, to download it. The one with `wear` in its name is for the watch.
 3. Open the downloaded file.
 4. If Android asks, allow the app you opened it from to install unknown apps.
 5. Go back and tap **Install**.
 
 This app doesn't update itself. To update, install the next release's APK over the top. Your downloads and sign-in stay.
+
+The release also has a Wear OS watch APK, like `AudioSilo-wear-2.7.0.apk`. A phone app from GitHub only talks to a watch app from GitHub. See [Install both apps from the same place](wear-os.md#install-both-apps-from-the-same-place).
 
 ### Let Obtainium keep it up to date
 
@@ -69,7 +71,7 @@ This app doesn't update itself. To update, install the next release's APK over t
 1. Install Obtainium from its [releases page](https://github.com/ImranR98/Obtainium/releases/latest), the same way as above. `app-release.apk` works on any phone.
 2. In Obtainium, open **Add app**.
 3. Paste `https://github.com/KodeStar/audiosilo-frontend` as the **App source URL** and tap **Add**.
-4. Tap **Install**, and allow Obtainium to install unknown apps if Android asks.
+4. Tap **Install**, and allow Obtainium to install unknown apps if Android asks. If it asks which APK, pick the phone's, without `wear` in its name.
 
 Obtainium then checks for new releases in the background and offers each update.
 
