@@ -55,7 +55,7 @@ Each app release on GitHub includes the Android app as an APK file, like `AudioS
 ### Install the APK yourself
 
 1. On your phone, open the [latest app release](https://github.com/KodeStar/audiosilo-frontend/releases/latest).
-2. Under **Assets**, tap the `.apk` file to download it.
+2. Under **Assets**, tap the phone's `.apk`, like `AudioSilo-2.7.0.apk`, to download it. The one with `wear` in its name is for the watch.
 3. Open the downloaded file.
 4. If Android asks, allow the app you opened it from to install unknown apps.
 5. Go back and tap **Install**.
@@ -71,7 +71,7 @@ The release also has a Wear OS watch APK, like `AudioSilo-wear-2.7.0.apk`. A pho
 1. Install Obtainium from its [releases page](https://github.com/ImranR98/Obtainium/releases/latest), the same way as above. `app-release.apk` works on any phone.
 2. In Obtainium, open **Add app**.
 3. Paste `https://github.com/KodeStar/audiosilo-frontend` as the **App source URL** and tap **Add**.
-4. Tap **Install**, and allow Obtainium to install unknown apps if Android asks.
+4. Tap **Install**, and allow Obtainium to install unknown apps if Android asks. If it asks which APK, pick the phone's, without `wear` in its name.
 
 Obtainium then checks for new releases in the background and offers each update.
 
