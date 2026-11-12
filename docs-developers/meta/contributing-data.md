@@ -606,6 +606,18 @@ exclusive planning modes:
 | `--relocate` | Moves a cross-language recording to the work its source rows resolve to in its stated language, creating that work when needed. |
 | `--regenerate-genres` | Re-derives catalogued works' `genres` from their own recordings' rows; touches no other field and creates nothing. |
 
+`--recordings-only` also takes `--copies-of <path>`, a file of one
+`{"asin","anchor"}` line per row. Each listed row is another marketplace's copy
+of the production the catalogued `anchor` ASIN belongs to, as the caller proved
+it. [The series-completion bot](./sync-bot.md#every-stores-copy-of-a-book)
+proves it by libex SKU group. The import merges the row's ASIN onto the anchor's
+recording and resolves nothing from the row's credits or series, so it mints no
+person, work or series. It still refuses a row whose anchor is not catalogued,
+or whose language, runtime, abridgement or region does not fit the recording,
+each under its own `copy-` code in `--skipped`, and an AI-narrated row as
+`ai-narrator`. An unlisted row in the same run
+takes the ordinary `--recordings-only` path.
+
 For relocation, export rows for **all ASINs of the cross-language recordings**
 in one batch. The metadata repository's `scripts/README.md` documents deriving
 the list from the pack tree and running `scripts/libex-relocate-rows.sql` against
