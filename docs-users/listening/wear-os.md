@@ -89,7 +89,7 @@ The [Downloads](offline-downloads.md#the-downloads-page) page on your phone has 
 
 ![On your watch in Downloads on an Android phone: a book with its size](/img/screenshots/wear/phone-downloads-section.png)
 
-Each row says how far the book has got: sent, delivered to your watch, preparing on the server, downloading, then on your watch. A row can lag behind the watch's own screen. If your watch hasn't taken a book in 7 days, tap **Send again**.
+Each row says how far the book has got: sent, delivered to your watch, waiting on your watch, preparing on the server, downloading, then on your watch. A row can lag behind the watch's own screen. If your watch hasn't taken a book in 7 days, tap **Send again**.
 
 ![On your watch in Downloads on an Android phone: one book downloading to the watch, one preparing on the server](/img/screenshots/wear/phone-downloads-preparing.png)
 
@@ -141,7 +141,7 @@ Listening is sent when you open the app, and about once a minute while it's open
 
 ## Sync status
 
-**Sync**, on the watch's home screen, shows the last sync and how many updates are waiting. **Sync now** sends them. It also lists anything the server turned down, and the server's name, address and version.
+**Sync**, on the watch's home screen, shows the last sync and how many updates are waiting. **Sync now** sends them. Below that, it lists anything the server turned down, then the server's name, address and version.
 
 ![Sync on the watch: the last sync, 2 updates waiting, and Can't reach your server](/img/screenshots/wear/watch-sync.png)
 
@@ -172,7 +172,7 @@ Without a trusted away address, the watch still plays its books anywhere, but sy
 
 ![Sign out on the watch: 2 listening updates not synced yet, and Sync now](/img/screenshots/wear/watch-sign-out.png)
 
-To switch accounts, tap **Set up your watch** on the other account's card on your phone. The watch then asks whether to switch or keep its account. Switching removes the old account's books from the watch.
+To switch accounts, tap **Set up your watch** on the other account's card on your phone. If the watch has no listening waiting to sync, it switches at once. If it has, it asks first: sync, then **Switch**, or **Discard and switch**, or **Keep this account**. Switching removes the old account's books from the watch.
 
 ![Another account wants this watch, with Switch and Keep this account](/img/screenshots/wear/watch-another-account.png)
 
