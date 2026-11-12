@@ -51,8 +51,8 @@ The EAS profiles all extend `production`:
 | `production-wear-apk` | a signed APK, `:wear:assembleRelease` | the GitHub release, as `AudioSilo-wear-X.Y.Z.apk`, beside the phone's `production-apk` |
 | `preview-wear` | an APK | emulator installs |
 
-With `appVersionSource: remote`, each of these builds takes the next remote versionCode,
-`preview-wear` included. That is harmless, since codes only have to rise.
+With `appVersionSource: remote`, each of these builds, `preview-wear` included, takes the next
+remote versionCode, which is harmless since codes only have to rise.
 
 ## The Core boundary
 
@@ -102,9 +102,8 @@ worker moves on. Each stage change publishes `watch-state`, so the phone's row f
 `NOT_METERED`) and binds OkHttp to it, as Wear's guidance asks for large transfers. After 30 s
 with none, the record says "Waiting for Wi-Fi" and the row offers "Use the phone's connection
 (slow)". Taking it sets `slow` on the record and replaces the work on the default network. The
-worker waits up to 10 min for Wi-Fi before the backoff takes over. The process can be killed
-during that wait, which was seen once on the Wear OS 6 emulator, and the next run picks up where
-it was.
+worker waits up to 10 min for Wi-Fi before the backoff takes over. If the process is killed
+during that wait, the next run picks up where it was.
 
 Each run picks its own address over its own network (`AddressPicker.pick`, home only after the
 `server_id` probe). A run can outlast that network, so `ProvenBookServer` proves a home pick
