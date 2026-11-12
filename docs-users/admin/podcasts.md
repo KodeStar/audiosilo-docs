@@ -58,8 +58,8 @@ while someone has it as a favourite, in their queue, or is playing it. Deleting
 keeps the episode's listing, progress and bookmarks; only the audio goes.
 
 A listener can also [download an episode](../listening/podcasts.md#download-an-episode)
-to their own device. That copy doesn't keep the server's file: retention deletes it
-as usual, and the listener's copy stays on their device.
+to their own device. Retention still deletes the server's file as usual, and the
+listener's copy stays on their device.
 
 ### Playing an episode that isn't downloaded
 

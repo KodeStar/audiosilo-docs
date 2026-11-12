@@ -162,7 +162,7 @@ Implementation notes worth knowing before you change it:
 
 A podcast episode downloads like a one-file book. Its `rel_path` is its file, so its
 key and its folder on disk follow the same rules. One that is not on its server yet
-waits there first, outside the queue
+waits for its server first, outside the queue
 ([An episode not on its server yet](#an-episode-not-on-its-server-yet)). Keep-ahead
 never plans episodes. It tells them apart by the entry's library kind. See
 [Podcasts](podcasts.md#downloading-episodes).
@@ -1297,22 +1297,19 @@ The swap keeps what the listener did while it was on its way.
   (`beginPlaybackAttempt`). After the load, the store sets the speed as it is then
   and plays only while the intent stands. A pause, a speed set or a play asked for
   during the load stands. After a stop or a new start the swap commits nothing.
-- **The web engine.** `swapTo` reads its own intent after the copy has buffered (up
-  to 8 s). A pause made meanwhile stands, and a speed or volume set meanwhile is
-  applied to the copy. A load or a reset meanwhile (`queueSeq`) discards the copy and
-  resolves `'refused'`. A move to another file (`loadSeq`) or a seek (`seekSeq`)
-  discards it and resolves `'moved'`, because the copy was buffered at the old place.
-- **A refused web swap.** The store swaps again from the new place after every
+- **The web engine.** `swapTo` keeps a pause, a speed or a volume set while the copy
+  buffers. It resolves `'refused'` after a load or a reset meanwhile, and `'moved'`
+  after a seek or a move to another file
+  ([Web engine](playback.md#web-engine-servicewebts)).
+- **Swapping again after `'moved'`.** The store swaps again from the new place after every
   `'moved'`, while the book is still the store's and its download complete. Each
   `'moved'` needs a real move of the stream: the listener's seek, skip or rewinding
   play, the stream's own advance to its next file, a transcoded stream's early-end
   reload, or a one-off move the store makes (the pick-up's place, another tab's).
   The swap never moves the stream itself, so the retries end. A `'refused'` copy,
   one that can't be served or never became playable, is never retried.
-- **Casting.** The receiver streams from the server, so the store hands the route
-  the phone's copy (`rememberLoad`) and commits the queue only when the download
-  holds the receiver's files in the receiver's order. A download in another order or
-  with other files changes nothing, and the next start uses it. See
+- **Casting.** The store hands the route the phone's copy (`rememberLoad`) only when
+  it holds the receiver's files in the receiver's order. See
   [Chromecast](chromecast.md#casting-is-a-playback-route-not-a-second-player).
 
 ### Started by the car

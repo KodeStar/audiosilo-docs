@@ -126,10 +126,9 @@ To hear a show's episodes in a row, add them to Up next. While an episode plays,
 A downloaded episode plays with no connection to your server, like a [downloaded book](offline-downloads.md). This works in the iOS and Android apps and in the web player.
 
 1. Open the episode's page, or the **...** menu on its row.
-2. Tap **Download for offline**.
-3. Wait for the line under the episode to read **On this device**.
+2. Tap **Download for offline**. When it's done, the line under the episode reads **On this device**.
 
-An episode that isn't on your server yet is fetched there first, then downloads to your device. Meanwhile the download reads **Getting it on your server**. Keep the app open on screen until it moves on. The app asks for up to three such episodes at a time from each server.
+An episode that isn't on your server yet is fetched there first, then downloads to your device. Meanwhile the download reads **Getting it on your server**. Keep the app open on screen until it moves on. If you download several, a few are fetched at a time and the rest wait their turn.
 
 Downloaded episodes are listed under **Podcast episodes** on the [Downloads page](offline-downloads.md#the-downloads-page). To free the space, choose **Remove download**. A finished episode's download is removed by itself, unless you turned off **Remove a download when you finish the book**.
 

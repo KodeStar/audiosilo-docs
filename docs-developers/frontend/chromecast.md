@@ -28,13 +28,13 @@ So `book-queue.ts` and `progress-sync.ts` drive a cast exactly as they drive the
 UI work unchanged. The store asks about the route in one place, the download hot-swap
 (`switchCurrentBookToLocal`). It checks `isCasting()`, and while casting it only hands
 the route the phone's local copy (`rememberLoad`) instead of reloading, since the
-receiver streams from the server whatever the phone holds. It does that, and commits
-the copy's queue, only when the download holds the same files in the receiver's order.
-The receiver's track indices are read through the store's queue, so a copy in another
-order or with other files changes nothing, and the next start uses it. The route's own
-`swapTo` refuses such a copy too while a session is handed back, as it does a copy of a
-book no longer loaded. `adoptLoaded` also hands the
-route the adopted book's queue (`rememberLoad`). `isCasting` and `rememberLoad` are
+receiver streams from the server whatever the phone holds. It hands it over, and
+commits the copy's queue, only when the download holds the receiver's files in the
+receiver's order, because the receiver's track indices are read through the store's
+queue. Any other copy changes nothing, and the next start uses it. While a session
+is handed back to the phone, the route's own `swapTo` refuses such a copy too, as it
+refuses a copy of a book no longer loaded. `adoptLoaded` also hands the route the
+adopted book's queue (`rememberLoad`). `isCasting` and `rememberLoad` are
 optional `PlaybackService` members that only the route switch implements.
 
 Switching routes is a pause on one side and a paused load on the other:

@@ -125,8 +125,8 @@ tab and renders:
   - A show link to a library that isn't a podcast library, or isn't there or
     shared (`409`, `404`, `403` on the show list), says the link points nowhere
     (`library.detail.badLink`). It has no Retry, which could not mend the link.
-  - `visibleEpisodes` drops `removed && !downloaded`. A removed episode whose file
-    its server keeps stays, marked "No longer in the feed".
+  - `visibleEpisodes` drops `removed && !downloaded`. A removed episode stays,
+    marked "No longer in the feed", while its server keeps the file.
 
 #### The episode row
 
@@ -137,13 +137,14 @@ tab and renders:
   `duration_source !== 'none'`, and `episodeLabel`'s `S2 E5` / `E5`;
 - Trailer / Bonus / Explicit marks;
 - progress, or Finished;
-- the state line. An episode downloaded to this device reads "On this device"
-  (`useDownloadState`). This is not `episode.downloaded`, which means its server
-  has the file. One on its way to the device reads how that download is going,
-  "Getting it on your server" while its server still fetches it. Otherwise the line
-  comes from `episodeRowState(ep, pending, canFetch)`: Ready on your server, Plays on
-  demand, Getting it (with a percentage when the size is known), Couldn't get it, or
-  Not available now.
+- the state line, first match wins:
+  - downloaded to this device (`useDownloadState`): "On this device". This is not
+    `episode.downloaded`, which means its server has the file;
+  - downloading to this device: that download's progress, or "Getting it on your
+    server" while its server still fetches it;
+  - otherwise `episodeRowState(ep, pending, canFetch)`: Ready on your server, Plays
+    on demand, Getting it (with a percentage when the size is known), Couldn't get
+    it, or Not available now.
 
 The two stopped states carry the server's `code`. `rowStateReasonKey(state)` turns
 it into the reason line under them (`fetchReasonKey`), on a finished episode too. A
@@ -242,9 +243,9 @@ fetch; they get an ordinary start at the end.
 never to `playBook`. An episode needs a fetch (`needsEpisodeFetch(book,
 podcastFetch)`) when it is not `downloaded` and its server's `podcast_fetch` is
 true. An episode downloaded to this device never does, whatever its server holds.
-`startBookInPlace` checks `downloadedEntryOf`, because a downloaded item's source is
-its server's own when the server answers, with no `local`. The player route checks
-`useIsDownloaded`.
+`startBookInPlace` checks `downloadedEntryOf`, not the source: while the server
+answers, a downloaded item comes back with the server's source and no `local`. The
+player route checks `useIsDownloaded`.
 
 - Any other start ends a fetch in flight first (`cancelEpisodeFetchUnless`), so the
   last tap wins.
@@ -541,14 +542,13 @@ store ([Offline](offline.md#an-episode-not-on-its-server-yet)).
   its server, and otherwise not while its state is `unavailable`. The control is
   disabled then. A row hands the menu a list shape, so the menu looks the item up
   once it opens.
-- **Not on its server yet.** The download waits for its server to fetch it, outside
-  the one-at-a-time queue (`episode-ready.ts`), then joins the queue. The control
-  reads "Getting it on your server · Cancel", and the progress line
+- **Not on its server yet.** The download
+  [waits for its server](offline.md#an-episode-not-on-its-server-yet), then joins the
+  queue. The control reads "Getting it on your server · Cancel", and the progress line
   `Getting it on your server {{percent}}%` once the server knows the size.
 - **On start.** `maybeAutoDownloadCurrent` downloads a started episode only when
-  `autoDownloadEpisodes` is on ("Download podcast episodes when you start them",
-  default off). It then follows the books' network rule, `autoDownloadNext`, so
-  Never means never. An absent episode goes through the same wait.
+  `autoDownloadEpisodes` is on, then under the books' network rule
+  ([Auto-download on play](end-of-book.md#auto-download-on-play)).
 - **Playing.** An episode on the device plays from it with no server fetch, from
   every start path ([One choke point](#one-choke-point)). A streaming episode moves
   onto its download when it lands, as a book does
@@ -557,7 +557,8 @@ store ([Offline](offline.md#an-episode-not-on-its-server-yet)).
   (`autoDeleteFinished`) removes a finished episode's download as it does a book's.
 - **Downloads page.** Episodes have their own "Podcast episodes" section
   ([The Downloads page](offline.md#the-downloads-page)). The car's Downloads tab
-  lists them with the books.
+  lists them with the books
+  ([What the snapshot holds](native-integrations.md#what-the-snapshot-holds)).
 - **The server.** Nothing changes on the wire. The device's copy is invisible to the
   server, so it never holds the server's file against the show's retention.
 

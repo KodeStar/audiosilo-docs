@@ -320,7 +320,7 @@ The guards run in this order:
 
 1. A podcast episode skips unless `autoDownloadEpisodes` is on ("Download podcast
    episodes when you start them", default off). An episode its server doesn't have
-   yet then waits for its server first
+   yet waits for the server to fetch it
    ([Offline](offline.md#an-episode-not-on-its-server-yet)).
 2. `autoDownloadNext === 'never'` skips.
 3. An existing download entry whose `status` isn't `error` skips: the book is

@@ -604,13 +604,11 @@ controller keeps:
 
 **Exclusions.**
 
-- An episode not on its server is never put on the player's download queue. Its
-  stream answers 503 until the server has fetched it, and the queue runs one
-  download at a time. The download waits outside the queue under the same probe and
-  poll rules, then joins it
+- A device download of an episode not on its server waits outside the player's
+  download queue, under the same probe and poll rules, until the server has the file
   ([Offline](../frontend/offline.md#an-episode-not-on-its-server-yet)). Keep-ahead
-  never plans an episode. A device's copy is invisible to the server, so it never
-  holds a file against the show's retention.
+  never plans an episode, and a device's copy never holds a file against the show's
+  retention.
 - The Cast button hides for an episode, because cast tokens never see podcasts.
   From 2.4.0 the server answers `403` to `POST /cast/token` for an episode, with
   `error.code: "not_a_book"`.
