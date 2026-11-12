@@ -31,6 +31,9 @@ The Wear OS app has been tested on the Wear OS emulator, not yet on a real watch
 
 1. On your phone, open your [account page](account.md#opening-it) for the server.
 2. On the **Wear OS watch** card, tap **Install on watch**. Google Play opens on your watch at AudioSilo. Install it there.
+
+   ![The Wear OS watch card before AudioSilo is on the watch, with Install on watch](/img/screenshots/wear/phone-card-install.png)
+
 3. Back on the card, tap **Set up your watch**.
 4. Keep the watch close. It signs in by itself, with nothing to type and no need to open the app.
 
@@ -76,6 +79,8 @@ While a book downloads, a notification on the watch says *Getting (the book) rea
 
 The watch downloads over Wi-Fi. If it finds no Wi-Fi within 30 seconds, the row says **Waiting for Wi-Fi** and offers **Use the phone's connection (slow)** for that book. That goes through your phone over Bluetooth, which can be much slower for a large book.
 
+![On the way on the watch: a book Waiting for Wi-Fi, with Use the phone's connection (slow)](/img/screenshots/wear/watch-waiting-for-wifi.png)
+
 Wear OS can hold background work back to save battery. If a book stays waiting, open AudioSilo on the watch. If it says **Couldn't download**, tap **Try again** on its Continue listening row, or send it again from your phone.
 
 ## In Downloads on your phone
@@ -85,6 +90,8 @@ The [Downloads](offline-downloads.md#the-downloads-page) page on your phone has 
 ![On your watch in Downloads on an Android phone: a book with its size](/img/screenshots/wear/phone-downloads-section.png)
 
 Each row says how far the book has got: sent, delivered to your watch, preparing on the server, downloading, then on your watch. A row can lag behind the watch's own screen. If your watch hasn't taken a book in 7 days, tap **Send again**.
+
+![On your watch in Downloads on an Android phone: one book downloading to the watch, one preparing on the server](/img/screenshots/wear/phone-downloads-preparing.png)
 
 To take a book off the watch from your phone, tap **Remove** on its row. If the book is playing on the watch, it stops. Your place in the book is kept.
 
@@ -136,11 +143,15 @@ Listening is sent when you open the app, and about once a minute while it's open
 
 **Sync**, on the watch's home screen, shows the last sync and how many updates are waiting. **Sync now** sends them. It also lists anything the server turned down, and the server's name, address and version.
 
+![Sync on the watch: the last sync, 2 updates waiting, and Can't reach your server](/img/screenshots/wear/watch-sync.png)
+
 Your phone's card shows a short version of the same.
 
 ## If the server is too old
 
 If the server is older than 2.6 or has no ffmpeg, the watch says so instead of showing its home screen. Fix the server, then tap **Try again**.
+
+![The watch against a 2.5.1 server: too old for the watch app, with Try again](/img/screenshots/wear/watch-too-old.png)
 
 ## At home and away
 
@@ -162,6 +173,8 @@ Without a trusted away address, the watch still plays its books anywhere, but sy
 ![Sign out on the watch: 2 listening updates not synced yet, and Sync now](/img/screenshots/wear/watch-sign-out.png)
 
 To switch accounts, tap **Set up your watch** on the other account's card on your phone. The watch then asks whether to switch or keep its account. Switching removes the old account's books from the watch.
+
+![Another account wants this watch, with Switch and Keep this account](/img/screenshots/wear/watch-another-account.png)
 
 Signing out on your phone leaves the watch signed in. To cut off a lost watch, tap **Sign out** on its row under [Signed-in devices](account.md#signed-in-devices).
 
