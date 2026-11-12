@@ -612,12 +612,19 @@ of the production the catalogued `anchor` ASIN belongs to, as the caller proved
 it. [The series-completion bot](./sync-bot.md#every-stores-copy-of-a-book)
 proves it by libex SKU group. The import merges the row's ASIN onto the anchor's
 recording and resolves nothing from the row's credits or series, so it mints no
-person, work or series. It still refuses a row whose anchor is not catalogued,
-or whose language, runtime, abridgement or region does not fit the recording.
-`--skipped` writes those under `copy-anchor-unknown`, `copy-language`,
-`copy-runtime-mismatch`, `copy-abridged` and `copy-region-held`. An AI-narrated
-row is still refused as `ai-narrator`, since it is another production. An
-unlisted row in the same run takes the ordinary `--recordings-only` path.
+person, work or series. It still refuses a row whose anchor is not a catalogued
+retail recording (`copy-anchor-unknown`, a LibriVox recording included), whose
+language is not the recording's (`copy-language`), whose runtime does not match
+(`copy-runtime-mismatch`), whose abridgement differs (`copy-abridged`), or whose
+region the recording already holds with another ASIN (`copy-region-held`).
+`--skipped` writes those codes. The row checks of every libex run still apply
+too: a malformed ASIN (`malformed-asin`), an unmapped region
+(`unmapped-region`) or language (`unmapped-language`), and an AI narrator
+(`ai-narrator`, since it is another production). The parse layer's other credit
+refusals (a placeholder, a list, a platform account, a name that slugs to
+nothing) guard against minting a person, so a listed row skips them. An
+unlisted row in the same run takes the ordinary `--recordings-only` path and
+keeps them all.
 
 For relocation, export rows for **all ASINs of the cross-language recordings**
 in one batch. The metadata repository's `scripts/README.md` documents deriving
