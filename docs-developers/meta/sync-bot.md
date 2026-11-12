@@ -62,8 +62,9 @@ section of the repo's `GOVERNANCE.md`.
     recording.
   - Another marketplace's copy of a catalogued recording, a row in the same
     libex SKU group as one of the recording's ASINs, is attached to that
-    recording as another ASIN. The import resolves nothing from its credits or
-    its series, so it adds no work, person or series
+    recording as another ASIN. On a pin whose import lists `--copies-of`, the
+    import resolves nothing from its credits or its series, so it adds no work,
+    person or series
     ([every store's copy](#every-stores-copy-of-a-book)).
   - `metaimport libex-select` refuses every other row at an occupied position,
     and the import itself refuses it again.
@@ -127,7 +128,8 @@ overwrites a recorded value.
       v
   fetch every book of those series from libex  --->  rows.ndjson
       |                                               (+ chapters for the new ones)
-      |                                               (+ the region follow-up's copies)
+      |                                          --->  copies.ndjson (copies of catalogued
+      |                                                recordings, the region follow-up's too)
       v
   metaimport libex-select  --->  the per-PR cap  --->  subset.ndjson
       |
@@ -138,7 +140,7 @@ overwrites a recorded value.
   metaimport libex --recordings-only --copies-of  (copies of catalogued recordings)
       |
       v
-  metaimport libex --enrich  (over ALL the rows)
+  metaimport libex --enrich  (over ALL of rows.ndjson)
       |
       v
   metafmt --write --profile core  --->  metacheck --profile core
@@ -252,18 +254,22 @@ their own after the create import,
 each handed over with the catalogued ASIN it is a copy of. The importer resolves
 nothing from a copy's credits or series, so an earlier selector refusal of the
 row, such as a doubled author credit or a claimed position, does not keep the
-copy out. It still refuses a copy that does not fit the recording.
+copy out. It still refuses a copy that does not fit the recording, and the
+service memoizes that refusal under the run's refusal code, so the copy is not
+sent again until the memo entry expires. Only that memo entry, a review's
+refusal (an `ai-verify` exclusion, a dispute or a resolver's removal) or an
+open pull request holding the copy keeps it out of the copies run.
 
 A store that answers without the book is asked again after 1, 2, 4 and 7 days,
 then every 14 days. A copy that was found but did not attach (refused, kept out
-by a remembered refusal, held by an open pull request, or cut by a cap) never
-counts as a store without the book. The pull request body lists it, and the
-cycle log carries one
+by a memo entry, held by an open pull request, or cut by a cap) never counts as
+a store without the book. The pull request body lists it, and the cycle log
+carries one
 `follow-up copy <asin> (<store>) of <work>: not attached (<reason>)` line for
 it. Its store's backoff does not grow: the follow-up asks again the next day,
-or, when a remembered refusal keeps the copy out, once that refusal expires. A
-copy outside the follow-up's window still arrives through its own marketplace's
-new-release or coming-soon feed.
+or, when a memo entry keeps the copy out, once that entry expires. A copy
+outside the follow-up's window, of a book in a catalogued series, still arrives
+through its own marketplace's new-release or coming-soon feed.
 
 ## The reported-ASIN lane
 
@@ -626,8 +632,8 @@ to `127.0.0.1`. That binding is what makes the missing auth safe, since
 - each feed's cursor: the watermark, a walk in progress and the last full rescan;
 - the resolver backend, the pinned `META_REF` and the required check names;
 - `memo_reasons`, the refusal memo counted by why each row was refused. The
-  reasons are the selector's reason codes, with `unknown` for entries from before
-  reasons were recorded;
+  reasons are the selector's reason codes and the copies run's refusal codes,
+  with `unknown` for entries from before reasons were recorded;
 - `intake`, the reported-ASIN lane (`on`, `last_pr`, `paused_until`).
   `last_cycle.intake` is its last turn.
 
@@ -747,7 +753,10 @@ sits every cycle out before it reads the queue, with one log line, and series
 completion is unchanged. So deploying the service before the pin is bumped is
 safe. The copies run is gated the same way. It runs only when the pinned
 `metaimport libex` lists `--copies-of`, and on an older pin the copies go
-through the selector and the create import like any other row.
+through the selector and the create import like any other row. A copies run
+that exits non-zero discards the cycle's tree and fails the cycle. For the next
+7 days, or until the service restarts, the copies then go through the selector
+the same way.
 
 The workspace's cross-repo contract carries this seam as its own section: the
 series-completion bot and the library export, section 19 of `CROSS-REPO.md` at
