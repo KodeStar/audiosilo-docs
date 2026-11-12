@@ -132,7 +132,7 @@ An episode that isn't on your server yet is fetched there first, then downloads 
 
 Downloaded episodes are listed under **Podcast episodes** on the [Downloads page](offline-downloads.md#the-downloads-page). To free the space, choose **Remove download**. A finished episode's download is removed by itself, unless you turned off **Remove a download when you finish the book**.
 
-To download every episode you start, turn on **Download podcast episodes when you start them** in [Settings](settings.md#up-next-and-downloads). It follows the same network rule as books, and it's off unless you turn it on.
+To download every episode you start, turn on **Download podcast episodes when you start them** in [Settings](settings.md#up-next-and-downloads). It's off unless you turn it on. It follows the same network rule as books, so **Automatic downloads** must be **On Wi-Fi** or **Always** too. The web player starts at **Never**.
 
 ## Private feeds
 

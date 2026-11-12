@@ -132,7 +132,7 @@ No podcasts at all? Update the app, and ask your admin whether you can see the p
 
 ### An episode download says the server couldn't get it
 
-An episode that isn't on your server yet has to be fetched there before it can download. The message under the download says why your server couldn't fetch it. Tap **Retry download** to ask again. If it says your server can't fetch episodes now, ask your admin.
+An episode that isn't on your server yet has to be fetched there before it can download. The message under the download says why your server couldn't fetch it. Tap **Retry download** on the episode's page, or **Retry** on the Downloads page, to ask again. If it says your server can't fetch episodes now, ask your admin.
 
 ### My book restarted from the beginning
 
