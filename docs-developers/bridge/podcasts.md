@@ -605,8 +605,9 @@ controller keeps:
 **Exclusions.**
 
 - A device download of an episode not on its server waits outside the player's
-  download queue, under the same probe and poll rules, until the server has the file
-  ([Offline](../frontend/offline.md#an-episode-not-on-its-server-yet)). Keep-ahead
+  download queue until the server has the file. It probes and polls on the same
+  timing, but waits and asks again at `fetch_limit`, and asks at most three at once
+  per server ([Offline](../frontend/offline.md#an-episode-not-on-its-server-yet)). Keep-ahead
   never plans an episode, and a device's copy never holds a file against the show's
   retention.
 - The Cast button hides for an episode, because cast tokens never see podcasts.

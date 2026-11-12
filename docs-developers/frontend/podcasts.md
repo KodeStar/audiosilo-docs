@@ -137,11 +137,12 @@ tab and renders:
   `duration_source !== 'none'`, and `episodeLabel`'s `S2 E5` / `E5`;
 - Trailer / Bonus / Explicit marks;
 - progress, or Finished;
-- the state line, first match wins:
+- the state line, unless the episode is finished, first match wins:
   - downloaded to this device (`useDownloadState`): "On this device". This is not
     `episode.downloaded`, which means its server has the file;
-  - downloading to this device: that download's progress, or "Getting it on your
-    server" while its server still fetches it;
+  - downloading to this device (`DeviceDownloadLine`): Getting it (with a percentage
+    when the size is known) while its server still fetches it, else Queued… or
+    that download's progress;
   - otherwise `episodeRowState(ep, pending, canFetch)`: Ready on your server, Plays
     on demand, Getting it (with a percentage when the size is known), Couldn't get
     it, or Not available now.
@@ -540,8 +541,10 @@ store ([Offline](offline.md#an-episode-not-on-its-server-yet)).
 - **Where.** The episode page's `DownloadControl`, and the row's `...` menu
   (`useBookActions`). Both follow `offersEpisodeDownload`: always for an episode on
   its server, and otherwise not while its state is `unavailable`. The control is
-  disabled then. A row hands the menu a list shape, so the menu looks the item up
-  once it opens.
+  disabled then. A row hands the menu the episode it lists (`episodeAsBook`), so
+  the menu knows it is an episode. On the web it looks the item up once it opens,
+  to learn whether the browser plays it directly. A tile of a podcast library
+  carries no `episode`, so its menu looks the item up first too.
 - **Not on its server yet.** The download
   [waits for its server](offline.md#an-episode-not-on-its-server-yet), then joins the
   queue. The control reads "Getting it on your server · Cancel", and the progress line
