@@ -245,19 +245,14 @@ SKU group again and searches the stores still missing. A cycle checks at most
 400 recordings and makes at most 400 searches, preorders and the nearest release
 dates first. The rest wait, still due, for a later cycle.
 
-A copy the follow-up finds, in the same SKU group as one of the recording's
-ASINs, is attached straight to that recording. On a pin whose `metaimport libex`
-lists `--copies-of`, the copies get a run of their own,
-`metaimport libex --recordings-only --copies-of`, after the create import. Each
-copy is handed over with the catalogued ASIN it is a copy of. The importer
-resolves nothing from the copy's credits or series, so it mints no person, work
-or series. An earlier selector refusal of the row, such as a doubled author
-credit or a claimed position, therefore does not keep the copy out. The importer
-still refuses a copy whose runtime, abridgement, language or region does not fit
-the recording, and an AI-narrated copy, which is another production. A new
-row whose SKU group already has a catalogued member takes the same route, as a
-copy of that recording. On an older pin, copies go through the selector and the
-create import like any other row.
+A copy the follow-up finds is attached straight to its recording, and so is a
+new row whose SKU group already has a catalogued member. The copies get a run of
+their own after the create import,
+[`metaimport libex --recordings-only --copies-of`](#the-pinned-cli-contract-meta_ref),
+each handed over with the catalogued ASIN it is a copy of. The importer resolves
+nothing from a copy's credits or series, so an earlier selector refusal of the
+row, such as a doubled author credit or a claimed position, does not keep the
+copy out. It still refuses a copy that does not fit the recording.
 
 A store that answers without the book is asked again after 1, 2, 4 and 7 days,
 then every 14 days. A copy that was found but did not attach (refused, kept out
@@ -265,10 +260,10 @@ by a remembered refusal, held by an open pull request, or cut by a cap) never
 counts as a store without the book. The pull request body lists it, and the
 cycle log carries one
 `follow-up copy <asin> (<store>) of <work>: not attached (<reason>)` line for
-it. Its store is held. Its backoff does not grow, and the follow-up asks the
-store again the next day, or, when a remembered refusal keeps the copy out, once
-that refusal expires. A copy outside the follow-up's window still arrives
-through its own marketplace's new-release or coming-soon feed.
+it. Its store's backoff does not grow: the follow-up asks again the next day,
+or, when a remembered refusal keeps the copy out, once that refusal expires. A
+copy outside the follow-up's window still arrives through its own marketplace's
+new-release or coming-soon feed.
 
 ## The reported-ASIN lane
 
@@ -697,7 +692,7 @@ from a pinned commit of that repository:
 | Binary | What it does here |
 |---|---|
 | `metaimport libex-select` | The authoritative selector. Keeps rows that complete a catalogued series at a free position, with mappable language and region and acceptable credits. Writes no records. Its flags are listed under this table. |
-| `metaimport libex` | The create path, over the selected subset. With `--recordings-only --copies-of`, the copies run, which attaches [other marketplaces' copies](#every-stores-copy-of-a-book) of catalogued recordings. With `--enrich`, the fill-absent-facts path over every row, which is why the service fetches rows the catalogue already holds too. Its flags are listed under this table. |
+| `metaimport libex` | The create path, over the selected subset. With `--recordings-only --copies-of`, the copies run ([every store's copy](#every-stores-copy-of-a-book)). With `--enrich`, the fill-absent-facts path over every row, which is why the service fetches rows the catalogue already holds too. Its flags are listed under this table. |
 | `metafmt --write` | Canonical rendering, entry relocation, due pack splits. Nothing here computes pack placement by hand. |
 | `metacheck` | The gate. A cycle whose `metacheck` fails discards its whole tree. |
 
@@ -731,15 +726,10 @@ last.
   refusal code, in the `--refusals` shape. Rows refused at an occupied position
   carry `position-claimed`. The service memoizes them as refusals rather than
   selecting them again.
-- `--recordings-only --copies-of <path>` is the copies run. Each line of the
-  file is `{"asin","anchor"}`: a row of the run's input and the catalogued ASIN
-  it is a copy of. The import merges the row's ASIN onto the anchor's recording
-  and resolves nothing from its credits or series. It refuses a row whose anchor
-  is not catalogued, or whose language, runtime, abridgement or region does not
-  fit the recording, under `copy-anchor-unknown`, `copy-language`,
-  `copy-runtime-mismatch`, `copy-abridged` and `copy-region-held`, which
-  `--skipped` writes. An AI-narrated copy is still refused as `ai-narrator`,
-  since it is another production.
+- `--recordings-only --copies-of <path>` is the copies run: each line of the
+  file pairs a row with the catalogued ASIN it is a copy of. Its merge rule and
+  its `copy-` refusal codes, which `--skipped` writes, are in
+  [the importer's libex modes](./contributing-data.md#libex-modes-and-recording-relocation).
 
 Every invocation passes `--profile core` explicitly. The data repository *is* a
 core tree (works, people, series, `redirects.json`), while the tools default to

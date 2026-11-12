@@ -613,10 +613,11 @@ it. [The series-completion bot](./sync-bot.md#every-stores-copy-of-a-book)
 proves it by libex SKU group. The import merges the row's ASIN onto the anchor's
 recording and resolves nothing from the row's credits or series, so it mints no
 person, work or series. It still refuses a row whose anchor is not catalogued,
-or whose language, runtime, abridgement or region does not fit the recording,
-each under its own `copy-` code in `--skipped`, and an AI-narrated row as
-`ai-narrator`. An unlisted row in the same run
-takes the ordinary `--recordings-only` path.
+or whose language, runtime, abridgement or region does not fit the recording.
+`--skipped` writes those under `copy-anchor-unknown`, `copy-language`,
+`copy-runtime-mismatch`, `copy-abridged` and `copy-region-held`. An AI-narrated
+row is still refused as `ai-narrator`, since it is another production. An
+unlisted row in the same run takes the ordinary `--recordings-only` path.
 
 For relocation, export rows for **all ASINs of the cross-language recordings**
 in one batch. The metadata repository's `scripts/README.md` documents deriving
