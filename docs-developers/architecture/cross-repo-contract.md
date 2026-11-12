@@ -415,7 +415,7 @@ The same stream route serves a different kind of copy for a watch.
   file.
 
 The `renditions` capability (seam 8) gates it. The
-[Apple Watch app](../frontend/apple-watch.md) is its client. The player only mirrors
+[Apple Watch](../frontend/apple-watch.md) and [Wear OS](../frontend/wear-os.md) apps are its clients. The player only mirrors
 the flag and `ServerInfo.renditions`. See
 [Watch renditions](../server/media.md#watch-renditions-medianewrenditioncache) in
 the server's media page and [Watch renditions](../server/api/reference.md#watch-renditions)
@@ -557,14 +557,16 @@ then opens the same-origin
 
 See [Connect and onboarding](../frontend/connect-and-addresses.md#a-link-that-names-a-book).
 
-### Handing a pairing to an Apple Watch
+### Handing a pairing to a watch {/* #handing-a-pairing-to-an-apple-watch */}
 
 The phone mints a token for its own user (`POST /auth/pair {"ttl_seconds": 600}`).
-It sends the token to the watch in a `pair` message over WatchConnectivity, not a
-link. The watch exchanges it with `POST /auth/exchange` under the same address rules,
-and identifies as `audiosilo-watch/<ver> (watchos)`. The messages between phone and
-watch are a contract inside the frontend repo, not the server's (see
-[The message contract](../frontend/apple-watch.md#the-message-contract)).
+It sends the token to the watch in a `pair` message, not a link: over WatchConnectivity
+to an Apple Watch, as a Data Layer item to a Wear OS watch. The watch exchanges it with
+`POST /auth/exchange` under the same address rules, and identifies as
+`audiosilo-watch/<ver> (watchos)` or `(wearos)`. The messages between phone and watch are a
+contract inside the frontend repo, not the server's (see
+[The message contract](../frontend/apple-watch.md#the-message-contract) and
+[The Data Layer contract](../frontend/wear-os.md#the-data-layer-contract)).
 
 ## 8. Capability flags: `GET /api/v1/server`
 

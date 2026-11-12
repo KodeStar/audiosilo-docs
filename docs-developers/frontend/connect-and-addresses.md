@@ -355,9 +355,10 @@ When pairing or the address field can't reach an https server at all, the messag
 names a self-signed certificate as a likely cause. `selfSignedMayBeWhy` decides this:
 native, https, not a timeout, and no http retry was made.
 
-The Apple Watch gets its pairing token from the phone in a `pair` message rather than a
-link, and follows the same rules in Swift (`Core/AddressPicker.swift`). See
-[Apple Watch](apple-watch.md#the-message-contract).
+A watch gets its pairing token from the phone in a `pair` message rather than a
+link, and follows the same rules in Swift (`Core/AddressPicker.swift`) or Kotlin (`wear-core`'s
+`AddressPicker.kt`). See [Apple Watch](apple-watch.md#the-message-contract) and
+[Wear OS](wear-os.md#sign-in).
 
 ### Where the pick lives (`src/api/address-route.ts`)
 

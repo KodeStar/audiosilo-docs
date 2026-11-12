@@ -58,6 +58,7 @@ const sidebars: SidebarsConfig = {
       label: 'Devices and settings',
       items: [
         'listening/apple-watch',
+        'listening/wear-os',
         'listening/in-the-car',
         'listening/chromecast',
         'listening/settings',

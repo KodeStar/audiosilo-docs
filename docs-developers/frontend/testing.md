@@ -363,7 +363,7 @@ Co-located suites exist for:
 | Downloads | `src/downloads/store.test.ts`, `offline-meta.test.ts`, `offline-companion.test.tsx` (a downloaded book's community data end to end, offline), `keep-ahead.test.ts`, `keep-ahead-controller.test.ts`, `failure.test.ts`, `downloads-view.test.ts`, `use-download-controls.test.ts`; `src/components/downloads/downloads-screen.test.tsx` |
 | Car and widgets | `src/car/car-model.test.ts` (the snapshot, item ids, play specs), `car-artwork.test.ts`, `car-controller.test.ts` (writes, play requests, bookmarks, a kept bookmark's file across a re-ordered download, adopting), `car-task.test.ts`; `src/widgets/widget-model.test.ts`, `widget-sync.ios.test.ts`; `src/lib/bootstrap.test.ts` (the shared launch steps) |
 | Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over the SDK 58 fixture, the phone scene's `RCTLinkingManager` scene calls, the default-on entitlement and its `AUDIOSILO_CARPLAY=0` opt-out), `plugins/withCast.test.ts` (the Cast options, the Android expanded controller, both plugins in `app.json` order over the SDK 58 AppDelegate), `plugins/widgets-entitlements.test.ts` (no target carries `aps-environment`), `plugins/withWatchScheme.test.ts` (finding the watch target, a scheme that builds only it), `plugins/build-properties.test.ts` (the `expo-build-properties` options: cleartext http and R8 on Android, React Native from source on iOS) |
-| Apple Watch, the phone's side | `src/watch/watch-model.test.ts` (messages, visibility, expiry), `send.test.ts`, `use-watch.test.tsx`; `watch-rows.test.ts` and `watch-ledger.test.ts` (the Downloads section's rows and the ledger); `src/components/account/apple-watch-card.test.tsx`, `src/components/downloads/watch-section.test.tsx`. The watch's Core is Swift: [`npm run test:watch`](#the-watch-core) |
+| Watches, the phone's side | `src/watch/watch-model.test.ts` (messages, `sent_at`, visibility, expiry, the Wear wording), `send.test.ts`, `use-watch.test.tsx`; `watch-rows.test.ts` and `watch-ledger.test.ts` (the Downloads section's rows and the ledger); `src/components/account/watch-card.test.tsx`, `src/components/downloads/watch-section.test.tsx`. The Apple Watch's Core is Swift: [`npm run test:watch`](#the-watch-core). The Wear OS core is Kotlin: [`npm run test:wear`](#the-wear-os-core) |
 | Cast | `src/cast/cast-media.test.ts` (the pure casting rules), `cast-token.test.ts`, `cast-prepare.test.ts`, `cast-service.test.ts`, `routed-service.test.ts` (the route switch), `cast-session.test.ts`, `cast-store.test.ts`, `cast-button-model.test.ts`, `cast-button.test.tsx`, `driver.native.test.ts`, `driver.web.test.ts` (one tab owns a session), `sdk-shapes.test.ts`, `web-sender.test.ts` |
 | Listening in the house | `src/components/house/house-model.test.ts`, `house-row.test.tsx`, `in-the-house-card.test.tsx`, `house-sharing-row.test.tsx`; `src/components/series/portrait.test.tsx` (the avatar and its ring); `src/api/hooks-household.test.tsx` (gating and polling) |
 | Profiles | `src/stores/profiles.test.ts`, `src/lib/profile-pin.test.ts`, `sha256.test.ts`, `random.test.ts`; `src/components/profiles/profiles-model.test.ts`, `profiles-screen.test.tsx`, `pin-dialog.test.tsx`; `src/components/shell/auth-gate.test.tsx`, `profile-menu.test.tsx` |
@@ -428,6 +428,8 @@ Simulator. Jest and the web prove nothing about Swift or Kotlin.
 | Android `TimelineMap` (in `MediaItems.kt`) or the effects processors | [the Android JVM tests](#android-jvm-tests) |
 | iOS `VoiceBoostDSP.swift` or `ChapterClips.swift` | [the iOS self-check](#the-ios-self-check) |
 | The watch's `targets/watch/Core/` | [`npm run test:watch`](#the-watch-core) |
+| The Wear OS app's `wear-core/` | [`npm run test:wear`](#the-wear-os-core) |
+| The rest of the Wear OS app, the phone's `modules/audiosilo-watch/android` | the Gradle tests after a prebuild, then the Wear OS emulator ([Wear OS](wear-os.md#tests)) |
 | The rest of the watch app, the phone's `modules/audiosilo-watch` | a simulator, then [a device](#on-devices) for what only a device shows ([Apple Watch](apple-watch.md#tests)) |
 | Android Auto (the service, the browse tree, the `MediaItems` queue builder and extras, the car snapshot, the car JS) | [the DHU](#android-auto-on-the-desktop-head-unit) |
 | CarPlay, the UIScene life cycle (`withCarPlay.js`, the scene delegates) | [the CarPlay Simulator](#carplay-in-the-ios-simulator) |
@@ -487,6 +489,16 @@ CI's `watch.yml` runs it on a macOS runner. See [Apple Watch](apple-watch.md#tes
 
 ```sh
 npm run test:watch
+```
+
+### The Wear OS core
+
+This needs no emulator. Gradle builds the Wear OS app's pure Kotlin `wear-core/` and runs its
+JUnit suites on the JVM. It skips, and passes, without JDK 17, and CI's `wear.yml` runs it
+before building the app. See [Wear OS](wear-os.md#tests).
+
+```sh
+npm run test:wear
 ```
 
 ### Android Auto on the Desktop Head Unit
@@ -578,7 +590,8 @@ Nothing else can show these:
   store;
 - the watch's books arriving from the phone, because `transferUserInfo` does not deliver
   between paired simulators ([Apple Watch](apple-watch.md#what-paired-simulators-cant-do));
-- the watch's background playback with the wrist down, and its background sync.
+- the watch's background playback with the wrist down, and its background sync;
+- everything on the Wear OS list in [What the emulator can't show](wear-os.md#what-the-emulator-cant-show).
 
 A dev build installed beside the store app (say `app.audiosilo.dev`) must not claim the
 store app's ids, and prebuild writes the store's ids into every target. After prebuild,

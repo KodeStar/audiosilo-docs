@@ -25,6 +25,7 @@ all content by `(library_id, rel_path)`. Most of its complexity is in
 | Icons | FontAwesome Pro 7 glyphs **vendored as raw SVG path data** in `src/components/ui/icon-data.ts`, drawn with `react-native-svg`. There is no `@fortawesome/*` dependency, so a build needs no private npm token. |
 | Secrets | **expo-secure-store** (Keychain and Keystore) holds session tokens (`src/lib/secure-store.ts`). On iOS they are readable after first unlock, for CarPlay (see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)). **AsyncStorage** holds everything else (`src/lib/storage.ts`). |
 | Apple Watch | A standalone **SwiftUI** watchOS app (`targets/watch/`, added by `@bacons/apple-targets`), with a WatchConnectivity module on the phone (`modules/audiosilo-watch`). See [Apple Watch](apple-watch.md). |
+| Wear OS | A standalone **Kotlin and Compose for Wear OS** app (`wear/`, with its pure core in `wear-core/`, wired by `plugins/withWearApp.js`), with a Data Layer half in the same phone module. See [Wear OS](wear-os.md). |
 | Car and widgets | **CarPlay** (our own `CPTemplateApplicationScene` code) and **Android Auto** (a Media3 `MediaLibraryService`) live in the native module. iOS widgets and the sleep timer Live Activity use **expo-widgets**. See [Native integrations](native-integrations.md). |
 | i18n | **i18next + react-i18next + expo-localization** (`src/i18n/`). See [Internationalisation](i18n.md). |
 
@@ -79,8 +80,8 @@ src/reader/         the ebook reader: the screen, the web host (iframe) and the 
                     protocol, the reading-place queue (see The ebook reader)
 src/widgets/        iOS widget + sleep timer Live Activity ('widget' functions) and
                     their sync (widget-model, widget-sync.ios)
-src/watch/          the phone's side of the Apple Watch: the message model, the link
-                    (a no-op off iOS), the store, Send to watch (see Apple Watch)
+src/watch/          the phone's side of both watches: the message model, the link
+                    (a no-op on web), the store, Send to watch (see Apple Watch, Wear OS)
 src/stores/         Zustand: session (connections + tokens), profiles (people on this
                     device), settings, search
                     (+ recent searches), series-orderings, library-selection
@@ -97,10 +98,13 @@ src/lib/            storage, secure-store, paths, format, hhmm (wall-clock "HH:M
                     bootstrap (the launch steps, shared with the car task),
                     register-sw, and other pure helpers
 modules/audiosilo-player/  the local Expo module (Swift + Kotlin + TS bridge)
-modules/audiosilo-watch/   the phone's WatchConnectivity link (apple only)
+modules/audiosilo-watch/   the phone's watch link: WatchConnectivity on iOS, the Wear
+                           Data Layer on Android
 targets/watch/      the Apple Watch app (Swift, not bundled by Metro): Core/ (Foundation
                     only), Net/, Storage/, Phone/, Playback/, UI/
 watch-core/         SwiftPM package over targets/watch/Core, for its tests on the host
+wear/               the Wear OS app, Gradle module :wear (Kotlin, Compose for Wear OS)
+wear-core/          the Wear OS app's pure Kotlin/JVM rules and their JUnit tests
 plugins/            config plugins (CarPlay scenes, Cast, the watch scheme, the Xcode 26
                     fix); withCarPlay, withCast and withWatchScheme have jest tests,
                     widgets-entitlements.test.ts checks that no target asks for push
@@ -154,7 +158,7 @@ Two conventions keep this layout healthy:
 | Connecting to a server, home and away addresses | [Connect and home/away addresses](connect-and-addresses.md) |
 | The API client, React Query, the stores, progress sync | [State & data](state-and-data.md) |
 | Downloads and the PWA | [Offline & PWA](offline.md) |
-| CarPlay, Android Auto, widgets, the watch, Cast | [Native integrations](native-integrations.md), [Apple Watch](apple-watch.md), [Chromecast](chromecast.md) |
+| CarPlay, Android Auto, widgets, the watches, Cast | [Native integrations](native-integrations.md), [Apple Watch](apple-watch.md), [Wear OS](wear-os.md), [Chromecast](chromecast.md) |
 | Languages | [Internationalisation](i18n.md) |
 | Tests and native checks | [Testing the player](testing.md) |
 

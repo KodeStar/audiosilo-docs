@@ -95,7 +95,7 @@ You can often leave it empty. A device that connects through a home-network addr
 
 By default, the server makes its own certificate. Browsers warn about it the first time; accept the warning and the connection is encrypted. This is fine at home.
 
-A self-signed certificate has limits. The web player can't be installed as an app, and the apps, an [Apple Watch](../listening/apple-watch.md#a-self-signed-server) and [Cast devices](../listening/chromecast.md) can't accept it. At home the apps use plain HTTP instead (next section). Away from home they need Let's Encrypt or a reverse proxy.
+A self-signed certificate has limits. The web player can't be installed as an app, and the apps, a watch ([Apple Watch](../listening/apple-watch.md#a-self-signed-server) or [Wear OS](../listening/wear-os.md#a-self-signed-server)) and [Cast devices](../listening/chromecast.md) can't accept it. At home the apps use plain HTTP instead (next section). Away from home they need Let's Encrypt or a reverse proxy.
 
 ### Plain HTTP at home: how the apps connect {/* #plain-http-at-home-how-the-phone-apps-connect */}
 

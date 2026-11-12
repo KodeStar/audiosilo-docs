@@ -91,7 +91,7 @@ You don't need a new invite:
 
 - On a signed-in device, open your [account page](account.md#pair-another-device) and tap **Show a pairing code**. Scan it with the new device within 10 minutes.
 - Or sign in with your username and [password](account.md#password).
-- An Apple Watch signs in from your iPhone. See [Listen on your Apple Watch](apple-watch.md#setting-it-up).
+- A watch signs in from your phone. See [Listen on your Apple Watch](apple-watch.md#setting-it-up) or [Listen on your Wear OS watch](wear-os.md#setting-it-up).
 
 To listen from **more than one server**, tap **Add a server** in your profile menu, or in [Settings > Accounts and devices](settings.md#accounts-and-devices). Home and search then cover all of them. Only the iOS and Android apps can do this, because the web player only reaches its own server.
 
@@ -101,7 +101,7 @@ A server can have two addresses. A **home address** works only on the same netwo
 
 When the server has both, the iOS and Android apps use the home address at home and the away address when you're out. They switch by themselves, and a playing book carries on from the same place. Before using the home address, the app checks the server there really is yours.
 
-Your [account page](account.md#at-home-and-away) lists both addresses. The web player doesn't switch. It keeps the address you opened it at. An Apple Watch [works the same way as the phone](apple-watch.md#at-home-and-away).
+Your [account page](account.md#at-home-and-away) lists both addresses. The web player doesn't switch. It keeps the address you opened it at. A watch works the same way as the phone. See [Apple Watch](apple-watch.md#at-home-and-away) and [Wear OS](wear-os.md#at-home-and-away).
 
 To listen away from home at all, the server must be reachable from the internet. See [Reach your server from outside your home](../getting-started/remote-access.md).
 

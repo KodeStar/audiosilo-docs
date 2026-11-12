@@ -282,7 +282,7 @@ Who sends it:
 - **The admin console.** It always sends it, since it is same-origin.
 - **A watch app.** The Apple Watch app sends
   `audiosilo-watch/<version> (watchos)` ([Apple Watch](../../frontend/apple-watch.md)),
-  and a Wear OS app, when there is one, sends `(wearos)`. It parses like any
+  and the Wear OS app sends `(wearos)` ([Wear OS](../../frontend/wear-os.md)). It parses like any
   other client. The console's devices, sessions and Activity name it "Apple
   Watch" or "Wear OS" with a watch icon, and the player's My devices names it
   the same way.

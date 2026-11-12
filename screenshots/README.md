@@ -64,6 +64,15 @@ book list as separate states. Keep phone card and watch account shots on the
 same sample account; use two distinct sample addresses for same-name servers.
 Simulator captures document layout, not phone-off or interruption behavior.
 
+`wear/*.png` show the Wear OS app and the Android phone's side of it, also by
+hand: the watch from a Wear OS emulator (`adb -s <wear> exec-out screencap -p`,
+following the frontend's `CONVENTIONS.md`, "Wear OS app", for the debug
+sign-in), the phone from an Android phone paired with it (`adb -s <phone> exec-out
+screencap -p`), cropped and passed through `pngquant` as above. Use a scratch
+server and sample books, never a debug or test application id, and keep the
+status bar out of the phone crops. The emulator captures a round watch as a square
+with black corners. They show layout only: nothing in them was run on a real watch.
+
 The `phone-` filename prefix caps a shot at 320px (`custom.css`). Watch shots are
 capped by page, not by name, since most are under Docusaurus's 10 KB limit and
 inlined as data URIs with no filename to match.

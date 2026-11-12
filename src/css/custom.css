@@ -469,7 +469,8 @@ article[class*='searchResultItem_'] > h2 > a {
 
 /* A watch screen is smaller still. By page, not by name: a watch shot under Docusaurus's
    10 KB limit is inlined as a data URI, with no filename in its src. */
-.docs-doc-id-listening\/apple-watch .markdown img:not([src*='/phone-']) {
+.docs-doc-id-listening\/apple-watch .markdown img:not([src*='/phone-']),
+.docs-doc-id-listening\/wear-os .markdown img:not([src*='/phone-']) {
   max-width: 220px;
 }
 

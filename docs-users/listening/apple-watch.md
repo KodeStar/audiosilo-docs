@@ -22,7 +22,7 @@ The watch is a device of its own, with its own sign-in and its own copy of each 
 - **Bookmarks, notes, the ebook and casting stay on your other devices.**
 - **English only** for now.
 
-There's no Wear OS app yet.
+For a Wear OS watch, see [Listen on your Wear OS watch](wear-os.md).
 
 ## Setting it up
 

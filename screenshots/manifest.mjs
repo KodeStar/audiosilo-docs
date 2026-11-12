@@ -231,4 +231,17 @@ export const SHOTS = [
   {file: 'watch/phone-card.png', capture: 'device', title: 'iPhone - Apple Watch card', hint: 'the account page\'s Apple Watch card, cropped: signed in as, not synced yet, Send again, Books on your watch'},
   {file: 'watch/phone-downloads-section.png', capture: 'device', title: 'iPhone - On your Apple Watch', hint: 'the Downloads page\'s On your Apple Watch section, cropped: three books On your watch with sizes, one Delivered'},
   {file: 'watch/phone-send-to-watch.png', capture: 'device', title: 'iPhone - Send to watch', hint: 'a book page\'s More sheet on the iPhone, cropped to the sheet: Add to collection, Send to watch, Mark as finished'},
+
+  // ── Wear OS watch and the Android phone's side of it (emulator and phone, by hand) ──
+  {file: 'wear/watch-set-up.png', capture: 'device', title: 'Wear OS - Set up', hint: 'the watch before it is signed in: Open AudioSilo on your phone and choose Set up watch, Get AudioSilo on your phone'},
+  {file: 'wear/watch-continue-listening.png', capture: 'device', title: 'Wear OS - Continue listening', hint: 'the home screen: On this watch, then Continue listening with a book, Download, its author and % heard'},
+  {file: 'wear/watch-on-the-way.png', capture: 'device', title: 'Wear OS - On the way', hint: 'the home screen: On the way, a book Preparing on the server with its hint'},
+  {file: 'wear/watch-on-this-watch.png', capture: 'device', title: 'Wear OS - On this watch', hint: 'On this watch: a downloaded book with its size and the Remove button under it'},
+  {file: 'wear/watch-now-playing.png', capture: 'device', title: 'Wear OS - Now playing', hint: 'Now playing: chapter, book, progress, both figures, back 15, play, forward 30'},
+  {file: 'wear/watch-now-playing-speed.png', capture: 'device', title: 'Wear OS - Now playing at 1.5x', hint: 'Now playing at 1.5x: the small line with the real time left under the figures'},
+  {file: 'wear/watch-speaker.png', capture: 'device', title: 'Wear OS - Speaker question', hint: 'the one-time question with no headphones: Play on the watch speaker?, Play on speaker, Choose headphones'},
+  {file: 'wear/watch-sign-out.png', capture: 'device', title: 'Wear OS - Sign out blocked', hint: 'Sign out with 2 listening updates not synced yet, and Sync now'},
+  {file: 'wear/phone-card.png', capture: 'device', title: 'Android - Wear OS watch card', hint: 'the account page\'s Wear OS watch card, cropped: Set up your watch and Books on your watch'},
+  {file: 'wear/phone-downloads-section.png', capture: 'device', title: 'Android - On your watch', hint: 'the Downloads page\'s On your watch section, cropped: a book On your watch with its size'},
+  {file: 'wear/phone-send-to-watch.png', capture: 'device', title: 'Android - Send to watch', hint: 'a book page\'s More sheet on an Android phone, cropped to the sheet: Add to collection, Send to watch, Mark as finished'},
 ];
