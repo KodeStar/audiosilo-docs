@@ -1206,10 +1206,60 @@ The swap **keeps the engine's file order**:
   another sequence.
 - **A download holding other files** moves the listener to the same file (by the
   path-keyed track id) at the same in-file place, else to the same whole-book place.
-  The resume floor moves with it. While that changes the track index, `persist` and
-  `onRemoteMove` refuse a place at another index of the book (`swapHold`) until the
-  download's queue is committed. On a `load`, that commit comes before the rate and
-  the play.
+  The resume floor moves with it, and the track index changes
+  ([While the track index moves](#while-the-track-index-moves)).
+
+#### While the track index moves
+
+The store holds the download's queue in `swapHold` from the swap's start to its
+commit. Until the engine is on the download, the snapshot intake reads the engine's
+reports at the download's index back onto the stream's queue by file
+(`throughSwap`). A file the stream lacks keeps the store's place. So a stop, a
+sign-out, a person switch, the sleep timer and jump undo all read the playing
+file's place, and a place saved during the hold is the playing file's.
+
+- The engine is on the download after a load from the swap's own call, or after a
+  gapless swap's switch (`swapTo`'s `onSwitch`). While the web copy buffers, the
+  engine goes on reporting the stream, in the stream's order.
+- `persist` and `onRemoteMove` refuse a place at another index of the book until
+  the download's queue is committed. On a `load`, that commit comes before the rate
+  and the play.
+- The commit moves the store's snapshot onto the download's index by file. A stream
+  in `error` holds back the engine's own report, so this is what lands it there.
+
+#### What happens during the switch
+
+The swap keeps what the listener did while it was on its way.
+
+- **A start in the way.** A download can land while a load holds the store
+  (`loadingBook`: a start, or an adoption's reload) or while a start is on its way
+  (`startsInFlight`). The store then marks the swap due (`swapDue`) and runs it once
+  they are over (`runDueSwap`), from the place that start put the book at. A start
+  that placed nothing, after a failed load or resume lookup, gets no swap. The next
+  start uses the download.
+- **A pause, a speed change, a stop or a new start during a native load.** The
+  load runs as a play attempt only when the listener's intent is to play
+  (`wantsPlayback`), never because the engine last reported `playing`
+  (`beginPlaybackAttempt`). After the load, the store sets the speed as it is then
+  and plays only while the intent stands. A pause, a speed set or a play asked for
+  during the load stands. After a stop or a new start the swap commits nothing.
+- **The web engine.** `swapTo` reads its own intent after the copy has buffered (up
+  to 8 s). A pause made meanwhile stands, and a speed or volume set meanwhile is
+  applied to the copy. A load or a reset meanwhile (`queueSeq`) discards the copy and
+  resolves `'refused'`. A move to another file (`loadSeq`) or a seek (`seekSeq`)
+  discards it and resolves `'moved'`, because the copy was buffered at the old place.
+- **A refused web swap.** The store swaps again from the new place after every
+  `'moved'`, while the book is still the store's and its download complete. Each
+  `'moved'` needs a real move of the stream: the listener's seek, skip or rewinding
+  play, the stream's own advance to its next file, a transcoded stream's early-end
+  reload, or a one-off move the store makes (the pick-up's place, another tab's).
+  The swap never moves the stream itself, so the retries end. A `'refused'` copy,
+  one that can't be served or never became playable, is never retried.
+- **Casting.** The receiver streams from the server, so the store hands the route
+  the phone's copy (`rememberLoad`) and commits the queue only when the download
+  holds the receiver's files in the receiver's order. A download in another order or
+  with other files changes nothing, and the next start uses it. See
+  [Chromecast](chromecast.md#casting-is-a-playback-route-not-a-second-player).
 
 ### Started by the car
 
