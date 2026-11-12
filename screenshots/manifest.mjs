@@ -231,12 +231,6 @@ export const SHOTS = [
   {file: 'watch/phone-card.png', capture: 'device', title: 'iPhone - Apple Watch card', hint: 'the account page\'s Apple Watch card, cropped: signed in as, not synced yet, Send again, Books on your watch'},
   {file: 'watch/phone-downloads-section.png', capture: 'device', title: 'iPhone - On your Apple Watch', hint: 'the Downloads page\'s On your Apple Watch section, cropped: three books On your watch with sizes, one Delivered'},
   {file: 'watch/phone-send-to-watch.png', capture: 'device', title: 'iPhone - Send to watch', hint: 'a book page\'s More sheet on the iPhone, cropped to the sheet: Add to collection, Send to watch, Mark as finished'},
-  {file: 'wear/watch-waiting-for-wifi.png', capture: 'device', title: 'Wear OS - Waiting for Wi-Fi', hint: 'the home screen with no Wi-Fi (Wear OS 6 emulator on simulated cellular): On the way, a book Waiting for Wi-Fi, Use the phone\'s connection (slow)'},
-  {file: 'wear/watch-sync.png', capture: 'device', title: 'Wear OS - Sync', hint: 'Sync with the server out of reach: Last sync, Waiting: 2, Can\'t reach your server, Sync now'},
-  {file: 'wear/watch-too-old.png', capture: 'device', title: 'Wear OS - Server too old', hint: 'the too-old screen against a 2.5.1 server: needs 2.6 or later, Your server: 2.5.1, Try again'},
-  {file: 'wear/watch-another-account.png', capture: 'device', title: 'Wear OS - Another account', hint: 'the home screen after Set up your watch from another account, once its listening has synced: Another account wants this watch, Switch, Keep this account'},
-  {file: 'wear/phone-card-install.png', capture: 'device', title: 'Android - Wear OS watch card, install', hint: 'the account page\'s Wear OS watch card with no AudioSilo on the watch, cropped: Install AudioSilo on your watch from Google Play, Install on watch'},
-  {file: 'wear/phone-downloads-preparing.png', capture: 'device', title: 'Android - On your watch, on the way', hint: 'the Downloads page\'s On your watch section, cropped: one book Downloading to your watch and one Preparing on the server'},
 
   // ── Wear OS watch and the Android phone's side of it (emulator and phone, by hand) ──
   {file: 'wear/watch-set-up.png', capture: 'device', title: 'Wear OS - Set up', hint: 'the watch before it is signed in: Open AudioSilo on your phone and choose Set up your watch, Get AudioSilo on your phone'},
