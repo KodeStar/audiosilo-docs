@@ -431,7 +431,9 @@ own record of the cycle, so nothing it does charges a queued series. It sits out
 reading nothing:
 
 - in the first cycle after a lane pull request, its own or the reported-ASIN
-  lane's, because that cycle belongs to series completion;
+  lane's, because that cycle belongs to series completion. The lane owes that
+  cycle from just before its push, so one whose pull request GitHub refused
+  owes it too;
 - once it has read LibriVox that UTC day. The day is stamped when the turn
   starts reading, so a read that fails also waits for tomorrow;
 - for a day after an [exclusion](#what-happens-to-its-pull-request);
@@ -446,7 +448,9 @@ A turn then runs these steps:
 1. **Read the window**: the projects LibriVox catalogued since the lane's
    cursor, 100 a page, with their sections, genres, translators, archive.org
    item and cover. On most days that is one request. On its first run and every
-   30 days after, the turn also runs [the census](#the-window-and-the-census).
+   30 days after, the turn also runs [the census](#the-window-and-the-census),
+   unless it is a [retry run](#the-pending-list), which leaves the census for the
+   next turn.
 2. **Filter.** The turn leaves out every project the catalogue holds, every one
    still being recorded (no runtime and no archive.org item yet) and every one on
    [the pending list](#the-pending-list) that is not due.
@@ -460,8 +464,9 @@ A turn then runs these steps:
    `[sync] LibriVox <day>: N new works, M new recordings` and labelled `data`,
    `bot-intake`, `bot-sync` and `sync:librivox`. Its body names the window, the
    invariant the tree passed and every project id it carries, and points at the
-   worklist issue when the run held any project for a person. A retry run's body
-   says it is a retry instead of naming a window.
+   worklist issue whenever the pending list holds a project for a person, this
+   run's or an earlier one's. A retry run's body says it is a retry instead of
+   naming a window.
 
 The lane never hands the importer a project the catalogue already holds. For a
 held project the importer re-reads the recording, which is an edit, and editing
@@ -481,7 +486,7 @@ What a turn leaves behind:
 | The import, `metafmt`, `metacheck`, the founded-series check or the invariant fails | discards the tree, falls through | every candidate held as `failed` |
 | The import landed nothing | falls through | the holds, and the cursor if the window settled |
 | The pull request opens | the cycle ends | the yield to series completion |
-| GitHub refuses the pull request | deletes the branch, falls through | the import's holds; the tree's projects held as `failed` |
+| GitHub refuses the pull request | deletes the branch, falls through | the yield to series completion; the import's holds; the tree's projects held as `failed` |
 | A dry run with a diff | the cycle ends, the tree left in the clone | nothing |
 
 Falling through means series completion runs in the same cycle, as after the
@@ -495,7 +500,8 @@ UTC of the day a window was read. A turn reads
 window starts at `SYNC_LIBRIVOX_SINCE`, or else the day before the first run.
 The cursor moves only:
 
-- when a lane pull request that read a window merges, to that window's start;
+- when a lane pull request that read a window merges, to the midnight UTC of
+  the day that window was read, where the next window starts;
 - on a turn that opens nothing because every project of its window is already
   held, or is on the pending list for a durable reason (any but `failed`,
   `deferred` and `unread`).
@@ -528,11 +534,14 @@ lists that the catalogue lacks and the pending list does not hold is then:
   later census sees a runtime;
 - otherwise read by id (`?id=<n>&extended=1`) and imported.
 
-At most 50 projects are read by id in a turn, within the
-room the window's projects left under the 200 cap. A find past either bound waits
-as `deferred`. A by-id read that fails ends the turn's reads and holds that
-project as `unread`. A census that fails is tried again the next turn, and the
-window's turn goes on.
+The census's finds are not the only by-id reads. A project on
+[the pending list](#the-pending-list) that is due and outside the window is read
+by id too, and those go first. At most 50 projects are read by id in a turn,
+within the room the window's projects left under the per-pull-request cap. A
+census find past either bound waits as `deferred`, and a due pending project past
+them stays as it is, due next turn. A by-id read that fails ends the turn's reads
+and holds that project as `unread`. A census that fails is tried again the next
+turn, and the window's turn goes on.
 
 ### The pending list
 
@@ -650,16 +659,20 @@ lane, and the evidence goes straight to its end:
     retry finds the project whose data breaks the check, rather than the same
     window coming back every day with the cursor stuck;
   - a retry pull request that a check closes holds its projects as `failed` at
-    once, whatever the count.
+    once, whatever the count, and does not add to it, so a later window pull
+    request does not inherit the retry's strike.
 
-  Any lane merge resets the count.
-- **A recycle** (no `ai-verify` verdict), a close by hand and an abandoned park
-  put every project back as `deferred` and leave the cursor alone. The next run
+  Any LibriVox lane merge resets the count. A reported-ASIN lane merge does
+  not.
+- **A recycle** (no `ai-verify` verdict on the head, or main moved out from
+  under it), a close by hand and an abandoned park put every project back as
+  `deferred` and leave the cursor alone. The next run
   reads the same window again. A recycle does not count toward the recycle
   throttle.
-- **A merge**, by the watch tick or by hand, moves the cursor to the window's
-  start and ends the run of check closes. It also lets series completion's
-  cycle start at once.
+- **A merge**, by the watch tick or by hand, moves the cursor to the midnight
+  UTC of the day its window was read (a retry run's leaves it where it is) and
+  ends the run of check closes. It also lets series completion's cycle start at
+  once.
 
 ### The LibriVox lane's limits
 
@@ -868,7 +881,8 @@ to `127.0.0.1`. That binding is what makes the missing auth safe, since
 - `librivox`, [the LibriVox lane](#the-librivox-lane): `on`, its `cursor` and
   `last_census` (shown there only, never under the feed cursors), `last_run`,
   `rest_until`, the `pending` list counted by reason, `check_closes` (lane pull
-  requests a required check closed in a row) and the worklist `issue`.
+  requests a required check closed in a row), the worklist `issue` and
+  `max_projects`, the per-pull-request cap in force.
   `last_cycle.librivox` is its last turn.
 
 Configuration is environment variables only. One struct reads them all, so the
@@ -988,7 +1002,8 @@ last.
 A non-zero exit is a failed import, whatever the run wrote, and the lane discards
 the tree.
 
-Every invocation passes `--profile core` explicitly. The data repository *is* a
+Every `metafmt` and `metacheck` invocation passes `--profile core` explicitly
+(the `metaimport` subcommands take no profile). The data repository *is* a
 core tree (works, people, series, `redirects.json`), while the tools default to
 `all`, and the difference is a failed file accounting.
 
@@ -1070,8 +1085,9 @@ order of the deploy matters:
    [the pinned CLI contract](#the-pinned-cli-contract-meta_ref).
 
 The PAT needs Issues: read and write (see
-[the worklist issue](#the-worklist-issue)). In a compose file with an explicit `environment:` list, `SYNC_LIBRIVOX=off` takes
-effect only when it is listed there too.
+[the worklist issue](#the-worklist-issue)). In a compose file with an explicit
+`environment:` list, `SYNC_LIBRIVOX=off` takes effect only when it is listed
+there too.
 
 Worth knowing before a first run either way:
 

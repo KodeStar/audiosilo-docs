@@ -1595,9 +1595,9 @@ Each row of the worklist issue is a project held for one of the
 [worklist](#the-worklist) reasons. A person resolves it with an ordinary pull
 request under the merge policy: a reviewed
 `metaimport librivox import --ids <id>`, or a data fix that settles the match.
-The lane never needs telling. It drops a row as soon as the catalogue holds the
-project, and retries every row on [its own schedule](./sync-bot.md#the-pending-list)
-in case a fix has settled it.
+The lane never needs telling. At its next daily turn after the catalogue holds
+the project it drops the row, and it retries every row on
+[its own schedule](./sync-bot.md#the-pending-list) in case a fix has settled it.
 
 Start with the `same-name-author` rows, which the issue lists first. Each names
 the catalogued person the LibriVox author's name meets and a few of their works.
