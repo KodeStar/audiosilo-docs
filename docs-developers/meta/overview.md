@@ -56,8 +56,10 @@ is in [the data model](data-model.md).
 Imports are bounded, curated tranches, never a wholesale mirror of another
 catalogue. The one named exception is [LibriVox](https://librivox.org). Its
 recordings are in the public domain, so they may be mirrored in full under the
-`librivox` source type, facts only. The tooling is in place, and the backfill
-lands in reviewed tranches
+`librivox` source type, facts only. The backfill that seeded the mirror landed
+in reviewed tranches and is finished. A daily lane of the
+[series-completion bot](./sync-bot.md#the-librivox-lane) keeps it current from
+LibriVox's own catalogue, under an invariant of its own
 ([LibriVox: the public-domain mirror](contributing-data.md#librivox-the-public-domain-mirror)).
 The API serves those recordings like any other. It adds a `source=librivox`
 filter, `lookup?librivox_id=` and a feed in LibriVox's own shape, so an app that
@@ -346,8 +348,9 @@ response-shape change ripples into. The consumer sides are documented on
 
 One more service sits upstream of the data rather than downstream of it. The
 [series-completion bot](./sync-bot.md) is a daily job that keeps the series the
-catalogue already holds complete. It is the only automation allowed to merge its
-own pull requests.
+catalogue already holds complete, and through its LibriVox lane keeps the
+LibriVox mirror current. It is the only automation allowed to merge its own pull
+requests.
 
 `metaserve` also works as an **Audiobookshelf custom metadata provider** for that
 competitor's users: `GET /abs/search`, plus `GET /abs/{lang}/search`, which ranks
