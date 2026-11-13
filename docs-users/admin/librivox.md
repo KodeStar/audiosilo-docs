@@ -16,8 +16,9 @@ You need:
 - the library shown as **Ready** in [Server > Settings > Bridge](bridge.md#libraries).
 
 The search reads the community metadata database, so your server never asks
-LibriVox itself. The Bridge downloads the audio from archive.org, where LibriVox
-keeps its recordings.
+LibriVox itself. The Bridge reads the recording's list of sections from the
+community metadata database too, and downloads the audio from archive.org, where
+LibriVox keeps its recordings.
 
 :::note[A new books library]
 The Bridge checks a books library against a book the server has indexed. A
@@ -123,5 +124,5 @@ The row says why. Press **Add** again to try once more.
   [notifications](notifications.md).
 - [Clear community matches](server.md#community-metadata) removes the match of
   books added from LibriVox too. To get it back, press **Add** on the recording
-  again. The Bridge finds the book it already placed and downloads nothing, and
-  the server matches it again.
+  again. When the book is still in the folder the Bridge put it in, the Bridge
+  finds it there and downloads nothing, and the server matches it again.

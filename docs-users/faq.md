@@ -67,7 +67,7 @@ Only what a lookup needs:
 
 - **Community metadata** sends meta.audiosilo.app a book's ASIN or ISBN, or the community entry an admin matched it to. Matching a book also sends details like its title and author (see [Server settings](./admin/server.md#community-metadata)). The server never sends listener details or full file paths. A match can send up to three names from the book's path (its author, series and book folders) as search terms.
 - **Help complete the community database** (off by default) sends, once a day, the ASINs the database doesn't know. See [Helping complete the community database](./admin/server.md#helping-complete-the-community-database).
-- **Add from LibriVox**, when an admin uses it, sends the search text to meta.audiosilo.app, and the Bridge downloads the book from archive.org. See [Add free books from LibriVox](./admin/librivox.md).
+- **Add from LibriVox**, when an admin uses it, sends the search text to meta.audiosilo.app. The Bridge then reads the recording's list of sections from meta.audiosilo.app (or the metadata service it is set to use) and downloads the book from archive.org. See [Add free books from LibriVox](./admin/librivox.md).
 - **Podcast search** sends the search text to Apple Podcasts or Podcast Index. See [Searching podcast directories](./admin/podcasts.md#searching-podcast-directories).
 - **The update check** asks GitHub once a day for the newest version. See [What the update check sends](./admin/server.md#what-the-update-check-sends).
 
