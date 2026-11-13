@@ -101,6 +101,26 @@ Stop using AudioSilo and your library is still a folder of files.
 
 Yes, on a 64-bit OS. Releases include Linux builds for **amd64** and **arm64**. There's no 32-bit ARM build. See [Install without Docker](./getting-started/install-binary.md).
 
+### Why does `docker stats` show more memory than the server uses?
+
+`docker stats` adds two things to the server's own memory. One is file cache, the recently read parts of your books and the database that Linux keeps in memory. The other is memory Linux uses on the container's behalf, such as its record of files and folders.
+
+The first scan reads every book's tags, chapters and covers, so both grow with your library. In one test, a minute after the first scan of about 5,000 books, `docker stats` showed 291 MiB and the server's own memory was 30 MiB. Linux frees the file cache as soon as anything else needs memory.
+
+Playing a book adds very little to the server's own memory. The server streams the file from disk without loading it into memory.
+
+To see the split, run this from the folder that holds your `docker-compose.yml` (on Unraid, use `docker exec` and the container's name):
+
+```sh
+docker compose exec audiosilo grep -E "^(anon|file|active_file|kernel) " /sys/fs/cgroup/memory.stat
+```
+
+- **anon** is the server's own memory.
+- **file** is the file cache. `docker stats` counts only its **active_file** part.
+- **kernel** is the memory Linux uses on the container's behalf. `docker stats` counts it too. Older Linux versions don't print this line.
+
+Other apps' `docker stats` figures include the same two things. To compare two apps, run the same command for each and compare the **anon** lines.
+
 ## The project
 
 ### Where does the project live?
