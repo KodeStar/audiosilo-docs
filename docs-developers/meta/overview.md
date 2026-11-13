@@ -56,8 +56,7 @@ is in [the data model](data-model.md).
 Imports are bounded, curated tranches, never a wholesale mirror of another
 catalogue. The one named exception is [LibriVox](https://librivox.org). Its
 recordings are in the public domain, so they may be mirrored in full under the
-`librivox` source type, facts only. The backfill that seeded the mirror landed
-in reviewed tranches and is finished. A daily lane of the
+`librivox` source type, facts only. A daily lane of the
 [series-completion bot](./sync-bot.md#the-librivox-lane) keeps it current from
 LibriVox's own catalogue, under an invariant of its own
 ([LibriVox: the public-domain mirror](contributing-data.md#librivox-the-public-domain-mirror)).
