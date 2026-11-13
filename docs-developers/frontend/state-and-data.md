@@ -1570,8 +1570,9 @@ headers }`). The rules are in `src/lib/proxy-headers.ts` and the storage in
   copy of that set under its own id.
 - **One https origin.** A set names the origin (scheme, host and port) it was
   entered for. `proxyHeaderRecord` is the one rule: a request to that origin
-  carries the set, and any other URL, the home address and a plain-http URL
-  included, gets none. A set for an http origin is refused at entry and dropped
+  carries the set, and any other URL gets none: a plain-http URL, another port,
+  or the home address unless the set was entered for it (an https home address
+  is one of the Account card's choices). A set for an http origin is refused at entry and dropped
   at load (`cleanProxyHeaders`). Reserved names (`Authorization`, `Cookie`,
   `Host`, `Range`, `Content-Type`, `Content-Length`, `Connection`,
   `Transfer-Encoding`, `X-AudioSilo-Client`) and values with control characters
@@ -1583,7 +1584,7 @@ headers }`). The rules are in `src/lib/proxy-headers.ts` and the storage in
 - **Redirects** are the platform HTTP stack's to follow, so whether a 3xx takes
   the headers to another origin is unverified. The UI says "sent with requests
   to &lt;origin&gt;" and never claims more (`src/i18n/locales.test.ts` refuses
-  "nowhere else" and "only to" in every locale).
+  "nowhere else", "go only" and "https only" in every locale).
 - **Not carried:** Chromecast (`castBlockReason` `proxy`), the watch apps (the
   pair message is unchanged) and calendar apps (the `releases.ics` link).
 

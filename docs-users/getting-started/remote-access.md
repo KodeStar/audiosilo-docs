@@ -81,7 +81,7 @@ The app keeps the headers with your sign-in, as securely. To change them, use th
 
 Good to know:
 
-- **HTTPS only.** Proxy headers need an `https://` address, and the app doesn't add them to a plain-HTTP request. Nor does it add them at the server's home address, which doesn't go through the proxy.
+- **HTTPS only.** Proxy headers need an `https://` address, and the app doesn't add them to a plain-HTTP request. Requests to the server's other addresses, such as its home address, get none either.
 - **Scan after typing.** A pairing QR code or link uses the headers when its address is the one you typed. Enter the address and the headers first, then scan.
 - **What can't send them:** Chromecast, the Apple Watch and Wear OS apps, and calendar apps. They reach the server by themselves, so they can't get past the proxy. In a browser, covers, audio and requests to another server don't carry them. Those rely on your sign-in to the proxy in that browser.
 - **Some names are the app's own**, such as `Authorization`, `Cookie`, `Host`, `Range` and `Content-Type`, and it refuses them. So a proxy that asks for basic auth (an `Authorization` header) can't sit in front of AudioSilo.

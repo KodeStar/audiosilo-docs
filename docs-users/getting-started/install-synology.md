@@ -6,7 +6,7 @@ description: "Run AudioSilo on a Synology NAS with Container Manager: create the
 On a Synology NAS, run AudioSilo as a **Container Manager** project. It's the same image as the [Docker install](./quickstart-docker.md), **`ghcr.io/kodestar/audiosilo-server`**. Most install problems on a NAS are folder permissions, so this page sets those up first.
 
 :::note
-These steps follow Container Manager on DSM 7.2. A label can differ on other versions. Container Manager needs DSM 7.2 or newer. The older **Docker** package can't run AudioSilo (see [Troubleshooting](../troubleshooting.md#the-container-stops-at-start-up-with-pthread_create-failed)).
+These steps are written for Container Manager on DSM 7.2 and haven't been checked on a NAS yet, so a label can differ on yours. AudioSilo needs Docker 20.10.10 or newer. The older **Docker** package on DSM 7.1 may be too old (see [Troubleshooting](../troubleshooting.md#the-container-stops-at-start-up-with-pthread_create-failed)).
 :::
 
 ## 1. Create the folders
@@ -93,7 +93,7 @@ If the log starts with `audiosilo: WARNING: the server can't write to /data` or 
 
 ## Update
 
-In **Container Manager**, open **Project**, select `audiosilo`, then choose **Action** > **Stop** and **Action** > **Build**. Container Manager pulls the newest image and starts the project again. Your books are never changed. When an update changes the database, the server first saves a [backup](../admin/backups.md#before-an-upgrade) of it.
+In **Container Manager**, stop the `audiosilo` project, get the newest `ghcr.io/kodestar/audiosilo-server:latest` image, and start the project again. Over SSH, `cd /volume1/docker/audiosilo` and run `sudo docker compose pull && sudo docker compose up -d`. Your books are never changed. When an update changes the database, the server first saves a [backup](../admin/backups.md#before-an-upgrade) of it.
 
 ## Good to know
 
