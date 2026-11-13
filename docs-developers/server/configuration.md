@@ -692,10 +692,9 @@ makes the cache survive a restart and an outage:
 
   It never holds a service error, and never a row for a work id that `/meta/work`
   or `previous` found unknown. That id is the caller's choice, so storing misses
-  would let any user grow the table. A
-  `404` from the service for a work already stored replaces its row, so a dropped
-  work isn't served again in a later outage. In mirror mode a `404` the local copy
-  gave never does (see [Mirror mode](#mirror-mode-metadatamode-mirror)).
+  would let any user grow the table. A `404` from the service for a work already
+  stored replaces its row, so a dropped work isn't served again in a later
+  outage. In mirror mode a `404` the local copy gave never does (see [Mirror mode](#mirror-mode-metadatamode-mirror)).
 - **How it is read:** after a memory miss. A row still within its TTL is served
   and warms memory for the rest of that TTL. A match past its TTL is not served
   while the service answers, but when the service fails it is served anyway

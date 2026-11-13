@@ -992,7 +992,7 @@ a marker (`DownloadManifest.meta = { savedAt }`).
 - *What `captureOfflineMeta` skips.* A book with no ASIN or ISBN and no generated
   content (`canMatch`, `metaEnabledFor` on the cached full item first, since the
   manifest's book can be the list shape). That includes a book matched only in the
-  console: online its page shows the match, offline it reads as unmatched. Also a
+  console. Online its page shows the match. Offline it reads as unmatched. Also a
   server without `metadata`.
 - *How it reads.* It reads through the screens' own option factories
   (`bookMetaQuery`, `metaWorkQuery`), so it reuses a fresh answer they hold. It never
