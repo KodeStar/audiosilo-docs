@@ -26,14 +26,17 @@ An optional channel receives spoiler-free titles and links for recaps and
 character sheets. Announcements wait until both conditions hold:
 
 - The content is present in the published metadata API.
-- The earliest known audiobook recording release is at least 30 UTC days old.
+- The earliest known audiobook recording has been released (from that UTC day).
+
+There is no further wait after release: recaps and character sheets are spoiler
+gated on the site, so an announcement is useful to listeners of the current book.
 
 Core composes the community repository into its data release, so the bot waits
 for publication after the community merge. A release date stating only a year,
 or only a year and month, uses the last day of that period. Unknown release dates
 remain pending. Existing eligible content is silently baselined on first startup,
-while newer books remain queued until day 30. Each content type of a given work
-announces only once.
+while content for a book not yet released stays queued until its release day.
+Each content type of a given work announces only once.
 
 When a catalogue repair merges duplicate works, the retired slug answers `301`
 with its survivor, where the community content reappears. The survivor inherits
