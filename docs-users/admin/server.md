@@ -134,14 +134,15 @@ servers leave it empty.
 
 **Look up community metadata** turns on extra book details from the free
 community database at [AudioSilo Meta](https://meta.audiosilo.app). Books
-with an ASIN or ISBN gain an "About this book" section in the player: a
-description, series, and (where written) characters and recaps. See
+with an ASIN or ISBN, and books you matched in the console, gain an "About this
+book" section in the player: a description, series, and (where written)
+characters and recaps. See
 [A book's page](../listening/book-page.md#about-this-book).
 
 What is sent:
 
-- **Looking up a book** sends only its ASIN or ISBN, never file paths or who
-  is listening.
+- **Looking up a book** sends only its ASIN or ISBN, or the community entry
+  you matched it to, never file paths or who is listening.
 - **Matching a book** in the console sends search terms from its tags, folder
   names and length, only when you match. See
   [What matching sends](books.md#what-matching-sends).

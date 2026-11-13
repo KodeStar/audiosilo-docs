@@ -92,7 +92,7 @@ When your device has no network, downloaded books play and everything else waits
 
 ## Community notes offline
 
-When your server has [community metadata](book-page.md#about-this-book) switched on, a downloaded book keeps its description, [recaps and characters](recaps-and-characters.md) and Series tab. They still [hide what you haven't reached](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). They're refreshed when the copy is over a week old and the app can reach your server.
+When your server has [community metadata](book-page.md#about-this-book) switched on, a downloaded book keeps its description, [recaps and characters](recaps-and-characters.md) and Series tab. They still [hide what you haven't reached](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). They're refreshed when the copy is over a week old and the app can reach your server. A book with no ASIN or ISBN, matched only by an admin in the console, doesn't keep them.
 
 ## Downloads in a web browser
 

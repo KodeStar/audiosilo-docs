@@ -422,7 +422,8 @@ saving (see [`GET /admin/settings`](api/reference.md#get-apiv1adminsettings)).
 ### Community metadata (`metadata.*`)
 
 The server can enrich a book with a description, production details and its
-series. It resolves the book's ASIN or ISBN against the community metadata API
+series. It resolves the book's ASIN or ISBN, else the book's recorded community
+match, against the community metadata API
 ([meta.audiosilo.app](https://meta.audiosilo.app)) and serves the result at
 `GET /libraries/{id}/meta`. Players draw it as an "About this book" block plus
 the recaps, characters and series tabs. The same config also gates
@@ -681,17 +682,19 @@ database, in the `meta_cache` table (migration `0024`; see
 makes the cache survive a restart and an outage:
 
 - **What it holds:**
-  - A book's enrichment, keyed by its ASIN or ISBN: a match, a "no match", or an
-    envelope missing a series rail. An envelope missing a rail is kept for 2
-    minutes only, and never over a stored answer, which stays the outage fallback.
+  - A book's enrichment, keyed by its ASIN or ISBN, or by its recorded community
+    match's work and recording ids for a book its identifiers don't match: a
+    match, a "no match", or an envelope missing a series rail. An envelope
+    missing a rail is kept for 2 minutes only, and never over a stored answer,
+    which stays the outage fallback.
   - Works fetched by id (`/meta/work`, and the previous books `/meta` adds),
     matches only.
 
-  It never holds a service error, and never a row for an unknown work id. An id
-  is the caller's choice, so storing misses would let any user grow the table. A
-  `404` from the service for a work already stored replaces its row, so a dropped
-  work isn't served again in a later outage. In mirror mode a `404` the local copy
-  gave never does (see [Mirror mode](#mirror-mode-metadatamode-mirror)).
+  It never holds a service error, and never a row for a work id that `/meta/work`
+  or `previous` found unknown. That id is the caller's choice, so storing misses
+  would let any user grow the table. A `404` from the service for a work already
+  stored replaces its row, so a dropped work isn't served again in a later
+  outage. In mirror mode a `404` the local copy gave never does (see [Mirror mode](#mirror-mode-metadatamode-mirror)).
 - **How it is read:** after a memory miss. A row still within its TTL is served
   and warms memory for the rest of that TTL. A match past its TTL is not served
   while the service answers, but when the service fails it is served anyway

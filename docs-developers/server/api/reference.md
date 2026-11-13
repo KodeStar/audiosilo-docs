@@ -2322,8 +2322,9 @@ its other series (`series_list`) in their order. The community rails answer firs
 but only when they can **place** the next entry on one of the caller's books.
 Otherwise the local steps decide, in order, and the first one with an answer wins:
 
-1. **`community`**: community metadata is on and the book matches a work with at
-   least one series rail.
+1. **`community`**: community metadata is on and the book's ASIN or ISBN matches
+   a work with at least one series rail. Unlike `/meta`, this step never reads
+   the book's recorded match.
    - **Rail order.** The rails are taken in the book's own order. First comes a
      rail named like its main series (by the rail's name or one of its orderings',
      ignoring case, accents, punctuation and spacing). Then come rails named like
@@ -2421,13 +2422,27 @@ path is authorized against the caller's share scope exactly like `/item`. The ro
 is gated by the `metadata` [capability](#get-apiv1server). When it is false the
 route returns 404, so a client that honours the flag never calls this.
 
-The server resolves the book's `asin` or `isbn`. These are the effective fields on
-the indexed book: stored in `book_enrichment`, or set by an admin edit, which wins.
-It looks the recording up upstream and folds the matched recording plus up to three
+The server finds the book's work in two steps (`bookEnvelope`):
+
+1. **Its identifiers.** The server looks the book's `asin` or `isbn` up upstream.
+   These are the effective fields on the indexed book: stored in
+   `book_enrichment`, or set by an admin edit, which wins. A book its identifiers
+   match never reads its recorded match.
+2. **Its recorded match.** When the book has neither identifier, or the upstream
+   does not know them, the server reads the book's recorded community match. That
+   is its `book_matches` row, shown as
+   [`community_match`](#get-apiv1adminlibrariesidbook) on the console's book page:
+   the `work_id` and `recording_id` an admin accepted or a match run applied. The
+   server fetches that work (`works/{id}`, `meta.Service.EnrichMatch`) and uses
+   the match's recording as the envelope's recording, as a lookup would. When
+   the match names no recording, or one the work no longer has, that is the
+   work's first. A book with no match row is unmatched.
+
+Either way the server folds the matched recording plus up to three
 series rails into one envelope, one rail per reading-order family (see
 [Reading-order families](#reading-order-families)). Every series-rail entry carries its own `web_url`, so a client links
 to the metadata site without ever building a URL itself. Answers are cached in
-memory and in the server's database (see
+memory and in the server's database, keyed by identifier or by the recorded match (see
 [Configuration](../configuration.md#community-metadata-metadata)), so a restart
 serves them warm and a known book keeps its enrichment through a metadata-service
 outage.
@@ -2523,6 +2538,27 @@ the upstream has none. Every `omitempty` string or number field (`subtitle`,
 
 - `recording.chapter_count` is the matched recording's chapter count, omitted when
   the metadata service does not know it.
+- `recording.librivox` (2.7.0, additive) says where a LibriVox recording is
+  published. It is present only when the community gives the recording a LibriVox
+  project id (`librivox_id` above 0), and absent on every other recording and on
+  older servers:
+
+  ```json
+  "librivox": {
+    "id": 47,
+    "url": "https://librivox.org/…",
+    "zip_url": "https://archive.org/compress/…"
+  }
+  ```
+
+  `id` is the LibriVox project id. `url` is the recording's page on librivox.org
+  and `zip_url` the whole recording as one zip, from the community's
+  `links.librivox` and `links.zip` (see
+  [The `links` field](../../meta/data-model.md#the-links-field)). Each is
+  optional, and the server keeps it only
+  when it is an absolute `http` or `https` URL with a host (`librivoxOf`). It
+  never builds either from `id`, because LibriVox's pages are named by slug. A
+  cached envelope gains the field once its entry is next refreshed.
 - `series[].position` is this work's position in that series. Positions are
   strings ("1", "2.5", "1-3.5").
 - `series[].works` is the full ordered rail, **including the current work**. The
@@ -2822,8 +2858,8 @@ this param: it gates on the device against its live position, which can be ahead
 of the last saved one. `spoilers=hide` is for clients that cannot gate
 themselves.
 
-When the book has neither an `asin` nor an `isbn`, or the upstream reports no
-match, the response is `200 { "matched": false }`. That is a normal, non-error result
+When neither the book's identifiers nor its recorded match (if any) find a work
+upstream, the response is `200 { "matched": false }`. That is a normal, non-error result
 that the client treats as "nothing to show":
 
 ```json
@@ -2869,10 +2905,11 @@ content wins **per dimension**:
     `sidecars.describe` job shows its own time.
   - The whole object is omitted when nothing was generated, or the community has
     it all.
-- **A book with no match** (no `asin`/`isbn`, or none upstream) but generated
-  content answers `matched: false` **with a work** of its own: `id` empty,
-  `title` the book's, `authors` `[]`, the generated `characters`, `recaps`,
-  `recap_summary` and `generated_description`, and `generated`:
+- **A book with no match** (neither its identifiers nor its recorded match find
+  a work) but generated content answers `matched: false` **with a work** of its
+  own: `id` empty, `title` the book's, `authors` `[]`, the generated
+  `characters`, `recaps`, `recap_summary` and `generated_description`, and
+  `generated`:
 
   ```json
   { "matched": false, "work": { "id": "", "title": "The Book", "authors": [], "language": "",
@@ -2937,7 +2974,7 @@ generated description, because it is a field they don't know.
 | `400` | missing `path` / invalid library id |
 | `403` | path outside the caller's share scope |
 | `404` | `no book at that path`, **or** metadata lookup is disabled on this server (`metadata` capability false) |
-| `500` | with `spoilers=hide`, `could not load progress` - the caller's progress could not be read; the ungated envelope is never sent instead |
+| `500` | `could not load book` - the book or its recorded match could not be read. With `spoilers=hide`, also `could not load progress` - the caller's progress could not be read; the ungated envelope is never sent instead |
 | `502` | `metadata service unavailable` - the upstream was unreachable or errored, the server holds no earlier answer for the book, and it has no generated content |
 
 ### `GET /api/v1/libraries/{id}/meta/cover`
@@ -2996,7 +3033,8 @@ reach the client.
 | `400` | `url is required`; `size must be one of [96 160 320 640]` (an empty `size=` too); `path is required` / `invalid library id` |
 | `401` | missing/invalid token |
 | `403` | path outside the caller's share scope |
-| `404` | `no such cover` - the book is unmatched (no `asin`/`isbn`, or no match upstream) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
+| `404` | `no such cover` - the book is unmatched (neither its identifiers nor its recorded match find a work) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
+| `500` | `could not load book` - the book or its recorded match could not be read |
 | `502` | `metadata service unavailable` - the book's envelope couldn't be had; `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects, an answer other than `200`), or its fetch failed less than a minute ago |
 
 ### `GET /api/v1/meta/work`
@@ -6421,8 +6459,9 @@ is a `400` too (`too many format or codec values`).
   duplicates groups' copies and the book page's `book` carry it too.
 - `matched` - the book has an ASIN or ISBN, or a recorded community match (a store
   listing with neither, from 2.6.0): the same rule as the `matched` filter
-  (`catalog.matchedExpr`). The player's `/meta` and the community chapter check find
-  a book by its ASIN or ISBN alone, so check `asin` / `isbn` for those, not `matched`.
+  (`catalog.matchedExpr`). The community chapter check finds a book by its ASIN or
+  ISBN alone, so check `asin` / `isbn` for it, not `matched`. `/meta` also reads
+  the recorded match, so it can answer a `matched` book with neither identifier.
 - `abridged` - `true`, `false`, or `null` while nothing says (always present,
   unlike the player's `Book`, which omits it). `genres` and `tags` are `[]` for
   none.

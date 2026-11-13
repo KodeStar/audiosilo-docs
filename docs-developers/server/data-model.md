@@ -1621,8 +1621,9 @@ metadata cache (`internal/meta.Store`, `catalog/metacache.go`). It holds the
 answers the in-memory cache holds, so a restart serves them warm, and a known
 book keeps its enrichment through a metadata-service outage. Columns:
 
-- `key`: the primary key. A book's enrichment is `a:<asin>` or `i:<isbn>`, and
-  a work fetched by id is `w:<id>`.
+- `key`: the primary key. A book's enrichment is `a:<asin>` or `i:<isbn>`, the
+  enrichment of a recorded community match is `m:<work id>/<recording id>` (each
+  id path-escaped), and a work fetched by id is `w:<id>`.
 - `version`: the payload's format. A row of another version is ignored.
 - `source`: the metadata service's base URL the answer came from. A row from
   another URL is ignored.
@@ -1631,7 +1632,8 @@ book keeps its enrichment through a metadata-service outage. Columns:
 
 Index `idx_meta_cache_stored` on `stored_at`.
 
-It holds community data only, keyed by identifier, never by a book or a user.
+It holds community data only, keyed by identifier or community id, never by a
+book or a user.
 Nothing moves it with a book or purges it with an account, and dropping it
 costs one upstream lookup per book.
 
@@ -1835,7 +1837,13 @@ this row alone. `catalog.matchedExpr`
 
 What needs an identifier tests `asin` or `isbn` itself: community chapters, the
 unknown-ASIN report, upcoming releases, a repick, the Bridge's estimate and the
-player's `/meta`.
+community step of `/next`.
+
+`/meta` reads the row only when the book's identifiers find nothing. A book with
+neither, or one the upstream does not know, answers from its recorded match
+(see [`GET /libraries/{id}/meta`](api/reference.md#get-apiv1librariesidmeta)).
+Which player surfaces ask `/meta` for such a book is in
+[Enriched book metadata](../frontend/state-and-data.md#enriched-book-metadata).
 
 The row moves with the book (`moveBookState`, as one set with its edits), is
 copied from the first part on a join, is kept through a rescan or rebuild, and

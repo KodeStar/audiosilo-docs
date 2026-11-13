@@ -393,7 +393,8 @@ book's signature names a characters, recaps or description file.
   chapters, and a map is how its text lines up; neither is generated content.
 - It is read from the narrow column, so a list never joins `book_attachments`.
 - Every book object carries it: lists, search, `item`, recent, and the next book's
-  `book`. The player uses it to ask `/meta` for a book with no ASIN or ISBN.
+  `book`. The player's identifier-gated surfaces (`metaEnabledFor`) use it to ask
+  `/meta` for a book with no ASIN or ISBN.
 
 Off the wire, `Book.GeneratedParts` says which parts the signature names. So
 `/meta` and the console's book page read only the columns a book has.

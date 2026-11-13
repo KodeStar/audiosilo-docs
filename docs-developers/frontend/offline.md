@@ -989,9 +989,11 @@ a marker (`DownloadManifest.meta = { savedAt }`).
   write the registry once (`persistSoon`). If the download was removed or replaced
   while the file was written, the marker isn't set, and a removed book's file is
   deleted again.
-- *What `captureOfflineMeta` skips.* A book that can't match because it has no ASIN
-  or ISBN (`canMatch`, which reads the cached full item first, since the manifest's
-  book can be the list shape). Also a server without `metadata`.
+- *What `captureOfflineMeta` skips.* A book with no ASIN or ISBN and no generated
+  content (`canMatch`, `metaEnabledFor` on the cached full item first, since the
+  manifest's book can be the list shape). That includes a book matched only in the
+  console. Online its page shows the match. Offline it reads as unmatched. Also a
+  server without `metadata`.
 - *How it reads.* It reads through the screens' own option factories
   (`bookMetaQuery`, `metaWorkQuery`), so it reuses a fresh answer they hold. It never
   throws and never retries.

@@ -49,13 +49,15 @@ A finished book shows **Finished** with the date. If your server keeps ratings, 
 
 ## About this book
 
-The **About** card describes the book. The description comes from the community database, [AudioSilo Meta](../community/meta-site.md), when your server has that switched on and the book is matched. Otherwise it's the one your server holds.
+The **About** card describes the book. The description comes from the community database, [AudioSilo Meta](../community/meta-site.md), when your server has that switched on and the book is matched. A book is matched by its ASIN or ISBN, or by an admin in the console. Otherwise it's the one your server holds.
 
 If neither has one, your server's [Bridge](../admin/generating-characters-and-recaps.md#a-description-for-the-book) may have written a spoiler-free one, marked **Generated on this server**.
 
 ![An About card with a description generated on the server](/img/screenshots/web-player/book-about-generated.png)
 
 Under the description you'll find the publisher, release date, language and whether it's abridged, when known. Then come the book's **Genres** and **Tags**. Tap one to open the [Library](browsing.md#books) filtered to it.
+
+When the community database matches the book to a free LibriVox recording, the card ends with **Also free on LibriVox**. It opens that recording's page on librivox.org.
 
 Below the About card:
 
