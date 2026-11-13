@@ -404,8 +404,9 @@ hero and the tabs.
   - A matched book without community text keeps "View on AudioSilo Meta". Long text
     folds past six lines with Show more.
   - A LibriVox recording adds "Also free on LibriVox" (`book.about.librivox`) under
-    the other links out: after the credit and **Improve this**, else after "View on
-    AudioSilo Meta". It opens `librivoxUrl(recording)` through `openExternalUrl`.
+    the other links out. It comes after the credit and **Improve this**, else
+    after "View on AudioSilo Meta". It opens `librivoxUrl(recording)` through
+    `openExternalUrl`.
     `librivoxUrl` (`book-details-model.ts`) reads the matched recording's
     `librivox.url` and keeps it only when it is an absolute http(s) URL with a host
     (`urlEndpoint`). It lower-cases the scheme, because the in-app browser on iOS

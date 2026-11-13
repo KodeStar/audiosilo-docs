@@ -868,9 +868,10 @@ looks such a book up by `works/{id}`, following a retired slug's `301`. The rule
 run applies to such a book is in
 [Bulk community matching](../server/api/reference.md#bulk-community-matching).
 
-From 2.7.0 the server's `/meta` answers such a book from its recorded match: the
-book's identifiers first, then its `book_matches` `work_id` and `recording_id`
-when they find nothing. The envelope is the same, so the wire does not change.
+From 2.7.0 the server's `/meta` answers such a book from its recorded match. It
+tries the book's identifiers first, then its `book_matches` `work_id` and
+`recording_id` when they find nothing. The envelope is the same, so the wire does
+not change.
 
 The player's book page asks `/meta` for every loaded book that is not an episode
 (`bookPageMetaEnabled`), so a book matched with neither identifier shows its
