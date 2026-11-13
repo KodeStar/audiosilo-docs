@@ -69,7 +69,7 @@ Everything else works with the server alone.
 
 ## Running the server
 
-- Install with [Docker](getting-started/quickstart-docker.md), on [Unraid](getting-started/install-unraid.md), or [without Docker](getting-started/install-binary.md).
+- Install with [Docker](getting-started/quickstart-docker.md), on [Unraid](getting-started/install-unraid.md), on a [Synology NAS](getting-started/install-synology.md), or [without Docker](getting-started/install-binary.md).
 - [Set up your server](getting-started/first-run.md): the first-run checklist.
 - [Reach your server from outside your home](getting-started/remote-access.md): a domain name and a trusted certificate.
 - [Back up your server](admin/backups.md): scheduled and manual backups, and restore.

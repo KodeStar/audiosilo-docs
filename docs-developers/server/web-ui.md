@@ -1837,13 +1837,17 @@ outside `AppShell`. `Root` signs the admin in, then `SignedIn` renders the bare
 `<Outlet/>` on the setup path and the shell everywhere else.
 
 `useSetupRedirect` sends a signed-in admin there (with `replace`) while
-`GET /admin/setup` reports `finished: false`. It does so **once per browser
-session**, so **Finish later** (a link to Overview) or any link out stays where
-it goes.
+`GET /admin/setup` reports `finished: false`. The first page a browser session
+shows with the setup state loaded decides, once (`redirectDecision` in
+`setup-model.ts`). The Overview, where a plain visit to `/admin` lands, goes to
+the flow. Any other page stays: a bookmark, a reload, the flow itself, or a link
+the flow opens in a new tab (the ABS step's **Open the import**, the Reach
+step's HTTPS settings), which starts a session of its own. Either way the session
+is marked, so **Finish later** (a link to Overview) or moving on from a deep link
+stays where it goes.
 
-- The guard is the `sessionStorage` key `audiosilo.setup.redirected`. It is
-  also set when the admin opens the flow some other way. A module variable
-  stands in when storage is blocked.
+- The mark is the `sessionStorage` key `audiosilo.setup.redirected`. A module
+  variable stands in when storage is blocked.
 - `?step=<id>` deep-links one step. Without it, `resumeStep` opens the first
   step with no mark, or the last step when all have one.
 

@@ -20,13 +20,38 @@ Work through these in order:
 
 Your Docker is older than **20.10.10** and blocks something the server needs. Update Docker (on a NAS, update its container app or system), then start the container again. `docker version` shows your version.
 
+### The container keeps restarting, or the log says the server can't write to a folder {/* #permission-denied */}
+
+The server runs as the user in `PUID` and `PGID`. It needs read and write access to its data and backups folders, and read access to your books. At start the container tries to make that user the owner of the data folder. A NAS share can refuse that, and the container's log then says so:
+
+```text
+audiosilo: WARNING: the server can't write to /data: it runs as user 1000:1000 and the folder belongs to 1026:100.
+audiosilo:   Changing its owner to 1000:1000 failed (a NAS share with ACLs or a read-only mount refuses it).
+audiosilo:   Fix: set PUID=1026 and PGID=100 (the folder's owner) on the container, or give user 1000:1000 read and write access to the folder on the host.
+error: the data folder isn't usable: the server can't write to /data: permission denied. The server runs as user 1000:1000 and the folder belongs to 1026:100. Set PUID=1026 and PGID=100 (the folder's owner) on the container, or give user 1000:1000 read and write access to the folder.
+```
+
+The last line is the server stopping, so the container restarts and stops again. Do what the **Fix** line says, either of:
+
+- Set `PUID` and `PGID` to the owner the log names (here `1026` and `100`), then recreate the container.
+- Give the user the log names access to the folder on the host. On a Synology NAS, see [Give that user access](./getting-started/install-synology.md#3-give-that-user-access).
+
+The same warning can name other folders:
+
+- **The backups folder** (`/data/backups`, or your `AUDIOSILO_BACKUP_DIR`). The server starts, but backups fail until you fix it. The Backups notice in the console says so too.
+- **A books folder**, which needs read access only. The warning ends with `Until then, a library in that folder shows as offline.` The library shows **Folder unavailable** in the console. After the fix, press **Retry** on the library.
+
+A share that doesn't answer is a different problem. The log says `audiosilo: WARNING: /library didn't answer within 5 seconds: a network share that is slow, or whose server is gone.` Check that the share is mounted on the host.
+
+Run the container with `user:` instead of `PUID` and `PGID`? Then the **Fix** line says to run it as the folder's owner, for example `user: "1026:100"`.
+
 ### My browser warns about the certificate
 
 That's expected with the default self-signed certificate. At home, accept the warning; the connection is still encrypted. To get rid of it, use Let's Encrypt or a reverse proxy. See [Reach your server from outside your home](./getting-started/remote-access.md).
 
 ### Where do I find the server's log?
 
-In the admin console under [Server > Logs](./admin/server.md#logs). It holds the newest lines since the last restart. For older lines and the first-run banner, use `docker compose logs`, `journalctl -u audiosilo`, or the terminal you started the server from.
+In the admin console under [Server > Logs](./admin/server.md#logs). It holds the newest lines since the last restart. For older lines and the first-run banner, use `docker compose logs`, `journalctl -u audiosilo`, or the terminal you started the server from. On a NAS, use its container app's log view, such as [Container Manager on Synology](./getting-started/install-synology.md#5-save-your-password).
 
 ### I lost the first-run admin password
 
@@ -148,6 +173,7 @@ See [Getting AudioSilo into the car](./listening/in-the-car.md#getting-audiosilo
 
 - **Wrong folder path.** Under Docker, the library's folder is the path inside the container (like `/library`), not on the host. Check it in [Libraries](./admin/libraries.md).
 - **A network share dropped.** The server keeps every book and everyone's progress, and marks the library **Folder unavailable**. Remount the share, then press **Retry** on the library.
+- **The server can't read the folder.** The library also shows **Folder unavailable**. See [Permission denied](#permission-denied).
 
 AudioSilo never deletes your files.
 

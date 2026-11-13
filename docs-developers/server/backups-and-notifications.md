@@ -142,6 +142,11 @@ push out the copy of the database as the older server left it.
 - whether a backup is being made;
 - `last`: the newest attempt since the server started, with a short `error`
   (`disk_full`, `permission_denied` or `failed`). The cause is in the log.
+  A backup checks its folder with a probe file of its own before `VACUUM INTO`
+  (`fsaccess.CheckWrite`), since SQLite words a refused folder as "unable to
+  open database file". A refusal at any step (the check, the chmod, the rename)
+  is `permission_denied`, and `Result.Detail` (not on the wire) holds the
+  sentence naming the folder, the server's user, the owner and the fix.
 - `latest`: the newest backup in the folder that isn't a before-restore or
   before-upgrade copy, whenever it was made;
 - `next`: `null` when the schedule is off.
@@ -324,7 +329,7 @@ subscribed to its kind. A nil `*Service` does nothing, so callers don't check.
 | `new_device` | every pairing exchange (`POST /auth/exchange`), and a password sign-in (`POST /auth/login`) unless an earlier session of the same person already carried its `device_id` (`auth.IssueSession`). A sign-in without a `device_id` always counts. Never for demo accounts. | `user`, `device` (the name the client sent, one plain line of at most 100 characters), `app` (from `X-AudioSilo-Client`, may be empty) |
 | `invite_redeemed` | a pairing exchange whose token came from an invite code | `user` (whose invite), `device` |
 | `update_available` | `updates.Checker.OnAvailable` after a check that finds a newer release. Announced **once per version** (`dedup_key` is the version). | `version`, `name`, `url` (the release page) |
-| `backup_failed` | `backup.Service.OnFailure` (scheduled or manual) | `trigger`, `error` (`disk_full`, `permission_denied`, `failed`) |
+| `backup_failed` | `backup.Service.OnFailure` (scheduled or manual) | `trigger`, `error` (`disk_full`, `permission_denied`, `failed`), and for `permission_denied` a `detail` sentence (the folder, the server's user, its owner and the fix) that the notification's text uses |
 | `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title`, plus per-kind fields. See [Bridge event data](#bridge-event-data). |
 | `bridge_job_failed` | the same hook, for a job that moved **into** `failed` or into a notable `needs_attention`. See [Bridge event data](#bridge-event-data). | as `bridge_job_finished`, plus `code` and `detail` |
 | `book_released` | the [upcoming releases](api/reference.md#upcoming-releases) job (`upcoming.Runner`, wired to `API.announceReleases`). See [`book_released`](#book_released). | `count`, `titles` (the first five, each `Title (Series #position)`, or `Title (Series)` without a position) |

@@ -107,7 +107,9 @@ The multi-stage `Dockerfile`:
   with `ARG WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest`;
 - uses `alpine:3.24` for the final stage, with **ffmpeg installed from apk**.
   Unlike the native binaries, the Docker image does bundle ffmpeg. The stage also
-  has a `PUID` and `PGID` entrypoint and presets `AUDIOSILO_WEB_DIR=/app/web`.
+  has a `PUID` and `PGID` entrypoint, which gives that user its folders and checks
+  them (see [Folder permissions under Docker](../server/configuration.md#folder-permissions-under-docker)),
+  and presets `AUDIOSILO_WEB_DIR=/app/web`.
 
 Because the image pins one specific web build, the server and its bundled player
 always ship as a **known-compatible pair**. Native apps talking to any server

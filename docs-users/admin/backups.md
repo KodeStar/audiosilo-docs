@@ -41,6 +41,28 @@ folder at another disk, or download a backup now and then and keep it
 elsewhere.
 :::
 
+### A backups folder on another disk
+
+Under Docker, mount the other disk at a path of its own, such as `/backups`,
+and set `AUDIOSILO_BACKUP_DIR` to that path:
+
+```yaml
+    volumes:
+      - ./data:/data
+      - /mnt/backup-disk/audiosilo:/backups
+    environment:
+      AUDIOSILO_BACKUP_DIR: /backups
+```
+
+- The server's user (`PUID` and `PGID`) needs read and write access to it, as
+  for the data folder. At start the container makes that user the owner of the
+  folder and of AudioSilo's own backups in it. A NAS share can refuse that, and
+  then the log names the folder and the fix (see
+  [Permission denied](../troubleshooting.md#permission-denied)).
+- Never mount a share inside the data folder, such as at `/data/backups`. At
+  start the container changes the owner of everything in the data folder, and
+  that would reach into the share.
+
 ## Making and downloading backups
 
 The **Backups** card lists every backup, newest first.
@@ -51,6 +73,8 @@ The **Backups** card lists every backup, newest first.
 
 If a backup fails, a notice gives the reason, such as a full disk or a folder
 the server can't write to. You can also get it as a [notification](notifications.md).
+For a folder the server can't write to, the notification names the folder, the
+user the server runs as and the fix.
 
 ## Before an upgrade
 

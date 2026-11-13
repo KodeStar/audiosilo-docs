@@ -29,7 +29,7 @@ Save both now:
 - The **admin password** signs you in to the admin console at `/admin`.
 - The **auth code** signs a phone or browser in as the admin, from the connect page. See [Connect the app to your server](../listening/connecting.md).
 
-The server keeps only scrambled copies, so it can't show them again. Under Docker, `docker compose logs` shows the banner until the container is recreated.
+The server keeps only scrambled copies, so it can't show them again. Under Docker, `docker compose logs` shows the banner until the container is recreated. On a NAS, the container app's log view shows it ([Unraid](./install-unraid.md#2-save-your-password), [Synology](./install-synology.md#5-save-your-password)).
 
 :::warning[Missed the banner?]
 Before you've added people or listening, the simplest fix is to start over. Stop the server, delete the data folder, and start it again for a fresh banner. Later, see [I lost the first-run admin password](../troubleshooting.md#i-lost-the-first-run-admin-password).
@@ -51,12 +51,12 @@ The link stops working as soon as an admin account exists.
 
 ## Set up your server
 
-The first time you open the admin console, it opens **Set up your server**, with the steps listed down the side.
+The first time you open the admin console, it opens **Set up your server**, with the steps listed down the side. Until setup is finished, opening `/admin` starts the flow once in each browser session. A link or bookmark to another console page opens that page.
 
 ![Step 1 of Set up your server: the books folder](/img/screenshots/setup/folder.png)
 
 - Every step has **Skip**. A skipped step waits for you on the Overview (see [The Finish setting up card](#the-finish-setting-up-card)).
-- **Finish later** takes you to the console. The flow opens again in your next browser session.
+- **Finish later** takes you to the console. The flow opens again when you next open `/admin` in a new browser session.
 - Everything you choose is an ordinary setting. You can change it later in [Server > Settings](../admin/server.md#settings) and [Libraries](../admin/libraries.md).
 - A setting fixed by an `AUDIOSILO_*` environment variable shows a lock and can't be changed here.
 
@@ -112,7 +112,7 @@ See [Reach your server from outside your home](./remote-access.md).
 
 ![Step 5: the Audiobookshelf import](/img/screenshots/setup/abs.png)
 
-**Open the import** brings each person's listening progress across from Audiobookshelf (see [the import](../admin/import.md)). It opens in a new tab. Audiobookshelf's `metadata.json` files are read as they are, with nothing to set.
+**Open the import** brings each person's listening progress across from Audiobookshelf (see [the import](../admin/import.md)). It opens the import in a new tab, and the flow stays open in this one. Audiobookshelf's `metadata.json` files are read as they are, with nothing to set.
 
 ### Step 6: Backups and updates
 
@@ -158,6 +158,7 @@ The data folder (`--data`, or `/data` under Docker) holds:
 
 - `config.yaml`: the server's settings. The admin console writes it for you.
 - `audiosilo.db`: accounts, listening progress, bookmarks and the index of your books. Back this up.
+- `backups/`: the server's [backups](../admin/backups.md) of `audiosilo.db`, unless you set another backups folder.
 - `certs/` and `selfsigned-*.pem`: certificates.
 - `tools/`: ffmpeg and ffprobe, if the server downloaded them.
 - `cache/` and `meta-mirror/`: copies the server makes again when needed. No backup needed.
