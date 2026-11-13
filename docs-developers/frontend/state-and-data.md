@@ -39,6 +39,10 @@ endpoints themselves.
     server keeps the stored app when a request has no header.
 
   See [Client identification](../server/api/index.md#client-identification-x-audiosilo-client).
+- **Proxy headers.** A connection's [proxy headers](#proxy-headers) are the
+  constructor's sixth argument. `request()` and every hand-built request send
+  them, `authHeaders()` hands them to the media layers with the token, and
+  `proxyHeadersFor(url)` gives them alone for a URL that carries `?token=`.
 - **Path-addressed everything.** Content calls are
   `GET /libraries/{id}/{item,chapters,cover,stream}?path=…` and the like. The path
   rides as a query parameter, never a URL segment, because encoded slashes are a
@@ -1545,6 +1549,47 @@ Tokens are stripped before the metadata is persisted.
 `hydrate()` restores the connections whose token is still there, and fills
 `serverId` on a connection persisted before that field existed. It runs after
 [the launch reset](#the-launch-reset), so it never reads wrongly-keyed records.
+
+#### Proxy headers
+
+A connection to a server behind a sign-in proxy (Cloudflare Access, Authentik,
+Authelia) can carry custom headers, `Connection.proxyHeaders` (`{ origin,
+headers }`). The rules are in `src/lib/proxy-headers.ts` and the storage in
+`src/lib/proxy-headers-store.ts`. They are credentials, kept like the token:
+
+- **Storage.** They live in memory and in secure-store under
+  `audiosilo.proxy-headers.<id>` (web: localStorage, as the token). `persist`
+  strips them and keeps only the non-secret `hasProxyHeaders` marker, and
+  `hydrate` reads them beside the token for a marked connection only. They never
+  reach AsyncStorage, the query cache, a URL or a log line.
+- **Lifetime.** They go wherever the token goes: sign-out, a retired identity,
+  the auth reset, a connection `hydrate` drops. The identity migration copies them
+  in its token step (`copyProxyHeaders`). `removeConnection` deletes the token
+  first, so a failed delete stops the removal with the headers still kept. A new
+  connection to a server another connection here reaches with headers takes a
+  copy of that set under its own id.
+- **One https origin.** A set names the origin (scheme, host and port) it was
+  entered for. `proxyHeaderRecord` is the one rule: a request to that origin
+  carries the set, and any other URL, the home address and a plain-http URL
+  included, gets none. A set for an http origin is refused at entry and dropped
+  at load (`cleanProxyHeaders`). Reserved names (`Authorization`, `Cookie`,
+  `Host`, `Range`, `Content-Type`, `Content-Length`, `Connection`,
+  `Transfer-Encoding`, `X-AudioSilo-Client`) and values with control characters
+  are refused the same way.
+- **Web.** Only a request same-origin with the page carries them. The server's
+  CORS lists a fixed set of request headers, so a custom one cross-origin would
+  fail its preflight. `<img>` and `<audio>` can't carry them and rely on the
+  proxy's browser sign-in.
+- **Redirects** are the platform HTTP stack's to follow, so whether a 3xx takes
+  the headers to another origin is unverified. The UI says "sent with requests
+  to &lt;origin&gt;" and never claims more (`src/i18n/locales.test.ts` refuses
+  "nowhere else" and "only to" in every locale).
+- **Not carried:** Chromecast (`castBlockReason` `proxy`), the watch apps (the
+  pair message is unchanged) and calendar apps (the `releases.ics` link).
+
+The connect flow and the Account card that edit them are in
+[Connect and home/away addresses](connect-and-addresses.md#proxy-headers-on-the-connect-screen)
+and [You and settings](you-and-settings.md#account-srccomponentsaccount).
 
 #### Signing in: `setSession`
 

@@ -43,6 +43,7 @@ Everything else works with the server alone.
 - [Cast](listening/chromecast.md): play on a Chromecast, TV or Nest speaker.
 - [App settings](listening/settings.md): playback, downloads, appearance and language.
 - [Your account](listening/account.md): password, devices and listening sync.
+- [Connect through a sign-in proxy](getting-started/remote-access.md#behind-a-sign-in-proxy) such as Cloudflare Access, with headers the app sends.
 - [API keys](listening/api-keys.md): let a dashboard or script reach your server.
 
 ## Household and sharing
