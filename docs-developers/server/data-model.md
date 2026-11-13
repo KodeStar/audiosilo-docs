@@ -1841,8 +1841,8 @@ unknown-ASIN report, upcoming releases, a repick and the Bridge's estimate.
 `/meta` reads the row only when the book's identifiers find nothing: a book with
 neither, or one the upstream does not know, answers from its recorded match
 (see [`GET /libraries/{id}/meta`](api/reference.md#get-apiv1librariesidmeta)).
-The player's book page asks `/meta` for any book, but its other surfaces and the
-offline copy ask only for a book with an ASIN or ISBN, or with generated content.
+Which player surfaces ask `/meta` for such a book is in
+[Enriched book metadata](../frontend/state-and-data.md#enriched-book-metadata).
 
 The row moves with the book (`moveBookState`, as one set with its edits), is
 copied from the first part on a join, is kept through a rescan or rebuild, and

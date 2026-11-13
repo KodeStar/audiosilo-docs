@@ -410,10 +410,9 @@ hero and the tabs.
     `librivox.url` and keeps it only when it is an absolute http(s) URL with a host
     (`urlEndpoint`). It lower-cases the scheme, because the in-app browser on iOS
     (`expo-web-browser`) refuses `HTTPS://` and `openExternalUrl` swallows the
-    error. The server checks the URL too; this is the second check, kept because
-    the link leaves the app. The envelope carries one recording, the book's own
-    match, so there is no list to pick from. With no `librivox.url`, or on an
-    older server, there is no link.
+    error. The server checks the URL too. The player checks again because the
+    link leaves the app. With no `librivox.url`, or on an older server, there is
+    no link.
 - **Other versions** - `BookVersions`: every other copy (`useBookCopies`) with where it
   lives and its quality, each opening that copy's page. Nothing shows when there is
   none.

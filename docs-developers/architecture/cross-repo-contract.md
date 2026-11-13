@@ -761,8 +761,9 @@ player.
 
 - `internal/meta` resolves a book's ASIN or ISBN against `metaserve` and composes an
   enrichment envelope. A book with neither, or one `metaserve` does not know, is
-  resolved by its recorded match instead (see [Matches by work id](#matches-by-work-id)). `GET /libraries/{id}/meta` returns it, behind an admin
-  off-switch and a bounded cache.
+  resolved by its recorded match instead (see
+  [Matches by work id](#matches-by-work-id)). `GET /libraries/{id}/meta` returns
+  it, behind an admin off-switch and a bounded cache.
 - `GET /meta/work?id=…` serves one work document straight through, from the same
   cache, for the earlier books of a series the caller does not own. It is authed but
   **not** library-scoped, since a work id names nothing on this server.
@@ -873,11 +874,9 @@ when they find nothing. The envelope is the same, so the wire does not change.
 
 The player's book page asks `/meta` for every loaded book that is not an episode
 (`bookPageMetaEnabled`), so a book matched with neither identifier shows its
-community content there. Search's characters ask the listener's started books
-with or without identifiers (`characterBooksToLoad`). Every other surface keeps
-the identifier gate (`metaEnabledFor`: an ASIN, an ISBN or generated content):
-the companion and reveal toast, Home's Now card and Previously on, the end
-credits, and the offline copy (`canMatch`).
+community content there. Most other surfaces keep the identifier gate
+(`metaEnabledFor`). [Enriched book metadata](../frontend/state-and-data.md#enriched-book-metadata)
+lists which surface uses which gate.
 
 ### Community chapters from the meta side
 
@@ -945,9 +944,10 @@ These are all additive:
   writes the legal text.** A client must render it beside that content and never
   compose it.
 - `recording.chapter_count`.
-- `recording.librivox` `{id, url?, zip_url?}`, only on a LibriVox recording. The
-  server keeps each URL only when it is an absolute http(s) URL and never builds
-  one from `id`. The player checks `url` again before About links it.
+- `recording.librivox` `{id, url?, zip_url?}`, only on a LibriVox recording (see
+  [`GET /libraries/{id}/meta`](../server/api/reference.md#get-apiv1librariesidmeta)).
+  The server checks each URL, and the player checks `url` again before About
+  links it.
 - `local` `{library_id, path}` on each rail entry the caller owns, in the main view
   and the orderings. The server resolves `local` **per request, after the shared
   cache, on a copy**, and never stores it there. A failure placing the caller's books

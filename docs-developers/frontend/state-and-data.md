@@ -999,10 +999,11 @@ Two gates in `meta-gating.ts` decide whether a screen asks `/meta`:
   for a book in passing or for every download.
 
 The series page's anchor (`metadataAnchor`, an ASIN or ISBN) and Search's
-characters (`characterBooksToLoad`, the started books, ids or not) pick their
-books by their own rules. An answer that is only generated content goes stale after
-2 minutes (`META_GENERATED_ONLY_STALE_MS`), rather than the hour a community
-answer keeps.
+characters (`characterBooksToLoad`, the started books, identifiers or not) pick
+their books by their own rules.
+
+An answer that is only generated content goes stale after 2 minutes
+(`META_GENERATED_ONLY_STALE_MS`), rather than the hour a community answer keeps.
 
 `work.generated` drives the "Generated on this server" chip (`GeneratedChip`).
 `GeneratedMark` heads a Characters panel and the Previously On card's recap, and

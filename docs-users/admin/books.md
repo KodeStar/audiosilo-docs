@@ -89,8 +89,8 @@ listing".
 A few things need an ASIN or ISBN, so they leave such a book out: the
 [community chapter check](#community-chapters) and the missing books on the
 [Series](#series) page. In the players, such a book shows its community details
-on its book page only. The companion, Home's cards, the end credits and
-downloaded copies leave them out.
+on its book page only (see
+[Recaps and characters](../listening/recaps-and-characters.md#good-to-know)).
 
 ### Unlinking a community match
 

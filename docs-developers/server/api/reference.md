@@ -2432,15 +2432,15 @@ The server finds the book's work in two steps (`bookEnvelope`):
    is its `book_matches` row, shown as
    [`community_match`](#get-apiv1adminlibrariesidbook) on the console's book page:
    the `work_id` and `recording_id` an admin accepted or a match run applied. The
-   server fetches that work (`works/{id}`, `meta.Service.EnrichMatch`) and makes
-   the recording the match names the envelope's recording, as it would a recording
-   a lookup named. A book with no match row is unmatched.
+   server fetches that work (`works/{id}`, `meta.Service.EnrichMatch`) and uses
+   the match's recording as the envelope's recording, as a lookup would. A book
+   with no match row is unmatched.
 
 Either way the server folds the matched recording plus up to three
 series rails into one envelope, one rail per reading-order family (see
 [Reading-order families](#reading-order-families)). Every series-rail entry carries its own `web_url`, so a client links
-to the metadata site without ever building a URL itself. Answers are cached, by identifier or by the recorded match, in
-memory and in the server's database (see
+to the metadata site without ever building a URL itself. Answers are cached in
+memory and in the server's database, keyed by identifier or by the recorded match (see
 [Configuration](../configuration.md#community-metadata-metadata)), so a restart
 serves them warm and a known book keeps its enrichment through a metadata-service
 outage.
@@ -2532,8 +2532,7 @@ Response `200` on a match:
 `work` is always present on a match. `recording` and `series` are omitted when
 the upstream has none. Every `omitempty` string or number field (`subtitle`,
 `first_published`, `description`, `abridged`, `runtime_min`, `release_date`,
-`publisher`, `cover_url`, `chapter_count`) is dropped when empty, and so is
-`recording.librivox`.
+`publisher`, `cover_url`, `chapter_count`) is dropped when empty.
 
 - `recording.chapter_count` is the matched recording's chapter count, omitted when
   the metadata service does not know it.
@@ -2552,11 +2551,12 @@ the upstream has none. Every `omitempty` string or number field (`subtitle`,
 
   `id` is the LibriVox project id. `url` is the recording's page on librivox.org
   and `zip_url` the whole recording as one zip, from the community's
-  `links.librivox` and `links.zip`. Each is optional, and the server keeps it only
+  `links.librivox` and `links.zip` (see
+  [The `links` field](../../meta/data-model.md#the-links-field)). Each is
+  optional, and the server keeps it only
   when it is an absolute `http` or `https` URL with a host (`librivoxOf`). It
   never builds either from `id`, because LibriVox's pages are named by slug. A
-  cached envelope gains the field once its entry is next refreshed. The player
-  links `url` from About and does not use `zip_url`.
+  cached envelope gains the field once its entry is next refreshed.
 - `series[].position` is this work's position in that series. Positions are
   strings ("1", "2.5", "1-3.5").
 - `series[].works` is the full ordered rail, **including the current work**. The
@@ -2904,10 +2904,10 @@ content wins **per dimension**:
   - The whole object is omitted when nothing was generated, or the community has
     it all.
 - **A book with no match** (neither its identifiers nor its recorded match find
-  a work) but generated
-  content answers `matched: false` **with a work** of its own: `id` empty,
-  `title` the book's, `authors` `[]`, the generated `characters`, `recaps`,
-  `recap_summary` and `generated_description`, and `generated`:
+  a work) but generated content answers `matched: false` **with a work** of its
+  own: `id` empty, `title` the book's, `authors` `[]`, the generated
+  `characters`, `recaps`, `recap_summary` and `generated_description`, and
+  `generated`:
 
   ```json
   { "matched": false, "work": { "id": "", "title": "The Book", "authors": [], "language": "",
@@ -3031,7 +3031,7 @@ reach the client.
 | `400` | `url is required`; `size must be one of [96 160 320 640]` (an empty `size=` too); `path is required` / `invalid library id` |
 | `401` | missing/invalid token |
 | `403` | path outside the caller's share scope |
-| `404` | `no such cover` - the book is unmatched (no `asin`/`isbn`, or no match upstream) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
+| `404` | `no such cover` - the book is unmatched (neither its identifiers nor its recorded match find a work) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
 | `502` | `metadata service unavailable` - the book's envelope couldn't be had; `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects, an answer other than `200`), or its fetch failed less than a minute ago |
 
 ### `GET /api/v1/meta/work`
