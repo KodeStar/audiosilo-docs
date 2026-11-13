@@ -66,6 +66,12 @@ instead, and nothing in it widens these rules.
     when audiosilo-meta's own work-identity rules resolve it to exactly that work.
     The attachment is another recording, or another ASIN on an existing
     recording.
+  - Another marketplace's copy of a catalogued recording, a row in the same
+    libex SKU group as one of the recording's ASINs, is attached to that
+    recording as another ASIN. On a pin whose import lists `--copies-of`, the
+    import resolves nothing from its credits or its series, so it adds no work,
+    person or series
+    ([every store's copy](#every-stores-copy-of-a-book)).
   - `metaimport libex-select` refuses every other row at an occupied position,
     and the import itself refuses it again.
   - It never changes the incumbent.
@@ -131,11 +137,19 @@ overwrites a recorded value.
       v
   fetch every book of those series from libex  --->  rows.ndjson
       |                                               (+ chapters for the new ones)
+      |                                          --->  copies.ndjson (copies of catalogued
+      |                                                recordings, the region follow-up's too)
       v
   metaimport libex-select  --->  the per-PR cap  --->  subset.ndjson
       |
       v
-  metaimport libex (create)  +  metaimport libex --enrich (over ALL the rows)
+  metaimport libex (create)
+      |
+      v
+  metaimport libex --recordings-only --copies-of  (copies of catalogued recordings)
+      |
+      v
+  metaimport libex --enrich  (over ALL of rows.ndjson)
       |
       v
   metafmt --write --profile core  --->  metacheck --profile core
@@ -227,6 +241,49 @@ pack merge driver and the tombstone table's own driver configured (see
 So a sync pull request stays mergeable while other work lands, at no cost to the
 service. The service rebases only once itself, the moment before it opens a pull
 request, because a cycle is long and main may have moved while it ran.
+
+### Every store's copy of a book
+
+A libex series listing belongs to one marketplace. In libex, the copies of one
+production across the marketplaces share one SKU group. So the service follows
+each new book with the other copies its SKU group holds, and searches each
+configured store the group does not cover yet. A hit in the same SKU group joins
+the others, and the import folds them all into the same work.
+
+A store often lists a book later than the others, and a search can fail. So
+each cycle also runs the **region follow-up**. It takes the catalogued
+recordings that are released in the last 60 days, not released yet, or added in
+the last 30 days, and still lack a configured store. For each one it reads the
+SKU group again and searches the stores still missing. A cycle checks at most
+400 recordings and makes at most 400 searches, preorders and the nearest release
+dates first. The rest wait, still due, for a later cycle.
+
+A copy the follow-up finds is attached straight to its recording, and so is a
+new row whose SKU group already has a catalogued member. The copies get a run of
+their own after the create import,
+[`metaimport libex --recordings-only --copies-of`](#the-pinned-cli-contract-meta_ref),
+each handed over with the catalogued ASIN it is a copy of. The importer resolves
+nothing from a copy's credits or series, so an earlier selector refusal of the
+row, such as a doubled author credit or a claimed position, does not keep the
+copy out. It still refuses a copy that does not fit the recording, and the
+service memoizes that refusal under the run's refusal code, so the copy is not
+sent again until the memo entry expires. Only a memo entry under one of the
+copies run's refusal codes, a review's refusal (an `ai-verify` exclusion, a
+dispute or a resolver's removal) or an open pull request holding the copy keeps
+it out of the copies run. Those codes include `ai-narrator`, `malformed-asin`,
+`unmapped-region` and `unmapped-language`, so an earlier selector refusal under
+one of them keeps the copy out too.
+
+A store that answers without the book is asked again after 1, 2, 4 and 7 days,
+then every 14 days. A copy that was found but did not attach (refused, kept out
+by a memo entry, held by an open pull request, or cut by a cap) never counts as
+a store without the book. The pull request body lists it, and the cycle log
+carries one
+`follow-up copy <asin> (<store>) of <work>: not attached (<reason>)` line for
+it. Its store's backoff does not grow: the follow-up asks again the next day,
+or, when a memo entry keeps the copy out, once that entry expires. A copy
+outside the follow-up's window, of a book in a catalogued series, still arrives
+through its own marketplace's new-release or coming-soon feed.
 
 ## The reported-ASIN lane
 
@@ -874,8 +931,8 @@ to `127.0.0.1`. That binding is what makes the missing auth safe, since
 - each feed's cursor: the watermark, a walk in progress and the last full rescan;
 - the resolver backend, the pinned `META_REF` and the required check names;
 - `memo_reasons`, the refusal memo counted by why each row was refused. The
-  reasons are the selector's reason codes, with `unknown` for entries from before
-  reasons were recorded;
+  reasons are the selector's reason codes and the copies run's refusal codes,
+  with `unknown` for entries from before reasons were recorded;
 - `intake`, the reported-ASIN lane (`on`, `last_pr`, `paused_until`).
   `last_cycle.intake` is its last turn;
 - `librivox`, [the LibriVox lane](#the-librivox-lane): `on`, its `cursor` and
@@ -951,7 +1008,7 @@ from a pinned commit of that repository:
 | Binary | What it does here |
 |---|---|
 | `metaimport libex-select` | The authoritative selector. Keeps rows that complete a catalogued series at a free position, with mappable language and region and acceptable credits. Writes no records. Its flags are listed under this table. |
-| `metaimport libex` | The create path, over the selected subset. With `--enrich`, the fill-absent-facts path over every row, which is why the service fetches rows the catalogue already holds too. Its flags are listed under this table. |
+| `metaimport libex` | The create path, over the selected subset. With `--recordings-only --copies-of`, the copies run ([every store's copy](#every-stores-copy-of-a-book)). With `--enrich`, the fill-absent-facts path over every row, which is why the service fetches rows the catalogue already holds too. Its flags are listed under this table. |
 | `metaimport librivox import` | [The LibriVox lane](#the-librivox-lane)'s import, over a snapshot the lane writes from what it read. Its flags are listed under this table. |
 | `metafmt --write` | Canonical rendering, entry relocation, due pack splits. Nothing here computes pack placement by hand. |
 | `metacheck` | The gate. A cycle whose `metacheck` fails discards its whole tree. |
@@ -986,6 +1043,10 @@ last.
   refusal code, in the `--refusals` shape. Rows refused at an occupied position
   carry `position-claimed`. The service memoizes them as refusals rather than
   selecting them again.
+- `--recordings-only --copies-of <path>` is the copies run: each line of the
+  file pairs a row with the catalogued ASIN it is a copy of. Its merge rule and
+  its `copy-` refusal codes, which `--skipped` writes, are in
+  [the importer's libex modes](./contributing-data.md#libex-modes-and-recording-relocation).
 
 `metaimport librivox import` runs as
 `--from <snapshot> --ids <ids> --data <dir> --date <day> --skipped <path> --worklist <path> --conflicts <path>`:
@@ -1018,7 +1079,12 @@ The reported-ASIN lane depends on that pin. It runs only when the pinned
 `metaimport libex-select --help` lists `--reported`. On an older pin the lane
 sits every cycle out before it reads the queue, with one log line, and series
 completion is unchanged. So deploying the service before the pin is bumped is
-safe.
+safe. The copies run is gated the same way. It runs only when the pinned
+`metaimport libex` lists `--copies-of`, and on an older pin the copies go
+through the selector and the create import like any other row. A copies run
+that exits non-zero discards the cycle's tree and fails the cycle. For the next
+7 days, or until the service restarts, the copies then go through the selector
+the same way.
 
 The LibriVox lane depends on it the same way. It runs only when the pinned
 `metaimport librivox import --help` lists `--skipped` and `--worklist`, and
@@ -1037,6 +1103,8 @@ followed by a pin bump and a check in the sync repository:
 - The line shapes of `libex-select --attachments` and `metaimport libex
   --skipped`.
 - The `--attach-editions` flag both tools take.
+- `metaimport libex --recordings-only --copies-of`, its `{"asin","anchor"}`
+  line shape and its `copy-` refusal codes.
 - `libex-select --reported`, with its standalone and identity rules.
 - The flags of `metaimport librivox import`, the line shapes of its `--skipped`
   and `--worklist` files and its printed in-progress line.
