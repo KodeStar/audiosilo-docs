@@ -26,7 +26,7 @@ files are described below. Audio is never stored in `.audiosilo/`.
 
 A book [added from LibriVox](librivox.md#audiosilolibrivoxjson) also holds
 `.audiosilo/librivox.json`, which names its LibriVox recording. It is no
-attachment: the server skips the name and serves nothing from it.
+attachment. The server skips the name and serves nothing from it.
 
 ### Podcast CHAP attachments
 

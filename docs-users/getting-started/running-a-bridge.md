@@ -217,7 +217,7 @@ To make it faster, or to give a `:latest-slim` Bridge a way to transcribe:
 ## 7. The agent's credential (optional) {/* #7-the-agents-credential */}
 
 Skip this step if you don't want characters, recaps or descriptions. Chapters,
-read-alongs, podcasts and Audible work without the agent.
+read-alongs, podcasts, Audible and LibriVox work without the agent.
 
 The agent needs a credential for an AI account. It runs **Claude Code** unless you
 switch it to Codex (below). The easiest place to set the credential is the

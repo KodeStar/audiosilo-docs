@@ -60,7 +60,7 @@ has the shapes and every status.
 | Kind | `librivox.fetch` (`bridge.KindLibrivoxFetch`; the Bridge's `librivoxjob.Kind`), feature `librivox` |
 | Server spec | needs a library, no book path, **writes**, a books library only, internal (`POST /admin/bridge/jobs` refuses it with `400`), no module |
 | Dedupe | per library and project (suffix `\|<librivox_id>`): a repeat answers the open job |
-| Notifications | not quiet: done is "Added from LibriVox", named by the result's path; failed and a lasting park are notified as for other kinds |
+| Notifications | not quiet. Done is "Added from LibriVox", named by the result's path. Failed, and a lasting park, are notified as for other kinds, named by the library |
 | Bridge lane | `download` (1 slot, shared with `audible.import` and an ordinary `podcast.fetch`), so one book downloads at a time |
 | Bridge state | `<data>/librivox/<library_id>-<librivox_id>.json` |
 
@@ -165,8 +165,8 @@ The Bridge reads the manifest from **its own** metadata service
   LibriVox-shaped feed, for the sections, their titles and URLs, the cover and the
   archive.org identifier;
 - `GET /api/v1/works/{work_id}` for the title, the authors and how many LibriVox
-  recordings the work has. A `404` there is no failure: the project's own title
-  names the folder.
+  recordings the work has. A `404` there is no failure, and the project's own
+  title names the folder then.
 
 A metadata service that is down never ends the job. Each read is tried 4 times
 (5, 10 and 20 seconds apart), then the run fails with no code and keeps its

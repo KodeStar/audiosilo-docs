@@ -68,7 +68,7 @@ Bridge online.
 
 ## What lands in your library
 
-The Bridge makes one folder for the book, by author and title:
+The Bridge makes one folder for the book, by author and title. For example:
 
 ```
 Charles Dickens/

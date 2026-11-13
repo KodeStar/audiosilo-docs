@@ -686,10 +686,11 @@ module:
   `POST /admin/librivox/fetch`;
 - a **writing** kind for a books library: it needs a writable mapping, else
   `library_not_writable`, and a podcast library is `not_book_library`;
-- no book path: the book does not exist until the job places it;
+- no book path, since the book does not exist until the job places it;
 - params `{librivox_id, work_id, recording_id, library_id}`, built by the server;
 - deduped per library and project;
-- **not** quiet: done and failed are notified, named by the result's path.
+- **not** quiet: done is notified, named by the result's path; a failed or parked
+  one names only its library, since only a done job's result names the book.
 
 It runs in the `download` lane, so it takes turns with `audible.import` and the
 ordinary `podcast.fetch` slot, and its partial download survives a restart. When
