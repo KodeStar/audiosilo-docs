@@ -262,7 +262,7 @@ each cycle also runs the **region follow-up**. It takes the catalogued
 recordings that are released in the last 60 days, not released yet, or added in
 the last 30 days, and still lack a configured store. For each one it reads the
 SKU group again and searches the stores still missing. A cycle checks at most
-400 recordings and makes at most 400 searches, preorders and the nearest release
+400 recordings and makes at most 1,200 searches, preorders and the nearest release
 dates first. The rest wait, still due, for a later cycle.
 
 A copy the follow-up finds is attached straight to its recording, and so is a
