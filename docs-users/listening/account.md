@@ -5,7 +5,7 @@ description: "Set a password, pair another device, sign out a lost phone, check 
 
 Each server you use has its own **account page**. There you set your password, pair another device, see your signed-in devices, and sign out.
 
-![A server's account page on a computer: Password, Pair another device, signed-in devices, Listening sync and API keys](/img/screenshots/web-player/account.png)
+![A server's account page on a computer: Password, Pair another device, Proxy headers, signed-in devices, Listening sync and API keys](/img/screenshots/web-player/account.png)
 
 ## Opening it
 
