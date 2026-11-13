@@ -1464,6 +1464,13 @@ A book's hidden **`.audiosilo/`** folder holds what the
 A single-file book's files carry its file stem first (`Book.characters.json`),
 in a `.audiosilo/` beside it.
 
+Any other name there is skipped (`knownAttachment`). A book the Bridge
+[added from LibriVox](../bridge/librivox.md#audiosilolibrivoxjson) holds
+`librivox.json`, which the server does not read: the book is indexed with no
+attachments from it and no scan error. The Bridge's staging folder for such a
+book (`.audiosilo-librivox-<id>/`, beside it) is a dot folder, so the scan never
+sees it.
+
 They are not a metadata layer. Nothing in the effective row reads them except
 `chapters.json`, which is a chapter source of its own, and `/meta` serves the
 rest. Recording a book's attachments (`SetAttachments`, `RefreshAttachments`)

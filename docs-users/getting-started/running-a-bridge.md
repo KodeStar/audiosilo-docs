@@ -19,6 +19,8 @@ You don't need a Bridge to listen to your books. Add one for:
   narration in the book's ebook;
 - [Audible backups](../admin/audible.md) of the books you bought, and listening
   places kept in step with Audible;
+- [free books from LibriVox](../admin/librivox.md), downloaded into a library
+  and matched to their recording;
 - [sharing with the community](../community/contributing-from-your-server.md).
 
 <a id="which-bridge-version"></a>

@@ -24,6 +24,10 @@ The prefix keeps the books of one folder apart, since a collection folder's book
 share one `.audiosilo/`. These are the book attachment names; podcast-specific
 files are described below. Audio is never stored in `.audiosilo/`.
 
+A book [added from LibriVox](librivox.md#audiosilolibrivoxjson) also holds
+`.audiosilo/librivox.json`, which names its LibriVox recording. It is no
+attachment: the server skips the name and serves nothing from it.
+
 ### Podcast CHAP attachments
 
 `podcast.fetch` writes `<show>/.audiosilo/<stem>.chapters.json`, stripping only

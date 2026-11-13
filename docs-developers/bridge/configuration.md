@@ -18,7 +18,9 @@ the images (`AUDIOSILO_BRIDGE_DATA`), else `--data`, else `~/.audiosilo-bridge`.
   the defaults and the environment apply;
 - the SQLite database `bridge.db`;
 - the sealed `secrets/` and their key `secret.key`;
-- the tools the Bridge downloads.
+- the tools the Bridge downloads;
+- `librivox/`, one state file per LibriVox fetch
+  ([Staging, resume and cleanup](librivox.md#staging-resume-and-cleanup)).
 
 Settings are read from `<data>/config.yaml`, then overridden by `AUDIOSILO_BRIDGE_*`
 variables. An **empty** variable counts as unset. A variable that doesn't parse
@@ -226,6 +228,17 @@ and tests. Release builds and images never carry the tag, so there they do nothi
 |---|---|
 | `AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL` | the base URL of an Audible fake (`go run -tags audiblefake ./cmd/audiblefake`): every Audible and Amazon endpoint goes there instead |
 | `AUDIOSILO_BRIDGE_AUDIBLE_RECORD_DIR` | records every Audible exchange into a `0600` JSON-lines file in this folder, scrubbed of credentials as it is written. It is for recording fixtures from a real account |
+
+## LibriVox
+
+`librivox.fetch` has no settings of its own. It reads LibriVox manifests from the
+engine's `metadata.base_url` (`AUDIOSILO_BRIDGE_METADATA_BASE_URL`, default
+`https://meta.audiosilo.app`). With it empty, the job fails `metadata_off`. It
+downloads only from archive.org, over https, through a guarded client that
+reaches public addresses only (the podcasts' `allow_networks` does not apply).
+The book's files go straight into the library's folder, staged in a hidden folder
+beside the book, so the library needs the room, not the data folder. See
+[Add from LibriVox](librivox.md).
 
 ## Secrets
 

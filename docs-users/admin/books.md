@@ -84,7 +84,8 @@ The community database holds some books as a store listing with no ASIN or
 ISBN. A match to one of them still counts. The book shows as **Matched**, and
 [Match automatically](health.md#store-listings-with-no-asin-or-isbn) skips it.
 Its **Community metadata** card says "No ASIN or ISBN: matched to its store
-listing".
+listing". A book [added from LibriVox](librivox.md) says it is matched to its
+LibriVox recording instead.
 
 A few things need an ASIN or ISBN, so they leave such a book out: the
 [community chapter check](#community-chapters) and the missing books on the

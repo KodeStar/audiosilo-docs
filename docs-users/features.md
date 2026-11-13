@@ -63,6 +63,7 @@ Everything else works with the server alone.
 - [Community metadata](community/meta-site.md): a free database of books, series and release dates.
 - [Characters, recaps and chapters](admin/generating-characters-and-recaps.md) for books the community hasn't covered. **(Bridge)**
 - [Back up your Audible books](admin/audible.md) and keep your places in step with Audible. **(Bridge)**
+- [Add free books from LibriVox](admin/librivox.md): search LibriVox and download a public-domain audiobook into a library, already matched. **(Bridge)**
 - [Contribute from your server](community/contributing-from-your-server.md): share corrections and recaps with the community. **(Bridge)**
 - [Import from Audiobookshelf](admin/import.md): bring over listening history, progress and bookmarks.
 

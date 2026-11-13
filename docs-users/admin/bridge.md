@@ -114,7 +114,8 @@ properly.
 
 The **Jobs** card lists what the Bridge was asked to do, newest first: characters
 and recaps, descriptions, chapters, read-alongs, community shares, corrections,
-podcast downloads and Audible backups. **Show jobs** filters it by state.
+podcast downloads, Audible backups and books added from LibriVox. **Show jobs**
+filters it by state.
 
 Each job shows its book, its progress, who asked and when. Jobs the server queues
 itself say **Scheduled by the server**. When a job is done, it says what it made.

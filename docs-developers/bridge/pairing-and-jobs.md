@@ -123,7 +123,7 @@ pairing and after a mapping check finishes:
 | Field | What it carries |
 |---|---|
 | `version` | the Bridge's version |
-| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate`, `sidecars.describe`, `chapters.detect`, `sidecars.contribute`, `meta.correct`, `readalong.align`, `audible.poll`, `audible.import` and `audible.sync`; an older Bridge lists fewer) |
+| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate`, `sidecars.describe`, `chapters.detect`, `sidecars.contribute`, `meta.correct`, `readalong.align`, `audible.poll`, `audible.import`, `audible.sync` and `librivox.fetch`; an older Bridge lists fewer) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
 | `workers` | its [ASR workers](workers.md) that have connected at least once: `name`, `version`, `platform` (the GOOS/GOARCH and the speech recognition in one line, e.g. `darwin/arm64, mlx-whisper (metal)`) and `last_seen` |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
@@ -534,7 +534,7 @@ Bridge doesn't have.
 
 The server's table also says whether a kind **writes** into the library. Such a
 kind (`sidecars.generate`, `sidecars.describe`, `chapters.detect`, `readalong.align`, `podcast.subscribe`,
-`podcast.poll`, `podcast.fetch`, `podcast.retain`) is queued only for a library the last heartbeat reports
+`podcast.poll`, `podcast.fetch`, `podcast.retain`, `audible.import`, `librivox.fetch`) is queued only for a library the last heartbeat reports
 **mapped and writable**, else `409 library_not_writable`, after the dedupe (an open
 job is still returned). `bridge.verify`, `sidecars.contribute` and `meta.correct`
 write nothing. Book-writing jobs refuse a podcast library with
@@ -676,6 +676,25 @@ until a sign-in again), `audible_sign_in`, `unknown_account`, `user_unavailable`
 and `audible_error`. The push back to Audible is no job: a loop reads
 `GET /bridge/progress` every minute. See
 [Position sync](audible.md#position-sync-audiblesync-and-the-push-loop).
+
+### LibriVox jobs
+
+`librivox.fetch` adds one LibriVox recording to a books library. It belongs to no
+module:
+
+- internal (`POST /admin/bridge/jobs` refuses it with `400`), queued by
+  `POST /admin/librivox/fetch`;
+- a **writing** kind for a books library: it needs a writable mapping, else
+  `library_not_writable`, and a podcast library is `not_book_library`;
+- no book path: the book does not exist until the job places it;
+- params `{librivox_id, work_id, recording_id, library_id}`, built by the server;
+- deduped per library and project;
+- **not** quiet: done and failed are notified, named by the result's path.
+
+It runs in the `download` lane, so it takes turns with `audible.import` and the
+ordinary `podcast.fetch` slot, and its partial download survives a restart. When
+it ends done, the server records the book as the recording. See
+[Add from LibriVox](librivox.md).
 
 ### Notifications
 

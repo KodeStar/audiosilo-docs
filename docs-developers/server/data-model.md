@@ -1816,8 +1816,15 @@ or an apply took, with or without an ASIN or ISBN. Columns:
 `run_id` and `set_by` have no foreign keys, because runs are pruned and the row
 outlives either.
 
-Only a community edit writes it, in the edit's transaction
-(`catalog.BookEdit.Match`, a `catalog.MatchAnchor`). A bulk edit refuses one.
+Two things write it:
+
+- a community edit, in the edit's transaction (`catalog.BookEdit.Match`, a
+  `catalog.MatchAnchor`). A bulk edit refuses one;
+- the fold of a done `librivox.fetch` (`catalog.FoldLibrivoxFetch`), for the book
+  the Bridge placed: `how` `accepted`, `set_by` the admin who asked, no run and no
+  offered identifiers. It replaces a row already at that path and touches no
+  other (see [Add from LibriVox](../bridge/librivox.md#the-books-identity)).
+
 An empty work id unlinks the book. That clears the one book's community values,
 cover and row, as
 [clearing the community matches](api/reference.md#delete-apiv1admincommunity-matches)

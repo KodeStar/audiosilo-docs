@@ -873,6 +873,12 @@ tries the book's identifiers first, then its `book_matches` `work_id` and
 `recording_id` when they find nothing. The envelope is the same, so the wire does
 not change.
 
+A book [added from LibriVox](#librivox-fetches) gets its row from the server's
+fold of the done `librivox.fetch`, with the work and recording the server resolved
+at queue time (`how` `accepted`). Where a LibriVox recording is on the server is
+read from these rows alone, by their exact, non-empty `recording_id`, never from
+`/meta`'s first-recording answer for a work.
+
 The player's book page asks `/meta` for every loaded book that is not an episode
 (`bookPageMetaEnabled`), so a book matched with neither identifier shows its
 community content there. Most other surfaces keep the identifier gate
@@ -1373,6 +1379,7 @@ server's reader. See [The .audiosilo folder](../bridge/attachments.md).
 | `audible.poll` | Polls one Audible account. |
 | `audible.import` | Backs up one Audible title. |
 | `audible.sync` | Syncs listening positions with one Audible account. |
+| `librivox.fetch` | Downloads one LibriVox recording into a books library. |
 
 Each kind's rules follow.
 
@@ -1594,6 +1601,34 @@ feed also answers `400 invalid_request`.
 
 See [Position sync](../bridge/audible.md#position-sync-audiblesync-and-the-push-loop).
 
+### LibriVox fetches
+
+`librivox.fetch` (feature `librivox`) is internal and writing, for a books library,
+not quiet, deduped per library and project, and in no module.
+
+- Three admin routes queue and support it: `GET /admin/librivox/search`,
+  `GET /admin/librivox/work` and `POST /admin/librivox/fetch`. All are `404
+  metadata_off` while community metadata is off. There is no `/server` flag: a
+  client gates on the `librivox` feature.
+- The server builds its params, `{librivox_id, work_id, recording_id, library_id}`,
+  with the work and recording from metaserve's `lookup?librivox_id=` at queue
+  time. The Bridge reads them leniently and ignores unknown fields.
+- The Bridge reads the manifest from its own metadata service and downloads only
+  from `https` archive.org hosts, checking every redirect.
+- It reports progress steps `manifest|download|cover|place|rescan`. The result is
+  `{library_id, path, librivox_id, files, bytes}`, where `path` is the book path
+  that `POST /bridge/rescan` answered.
+- A failure is `{code, message}`, with `not_writable`, `exists`, `disk_full`,
+  `not_found`, `archive_unavailable` or `metadata_off`.
+- It uses no new Bridge route.
+- The Bridge writes `.audiosilo/librivox.json`
+  (`{version, librivox_id, work_id, recording_id, archive_id}`) into the book's
+  folder. The server does not read it yet, and its scanner skips the name.
+- The server folds a done result into the book's `book_matches` row
+  ([Matches by work id](#matches-by-work-id)).
+
+See [Add from LibriVox](../bridge/librivox.md).
+
 ### The player's Bridge surface
 
 The player's first admin-only UI is gated on all of these:
@@ -1608,6 +1643,10 @@ Its confirmation holds Generate back while the estimate's `open_job` is a
 `chapters.detect` or `sidecars.contribute` job. `Book.generated` makes it ask `/meta`
 for a book with no ASIN or ISBN. Its `types.ts` mirrors the job, the estimate,
 `BookMetaWork.generated` and `BookMetaWork.generated_description` by hand.
+
+Find on LibriVox is gated the same way with `librivox` in place of `sidecars`, so
+it shows only while the Bridge is online. Its `types.ts` and `client.ts` mirror the
+three LibriVox routes by hand.
 
 ### Bridge seam and old clients
 
@@ -1642,6 +1681,15 @@ Audible backups:
 - An older Bridge never advertises `audible.import`, so the server queues nothing for
   it (`kind_unavailable`, and a poll's policy pass queues nothing).
 - Its account PUT's `policy` still creates an account as before.
+
+LibriVox fetches:
+
+- An older server doesn't know `librivox.fetch`, so its `features` never list
+  `librivox`, and neither the console nor the player offers the feature.
+- An older Bridge never advertises it, so the fetch route answers
+  `kind_unavailable`.
+- A shipped player never sees Find on LibriVox. A book added this way is an
+  ordinary book with a recorded match.
 
 Audible position sync:
 

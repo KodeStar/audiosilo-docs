@@ -179,7 +179,10 @@ Conventions that carry the design:
   - the podcast jobs write a show's files in a podcast library
     ([Podcasts](podcasts.md));
   - `audible.import` installs a backed-up title without replacing anything
-    ([The hardened transfer](audible.md#the-hardened-transfer-internaltransfer)).
+    ([The hardened transfer](audible.md#the-hardened-transfer-internaltransfer));
+  - `librivox.fetch` writes a whole new book folder, staged in a dot folder beside
+    it and moved into place by one no-replace rename, never into an existing book
+    ([Add from LibriVox](librivox.md#staging-resume-and-cleanup)).
 
   A delete moves the files into `.audiosilo-trash/` first, as podcast retention
   does

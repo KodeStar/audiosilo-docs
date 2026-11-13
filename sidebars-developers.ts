@@ -87,6 +87,7 @@ const sidebars: SidebarsConfig = {
         'bridge/contributions',
         'bridge/podcasts',
         'bridge/audible',
+        'bridge/librivox',
         'bridge/workers',
         'bridge/configuration',
         'bridge/development',
