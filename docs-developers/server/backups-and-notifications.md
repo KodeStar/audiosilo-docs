@@ -146,7 +146,7 @@ push out the copy of the database as the older server left it.
   (`fsaccess.CheckWrite`), since SQLite words a refused folder as "unable to
   open database file". A refusal at any step (the check, the chmod, the rename)
   is `permission_denied`, and `Result.Detail` (not on the wire) holds the
-  sentence naming the folder, the server's user, the owner and the fix.
+  [`fsaccess`](configuration.md#the-servers-own-checks) sentence with the fix.
 - `latest`: the newest backup in the folder that isn't a before-restore or
   before-upgrade copy, whenever it was made;
 - `next`: `null` when the schedule is off.

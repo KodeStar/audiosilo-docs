@@ -108,7 +108,7 @@ The multi-stage `Dockerfile`:
 - uses `alpine:3.24` for the final stage, with **ffmpeg installed from apk**.
   Unlike the native binaries, the Docker image does bundle ffmpeg. The stage also
   has a `PUID` and `PGID` entrypoint, which gives that user its folders and checks
-  them (see [Folder permissions under Docker](../server/configuration.md#folder-permissions-under-docker)),
+  them (see [Folder permissions](../server/configuration.md#under-docker)),
   and presets `AUDIOSILO_WEB_DIR=/app/web`.
 
 Because the image pins one specific web build, the server and its bundled player
