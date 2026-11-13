@@ -1,6 +1,6 @@
 ---
 title: Series-completion bot
-description: "audiosilo-meta-sync, the daily service that reads libex's new-release and coming-soon feeds and completes the series audiosilo-meta already holds. It opens and merges one bounded pull request per cycle behind a re-read merge gate. When enabled, its reported-ASIN lane also imports listings named on metaserve's intake queue, under a tighter bound."
+description: "audiosilo-meta-sync, the daily service that reads libex's new-release and coming-soon feeds and completes the series audiosilo-meta already holds. It opens and merges one bounded pull request per cycle behind a re-read merge gate. When enabled, its reported-ASIN lane also imports listings named on metaserve's intake queue, under a tighter bound. Its LibriVox lane keeps the LibriVox mirror current from LibriVox's own catalogue, under an invariant of its own."
 ---
 
 ## What it is
@@ -25,7 +25,9 @@ It serves no public traffic. It talks only to:
 - Audible's public catalog API (`api.audible.*`), only when libex says it cannot
   reach Audible, and not at all with `SYNC_AUDIBLE_FALLBACK=off`;
 - metaserve's intake queue, with
-  [the reported-ASIN lane](#the-reported-asin-lane) enabled.
+  [the reported-ASIN lane](#the-reported-asin-lane) enabled;
+- librivox.org's API, for [the LibriVox lane](#the-librivox-lane), unless
+  `SYNC_LIBRIVOX=off`.
 
 The same container can also run [the steward](./steward.md) (`SYNC_STEWARD=on`),
 which reviews and merges everyone else's data pull requests and triages data
@@ -36,14 +38,18 @@ Why the service exists: the catalogue's import posture is a bounded, curated
 tranche and never a mirror of a retailer database. But a catalogue whose series
 stop at the volume that was out on the day it was seeded goes out of date.
 Something has to notice that book seven exists, and this service automates that
-job. Its one other way in, [the reported-ASIN lane](#the-reported-asin-lane), is
-narrower and off unless configured.
+job. It has two other ways in. [The reported-ASIN lane](#the-reported-asin-lane)
+is narrower and off unless configured. [The LibriVox lane](#the-librivox-lane) is
+on by default and keeps the public-domain LibriVox mirror current.
 
 ### The bound
 
 These rules are the whole of the bot's licence, and the code enforces them
 rather than only stating them. The policy side is the "Series-completion bot"
-section of the repo's `GOVERNANCE.md`.
+section of the repo's `GOVERNANCE.md`. They bind series completion and the
+reported-ASIN lane. The LibriVox lane shares the one pull-request slot and the
+merge gate, but its records are held to [an invariant of its own](#the-invariant)
+instead, and nothing in it widens these rules.
 
 - **It never adds a series**, from the feeds or from the reported-ASIN lane.
   Discovery drops a feed row whose series the catalogue does not already hold.
@@ -82,10 +88,10 @@ section of the repo's `GOVERNANCE.md`.
   (default 100) land at a time, whole series first, in position order, so each
   cycle stays small enough for a person to read. What the cap cuts is not
   discarded. The series those rows came from stay queued, and a later cycle
-  expands them again. A lane pull request has its own, tighter cap
-  ([its limits](#its-limits)).
-- **One pull request at a time**, the lane's included. A cycle that finds one
-  still open stops before it touches libex or the intake queue.
+  expands them again. A reported-ASIN lane pull request has its own,
+  tighter cap ([its limits](#its-limits)).
+- **One pull request at a time**, every lane's included. A cycle that finds one
+  still open stops before it touches libex, LibriVox or the intake queue.
 - **Coming-soon (preorder) titles are included**, imported with their announced
   release date.
 - **Every record it writes carries the typed `libex-import` provenance**, so the
@@ -113,6 +119,9 @@ overwrites a recorded value.
       v
   the reported-ASIN lane's turn, when enabled and due  --->  opened a PR: the cycle ends
       |
+      v  (sat out, found nothing or failed: on to the next turn)
+  the LibriVox lane's turn, when on and due  --->  opened a PR: the cycle ends
+      |
       v  (sat out, found nothing or failed: completion runs as usual)
   walk 11 marketplaces x 2 feeds incrementally  --->  rows naming a series we already hold
       |                                                  (queued, with the feed cursor, in one save)
@@ -136,9 +145,11 @@ overwrites a recorded value.
   commit data/  ->  push sync/<date>  ->  open one PR, labels data + bot-intake + bot-sync
 ```
 
-The lane's turn comes after the open-pull-request and parked checks and the
-clone's refresh, and before discovery. It runs on its own record of the cycle
-and touches nothing in the series queue. Its steps are in [A turn](#a-turn).
+The lanes take their turns after the open-pull-request and parked checks and the
+clone's refresh, and before discovery: the reported-ASIN lane
+([A turn](#a-turn)), then the LibriVox lane
+([its turn](#its-turn-and-the-one-slot)). Each runs on its own record of the
+cycle and touches nothing in the series queue.
 
 A few properties of the completion pass are worth knowing.
 
@@ -219,7 +230,7 @@ request, because a cycle is long and main may have moved while it ran.
 
 ## The reported-ASIN lane
 
-The bot's one other way in. When enabled, the lane reads metaserve's
+One of the bot's two other ways in. When enabled, the lane reads metaserve's
 [unknown-ASIN intake queue](./api.md#get-apiv1intakeunknown-asins), a list of
 anonymous ASINs reported as missing from the catalogue. It imports what those
 listings state, standalones included.
@@ -287,8 +298,8 @@ these steps:
    `metacheck` and the no-new-series check. There is no `--enrich` pass.
 
 A turn that sits out, finds nothing, or fails before a pull request exists falls
-through to series completion in the same cycle. None of it counts as a failed
-cycle.
+through to the LibriVox lane's turn and series completion in the same cycle.
+None of it counts as a failed cycle.
 
 Two exceptions end the cycle as an error instead:
 
@@ -391,6 +402,289 @@ The lane stays out of the systemic stop:
 
 Its state is the `intake` block of [`GET /status`](#operating-it).
 
+## The LibriVox lane
+
+The bot's second source. Once a UTC day the lane reads
+[LibriVox](https://librivox.org)'s own catalogue and imports the projects
+LibriVox has catalogued since its last run. So the
+[LibriVox mirror](./contributing-data.md#librivox-the-public-domain-mirror) stays
+current without a person cutting tranches.
+
+The policy is "The LibriVox lane" in
+[GOVERNANCE.md](https://github.com/KodeStar/audiosilo-meta/blob/main/GOVERNANCE.md#the-librivox-lane),
+and its licence for the data is LICENSING.md's public-domain exception. It is a
+separate source under [its own invariant](#the-invariant), so
+[the bound](#the-bound) above does not widen to cover it.
+
+The lane writes no record itself. The importer is audiosilo-meta's
+`metaimport librivox import`, at the pinned commit. The lane decides which
+projects to hand it, and whether what came back stays inside the invariant.
+
+**It is on by default.** `SYNC_LIBRIVOX=off` is its kill switch, and stops the
+lane alone. Whatever the lane has learned stays in the state file for when it is
+back.
+
+### Its turn, and the one slot
+
+The lane takes its turn after the reported-ASIN lane and before discovery, on its
+own record of the cycle, so nothing it does charges a queued series. It sits out,
+reading nothing:
+
+- in the first cycle after a lane pull request, its own or the reported-ASIN
+  lane's, because that cycle belongs to series completion. The lane owes that
+  cycle from just before its push, so one whose pull request GitHub refused
+  owes it too;
+- once it has read LibriVox that UTC day. The day is stamped when the turn
+  starts reading, so a read that fails also waits for tomorrow;
+- for a day after an [exclusion](#what-happens-to-its-pull-request);
+- while the pinned `metaimport librivox import` does not list `--skipped` and
+  `--worklist` ([the pinned CLI contract](#the-pinned-cli-contract-meta_ref)).
+  Without them a refused project cannot be told from a lost one, and the
+  worklist would be read from nowhere. The lane logs one line a cycle and
+  nothing else changes.
+
+A turn then runs these steps:
+
+1. **Read the window**: the projects LibriVox catalogued since the lane's
+   cursor, 100 a page, with their sections, genres, translators, archive.org
+   item and cover. On most days that is one request. On its first run and every
+   30 days after, the turn also runs [the census](#the-window-and-the-census),
+   unless it is a [retry run](#the-pending-list), which leaves the census for the
+   next turn.
+2. **Filter.** The turn leaves out every project the catalogue holds, every one
+   still being recorded (no runtime and no archive.org item yet) and every one on
+   [the pending list](#the-pending-list) that is not due.
+3. **Import and check.** The turn writes the projects it read into a local
+   snapshot and hands at most `SYNC_LIBRIVOX_MAX_PROJECTS` (200) of them to
+   `metaimport librivox import`, with `--skipped`, `--worklist` and
+   `--conflicts`. Then come `metafmt`, `metacheck`, the no-founded-series check
+   and the lane's invariant. An import summary that states a new series is
+   refused before any of them.
+4. **Open one pull request** on `sync/librivox-<day>`, titled
+   `[sync] LibriVox <day>: N new works, M new recordings` and labelled `data`,
+   `bot-intake`, `bot-sync` and `sync:librivox`. Its body names the window, the
+   invariant the tree passed and every project id it carries, and points at the
+   worklist issue whenever the pending list holds a project for a person, this
+   run's or an earlier one's. A retry run's body says it is a retry instead of
+   naming a window.
+
+The lane never hands the importer a project the catalogue already holds. For a
+held project the importer re-reads the recording, which is an edit, and editing
+is not this lane's to do. So a correction LibriVox makes to a held project is not
+picked up either: re-reading recent projects would be an edit path, which needs
+its own invariant written into GOVERNANCE.md first. Until then a correction to a
+LibriVox record goes through an issue or a pull request under the ordinary merge
+policy.
+
+What a turn leaves behind:
+
+| What happened | The turn | Kept |
+|---|---|---|
+| A gate, or a pin without the flags | sits out, nothing read | nothing |
+| The window could not be read | sits out, one log line | the day's read |
+| Nothing to import | falls through, tree untouched | the holds, and the cursor if the window settled |
+| The import, `metafmt`, `metacheck`, the founded-series check or the invariant fails | discards the tree, falls through | every candidate held as `failed` |
+| The import landed nothing | falls through | the holds, and the cursor if the window settled |
+| The pull request opens | the cycle ends | the yield to series completion |
+| GitHub refuses the pull request | deletes the branch, falls through | the yield to series completion; the import's holds; the tree's projects held as `failed` |
+| A dry run with a diff | the cycle ends, the tree left in the clone | nothing |
+
+Falling through means series completion runs in the same cycle, as after the
+reported-ASIN lane.
+
+### The window and the census
+
+**The cursor** is the lane's own, never a libex feed cursor. It is the midnight
+UTC of the day a window was read. A turn reads
+`?since=<cursor>&extended=1&coverart=1&format=json`. With no cursor yet, the
+window starts at `SYNC_LIBRIVOX_SINCE`, or else the day before the first run.
+The cursor moves only:
+
+- when a lane pull request that read a window merges, to the midnight UTC of
+  the day that window was read, where the next window starts;
+- on a turn that opens nothing because every project of its window is already
+  held, or is on the pending list for a durable reason (any but `failed`,
+  `deferred` and `unread`).
+
+Opening, recycling, closing or excluding a pull request, a failed turn, a retry
+run and a dry run move nothing, so no window is ever skipped. An empty window is
+LibriVox's HTTP 404 with `{"error":"Audiobooks could not be found"}`, which the
+lane reads as an empty day and not as an error.
+
+LibriVox's `since` filters on a project's catalogue date, which LibriVox sets when
+the project completes. That was probed live on 2026-11-12: a window from
+2026-10-20 returned 51 projects, every one complete. So the daily window does
+reach a project that completes after it was first listed, and the census is a
+safety net behind it.
+
+**Requests are polite.** They go out at least 5 seconds apart and name
+meta.audiosilo.app and kode@audiosilo.app in their User-Agent. A 429, a 5xx and a
+transport failure are retried, honouring `Retry-After` (else with a backoff). Any
+other 4xx is an error.
+
+**The census** lists the whole catalogue on the lane's first run and every 30
+days after, for whatever a window missed. It reads about 45 pages of 500, with
+only each project's id and runtime, 5 seconds apart. The archive.org item is left
+out because LibriVox fills it only in its extended answer, and an extended page of
+500 took 14.5 seconds against 1.2 seconds for a light one. A project the census
+lists that the catalogue lacks and the pending list does not hold is then:
+
+- held as `in-progress` when it has no runtime, the census's only test. It is
+  never read by id: it is imported when a window lists it complete, or when a
+  later census sees a runtime;
+- otherwise read by id (`?id=<n>&extended=1`) and imported.
+
+The census's finds are not the only by-id reads. A project on
+[the pending list](#the-pending-list) that is due and outside the window is read
+by id too, and those go first. At most 50 projects are read by id in a turn,
+within the room the window's projects left under the per-pull-request cap. A
+census find past either bound waits as `deferred`, and a due pending project past
+them stays as it is, due next turn. A by-id read that fails ends the turn's reads
+and holds that project as `unread`. A census that fails is tried again the next
+turn, and the window's turn goes on.
+
+### The pending list
+
+A project the lane could not land is kept on a durable list in the state file,
+never forgotten, and tried again on its own schedule. A project leaves the list
+**only** when the catalogue holds it, whoever added it. So a person who resolves
+a project by hand needs to do nothing else. A wiped state file is rebuilt by the
+next census.
+
+| Reason | Set when | Tried again |
+|---|---|---|
+| `in-progress` | no runtime and no archive.org item, or the import printed it as in progress | when seen complete |
+| `worklist:<reason>` | the import's `--worklist` row: a match it will not decide alone | every 7 days |
+| `refused:<code>` | the import's `--skipped` row | every 30 days |
+| `unlanded` | handed to the import and not landed, with no reason given; or LibriVox lists no such id | every 30 days |
+| `deferred` | past the cap or the by-id budget, or put back by a recycled, closed or excluded pull request | the next turn |
+| `failed` | its turn's import, `metacheck` or invariant failed; its tree's pull request did not open; or a required check closed its pull request [the second time in a row, or closed a retry](#what-happens-to-its-pull-request) | after 7 days, in halves |
+| `unread` | its by-id read failed | after 7 days |
+| `excluded` | behind a work an `ai-verify` finding named | once more after 30 days; excluded a second time, it is held for a person |
+
+**A failed run is never retried whole.** When `failed` projects are due, that
+day's turn is a retry run. It imports only the first half of them, or the one
+alone when only one is due, read from the window or by id. The window's other
+projects wait for the next turn, which reads the same window again, because a
+retry pull request's merge leaves the cursor where it is. So one bad project among
+200 is alone after a few halvings a week apart, and the good ones land on the days
+between. A project that still fails alone stays `failed` and is retried alone
+weekly.
+
+### The invariant
+
+The lane checks it itself, over every pack the run changed: both sides of each,
+read one pack at a time, deleted packs included. It runs last, before anything
+is committed. A run
+that breaks it is discarded whole. Nothing is pushed, no pull request opens, and
+its projects are held as `failed`.
+
+- **It adds only `librivox`-sourced works, people and recordings.** A new record
+  whose `sources` name anything but `librivox` is refused, and so is a new
+  recording whose `librivox_id` is not one of the projects the run was given.
+- **It never touches a series or `data/redirects.json`.** Nothing outside the
+  works and people families changes, and no entry is ever removed.
+- **It never edits a record another source owns.** On a held work it may only
+  attach a new LibriVox recording and add a `librivox` source entry. An existing
+  recording is never changed. On a held person it may only **stamp**:
+  - write the person's LibriVox author or reader id where the record holds none;
+  - add a `librivox` source entry;
+  - write the birth and death years LibriVox states, only when the record states
+    neither year. A year another source or a hand edit wrote is never
+    overwritten, and one half is never added beside the other's existing value.
+
+  An alias list is an edit too, since the importer reads aliases and never
+  writes them.
+
+It was calibrated on 2026-11-12 against real importer output. The import commits
+and full merges of the L3 backfill's tranches 10 and 11 (about 2,900 packs, hand
+fixes included) were all accepted. As a negative, a libex completion commit was
+refused with 94 violations.
+
+### The worklist issue
+
+The rows the importer will not decide alone go to one issue on audiosilo-meta,
+titled "LibriVox lane: projects held for a person". The lane keeps it current.
+It is labelled `sync:librivox-worklist` and never `data`, so
+[the steward](./steward.md), which triages only `data` issues, leaves it alone.
+The issue lists:
+
+1. the `same-name-author` rows first, each with its candidates and how to resolve
+   it. A LibriVox author there has the name of a person the catalogue holds, and
+   the importer will not stamp that person without a judgement;
+2. the other [worklist reasons](./contributing-data.md#the-worklist);
+3. the excluded projects, a twice-excluded one marked as held;
+4. the count of projects still being recorded, folded away at the end. Those need
+   nothing from a person.
+
+It lists at most 200 rows and says how many more there are, with fewer when the
+body would pass GitHub's size limit. It is rewritten only when its content
+changes, and closed when nothing is left on it (in-progress projects alone need
+no issue). The text goes out as every text bound for GitHub does, with mentions
+defused and secrets redacted. A dry run logs the body instead.
+
+The issue needs the PAT's **Issues: read and write**. Without it the lane still
+runs and opens its pull requests, and the issue calls answer 403 and are only
+logged.
+
+A person resolves a row with an ordinary pull request under the merge policy:
+see [how to resolve a worklist row](./contributing-data.md#resolving-a-row-of-the-lanes-worklist).
+
+### What happens to its pull request
+
+A lane pull request goes through [the merge gate](#the-merge-gate) exactly as a
+completion pull request does: the required checks green and `ai-verified` on its
+exact head. `ai-verify` reads a `sync/librivox-` branch as the LibriVox lane. Its
+prompt there says what a LibriVox record is: the `librivox_id` and the
+archive.org item are the evidence, no ASIN is expected, readers are volunteers
+under the names they chose, old first-publication years and every language are
+normal, a stamp on a held person is expected, and so is a work in no series. Any
+series change is a finding. Advisories show in the verdict comment, unflagged.
+
+**There is no resolver**, whatever `SYNC_AGENT` says. The
+[escalation ladder](#the-escalation-ladder) has no fix or drop rung for this
+lane, and the evidence goes straight to its end:
+
+- **An `ai-verify` flag** closes the pull request unmerged and labels it
+  `sync:auto-excluded`. The projects behind the works the finding names are
+  excluded, or all of its projects when it names none. The rest go back on the
+  list as `deferred`, and the lane rests a day. The exclusion counts in
+  `/status`'s `excluded` but not toward completion's circuit breaker.
+- **A required check that fails again after its one re-run** closes the pull
+  request too, with nothing excluded, no label and no rest day. `/status` counts
+  these closes in a row as `check_closes`:
+  - the first close puts every project back as `deferred` for the next run, since
+    a break on main is the likelier cause;
+  - the second close in a row holds every project as `failed`, so the halving
+    retry finds the project whose data breaks the check, rather than the same
+    window coming back every day with the cursor stuck;
+  - a retry pull request that a check closes holds its projects as `failed` at
+    once, whatever the count, and does not add to it, so a later window pull
+    request does not inherit the retry's strike.
+
+  Any LibriVox lane merge resets the count. A reported-ASIN lane merge does
+  not.
+- **A recycle** (no `ai-verify` verdict on the head, or main moved out from
+  under it), a close by hand and an abandoned park put every project back as
+  `deferred` and leave the cursor alone. The next run
+  reads the same window again. A recycle does not count toward the recycle
+  throttle.
+- **A merge**, by the watch tick or by hand, moves the cursor to the midnight
+  UTC of the day its window was read (a retry run's leaves it where it is) and
+  ends the run of check closes. It also lets series completion's cycle start at
+  once.
+
+### The LibriVox lane's limits
+
+| Limit | Value | Setting |
+|---|---|---|
+| Projects per pull request | 200 | `SYNC_LIBRIVOX_MAX_PROJECTS` (a higher value is clamped, with one startup warning) |
+| Reads of LibriVox | one turn a UTC day | none |
+| Projects read by id per turn | 50 | none |
+| The census | every 30 days, about 45 requests | none |
+
+Its state is the `librivox` block of [`GET /status`](#operating-it).
+
 ## The merge gate
 
 The intake sweep's rebase force-pushes the branch, and a force-push re-runs both
@@ -442,7 +736,8 @@ state ends in a decision the service makes itself:
   cycle from starting at once, and it waits for the normal interval. `/healthz`
   then reports degraded until a pull request merges or `ai-verify` gives a
   verdict again, so a broken `ai-verify` cannot spin. A lane pull request's
-  recycle does not count (see [Sharing the one slot](#sharing-the-one-slot)).
+  recycle does not count (see [Sharing the one slot](#sharing-the-one-slot) and
+  [the LibriVox lane's pull request](#what-happens-to-its-pull-request)).
 
 Only **configuration errors** still **park** a pull request. The service labels
 it `sync:needs-human`, comments and stops watching it. The configuration errors
@@ -499,7 +794,8 @@ back to back. From the second exclusion in a row with no merge in between, the
 service still excludes, but the next cycle waits for the normal interval.
 `/healthz` then reports degraded, naming the count and the last reason. A lane
 pull request's exclusion does not count toward it (see
-[Sharing the one slot](#sharing-the-one-slot)).
+[Sharing the one slot](#sharing-the-one-slot) and
+[the LibriVox lane's pull request](#what-happens-to-its-pull-request)).
 
 ## The resolver
 
@@ -581,14 +877,20 @@ to `127.0.0.1`. That binding is what makes the missing auth safe, since
   reasons are the selector's reason codes, with `unknown` for entries from before
   reasons were recorded;
 - `intake`, the reported-ASIN lane (`on`, `last_pr`, `paused_until`).
-  `last_cycle.intake` is its last turn.
+  `last_cycle.intake` is its last turn;
+- `librivox`, [the LibriVox lane](#the-librivox-lane): `on`, its `cursor` and
+  `last_census` (shown there only, never under the feed cursors), `last_run`,
+  `rest_until`, the `pending` list counted by reason, `check_closes` (lane pull
+  requests a required check closed in a row), the worklist `issue` and
+  `max_projects`, the per-pull-request cap in force.
+  `last_cycle.librivox` is its last turn.
 
 Configuration is environment variables only. One struct reads them all, so the
 config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `GITHUB_TOKEN` | *(required)* | Fine-grained PAT on audiosilo-meta: Contents read/write, Pull requests read/write, Actions read/write, Metadata read. Actions is what re-dispatches `ai-verify`, re-runs a failed check's jobs and reads the failed job's log. Not required when `SYNC_DRY_RUN=1`. |
+| `GITHUB_TOKEN` | *(required)* | Fine-grained PAT on audiosilo-meta: Contents read/write, Pull requests read/write, Actions read/write, Metadata read. Actions is what re-dispatches `ai-verify`, re-runs a failed check's jobs and reads the failed job's log. Add Issues read/write for the LibriVox lane's [worklist issue](#the-worklist-issue) (the steward needs it too). Not required when `SYNC_DRY_RUN=1`. |
 | `SYNC_REPO` | `KodeStar/audiosilo-meta` | The data repository, `owner/name`. |
 | `DATA_DIR` | `/data` | Holds the clone, `state.json` and `logs/`. |
 | `SYNC_ADDR` | `:8090` | Admin HTTP listen address. No auth, so bind loopback. |
@@ -619,6 +921,10 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 | `SYNC_INTAKE_MAX_LOOKUPS` | `150` | Listing lookups per lane turn, at most 150 ([its limits](#its-limits)). |
 | `SYNC_INTAKE_MAX_WORKS` | `25` | Records per lane pull request, new works and attached editions together, at most 25. |
 | `SYNC_INTAKE_EVERY` | `48h` | At most one lane pull request per this long, at least 48h. |
+| `SYNC_LIBRIVOX` | `on` | [The LibriVox lane](#the-librivox-lane); `off` is its kill switch. |
+| `SYNC_LIBRIVOX_MAX_PROJECTS` | `200` | Projects per LibriVox lane pull request, at least 1. A higher value is clamped to 200. |
+| `SYNC_LIBRIVOX_SINCE` | - | `YYYY-MM-DD`, where the lane's first window starts. Read only while the lane has no cursor. Unset, the first window starts the day before the first run, and the census covers everything older. |
+| `LIBRIVOX_BASE` | `https://librivox.org` | LibriVox's address, for a mirror or a test's fake. |
 
 Tokens never reach a log line. The service hands the PAT to `git` as an
 `Authorization` header in the child environment, never in a URL or argv. It
@@ -632,7 +938,8 @@ watcher decision go to `<DATA_DIR>/logs/<date>.log` and to stdout.
 Revoke the bot's PAT, or stop its container. It has no other way into
 audiosilo-meta, and nothing in the catalogue depends on it running. The
 [reported-ASIN lane](#the-reported-asin-lane) alone stops by unsetting either of
-its two keys and restarting.
+its two keys and restarting. The [LibriVox lane](#the-librivox-lane) alone stops
+with `SYNC_LIBRIVOX=off` and a restart.
 :::
 
 ## The pinned CLI contract (`META_REF`)
@@ -645,6 +952,7 @@ from a pinned commit of that repository:
 |---|---|
 | `metaimport libex-select` | The authoritative selector. Keeps rows that complete a catalogued series at a free position, with mappable language and region and acceptable credits. Writes no records. Its flags are listed under this table. |
 | `metaimport libex` | The create path, over the selected subset. With `--enrich`, the fill-absent-facts path over every row, which is why the service fetches rows the catalogue already holds too. Its flags are listed under this table. |
+| `metaimport librivox import` | [The LibriVox lane](#the-librivox-lane)'s import, over a snapshot the lane writes from what it read. Its flags are listed under this table. |
 | `metafmt --write` | Canonical rendering, entry relocation, due pack splits. Nothing here computes pack placement by hand. |
 | `metacheck` | The gate. A cycle whose `metacheck` fails discards its whole tree. |
 
@@ -679,7 +987,23 @@ last.
   carry `position-claimed`. The service memoizes them as refusals rather than
   selecting them again.
 
-Every invocation passes `--profile core` explicitly. The data repository *is* a
+`metaimport librivox import` runs as
+`--from <snapshot> --ids <ids> --data <dir> --date <day> --skipped <path> --worklist <path> --conflicts <path>`:
+
+- `--skipped` writes one `{"librivox_id","reason"}` line per project refused
+  under a refusal code. The lane holds those as `refused:<code>`.
+- `--worklist` appends one `{"librivox_id","title","authors","reason","candidates"}`
+  line per project held for a person. The lane holds those as
+  `worklist:<reason>` and lists them on [the worklist issue](#the-worklist-issue).
+- The projects the run set aside as still in progress are only printed, on one
+  line, which the lane reads. It filters those projects itself before the run,
+  so the line is a second check.
+
+A non-zero exit is a failed import, whatever the run wrote, and the lane discards
+the tree.
+
+Every `metafmt` and `metacheck` invocation passes `--profile core` explicitly
+(the `metaimport` subcommands take no profile). The data repository *is* a
 core tree (works, people, series, `redirects.json`), while the tools default to
 `all`, and the difference is a failed file accounting.
 
@@ -687,13 +1011,18 @@ The pinned commit is the `META_REF` build argument in the service's Dockerfile.
 `metasync version`, `GET /status` and the footer of every series-completion pull
 request report it. So "which importer produced this data" is always answerable
 for those pull requests. A [reported-ASIN lane](#sharing-the-one-slot) pull
-request's body carries no footer and does not name the pin.
+request's body carries no footer and does not name the pin, and neither does a
+[LibriVox lane](#the-librivox-lane) pull request's.
 
-The lane depends on that pin. It runs only when the pinned
+The reported-ASIN lane depends on that pin. It runs only when the pinned
 `metaimport libex-select --help` lists `--reported`. On an older pin the lane
 sits every cycle out before it reads the queue, with one log line, and series
 completion is unchanged. So deploying the service before the pin is bumped is
 safe.
+
+The LibriVox lane depends on it the same way. It runs only when the pinned
+`metaimport librivox import --help` lists `--skipped` and `--worklist`, and
+otherwise sits every cycle out with one log line.
 
 The workspace's cross-repo contract carries this seam as its own section: the
 series-completion bot and the library export, section 19 of `CROSS-REPO.md` at
@@ -709,6 +1038,10 @@ followed by a pin bump and a check in the sync repository:
   --skipped`.
 - The `--attach-editions` flag both tools take.
 - `libex-select --reported`, with its standalone and identity rules.
+- The flags of `metaimport librivox import`, the line shapes of its `--skipped`
+  and `--worklist` files and its printed in-progress line.
+- The `sync/librivox-` branch prefix, which `ai-verify` reads as the LibriVox
+  lane.
 - The libex NDJSON row shape the service emits, or the row projection and
   chapter-acceptance rules it hand-mirrors from `internal/importer`.
 - The pack layout under `data/series` and `data/works`, which the service reads
@@ -741,6 +1074,21 @@ Its section 9 covers the reported-ASIN lane, which needs:
   keys there as well as in `.env`. Without them there, the lane stays off with
   no error.
 
+Its section 10 covers the LibriVox lane. It needs nothing in `.env`, but the
+order of the deploy matters:
+
+1. **audiosilo-meta first.** Its `ai-verify` must read a `sync/librivox-*` branch
+   as the LibriVox lane before the service's image runs. Merge that change on
+   audiosilo-meta first, or the lane's first pull request is judged as a retailer
+   completion.
+2. **Then the image**, with a `META_REF` that meets
+   [the pinned CLI contract](#the-pinned-cli-contract-meta_ref).
+
+The PAT needs Issues: read and write (see
+[the worklist issue](#the-worklist-issue)). In a compose file with an explicit
+`environment:` list, `SYNC_LIBRIVOX=off` takes effect only when it is listed
+there too.
+
 Worth knowing before a first run either way:
 
 - The first cycle clones audiosilo-meta at depth 1 (roughly 4GB) and reads its
@@ -749,6 +1097,12 @@ Worth knowing before a first run either way:
 - A bounded dry run (`SYNC_DRY_RUN=1`, one region, a small
   `SYNC_MAX_WORKS_PER_PR`) does everything except push and open a pull request,
   and leaves the diff in the clone to read.
-- With the lane enabled, a dry-run turn that would open a lane pull request
-  stops there, so series completion does not run in that cycle. For such a dry
-  run, point `SYNC_INTAKE_URL` at a local metaserve over `http://127.0.0.1`.
+- With the reported-ASIN lane enabled, a dry-run turn that would open a lane
+  pull request stops there, so series completion does not run in that cycle. For
+  such a dry run, point `SYNC_INTAKE_URL` at a local metaserve over
+  `http://127.0.0.1`.
+- The LibriVox lane behaves the same way in a dry run: a turn with a diff stops
+  before the pull request, leaves the diff in the clone and logs the body and the
+  worklist issue. It moves neither the cursor nor the pending list.
+  `SYNC_LIBRIVOX_SINCE=<YYYY-MM-DD>` points such a run at a past window.
+- The LibriVox lane's first turn runs [the census](#the-window-and-the-census).

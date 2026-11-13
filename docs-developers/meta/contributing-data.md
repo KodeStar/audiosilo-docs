@@ -847,6 +847,9 @@ the rule that the catalogue is never an unbounded mirror. The case is LICENSING.
 The exception names LibriVox only. Another catalogue would need its own case
 argued in LICENSING.md before any tooling points at it.
 
+The mirror is [kept current daily](#kept-current-daily) by the series-completion
+bot, so a hand import is for a worklist row or a repair, not for new projects.
+
 **Facts only.** A LibriVox record carries:
 
 - the title and the authors;
@@ -1552,10 +1555,6 @@ duplicate work. Examples are "Publius Ovidius Naso" for "Ovid", or a misspelt
 minted before rule 3 existed need a repair. A rerun does not undo them, since the
 projects are already catalogued.
 
-The backfill lands as human-reviewed tranches by project-id range (about 2,000
-projects a pull request) under the ordinary merge policy. No automated LibriVox
-lane runs yet, and `GOVERNANCE.md` holds only a stub of its future invariant.
-
 `metacheck` enforces the identity rules the schema cannot see
 (`pkg/check/librivox.go`):
 
@@ -1567,6 +1566,52 @@ The fields and their rules are in
 [the data model](./data-model.md#recording---a-member-of-its-work-entrys-recordings-map).
 Once built into the artifact, the records reach the API's
 [LibriVox layer](./api.md#the-librivox-layer).
+
+#### Kept current daily
+
+The backfill that seeded the mirror is finished. It landed as human-reviewed
+tranches by project-id range (about 2,000 projects a pull request) under the
+ordinary merge policy.
+
+Since then the mirror is kept current once a day by the
+[series-completion bot's LibriVox lane](./sync-bot.md#the-librivox-lane). It
+reads the projects LibriVox has catalogued since its last run and hands the new
+ones to this same `metaimport librivox import`, in bounded pull requests that
+merge through the bot's gate, under [its own invariant](./sync-bot.md#the-invariant):
+it only adds LibriVox records and never edits one another source owns.
+
+What the lane cannot land waits on [its pending list](./sync-bot.md#the-pending-list).
+The projects the importer will not decide alone go to
+[one issue on audiosilo-meta](./sync-bot.md#the-worklist-issue), which the lane
+keeps current.
+
+Any change a person makes to LibriVox records still goes through an ordinary
+pull request. So does a correction LibriVox makes to a project the catalogue
+already holds, since the lane reads only newly catalogued projects.
+
+#### Resolving a row of the lane's worklist
+
+Each row of the worklist issue is a project held for one of the
+[worklist](#the-worklist) reasons. A person resolves it with an ordinary pull
+request under the merge policy: a reviewed
+`metaimport librivox import --ids <id>`, or a data fix that settles the match.
+The lane never needs telling. At its next daily turn after the catalogue holds
+the project it drops the row, and it retries every row on
+[its own schedule](./sync-bot.md#the-pending-list) in case a fix has settled it.
+
+Start with the `same-name-author` rows, which the issue lists first. Each names
+the catalogued person the LibriVox author's name meets and a few of their works.
+Decide whether they are one person:
+
+- **The same person.** Write the LibriVox author id (`librivox_author_id`) on the
+  catalogued person. Once that merges, the lane's next retry of the row imports
+  the project against them.
+- **Someone else.** Import the project by hand in a reviewed pull request, with a
+  person record of the author's own, named as "Naming the separate person"
+  under [`import` lands a tranche](#import-lands-a-tranche) says.
+
+For the other reasons, settle the work as [the worklist](#the-worklist)
+describes, then re-import the project's id or let the lane's next retry do it.
 
 ## Scanning local files: metascan
 
