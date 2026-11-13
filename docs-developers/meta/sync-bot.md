@@ -250,6 +250,13 @@ each new book with the other copies its SKU group holds, and searches each
 configured store the group does not cover yet. A hit in the same SKU group joins
 the others, and the import folds them all into the same work.
 
+A store search that has no answer within 5 seconds is not waited for. libex
+fetches a store it has not seen while the search waits, which can take half a
+minute. The service asks it again once, with the full timeout, at the end of the
+cycle's discovery, so a copy it finds still lands in that cycle's pull request.
+A store that fails that retry too is skipped for the rest of the cycle, and the
+region follow-up asks it again later.
+
 A store often lists a book later than the others, and a search can fail. So
 each cycle also runs the **region follow-up**. It takes the catalogued
 recordings that are released in the last 60 days, not released yet, or added in
