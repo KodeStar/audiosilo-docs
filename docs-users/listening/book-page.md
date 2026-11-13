@@ -57,6 +57,8 @@ If neither has one, your server's [Bridge](../admin/generating-characters-and-re
 
 Under the description you'll find the publisher, release date, language and whether it's abridged, when known. Then come the book's **Genres** and **Tags**. Tap one to open the [Library](browsing.md#books) filtered to it.
 
+When the community database matches the book to a free LibriVox recording, the card ends with **Also free on LibriVox**. It opens that recording's page on librivox.org.
+
 Below the About card:
 
 - **Other versions** lists copies of the same book in your other libraries or servers.

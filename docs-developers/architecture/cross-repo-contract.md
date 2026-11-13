@@ -760,7 +760,8 @@ player.
 **Server:**
 
 - `internal/meta` resolves a book's ASIN or ISBN against `metaserve` and composes an
-  enrichment envelope. `GET /libraries/{id}/meta` returns it, behind an admin
+  enrichment envelope. A book with neither, or one `metaserve` does not know, is
+  resolved by its recorded match instead (see [Matches by work id](#matches-by-work-id)). `GET /libraries/{id}/meta` returns it, behind an admin
   off-switch and a bounded cache.
 - `GET /meta/work?id=…` serves one work document straight through, from the same
   cache, for the earlier books of a series the caller does not own. It is authed but
@@ -864,9 +865,14 @@ From 2.6.0 the server records each match by its work id (`book_matches`). So a s
 listing that `metaserve` holds with no ASIN or ISBN counts as matched. A refresh
 looks such a book up by `works/{id}`, following a retired slug's `301`. The rule a
 run applies to such a book is in
-[Bulk community matching](../server/api/reference.md#bulk-community-matching). The
-player's `/meta` stays identifier-keyed, so it shows no community content for such a
-book yet.
+[Bulk community matching](../server/api/reference.md#bulk-community-matching).
+
+From 2.7.0 the server's `/meta` answers such a book from its recorded match: the
+book's identifiers first, then its `book_matches` `work_id` and `recording_id`
+when they find nothing. The envelope is the same, so no client changes for it.
+The player still asks `/meta` only for a book with an ASIN or ISBN, or with
+generated content (`metaEnabledFor`), so a book matched with neither and with no
+generated content shows no community content in the player.
 
 ### Community chapters from the meta side
 
@@ -934,6 +940,9 @@ These are all additive:
   writes the legal text.** A client must render it beside that content and never
   compose it.
 - `recording.chapter_count`.
+- `recording.librivox` `{id, url?, zip_url?}`, only on a LibriVox recording. The
+  server keeps each URL only when it is an absolute http(s) URL and never builds
+  one from `id`. The player checks `url` again before About links it.
 - `local` `{library_id, path}` on each rail entry the caller owns, in the main view
   and the orderings. The server resolves `local` **per request, after the shared
   cache, on a copy**, and never stores it there. A failure placing the caller's books

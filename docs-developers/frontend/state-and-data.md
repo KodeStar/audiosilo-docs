@@ -614,6 +614,9 @@ older server (React Query rejects it instead), and the query stays pending.
     it; the series page and Search's character group do. `community_description`
     feeds the book page's About card (`aboutContent`).
   - `BookMetaRecording.chapter_count`, which has no reader yet.
+  - `BookMetaRecording.librivox` (`BookMetaLibrivox { id, url?, zip_url? }`), only
+    on a LibriVox recording. The About card links `url`
+    ([The aside](book-page.md#the-aside)); nothing reads `id` or `zip_url` yet.
   - `local` (`BookRef`) on rail entries. It is how the series page and Next in
     your series tell an owned book from a ghost.
   - `previous` on a matched `BookMeta`. The

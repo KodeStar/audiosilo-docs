@@ -556,8 +556,9 @@ Undo.
 metadata is off:
 
 - The gaps come from the `GET /libraries/{id}/meta` of each series' first book
-  with an ASIN or ISBN (`metaCandidate`, `hasIdentifier`), because `/meta` is
-  identifier-keyed.
+  with an ASIN or ISBN (`metaCandidate`, `hasIdentifier`). A book matched with
+  neither is never the one asked, although `/meta` would answer it from its
+  recorded match.
 - The card offers "Match a book" when that `/meta` found no match. When no book
   has an ASIN or ISBN, it offers it when none of the series is matched.
 - Each card resolves its books with an ASIN or ISBN to community work ids
