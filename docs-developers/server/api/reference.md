@@ -6457,8 +6457,8 @@ is a `400` too (`too many format or codec values`).
 - `matched` - the book has an ASIN or ISBN, or a recorded community match (a store
   listing with neither, from 2.6.0): the same rule as the `matched` filter
   (`catalog.matchedExpr`). The community chapter check finds a book by its ASIN or
-  ISBN alone, and the player asks `/meta` only for a book with one (or with generated
-  content), so check `asin` / `isbn` for those, not `matched`.
+  ISBN alone, so check `asin` / `isbn` for it, not `matched`. `/meta` answers a
+  `matched` book either way.
 - `abridged` - `true`, `false`, or `null` while nothing says (always present,
   unlike the player's `Book`, which omits it). `genres` and `tags` are `[]` for
   none.

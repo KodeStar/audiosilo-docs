@@ -49,6 +49,7 @@ Material from the community database always comes first. The Bridge also writes 
 
 ## Good to know
 
-- A book only gets material from the community database when it can be matched (it has an ASIN or ISBN) and someone has written it. Many books have a description and a Series tab, but no characters or recaps yet.
+- A book only gets material from the community database when it is matched and someone has written it. Many books have a description and a Series tab, but no characters or recaps yet.
+- A book matched only by an admin in the console, with no ASIN or ISBN, shows this material on its page. The companion, Home and downloaded copies need an ASIN or ISBN, so they leave it out.
 - An admin switches community metadata on or off under **Server > Settings > Community metadata** in the admin console. See [Server settings](../admin/server.md#community-metadata).
 - A [downloaded](offline-downloads.md#community-notes-offline) book keeps this material, so it works offline.

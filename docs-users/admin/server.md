@@ -134,8 +134,9 @@ servers leave it empty.
 
 **Look up community metadata** turns on extra book details from the free
 community database at [AudioSilo Meta](https://meta.audiosilo.app). Books
-with an ASIN or ISBN gain an "About this book" section in the player: a
-description, series, and (where written) characters and recaps. See
+with an ASIN or ISBN, and books you matched in the console, gain an "About this
+book" section in the player: a description, series, and (where written)
+characters and recaps. See
 [A book's page](../listening/book-page.md#about-this-book).
 
 What is sent:

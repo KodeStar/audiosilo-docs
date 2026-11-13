@@ -986,8 +986,21 @@ Each field is read through one of two readers, never both:
   [generated work](../server/api/reference.md#generated-content) (`matched: false`
   with a `work`). So an unmatched book's generated description reaches About too.
 
-`metaEnabledFor` asks `/meta` for a book with an ASIN or ISBN **or**
-`generated: true`. An answer that is only generated content goes stale after
+Two gates in `meta-gating.ts` decide whether a screen asks `/meta`:
+
+- `bookPageMetaEnabled`: the `metadata` capability and a loaded book that is not
+  an episode, identifiers or not. Only the book page uses it. A newer server
+  answers a book with no ASIN or ISBN from its console match (a LibriVox
+  download), and an older one answers `matched: false` without asking upstream,
+  so the one request is cheap either way.
+- `metaEnabledFor`: that gate and an ASIN, an ISBN **or** `generated: true`. The
+  companion and reveal toast, Home's Now card and Previously on, the end credits
+  and the offline copy (`canMatch` in `offline-meta.ts`) use it, because they ask
+  for a book in passing or for every download.
+
+The series page's anchor (`metadataAnchor`, an ASIN or ISBN) and Search's
+characters (`characterBooksToLoad`, the started books, ids or not) pick their
+books by their own rules. An answer that is only generated content goes stale after
 2 minutes (`META_GENERATED_ONLY_STALE_MS`), rather than the hour a community
 answer keeps.
 

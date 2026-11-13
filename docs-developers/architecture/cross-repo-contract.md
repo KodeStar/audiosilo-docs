@@ -869,10 +869,15 @@ run applies to such a book is in
 
 From 2.7.0 the server's `/meta` answers such a book from its recorded match: the
 book's identifiers first, then its `book_matches` `work_id` and `recording_id`
-when they find nothing. The envelope is the same, so no client changes for it.
-The player still asks `/meta` only for a book with an ASIN or ISBN, or with
-generated content (`metaEnabledFor`), so a book matched with neither and with no
-generated content shows no community content in the player.
+when they find nothing. The envelope is the same, so the wire does not change.
+
+The player's book page asks `/meta` for every loaded book that is not an episode
+(`bookPageMetaEnabled`), so a book matched with neither identifier shows its
+community content there. Search's characters ask the listener's started books
+with or without identifiers (`characterBooksToLoad`). Every other surface keeps
+the identifier gate (`metaEnabledFor`: an ASIN, an ISBN or generated content):
+the companion and reveal toast, Home's Now card and Previously on, the end
+credits, and the offline copy (`canMatch`).
 
 ### Community chapters from the meta side
 

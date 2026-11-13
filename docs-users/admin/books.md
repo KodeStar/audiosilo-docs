@@ -87,8 +87,10 @@ Its **Community metadata** card says "No ASIN or ISBN: matched to its store
 listing".
 
 A few things need an ASIN or ISBN, so they leave such a book out: the
-[community chapter check](#community-chapters), the missing books on the
-[Series](#series) page, and the players' community "About this book".
+[community chapter check](#community-chapters) and the missing books on the
+[Series](#series) page. In the players, such a book shows its community details
+on its book page only. The companion, Home's cards, the end credits and
+downloaded copies leave them out.
 
 ### Unlinking a community match
 

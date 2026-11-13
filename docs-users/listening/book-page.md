@@ -49,7 +49,7 @@ A finished book shows **Finished** with the date. If your server keeps ratings, 
 
 ## About this book
 
-The **About** card describes the book. The description comes from the community database, [AudioSilo Meta](../community/meta-site.md), when your server has that switched on and the book is matched. Otherwise it's the one your server holds.
+The **About** card describes the book. The description comes from the community database, [AudioSilo Meta](../community/meta-site.md), when your server has that switched on and the book is matched. A book is matched by its ASIN or ISBN, or by an admin in the console. Otherwise it's the one your server holds.
 
 If neither has one, your server's [Bridge](../admin/generating-characters-and-recaps.md#a-description-for-the-book) may have written a spoiler-free one, marked **Generated on this server**.
 
