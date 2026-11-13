@@ -40,13 +40,17 @@ import {
   addHousehold,
   apiClient,
   around,
+  drawerClosed,
   firstVisible,
   fitViewportTo,
   fitted,
   imagesLoaded,
   isoAgo,
   pathQuery,
+  playerSession,
+  probeServer,
   shoot,
+  signInWithPassword,
   sleep,
   slug,
   stamp,
@@ -88,16 +92,6 @@ const COLLECTION = {
   name: 'Victorian evenings',
   description: 'Fog, firelight and something odd at the door.',
   books: ['Christmas Carol', 'Hound of the Baskervilles', 'Adventures of Sherlock Holmes', 'Looking-Glass'],
-};
-
-// The desktop Up next drawer starts closed in every capture context, so the shots
-// that aren't about it keep the page's full width; the Up next shot opens it.
-const drawerClosed = () => {
-  try {
-    localStorage.setItem('audiosilo.upNext', JSON.stringify({drawerOpen: false}));
-  } catch {
-    /* storage blocked: the drawer opens, the shots are just narrower */
-  }
 };
 
 // A capture context: DESKTOP_CONTEXT (1440x900, retina, dark, motion reduced) with
@@ -168,18 +162,6 @@ const PRIMARY_PLAY = /^(start listening|resume( chapter \d+)?|listen again|liste
 // src/i18n/locales/en.json `player.sleepTimer.fellAsleepNote` (run.sh's FRONTEND can be
 // a bare web export, so it isn't read from there).
 const FELL_ASLEEP_NOTE = 'Fell asleep';
-
-// The signed-in player's connection id and token (the web player keeps the token in
-// localStorage under audiosilo.token.<connection id>), for provisioning through the API.
-async function playerSession(page) {
-  const session = await page.evaluate(() => {
-    const prefix = 'audiosilo.token.';
-    const key = Object.keys(localStorage).find((k) => k.startsWith(prefix));
-    return key ? {cid: key.slice(prefix.length), token: localStorage.getItem(key)} : null;
-  });
-  if (!session?.token) throw new Error('no player token in localStorage');
-  return session;
-}
 
 // The demo user's token.
 async function demoToken(page) {
@@ -1753,29 +1735,6 @@ if (wanted(...Object.values(PODCAST_SHOTS), ...Object.values(FIND_SHOTS))) {
   } finally {
     if (pod.admin) await step('remove podcasts', () => unprovisionPodcasts(pod));
   }
-}
-
-// The connect start screen, done once the probe card shows what it found. A served
-// player that asks its own server on open has no address field; one that has the field
-// gets the server's address typed and Continue pressed.
-async function probeServer(page, origin) {
-  await tid(page, 'connect-start').waitFor({timeout: 15000});
-  const field = firstVisible(page.getByRole('textbox', {name: 'Server address'}));
-  if (await field.count()) {
-    await field.fill(origin);
-    await firstVisible(page.getByRole('button', {name: 'Continue', exact: true})).click({timeout: 8000});
-  }
-  await tid(page, 'probe-notice').waitFor({timeout: 15000});
-}
-
-// From the probe card: Sign in, by username and password.
-async function signInWithPassword(page, username, password) {
-  await firstVisible(page.getByRole('button', {name: /^Sign in to /})).click({timeout: 8000});
-  await tid(page, 'sign-in-step').waitFor({timeout: 8000});
-  await firstVisible(page.getByRole('radio', {name: 'Username and password'})).click({timeout: 8000});
-  await firstVisible(page.getByLabel('Username', {exact: true})).fill(username);
-  await firstVisible(page.getByLabel('Password', {exact: true})).fill(password);
-  await firstVisible(page.getByRole('button', {name: 'Sign in', exact: true})).click({timeout: 8000});
 }
 
 // ── Household: profiles, members, kids mode, listening in the house, Cast ───

@@ -45,16 +45,21 @@ import {
   addHousehold,
   apiClient,
   around,
+  drawerClosed,
   fitViewportToPage,
   isoAgo,
   pathQuery,
+  playerSession,
+  probeServer,
   showDockerPaths,
   silence,
   sleep,
   shoot,
+  signInWithPassword,
   stamp,
   step,
   submitSignIn,
+  tid,
   waitForScans,
   wanted,
   DESKTOP_CONTEXT,
@@ -1565,45 +1570,27 @@ await step('bridge: add from LibriVox', async () => {
     const recordings = page.getByRole('list', {name: 'Recordings'});
     await recordings.getByText(/^Read by /).first().waitFor({timeout: 30000});
     await recordings.getByRole('button', {name: /^Add/}).first().waitFor({timeout: 15000});
-    await sleep(1500);
+    await sleep(800);
     await shoot(page, 'admin/librivox.png');
   }
 
   if (wanted('web-player/find-librivox.png')) {
     const wctx = await browser.newContext(DESKTOP_CONTEXT);
-    await wctx.addInitScript(() => {
-      try {
-        localStorage.setItem('audiosilo.upNext', JSON.stringify({drawerOpen: false}));
-      } catch {
-        /* storage blocked: the drawer opens, the shot is just narrower */
-      }
-    });
+    await wctx.addInitScript(drawerClosed);
     let session = null;
     try {
       const wpage = await wctx.newPage();
-      const visible = (id) => wpage.getByTestId(id).filter({visible: true}).first();
+      const visible = (id) => tid(wpage, id);
       await wpage.goto(`${ORIGIN}/web/connect`, {waitUntil: 'networkidle', timeout: 45000});
-      await visible('connect-start').waitFor({timeout: 15000});
-      const field = wpage.getByRole('textbox', {name: 'Server address'}).filter({visible: true}).first();
-      if (await field.count()) {
-        await field.fill(ORIGIN);
-        await wpage.getByRole('button', {name: 'Continue', exact: true}).filter({visible: true}).first().click();
-      }
-      await visible('probe-notice').waitFor({timeout: 15000});
-      await wpage.getByRole('button', {name: /^Sign in to /}).filter({visible: true}).first().click();
-      await visible('sign-in-step').waitFor({timeout: 8000});
-      await wpage.getByRole('radio', {name: 'Username and password'}).filter({visible: true}).first().click();
-      await wpage.getByLabel('Username', {exact: true}).filter({visible: true}).first().fill('admin');
-      await wpage.getByLabel('Password', {exact: true}).filter({visible: true}).first().fill(PASSWORD);
-      await wpage.getByRole('button', {name: 'Sign in', exact: true}).filter({visible: true}).first().click();
+      await probeServer(wpage, ORIGIN);
+      await signInWithPassword(wpage, 'admin', PASSWORD);
       await visible('ready-screen').waitFor({timeout: 15000});
-      session = await wpage.evaluate(() => {
-        const key = Object.keys(localStorage).find((k) => k.startsWith('audiosilo.token.'));
-        return key ? localStorage.getItem(key) : null;
-      });
+      session = (await playerSession(wpage)).token;
       // Browse the library, not Start listening: nothing plays, so no session is recorded.
       await wpage.getByRole('button', {name: 'Browse the library'}).filter({visible: true}).first().click();
       await visible('top-bar-(library)').waitFor({timeout: 15000});
+      // Again, so a slow console shot cannot leave the Bridge offline: the player's
+      // /server names the Bridge's features only while it is online.
       await standInHeartbeat(status);
       await visible('books-menu').click({timeout: 20000});
       await visible('books-find-librivox').click({timeout: 8000});
@@ -1612,7 +1599,7 @@ await step('bridge: add from LibriVox', async () => {
       await visible('librivox-hit').click({timeout: 30000});
       await visible('librivox-recording').waitFor({timeout: 30000});
       await visible('librivox-add').waitFor({timeout: 15000});
-      await sleep(1500);
+      await sleep(800);
       await shoot(wpage, 'web-player/find-librivox.png');
     } finally {
       if (session) await api(session, 'POST', '/auth/logout').catch(() => {});
