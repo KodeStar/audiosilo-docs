@@ -829,9 +829,9 @@ library through the Bridge's `librivox.fetch`. The design is in
   with a link to each book.
 - **The Bridge note** (`bridgeNote` in `librivox-model.ts`, from
   `GET /admin/bridge`): `addBlock` stops Add while the status loads or fails, with
-  no Bridge paired, or when its `features` lack `librivox`, each with a sentence
-  and a link to Settings > Bridge. An offline Bridge is no block: the note says a
-  book added waits for it.
+  no Bridge paired, or when its `features` lack `librivox`, each with a sentence.
+  With no Bridge paired, the sentence links Settings > Bridge. An offline Bridge
+  is no block: the note says a book added waits for it.
 - **Add**: a library picker when there are several books libraries (podcast
   libraries are never offered), then `POST /admin/librivox/fetch`. A refusal shows
   as a toast (`errors.librivoxInLibrary` for `409 in_library`).

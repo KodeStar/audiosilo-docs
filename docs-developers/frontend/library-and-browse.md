@@ -149,8 +149,8 @@ scroll memory.
 
 `addRefusalKey` and `readErrorKey` word the refusals: `in_library` (the work read
 again shows where; the body's `library_id` and `path` are not read),
-`not_book_library`, `kind_unavailable`, `library_not_writable` and
-`metadata_off`.
+`not_book_library`, `kind_unavailable`, `library_not_writable`, `metadata_off`,
+`not_found` and, for a read, `invalid`.
 
 **The hooks** (`hooks.ts`):
 

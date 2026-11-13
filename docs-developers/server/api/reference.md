@@ -11813,8 +11813,8 @@ as `bridge.job` (with `job`, `kind`, `library` and `librivox_id`).
 
 Internal (refused by `POST /admin/bridge/jobs` with `400`), a writing kind for a
 books library, no module, deduped per library and project, and notified when it
-ends done (named by the book's path), failed or parked (named by its library). Its params, progress steps, result
-and failure codes are in [The job](../../bridge/librivox.md#the-job-librivoxfetch).
+ends done (named by the book its result names), failed or parked (named by its
+library). Its params, progress steps, result and failure codes are in [The job](../../bridge/librivox.md#the-job-librivoxfetch).
 A done job's result becomes the book's recorded community match (`how`
 `accepted`, `set_by` the admin who asked) when it names a book indexed in the
 job's own library.

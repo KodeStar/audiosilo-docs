@@ -60,7 +60,7 @@ has the shapes and every status.
 | Kind | `librivox.fetch` (`bridge.KindLibrivoxFetch`; the Bridge's `librivoxjob.Kind`), feature `librivox` |
 | Server spec | needs a library, no book path, **writes**, a books library only, internal (`POST /admin/bridge/jobs` refuses it with `400`), no module |
 | Dedupe | per library and project (suffix `\|<librivox_id>`): a repeat answers the open job |
-| Notifications | not quiet. Done is "Added from LibriVox", named by the result's path. Failed, and a lasting park, are notified as for other kinds, named by the library |
+| Notifications | not quiet. Done is "Added from LibriVox", named by the book its result names. Failed, and a lasting park, are notified as for other kinds, named by the library |
 | Bridge lane | `download` (1 slot, shared with `audible.import` and an ordinary `podcast.fetch`), so one book downloads at a time |
 | Bridge state | `<data>/librivox/<library_id>-<librivox_id>.json` |
 
@@ -88,9 +88,11 @@ and ignores unknown fields.
 | `place` | writes `.audiosilo/librivox.json` and moves the folder into place |
 | `rescan` | asks the server to index the book (`POST /bridge/rescan`, three tries) |
 
-A library that is not mapped and writable **parks** the job (`needs_attention`,
-park code `not_writable`), and it carries on once a mapping check reports the
-library writable again.
+The job waits while its library has no mapping check yet. A new job whose library
+is checked but not mapped and writable fails `not_writable`. A resumed job, or one
+already downloading, **parks** instead (`needs_attention`, park code
+`not_writable`), and it carries on once a mapping check reports the library
+writable again.
 
 ### Result
 
@@ -111,7 +113,7 @@ message never holds a URL.
 | `not_writable` | the library is not a checked, writable books mapping, or its mapping moved to another mount while the job ran |
 | `exists` | the title's folder and its fallback are both taken, or the author folder is a listed book or holds audio |
 | `disk_full` | the library has less than 1.1 times the rest of a file free |
-| `not_found` | the Bridge's metadata service has no such project, or it lists no files |
+| `not_found` | the Bridge's metadata service has no such project, it lists no files, or the work's recording now names another project |
 | `archive_unavailable` | a section is not on archive.org, or archive.org kept failing |
 | `metadata_off` | the Bridge has no metadata service set (`metadata.base_url`) |
 
@@ -152,9 +154,9 @@ Two things drop the identity, because the server does not read
 - a fold lost between the job's commit and the fold, such as a crash;
 - [Clear community matches](../server/api/reference.md#delete-apiv1admincommunity-matches).
 
-Adding the recording again repairs either. The Bridge finds the folder it placed
-(it holds the project's `librivox.json`), only rescans it, and the fold records
-the match.
+Adding the recording again repairs either. When the folder the Bridge plans now,
+or its fallback, is the one it placed (it holds the project's `librivox.json`),
+the Bridge only rescans it, and the fold records the match.
 
 ## Fetching from archive.org only
 
@@ -170,20 +172,21 @@ The Bridge reads the manifest from **its own** metadata service
 
 A metadata service that is down never ends the job. Each read is tried 4 times
 (5, 10 and 20 seconds apart), then the run fails with no code and keeps its
-staging folder and state for the next attempt. Only a definite `404` for the
-project ends it as `not_found`.
+staging folder and state for the next attempt. A definite `404` for the project
+ends it as `not_found`.
 
 Every section and cover URL must be `https` on `archive.org` or a subdomain of it
-(`AllowedURL`). The Bridge checks each one before anything is fetched or
-written, and again on every redirect, through netguard's per-request `Allow`. It
-never fetches from librivox.org. The client is the Bridge's own netguard client
+(`AllowedURL`). The Bridge checks every section's URL before anything is fetched
+or written (one elsewhere fails the job `archive_unavailable`), the cover's before
+the cover is fetched (one elsewhere is skipped), and each again on every redirect,
+through netguard's per-request `Allow`. It never fetches from librivox.org. The client is the Bridge's own netguard client
 (public addresses only, not the podcasts' `allow_networks`). A URL with padding
 around it is refused as it stands, so the check and the request see one spelling.
 
 Only audio is kept:
 
-- a `Content-Type` other than none, `audio/*`, `application/octet-stream` or
-  `application/ogg` is never written;
+- a `Content-Type` other than none, `audio/*`, `application/octet-stream`,
+  `binary/octet-stream` or `application/ogg` is never written;
 - a whole file whose first bytes (past any zero padding in its first 4 KB) are no
   ID3 tag, MPEG frame sync, `OggS`, `fLaC` or MP4 `ftyp` is removed;
 - an empty body never counts as a finished section.
