@@ -1558,7 +1558,7 @@ headers }`). The rules are in `src/lib/proxy-headers.ts` and the storage in
 `src/lib/proxy-headers-store.ts`. They are credentials, kept like the token:
 
 - **Storage.** They live in memory and in secure-store under
-  `audiosilo.proxy-headers.<id>` (web: localStorage, as the token). `persist`
+  `audiosilo.proxy-headers.<id>` (see [Storage layers](#storage-layers)). `persist`
   strips them and keeps only the non-secret `hasProxyHeaders` marker, and
   `hydrate` reads them beside the token for a marked connection only. They never
   reach AsyncStorage, the query cache, a URL or a log line.
@@ -2243,7 +2243,7 @@ There are two deliberate tiers. Know which one you are writing to.
 | Layer | Module | Backing | Used for |
 |---|---|---|---|
 | Plain | `src/lib/storage.ts` (`getItem`/`setItem`/`removeItem`, JSON-serialized) | AsyncStorage on native; localStorage on web, through AsyncStorage's web shim | connection metadata, settings, language pref, downloads registry, progress mirror and queue, the listening outbox, open span and sync state, device id |
-| Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain, Android Keystore) on native. On iOS it uses the `audiosilo.tokens.afu` keychain service, readable after first unlock (see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)). localStorage on web, where SecureStore doesn't exist. | **session tokens** (`audiosilo.token.<connectionId>`), plus profile PIN hashes (`audiosilo.profilePin.<profileId>`) and the device's copy of an upcoming calendar link (`audiosilo.upcoming-calendar.<connectionId>`) |
+| Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain, Android Keystore) on native. On iOS it uses the `audiosilo.tokens.afu` keychain service, readable after first unlock (see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)). localStorage on web, where SecureStore doesn't exist. | **session tokens** (`audiosilo.token.<connectionId>`), plus profile PIN hashes (`audiosilo.profilePin.<profileId>`) the device's copy of an upcoming calendar link (`audiosilo.upcoming-calendar.<connectionId>`) and a connection's [proxy headers](#proxy-headers) (`audiosilo.proxy-headers.<connectionId>`) |
 
 The split exists because these values are secrets. Hardware-backed storage on
 native is worth the extra API for them, while everything else is non-sensitive
