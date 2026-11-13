@@ -29,6 +29,8 @@ library with no books yet can't be **Ready**, so add one book to it first (see
 
 To add a book, open **Library > LibriVox** in the admin console.
 
+![Library > LibriVox: a search and the recordings of the book found](/img/screenshots/admin/librivox.png)
+
 1. Type a title or an author in **Search LibriVox**.
 2. Select a result. Its **Recordings** list shows who reads each one, its
    length, how many sections it has and its LibriVox project number.
@@ -52,6 +54,8 @@ books library.
 2. Choose **Find on LibriVox**.
 3. Type a title or an author, press **Search** and select a result.
 4. Press **Add to** *the library* on the recording you want.
+
+![Find on LibriVox in the web player](/img/screenshots/web-player/find-librivox.png)
 
 The book goes to the library you opened the page from. With more than one books
 library, you can pick another under **Add to**.

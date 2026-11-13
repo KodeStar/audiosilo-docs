@@ -266,6 +266,17 @@ folder under the Inbox (`.cache/inbox`, rebuilt every run), asks for the attachm
 rescan and reports the job done. The book's Chapters card is then shot clipped,
 with the found chapters in use. Nothing is written into the seeded library.
 
+The LibriVox shots (`admin/librivox.png`, `web-player/find-librivox.png`) come
+after the read-along step, from the same stand-in, its heartbeat sent again with
+`librivox.fetch` among its kinds so the Bridge's features list `librivox`. Both
+search the live community metadata (the demo server's default lookup, so they need
+the network) for The Wind in the Willows and open its recordings: first the
+console's Library > LibriVox, then the web player in a context of its own, signed
+in as the admin (Browse the library, so nothing plays) and opened from the Books mode's **...** menu (Find on LibriVox),
+which shows only while the Bridge is online. Both are taken by `capture-admin.mjs`,
+since that is where the stand-in is paired. Nothing is added, so no job is queued
+and no seeded book gains a match; the player's session is signed out again.
+
 The generated description shots (`admin/book-description.png`,
 `web-player/book-about-generated.png`, Bridge Phase 1c) need a book with a
 `description.json`. Before the servers start, on every run, `run.sh` writes the
