@@ -11,7 +11,7 @@ recording, so its community details show with no matching by hand.
 You need:
 
 - an admin account;
-- community metadata turned on, in **Server > Settings > Metadata**;
+- community metadata turned on, in **Server > Settings > Community metadata**;
 - a paired Bridge, updated together with your server;
 - the library shown as **Ready** in [Server > Settings > Bridge](bridge.md#libraries).
 
@@ -33,9 +33,9 @@ To add a book, open **Library > LibriVox** in the admin console.
 ![Library > LibriVox: a search and the recordings of the book found](/img/screenshots/admin/librivox.png)
 
 1. Type a title or an author in **Search LibriVox**.
-2. Select a result. Its **Recordings** list shows who reads each one, its
+2. Select a result. Its list of recordings shows who reads each one, its
    length, how many sections it has and its LibriVox project number.
-3. Pick the **Library**, when you have more than one books library.
+3. Pick the library, when you have more than one books library.
 4. Press **Add**, or **Add to** *your library* when there is only one.
 
 The recording's row shows the Bridge's progress. When it is done, the row says
@@ -92,8 +92,9 @@ While it downloads, the Bridge keeps the files in a hidden folder beside the
 book, which the server ignores. The book appears all at once when every section
 is in.
 
-The Bridge adds one book at a time. Audible backups and podcast episode
-downloads take turns with it.
+The Bridge adds one book at a time. Audible backups and the podcast episodes
+the server fetches on its own take turns with it; an episode a listener is
+waiting for does not wait.
 
 ## Cancel or restart
 
@@ -106,7 +107,7 @@ downloaded are kept, and a section cut off part way usually resumes.
 
 ## When adding fails
 
-The row says why. Press **Add** again to try once more.
+The row says why. Press the add button (**Add to** *your library*) again to try once more.
 
 | Reason | What to do |
 |---|---|
@@ -115,7 +116,7 @@ The row says why. Press **Add** again to try once more.
 | **The library's disk is full.** | Free some space in the library. |
 | **LibriVox no longer lists this project.** | The recording left the community database. Search again. |
 | **archive.org couldn't be reached.** | Try again later. |
-| **Community metadata was turned off.** | Turn it on in **Server > Settings > Metadata**. If it is on, the Bridge has no metadata service set: check its `AUDIOSILO_BRIDGE_METADATA_BASE_URL`. |
+| **Community metadata was turned off.** | Turn it on in **Server > Settings > Community metadata**. If it is on, the Bridge has no metadata service set: check its `AUDIOSILO_BRIDGE_METADATA_BASE_URL`. |
 | **That recording is already in a library.** | Nothing to do. The recording's row links to it. |
 
 ## Good to know
