@@ -1278,8 +1278,9 @@ can't list is [unavailable](scanner.md#the-unavailable-root-guard).
 
 The image's `docker-entrypoint.sh` starts as root, gives the server's user its
 folders, checks them as that user, then drops to it with `su-exec PUID:PGID`
-(default `1000:1000`). The server never runs as root. `su-exec` sets only that
-group, so access a host user has through another group doesn't reach the server.
+(default `1000:1000`). The server runs as root only when `PUID` is `0`.
+`su-exec` sets only that group, so access a host user has through another group
+doesn't reach the server.
 
 - **Ownership.** It runs `chown -R` on the data folder (`--data`, `/data` by
   default). When `AUDIOSILO_BACKUP_DIR` is an absolute path, it gives the user

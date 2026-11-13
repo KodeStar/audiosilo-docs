@@ -47,7 +47,7 @@ A setting you give as an `AUDIOSILO_*` variable wins over the admin console, whi
 
 ## 2. Start it and save your password
 
-Create the data folder yourself before the first start, so it belongs to you rather than to root. Then start the server:
+Create the data folder yourself before the first start. Otherwise Docker creates it as root, and the container then has to change its owner, which a NAS share can refuse. Then start the server:
 
 ```bash
 mkdir -p data           # create the data folder first
@@ -103,7 +103,7 @@ This updates the server and the web player together. Your books are never change
 
   ```bash
   mkdir -p data           # create the data folder first
-  docker run -d --name audiosilo -p 8080:8080 \
+  docker run -d --name audiosilo --restart unless-stopped -p 8080:8080 \
     -e PUID=1000 -e PGID=1000 \
     -v "$PWD/data:/data" \
     -v /srv/audiobooks:/library:ro \

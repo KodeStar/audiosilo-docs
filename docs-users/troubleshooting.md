@@ -38,7 +38,7 @@ The last line is the server stopping, so the container restarts and stops again.
 
 The same warning can name other folders:
 
-- **The backups folder you set in `AUDIOSILO_BACKUP_DIR`.** The server starts, but backups fail until you fix it. For this folder and for the default one, the server's log warns `backups will fail` at start, and the Backups notice in the console says why.
+- **The backups folder you set in `AUDIOSILO_BACKUP_DIR`.** The server starts, but backups fail until you fix it. For this folder and for the default one, the server's log warns `backups will fail` at start, and once a backup fails, the Backups notice in the console says why.
 - **A books folder**, which needs read access only. The warning ends with `Until then, a library in that folder shows as offline.` The library shows **Folder unavailable** in the console. After the fix, press **Retry** on the library.
 
 A share that doesn't answer is a different problem. The log says `audiosilo: WARNING: /library didn't answer within 5 seconds: a network share that is slow, or whose server is gone.` Check that the share is mounted on the host.
