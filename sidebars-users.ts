@@ -104,6 +104,7 @@ const sidebars: SidebarsConfig = {
         'admin/generating-characters-and-recaps',
         'admin/making-read-along',
         'admin/audible',
+        'admin/librivox',
         'getting-started/running-a-worker',
       ],
     },

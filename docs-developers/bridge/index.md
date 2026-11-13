@@ -75,6 +75,10 @@ the job kinds in the Bridge's heartbeat include it (see
   [`audible.sync`](audible.md#position-sync-audiblesync-and-the-push-loop) and a
   push loop over `GET /bridge/progress` sync listening places both ways, furthest
   only, for the accounts the console turns sync on for.
+- **LibriVox.** [`librivox.fetch`](librivox.md) adds a LibriVox recording an admin
+  picked to a books library: the manifest from the community metadata service,
+  the sections from archive.org only, a no-replace move into place, a rescan. The
+  server then records the book as that recording.
 
 Some job families belong to a [managed module](../server/modules.md) of the
 server, which the console turns on and off.
@@ -258,6 +262,9 @@ one-command worker install needs them.
   its matching, `audible.import` (backups: resume, the hardened transfer,
   secrets), position sync (`audible.sync`, the push loop), the server's accounts,
   titles and queueing, the `audible` module and the build-tagged fake.
+- [Add from LibriVox](librivox.md) - `librivox.fetch` (its params, progress,
+  result and codes), the book's identity, the archive.org-only fetch, placement,
+  staging and resume, and `.audiosilo/librivox.json`.
 - [Configuration](configuration.md) - the Bridge's settings and environment, the
   images and the compose example.
 - [Development](development.md) - the gate, the layout and the Bridge's own page.

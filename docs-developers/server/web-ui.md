@@ -684,7 +684,10 @@ The aside's Community card (`book-aside.tsx`) shows the book's
 - the work id, linking `web_url`, and the `recording_id` when set;
 - how and when it was matched (`howKey`): "No ASIN or ISBN: matched to its
   store listing ..." without an identifier, and "Matched by a bulk match ..."
-  or "Matched ..." with one;
+  or "Matched ..." with one. A match whose `/meta` recording carries
+  `librivox` (and is the match's `recording_id`, when it names one) reads
+  "Matched to its LibriVox recording ...". Until the book's `/meta` answers, the
+  line stays the neutral "Matched ...";
 - **Unlink**, behind a `ConfirmDialog` (no undo). It sends
   `PATCH …/book {match: {work_id: ""}}` and refreshes the issues.
 
@@ -808,6 +811,37 @@ transcript was reused".
 - While aligning, the transcription's last message is hidden.
 - `KIND_READALONG` counts in the page's job poll. The page fetches the book
   again when the job ends, so its new map shows.
+
+#### Library > LibriVox
+
+Library > LibriVox (`features/librivox/`) adds a LibriVox recording to a books
+library through the Bridge's `librivox.fetch`. The design is in
+[Add from LibriVox](../bridge/librivox.md).
+
+- **Metadata off**: with the `metadata` capability off the page says so and links
+  Settings > Metadata, and asks nothing.
+- **Search**: a search box over
+  [`GET /admin/librivox/search`](api/reference.md#get-apiv1adminlibrivoxsearch),
+  asked as the admin types. A result opens the work beside it.
+- **The work**: [`GET /admin/librivox/work`](api/reference.md#get-apiv1adminlibrivoxwork)
+  lists the recordings, each with its readers, length, section count, project id
+  and a **LibriVox page** link. A recording in `in_library` shows **In library**
+  with a link to each book.
+- **The Bridge note** (`bridgeNote` in `librivox-model.ts`, from
+  `GET /admin/bridge`): `addBlock` stops Add while the status loads or fails, with
+  no Bridge paired, or when its `features` lack `librivox`, each with a sentence.
+  With no Bridge paired, the sentence links Settings > Bridge. An offline Bridge
+  is no block: the note says a book added waits for it.
+- **Add**: a library picker when there are several books libraries (podcast
+  libraries are never offered), then `POST /admin/librivox/fetch`. A refusal shows
+  as a toast (`errors.librivoxInLibrary` for `409 in_library`).
+- **Following the job**: a row follows its job by id
+  (`GET /admin/bridge/jobs/{id}`) every few seconds while it is open
+  (`jobPollMs`), and stops for a job that is gone (`404`, `jobGone`). The work
+  itself is not polled. When the job ends it asks the work again and, for a done
+  job, once more after `DONE_RECHECK_MS` (2 s), since the fold commits just after
+  the job reads done. A parked or failed job keeps its reason on the row
+  (`fetchReason`).
 
 #### Library > Libraries
 
@@ -1410,6 +1444,11 @@ A failed Audible job's code reads as a sentence (`audibleJobReason`):
 
 A sync cancelled by turning sync off shows the server's reason, "sync with
 Audible was turned off for the account" (`SERVER_CANCEL_REASONS`).
+
+**LibriVox jobs.** A `librivox.fetch` reads "Adding from LibriVox", with its
+project ("Project 192", `librivoxProject`). Its failure or park code reads as
+`librivox.code.<code>` (`fetchReason`: a park's code, else the result's `code`,
+else an error starting `<code>:`), and an unknown one keeps the Bridge's text.
 
 ##### The Setup card
 

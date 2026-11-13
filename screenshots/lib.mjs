@@ -38,6 +38,51 @@ export const pathQuery = (relPath) => `?path=${encodeURIComponent(relPath)}`;
 export const firstVisible = (locator) => locator.filter({visible: true}).first();
 export const tid = (page, id) => firstVisible(page.getByTestId(id));
 
+// The desktop Up next drawer starts closed in every capture context, so the shots
+// that aren't about it keep the page's full width; the Up next shot opens it.
+export const drawerClosed = () => {
+  try {
+    localStorage.setItem('audiosilo.upNext', JSON.stringify({drawerOpen: false}));
+  } catch {
+    /* storage blocked: the drawer opens, the shots are just narrower */
+  }
+};
+
+// The signed-in player's connection id and token (the web player keeps the token in
+// localStorage under audiosilo.token.<connection id>), for provisioning through the API.
+export async function playerSession(page) {
+  const session = await page.evaluate(() => {
+    const prefix = 'audiosilo.token.';
+    const key = Object.keys(localStorage).find((k) => k.startsWith(prefix));
+    return key ? {cid: key.slice(prefix.length), token: localStorage.getItem(key)} : null;
+  });
+  if (!session?.token) throw new Error('no player token in localStorage');
+  return session;
+}
+
+// The connect start screen, done once the probe card shows what it found. A served
+// player that asks its own server on open has no address field; one that has the field
+// gets the server's address typed and Continue pressed.
+export async function probeServer(page, origin) {
+  await tid(page, 'connect-start').waitFor({timeout: 15000});
+  const field = firstVisible(page.getByRole('textbox', {name: 'Server address'}));
+  if (await field.count()) {
+    await field.fill(origin);
+    await firstVisible(page.getByRole('button', {name: 'Continue', exact: true})).click({timeout: 8000});
+  }
+  await tid(page, 'probe-notice').waitFor({timeout: 15000});
+}
+
+// From the probe card: Sign in, by username and password.
+export async function signInWithPassword(page, username, password) {
+  await firstVisible(page.getByRole('button', {name: /^Sign in to /})).click({timeout: 8000});
+  await tid(page, 'sign-in-step').waitFor({timeout: 8000});
+  await firstVisible(page.getByRole('radio', {name: 'Username and password'})).click({timeout: 8000});
+  await firstVisible(page.getByLabel('Username', {exact: true})).fill(username);
+  await firstVisible(page.getByLabel('Password', {exact: true})).fill(password);
+  await firstVisible(page.getByRole('button', {name: 'Sign in', exact: true})).click({timeout: 8000});
+}
+
 // The standard desktop capture context (retina, dark, motion-reduced) shared by
 // the capture scripts. capture-web spreads it into its capture contexts
 // (`newCaptureContext`), overriding the viewport where a shot needs it; its warm-up and

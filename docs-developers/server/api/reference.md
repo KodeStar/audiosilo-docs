@@ -6908,10 +6908,11 @@ book path).
   Omitted when the book has none. There is no backfill, so a book matched before
   2.6.0 has none until it is matched again. Its fields:
   - `work_id` and `recording_id` (omitted for none): what an accept or a match
-    run's apply took;
+    run's apply took, or the recording a book was
+    [added from LibriVox](#add-from-librivox) as;
   - `how`: `"auto"` for a run's confident item applied unasked, `"accepted"` for
-    the match dialog or a review item the admin included. A refresh that heals a
-    merged work keeps it;
+    the match dialog, a review item the admin included, or a book added from
+    LibriVox. A refresh that heals a merged work keeps it;
   - `matched_at`;
   - `web_url`: the work's page on the community site, omitted when no service is
     configured.
@@ -10087,6 +10088,7 @@ that read the block, ask with their token.
     `readalong.align` gives `readalong`.
   - The podcast kinds give `podcast`, and `audible.poll` and `audible.import` give
     `audible`.
+  - `librivox.fetch` gives `librivox`.
   - `contribute` is added while the Bridge can file contributions (the last
     heartbeat's `setup.can_contribute`, else its
     `estimates.sidecars.can_contribute`). The `contributions`
@@ -10355,11 +10357,12 @@ reads; a private feed URL appears only in the Bridge's claim answer. See
 ### `POST /api/v1/admin/bridge/jobs`
 
 *Admin.* Queues a job. `podcast.subscribe`, `podcast.poll`, `podcast.fetch`,
-`podcast.retain`, `audible.poll` and `audible.import` are server-internal and
-refused here with `400` (no code): use listener follow/check, the admin storage
-routes, [Check now](#post-apiv1adminaudibleaccountsaccountpoll),
-[Back up](#post-apiv1adminaudibletitlesaccountasinbackup) or the scheduler
-instead.
+`podcast.retain`, `audible.poll`, `audible.import`, `audible.sync` and
+`librivox.fetch` are server-internal and refused here with `400` (no code): use
+listener follow/check, the admin storage routes,
+[Check now](#post-apiv1adminaudibleaccountsaccountpoll),
+[Back up](#post-apiv1adminaudibletitlesaccountasinbackup),
+[Add from LibriVox](#post-apiv1adminlibrivoxfetch) or the scheduler instead.
 Book-writing kinds on a podcast library return `409 not_book_library`;
 podcast kinds are only ever queued for a podcast library (follow and check answer
 `409 not_podcast_library` for a books library before queuing).
@@ -11692,6 +11695,129 @@ Bridge couldn't reach the server), exactly as the Bridge's delete does: its titl
 go, its open poll and sync are cancelled, and so are its open backups. It signs nothing out of
 Amazon: that is the Bridge's. `204`, known or not; audited as `bridge.audible.remove` (with `account`)
 when there was one. A bridge token is `401`.
+
+## Add from LibriVox
+
+The code is in `api/handlers_librivox.go`, `meta/librivox.go`,
+`bridge/librivox.go` and `catalog/librivox.go`. The design is in
+[Add from LibriVox](../../bridge/librivox.md). An admin searches the community
+metadata database's LibriVox works, opens one, and adds a recording to a books
+library through the Bridge's `librivox.fetch`. The server never asks
+librivox.org.
+
+All three routes are *Admin*: an admin's session or personal API key. A
+listener's session or API key is `403`; no token, and a bridge, cast or feed
+token, is `401`. They answer **`404 metadata_off`** while community metadata is
+off, before anything in the request is checked, and `502` (`metadata service unavailable`, no code) when
+the metadata service can't answer. There is no managed module and no `/server`
+flag: a client offers them when the Bridge's `features` list `librivox` (see
+[`GET /server`](#get-apiv1server-the-bridge-capability-and-block)).
+
+### `GET /api/v1/admin/librivox/search`
+
+The works with a LibriVox recording that match `q`, best first, from metaserve's
+`works/search?source=librivox`.
+
+| Param | Meaning |
+|---|---|
+| `q` | required; the title or author to look for, at most 300 characters |
+| `lang` | optional; one language tag (`en`, `pt-br`), sent lowercased |
+| `limit` | optional; 1 to 50, default 20 |
+
+```json
+{
+  "results": [
+    {
+      "work_id": "johnny-crows-garden",
+      "title": "Johnny Crow's Garden",
+      "authors": [{ "id": "l-leslie-brooke", "name": "L. Leslie Brooke" }],
+      "language": "en",
+      "release_date": "1903"
+    }
+  ]
+}
+```
+
+`release_date` is always a string, `""` when unknown.
+
+| Status | Meaning |
+|---|---|
+| `200` | the results (`[]` for none) |
+| `400` | `q` missing or too long; `lang` not a language tag; `limit` outside 1 to 50 |
+| `404` | `metadata_off` |
+| `502` | the metadata service can't answer |
+
+### `GET /api/v1/admin/librivox/work`
+
+One work and its **LibriVox recordings only** (those with a project id), by
+`?id=<work_id>`.
+
+```json
+{
+  "work": { "id": "johnny-crows-garden", "title": "Johnny Crow's Garden", "authors": [{ "id": "…", "name": "…" }], "language": "en" },
+  "recordings": [
+    {
+      "recording_id": "…",
+      "librivox_id": 192,
+      "narrators": [{ "id": "…", "name": "…" }],
+      "runtime_min": 12,
+      "chapter_count": 3,
+      "cover_url": "https://archive.org/…jpg",
+      "url": "https://librivox.org/…",
+      "in_library": [{ "library_id": 3, "path": "L. Leslie Brooke/Johnny Crow's Garden" }],
+      "job": { "id": 41, "state": "running" }
+    }
+  ]
+}
+```
+
+- `in_library` lists the indexed books whose recorded community match names this
+  exact recording (`[]` for none). A work-level match never counts. See
+  [The book's identity](../../bridge/librivox.md#the-books-identity).
+- `job` is the newest open `librivox.fetch` of the project, in any library, or
+  `null`. A lease that ran out is settled first, so a fetch that failed on its last
+  attempt is not listed.
+
+| Status | Meaning |
+|---|---|
+| `200` | the work and its recordings |
+| `400` | `id` missing or not a work id |
+| `404` | `not_found` - no such work; `metadata_off` |
+| `502` | the metadata service can't answer |
+
+### `POST /api/v1/admin/librivox/fetch`
+
+Adds a LibriVox project to a books library:
+
+```json
+{ "library_id": 3, "librivox_id": 192 }
+```
+
+The server resolves the project's work and recording with metaserve's
+`lookup?librivox_id=`, and queues `librivox.fetch` with them in its params. A
+lookup that names no recording is `not_found`: the server never takes a work's
+first recording instead.
+
+| Status | Meaning |
+|---|---|
+| `202` | `{ "job": Job }`: the queued [job](#the-job-object), or the open one for the same library and project |
+| `400` | a malformed body, or `library_id` or `librivox_id` missing |
+| `404` | `library not found` (no code); `not_found` - no such project in the community metadata; `metadata_off` |
+| `409` | `in_library` - the recording is already on this server, in any library, with the first book's `library_id` and `path` in the body; `not_book_library` - a podcast library; `kind_unavailable` - no Bridge is paired, or the paired one doesn't run `librivox.fetch`; `library_not_writable` - the Bridge's last heartbeat doesn't report the library mapped and writable |
+| `502` | the metadata service can't answer |
+
+An offline Bridge still gets the job queued, and it waits. A queued job is audited
+as `bridge.job` (with `job`, `kind`, `library` and `librivox_id`).
+
+### The `librivox.fetch` job
+
+Internal (refused by `POST /admin/bridge/jobs` with `400`), a writing kind for a
+books library, no module, deduped per library and project, and notified when it
+ends done (named by the book its result names), failed or parked (named by its
+library). Its params, progress steps, result and failure codes are in [The job](../../bridge/librivox.md#the-job-librivoxfetch).
+A done job's result becomes the book's recorded community match (`how`
+`accepted`, `set_by` the admin who asked) when it names a book indexed in the
+job's own library.
 
 ## Well-known
 

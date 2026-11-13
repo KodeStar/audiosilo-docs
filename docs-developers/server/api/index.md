@@ -327,12 +327,12 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `book_not_found` | `404` | the Bridge's `PUT /bridge/libraries/{id}/enrichment` for no book of a books library at the path; an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
 | `module_off` | `404` | any route a [managed module](../modules.md) mounts, while that module is off (Settings > Modules), for a caller the route's auth check admits (it runs first). The route exists either way, so turning the module on needs no restart. The `podcasts` module mounts `POST`/`DELETE /podcasts/follow`, `POST /podcasts/check`, the `/podcasts/discovery/*` routes and `POST /podcasts/opml/import`. Also `POST /admin/bridge/jobs` for a job the module owns (`sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`, the `contributions` module), checked before anything else about the job |
-| `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off; also [`GET /me/upcoming`](reference.md#get-apiv1meupcoming), [`GET`](reference.md#get-apiv1meupcomingcalendar)/[`POST /me/upcoming/calendar`](reference.md#post-apiv1meupcomingcalendar), [`/me/upcoming/releases.ics`](reference.md#get-apiv1meupcomingreleasesics) and [`/me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) (checked after `kid_account` and, on the mint, the `demo_account` and API-key refusals; before `upcoming_off`). Never `DELETE /me/upcoming/calendar` |
+| `metadata_off` | `404` | the [Add from LibriVox](reference.md#add-from-librivox) routes, a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off; also [`GET /me/upcoming`](reference.md#get-apiv1meupcoming), [`GET`](reference.md#get-apiv1meupcomingcalendar)/[`POST /me/upcoming/calendar`](reference.md#post-apiv1meupcomingcalendar), [`/me/upcoming/releases.ics`](reference.md#get-apiv1meupcomingreleasesics) and [`/me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) (checked after `kid_account` and, on the mint, the `demo_account` and API-key refusals; before `upcoming_off`). Never `DELETE /me/upcoming/calendar` |
 | `upcoming_off` | `404` | the same upcoming routes as `metadata_off` while community metadata is on but the upcoming releases job is switched off (`upcoming.enabled`, the console's Settings > Metadata) |
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`); a [listening sync](reference.md#post-apiv1melisteningsync) body over 1 MiB (`413`) |
 | `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
 | `cover_unavailable` | `502` | `PUT /admin/libraries/{id}/cover/community`, `GET /libraries/{id}/meta/cover` or [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) when the server couldn't fetch the image (the latter two also for a minute after a failed fetch, without asking again) |
-| `not_found` | `404` | an [unknown API route](#error-envelope-and-status-conventions) (below), `DELETE /admin/libraries/{id}` for a library that doesn't exist, and [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) for a work the caller's upcoming list doesn't hand out a cover for (not listed for them, or listed without one) |
+| `not_found` | `404` | an [unknown API route](#error-envelope-and-status-conventions) (below), `DELETE /admin/libraries/{id}` for a library that doesn't exist, and [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) for a work the caller's upcoming list doesn't hand out a cover for (not listed for them, or listed without one); also `GET /admin/librivox/work` for an unknown work and `POST /admin/librivox/fetch` for a LibriVox project the community metadata doesn't know |
 | `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
 | `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`, `POST /admin/setup/preview`) |
 | `invalid_metadata_source` | `400` | a library `metadata_source` other than `"tags"` or `"path"` (`POST`/`PATCH /admin/libraries`) |
@@ -371,13 +371,14 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `self_managed` | `409` | `PATCH /admin/users/{id}` assigning a person to themselves |
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
-| `kind_unavailable` | `409` | `POST /admin/bridge/jobs` (or `GET /admin/bridge/estimate`) for a kind the paired Bridge doesn't run, or before any Bridge has reported |
-| `library_not_writable` | `409` | podcast follow/check, or `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`, `readalong.align`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
+| `kind_unavailable` | `409` | `POST /admin/bridge/jobs` (or `GET /admin/bridge/estimate`) for a kind the paired Bridge doesn't run, or before any Bridge has reported; `POST /admin/librivox/fetch` with no Bridge paired, or one that doesn't run `librivox.fetch` |
+| `library_not_writable` | `409` | podcast follow/check, `POST /admin/librivox/fetch`, or `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`, `readalong.align`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
 | `cannot_contribute` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge's last heartbeat doesn't say it can contribute (its `setup.can_contribute`, else `estimates.sidecars.can_contribute`) |
 | `generate_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.describe`, `chapters.detect`, `sidecars.contribute` or `readalong.align` while a `sidecars.generate` job is open for the book (it writes the description, finds a chapterless book's chapters, and replaces the characters and recaps a share would file, itself; a read-along waits because both transcribe the same audio) |
 | `contribute_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` while a `sidecars.contribute` job is queued or working for the book (a parked one, or a queued one held while the `contributions` module is off, is cancelled instead) |
 | `not_edited` | `400` | `POST /admin/bridge/jobs` for `meta.correct` with a change whose field isn't an edit made on this server, or whose corrected value isn't the book's value now; `field` names it |
 | `detect_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` while a `chapters.detect` job is queued or working for the book (the generate job after it reuses its transcription), or for `sidecars.describe` or `readalong.align` while one is open |
+| `in_library` | `409` | `POST /admin/librivox/fetch` for a LibriVox recording already on this server, in any library; the body also carries the first book's `library_id` and `path` |
 | `readalong_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` while a `readalong.align` job is queued or working for the book (a parked one is cancelled instead), or for `chapters.detect` while one is open: all three transcribe the same audio on the Bridge |
 | `no_ebook` | `409` | `POST /admin/bridge/jobs` for `readalong.align` for a book the index holds no ebook for |
 | `no_readalong` | `404` | [`GET /libraries/{id}/readalong`](reference.md#get-apiv1librariesidreadalong) for a book with no read-along map (none, one that fails the server's checks, no ebook, a part's path, a podcast library) |
@@ -832,6 +833,7 @@ families the Bridge runs that the server knows:
 - `chapters`, for finding a chapterless book's chapters;
 - `meta`, for filing corrections;
 - `readalong`, for making read-along maps;
+- `librivox`, for adding LibriVox recordings to a books library;
 - `contribute`, while the Bridge can file contributions to the community
   database. That means it has a GitHub token that GitHub accepts, from its
   Accounts sign-in, its environment or `gh`. The server reads this from the
@@ -853,6 +855,9 @@ Check the flag **and** the feature you need:
   `features`.
 - The book page's Read-along card offers **Make read-along** only with
   `readalong`.
+- The console's Library > LibriVox and the player's **Find on LibriVox** add a
+  book only with `librivox` and `metadata`, for an admin. The player also needs
+  `bridge`, so it offers nothing while the Bridge is offline.
 
 ### Managed modules
 

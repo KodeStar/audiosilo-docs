@@ -114,6 +114,84 @@ A capability that is still unknown hides its item. Remove download asks first
 through the shared `RemoveDownloadConfirm` (see
 [Offline](offline.md#lifecycle)).
 
+## Find on LibriVox (admin)
+
+`src/components/librivox/` is the player's side of
+[Add from LibriVox](../bridge/librivox.md): an admin searches the community
+metadata's LibriVox works and adds a recording to a books library, which the
+server's Bridge downloads. The console's Library > LibriVox is the same page, so
+the two keep the same rules.
+
+**The gate.** `librivoxAccess(user, server)` (`librivox-model.ts`) needs an admin
+(`isBridgeAdmin`), the `bridge` flag with `librivox` in `bridge.features`, and
+`metadata`. `mayAddLibrivox` is its `allowed`. Unlike the console, the player
+offers nothing while the Bridge is offline (see
+[The gate](../bridge/librivox.md#the-gate)). Without `allowed` the page shows only
+a sentence (`notAdmin`, `unavailable`, `metadataOff`): the search and its hooks
+never mount.
+
+**The way in.** `LibrivoxMenu` is a **...** menu in the Books mode's controls
+(`books-controls.tsx`'s trailing slot: the sub-nav row on a tablet or desktop,
+the count line on a phone) with one item, **Find on LibriVox**. It renders
+nothing for anyone else. It opens `/find-librivox?connection=&library=`
+(`findLibrivoxHref`, `openFindLibrivox`), the Library tab's own page like Add
+shows. It is a browse page (`BROWSE_PATHS`), so opening it keeps the Library's
+scroll memory.
+
+**The wire** (`client.ts`, hand-mirrored from `handlers_librivox.go`):
+
+| Method | Route |
+|---|---|
+| `librivoxSearch(q, {lang, limit})` | `GET /admin/librivox/search` |
+| `librivoxWork(id)` | `GET /admin/librivox/work` |
+| `librivoxFetch(lib, id)` | `POST /admin/librivox/fetch`, `202 {job}` |
+| `bridgeJob(id)` | `GET /admin/bridge/jobs/{id}` |
+
+`addRefusalKey` and `readErrorKey` word the refusals: `in_library` (the work read
+again shows where; the body's `library_id` and `path` are not read),
+`not_book_library`, `kind_unavailable`, `library_not_writable`, `metadata_off`,
+`not_found` and, for a read, `invalid`.
+
+**The hooks** (`hooks.ts`):
+
+- `useLibrivoxSearch` and `useLibrivoxWork` are `metadata` reads with
+  `retry: false`.
+- `useAddLibrivox` is a `metadata` write. It seeds the job's own read and asks the
+  connection's works again whatever the answer.
+- `useLibrivoxJob` is a `bridge` read, and Cancel is `useCancelBridgeJob`.
+  `storeJob` puts a job about no book at its own read (`qk.bridgeJob`).
+
+A `librivox.fetch` has no book path, so a row follows it by its id, not through
+`useBridgeJobs` or `useBridgeJobSurface`, which are keyed on a book. It is polled
+while open and the page is focused (`librivoxJobPollInterval`: 5 s, 60 s while
+parked) and never after a `404`. A first read that failed with no answer or a
+server error is asked again every 60 s; a refusal (`400`, `401`, `403`) is not.
+
+**The page.** One scroller holds the search (asked on submit only), the works
+found, and the opened work's recordings under it.
+
+- Add goes to the library the page was opened from, or the one picked when the
+  server has several books libraries. Podcast libraries are never offered.
+- A row follows the last job it queued or saw open on the work
+  (`useFollowedFetch`) and switches only when the work names a different job, so a
+  failure still says why and an older answer never takes the row back from the
+  job it just queued.
+- `fetchView` words the job: its step (`manifest`, `download`, `cover`, `place`,
+  `rescan`) or its code (`librivox.fetch.code.*`). The Bridge's English is never
+  shown.
+- A job's end asks the works again. A `done` one asks once more after
+  `DONE_RECHECK_MS` (the server records the book just after the job ends) and reads
+  the library's lists and the connection's recently added again
+  (`invalidateLibraryLists`).
+- A read with nothing to show and no network is `OfflineState`
+  (`useUnreadQuery`). A search or a work read again that failed keeps what it
+  shows.
+- The recording's `cover_url` is never loaded: it is a third-party host, with no
+  server proxy.
+
+Strings are under `librivox.*` in all six locales, and fixtures are in
+`src/testing/librivox-fixtures.ts`.
+
 ## Browse building blocks
 
 The covers and shelves every browse screen is made of (STYLEGUIDE section 8)

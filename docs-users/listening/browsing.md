@@ -82,6 +82,7 @@ Every book in the library, as a cover grid or a list:
 - **Genre** and **Tag**, when the library's books have them. Tapping a genre or tag on a [book's page](book-page.md#about-this-book) opens this view filtered to it.
 - **Sort** by **Recently added**, **Title**, **Author** or **Length**. Sorted by title, an **A to Z** rail jumps to a letter.
 - **Grid or list**. On a tablet or computer, the list adds columns for narrator, length and progress.
+- **...** beside them, for an admin: **Find on LibriVox** adds a free book to the library (see [Add free books from LibriVox](../admin/librivox.md)).
 
 ![The Genre filter open over the Library's books](/img/screenshots/web-player/library-genre.png)
 

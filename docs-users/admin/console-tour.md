@@ -64,6 +64,7 @@ What each section is for:
 | **Library > Authors**, **Series**, **Narrators** | Merging two spellings of a name, and the books missing from a series. See [Authors and narrators](books.md#authors-and-narrators). |
 | **Library > Folders** | How AudioSilo reads each folder. See [The Folders page](libraries.md#the-folders-page). |
 | **Library > Libraries** | Add, edit, rescan, export and delete libraries. See [Add and manage libraries](libraries.md). |
+| **Library > LibriVox** | Search LibriVox and have your Bridge add a free book to a library. See [Add free books from LibriVox](librivox.md). |
 | **People > People** and **Invites** | Accounts and invite links. See [Invite people](users-and-invites.md). |
 | **People > Shares** | Named sets of folders you give to people. See [Sharing](sharing.md). |
 | **People > Devices** | Every signed-in phone, browser and API key. See [The Devices page](users-and-invites.md#the-devices-page). |

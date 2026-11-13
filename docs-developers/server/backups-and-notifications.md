@@ -394,22 +394,24 @@ its title, else its path, else its library.
 | `sidecars.contribute` that filed nothing because the community already had it (`contributed` empty, `covered` not) | `Already in the community: <title>` | |
 | `meta.correct` | `Corrections sent: <title>` | "The book's corrections went to the community for review. The book page links them." |
 | `readalong.align` | `Read-along made: <title> (N% lined up)`. The coverage is rounded down to a whole percent, so 0.996 reads 99%. | "It is saved with the book. Open the book in a compatible AudioSilo player to follow the text with the narration." |
+| `librivox.fetch` | `Added from LibriVox: <title>`, the book its result names | "It is in the library now, matched to its LibriVox recording." |
 | `bridge.verify` | `Bridge check finished: <library>`, or the book's title when the job named one | "The Bridge finished the job." |
 | any other kind | `<kind> finished: <title>` | "The Bridge finished the job." |
 
-In the bell, only `sidecars.generate`, `sidecars.describe`, `chapters.detect`
-and `readalong.align` have titles of their own (`FINISHED_OWN` in
-`lib/server-events.ts`). A read-along reads `Read-along made for <name>`, with
+In the bell, only `sidecars.generate`, `sidecars.describe`, `chapters.detect`,
+`readalong.align` and `librivox.fetch` (`Added from LibriVox: <name>`) have titles
+of their own (`FINISHED_OWN` in `lib/server-events.ts`). A read-along reads `Read-along made for <name>`, with
 `N% of the text lined up. Open the book in a compatible AudioSilo player to
 follow the text with the narration.` under it. Every other kind, including
 `sidecars.contribute` and `meta.correct`, reads `Bridge job finished: <name>`
-with the kind's name under it.
+with the kind's name under it. A parked `librivox.fetch` words its code in the
+bell as Library > LibriVox does (`fetchParkKey`).
 
 `bridge_job_failed` reads `A Bridge job needs attention: <title>` (in the
 warning colour) or `<kind> failed: <title>`. The kind's words come from
 `notify.bridgeKindWords`: `Characters and recaps`, `Description`, `Chapters`,
-`Sharing with the community`, `Corrections`, `Read-along`, `Bridge check`, else
-`Bridge job`. Its text is the park code in words:
+`Sharing with the community`, `Corrections`, `Read-along`, `Adding from LibriVox`,
+`Bridge check`, else `Bridge job`. Its text is the park code in words:
 
 - `book_not_writable`;
 - `budget_exceeded`: raise the cap on the Bridge, or wait for the monthly one
