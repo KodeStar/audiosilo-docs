@@ -1836,9 +1836,10 @@ this row alone. `catalog.matchedExpr`
 - a refresh run's `MatchedBooks`.
 
 What needs an identifier tests `asin` or `isbn` itself: community chapters, the
-unknown-ASIN report, upcoming releases, a repick and the Bridge's estimate.
+unknown-ASIN report, upcoming releases, a repick, the Bridge's estimate and the
+community step of `/next`.
 
-`/meta` reads the row only when the book's identifiers find nothing: a book with
+`/meta` reads the row only when the book's identifiers find nothing. A book with
 neither, or one the upstream does not know, answers from its recorded match
 (see [`GET /libraries/{id}/meta`](api/reference.md#get-apiv1librariesidmeta)).
 Which player surfaces ask `/meta` for such a book is in

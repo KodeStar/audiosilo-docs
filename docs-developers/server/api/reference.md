@@ -2322,8 +2322,9 @@ its other series (`series_list`) in their order. The community rails answer firs
 but only when they can **place** the next entry on one of the caller's books.
 Otherwise the local steps decide, in order, and the first one with an answer wins:
 
-1. **`community`**: community metadata is on and the book matches a work with at
-   least one series rail.
+1. **`community`**: community metadata is on and the book's ASIN or ISBN matches
+   a work with at least one series rail. Unlike `/meta`, this step never reads
+   the book's recorded match.
    - **Rail order.** The rails are taken in the book's own order. First comes a
      rail named like its main series (by the rail's name or one of its orderings',
      ignoring case, accents, punctuation and spacing). Then come rails named like
@@ -2433,8 +2434,9 @@ The server finds the book's work in two steps (`bookEnvelope`):
    [`community_match`](#get-apiv1adminlibrariesidbook) on the console's book page:
    the `work_id` and `recording_id` an admin accepted or a match run applied. The
    server fetches that work (`works/{id}`, `meta.Service.EnrichMatch`) and uses
-   the match's recording as the envelope's recording, as a lookup would. A book
-   with no match row is unmatched.
+   the match's recording as the envelope's recording, as a lookup would. When
+   the match names no recording, or one the work no longer has, that is the
+   work's first. A book with no match row is unmatched.
 
 Either way the server folds the matched recording plus up to three
 series rails into one envelope, one rail per reading-order family (see
@@ -2972,7 +2974,7 @@ generated description, because it is a field they don't know.
 | `400` | missing `path` / invalid library id |
 | `403` | path outside the caller's share scope |
 | `404` | `no book at that path`, **or** metadata lookup is disabled on this server (`metadata` capability false) |
-| `500` | `could not load book` - the book's recorded match could not be read. With `spoilers=hide`, also `could not load progress` - the caller's progress could not be read; the ungated envelope is never sent instead |
+| `500` | `could not load book` - the book or its recorded match could not be read. With `spoilers=hide`, also `could not load progress` - the caller's progress could not be read; the ungated envelope is never sent instead |
 | `502` | `metadata service unavailable` - the upstream was unreachable or errored, the server holds no earlier answer for the book, and it has no generated content |
 
 ### `GET /api/v1/libraries/{id}/meta/cover`
@@ -3032,6 +3034,7 @@ reach the client.
 | `401` | missing/invalid token |
 | `403` | path outside the caller's share scope |
 | `404` | `no such cover` - the book is unmatched (neither its identifiers nor its recorded match find a work) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
+| `500` | `could not load book` - the book or its recorded match could not be read |
 | `502` | `metadata service unavailable` - the book's envelope couldn't be had; `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects, an answer other than `200`), or its fetch failed less than a minute ago |
 
 ### `GET /api/v1/meta/work`
@@ -6457,8 +6460,8 @@ is a `400` too (`too many format or codec values`).
 - `matched` - the book has an ASIN or ISBN, or a recorded community match (a store
   listing with neither, from 2.6.0): the same rule as the `matched` filter
   (`catalog.matchedExpr`). The community chapter check finds a book by its ASIN or
-  ISBN alone, so check `asin` / `isbn` for it, not `matched`. `/meta` answers a
-  `matched` book either way.
+  ISBN alone, so check `asin` / `isbn` for it, not `matched`. `/meta` also reads
+  the recorded match, so it can answer a `matched` book with neither identifier.
 - `abridged` - `true`, `false`, or `null` while nothing says (always present,
   unlike the player's `Book`, which omits it). `genres` and `tags` are `[]` for
   none.
