@@ -50,7 +50,8 @@ Bridge starts it when it is back.
 To add a book from the app or the web player, open the **Library** tab on a
 books library.
 
-1. Press the **...** button beside the sort and layout controls.
+1. Press the **...** button beside the sort and layout controls. It shows only
+   while the Bridge is online.
 2. Choose **Find on LibriVox**.
 3. Type a title or an author, press **Search** and select a result.
 4. Press **Add to** *the library* on the recording you want.
@@ -62,9 +63,6 @@ library, you can pick another under **Add to**.
 
 The row shows the progress, with **Cancel** while it runs. Once the book is in,
 the row says **In your library**, and **Open** opens its page.
-
-The **...** button shows only for an admin, with community metadata on and the
-Bridge online.
 
 ## What lands in your library
 
@@ -102,9 +100,8 @@ downloads take turns with it.
 **Cancel** in the [Jobs](bridge.md#jobs) list on **Server > Settings > Bridge**.
 A cancelled book leaves nothing behind in the library.
 
-If the Bridge stops part way, it picks up where it left off. Sections it already
-downloaded are not downloaded again, and a section cut off part way usually
-carries on from where it stopped.
+If the Bridge stops part way, it picks up where it left off: sections it already
+downloaded are kept, and a section cut off part way usually resumes.
 
 ## When adding fails
 

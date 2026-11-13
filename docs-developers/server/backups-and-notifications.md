@@ -404,7 +404,8 @@ of their own (`FINISHED_OWN` in `lib/server-events.ts`). A read-along reads `Rea
 `N% of the text lined up. Open the book in a compatible AudioSilo player to
 follow the text with the narration.` under it. Every other kind, including
 `sidecars.contribute` and `meta.correct`, reads `Bridge job finished: <name>`
-with the kind's name under it.
+with the kind's name under it. A parked `librivox.fetch` words its code in the
+bell as Library > LibriVox does (`fetchParkKey`).
 
 `bridge_job_failed` reads `A Bridge job needs attention: <title>` (in the
 warning colour) or `<kind> failed: <title>`. The kind's words come from

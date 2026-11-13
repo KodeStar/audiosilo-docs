@@ -1740,8 +1740,6 @@ People > Devices or Invites, Server > About, or Server > Settings > Backups.
 - **See all** opens Server > Events.
 - Each row is `ServerEventItem` (`components/server-event-item.tsx`), shared
   with that page.
-- A done `librivox.fetch` reads `Added from LibriVox: <name>`, and a parked one
-  words its code as the LibriVox page does (`fetchParkKey`).
 
 #### Server > Events
 

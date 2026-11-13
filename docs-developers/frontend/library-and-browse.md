@@ -114,7 +114,7 @@ A capability that is still unknown hides its item. Remove download asks first
 through the shared `RemoveDownloadConfirm` (see
 [Offline](offline.md#lifecycle)).
 
-### Find on LibriVox (admin)
+## Find on LibriVox (admin)
 
 `src/components/librivox/` is the player's side of
 [Add from LibriVox](../bridge/librivox.md): an admin searches the community
@@ -124,12 +124,11 @@ the two keep the same rules.
 
 **The gate.** `librivoxAccess(user, server)` (`librivox-model.ts`) needs an admin
 (`isBridgeAdmin`), the `bridge` flag with `librivox` in `bridge.features`, and
-`metadata`. `mayAddLibrivox` is its `allowed`. There is no `/server` flag of its
-own, and `/server` names the Bridge's features only while it is online, so unlike
-the console the player offers nothing while the Bridge is offline. The page shows
-a sentence (`notAdmin`, `unavailable`, `metadataOff`) and sends nothing without
-`allowed`. The search and everything under it mount only then, and the hooks are
-called nowhere else.
+`metadata`. `mayAddLibrivox` is its `allowed`. Unlike the console, the player
+offers nothing while the Bridge is offline (see
+[The gate](../bridge/librivox.md#the-gate)). Without `allowed` the page shows only
+a sentence (`notAdmin`, `unavailable`, `metadataOff`): the search and its hooks
+never mount.
 
 **The way in.** `LibrivoxMenu` is a **...** menu in the Books mode's controls
 (`books-controls.tsx`'s trailing slot: the sub-nav row on a tablet or desktop,
@@ -174,10 +173,9 @@ found, and the opened work's recordings under it.
 - Add goes to the library the page was opened from, or the one picked when the
   server has several books libraries. Podcast libraries are never offered.
 - A row follows the last job it queued or saw open on the work
-  (`useFollowedFetch`). It keeps the job after the work stops naming it, so a
-  failure still says why. The work's job is taken only when the work comes to name
-  another one, so an answer that still names the old job never takes the row back
-  from the one it just queued.
+  (`useFollowedFetch`) and switches only when the work names a different job, so a
+  failure still says why and an older answer never takes the row back from the
+  job it just queued.
 - `fetchView` words the job: its step (`manifest`, `download`, `cover`, `place`,
   `rescan`) or its code (`librivox.fetch.code.*`). The Bridge's English is never
   shown.

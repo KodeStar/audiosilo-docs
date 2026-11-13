@@ -13,8 +13,8 @@ console match.
 |---|---|---|
 | The server | the admin routes, the recording's identity at queue time, the job kind and its fold | `api/handlers_librivox.go`, `bridge/librivox.go`, `catalog/librivox.go`, `meta/librivox.go` |
 | The Bridge | reads the manifest, downloads from archive.org, places the folder, rescans | `internal/librivoxjob`, `internal/metaops/librivox.go`, netguard's per-request `Allow` |
-| The console | Library > LibriVox | `admin-ui/src/features/librivox/` |
-| The player | Find on LibriVox, an admin page off a books library's menu | `src/components/librivox/` |
+| The console | [Library > LibriVox](../server/web-ui.md#library--librivox) | `admin-ui/src/features/librivox/` |
+| The player | [Find on LibriVox](../frontend/library-and-browse.md#find-on-librivox-admin), an admin page off a books library's menu | `src/components/librivox/` |
 
 The User Guide's [Add free books from LibriVox](/users/admin/librivox) is the
 admin's view of it.
@@ -267,13 +267,5 @@ The Bridge writes it into the book's folder:
 { "version": 1, "librivox_id": 192, "work_id": "johnny-crows-garden", "recording_id": "…", "archive_id": "…" }
 ```
 
-The server does not read it. Its scanner skips the name, so the book has no
-attachments from it and no scan error. It is not one of the
-[attachments](attachments.md) the server serves.
-
-## The console and the player
-
-- The console's Library > LibriVox is described in
-  [the web UI](../server/web-ui.md#library--librivox).
-- The player's Find on LibriVox is in
-  [Library and browse](../frontend/library-and-browse.md#find-on-librivox-admin).
+The server does not read it yet: its scanner skips the name (no scan error), and
+it is not one of the [attachments](attachments.md) the server serves.
