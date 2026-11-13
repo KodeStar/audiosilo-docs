@@ -26,14 +26,44 @@ An optional channel receives spoiler-free titles and links for recaps and
 character sheets. Announcements wait until both conditions hold:
 
 - The content is present in the published metadata API.
-- The earliest known audiobook recording release is at least 30 UTC days old.
+- The earliest known audiobook recording has been released (from that UTC day).
+
+There is no further wait after release: recaps and character sheets are spoiler
+gated on the site, so an announcement is useful to listeners of the current book.
 
 Core composes the community repository into its data release, so the bot waits
 for publication after the community merge. A release date stating only a year,
 or only a year and month, uses the last day of that period. Unknown release dates
 remain pending. Existing eligible content is silently baselined on first startup,
-while newer books remain queued until day 30. Each content type of a given work
-announces only once.
+while content for a book not yet released stays queued until its release day.
+Each content type of a given work announces only once.
+
+### Release-day spot check
+
+The catalogue learns of a slipped release late: meta-sync re-reads upcoming
+recordings weekly, and a change takes a day or more to be published. So on the
+due day the bot asks [libex](https://libexdb.com) for the current release date
+before announcing. It looks up the store listings (ASINs) of the recording that
+set the due date, at most five, largest stores first, each with its own store
+region. It asks the live endpoint (`/book/{asin}`, which reads Audible) and falls
+back to the mirror (`/db/book/{asin}`) only when the live one cannot answer. The
+earliest date any store reports decides, since a book out in any region is out.
+
+- **On or before today:** announce.
+- **Still ahead (the release slipped):** hold the announcement, remember the new
+  date and check again on that day. A second slip pushes it again.
+- **No ASIN, no record, or no usable date:** no evidence of a slip, so announce
+  on the catalogue date.
+- **libex unreachable:** retry at the next hourly check, and announce on the
+  catalogue date after 24 hours, so an outage cannot block announcements. A
+  later date from one store while another store could not be asked counts as
+  unreachable.
+
+A poll spends at most two minutes on libex, and stops asking once two rows in a
+row find it unreachable, so a slow libex cannot hold up DMs or the health check.
+A work's recap and character sheet share one check. The check never runs for
+silently baselined content and never writes back to the catalogue. Set
+`LIBEX_BASE_URL=off` to turn it off and announce on the catalogue date.
 
 When a catalogue repair merges duplicate works, the retired slug answers `301`
 with its survivor, where the community content reappears. The survivor inherits
@@ -51,6 +81,8 @@ The private image is `ghcr.io/kodestar/audiosilo-meta-bot:latest`, available for
 Linux amd64 and arm64. The repository contains `docker-compose.yml`, `.env.example`
 and the full Ploi setup runbook in its README. Run one replica with a persistent
 `/data` volume. No inbound port, public domain or reverse proxy is required.
+Outbound, it reaches Discord, the metadata origin and, for the release-day spot
+check, `libexdb.com`.
 
 | Environment variable | Purpose |
 | --- | --- |
@@ -58,6 +90,7 @@ and the full Ploi setup runbook in its README. Run one replica with a persistent
 | `DISCORD_GUILD_ID` | Required server ID |
 | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` | Optional channel in that server; blank disables announcements |
 | `META_BASE_URL` | Allowed metadata HTTPS origin; defaults to `https://meta.audiosilo.app` |
+| `LIBEX_BASE_URL` | HTTPS origin for the release-day spot check; defaults to `https://libexdb.com`, `off` disables it |
 | `POLL_INTERVAL` | Feed polling interval, default `5m` |
 | `DATA_DIR` | State directory, `/data` in Compose |
 | `HEALTH_ADDR` | Health listener, unexposed port 8080 in Compose |
