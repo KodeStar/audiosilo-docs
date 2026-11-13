@@ -31,14 +31,14 @@ audiosilo:   Fix: set PUID=1026 and PGID=100 (the folder's owner) on the contain
 error: the data folder isn't usable: the server can't write to /data: permission denied. The server runs as user 1000:1000 and the folder belongs to 1026:100. Set PUID=1026 and PGID=100 (the folder's owner) on the container, or give user 1000:1000 read and write access to the folder.
 ```
 
-The last line is the server stopping, so the container restarts and stops again. Do what the **Fix** line says, either of:
+The last line is the server stopping, so the container restarts and stops again. Do what the **Fix** line says. Either:
 
 - Set `PUID` and `PGID` to the owner the log names (here `1026` and `100`), then recreate the container.
 - Give the user the log names access to the folder on the host. On a Synology NAS, see [Give that user access](./getting-started/install-synology.md#3-give-that-user-access).
 
 The same warning can name other folders:
 
-- **The backups folder you set in `AUDIOSILO_BACKUP_DIR`.** The server starts, but backups fail until you fix it. For any backups folder, the server's own log warns `backups will fail` at start, and the Backups notice in the console says why.
+- **The backups folder you set in `AUDIOSILO_BACKUP_DIR`.** The server starts, but backups fail until you fix it. For this folder and for the default one, the server's log warns `backups will fail` at start, and the Backups notice in the console says why.
 - **A books folder**, which needs read access only. The warning ends with `Until then, a library in that folder shows as offline.` The library shows **Folder unavailable** in the console. After the fix, press **Retry** on the library.
 
 A share that doesn't answer is a different problem. The log says `audiosilo: WARNING: /library didn't answer within 5 seconds: a network share that is slow, or whose server is gone.` Check that the share is mounted on the host.
@@ -51,7 +51,7 @@ That's expected with the default self-signed certificate. At home, accept the wa
 
 ### Where do I find the server's log?
 
-In the admin console under [Server > Logs](./admin/server.md#logs). It holds the newest lines since the last restart. For older lines and the first-run banner, use `docker compose logs`, `journalctl -u audiosilo`, or the terminal you started the server from. On a NAS, use its container app's log view, such as [Container Manager on Synology](./getting-started/install-synology.md#5-save-your-password).
+In the admin console under [Server > Logs](./admin/server.md#logs). It holds the newest lines since the last restart. For older lines and the first-run banner, use `docker compose logs`, `journalctl -u audiosilo`, or the terminal you started the server from. On a NAS, use its container app's log view ([Unraid](./getting-started/install-unraid.md#2-save-your-password), [Synology](./getting-started/install-synology.md#5-save-your-password)).
 
 ### I lost the first-run admin password
 

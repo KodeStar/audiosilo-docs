@@ -1843,8 +1843,8 @@ shows with the setup state loaded decides, once (`redirectDecision` in
 the flow. Any other page stays: a bookmark, a reload, the flow itself, or a link
 the flow opens in a new tab (the ABS step's **Open the import**, the Reach
 step's HTTPS settings), which starts a session of its own. Either way the session
-is marked, so **Finish later** (a link to Overview) or moving on from a deep link
-stays where it goes.
+is marked, so later pages in it are never redirected: **Finish later** (a link
+to Overview) and moving on from a deep link stay where they go.
 
 - The mark is the `sessionStorage` key `audiosilo.setup.redirected`. A module
   variable stands in when storage is blocked.

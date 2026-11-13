@@ -57,7 +57,6 @@ For a single folder inside a share, use **File Station**: right-click the folder
        environment:
          PUID: "1026"    # your DSM user's uid
          PGID: "100"     # its gid
-         AUDIOSILO_WEB_DIR: /app/web
    ```
 
 4. Change `/volume1/audiobooks` to your books folder, and `1026` / `100` to your IDs.

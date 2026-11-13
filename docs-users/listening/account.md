@@ -51,7 +51,7 @@ For a server behind a sign-in proxy, the **Proxy headers** card holds the header
 2. If the server has more than one `https://` address, pick the one that goes through the proxy under **Send to**.
 3. Enter each header's name and value, then tap **Save headers**.
 
-The card then lists each header's name, with its value hidden, and the address it's sent with requests to. It never shows a saved value again. When you change the headers, a saved value's field says **Kept as it is**, and the value stays unless you type a new one. **Remove headers** stops this device sending them.
+The card then lists each header's name and the address it's sent with requests to. It never shows a saved value again. When you change the headers, a saved value's field says **Kept as it is**, and the value stays unless you type a new one. **Remove headers** stops this device sending them.
 
 The card needs an `https://` address. If this device reaches the server only over plain HTTP, the card says so and offers no **Add headers**. A demo account shows the card only to remove headers it already has.
 

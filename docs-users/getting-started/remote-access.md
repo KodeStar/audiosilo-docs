@@ -75,14 +75,13 @@ To connect an app through the proxy:
 
 1. On the app's connect screen, enter the server's `https://` address.
 2. Tap **Proxy headers**. Enter each header's name, such as `CF-Access-Client-Id`, and its value. **Add a header** adds another row.
-3. Tap **Continue** and sign in as usual. To use a pairing QR code instead, tap **Scan a QR code** now.
+3. Tap **Continue** and sign in as usual. To use a pairing QR code instead, tap **Scan a QR code** now. A QR code or link uses the headers when its address is the one you typed.
 
-The app keeps the headers with your sign-in, as securely. To change them, use the **Proxy headers** card on the [account page](../listening/account.md#proxy-headers).
+The app stores the headers as securely as your sign-in. To change them, use the **Proxy headers** card on the [account page](../listening/account.md#proxy-headers).
 
 Good to know:
 
 - **HTTPS only.** Proxy headers need an `https://` address, and the app doesn't add them to a plain-HTTP request. Requests to the server's other addresses, such as its home address, get none either.
-- **Scan after typing.** A pairing QR code or link uses the headers when its address is the one you typed. Enter the address and the headers first, then scan.
 - **What can't send them:** Chromecast, the Apple Watch and Wear OS apps, and calendar apps. They reach the server by themselves, so they can't get past the proxy. In a browser, covers, audio and requests to another server don't carry them. Those rely on your sign-in to the proxy in that browser.
 - **Some names are the app's own**, such as `Authorization`, `Cookie`, `Host`, `Range` and `Content-Type`, and it refuses them. So a proxy that asks for basic auth (an `Authorization` header) can't sit in front of AudioSilo.
 - **Another person on the same server** who signs in on this device uses the same headers.

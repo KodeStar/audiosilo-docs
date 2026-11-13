@@ -29,7 +29,7 @@ Save both now:
 - The **admin password** signs you in to the admin console at `/admin`.
 - The **auth code** signs a phone or browser in as the admin, from the connect page. See [Connect the app to your server](../listening/connecting.md).
 
-The server keeps only scrambled copies, so it can't show them again. Under Docker, `docker compose logs` shows the banner until the container is recreated. On a NAS, the container app's log view shows it ([Unraid](./install-unraid.md#2-save-your-password), [Synology](./install-synology.md#5-save-your-password)).
+The server keeps only scrambled copies, so it can't show them again. Under Docker, `docker compose logs` shows the banner until the container is recreated. On a NAS, use the container app's log view (see [Where do I find the server's log?](../troubleshooting.md#where-do-i-find-the-servers-log)).
 
 :::warning[Missed the banner?]
 Before you've added people or listening, the simplest fix is to start over. Stop the server, delete the data folder, and start it again for a fresh banner. Later, see [I lost the first-run admin password](../troubleshooting.md#i-lost-the-first-run-admin-password).
