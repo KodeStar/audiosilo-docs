@@ -33,7 +33,7 @@ The server keeps only scrambled copies, so it can't show them again. With Docker
 
 ### If you lose the password
 
-Until the admin signs in to the console with a password, every later start repeats where the password is:
+Until an admin signs in with a password, in the console or an app, every later start repeats where the password is:
 
 ```text
 ========================================================
@@ -199,7 +199,7 @@ The data folder (`--data`, or `/data` under Docker) holds:
 
 - `config.yaml`: the server's settings, written by the admin console.
 - `audiosilo.db`: accounts, listening progress, bookmarks and the index of your books. Back this up.
-- `backups/`: the server's [backups](../admin/backups.md) of `audiosilo.db`.
+- `backups/`: the server's [backups](../admin/backups.md) of `audiosilo.db`, unless you set another backups folder.
 - `certs/` and `selfsigned-*.pem`: certificates.
 - `tools/`, `cache/` and `meta-mirror/`: tools and copies the server fetches or makes again when needed.
 
