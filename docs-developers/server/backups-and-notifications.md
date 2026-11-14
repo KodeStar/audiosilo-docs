@@ -343,7 +343,10 @@ Both Bridge events carry:
 
 - `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`;
 - `title`: the book's title as indexed now, one plain line of at most 200
-  characters, or `""` when it can't be read.
+  characters, or `""` when it can't be read. A `librivox.fetch` that placed no
+  book (failed, parked, or a done one whose result can't be read) carries its
+  params' `title`, the work it was adding, and so does one whose book has no
+  title.
 
 `bridge_job_finished` adds per-kind fields:
 

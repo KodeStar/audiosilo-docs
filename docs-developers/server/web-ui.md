@@ -836,7 +836,12 @@ library through the Bridge's `librivox.fetch`. The design is in
   is no block: the note says a book added waits for it.
 - **Add**: a library picker when there are several books libraries (podcast
   libraries are never offered), then `POST /admin/librivox/fetch`. A refusal shows
-  as a toast (`errors.librivoxInLibrary` for `409 in_library`).
+  as a toast (`errors.librivoxInLibrary` for `409 in_library`,
+  `librivox.add.notFound` for `404 not_found`, a project the metadata no longer
+  lists).
+- **The open job's row** says which library it is going into when the server has
+  several books libraries ("Adding to &lt;library&gt;", `librivox.recording.addingTo`), since the open job is the
+  project's in any library.
 - **Following the job**: a row follows its job by id
   (`GET /admin/bridge/jobs/{id}`) every few seconds while it is open
   (`jobPollMs`), and stops for a job that is gone (`404`, `jobGone`). The work
@@ -893,9 +898,13 @@ Any other failure keeps the dialog open with its message.
   card's **Share** uses the Web Share API with a short message and the link, and
   copies them where there is none (`shareOrCopy`, `lib/clipboard.ts`; browsers
   offer it only on https). `inviteReach` (`people-model.ts`) reads the link's
-  host for three notices: loopback (only this computer), a home address (this
-  network only, the info tone) and `https://` at an IP address (a self-signed
-  certificate warning). A host name gets none of them.
+  host for three notices: loopback (only this computer), a home address by
+  `isHomeHost`, the server's own rule (a private or link-local IP, a `.local`,
+  `.lan`, `.home.arpa` or `.internal` name, or a single-label name; this network
+  only, the info tone), and `https://` at an IP address (a self-signed
+  certificate warning). A public host name gets none of them. The link's base is
+  `baseURL`: the public address, else the address the console was opened at, so
+  a home address set in Settings does not change it.
 - **A person's page** is `/admin/people/user/<id>`, with its tab in `?tab=`:
   listening (the default, no param), access, devices, invites, sign-in,
   account.
@@ -1456,8 +1465,9 @@ A failed Audible job's code reads as a sentence (`audibleJobReason`):
 A sync cancelled by turning sync off shows the server's reason, "sync with
 Audible was turned off for the account" (`SERVER_CANCEL_REASONS`).
 
-**LibriVox jobs.** A `librivox.fetch` reads "Adding from LibriVox", with its
-project ("Project 192", `librivoxProject`). Its failure or park code reads as
+**LibriVox jobs.** A `librivox.fetch` reads "Adding from LibriVox", with the
+work's title from its params (`librivoxTitle`), else its project ("Project 192",
+`librivoxProject`). Its failure or park code reads as
 `librivox.code.<code>` (`fetchReason`: a park's code, else the result's `code`,
 else an error starting `<code>:`), and an unknown one keeps the Bridge's text.
 
