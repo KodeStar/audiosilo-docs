@@ -337,18 +337,26 @@ for as long as libex's `Retry-After` asks, at most an hour.
   that store, never a store without the book, so the follow-up asks it again
   later.
 - **When a store counts as dead.** After three searches of one store in a
-  row that got no answer, the service gives the store's next search libex's
-  full timeout instead of 5 seconds. A store libex has not seen yet is slow on
-  a healthy day, not dead, and this wait tells the two apart. If that search
-  gets no answer either, the store is dead for the rest of the cycle. The
-  service then asks libex nothing more about it, and sends its searches
-  straight to Audible. Any answer, copies or a 404, starts the count over, so
-  a store that stays slow gets the full timeout once in every four searches.
-  A store on hold never becomes dead.
+  row that got no answer, the store's next search is its one inline try of the
+  cycle, which waits up to 60 seconds instead of 5. A store libex has not seen
+  yet is slow on a healthy day, not dead, and this wait tells the two apart.
+  - If the try answers (copies or a 404), the store is slow, not dead. For the
+    rest of the cycle its searches go on as before, with no further inline
+    try.
+  - If it times out or meets a server fault, the store is dead for the rest of
+    the cycle. The service then asks libex nothing more about it, and sends its
+    searches straight to Audible.
+  - If libex rejects it, rate-limits it, or says it cannot reach Audible, the
+    try decides nothing, and the store's next search is its inline try again.
+    libex saying it cannot reach Audible puts the store on hold, so its
+    searches go to Audible while the hold lasts.
+
+  Before the inline try, any answer starts the count over. A 429 never counts
+  toward it, and a store on hold never becomes dead.
 - **Only while Audible can be asked.** Once the Audible breaker is open, a
   search left to Audible alone could only fail. From then on held stores fail
-  at once, no store is dead (libex is asked about a dead store again), and the
-  service behaves as with the fallback off.
+  at once, no store gets an inline try, no store is dead (libex is asked about
+  a dead store again), and the service behaves as with the fallback off.
 
 A cycle that made region searches and got not one answer, from libex or from
 Audible, is degraded. The cycle log and the pull request body say so, and
