@@ -305,14 +305,15 @@ through its own marketplace's new-release or coming-soon feed.
 libex keeps a mirror (`/db/...`) and fetches what the mirror lacks from Audible
 while the request waits. When libex cannot reach Audible, that live fetch
 answers only after about 30 seconds, with a 503. So the service waits 5 seconds
-for a live book record, series listing or chapter list, and treats no answer
-as libex saying it cannot reach Audible:
+for a live book record or series listing, and up to 40 seconds for a chapter
+list, and treats no answer as libex saying it cannot reach Audible:
 
 - it does not ask again, and holds that kind of lookup for 5 minutes;
 - with `SYNC_AUDIBLE_FALLBACK` on, a book record or series listing goes to
   Audible's own catalogue at once, and so does every one asked during the hold;
-- a chapter list has no Audible fallback, so the book is written without
-  chapters.
+- a chapter list has no Audible fallback, so it gets the longer wait: a slow
+  answer from a working libex still arrives. When none comes, the book is
+  written without chapters.
 
 When Audible cannot answer either, the series stays queued for a later cycle
 and spends none of its attempts. The mirror, the feeds and the store searches
