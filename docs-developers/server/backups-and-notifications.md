@@ -353,7 +353,12 @@ Both Bridge events carry:
 - a `sidecars.contribute` job that filed nothing because the community already
   had everything: `shared_nothing: true`;
 - a `readalong.align` job: `coverage`, its result's `coverage.text` (0 to 1),
-  when the result says.
+  when the result says;
+- a `librivox.fetch` job: `librivox_match`, how its book is matched once the
+  server's fold has run (`catalog.LibrivoxFetchMatch`): `matched` (to the job's
+  recording), `kept` (an adopted book that keeps another match) or `unmatched`
+  (neither, or a result the fold refused). Absent when the match can't be read.
+  See [The notification](../bridge/librivox.md#the-notification).
 
 `bridge_job_failed` fires when a job moves **into** `failed`, either from a
 Bridge's report or from a lease that ran out on the last attempt. It also fires
@@ -399,7 +404,7 @@ its title, else its path, else its library.
 | `sidecars.contribute` that filed nothing because the community already had it (`contributed` empty, `covered` not) | `Already in the community: <title>` | |
 | `meta.correct` | `Corrections sent: <title>` | "The book's corrections went to the community for review. The book page links them." |
 | `readalong.align` | `Read-along made: <title> (N% lined up)`. The coverage is rounded down to a whole percent, so 0.996 reads 99%. | "It is saved with the book. Open the book in a compatible AudioSilo player to follow the text with the narration." |
-| `librivox.fetch` | `Added from LibriVox: <title>`, the book its result names | "It is in the library now, matched to its LibriVox recording." |
+| `librivox.fetch` | `Added from LibriVox: <title>`, the book its result names | by `librivox_match`: `matched` "It is in the library now, matched to its LibriVox recording."; `kept` "It is in the library now. It was there already and keeps the match it had."; `unmatched` "It is in the library now, but it couldn't be matched to its LibriVox recording. Add it again from Library > LibriVox to match it.", sent as a warning (the `warning` tag, the warning colour on Discord); none "It is in the library now." |
 | `bridge.verify` | `Bridge check finished: <library>`, or the book's title when the job named one | "The Bridge finished the job." |
 | any other kind | `<kind> finished: <title>` | "The Bridge finished the job." |
 
@@ -409,8 +414,12 @@ of their own (`FINISHED_OWN` in `lib/server-events.ts`). A read-along reads `Rea
 `N% of the text lined up. Open the book in a compatible AudioSilo player to
 follow the text with the narration.` under it. Every other kind, including
 `sidecars.contribute` and `meta.correct`, reads `Bridge job finished: <name>`
-with the kind's name under it. A parked `librivox.fetch` words its code in the
-bell as Library > LibriVox does (`fetchParkKey`).
+with the kind's name under it. A `librivox.fetch` whose `librivox_match` is
+`kept` reads "It was in the library already and keeps the match it had." under its
+title, and an `unmatched` one reads "It couldn't be matched to its LibriVox
+recording. Add it again from Library > LibriVox to match it." in the warning tone.
+A parked `librivox.fetch` words its code in the bell as Library > LibriVox does
+(`fetchParkKey`).
 
 `bridge_job_failed` reads `A Bridge job needs attention: <title>` (in the
 warning colour) or `<kind> failed: <title>`. The kind's words come from

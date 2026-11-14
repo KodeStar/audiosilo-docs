@@ -560,7 +560,7 @@ older server (React Query rejects it instead), and the query stays pending.
 | `communityCoverUrl(lib, path, coverUrl, { size })` | `useCommunityCover(cid, lib, path)` (a resolver, not a query) | `meta_covers` | `GET /libraries/{id}/meta/cover?path=&url=&size=` (see [Community covers](#community-covers-clientcommunitycoverurl)) |
 | `readalong(lib, path)` | `useReadalong(lib, path, { enabled, generatedAt }, connectionId?)`, behind `useBookReadalong` | `readalong` | `GET /libraries/{id}/readalong` (the map, checked span by span into a `CheckedReadalongMap`; see [Read-along](#read-along-usereadalong-and-usebookreadalong)) |
 | `readalongEstimate(lib, path)` | `useReadalongEstimate(lib, path, connectionId?)` | `bridge` | `GET /admin/bridge/estimate?kind=readalong.align` (`ReadalongEstimate`, admin only) |
-| `librivoxSearch(q, { lang, limit })` / `librivoxWork(id)` | `useLibrivoxSearch` / `useLibrivoxWork` | `metadata` (the page checks the whole gate; see [Find on LibriVox](library-and-browse.md#find-on-librivox-admin)) | `GET /admin/librivox/search`, `/admin/librivox/work` (admin only) |
+| `librivoxSearch(q)` / `librivoxWork(id)` | `useLibrivoxSearch` / `useLibrivoxWork` | `metadata` (the page checks the whole gate; see [Find on LibriVox](library-and-browse.md#find-on-librivox-admin)) | `GET /admin/librivox/search`, `/admin/librivox/work` (admin only) |
 | `librivoxFetch(lib, id)` / `bridgeJob(id)` | `useAddLibrivox` / `useLibrivoxJob` | `metadata` / `bridge` | `POST /admin/librivox/fetch`, `GET /admin/bridge/jobs/{id}` (admin only) |
 
 - **People lists are normalised.** The server answers `{ authors, unknown }` and

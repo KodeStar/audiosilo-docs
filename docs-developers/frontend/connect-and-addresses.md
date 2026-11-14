@@ -22,8 +22,16 @@ counted by `StepDots` (`CONNECT_STEPS`): Start, Sign in and Ready.
 
 ### Step 1: Start
 
-`/connect` renders `ConnectStart`. Its address field asks the server who it is
-(`GET /server` through a bare `ApiClient`) and shows a `ProbeNotice` with one of these:
+`/connect` renders `ConnectStart`. In the app, **Scan a QR code** comes first: the
+screen's one primary button, full width and `lg`. The lead
+(`onboarding.start.lead`) says where the QR is: the console's People > your name >
+Pair a device, or an invite page. The address field follows under "Or enter the
+server address" (`connect.server.orAddress`), with a `secondary` Continue. The web
+player has no scanner, so its address field comes first, with **I have a pairing
+link**. The frontend's `STYLEGUIDE.md` has the layout.
+
+The address field asks the server who it is (`GET /server` through a bare
+`ApiClient`) and shows a `ProbeNotice` with one of these:
 
 - "Found &lt;name&gt;" with its version, **Sign in**, and **Try the demo** when
   `demo.enabled`.
@@ -50,8 +58,19 @@ set when the flow is left, and a sign-in stores it with the connection (see
 
 #### Pairing links, QR codes and invite links
 
-Native offers **Scan a QR code** (`/connect/scan`, `expo-camera`). Web offers **I have a
+Native offers **Scan a QR code** (`/connect/scan`, `expo-camera`), on the start step
+and as "No password? Scan a QR code instead" on the sign-in step. Every way into the
+scanner goes through `openScanner` (`invite-handoff.ts`). Web offers **I have a
 pairing link**, which takes a pasted link and parses it with `parsePairingScan`.
+
+A scan from a reconnect's sign-in step keeps the reconnect. `openScanner(reconnectId)`
+hands it over in memory, never as a route param, since a link can open that route
+too. The scanner keeps it only for a code of that connection's paired or away
+address (`scanReconnect`); any other address is a new connection. An invite code's
+sign-in step takes it as its own `reconnect`. A pairing code's `/connect` takes it
+by the code's token (`holdScanReconnect`, `takeScanReconnect`), checks the address
+again as it pairs, and `useLinkPairing` re-pairs that connection. The flow's layout
+drops what nothing took when the flow is left (`dropScanHandoffs`).
 
 Both also take the console's **invite link**,
 `https://<base>/connect#code=XXXX-XXXX-XXXX-XXXX`. `parseInviteScan` in

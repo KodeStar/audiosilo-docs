@@ -130,6 +130,20 @@ offers nothing while the Bridge is offline (see
 a sentence (`notAdmin`, `unavailable`, `metadataOff`): the search and its hooks
 never mount.
 
+Once the page was `allowed` for a connection, it stays when a later `/server` read
+finds the Bridge away (`unavailable`: its heartbeat lapsed, so `/server` dropped
+its features). The search and the followed fetches are kept, a caption says so
+(`librivox.access.away`), and Add and Cancel are held back (`bridgeAway`) until it
+is back. While away, the page asks `/server` again every `BRIDGE_IDLE_POLL_MS`
+with the app in the foreground, since nothing else reads it on an open page.
+`notAdmin` and `metadataOff` still close the page. A `/server` read that failed
+with nothing kept shows `librivox.access.readFailed` with Retry.
+
+A link without `?connection=` is the default connection's (`useCid`, as Find
+shows). A link whose `library` the server doesn't have shows
+`library.detail.badLink`, once the library list has settled (not while it loads
+or refetches).
+
 **The way in.** `LibrivoxMenu` is a **...** menu in the Books mode's controls
 (`books-controls.tsx`'s trailing slot: the sub-nav row on a tablet or desktop,
 the count line on a phone) with one item, **Find on LibriVox**. It renders
@@ -142,7 +156,7 @@ scroll memory.
 
 | Method | Route |
 |---|---|
-| `librivoxSearch(q, {lang, limit})` | `GET /admin/librivox/search` |
+| `librivoxSearch(q)` | `GET /admin/librivox/search` (the server's `lang` and `limit` are never sent) |
 | `librivoxWork(id)` | `GET /admin/librivox/work` |
 | `librivoxFetch(lib, id)` | `POST /admin/librivox/fetch`, `202 {job}` |
 | `bridgeJob(id)` | `GET /admin/bridge/jobs/{id}` |
@@ -163,8 +177,8 @@ again shows where; the body's `library_id` and `path` are not read),
 
 A `librivox.fetch` has no book path, so a row follows it by its id, not through
 `useBridgeJobs` or `useBridgeJobSurface`, which are keyed on a book. It is polled
-while open and the page is focused (`librivoxJobPollInterval`: 5 s, 60 s while
-parked) and never after a `404`. A first read that failed with no answer or a
+while open and the app is in the foreground (`librivoxJobPollInterval`: 5 s, 60 s
+while parked) and never after a `404`. A first read that failed with no answer or a
 server error is asked again every 60 s; a refusal (`400`, `401`, `403`) is not.
 
 **The page.** One scroller holds the search (asked on submit only), the works
@@ -179,15 +193,29 @@ found, and the opened work's recordings under it.
 - `fetchView` words the job: its step (`manifest`, `download`, `cover`, `place`,
   `rescan`) or its code (`librivox.fetch.code.*`). The Bridge's English is never
   shown.
-- A job's end asks the works again. A `done` one asks once more after
-  `DONE_RECHECK_MS` (the server records the book just after the job ends) and reads
-  the library's lists and the connection's recently added again
-  (`invalidateLibraryLists`).
+- A job's end is handled by the fetch watcher (below), whether the page is open
+  or not.
+- The status is `JobStatusLayout` (`src/components/bridge/job-status-layout.tsx`,
+  shared with Generate's `JobStatus`), with Cancel under it where Add sits.
 - A read with nothing to show and no network is `OfflineState`
   (`useUnreadQuery`). A search or a work read again that failed keeps what it
   shows.
 - The recording's `cover_url` is never loaded: it is a third-party host, with no
   server proxy.
+
+**The fetch watcher** (`fetch-watcher.tsx`) follows a fetch past the page. Every
+open job a row follows, and an Add's job as it answers, goes to
+`watchLibrivoxFetch(cid, id)`, an in-memory list (nothing is persisted, so after a
+restart the Library's stale time covers it). `LibrivoxFetchWatcher`, a root
+listener, is the one poller: one `useLibrivoxJob(id, true, cid)` per watch,
+whatever page is open, while the app is in the foreground. A row reads the same
+query without polling. When a job ends, the watcher asks the works again, and for
+a `done` one reads the library's lists and the connection's recently added again
+(`invalidateLibraryLists`) and asks the works once more after `DONE_RECHECK_MS`
+(the server records the book just after the job ends). It then drops the watch.
+It also drops one that is gone (`404`), refused (`400`, `401`, `403`) or whose
+connection signed out. The watcher keeps the hooks' `bridge` gate, so a lapsed
+heartbeat pauses its reads and keeps the watch.
 
 Strings are under `librivox.*` in all six locales, and fixtures are in
 `src/testing/librivox-fixtures.ts`.
