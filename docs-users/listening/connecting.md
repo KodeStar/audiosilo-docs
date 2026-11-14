@@ -3,7 +3,7 @@ title: Connect the app to your server
 description: "Sign in to your AudioSilo server from the web player or the iOS and Android apps, with a QR code, an invite or a password."
 ---
 
-Before you can listen, the iOS and Android apps or the web player must sign in to your server. In the app, a QR code is quickest: install the app, tap **Scan a QR code** and scan the code your server shows. There is nothing to type.
+Before you can listen, the iOS and Android apps or the web player must sign in to your server. In the app, a QR code is quickest. Install the app, tap **Scan a QR code** and scan the code your server shows, with nothing to type.
 
 You do this once per device. The app stays signed in until you sign out, your password changes, or an admin signs the device out.
 
@@ -17,7 +17,7 @@ The app signs in to the server and shows **Your library is ready**.
 
 Where to find your QR code:
 
-- **If you run the server**, open the [admin console](../admin/console-tour.md) and go to **People**, your name, then **Pair a device**. First-time setup also ends with a **Connect a phone** step that shows one.
+- **If you run the server**, open the [admin console](../admin/console-tour.md) and go to **People**, your name, then **Pair a device**. The **Connect a phone** step of first-time setup shows one too.
 - **If someone invited you**, it is on your invite page, the page your invite link opens. Open the link on a computer and scan the code from there.
 
 Scan with the app, not with the phone's camera app. The camera app opens a web page instead. An invite's code opens the invite page, and other codes open the web player in the browser.
