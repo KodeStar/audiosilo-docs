@@ -800,7 +800,9 @@ or `pkg/release` reaches the server through its `go.mod`.
 The match dialog sends `GET /works/match` the book's tag and path facts:
 
 - Its `language` and repeatable `narrator`. An older `metaserve` ignores them.
-- Its tag hints, as `asin` and `isbn`.
+- Its hints, as `asin` and `isbn`, when it has neither of its own: an Audiobookshelf
+  import's, else its tags' (`matchrun.QueryFor`, see the
+  [data model](../server/data-model.md#match-hints-from-an-import)).
 
 Against a `metaserve` that predates the route, the server falls back to `lookup` and
 `works/search`. The candidates pass `metaserve`'s `score` and `reasons` through to
@@ -1632,7 +1634,7 @@ not quiet, deduped per library and project, and in no module.
   folder. The server does not read it yet, and its scanner skips the name.
 - The server folds a done result into the book's `book_matches` row
   ([Matches by work id](#matches-by-work-id)), by `adopted`: a placed book
-  replaces the path's match and drops its leftover ASIN and ISBN, an adopted one
+  replaces the path's match and drops its leftover ASIN, ISBN and match hints, an adopted one
   keeps a match already there. The `bridge_job_finished` event carries
   `librivox_match` (`matched`, `kept`, `unmatched`).
 
