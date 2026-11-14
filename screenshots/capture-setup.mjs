@@ -18,9 +18,11 @@
 // server's admin-ui/src/i18n/locales/en.json (setup.*): a renamed button there
 // needs the same rename here. Every step is continued except the
 // Audiobookshelf step (left unopened, so it counts as skipped) and the Bridge
-// step (no Bridge, so "Skip and finish"), which leaves the Overview card two
-// steps to list. Run once per fresh --setup server: the account it makes
-// closes the wizard.
+// step (no Bridge, so Skip), which leaves the Overview card two steps to list;
+// the phone step comes last and ends the flow with Finish setup. The browser
+// says it is in Britain (locale en-GB), so the metadata step preselects the
+// United Kingdom marketplace the way a real admin's browser would. Run once
+// per fresh --setup server: the account it makes closes the wizard.
 import {mkdir, rm} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
@@ -83,7 +85,8 @@ await step('build the setup books folder', async () => {
 
 // ── Capture ────────────────────────────────────────────────────────────────
 const browser = await chromium.launch({args: [`--host-resolver-rules=MAP ${HOST} 127.0.0.1`]});
-const ctx = await browser.newContext(DESKTOP_CONTEXT);
+// en-GB: the metadata step's marketplace is preselected from the browser's language.
+const ctx = await browser.newContext({...DESKTOP_CONTEXT, locale: 'en-GB'});
 await showDockerPaths(ctx, SHOWN, [['"os":"darwin"', '"os":"linux"'], ['"arch":"arm64"', '"arch":"amd64"']], {[HOST]: '127.0.0.1'});
 const page = await ctx.newPage();
 
@@ -120,9 +123,17 @@ await step('the console flow', async () => {
   await page.getByRole('link', {name: 'Continue setup', exact: true}).click();
   await submitSignIn(page, PASSWORD);
   // The console sends a server that hasn't finished setting up to the flow.
-  await heading('Where are your books?').waitFor({timeout: 20000});
+  await heading('Your account').waitFor({timeout: 20000});
 
-  // 1. Books folder: typed, checked, named.
+  // 1. Your account: the --setup admin chose their password, so a new one is
+  // optional; Continue with nothing changed keeps both.
+  await page.getByLabel('Username', {exact: true}).waitFor({timeout: 10000});
+  await page.mouse.move(0, 0);
+  await sleep(600);
+  await shoot(page, 'setup/account.png');
+  await leave('Continue', 'Where are your books?');
+
+  // 2. Books folder: typed, checked, named.
   await page.getByLabel('Books folder', {exact: true}).fill(SHOWN_BOOKS);
   await button('Check folder').click();
   await page.getByText(/^Found \d+ audio files$/).waitFor({timeout: 30000});
@@ -132,17 +143,17 @@ await step('the console flow', async () => {
   await shoot(page, 'setup/folder.png');
   await leave('Continue', 'How are your books named?');
 
-  // 2. Naming: the samples side by side, the folders suggested.
+  // 3. Naming: the samples side by side, the folders suggested.
   await page.getByRole('list', {name: 'Sample books'}).waitFor({timeout: 30000});
   await sleep(600);
   await tall('setup/naming.png');
   await leave('Continue', 'Community metadata');
 
-  // 3. Metadata, then the library is added and its first scan starts.
+  // 4. Metadata (the marketplace preselected from en-GB), then the library is added and its first scan starts.
   await shoot(page, 'setup/metadata.png');
   await leave('Continue', 'How will people reach the server?');
 
-  // 4. Addresses: the scan bar above the step, once the scan has finished.
+  // 5. Addresses: the scan bar above the step, once the scan has finished.
   await page.getByText(/^\d+ books ready$/).waitFor({timeout: 60000});
   // ... and the "Added Audiobooks" toast has gone.
   await page.getByText('Added Audiobooks', {exact: true}).waitFor({state: 'hidden', timeout: 20000}).catch(() => {});
@@ -150,23 +161,23 @@ await step('the console flow', async () => {
   await tall('setup/reach.png');
   await leave('Continue', 'Coming from Audiobookshelf?');
 
-  // 5. Audiobookshelf: the import never opened, so Continue records it skipped.
+  // 6. Audiobookshelf: the import never opened, so Continue records it skipped.
   await shoot(page, 'setup/abs.png');
   await leave('Continue', 'Backups and updates');
 
-  // 6. Backups and updates.
+  // 7. Backups and updates.
   await shoot(page, 'setup/backups.png');
-  await leave('Continue', 'Connect a phone');
-
-  // 7. Phone: the pairing QR code drawn.
-  await page.getByRole('img', {name: 'Pairing QR code for your phone'}).waitFor({timeout: 20000});
-  await sleep(600);
-  await shoot(page, 'setup/phone.png');
   await leave('Continue', 'Add a Bridge');
 
-  // 8. Bridge: none paired, so the flow ends with "Skip and finish".
+  // 8. Bridge: none paired, so Skip.
   await tall('setup/bridge.png');
-  await button('Skip and finish').click();
+  await leave('Skip', 'Connect a phone');
+
+  // 9. Phone, the last step: the pairing QR code drawn, then Finish setup.
+  await page.getByRole('img', {name: 'Pairing QR code for your phone'}).waitFor({timeout: 20000});
+  await sleep(600);
+  await tall('setup/phone.png');
+  await button('Finish setup').click();
 
   // The Overview card lists the two skipped steps.
   const card = page.locator('[aria-labelledby="finish-setup-heading"]');

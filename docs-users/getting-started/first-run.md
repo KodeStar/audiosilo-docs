@@ -189,7 +189,7 @@ Everyone else needs an invite of their own. **Invite someone** opens one in Peop
 
 ## The Finish setting up card
 
-![The Overview's Finish setting up card, listing two skipped steps](/img/screenshots/setup/finish-card.png)
+![The Overview's Finish setting up card, listing a skipped step](/img/screenshots/setup/finish-card.png)
 
 If you skipped steps or chose **Finish later**, the Overview shows a **Finish setting up** card. Each line opens that step again. **Dismiss** hides the card for every admin.
 
