@@ -343,16 +343,18 @@ for as long as libex's `Retry-After` asks, at most an hour.
   - If the try answers (copies or a 404), the store is slow, not dead. For the
     rest of the cycle its searches go on as before, with no further inline
     try.
-  - If it times out or meets a server fault, the store is dead for the rest of
-    the cycle. The service then asks libex nothing more about it, and sends its
-    searches straight to Audible.
-  - If libex rejects it, rate-limits it, or says it cannot reach Audible, the
-    try decides nothing, and the store's next search is its inline try again.
-    libex saying it cannot reach Audible puts the store on hold, so its
-    searches go to Audible while the hold lasts.
+  - If it times out, meets a server fault, or libex says it cannot reach
+    Audible, the store is dead for the rest of the cycle. The service then asks
+    libex nothing more about it, and sends its searches straight to Audible.
+  - If libex rejects it or rate-limits it, the try decides nothing, and the
+    store's next search is its inline try again.
+  - If the store is on hold when the try comes due, the service sends libex
+    nothing and the try decides nothing. The search goes to Audible like any
+    held store's, and the try waits for the hold to end.
 
-  Before the inline try, any answer starts the count over. A 429 never counts
-  toward it, and a store on hold never becomes dead.
+  So a store gets one inline try a cycle, unless libex rejects or rate-limits
+  it. Before the inline try, any answer starts the count over, and a 429 never
+  counts toward it.
 - **Only while Audible can be asked.** Once the Audible breaker is open, a
   search left to Audible alone could only fail. From then on held stores fail
   at once, no store gets an inline try, no store is dead (libex is asked about
