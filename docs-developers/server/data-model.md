@@ -2098,8 +2098,8 @@ it. A move carries it (`moveBookState`). A disc join copies the first part's row
 from each source. Deleting the library drops it (`ON DELETE CASCADE`). A book
 the Bridge places from LibriVox drops the row at its path with the path's other
 leftover identifiers (`catalog.FoldLibrivoxFetch`, see
-[Add from LibriVox](../bridge/librivox.md#the-books-identity)), and an adopted
-folder keeps it.
+[Add from LibriVox](../bridge/librivox.md#the-books-identity)). An adopted
+folder keeps it, as does an older Bridge's fold (no `adopted`).
 
 ### Labels: genres and tags
 

@@ -2027,9 +2027,10 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
      polled libraries, no wire field), `blocked` turns Connect off with "Wait for
      the scan to finish", because the import pairs ABS's books with the ones the
      scan finds. Only Connect waits; the fields, Continue and Skip don't.
-   - `offerMatch` shows the `UnmatchedPrompt` once no books library is scanning,
-     before any import is applied. After an apply, the Past imports card shows it
-     instead (one render site). Either way it opens Health in a new tab.
+   - `offerMatch` shows the `UnmatchedPrompt` once the server has a books library
+     and none is scanning, before any import is applied. After an apply, the
+     Past imports card shows it instead (one render site). Either way it opens
+     Health in a new tab.
    - Continue records `done` whatever was imported, Skip `skipped`.
 7. **backups.** `backups.schedule` and `keep` (1-365), the backup folder shown
    read-only, and `general.update_check`. `backups.dir` is restart-only and
