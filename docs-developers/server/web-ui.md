@@ -913,7 +913,9 @@ Any other failure keeps the dialog open with its message.
   settings load or a TLS mode change waits for a restart), at an IP address or a
   name like `nas.local` alike, else `address` for `https://` at an IP address in
   any other mode, since such an address rarely has a certificate browsers
-  trust. A public host name gets none of them. The link's base is
+  trust. A public host name gets the `selfsigned` warning while the server runs
+  self-signed (a reverse proxy with its own certificate in front of it still
+  reads as self-signed), and none otherwise. The link's base is
   `baseURL`: the public address, else the address the console was opened at, so
   a home address set in Settings does not change it.
 - **A person's page** is `/admin/people/user/<id>`, with its tab in `?tab=`:
@@ -1994,8 +1996,8 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    (`offerRegion`), the marketplace starts at the one nearest the browser
    (`browserNearestRegion` in `lib/nearest-region.ts`: the region of each of
    `navigator.languages` in order, then the time zone, mapped to the nearest
-   store, else the US store). Continue then saves the region even when it equals the
-   saved value, so it counts as chosen. Settings > Community metadata offers the
+   store, else the US store). With the lookup on, Continue then saves the region
+   even when it equals the saved value, so it counts as chosen. Settings > Community metadata offers the
    same store with **Use *store*** or **Keep no preference**
    (`RegionSuggestion`), except when it is the US store. The step states the
    mirror's size up front, and `mode` is restart-only. The draft then becomes

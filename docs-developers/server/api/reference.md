@@ -8041,9 +8041,10 @@ a scan last finished.
   - `unknown_asin` is a book whose own ASIN the community database doesn't know,
     as the [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)
     last found it, with no ISBN and no community match. It still counts as
-    matched, so it is never `unmatched` too. It is **left out while
-    `metadata.report_unknown` is off**, since only the report's lookups find
-    such a book. A client that doesn't know the kind can skip it.
+    matched, so it is never `unmatched` too. It is **left out while the
+    report doesn't run** (`metadata.report_unknown` off, community metadata
+    off, or a demo server), since only the report's lookups find such a book.
+    A client that doesn't know the kind can skip it.
 
   What puts a book in each kind is in [Issues](../scanner.md#issues).
 - `count` - books that need attention, not counting the ones an admin ignored
