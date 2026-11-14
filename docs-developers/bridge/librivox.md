@@ -322,7 +322,7 @@ minutes for it, then fails. Abandon leaves a running fetch alone.
 
 ### The 7-day sweep
 
-Like `audible.import`'s, a sweep (`librivoxjob.Sweep`) clears states unused for 7
+Like `audible.import`'s, a sweep (`librivoxjob`'s `Handler.Sweep`) clears states unused for 7
 days (`StagingMaxAge`). A run touches its state when it loads it and when it ends.
 The app runs the sweep after each mapping check, not at start-up, because the
 staging folders are inside the libraries, which are known only after a heartbeat
