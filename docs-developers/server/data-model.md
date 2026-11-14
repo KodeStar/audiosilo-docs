@@ -1385,13 +1385,14 @@ Its keys:
   finished and dismissed on an upgraded server.
 - `first_admin`: the admin a headless first start made with a printed password,
   `{"user_id":1,"signed_in":false,"chose_password":false}`. Only the start that
-  made the admin writes it (`auth.MarkFirstAdmin`), after the banner. A start
-  that made the admin but failed before the banner writes it too. While
+  made the admin writes it (`auth.MarkFirstAdmin`), even one that failed before
+  printing the banner. While
   `signed_in` is false, each later start prints the sign-in hint (see
   [Configuration](configuration.md#cli-flags-cmdaudiosilo)). An admin's password
   sign-in (`auth.NoteAdminSignIn`), `reset-admin`, or the admin's own password
   change sets it. `chose_password` is set once that admin sets their own
-  password (`auth.NoteOwnPassword`), and drives `GET /admin/setup`'s
+  password (`auth.NoteOwnPassword`) or `reset-admin` gives them a new one
+  (`auth.NoteResetPassword`), and drives `GET /admin/setup`'s
   `printed_password`. No row, on an upgraded server or a `--setup` one, means
   no hint and no backfill.
 - `metadata_region_chosen`: `true` once an admin saved `metadata.region` from the
@@ -1734,10 +1735,8 @@ tables at the request.
 It names no book, library or path. A row whose ASIN no book holds any more is
 deleted at the start of the next run. The table is derived and disposable:
 losing it only means the ASINs are looked up and sent again. It is written
-through the user-state path. Health's `unknown_asin` kind reads which rows are
-`unknown`, so a row added or removed, or its `unknown` changed, moves the content
-generation, while a lookup that only renews `checked_at` or `sent_at` does not
-(`store.userStateTables`). `MAX(sent_at)`
+through the user-state path, under the generation rule in
+[Overview](overview.md#internalstore). `MAX(sent_at)`
 keeps the report to once a day across restarts. The run status is the
 `unknown_asin_report` key of [`server_state`](#server-state).
 

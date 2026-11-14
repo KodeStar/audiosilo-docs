@@ -907,8 +907,8 @@ Any other failure keeps the dialog open with its message.
   host for three notices: loopback (only this computer), a home address by
   `isHomeHost`, the server's own rule (a private or link-local IP, a `.local`,
   `.lan`, `.home.arpa` or `.internal` name, or a single-label name; this network
-  only, the info tone), and a certificate warning worded by its reason (`certificate`): `selfsigned`
-  for `https://` while the server runs in self-signed TLS mode
+  only, the info tone), and a certificate warning worded by its reason
+  (`certificate`): `selfsigned` for `https://` while the server runs in self-signed TLS mode
   (`runsSelfSigned`, from the settings' `network.tls_mode`; unknown while
   settings load or a TLS mode change waits for a restart), at an IP address or a
   name like `nas.local` alike, else `address` for `https://` at an IP address in
@@ -1955,10 +1955,12 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
 (`StepFooter`).
 
 1. **account.** The admin's own username and password (`AccountStep`, rules in
-   `accountPlan`). A changed username goes through
+   `accountPlan`). The password change goes first, so a refused one (a wrong
+   current password) leaves the username as it was. A changed username goes through
    `PATCH /admin/users/{id}` `{username}`; the session stays, and the console
    renames its signed-in user. A new password goes through the caller's own
-   `POST /auth/password` with the current one, which keeps this session; its
+   `POST /auth/password` with the current one, which keeps this session and is
+   not sent again when the rename after it is refused; its
    `401 current_password_incorrect` shows on the Current password field and
    never ends the console's session. While the envelope's `printed_password` is
    true (the admin still has the password the log printed), a new password is
@@ -2333,8 +2335,10 @@ It is locked down three ways, so it is safe even on an exposed port:
 
 1. **Off unless enabled.** The page responds only when the launcher called
    `API.EnableSetup(token)` with a freshly minted one-time token (18 random
-   bytes, `pkg/launcher`). When it was never enabled, `GET /setup` is a plain
-   404, so a normal deployment exposes no setup surface at all.
+   bytes, `pkg/launcher`). When it was never enabled, `GET /setup` redirects to
+   `/admin`, the same answer as a closed page, so a normal deployment exposes no
+   setup surface and doesn't say whether it was ever started with `--setup`.
+   `POST /setup` there creates nothing.
 2. **Self-closes the moment an admin exists** (`setupAvailable`). With a token
    set but an admin already present, `GET /setup` redirects to `/admin` and
    `POST /setup` answers `409`. Any error resolving admin state also closes it.

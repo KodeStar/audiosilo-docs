@@ -86,15 +86,17 @@ The password is set through `auth.SetPassword`, the console's rule: every
 session, open pairing code and remembered browser of the account ends. It also
 revokes the auth code the first start printed beside the password
 (`auth.RevokeInitialAdminCode`: that admin's unlimited, never-expiring invite
-labelled `auth.InitialAdminCodeLabel`), and ends the start's sign-in hint
-(`auth.NoteAdminSignIn`). If that revoke fails, the command still prints the new
-password, since the old one is gone, then exits `1` with the error and asks for
-the code to be revoked in the console (People > Invites). It runs beside a running server. That server checks
-the new password at once, since a sign-in reads the database. A session it has
-already checked is answered from its token cache until the row is read again:
-at the server's next content write, or a minute after it last read the row
-(`maxCachedTokenAge`, see
-[Tokens](auth-and-security.md#tokens-session-pairing-and-api-keys)). A restart
+labelled `auth.InitialAdminCodeLabel`). It ends the start's sign-in hint and,
+for the first-run admin, turns `GET /admin/setup`'s `printed_password` false
+(`auth.NoteResetPassword`): the password in the log is gone. If the revoke
+fails, the command still prints the new password, since the old one is gone,
+then exits `1` with the error and asks for the code to be revoked in the console
+(People > Invites).
+
+It runs beside a running server. That server checks the new password at once,
+since a sign-in reads the database. A session it has already checked can last up
+to a minute from its token cache (see
+[Tokens](auth-and-security.md#tokens-session-pairing-and-api-keys)); a restart
 ends them at once.
 
 **The sign-in hint.** The first-run banner's `ensureAdmin` writes the

@@ -9960,8 +9960,9 @@ server and this request:
   start made and still has the password it printed in the log
   (`auth.PrintedPassword`, the `server_state` key `first_admin`). The console's
   Your account step then asks for a new password. It is false for an admin who
-  chose theirs, on the `--setup` page or since, and when the read fails (the
-  step then asks for nothing).
+  chose theirs, on the `--setup` page or since, after `reset-admin` gave that
+  admin a new password, and when the read fails (the step then asks for
+  nothing).
 
 | Status | Meaning |
 |---|---|
@@ -11923,8 +11924,9 @@ console's [first-run setup flow](#admin-first-run-setup) does the rest. See
 
 ### `GET /setup`
 
-*Public (gated).* Serves the setup page. `404` when it was never enabled;
-`303 See Other` → `/admin` when enabled but an admin already exists.
+*Public (gated).* Serves the setup page while it is open. Otherwise
+`303 See Other` → `/admin`, whether it was never enabled or an admin already
+exists (2.7.0; an older server answers `404` when it was never enabled).
 
 ### `POST /setup`
 
