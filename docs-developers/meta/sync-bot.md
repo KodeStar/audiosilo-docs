@@ -255,65 +255,11 @@ A store search that has no answer within 5 seconds is not waited for. libex
 fetches a store it has not seen while the search waits, which can take half a
 minute. The service asks it again once, with the full timeout, at the end of the
 cycle's discovery, so a copy it finds still lands in that cycle's pull request.
-A store that fails that retry too is asked of Audible's own catalogue, as
-described below. When Audible cannot answer either, or the fallback is off, the
-store is skipped for that production, and the region follow-up asks it again
+When that retry fails too, the service asks Audible's own catalogue
+([when libex's search does not answer](#when-libexs-search-does-not-answer)).
+When Audible cannot answer either, or the fallback is off, the service writes
+the production without that store, and the region follow-up asks it again
 later.
-
-#### When libex's search does not answer
-
-libex's live search can stop answering for every store at once. On 2026-11-14
-it answered `upstream_unavailable` after about 30 seconds in every store, while
-its mirror still answered. Every cycle that day ended with hundreds of
-unanswered searches, and a new preorder was written and announced with its US
-store alone. Audible's own catalogue answered the same searches at once, and it
-states each product's SKU group (its `sku_lite`). So, with
-`SYNC_AUDIBLE_FALLBACK` on, a region search libex does not answer is asked of
-Audible instead.
-
-- **What sends a search to Audible.** No answer from libex: a timeout, a server
-  fault, libex saying it cannot reach Audible, or a store on hold. A 404 is an
-  answer (the store does not sell the book), and so is a search libex rejects.
-  Neither goes to Audible.
-- **When it is asked.** In the retry pass at the end of discovery, never
-  inline. A search whose libex retry does not answer either is asked of Audible
-  in the same store, by the production's title and first author. A store on
-  hold sends libex nothing, so its searches go to Audible alone.
-- **What counts as a copy.** A hit is kept only when Audible states the
-  production's own SKU group, in the store asked. That is the same rule a libex
-  search follows, however loose Audible's title search is. An answer with no
-  product of that group is the store answering without the book, so the
-  follow-up's backoff applies to it as usual. The rows go through
-  `metaimport libex` like every other, stamped `libex-import`.
-- **Its own budget.** At most 1,200 Audible searches a cycle
-  (`SYNC_AUDIBLE_SEARCH_BUDGET`). This is a separate limit from the follow-up's
-  1,200 searches and from the 300 record and series requests the rest of the
-  cycle may ask Audible. It shares their breaker (a 429 or 403 opens it at once,
-  as do three faults in a row) and their 500ms gap between requests. The
-  creation path's searches are asked first, then the follow-up's in their
-  priority order. A search the budget or the breaker cannot cover stays a
-  failure of that store, never a store without the book, so the follow-up asks
-  it again later.
-- **A dead store is not asked again.** After three searches of one store in a
-  row that got no answer, the store's next search waits libex's full timeout
-  instead of 5 seconds. A store libex has not seen yet is slow on a healthy day,
-  not dead, and this one wait tells the two apart. Only when that search does
-  not answer either is the store dead for the rest of the cycle: libex is not
-  asked about it again, and its searches go straight to Audible. Any answer,
-  copies or a 404, starts the count over. A store on hold never becomes dead.
-- **Only while Audible can be asked.** Once the breaker is open, a search left
-  to Audible alone could only fail. From then on held stores fail at once, no
-  store becomes dead, and the service behaves as with the fallback off.
-
-A cycle whose region searches were made and not one was answered, by libex nor
-by Audible, is degraded: the cycle log says so, the pull request body says so,
-and `/healthz` reports it (see [Operating it](#operating-it)). The mark is set
-even when the cycle then fails, and it stays until a later cycle's searches are
-answered. A cycle that makes no region search at all leaves it standing, since
-it says nothing about whether the searches answer now. The mark is kept in
-memory, so a restart clears it. The cycle record counts the searches Audible
-answered, in all and by store, and the cycle log has a line for the Audible
-part of the retry pass.
 
 A store often lists a book later than the others, and a search can fail. So
 each cycle also runs the **region follow-up**. It takes the catalogued
@@ -349,6 +295,63 @@ it. Its store's backoff does not grow: the follow-up asks again the next day,
 or, when a memo entry keeps the copy out, once that entry expires. A copy
 outside the follow-up's window, of a book in a catalogued series, still arrives
 through its own marketplace's new-release or coming-soon feed.
+
+### When libex's search does not answer
+
+libex's live search can stop answering for every store at once. On 2026-11-14
+it answered `upstream_unavailable` after about 30 seconds in every store, while
+its mirror still answered. Every cycle that day ended with 644 to 1,073
+unanswered searches, and a new preorder was written and announced with its US
+store alone. Audible's own catalogue answered the same searches at once, and it
+states each product's SKU group (its `sku_lite`). So, with
+`SYNC_AUDIBLE_FALLBACK` on, the service asks Audible a region search that libex
+does not answer.
+
+- **What sends a search to Audible.** No answer from libex, which means a
+  timeout, a server fault, libex saying it cannot reach Audible, or a store on
+  hold. A 404 is an answer (the store does not sell the book), and so is a
+  search libex rejects. Neither goes to Audible.
+- **When the service asks.** In the retry pass at the end of discovery, never
+  inline. When a search's libex retry does not answer either, the service
+  searches the same store's Audible marketplace by the production's title and
+  first author. A store on hold sends libex nothing, so its searches go to
+  Audible alone.
+- **What counts as a copy.** The service keeps a hit only when Audible states
+  the production's own SKU group, in the store asked. That is the same rule a
+  libex search follows, however loose Audible's title search is. An answer with
+  no product of that group is the store answering without the book, so the
+  follow-up's backoff applies to it as usual. The rows go through
+  `metaimport libex` like every other, stamped `libex-import`.
+- **Its own budget.** A cycle asks Audible at most 1,200 searches
+  (`SYNC_AUDIBLE_SEARCH_BUDGET`). This limit is separate from the follow-up's
+  1,200 searches and from the 300 record and series requests the rest of the
+  cycle may ask Audible. It shares their breaker (a 429 or 403 opens it at
+  once, as do three faults in a row) and their 500ms gap between requests. The
+  creation path's searches go first, then the follow-up's in their priority
+  order. A search the budget or the breaker cannot cover stays a failure of
+  that store, never a store without the book, so the follow-up asks it again
+  later.
+- **A dead store is not asked again.** After three searches of one store in a
+  row that got no answer, the service gives the store's next search libex's
+  full timeout instead of 5 seconds. A store libex has not seen yet is slow on
+  a healthy day, not dead, and this one wait tells the two apart. Only when
+  that search does not answer either is the store dead for the rest of the
+  cycle. The service then asks libex nothing more about it, and sends its
+  searches straight to Audible. Any answer, copies or a 404, starts the count
+  over. A store on hold never becomes dead.
+- **Only while Audible can be asked.** Once the breaker is open, a search left
+  to Audible alone could only fail. From then on held stores fail at once, no
+  store becomes dead, and the service behaves as with the fallback off.
+
+A cycle that made region searches and got not one answer, from libex or from
+Audible, is degraded. The cycle log and the pull request body say so, and
+`/healthz` reports it (see [Operating it](#operating-it)). The service sets the
+mark even when the cycle then fails, and keeps it until a later cycle's
+searches are answered. A cycle that makes no region search at all leaves it
+standing, since it says nothing about whether the searches answer now. The mark
+lives in memory, so a restart clears it. The cycle record counts the searches
+Audible answered, in all and by store, and the cycle log has a line for the
+Audible part of the retry pass.
 
 ## The reported-ASIN lane
 
@@ -980,7 +983,7 @@ to `127.0.0.1`. That binding is what makes the missing auth safe, since
 
 | Endpoint | What it does |
 |---|---|
-| `GET /healthz` | `{"status":"ok"}` or `{"status":"degraded","detail":"..."}`. Always 200 once the process is up. This is a **liveness** check: a service whose last cycle failed is still alive and will try again. The `detail` names one reason, in this order: the last problem the service met (a failed cycle, for example), the parked pull requests at the limit, a throttle, then [region searches nobody answered](#when-libexs-search-does-not-answer). |
+| `GET /healthz` | `{"status":"ok"}` or `{"status":"degraded","detail":"..."}`. Always 200 once the process is up. This is a **liveness** check: a service whose last cycle failed is still alive and will try again. The sync's `detail` names one reason, in this order: the last problem the service met (a failed cycle, for example), the parked pull requests at the limit, a throttle, then [region searches nobody answered](#when-libexs-search-does-not-answer). |
 | `GET /status` | The whole observable state. Its fields are listed under this table. It never reports the lane's address or token. |
 | `POST /run` | Run a cycle now. 202 when queued, 409 when a cycle is already running or queued. The service never stacks a request behind a running cycle. With the steward on, it also needs `Authorization: Bearer` with the token in `/data/admin-token`, since the steward's agent shares the container's loopback. |
 

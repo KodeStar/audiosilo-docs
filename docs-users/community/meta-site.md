@@ -141,9 +141,8 @@ To get them as Discord messages, use the **AudioSilo Discord bot**:
 3. Send the AudioSilo bot a direct message with your **Atom feed** URL.
 
 New books then arrive as DMs, a few hours after they first appear in your feed.
-The wait gives the book's page time to list all its stores. Send `help` for the
-commands. `stop` deletes
-everything the bot keeps about you.
+The wait gives the book's page time to fill in. Send `help` for the commands.
+`stop` deletes everything the bot keeps about you.
 
 Two things to know:
 
