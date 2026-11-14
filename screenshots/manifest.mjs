@@ -132,7 +132,7 @@ export const SHOTS = [
   {file: 'admin/person-member.png', capture: 'admin', title: 'Admin - Household member', hint: "ivy's page (maya's kid household member, added through the player's API), Access tab (?tab=access): Managed by maya and Kid under the name, Collections maya shares with them (Ivy's books, 2 books), Access given here (nothing given directly)"},
   {file: 'admin/person-listening.png', capture: 'admin', title: 'Admin - Person listening', hint: 'maya\'s page, Listening tab: her listening year, In progress, Finished, Recent sessions (1440x1100)'},
   {file: 'admin/devices.png', capture: 'admin', title: 'Admin - Devices', hint: 'People > Devices: every signed-in device with its app, last seen and address, and Sign out'},
-  {file: 'admin/invite.png', capture: 'admin', title: 'Admin - Invite ready', hint: 'the invite card dialog after Invite someone: QR code, link, code'},
+  {file: 'admin/invite.png', capture: 'admin', title: 'Admin - Invite ready', hint: 'the invite card dialog after Invite someone: the scan-with-the-app description, the QR card, Share, the reach notice for the capture\'s address (localhost: only this computer), and the invite link'},
   {file: 'admin/invites.png', capture: 'admin', title: 'Admin - Invites', hint: 'People > Invites: the invite table'},
   {file: 'admin/shares.png', capture: 'admin', title: 'Admin - Shares', hint: 'People > Shares: list + the selected share\'s folders and people'},
   {file: 'admin/settings.png', capture: 'admin', title: 'Admin - Settings', hint: 'Server > Settings > General: the topic list (General to Import, Household among them), This server (a named server, Public address and Home address) and the top of Listening history'},

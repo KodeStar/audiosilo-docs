@@ -32,7 +32,7 @@ needs an admin.
    **Expires after** (7 days by default).
 6. Click **Create invite**.
 
-![A freshly created invite](/img/screenshots/admin/invite.png)
+![A freshly created invite: the QR code card, Share, and the notice that only this computer can open a localhost link](/img/screenshots/admin/invite.png)
 
 The invite shows a **QR code**, an **Invite link** and the **Code** on its own.
 
@@ -62,10 +62,11 @@ The invite link uses the server's public address, else the address you opened
 the console at. A notice under **Share** says when that limits who can open it:
 
 - **Only this computer can open this link**: the console is open on the server
-  itself (`localhost`). Give the server a home or public address in
+  itself (`localhost`). Open the console at the server's address on your
+  network, or give the server a public address in
   [Server > Settings > General](server.md#general), then make a new invite.
-- **Works on your home network only**: the link uses a home address. To invite
-  someone elsewhere, give the server a public address.
+- **Works on your home network only**: the link uses an address on your home
+  network. To invite someone elsewhere, give the server a public address.
 - **Their browser will warn about the certificate**: the link is `https://` at
   an IP address, which has only a self-signed certificate. They can continue
   past the warning, or you can give the server a public address with a real
