@@ -23,27 +23,53 @@ needs an admin.
 
 1. Click **Invite someone** (on the People or Invites page).
 2. Enter **Their name**.
-3. Choose **What can they listen to?**: **All libraries**, one library, one of
+3. Optionally, enter a **Password (optional)** of at least 8 characters. It
+   lets them sign in to the web player with their name and password too. Leave
+   it empty and they pair their devices with the link only.
+4. Choose **What can they listen to?**: **All libraries**, one library, one of
    your [shares](sharing.md), or **Decide later**.
-4. Choose how many **Devices it can pair** (5 by default) and when it
-   **Expires after** (1 day by default).
-5. Click **Create invite**.
+5. Choose how many **Devices it can pair** (5 by default) and when it
+   **Expires after** (7 days by default).
+6. Click **Create invite**.
 
 ![A freshly created invite](/img/screenshots/admin/invite.png)
 
 The invite shows a **QR code**, an **Invite link** and the **Code** on its own.
-Send them the link, or let them scan the QR code. They can use the same link on
-each of their devices until it runs out. See
-[Connecting](../listening/connecting.md) for what they see.
+
+- **Share** opens your device's share sheet with a short message and the link.
+  Where the browser has no share sheet, it copies them instead.
+- They can use the same link on each of their devices until it runs out.
+- To scan the QR code, they open the AudioSilo app and tap **Scan a QR code**.
+  The phone's camera app opens the invite page in the browser instead, which
+  doesn't sign the app in.
+
+See [Connect the app to your server](../listening/connecting.md#if-someone-invited-you)
+for what they see. On a phone, the invite page leads with links to the App
+Store and Google Play, and the APK for Android without Google Play.
 
 The code is shown only this once. To send a fresh one later,
 [rotate](#rotating-and-revoking) the invite.
 
-The new account has no password and isn't an admin. Most listeners never need a
-password, because they pair their devices instead.
+The new account isn't an admin. Most listeners never need a password, because
+they pair their devices instead.
 
 **All libraries** gives them each library you have now. Give them any library
 you add later from their page.
+
+### When the link only works nearby
+
+The invite link uses the server's public address, else the address you opened
+the console at. A notice under **Share** says when that limits who can open it:
+
+- **Only this computer can open this link**: the console is open on the server
+  itself (`localhost`). Give the server a home or public address in
+  [Server > Settings > General](server.md#general), then make a new invite.
+- **Works on your home network only**: the link uses a home address. To invite
+  someone elsewhere, give the server a public address.
+- **Their browser will warn about the certificate**: the link is `https://` at
+  an IP address, which has only a self-signed certificate. They can continue
+  past the warning, or you can give the server a public address with a real
+  certificate.
 
 ## The People page
 
@@ -60,7 +86,9 @@ A person's page has six tabs: **Listening**, **Access**, **Devices**,
 **Invites**, **Sign-in** and **Account**.
 
 **Pair a device** in the header makes a new invite for this person, for a new
-phone or a lost link. It replaces any invite they already have.
+phone or a lost link. It replaces any invite they already have. Your own page's
+**Pair a device** is where you find a QR code for your own phone. The invite
+page of an admin's invite also has an **Admin section** button.
 
 ### Listening
 

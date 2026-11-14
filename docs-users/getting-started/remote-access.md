@@ -81,7 +81,7 @@ The app stores the headers as securely as your sign-in. To change them, use the 
 
 Good to know:
 
-- **An `https://` address.** Proxy headers need an `https://` address, and the app doesn't add them to a plain-HTTP request. Requests to the server's other addresses, such as its home address, get none either.
+- **One `https://` address.** The app sends a set of headers only to the `https://` address you entered them for. A home address that is `https://` can be that address. Requests to the server's other addresses get none, and a plain-HTTP address never does.
 - **Redirects:** when the proxy or the server redirects a request to another address, the Android app sends the headers on to that address (checked on Android; not yet on iOS). Only let the proxy redirect to addresses you'd trust with them.
 - **What can't send them:** Chromecast, the Apple Watch and Wear OS apps, and calendar apps. They reach the server by themselves, so they can't get past the proxy. In a browser, covers, audio and requests to another server don't carry them. Those rely on your sign-in to the proxy in that browser.
 - **Some names are the app's own**, such as `Authorization`, `Cookie`, `Host`, `Range` and `Content-Type`, and it refuses them. So a proxy that asks for basic auth (an `Authorization` header) can't sit in front of AudioSilo.

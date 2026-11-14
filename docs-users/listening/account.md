@@ -30,7 +30,7 @@ Setting a first password signs nothing out.
 To sign in another phone, tablet or browser without a new invite:
 
 1. Tap **Show a pairing code**.
-2. Scan the QR code with the iOS or Android app on the other device, or with its camera, or send it the link. The code works once, for 10 minutes.
+2. On the other device, tap **Scan a QR code** in the iOS or Android app and scan the code, or send the device the link. The device's camera app opens the web player instead. The code works once, for 10 minutes.
 3. The other device signs straight in.
 
 If the code expires, tap **Make a new code**.

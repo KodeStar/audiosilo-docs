@@ -74,11 +74,15 @@ An older server may not understand what a newer one added to the database. Run t
 
 ### My invite code doesn't work
 
-- **It expired or was used up.** Invites last 1 day and 5 uses by default. Ask the admin to **Rotate** it.
+- **It expired or was used up.** An invite from the admin console lasts 7 days and 5 uses by default. Ask the admin to **Rotate** it.
 - **A newer invite replaced it.** Each person has one active invite. Use the newest one.
 - **Too many wrong tries.** The message says how long to wait. Then copy the code exactly.
 
 See also [When signing in doesn't work](./listening/connecting.md#when-signing-in-doesnt-work).
+
+### Scanning the QR code opened a web page, not the app
+
+The phone's camera app opens a QR code in the browser. Open the AudioSilo app instead, tap **Scan a QR code** and scan the code there. See [Sign in the app with a QR code](./listening/connecting.md#scanning-the-qr-code-with-your-phone).
 
 ### Everyone gets "Too many tries" at once
 
