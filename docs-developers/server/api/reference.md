@@ -7155,9 +7155,10 @@ wrong:
   is the book's author (mostly a composer tag filled with the author, which says
   nothing of the recording);
 - `q`, and the ASIN/ISBN: the typed ones, or the book's own when nothing was
-  typed, or with neither of its own its hints by `matchrun.QueryFor`'s rule
-  ([an Audiobookshelf import's](../data-model.md#match-hints-from-an-import), else
-  its [tags'](../data-model.md#tag-hints)), which metaserve looks up itself.
+  typed, or, with neither of its own, its hints from an Audiobookshelf import and
+  its [tags](../data-model.md#tag-hints) (`matchrun.QueryFor`,
+  [the order](../data-model.md#match-hints-from-an-import)). metaserve looks them
+  up itself.
 
 An older metaserve ignores `language` and `narrator`.
 
@@ -8629,8 +8630,8 @@ the person's access.
 The console's **Server > Settings > Import**: another server's listening
 history copied into a person's own, so someone moving to AudioSilo keeps their
 stats. It also keeps Audiobookshelf's ASIN and ISBN for the books here as
-[match hints](../data-model.md#match-hints-from-an-import) (`book_hints`). v1 reads **Audiobookshelf** (ABS) only and is **admin only**: no
-capability flag, no player route (the console ships inside the server). The
+[match hints](../data-model.md#match-hints-from-an-import) (`book_hints`). v1
+reads **Audiobookshelf** (ABS) only and is **admin only**: no capability flag, no player route (the console ships inside the server). The
 work is `internal/importer` (the ABS client, matching, planning, the background
 fetch); the rows are `catalog/imports.go`; the handlers
 (`api/handlers_import.go`) are transport only. What an applied import writes
@@ -8781,8 +8782,8 @@ added since the review is found.
 #### Identifiers (match hints)
 
 The fetch also keeps every ABS book with a valid ASIN or ISBN in the libraries the
-token sees (`Payload.Identified`, JSON `identified`, whoever's history it is in). Review and apply pair
-them with books here (`importer.identifiersFor`):
+token sees (`Payload.Identified`, JSON `identified`, whoever's history it is in).
+Review and apply pair them with books here (`importer.identifiersFor`):
 
 - among **every** book here, whatever the target user can access, as the hints are
   the server's, not the person's;
@@ -8794,9 +8795,10 @@ them with books here (`importer.identifiersFor`):
   (`catalog.matchedExpr`: its own ASIN or ISBN, or a recorded match), which is
   counted as `already_matched`.
 
-The imports of one fetch carry the same identifiers, whichever person each is for. An apply writes them to `book_hints` (source `abs`,
-`import_id` the import), replacing each book's hint whole, so the import applied
-last owns a book's hint. They never become `books.asin` or `isbn` and never reach the
+The imports of one fetch carry the same identifiers, whichever person each is
+for. An apply writes them to `book_hints` (source `abs`, `import_id` the import),
+replacing each book's hint whole, so the import applied last owns a book's hint
+([ownership](../data-model.md#match-hints-from-an-import)). They never become `books.asin` or `isbn` and never reach the
 player wire. A hinted book stays unmatched until a match run's apply or the match
 dialog writes a match, which is why the console offers **Match automatically** once
 an import is applied. How a match sends them is
@@ -8931,12 +8933,11 @@ Audible. The request's cancellation doesn't stop it. A failure puts it back in
 ### `POST /api/v1/admin/imports/{id}/undo`
 
 Takes an applied import back out. Its sessions, rolled-up days, estimates,
-history spans, bookmarks and match hints are deleted by `import_id`. A hint a later
-import rewrote is that import's and stays, and a hint this import rewrote from an
-earlier one goes, even while that earlier import is still applied. Matches already
-applied stay. A bookmark the person edited or labelled since is kept and becomes
-theirs. Each progress row it changed
-is restored to what it was before, unless it changed since through a player's save
+history spans, bookmarks and match hints are deleted by `import_id` (a hint
+belongs to the import that wrote it last, see
+[ownership](../data-model.md#match-hints-from-an-import)). Matches already applied
+stay. A bookmark the person edited or labelled since is kept and becomes theirs.
+Each progress row it changed is restored to what it was before, unless it changed since through a player's save
 or an edit, in which case it stays. Answers `200` with the import (`undone`).
 Audited as `import.undo` (`import`). A row restored from one an Audible account
 wrote comes back under **no** device (`progressPrior.restored`), never as

@@ -1180,8 +1180,8 @@ else.
 - **`import_payloads`**: PK `import_id` (FK CASCADE). It holds the fetched
   history as gzipped JSON: the user's book items, sessions, progress and
   bookmarks, and every ABS book with an ASIN or ISBN (`identified`, for the
-  [match hints](#match-hints-from-an-import)), and nothing secret. A cutoff change and the apply therefore never
-  fetch again. It is a table of its own so that reading `imports` never walks a
+  [match hints](#match-hints-from-an-import)). Nothing secret. A cutoff change
+  and the apply therefore never fetch again. It is a table of its own so that reading `imports` never walks a
   large blob's overflow pages. The row is deleted once the import is applied,
   undone or deleted.
 - **`import_id`** on `listening_sessions`, `listening_daily`,
@@ -1260,11 +1260,10 @@ import from the same source.
   each book here the identified ABS books pair with (see
   [Match hints from an import](#match-hints-from-an-import)).
 
-An apply that writes no listening (no session, day, bookmark, or progress row
-created or moved on) is refused with `catalog.ErrImportNoListening` when the person
-has a previous applied import from the source. Taking that one back to write
-nothing would only lose their listening, so the transaction rolls back and it
-stays applied.
+An apply that writes no listening is refused (`catalog.ErrImportNoListening`)
+when the person has a previous applied import from the source, so that one stays
+applied (see the
+[apply route](api/reference.md#post-apiv1adminimportsidapply) for what counts).
 
 The cutoff gates sessions and estimates only. Its default (`"auto"`) is the
 person's first listening recorded here (`catalog.ListeningStart`): their
@@ -1276,8 +1275,7 @@ counted once.
 
 **Undo**, and an apply replacing the previous import, deletes the import's
 sessions, daily rows, history spans, untouched bookmarks and `book_hints` rows by
-`import_id`. It
-restores each `import_progress_prior` row whose progress is still exactly as the
+`import_id`. It restores each `import_progress_prior` row whose progress is still exactly as the
 import wrote it (`sameProgress`: path, version, `updated_at`, position, finish
 and dates). A restored row gets a version above the import's.
 
@@ -2036,8 +2034,9 @@ book stays `unmatched`.
 
 `matchrun.QueryFor` sends a hint as `BookASIN` or `BookISBN` when the book has
 neither of its own, after an import's (see
-[Match hints from an import](#match-hints-from-an-import) for the order). A hint the community database knows is then confident when
-its length fits and the book agrees with its title (see
+[Match hints from an import](#match-hints-from-an-import) for the order). A hint
+the community database knows is then confident when its length fits and the book
+agrees with its title (see
 [Bulk community matching](api/reference.md#bulk-community-matching)). It
 becomes the book's ASIN only by an apply. A match run may propose another
 recording of the hint's work that fits the book's length better
@@ -2091,8 +2090,8 @@ only, never its import hint (`catalog.UnknownASINCandidates`).
 replacing the person's previous import, deletes that import's rows by `import_id`
 (index `idx_book_hints_import`). A row a later import took over stays with it, and
 a row this import took over from an earlier one goes, even while the earlier import
-is still applied. `import_id` has no foreign key, so the row outlives the import's record, as
-`book_matches.run_id` does.
+is still applied. `import_id` has no foreign key, so the row outlives the
+import's record, as `book_matches.run_id` does.
 
 **Durability.** The table is path-keyed with no FK to `books`, so a rebuild keeps
 it. A move carries it (`moveBookState`). A disc join copies the first part's row
