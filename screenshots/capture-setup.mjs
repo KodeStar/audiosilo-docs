@@ -16,10 +16,9 @@
 // naming step shows the two sources disagreeing and suggests the folders. The
 // flow is driven through its real UI with the exact English labels of the
 // server's admin-ui/src/i18n/locales/en.json (setup.*): a renamed button there
-// needs the same rename here. Every step is continued except the
-// Audiobookshelf step (left unopened, so it counts as skipped) and the Bridge
-// step (no Bridge, so Skip), which leaves the Overview card two steps to list;
-// the phone step comes last and ends the flow with Finish setup. The browser
+// needs the same rename here. Every step is continued except the Bridge step
+// (no Bridge, so Skip), which leaves the Overview card one step to list; the
+// phone step comes last and ends the flow with Finish setup. The browser
 // says it is in Britain (locale en-GB), so the metadata step preselects the
 // United Kingdom marketplace the way a real admin's browser would. Run once
 // per fresh --setup server: the account it makes closes the wizard.
@@ -161,7 +160,7 @@ await step('the console flow', async () => {
   await tall('setup/reach.png');
   await leave('Continue', 'Coming from Audiobookshelf?');
 
-  // 6. Audiobookshelf: the import never opened, so Continue records it skipped.
+  // 6. Audiobookshelf: an info-only step, so Continue records it done.
   await shoot(page, 'setup/abs.png');
   await leave('Continue', 'Backups and updates');
 

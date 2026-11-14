@@ -193,7 +193,7 @@ export const SHOTS = [
   {file: 'setup/backups.png', capture: 'setup', title: 'Setup - Backups and updates', hint: 'step 7: the backup schedule (daily at 03:00), how many to keep (7), the backup folder (shown, set in config) and the update check'},
   {file: 'setup/bridge.png', capture: 'setup', title: 'Setup - Add a Bridge', hint: 'step 8 with no Bridge paired: what a Bridge does, the compose snippet, Connect a bridge, Skip (as tall as the page)'},
   {file: 'setup/phone.png', capture: 'setup', title: 'Setup - Connect a phone', hint: 'step 9, the last: the pairing QR code, New code, How signing in works with Invite someone, Open the web player, the ffmpeg line and the household note (as tall as the page)'},
-  {file: 'setup/finish-card.png', capture: 'setup', title: 'Setup - Finish setting up card', hint: "the Overview's Finish setting up card (clipped) after the flow finished with the Audiobookshelf and Bridge steps skipped"},
+  {file: 'setup/finish-card.png', capture: 'setup', title: 'Setup - Finish setting up card', hint: "the Overview's Finish setting up card (clipped) after the flow finished with the Bridge step skipped"},
 
   // ── The Bridge's page (desktop 1440x900, dark; as tall as the page) ─────
   {file: 'bridge/sign-in.png', capture: 'bridge', title: 'Bridge - Sign in', hint: "the Bridge page's sign-in card on a fresh Bridge: Password, Sign in, where the first password was printed, and the reset-password line"},
