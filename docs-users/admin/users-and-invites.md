@@ -44,14 +44,12 @@ The invite shows a **QR code**, an **Invite link** and the **Code** on its own.
   doesn't sign the app in.
 
 See [Connect the app to your server](../listening/connecting.md#if-someone-invited-you)
-for what they see. On a phone, the invite page leads with links to the App
-Store and Google Play, and the APK for Android without Google Play.
+for what they see, on a computer and on a phone.
 
 The code is shown only this once. To send a fresh one later,
 [rotate](#rotating-and-revoking) the invite.
 
-The new account isn't an admin. Most listeners never need a password, because
-they pair their devices instead.
+The new account isn't an admin.
 
 **All libraries** gives them each library you have now. Give them any library
 you add later from their page.
@@ -61,16 +59,14 @@ you add later from their page.
 The invite link uses the server's public address, else the address you opened
 the console at. A notice under **Share** says when that limits who can open it:
 
-- **Only this computer can open this link**: the console is open on the server
-  itself (`localhost`). Open the console at the server's address on your
-  network, or give the server a public address in
-  [Server > Settings > General](server.md#general), then make a new invite.
-- **Works on your home network only**: the link uses an address on your home
-  network. To invite someone elsewhere, give the server a public address.
+- **Only this computer can open this link**: the link points at `localhost`.
+  Set a public address in [Server > Settings > General](server.md#general), or
+  open the console at the server's network address, then make a new invite.
+- **Works on your home network only**: to invite someone elsewhere, set a
+  public address.
 - **Their browser will warn about the certificate**: the link is `https://` at
-  an IP address, which has only a self-signed certificate. They can continue
-  past the warning, or you can give the server a public address with a real
-  certificate.
+  an IP address. They can continue past the warning, or you can set a public
+  address with a real certificate.
 
 ## The People page
 
@@ -88,8 +84,7 @@ A person's page has six tabs: **Listening**, **Access**, **Devices**,
 
 **Pair a device** in the header makes a new invite for this person, for a new
 phone or a lost link. It replaces any invite they already have. Your own page's
-**Pair a device** is where you find a QR code for your own phone. The invite
-page of an admin's invite also has an **Admin section** button.
+**Pair a device** is where you find a QR code for your own phone.
 
 ### Listening
 

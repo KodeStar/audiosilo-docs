@@ -11,7 +11,7 @@ The AudioSilo server never writes to your books folder. It can read the folder w
 
 ## Bring your book details across
 
-Audiobookshelf keeps each book's details, such as its matched ASIN, your edits and its series, in a `metadata.json` file. By default it keeps these files in its own metadata folder, not beside your books, so AudioSilo can't see them. Its **Store metadata with item** setting, which puts the file in each book's folder instead, is off by default.
+Audiobookshelf keeps each book's details, such as its matched ASIN, your edits and its series, in a `metadata.json` file. By default it keeps these files in its own metadata folder, not beside your books, so AudioSilo can't see them. Its **Store metadata with item** setting puts the file in each book's folder instead, and it is off by default.
 
 Turning the setting on doesn't write files for the books already there. Audiobookshelf writes a book's file into its folder the next time it saves a change to that book. To bring a book's details across:
 
@@ -33,9 +33,9 @@ A scan matches no book by itself, apart from books whose `metadata.json` names a
 2. On its **Match automatically** card, pick the library and select **Find matches**.
 3. Review what it found and apply it. See [Matching every book at once](../admin/health.md#matching-every-book-at-once).
 
-Matching uses the free community database at [AudioSilo Meta](https://meta.audiosilo.app). It holds books, their recordings, authors, narrators and series. Its users add and correct them, and many entries came from a public Audible catalogue. It is not a live copy of any store, so a book can be on Audible in your country and still be missing from it.
+Matching uses the free community database at [AudioSilo Meta](https://meta.audiosilo.app). It is not a live copy of any store, so a book can be on Audible in your country and still be missing from it. [Matching with community metadata](../admin/books.md#matching-with-community-metadata) says what it holds.
 
-The **Audible marketplace** setting picks which store's edition a match takes when a recording sells in several stores. It is in [Server > Settings > Community metadata](../admin/server.md#community-metadata), and it uses the US store until you set yours.
+The **Audible marketplace** setting picks which store's edition a match takes. It is in [Server > Settings > Community metadata](../admin/server.md#community-metadata), and it uses the US store until you set yours.
 
 ### When a book doesn't match
 
