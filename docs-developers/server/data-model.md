@@ -1391,8 +1391,8 @@ Its keys:
   [Configuration](configuration.md#cli-flags-cmdaudiosilo)). An admin's password
   sign-in (`auth.NoteAdminSignIn`), `reset-admin`, or the admin's own password
   change sets it. `chose_password` is set once that admin sets their own
-  password (`auth.NoteOwnPassword`) or `reset-admin` gives them a new one
-  (`auth.NoteResetPassword`), and drives `GET /admin/setup`'s
+  password or `reset-admin` gives them a new one (both `auth.NoteOwnPassword`),
+  and drives `GET /admin/setup`'s
   `printed_password`. No row, on an upgraded server or a `--setup` one, means
   no hint and no backfill.
 - `metadata_region_chosen`: `true` once an admin saved `metadata.region` from the

@@ -80,7 +80,8 @@ when:
   replace the new password;
 - the database has migrations pending (an older release left it: the server
   upgrades it, and backs it up, at its next start);
-- there is no admin yet, or the admin is disabled.
+- there is no admin yet (with no username given; a name with no admin to match
+  is the usage error above), or the admin is disabled.
 
 The password is set through `auth.SetPassword`, the console's rule: every
 session, open pairing code and remembered browser of the account ends. It also
@@ -88,7 +89,8 @@ revokes the auth code the first start printed beside the password
 (`auth.RevokeInitialAdminCode`: that admin's unlimited, never-expiring invite
 labelled `auth.InitialAdminCodeLabel`). It ends the start's sign-in hint and,
 for the first-run admin, turns `GET /admin/setup`'s `printed_password` false
-(`auth.NoteResetPassword`): the password in the log is gone. If the revoke
+(`auth.NoteOwnPassword`, as for a password the admin chose): the password in
+the log is gone. If the revoke
 fails, the command still prints the new password, since the old one is gone,
 then exits `1` with the error and asks for the code to be revoked in the console
 (People > Invites).
@@ -106,7 +108,8 @@ While that admin has not signed in, every later start prints a framed reminder
 `reset-admin` command for this install. Inside a container
 (`fsaccess.InContainer`) the command is prefixed with
 `docker exec -u <uid>:<gid> <container>`, the server's own ids, so it never
-makes a root-owned file in the data folder. The binary is named by its path when
+makes a root-owned file in the data folder (a server running as root gets no
+`-u`). The binary is named by its path when
 that name on `$PATH` is not this binary (the LinuxServer.io image's
 `/app/audiosilo/audiosilo`). Words are quoted for the system's shell (single
 quotes, or double quotes on Windows). An admin's password sign-in, an admin
