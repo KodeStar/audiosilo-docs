@@ -2539,6 +2539,57 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
   }
 }
 
+// ── Find on LibriVox (LibriVox L6) ──────────────────────────────────────────
+// The player offers Find on LibriVox only while `/server` names an online Bridge whose
+// features list `librivox`, and the demo server has no Bridge. As Find shows does, the
+// shot stands in for that part of `/server` with a Playwright route on its own context;
+// the search and the work are the server's real answers (live community metadata).
+// Nothing is added, so no job is queued.
+const LIBRIVOX_SHOT = 'web-player/find-librivox.png';
+const LIBRIVOX_QUERY = 'The Wind in the Willows';
+if (wanted(LIBRIVOX_SHOT)) {
+  await step('find on librivox', async () => {
+    if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: Find on LibriVox is an admin page');
+    const origin = new URL(BASE).origin;
+    const ctx = await newCaptureContext();
+    await ctx.route(
+      (url) => url.origin === origin && url.pathname === '/api/v1/server',
+      async (route) => {
+        const res = await route.fetch();
+        const info = await res.json();
+        info.capabilities = {...info.capabilities, bridge: true};
+        info.bridge = {version: '0.7.0', features: [...(info.bridge?.features ?? []), 'librivox']};
+        return route.fulfill({response: res, json: info});
+      },
+    );
+    let session = null;
+    try {
+      const page = await ctx.newPage();
+      await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
+      await probeServer(page, origin);
+      await signInWithPassword(page, 'admin', ADMIN_PASSWORD);
+      await tid(page, 'ready-screen').waitFor({timeout: 15000});
+      session = (await playerSession(page)).token;
+      // Browse the library, not Start listening: nothing plays, so no session is recorded.
+      await firstVisible(page.getByRole('button', {name: 'Browse the library'})).click({timeout: 8000});
+      await tid(page, 'top-bar-(library)').waitFor({timeout: 15000});
+      await tid(page, 'books-menu').click({timeout: 20000});
+      await tid(page, 'books-find-librivox').click({timeout: 8000});
+      await tid(page, 'librivox-search-input').fill(LIBRIVOX_QUERY);
+      await tid(page, 'librivox-search-submit').click();
+      await tid(page, 'librivox-hit').click({timeout: 30000});
+      await tid(page, 'librivox-recording').waitFor({timeout: 30000});
+      await tid(page, 'librivox-add').waitFor({timeout: 15000});
+      await sleep(SETTLE_MS);
+      await page.mouse.move(0, 0);
+      await shoot(page, LIBRIVOX_SHOT);
+    } finally {
+      if (session) await api(session, 'POST', '/auth/logout').catch(() => {});
+      await ctx.close();
+    }
+  });
+}
+
 // ── Unauthenticated screens ─────────────────────────────────────────────────
 console.log('== public screens ==');
 // The connect flow on a fresh browser: the start screen with the probe card (the served
