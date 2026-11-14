@@ -1,6 +1,6 @@
 ---
 title: Discord notification bot
-description: Deploy the private AudioSilo watchlist bot and understand its feed notifications and delayed community announcements.
+description: Deploy the private AudioSilo watchlist bot and understand when its feed notifications and community announcements are sent.
 ---
 
 ## Purpose
@@ -15,10 +15,23 @@ the equivalent JSON Feed and notifies on new item IDs or changed entry content.
 A preorder becoming a release has a new ID, so both events notify. The first
 fetch is a silent baseline; reordering and entries aging out do not notify.
 
+A new item ID waits `NOTIFY_HOLD` (6 hours by default) before its DM.
+[meta-sync](./sync-bot.md#every-stores-copy-of-a-book) often adds a book's
+other stores in a later cycle, so the wait lets the linked page fill in first.
+If the entry changes while it waits, its DM carries the latest version the bot
+has read, and the wait still counts from when the ID first appeared. A change
+to an entry that is not waiting, such as a date correction to one already sent
+or in the baseline, goes out at once. Polling continues while entries wait, and `status`
+counts them among its queued notifications. `NOTIFY_HOLD=0` sends new entries
+at once and releases anything still waiting.
+
 Members can DM `status`, `pause`, `resume`, `stop` or `help`. `stop` deletes their
-subscription and pending messages. Replacing a URL also clears that user's old
-pending messages. Members who leave the configured server are removed on the
-next successful membership check. Blocked DMs pause delivery until `resume`.
+subscription, pending messages and waiting entries. Replacing a URL also clears
+that user's old pending messages and drops the waiting entries the new list
+does not contain. The others keep their wait. `pause` keeps waiting entries,
+which arrive after `resume` once due. Members who leave the configured server
+are removed on the next successful membership check. Blocked DMs pause delivery
+until `resume`.
 
 ## Community announcements
 
@@ -30,6 +43,7 @@ character sheets. Announcements wait until both conditions hold:
 
 There is no further wait after release: recaps and character sheets are spoiler
 gated on the site, so an announcement is useful to listeners of the current book.
+`NOTIFY_HOLD` applies to feed DMs only, never to announcements.
 
 Core composes the community repository into its data release, so the bot waits
 for publication after the community merge. A release date stating only a year,
@@ -92,6 +106,7 @@ check, `libexdb.com`.
 | `META_BASE_URL` | Allowed metadata HTTPS origin; defaults to `https://meta.audiosilo.app` |
 | `LIBEX_BASE_URL` | HTTPS origin for the release-day spot check; defaults to `https://libexdb.com`, `off` disables it |
 | `POLL_INTERVAL` | Feed polling interval, default `5m` |
+| `NOTIFY_HOLD` | How long a new feed entry waits before its DM, default `6h`, from `0` (off) to `24h` |
 | `DATA_DIR` | State directory, `/data` in Compose |
 | `HEALTH_ADDR` | Health listener, unexposed port 8080 in Compose |
 
@@ -113,8 +128,13 @@ entries that have already left that feed. Community scans run hourly; pending
 release-date checks are bounded per poll. Commands and polling are serialized,
 so a large scan can delay a reply.
 
-Delivery retries survive restarts. A crash between Discord accepting a message
-and its local acknowledgment can produce a duplicate. Back up `state.json` while
-the bot is stopped; deleting the volume loses subscriptions and delivery history.
-Corrupt state and failed state writes stop the service instead of silently
-resetting it. The container health check checks connectivity and worker progress.
+Delivery retries survive restarts, and so do waiting entries with the time
+each first appeared. A waiting entry is saved like a pending message and joins
+the queue once its wait is over and anything already queued has been sent. A
+crash between Discord accepting a message and its local acknowledgment can
+produce a duplicate.
+
+Back up `state.json` while the bot is stopped; deleting the volume loses
+subscriptions and delivery history. Corrupt state and failed state writes stop
+the service instead of silently resetting it. The container health check checks
+connectivity and worker progress.

@@ -140,8 +140,9 @@ To get them as Discord messages, use the **AudioSilo Discord bot**:
    **Direct Messages**).
 3. Send the AudioSilo bot a direct message with your **Atom feed** URL.
 
-New books then arrive as DMs. Send `help` for the commands. `stop` deletes
-everything the bot keeps about you.
+New books then arrive as DMs, a few hours after they first appear in your feed.
+The wait gives the book's page time to fill in. Send `help` for the commands.
+`stop` deletes everything the bot keeps about you.
 
 Two things to know:
 
