@@ -25,7 +25,7 @@ to understand before you change the schema.
     `collection_items` and `ratings`;
   - per-library config: `folder_overrides`, `book_enrichment`,
     `issue_ignores`, `book_overrides`, `chapter_overrides`, `chapter_choices`,
-    `book_covers` and `book_matches`.
+    `book_covers`, `book_matches` and `book_hints`.
 
   The rest of a listener's own state hangs off the account rather than a path:
   `collections`, `collection_shares`, `listening_goals` and
@@ -110,6 +110,7 @@ erDiagram
     libraries ||--o{ chapter_overrides : "durable config"
     libraries ||--o{ book_covers : "durable config"
     libraries ||--o{ book_matches : "durable config"
+    libraries ||--o{ book_hints : "durable config"
     libraries ||--o{ issue_ignores : "durable config"
     libraries ||--o{ scan_runs : "scan history"
     libraries ||--o{ community_chapters : "path-keyed, NO FK to books"
@@ -1178,8 +1179,9 @@ else.
   `(user_id, id)`.
 - **`import_payloads`**: PK `import_id` (FK CASCADE). It holds the fetched
   history as gzipped JSON: the user's book items, sessions, progress and
-  bookmarks, and nothing secret. A cutoff change and the apply therefore never
-  fetch again. It is a table of its own so that reading `imports` never walks a
+  bookmarks, and every ABS book with an ASIN or ISBN (`identified`, for the
+  [match hints](#match-hints-from-an-import)). Nothing secret. A cutoff change
+  and the apply therefore never fetch again. It is a table of its own so that reading `imports` never walks a
   large blob's overflow pages. The row is deleted once the import is applied,
   undone or deleted.
 - **`import_id`** on `listening_sessions`, `listening_daily`,
@@ -1254,6 +1256,14 @@ import from the same source.
     the two, and a finished row with no finish date takes ABS's.
   - A changed row's `version` goes up by one, and its before and after go in
     `import_progress_prior`.
+- **Match hints.** A `book_hints` row (source `abs`, `import_id` the import) for
+  each book here the identified ABS books pair with (see
+  [Match hints from an import](#match-hints-from-an-import)).
+
+An apply that writes no listening is refused (`catalog.ErrImportNoListening`)
+when the person has a previous applied import from the source, so that one stays
+applied (see the
+[apply route](api/reference.md#post-apiv1adminimportsidapply) for what counts).
 
 The cutoff gates sessions and estimates only. Its default (`"auto"`) is the
 person's first listening recorded here (`catalog.ListeningStart`): their
@@ -1264,8 +1274,8 @@ counted once.
 #### Undo, retention and restarts
 
 **Undo**, and an apply replacing the previous import, deletes the import's
-sessions, daily rows, history spans and untouched bookmarks by `import_id`. It
-restores each `import_progress_prior` row whose progress is still exactly as the
+sessions, daily rows, history spans, untouched bookmarks and `book_hints` rows by
+`import_id`. It restores each `import_progress_prior` row whose progress is still exactly as the
 import wrote it (`sameProgress`: path, version, `updated_at`, position, finish
 and dates). A restored row gets a version above the import's.
 
@@ -1801,6 +1811,10 @@ keeps the report to once a day across restarts. The run status is the
   backup.
 - **`book_matches`** *(0069; `offered_asin` and `offered_isbn` in 0070)*: a
   book's recorded community match, described after this list.
+- **`book_hints`** *(0074)*: PK `(library_id, path, source)`, `asin`, `isbn`,
+  `import_id`, `set_at`. Identifiers another app gave a book, kept as hints for a
+  community match only. See
+  [Match hints from an import](#match-hints-from-an-import).
 - **`issue_ignores`** *(0017)*: PK `(library_id, path, kind)`, `created_by`
   (FK to `users`, `ON DELETE SET NULL`), `created_at`. An admin's "ignore this"
   on a Health issue. `kind` is one of `catalog.IssueKinds` (`scan_error`,
@@ -1842,7 +1856,8 @@ Two things write it:
 - the fold of a done `librivox.fetch` (`catalog.FoldLibrivoxFetch`), for the book
   the Bridge placed: `how` `accepted`, `set_by` the admin who asked, no run and no
   offered identifiers. By the result's `adopted`, it replaces a row already at
-  that path (a placed book, which also drops the path's leftover ASIN and ISBN),
+  that path (a placed book, which also drops the path's leftover ASIN, ISBN and
+  `book_hints`),
   keeps it (an adopted book), or replaces it and drops nothing (no `adopted`, an
   older Bridge). It touches no other path (see
   [Add from LibriVox](../bridge/librivox.md#the-books-identity)).
@@ -2018,8 +2033,10 @@ never on the wire. Only `GetBook` and a run's subjects read them, and a tagged
 book stays `unmatched`.
 
 `matchrun.QueryFor` sends a hint as `BookASIN` or `BookISBN` when the book has
-neither of its own. A hint the community database knows is then confident when
-its length fits and the book agrees with its title (see
+neither of its own, after an import's (see
+[Match hints from an import](#match-hints-from-an-import) for the order). A hint
+the community database knows is then confident when its length fits and the book
+agrees with its title (see
 [Bulk community matching](api/reference.md#bulk-community-matching)). It
 becomes the book's ASIN only by an apply. A match run may propose another
 recording of the hint's work that fits the book's length better
@@ -2036,6 +2053,53 @@ Audiobookshelf `metadata.json`'s ASIN differs. ABS wrote it after a match, so
 it stays an identifier.
 
 These are scanned values, like `released`, and every index rewrites them.
+
+### Match hints from an import
+
+`book_hints` (migration 0074) holds the ASIN and ISBN another app gave a book.
+Today the only source is `abs`. An applied
+[Audiobookshelf import](#listening-imports) writes one row for each book here that
+an ABS book with an identifier pairs with (`importer.identifiersFor`, by path, then
+by title and author, across every book; see
+[Identifiers](api/reference.md#identifiers-match-hints)). Like a tag hint, it is a
+hint for a community match only. It is never `books.asin` or `isbn`, never on the
+wire, and a hinted book stays `unmatched` until a match run's apply or the match
+dialog writes its match. Only `GetBook` (a sub-select) and a run's subjects (a
+`LEFT JOIN`, `matchSubjectJoin`) read it, as `Book.HintASIN` and `HintISBN`
+(`json:"-"`).
+
+**What a match sends** (`matchrun.QueryFor`, for the match dialog and a run alike):
+
+1. A book with an ASIN or ISBN of its own sends only its own ASIN and ISBN, and
+   no hint.
+2. Otherwise, with an import ISBN, it sends the import's ASIN and ISBN and nothing
+   from its tags.
+3. Otherwise it sends the import's ASIN, else the tag's ASIN, and beside it the
+   tag's ISBN.
+
+So the import's identifiers go ahead of the tags'. A tag ASIN is sent only when the
+import gave no identifier. A tag ISBN may go beside an import's ASIN, because
+metaserve asks the ASIN first and the ISBN only when it doesn't know that one, so
+the tag's ISBN is only a fallback. A tag ASIN beside an import ISBN would be asked
+first, ahead of the import, so it never goes. A hit is judged as a tag hint's is
+(`Classify`, `identifierAgrees`). The unknown-ASIN report sends a book's tag ASIN
+only, never its import hint (`catalog.UnknownASINCandidates`).
+
+**Ownership.** An apply replaces each book's `abs` row whole, with its own
+`import_id`, so the import applied last owns a book's hint. An undo, or an apply
+replacing the person's previous import, deletes that import's rows by `import_id`
+(index `idx_book_hints_import`). A row a later import took over stays with it, and
+a row this import took over from an earlier one goes, even while the earlier import
+is still applied. `import_id` has no foreign key, so the row outlives the
+import's record, as `book_matches.run_id` does.
+
+**Durability.** The table is path-keyed with no FK to `books`, so a rebuild keeps
+it. A move carries it (`moveBookState`). A disc join copies the first part's row
+from each source. Deleting the library drops it (`ON DELETE CASCADE`). A book
+the Bridge places from LibriVox drops the row at its path with the path's other
+leftover identifiers (`catalog.FoldLibrivoxFetch`, see
+[Add from LibriVox](../bridge/librivox.md#the-books-identity)). An adopted
+folder keeps it, as does an older Bridge's fold (no `adopted`).
 
 ### Labels: genres and tags
 
@@ -2166,6 +2230,7 @@ The migration history so far:
 | 0070 | `book_match_offered` | `book_matches.offered_asin` and `offered_isbn` (`TEXT NOT NULL DEFAULT ''`): the identifiers the [recorded community match](#durable-per-library-config-path-keyed-no-fk-to-books) offered. `match_run_items.unchanged` (`TEXT NOT NULL DEFAULT ''`): the comma-separated scopes under which a refresh item had nothing to change when recorded; an apply under one leaves it out without reading the book again. No backfill: `''` behaves as before. No data moves |
 | 0071 | `audible_sync_followups` | The `audible_title_match_update` trigger, recreated so a `preorder` title is left out of the sync and its release re-offers the book's place; `audible_accounts.refusal_ended_at` (see [The Bridge](#the-bridge)). No data moves |
 | 0073 | `podcast_episode_indexed` | `podcast_episodes.indexed_at`, backfilled from each episode's `books.indexed_at` (see [Podcasts](#podcasts)) |
+| 0074 | `book_hints` | [Match hints from an import](#match-hints-from-an-import): `book_hints` (`library_id` `ON DELETE CASCADE`, `path`, `source`, `asin` and `isbn` `TEXT NOT NULL DEFAULT ''`, `import_id` `INTEGER NOT NULL DEFAULT 0`, `set_at`; primary key `(library_id, path, source)`) and the index `idx_book_hints_import` on `import_id`. No data moves |
 
 ## SQLite choices
 

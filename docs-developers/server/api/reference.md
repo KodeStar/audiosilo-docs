@@ -7155,8 +7155,10 @@ wrong:
   is the book's author (mostly a composer tag filled with the author, which says
   nothing of the recording);
 - `q`, and the ASIN/ISBN: the typed ones, or the book's own when nothing was
-  typed, or with neither of its own its [tag hints](../data-model.md#tag-hints),
-  which metaserve looks up itself.
+  typed, or, with neither of its own, its hints from an Audiobookshelf import and
+  its [tags](../data-model.md#tag-hints) (`matchrun.QueryFor`,
+  [the order](../data-model.md#match-hints-from-an-import)). metaserve looks them
+  up itself.
 
 An older metaserve ignores `language` and `narrator`.
 
@@ -7294,8 +7296,8 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   10% (`meta.PlausibleRuntimeOff`) off the book's length, none of the book's
   narrators reads it, and another recording of the same work is within 10%. The run
   then proposes the recording this rule picks among those, `auto` when it has an
-  ASIN or ISBN (an identifier hit whose length now fits). A tag hint can name
-  another edition of the right work.
+  ASIN or ISBN (an identifier hit whose length now fits). A hint, from the tags or
+  an Audiobookshelf import, can name another edition of the right work.
   - A narrator reading the named recording keeps it: `auto` within 20%, else held
     as `length_differs` (see [the outcomes](#bulk-community-matching)).
   - A plain book never moves onto a dramatization the rule above refuses.
@@ -7423,8 +7425,8 @@ Each book's **outcome**:
 
 | Outcome | Meaning |
 |---|---|
-| `auto` | Confident (`matchrun.Classify`): the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN (from 2.6.0, one with neither on firmer ground: see below the table), and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition), or, from 2.6.0, within **20%** (`meta.NarratedRuntimeOff`) when the book's narrator reads it (`matchrun.narratorReads`: `reasons.narrator` is `full` and the proposed recording's own credit names one of the book's narrators, `meta.ReadBy`; a placeholder credit such as `Full Cast`, `GraphicAudio`, `Various` or `Unknown` never counts, `meta.PersonNarrator`, as it agrees with every recording carrying it). An identifier hit (`reasons.identifier`: in a match run always a tag hint) needs no lead, unless the next candidate is one too (`review`; a guard, as metaserve names one work per request today). From 2.7.0 the book must also agree with it (`matchrun.identifierAgrees`): `reasons.title`, when judged, at least **0.65** (`IdentifierTitleAgree`), or at least **0.9** (`IdentifierTitleSame`) when `reasons.series` is `conflict`, as the same title at another position is the series numbered another way (a conflict with no title judged is held). Else `review`. So a wrong tag ASIN naming a book with a similar title within 10% of the length is still `auto`, and so, from 2.6.0, is one naming another edition of the right work when a recording of it within 10% takes its place (`meta.FitRecording`, [the dialog's rule](#get-apiv1adminlibrariesidbookmatch)). Applied unless the admin leaves it out. A repick's offers are all `auto`. |
-| `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's, or 20% when the book's narrator reads it (a match run's, as for `auto`, or a refresh's), carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. One whose work holds only dramatizations the book doesn't state it is, none of them the book's by length ([`default_recording_id`](#get-apiv1adminlibrariesidbookmatch), from 2.6.0), carries `detail: "dramatization_only"` (`DetailDramatizationOnly`) and no recording, so nothing is attached unasked. One found by a tag ASIN or ISBN the book doesn't agree with (see `auto`, from 2.7.0) carries `detail: "identifier_disagrees"` (`DetailIdentifierDisagrees`), ahead of `dramatization_only` and `length_differs` when either would also apply. |
+| `auto` | Confident (`matchrun.Classify`): the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN (from 2.6.0, one with neither on firmer ground: see below the table), and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition), or, from 2.6.0, within **20%** (`meta.NarratedRuntimeOff`) when the book's narrator reads it (`matchrun.narratorReads`: `reasons.narrator` is `full` and the proposed recording's own credit names one of the book's narrators, `meta.ReadBy`; a placeholder credit such as `Full Cast`, `GraphicAudio`, `Various` or `Unknown` never counts, `meta.PersonNarrator`, as it agrees with every recording carrying it). An identifier hit (`reasons.identifier`: in a match run always a hint, an Audiobookshelf import's or the tags') needs no lead, unless the next candidate is one too (`review`; a guard, as metaserve names one work per request today). From 2.7.0 the book must also agree with it (`matchrun.identifierAgrees`): `reasons.title`, when judged, at least **0.65** (`IdentifierTitleAgree`), or at least **0.9** (`IdentifierTitleSame`) when `reasons.series` is `conflict`, as the same title at another position is the series numbered another way (a conflict with no title judged is held). Else `review`. So a wrong hinted ASIN naming a book with a similar title within 10% of the length is still `auto`, and so, from 2.6.0, is one naming another edition of the right work when a recording of it within 10% takes its place (`meta.FitRecording`, [the dialog's rule](#get-apiv1adminlibrariesidbookmatch)). Applied unless the admin leaves it out. A repick's offers are all `auto`. |
+| `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's, or 20% when the book's narrator reads it (a match run's, as for `auto`, or a refresh's), carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. One whose work holds only dramatizations the book doesn't state it is, none of them the book's by length ([`default_recording_id`](#get-apiv1adminlibrariesidbookmatch), from 2.6.0), carries `detail: "dramatization_only"` (`DetailDramatizationOnly`) and no recording, so nothing is attached unasked. One found by a hinted ASIN or ISBN (its tags' or an Audiobookshelf import's) the book doesn't agree with (see `auto`, from 2.7.0) carries `detail: "identifier_disagrees"` (`DetailIdentifierDisagrees`), ahead of `dramatization_only` and `length_differs` when either would also apply. |
 | `none` | No candidate; or, in a match run, a best candidate scoring under **60** (`matchrun.ReviewFloor`) on metaserve's scale, with `detail: "weak_match"` (`DetailWeakMatch`), its `score` kept for the review's wording and its `proposal` empty (from 2.6.0). A candidate without `reasons` (an older metaserve's fallback search, on another scale) stays `review`. The match dialog has no such floor: it lists its candidates (up to 6) however low they scored. |
 | `error` | The service failed for this book (`detail: "metadata_unavailable"`), from 2.7.0 also when the best candidate's work can't be read for any reason but a `404` (a gone work gives way to the next). [Ten in a row](#what-a-run-asks-of-the-community-service) stop the run. |
 
@@ -8627,8 +8629,9 @@ the person's access.
 
 The console's **Server > Settings > Import**: another server's listening
 history copied into a person's own, so someone moving to AudioSilo keeps their
-stats. v1 reads **Audiobookshelf** (ABS) only and is **admin only**: no
-capability flag, no player route (the console ships inside the server). The
+stats. It also keeps Audiobookshelf's ASIN and ISBN for the books here as
+[match hints](../data-model.md#match-hints-from-an-import) (`book_hints`). v1
+reads **Audiobookshelf** (ABS) only and is **admin only**: no capability flag, no player route (the console ships inside the server). The
 work is `internal/importer` (the ABS client, matching, planning, the background
 fetch); the rows are `catalog/imports.go`; the handlers
 (`api/handlers_import.go`) are transport only. What an applied import writes
@@ -8645,7 +8648,9 @@ the server stopped mid-way can't resume (it fails as `interrupted`). The ABS
 client is read-only (`GET`s), checks `GET /status` says `audiobookshelf` (and
 `isInit`) **before** sending the token anywhere, accepts only `http`/`https`
 addresses without credentials, a query or a fragment, follows redirects only to
-the same host (never `https` → `http`, at most 4 of them), caps every response size
+the same host (never `https` → `http`, at most 4 of them), trusts only the
+certificates the system trusts (a self-signed one fails as `abs_certificate`, and
+there is no setting to skip the check), caps every response size
 and times out each request (3 minutes) and the whole fetch (30 minutes). Its
 errors are fixed English sentences with a code; an ABS response body never
 reaches a response or a log. There is no private-address block: ABS usually
@@ -8686,7 +8691,8 @@ An **import** reads:
     "finished": 161,
     "bookmarks": 73,
     "first_listen": "2021-02-03T20:11:09Z",
-    "last_listen": "2026-03-13T22:40:51Z"
+    "last_listen": "2026-03-13T22:40:51Z",
+    "identifiers": { "books": 640, "asin": 612, "isbn": 41, "by_title": 22, "already_matched": 95 }
   }
 }
 ```
@@ -8698,7 +8704,7 @@ An **import** reads:
 | `cutoff` | sessions **starting at or after** it are skipped; RFC 3339 UTC to the second (rounded down); `null` = none. Always the resolved value, never `"auto"` |
 | `cutoff_utc_offset` | the server's offset from UTC at the cutoff, in minutes (that date's, daylight saving included); `null` without a cutoff. A client shows and edits the cutoff in server time with it (a chosen day is the server's midnight), whatever its own zone |
 | `created_at`, `applied_at` | RFC 3339 UTC; `applied_at` `null` until applied |
-| `error`, `error_code` | `""` unless `failed`. `error` is a safe English sentence; `error_code` is `abs_unreachable` (also a timeout), `abs_unauthorized`, `not_abs`, `fetch_failed` or `interrupted` |
+| `error`, `error_code` | `""` unless `failed`. `error` is a safe English sentence; `error_code` is `abs_unreachable` (also a timeout), `abs_certificate`, `abs_unauthorized`, `not_abs`, `fetch_failed` or `interrupted` |
 | `summary` | `null` while fetching or when the fetch failed; planned at review (recounted by a cutoff change) and rewritten at apply with what was written |
 
 The fetched history is kept (gzipped, in `import_payloads`) only while the
@@ -8721,7 +8727,14 @@ or deleted.
 - `finished`: the books given a finish (or a missing finish date) from ABS;
 - `bookmarks`: the bookmarks added;
 - `first_listen` / `last_listen`: the earliest and latest imported session start
-  (`null` without sessions).
+  (`null` without sessions);
+- `identifiers`: the books here the import gives Audiobookshelf's ASIN or ISBN as
+  a match hint (see [Identifiers](#identifiers-match-hints) below). `books` counts
+  them, `asin` and `isbn` the books given each, `by_title` those paired by title
+  and author rather than by path, and `already_matched` the paired books left out
+  because they are matched here already. Absent from a summary planned before the
+  server carried identifiers, and all zero once such an import is planned again,
+  as its stored fetch holds none. A client treats a missing `identifiers` as none.
 
 `GET /admin/imports/{id}` adds the books that will be skipped, most listened
 first, at most 500:
@@ -8766,6 +8779,31 @@ deleted items that resolve to one book all match it, with at most one item
 still in ABS, and their sessions merge. The apply matches again, so a book
 added since the review is found.
 
+#### Identifiers (match hints)
+
+The fetch also keeps every ABS book with a valid ASIN or ISBN in the libraries the
+token sees (`Payload.Identified`, JSON `identified`, whoever's history it is in).
+Review and apply pair them with books here (`importer.identifiersFor`):
+
+- among **every** book here, whatever the target user can access, as the hints are
+  the server's, not the person's;
+- by the **path** tier, then the **title and author** tier, never by ASIN or ISBN
+  (those are what is being carried). A title pairing is guarded later by the match
+  run's agreement check (`matchrun.identifierAgrees`);
+- leaving out a book two identified ABS books pair with (contested), an ABS folder
+  this server splits into disc books, and a book already matched here
+  (`catalog.matchedExpr`: its own ASIN or ISBN, or a recorded match), which is
+  counted as `already_matched`.
+
+The imports of one fetch carry the same identifiers, whichever person each is
+for. An apply writes them to `book_hints` (source `abs`, `import_id` the import),
+replacing each book's hint whole, so the import applied last owns a book's hint
+([ownership](../data-model.md#match-hints-from-an-import)). They never become `books.asin` or `isbn` and never reach the
+player wire. A hinted book stays unmatched until a match run's apply or the match
+dialog writes a match, which is why the console offers **Match automatically** once
+an import is applied. How a match sends them is
+[`QueryFor`'s rule](../data-model.md#match-hints-from-an-import).
+
 **Cutoff** values, in a start or a `PATCH`: `"auto"` (each user's first
 listening recorded here, `catalog.ListeningStart`: their earliest non-imported
 session or non-estimated rolled-up day; `null` when they have none), `null`
@@ -8800,7 +8838,7 @@ with the same username (any case), if any.
 |---|---|
 | `200` | the server's version and its users |
 | `400` | `invalid request`; `code: "invalid_url"` - not an absolute `http`/`https` URL, or it carries credentials, a query or a fragment; `code: "invalid_import"` - the token is empty, over 8 KiB or holds a line break or NUL (ABS is not contacted) |
-| `502` | `code: "abs_unreachable"` (no answer, a timeout or a `5xx`), `"not_abs"` (`/status` didn't answer as an initialised Audiobookshelf), `"abs_unauthorized"` (the token was refused) or `"fetch_failed"` (an unreadable answer) |
+| `502` | `code: "abs_unreachable"` (no answer, a timeout or a `5xx`), `"abs_certificate"` (the `https` handshake refused ABS's certificate: untrusted, often self-signed, for another name, or expired; the console points at ABS's plain `http://` address), `"not_abs"` (`/status` didn't answer as an initialised Audiobookshelf), `"abs_unauthorized"` (the token was refused) or `"fetch_failed"` (an unreadable answer) |
 
 Not audited (it changes nothing).
 
@@ -8865,8 +8903,17 @@ Applies a `review` import. The import moves to `applying`, then one transaction:
    `undone`, so a re-import never double counts;
 2. matches and plans again against the user's state;
 3. writes it: sessions, a `listening_history` span per session, estimates,
-   progress and bookmarks;
+   progress, bookmarks and the [match hints](#identifiers-match-hints);
 4. marks it `applied`.
+
+An import that writes no listening for the person (identifiers at most) applies when
+the person has no applied import from the source. When they have one, step 1 would
+take it back and replace it with nothing, so the apply is refused
+(`catalog.ErrImportNoListening`), the transaction rolls back and the previous import
+stays applied. Listening is a session, a rolled-up day, a bookmark, or a progress row
+the import creates or moves on (position, finish or finish date); a row whose only
+change is an earlier start date is not. The console turns **Apply** off for that
+case (`wouldOnlyUndo`). Undo the applied import first to replace it.
 
 A session already older than the session retention (`activity.session_days` as
 set when the apply runs) is written as the `listening_daily` totals the daily
@@ -8881,14 +8928,16 @@ Audible. The request's cancellation doesn't stop it. A failure puts it back in
 | Status | Meaning |
 |---|---|
 | `404` | `code: "import_not_found"` |
-| `409` | `code: "import_not_ready"` - it isn't in `review` |
+| `409` | `code: "import_not_ready"` - it isn't in `review`, or it writes no listening for the person while they have an applied import from the source (the message says to undo that one first) |
 
 ### `POST /api/v1/admin/imports/{id}/undo`
 
 Takes an applied import back out. Its sessions, rolled-up days, estimates,
-history spans and bookmarks are deleted by `import_id`; a bookmark the person
-edited or labelled since is kept and becomes theirs. Each progress row it changed
-is restored to what it was before, unless it changed since through a player's save
+history spans, bookmarks and match hints are deleted by `import_id` (a hint
+belongs to the import that wrote it last, see
+[ownership](../data-model.md#match-hints-from-an-import)). Matches already applied
+stay. A bookmark the person edited or labelled since is kept and becomes theirs.
+Each progress row it changed is restored to what it was before, unless it changed since through a player's save
 or an edit, in which case it stays. Answers `200` with the import (`undone`).
 Audited as `import.undo` (`import`). A row restored from one an Audible account
 wrote comes back under **no** device (`progressPrior.restored`), never as

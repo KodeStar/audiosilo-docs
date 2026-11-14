@@ -168,7 +168,7 @@ book's path depends on the result's `adopted`:
 
 | `adopted` | The folder | The fold |
 |---|---|---|
-| `false` | was vacant until this run placed it | replaces the path's `book_matches` row, and drops the path's ASIN and ISBN `book_overrides` (whoever set them) and its `book_enrichment` row, then rebuilds the book's effective metadata. Those rows are a deleted book's leftovers, and `/meta` would ask them before the match. |
+| `false` | was vacant until this run placed it | replaces the path's `book_matches` row, and drops the path's ASIN and ISBN `book_overrides` (whoever set them), its `book_enrichment` row and its `book_hints` (an Audiobookshelf import's match hints, which the match dialog would send), then rebuilds the book's effective metadata. Those rows are a deleted book's leftovers, and `/meta` would ask them before the match. |
 | `true` | is an earlier fetch's book | inserts the match only when the path has none, so an admin's rematch stays, and touches nothing else |
 | absent (an older Bridge) | not known | replaces the match and touches nothing else |
 

@@ -1,11 +1,14 @@
 ---
 title: "Import your Audiobookshelf history"
-description: "Moving from Audiobookshelf? Copy each person's listening history, progress and bookmarks into AudioSilo, check it, and undo it if needed."
+description: "Moving from Audiobookshelf? Copy each person's listening history, progress and bookmarks into AudioSilo, bring its ASINs and ISBNs for matching, check it, and undo it if needed."
 ---
 
 Moving from Audiobookshelf? **Server > Settings > Import** in the
 [admin console](console-tour.md) copies each person's listening history over,
 so their stats, streaks and progress carry on instead of starting at zero.
+It also brings Audiobookshelf's ASIN and ISBN for your books, so they can be
+matched to community metadata. The setup flow runs the same import in its
+[Coming from Audiobookshelf step](../getting-started/first-run.md#step-6-coming-from-audiobookshelf).
 
 You need to be an admin. AudioSilo only reads from Audiobookshelf and changes
 nothing there. You check each import before anything is written, and you can
@@ -19,6 +22,8 @@ undo it.
 - **How far they got in each book**, and when they started and finished it.
   Progress only ever moves forward: an import never rewinds a book.
 - **Bookmarks**, skipping ones they already have here.
+- **Audiobookshelf's ASIN and ISBN** for each book it has them for, as match
+  hints. See [Match your books after an import](#match-your-books-after-an-import).
 
 What doesn't come over: podcasts, collections and playlists, accounts and
 passwords, and books that aren't in your AudioSilo libraries.
@@ -36,7 +41,11 @@ passwords, and books that aren't in your AudioSilo libraries.
 - **The Audiobookshelf address, as the AudioSilo server sees it.** The server
   fetches the history itself, so the address must work from the machine
   AudioSilo runs on. If both run in the same Docker Compose project, use the
-  service name, for example `http://audiobookshelf`.
+  service name, for example `http://audiobookshelf`. Use the plain `http://`
+  address on your network if Audiobookshelf's `https://` one has a self-signed
+  certificate (see [When a fetch fails](#when-a-fetch-fails)).
+- **A finished scan.** The import pairs Audiobookshelf's books with the books
+  AudioSilo has found, so let a new library's first scan finish.
 
 ## Import the history
 
@@ -51,7 +60,8 @@ passwords, and books that aren't in your AudioSilo libraries.
 5. Press **Fetch history for 1 person** (or *n* people). Nothing is written yet. A long history can take a
    minute, and you can leave the page.
 6. Under **Imports to review**, check each person's figures: hours, sessions,
-   books matched and books not matched.
+   books matched, books not matched, and books given an **ASIN or ISBN for
+   matching**.
 7. Press **Apply for *person*** and confirm. The import then moves to **Past
    imports**.
 
@@ -76,11 +86,43 @@ then by title and author. The review lists each skipped book with the reason:
 Then import that person again. A new import replaces the previous one, so
 nothing is counted twice.
 
+## Match your books after an import
+
+An import doesn't match your books. It brings Audiobookshelf's ASIN and ISBN for
+every book Audiobookshelf has them for in the libraries the token can see,
+whoever listened to it. A match run then looks them up in the community
+database.
+
+- The server pairs these books with yours by folder path, then by title and
+  author.
+- It leaves out a book two Audiobookshelf books pair with, and a book that is
+  already matched here.
+- The identifiers are **match hints**. They never become the book's ASIN or
+  ISBN and never show in the apps.
+- A match looks Audiobookshelf's identifiers up ahead of any in the book's
+  tags.
+
+So nothing shows until a match run applies. Once an import is applied, with
+community metadata on, **Past imports** says how many books are not matched,
+with a **Match automatically** button. It opens the unmatched books in Library health, where you start the run,
+review what it found and apply it. See
+[Matching every book at once](health.md#matching-every-book-at-once).
+
+An import with no listening for its person still brings the identifiers, and
+you can apply it for those alone. It can't replace an import already applied
+for that person, because applying it would undo their history and add none.
+**Apply** stays off and the review says so. Undo the applied one first if you
+want to replace it.
+
 ## Undoing an import
 
 **Past imports** lists every import. **Undo** removes the sessions and
 bookmarks it added and puts the person's progress back. Anything the person
 changed since, such as listening further, is kept.
+
+Undo also removes the match hints that import brought. Each book keeps the hint
+of the import applied last, so undoing the latest import removes its hints even
+where an earlier import carried the same ones. Matches you already applied stay.
 
 A person's **Listening** tab also lists their imports, with **Undo**. See
 [A person's page](users-and-invites.md#listening).
@@ -94,9 +136,16 @@ Activity > Sessions, they show "Imported from Audiobookshelf".
 
 ## When a fetch fails
 
-The import card says why. Check that Audiobookshelf is running, that its
-address works from the AudioSilo server, and that the token is right (use an
-admin or root account's token to import other people). Then **Discard** it and
+**Connect** checks the address and token first and says what's wrong under the
+field. If it says Audiobookshelf's certificate isn't trusted, its `https://`
+address uses a certificate the AudioSilo server doesn't trust, usually a
+self-signed one. Use its plain `http://` address on your network instead, for
+example `http://192.168.1.20:13378`.
+
+For a fetch that fails later, the import card says why. Check that
+Audiobookshelf is running, that its address works from the AudioSilo server, and
+that the token is right (use an admin or root account's token to import other
+people). Then **Discard** it and
 start again. Nothing was written.
 
 ## Good to know

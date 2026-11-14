@@ -66,7 +66,7 @@ Everything else works with the server alone.
 - [Back up your Audible books](admin/audible.md) and keep your places in step with Audible. **(Bridge)**
 - [Add free books from LibriVox](admin/librivox.md): search LibriVox and download a public-domain audiobook into a library, already matched. **(Bridge)**
 - [Contribute from your server](community/contributing-from-your-server.md): share corrections and recaps with the community. **(Bridge)**
-- [Import from Audiobookshelf](admin/import.md): bring over listening history, progress and bookmarks.
+- [Import from Audiobookshelf](admin/import.md): bring over listening history, progress and bookmarks, and Audiobookshelf's ASINs and ISBNs for matching.
 
 ## Running the server
 

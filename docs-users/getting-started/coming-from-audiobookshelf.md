@@ -23,11 +23,13 @@ A book with a `metadata.json` file then shows its Audiobookshelf details in Audi
 
 ## Bring listening history across
 
-**Server > Settings > Import** copies each person's listening sessions, progress and bookmarks from Audiobookshelf. [Invite](../admin/users-and-invites.md#inviting-someone) everyone first, so each person has an account to import into. See [Import your Audiobookshelf history](../admin/import.md).
+**Server > Settings > Import** copies each person's listening sessions, progress and bookmarks from Audiobookshelf. It also brings Audiobookshelf's ASIN and ISBN for your books, as hints for matching. The setup flow's **Coming from Audiobookshelf?** step runs the same import.
+
+[Invite](../admin/users-and-invites.md#inviting-someone) everyone first, so each person has an account to import into. Give the import Audiobookshelf's plain `http://` address on your network if its `https://` one has a self-signed certificate (see [When a fetch fails](../admin/import.md#when-a-fetch-fails)). See [Import your Audiobookshelf history](../admin/import.md).
 
 ## Match your books
 
-A scan matches no book by itself, apart from books whose `metadata.json` names an ASIN or ISBN. An ASIN in a book's tags is only a hint for the next step. To match the rest:
+A scan matches no book by itself, apart from books whose `metadata.json` names an ASIN or ISBN. An ASIN in a book's tags, or one the import brought, is only a hint for the next step. After an import, its **Past imports** list has a **Match automatically** button that opens the list in step 1. To match the rest:
 
 1. Open **Health** in the admin console and select **Not matched to community metadata**. This is the list of your unmatched books.
 2. On its **Match automatically** card, pick the library and select **Find matches**.
