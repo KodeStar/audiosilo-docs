@@ -141,9 +141,10 @@ address uses a certificate the AudioSilo server doesn't trust, usually a
 self-signed one. Use its plain `http://` address on your network instead, for
 example `http://192.168.1.20:13378`.
 
-For a fetch that fails later, the import card says why. Check that Audiobookshelf is running, that its
-address works from the AudioSilo server, and that the token is right (use an
-admin or root account's token to import other people). Then **Discard** it and
+For a fetch that fails later, the import card says why. Check that
+Audiobookshelf is running, that its address works from the AudioSilo server, and
+that the token is right (use an admin or root account's token to import other
+people). Then **Discard** it and
 start again. Nothing was written.
 
 ## Good to know

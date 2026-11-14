@@ -25,7 +25,7 @@ A book with a `metadata.json` file then shows its Audiobookshelf details in Audi
 
 **Server > Settings > Import** copies each person's listening sessions, progress and bookmarks from Audiobookshelf. It also brings Audiobookshelf's ASIN and ISBN for your books, as hints for matching. The setup flow's **Coming from Audiobookshelf?** step runs the same import.
 
-[Invite](../admin/users-and-invites.md#inviting-someone) everyone first, so each person has an account to import into. Give the import Audiobookshelf's plain `http://` address on your network. AudioSilo refuses an `https://` address whose certificate it doesn't trust, such as a self-signed one. See [Import your Audiobookshelf history](../admin/import.md).
+[Invite](../admin/users-and-invites.md#inviting-someone) everyone first, so each person has an account to import into. Give the import Audiobookshelf's plain `http://` address on your network if its `https://` one has a self-signed certificate (see [When a fetch fails](../admin/import.md#when-a-fetch-fails)). See [Import your Audiobookshelf history](../admin/import.md).
 
 ## Match your books
 

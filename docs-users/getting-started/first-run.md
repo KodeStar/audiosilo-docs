@@ -154,7 +154,7 @@ See [Reach your server from outside your home](./remote-access.md).
 This step runs the [Audiobookshelf import](../admin/import.md) right here. Connect to Audiobookshelf, review what matches for each person, then apply it. It brings each person's listening progress across, and Audiobookshelf's ASIN and ISBN for your books as hints for matching.
 
 - **Wait for the scan to finish.** The import pairs Audiobookshelf's books with the ones the scan finds, so **Connect** stays off while the library's first scan runs.
-- **Then match your books.** If community metadata is on and books are not matched, the step says how many, with **Match automatically**. It opens Library health in a new tab, where you start the run and review what it found. Nothing is matched until you apply it.
+- **Then match your books.** If community metadata is on and books are not matched, the step says how many, with **Match automatically**. It opens Library health in a new tab, where you [start the run](../admin/health.md#matching-every-book-at-once) and review what it found. Nothing is matched until you apply it.
 - **Continue** moves on whether or not you imported anything. The import stays in **Server > Settings > Import**.
 
 AudioSilo also reads the `metadata.json` files Audiobookshelf leaves beside your books. [Move over from Audiobookshelf](./coming-from-audiobookshelf.md) covers the rest.
