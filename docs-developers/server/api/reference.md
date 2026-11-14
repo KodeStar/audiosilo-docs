@@ -287,10 +287,14 @@ Response `200`: the pairing payload (`PairingPayload` in `internal/api/qr.go`):
   "qr_png_data_uri": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg…",
   "links": {
     "web": "https://books.example.com/web",
-    "admin": "https://books.example.com/admin"
+    "admin": "https://books.example.com/admin",
+    "ios": "https://apps.apple.com/us/app/audiosilo/id6783431375",
+    "android": "https://play.google.com/store/apps/details?id=app.audiosilo",
+    "apk": "https://github.com/KodeStar/audiosilo-frontend/releases/latest"
   },
   "code_expires_at": "2026-07-04T09:30:00Z",
   "uses_remaining": 5,
+  "admin": true,
   "addresses": {
     "home": "http://192.168.1.20:8080",
     "away": "https://books.example.com"
@@ -311,11 +315,20 @@ The other fields:
 - `code_expires_at` and `uses_remaining` describe the parent invite's budget. They
   are advisory, because concurrent exchanges may consume uses after the redeem.
   Both are omitted for recovery codes and unlimited invites.
-- `web_url` is what the QR encodes. On claimed domains it opens the native app
-  through Universal Links or App Links, and otherwise the embedded web player.
+- `web_url` is what the QR encodes. The app's own scanner reads the token from
+  it. A phone's camera app opens it in the browser, at the embedded web player,
+  because the store apps claim no domain: a self-hosted server's domain is its
+  own. Only a build named in `app_links` opens from it
+  ([Well-known](#well-known)).
 - `uri` is the custom-scheme equivalent, for an explicit "Open in app" action.
-- `links.ios` and `links.android` (store links) are omitted until the store apps
-  ship.
+- `links` says where to get the player: `web` and `admin` on this server, `ios`
+  (the App Store), `android` (Google Play) and `apk` (the player's latest GitHub
+  release page, never a file, for an Android phone without Google Play). `apk`
+  is additive. The connect page shows the same store links before any redeem.
+- `admin` is `true` when the code pairs an admin's account (an admin's invite,
+  or an admin's recovery code), so the connect page offers the console only to
+  an admin. It is absent for a listener's code, and on every other pairing
+  payload (`/auth/pair`, the demo).
 - `base_url` honors the configured `public_url`, falling back to the request host.
 - `server_name` is the server's display name, as `GET /server`'s `name`.
 - `server_id` is its stable id, as `GET /server`'s `server_id`. Both links end with
@@ -486,7 +499,7 @@ device from an existing session. The body is optional:
 ```
 
 Response `200`: a `PairingPayload`, the same shape as `/auth/redeem` without the
-invite budget fields. Its token is single-use and lasts 10 minutes (`pairingTTL`),
+invite budget fields and `admin`. Its token is single-use and lasts 10 minutes (`pairingTTL`),
 so the player counts down from when the payload arrived.
 
 `ttl_seconds` (from 2.4.0) asks for a shorter life, clamped to 30 seconds through
@@ -5629,7 +5642,7 @@ remain as history). Body optional:
 |---|---|---|---|
 | `label` | string | `""` | display label |
 | `max_uses` | int | `5` | explicit `0` = unlimited (negative values are clamped to 0) |
-| `ttl_days` | int | `1` | explicit `0` = never expires |
+| `ttl_days` | int | `1` | explicit `0` = never expires. The console's invite dialog asks for `7` unless changed |
 
 Response `201`, shown once:
 
@@ -11793,10 +11806,11 @@ Adds a LibriVox project to a books library:
 { "library_id": 3, "librivox_id": 192 }
 ```
 
-The server resolves the project's work and recording with metaserve's
-`lookup?librivox_id=`, and queues `librivox.fetch` with them in its params. A
-lookup that names no recording is `not_found`: the server never takes a work's
-first recording instead.
+The server resolves the project's work, recording and title with metaserve's
+`lookup?librivox_id=`, and queues `librivox.fetch` with them in its params
+(`{librivox_id, work_id, recording_id, library_id, title}`; `title` is optional
+and additive). A lookup that names no recording is `not_found`: the server never
+takes a work's first recording instead.
 
 | Status | Meaning |
 |---|---|
@@ -11813,11 +11827,20 @@ as `bridge.job` (with `job`, `kind`, `library` and `librivox_id`).
 
 Internal (refused by `POST /admin/bridge/jobs` with `400`), a writing kind for a
 books library, no module, deduped per library and project, and notified when it
-ends done (named by the book its result names), failed or parked (named by its
-library). Its params, progress steps, result and failure codes are in [The job](../../bridge/librivox.md#the-job-librivoxfetch).
+ends done (named by the book its result names), failed or parked (named by the
+params' `title` when no book was placed). Its params, progress steps, result and
+failure codes are in [The job](../../bridge/librivox.md#the-job-librivoxfetch).
+
+The result is `{library_id, path, librivox_id, files, bytes, adopted}`. `adopted`
+is additive: `false` when the Bridge placed the folder in this run, `true` when it
+found the book already placed, absent from an older Bridge.
+
 A done job's result becomes the book's recorded community match (`how`
 `accepted`, `set_by` the admin who asked) when it names a book indexed in the
-job's own library.
+job's own library. `adopted` decides whether that replaces a match already at
+the path ([The book's identity](../../bridge/librivox.md#the-books-identity)).
+Its `bridge_job_finished` event carries `librivox_match` (`matched`, `kept` or
+`unmatched`; see [Bridge event data](../backups-and-notifications.md#bridge-event-data)).
 
 ## Well-known
 

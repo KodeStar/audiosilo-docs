@@ -266,16 +266,24 @@ folder under the Inbox (`.cache/inbox`, rebuilt every run), asks for the attachm
 rescan and reports the job done. The book's Chapters card is then shot clipped,
 with the found chapters in use. Nothing is written into the seeded library.
 
-The LibriVox shots (`admin/librivox.png`, `web-player/find-librivox.png`) come
-after the read-along step, from the same stand-in, its heartbeat sent again with
-`librivox.fetch` among its kinds so the Bridge's features list `librivox`. Both
-search the live community metadata (the demo server's default lookup, so they need
-the network) for The Wind in the Willows and open its recordings: first the
-console's Library > LibriVox, then the web player in a context of its own, signed
-in as the admin (Browse the library, so nothing plays) and opened from the Books mode's **...** menu (Find on LibriVox),
-which shows only while the Bridge is online. Both are taken by `capture-admin.mjs`,
-since that is where the stand-in is paired. Nothing is added, so no job is queued
-and no seeded book gains a match; the player's session is signed out again.
+The console's LibriVox shot (`admin/librivox.png`) comes after the read-along
+step, from the same stand-in, its heartbeat sent again with `librivox.fetch` among
+its kinds so the Bridge's features list `librivox`. It searches the live community
+metadata (the demo server's default lookup, so it needs the network) for The Wind
+in the Willows and opens its recordings in Library > LibriVox.
+
+The player's shot (`web-player/find-librivox.png`) is `capture-web.mjs`'s, so a
+`SKIP_ADMIN=1` run takes it too. The demo server has no Bridge, so, as for Find
+shows, a Playwright route on the shot's own context adds an online Bridge offering
+`librivox` to `/server`'s answer. The admin signs in (Browse the library, so
+nothing plays), opens Find on LibriVox from the Books mode's **...** menu and runs
+the same search, against the server's real search and work answers. Nothing is
+added in either shot, so no job is queued and no seeded book gains a match; the
+player's session is signed out again.
+
+The invite on a phone (`server/phone-connect-invite.png`) opens the connect page
+shot's invite link again in an iPhone context (the page decides by the user agent).
+Redeeming spends no use, so the same code works twice.
 
 The generated description shots (`admin/book-description.png`,
 `web-player/book-about-generated.png`, Bridge Phase 1c) need a book with a

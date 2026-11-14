@@ -63,6 +63,18 @@ To match many books at once, use **Match automatically** on the Health page
 
 If the dialog says "meta.audiosilo.app isn't answering", try again in a minute.
 
+If the book isn't in the community database at all, it stays unmatched and
+plays as normal. The database has gaps. To add a missing book to it, see
+[Contributing](../community/meta-site.md#contributing).
+
+The community database holds books, their recordings, authors, narrators and
+series. Its users add and correct them, and many entries came from a public
+Audible catalogue. When a recording sells in several Audible stores, the
+**Audible marketplace** setting picks which store's edition a match takes (see
+[Which ASIN a match takes](health.md#which-asin-a-match-takes)). Every unmatched
+book is listed under **Not matched to community metadata** in
+[Library health](health.md#the-kinds-of-issue).
+
 ### What matching sends
 
 The server sends search terms to AudioSilo Meta only when you open **Match

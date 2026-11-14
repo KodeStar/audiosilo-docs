@@ -19,6 +19,7 @@ const sidebars: SidebarsConfig = {
         'getting-started/install-binary',
         'getting-started/first-run',
         'getting-started/organizing-your-library',
+        'getting-started/coming-from-audiobookshelf',
         'listening/mobile-apps',
         'listening/connecting',
         'getting-started/remote-access',

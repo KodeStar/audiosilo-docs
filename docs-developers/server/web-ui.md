@@ -294,7 +294,9 @@ The console runs under the same `script-src 'self'; style-src 'self'` policy
   ESLint rule bans importing `zod` anywhere else.
 - **Invite QR codes are drawn in the browser** (uqr, rendered as inline SVG
   elements), so a fresh invite code never travels back to the server inside an
-  image request.
+  image request. The QR encodes the invite link itself (`<base>/connect#code=…`):
+  the app's scanner signs in with its code, and a phone's camera app opens the
+  connect page.
 
 ### Covers
 
@@ -834,7 +836,12 @@ library through the Bridge's `librivox.fetch`. The design is in
   is no block: the note says a book added waits for it.
 - **Add**: a library picker when there are several books libraries (podcast
   libraries are never offered), then `POST /admin/librivox/fetch`. A refusal shows
-  as a toast (`errors.librivoxInLibrary` for `409 in_library`).
+  as a toast (`errors.librivoxInLibrary` for `409 in_library`,
+  `librivox.add.notFound` for `404 not_found`, a project the metadata no longer
+  lists).
+- **The open job's row** says which library it is going into when the server has
+  several books libraries ("Adding to &lt;library&gt;", `librivox.recording.addingTo`), since the open job is the
+  project's in any library.
 - **Following the job**: a row follows its job by id
   (`GET /admin/bridge/jobs/{id}`) every few seconds while it is open
   (`jobPollMs`), and stops for a job that is gone (`404`, `jobGone`). The work
@@ -883,8 +890,21 @@ Any other failure keeps the dialog open with its message.
   `GET /admin/sessions/live`, else from their newest unfinished progress in
   `GET /admin/stats`. The devices line comes from `GET /admin/devices`,
   sessions only.
-- **The invite flow** creates a password-less member, grants access, mints an
-  invite, and shows the QR, link and code once.
+- **The invite flow** creates a member, grants access, mints an invite, and shows
+  the QR, link and code once. The member has no password unless the dialog's
+  optional one is filled in (at least `MIN_PASSWORD`, 8, sent with
+  `POST /admin/users`; it never goes in the link or the share text). The dialog
+  asks for 7 days unless changed (`ttl_days`; the API's own default is 1). The
+  card's **Share** uses the Web Share API with a short message and the link, and
+  copies them where there is none (`shareOrCopy`, `lib/clipboard.ts`; browsers
+  offer it only on https). `inviteReach` (`people-model.ts`) reads the link's
+  host for three notices: loopback (only this computer), a home address by
+  `isHomeHost`, the server's own rule (a private or link-local IP, a `.local`,
+  `.lan`, `.home.arpa` or `.internal` name, or a single-label name; this network
+  only, the info tone), and `https://` at an IP address (a self-signed
+  certificate warning). A public host name gets none of them. The link's base is
+  `baseURL`: the public address, else the address the console was opened at, so
+  a home address set in Settings does not change it.
 - **A person's page** is `/admin/people/user/<id>`, with its tab in `?tab=`:
   listening (the default, no param), access, devices, invites, sign-in,
   account.
@@ -1445,8 +1465,9 @@ A failed Audible job's code reads as a sentence (`audibleJobReason`):
 A sync cancelled by turning sync off shows the server's reason, "sync with
 Audible was turned off for the account" (`SERVER_CANCEL_REASONS`).
 
-**LibriVox jobs.** A `librivox.fetch` reads "Adding from LibriVox", with its
-project ("Project 192", `librivoxProject`). Its failure or park code reads as
+**LibriVox jobs.** A `librivox.fetch` reads "Adding from LibriVox", with the
+work's title from its params (`librivoxTitle`), else its project ("Project 192",
+`librivoxProject`). Its failure or park code reads as
 `librivox.code.<code>` (`fetchReason`: a park's code, else the result's `code`,
 else an error starting `<code>:`), and an unknown one keeps the Bridge's text.
 
@@ -2023,7 +2044,7 @@ sequenceDiagram
     U->>W: open /connect#35;code=XXXX
     W->>W: read #35;code from fragment,<br/>history.replaceState() strips it from the URL bar
     W->>S: POST /api/v1/auth/redeem {code}
-    S-->>W: PairingPayload {qr_png_data_uri, uri, web_url}
+    S-->>W: PairingPayload {qr_png_data_uri, uri, web_url, admin?}
     W->>U: show QR + "Open in app" + "Open web player"
 ```
 
@@ -2036,13 +2057,27 @@ code and honors its uses and expiry. The page therefore tells the user that
 each device can scan the QR. For a bounded invite it also says how many
 devices it can still pair, from `uses_remaining`.
 
+What the page shows after a redeem:
+
+- **Admin section** only when the payload's `admin` is `true`, an admin's code.
+  A listener has no use for the console.
+- On a phone or tablet (`isPhone`: `navigator.userAgentData.mobile`, a mobile
+  user agent, or an iPad that reports a Mac with a touch screen), no QR, since
+  the phone holding it can't scan it. `showPhone` leads with "Get the app, then
+  come back to this link", moves the store links under it, and puts **Open web
+  player** first.
+- Everywhere, a **Get the AudioSilo app** block with the App Store, Google Play
+  and APK links. They are static in `index.html`, so they show before any
+  redeem too, and match the payload's `links` (`TestConnectPageStoreLinks`).
+
 The redeem response (`PairingPayload`, built by `buildPairing` in
 `internal/api/qr.go`) carries the pairing token in two forms:
 
 - **`web_url`** = `<base>/web/connect?token=…`, which is what the **QR
-  encodes**. Scanning it opens the native app when the app claims the domain
-  (Universal Link or App Link). Otherwise it opens the embedded web player's
-  connect route, which exchanges the token.
+  encodes**. The app's own scanner (**Scan a QR code**) reads the token from it.
+  A phone's camera app opens it in the browser, at the embedded web player's
+  connect route, which exchanges the token. The store apps claim no domain, so
+  only a build named in `app_links` opens from it.
 - **`uri`** = `audiosilo://connect?server=…&token=…`, behind the custom-scheme
   "Open in app" button. Custom schemes are not domain-bound, so this launches
   an installed app on any self-hosted domain.

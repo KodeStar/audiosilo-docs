@@ -41,21 +41,19 @@ import {
   CACHE,
   DAY,
   HOLMES_MATCH,
+  LIBRIVOX_QUERY,
   MIN,
+  PHONE,
   addHousehold,
   apiClient,
   around,
-  drawerClosed,
   fitViewportToPage,
   isoAgo,
   pathQuery,
-  playerSession,
-  probeServer,
   showDockerPaths,
   silence,
   sleep,
   shoot,
-  signInWithPassword,
   stamp,
   step,
   submitSignIn,
@@ -1131,7 +1129,7 @@ const STORY_SHOTS = ['admin/book-story.png', 'admin/book-story-recaps.png'];
 const DETECT_SHOTS = ['admin/health-detect-chapters.png', 'admin/detect-chapters-dialog.png',
   'admin/book-chapters-generated.png'];
 const READALONG_SHOTS = ['admin/readalong-dialog.png', 'admin/book-readalong.png'];
-const LIBRIVOX_SHOTS = ['admin/librivox.png', 'web-player/find-librivox.png'];
+const LIBRIVOX_SHOTS = ['admin/librivox.png'];
 // The stand-in's heartbeat. The server keeps a heartbeat it just saved as the
 // current one, so the next GET /server sees it at once.
 const standInHeartbeat = (status) => api(bridgeToken, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
@@ -1546,12 +1544,8 @@ await step('bridge: make a read-along', async () => {
 // With the stand-in Bridge offering librivox.fetch (so the Bridge's features list
 // librivox), Library > LibriVox searches the live community metadata (the demo
 // server's default lookup, so it needs the network) for a work with many LibriVox
-// recordings and opens it beside the results. Then the web player, signed in as
-// the admin in a context of its own, opens the same search from the Books mode's
-// ... menu (Find on LibriVox), which shows only while the Bridge is online, for an
-// admin, with metadata on. Nothing is added: no job is queued, so no book gains a
-// match. The player's session is signed out again.
-const LIBRIVOX_QUERY = 'The Wind in the Willows';
+// recordings and opens it beside the results. Nothing is added: no job is queued,
+// so no book gains a match. The player's Find on LibriVox is capture-web.mjs's.
 await step('bridge: add from LibriVox', async () => {
   if (!wanted(...LIBRIVOX_SHOTS)) return;
   if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
@@ -1560,52 +1554,17 @@ await step('bridge: add from LibriVox', async () => {
   const info = await api(token, 'GET', '/server');
   if (!info?.bridge?.features?.includes('librivox')) throw new Error('this server build has no librivox.fetch');
 
-  if (wanted('admin/librivox.png')) {
-    await open(page, '/library/librivox');
-    await page.getByLabel('Title or author').fill(LIBRIVOX_QUERY);
-    const hit = page.getByRole('list', {name: 'Search results'})
-      .getByRole('button', {name: new RegExp(`^${LIBRIVOX_QUERY}`)}).first();
-    await hit.waitFor({timeout: 30000});
-    await hit.click();
-    const recordings = page.getByRole('list', {name: 'Recordings'});
-    await recordings.getByText(/^Read by /).first().waitFor({timeout: 30000});
-    await recordings.getByRole('button', {name: /^Add/}).first().waitFor({timeout: 15000});
-    await sleep(800);
-    await shoot(page, 'admin/librivox.png');
-  }
-
-  if (wanted('web-player/find-librivox.png')) {
-    const wctx = await browser.newContext(DESKTOP_CONTEXT);
-    await wctx.addInitScript(drawerClosed);
-    let session = null;
-    try {
-      const wpage = await wctx.newPage();
-      const visible = (id) => tid(wpage, id);
-      await wpage.goto(`${ORIGIN}/web/connect`, {waitUntil: 'networkidle', timeout: 45000});
-      await probeServer(wpage, ORIGIN);
-      await signInWithPassword(wpage, 'admin', PASSWORD);
-      await visible('ready-screen').waitFor({timeout: 15000});
-      session = (await playerSession(wpage)).token;
-      // Browse the library, not Start listening: nothing plays, so no session is recorded.
-      await wpage.getByRole('button', {name: 'Browse the library'}).filter({visible: true}).first().click();
-      await visible('top-bar-(library)').waitFor({timeout: 15000});
-      // Again, so a slow console shot cannot leave the Bridge offline: the player's
-      // /server names the Bridge's features only while it is online.
-      await standInHeartbeat(status);
-      await visible('books-menu').click({timeout: 20000});
-      await visible('books-find-librivox').click({timeout: 8000});
-      await visible('librivox-search-input').fill(LIBRIVOX_QUERY);
-      await visible('librivox-search-submit').click();
-      await visible('librivox-hit').click({timeout: 30000});
-      await visible('librivox-recording').waitFor({timeout: 30000});
-      await visible('librivox-add').waitFor({timeout: 15000});
-      await sleep(800);
-      await shoot(wpage, 'web-player/find-librivox.png');
-    } finally {
-      if (session) await api(session, 'POST', '/auth/logout').catch(() => {});
-      await wctx.close();
-    }
-  }
+  await open(page, '/library/librivox');
+  await page.getByLabel('Title or author').fill(LIBRIVOX_QUERY);
+  const hit = page.getByRole('list', {name: 'Search results'})
+    .getByRole('button', {name: new RegExp(`^${LIBRIVOX_QUERY}`)}).first();
+  await hit.waitFor({timeout: 30000});
+  await hit.click();
+  const recordings = page.getByRole('list', {name: 'Recordings'});
+  await recordings.getByText(/^Read by /).first().waitFor({timeout: 30000});
+  await recordings.getByRole('button', {name: /^Add/}).first().waitFor({timeout: 15000});
+  await sleep(800);
+  await shoot(page, 'admin/librivox.png');
 });
 
 await step('webhook deliveries', async () => {
@@ -1770,6 +1729,32 @@ await step('connect page', async () => {
   await sleep(2500); // fragment codes auto-redeem into the QR + buttons view
   await shoot(p2, 'server/connect-page.png');
   await p2.close();
+});
+
+// The same invite opened on a phone: the page reads the user agent (connect.js isPhone),
+// so this context is an iPhone's. It leads with getting the app and the web player, and
+// shows no QR code. Redeeming spends no use, so the same code works again here.
+await step('connect page on a phone', async () => {
+  if (!wanted('server/phone-connect-invite.png')) return;
+  if (!inviteCode) throw new Error('no invite code was minted');
+  const phone = await browser.newContext({
+    ...DESKTOP_CONTEXT,
+    viewport: PHONE,
+    isMobile: true,
+    hasTouch: true,
+    userAgent:
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
+  });
+  try {
+    const p3 = await phone.newPage();
+    await p3.goto(`${ORIGIN}/connect#code=${inviteCode}`, {waitUntil: 'networkidle', timeout: 45000});
+    await p3.locator('#phone-lead').waitFor({state: 'visible', timeout: 15000});
+    // Tall enough for the whole page (the store links end it), never shorter than a phone.
+    await fitViewportToPage(p3, PHONE.height, 1600, 800, PHONE.width);
+    await shoot(p3, 'server/phone-connect-invite.png');
+  } finally {
+    await phone.close();
+  }
 });
 
 await ctx.close();

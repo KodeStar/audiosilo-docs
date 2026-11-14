@@ -1,6 +1,6 @@
 ---
 title: Add from LibriVox
-description: "How an admin adds a LibriVox recording to a books library: the three admin routes, the librivox.fetch job (params, progress, result, failure codes), the book's identity recorded by the server's fold, the archive.org-only fetch, placement and names, staging and resume, and .audiosilo/librivox.json."
+description: "How an admin adds a LibriVox recording to a books library: the three admin routes, the librivox.fetch job (params, progress, result, failure codes), the book's identity recorded by the server's fold, the archive.org-only fetch, placement and names, staging, resume and the 7-day sweep, and .audiosilo/librivox.json."
 ---
 
 An admin searches the community metadata database's LibriVox works, picks a
@@ -60,8 +60,8 @@ has the shapes and every status.
 | Kind | `librivox.fetch` (`bridge.KindLibrivoxFetch`; the Bridge's `librivoxjob.Kind`), feature `librivox` |
 | Server spec | needs a library, no book path, **writes**, a books library only, internal (`POST /admin/bridge/jobs` refuses it with `400`), no module |
 | Dedupe | per library and project (suffix `\|<librivox_id>`): a repeat answers the open job |
-| Notifications | not quiet. Done is "Added from LibriVox", named by the book its result names. Failed, and a lasting park, are notified as for other kinds, named by the library |
-| Bridge lane | `download` (1 slot, shared with `audible.import` and an ordinary `podcast.fetch`), so one book downloads at a time |
+| Notifications | not quiet. Done is "Added from LibriVox", named by the book its result names, and says how the book is matched ([The notification](#the-notification)). Failed, and a lasting park, are notified as for other kinds, named by the params' `title` when no book was placed |
+| Bridge lane | `download` (1 slot, shared with `audible.import` and an ordinary `podcast.fetch`), so one book downloads at a time. A parked fetch gives the slot back while it waits ([Parked fetches](#parked-fetches)) |
 | Bridge state | `<data>/librivox/<library_id>-<librivox_id>.json` |
 
 ### Params
@@ -70,11 +70,18 @@ The server builds them and checks them strictly. The Bridge reads them leniently
 and ignores unknown fields.
 
 ```json
-{ "librivox_id": 192, "work_id": "johnny-crows-garden", "recording_id": "…", "library_id": 3 }
+{ "librivox_id": 192, "work_id": "johnny-crows-garden", "recording_id": "…", "library_id": 3, "title": "Johnny Crow's Garden" }
 ```
 
 `work_id` and `recording_id` are what the server resolved at queue time
-([The book's identity](#the-books-identity)). Neither may be blank.
+([The book's identity](#the-books-identity)). Both must have the community's id
+shape (`metaID`: a letter or digit, then up to 199 letters, digits, `.`, `_` or
+`-`), the same rule the Bridge checks, so a bad id is refused at queue time.
+
+`title` is the work's title from the same lookup, cut to one line of at most 300
+bytes (`bridge.CleanText`). It is optional and additive: the server names a
+fetch that placed no book by it, in its notification and in the console's job
+list. The Bridge ignores it.
 
 ### Progress
 
@@ -94,14 +101,31 @@ already downloading, **parks** instead (`needs_attention`, park code
 `not_writable`), and it carries on once a mapping check reports the library
 writable again.
 
+#### Parked fetches
+
+A parked fetch gives its `download` lane slot back while it waits
+(`jobs.Reporter.Yield`), so an Audible import or a podcast download can run in the
+meantime. A yielded run counts as neither running nor waiting. Once the mapping
+is back it takes a slot again (`Reclaim`, first in line), then checks the mapping
+once more before it writes anything, since the wait for the slot can be long.
+Downloads stay one at a time, and a fetch's sections stay serial.
+
 ### Result
 
 ```json
-{ "library_id": 3, "path": "L. Leslie Brooke/Johnny Crow's Garden", "librivox_id": 192, "files": 9, "bytes": 53477376 }
+{ "library_id": 3, "path": "L. Leslie Brooke/Johnny Crow's Garden", "librivox_id": 192, "files": 9, "bytes": 53477376, "adopted": false }
 ```
 
 `path` is the book path the Bridge's rescan answered. `files` and `bytes` count
 everything the folder holds from the job: the sections and the cover.
+
+`adopted` is `false` only when this run itself renamed the staging folder into
+place, so the folder was vacant until now. Any run that finds the book already
+placed reports `true`: a retry after a failed rescan, a placement the state
+never recorded, or a folder that already holds this project's
+`librivox.json`. The Bridge always sends it. The server reads it as optional, so
+a result from an older Bridge without it still folds
+([The book's identity](#the-books-identity)).
 
 ### Failure codes
 
@@ -114,6 +138,7 @@ message never holds a URL.
 | `exists` | the title's folder and its fallback are both taken, or the author folder is a listed book or holds audio |
 | `disk_full` | the library has less than 1.1 times the rest of a file free |
 | `not_found` | the Bridge's metadata service has no such project, it lists no files, or the work's recording now names another project |
+| (no code) | the metadata service stayed down, or refused the read with a permanent `4xx` ([Fetching from archive.org only](#fetching-from-archiveorg-only)) |
 | `archive_unavailable` | a section is not on archive.org, or archive.org kept failing |
 | `metadata_off` | the Bridge has no metadata service set (`metadata.base_url`) |
 
@@ -138,9 +163,29 @@ The server, not the Bridge, decides which recording a fetched book is:
 
 The fold writes only when the result names the job's own library and project and
 a book indexed there, in a books library. Otherwise it records nothing and logs
-`ErrFetchNotIndexed`. It **replaces** a row already at that path: the Bridge
-placed the book in a folder that was vacant, so such a row is a deleted book's
-leftover. It never touches another path's row.
+`ErrFetchNotIndexed`. It never touches another path's rows. What it does at the
+book's path depends on the result's `adopted`:
+
+| `adopted` | The folder | The fold |
+|---|---|---|
+| `false` | was vacant until this run placed it | replaces the path's `book_matches` row, and drops the path's ASIN and ISBN `book_overrides` (whoever set them) and its `book_enrichment` row, then rebuilds the book's effective metadata. Those rows are a deleted book's leftovers, and `/meta` would ask them before the match. |
+| `true` | is an earlier fetch's book | inserts the match only when the path has none, so an admin's rematch stays, and touches nothing else |
+| absent (an older Bridge) | not known | replaces the match and touches nothing else |
+
+#### The notification
+
+After the fold, the server reads how the book is matched now
+(`catalog.LibrivoxFetchMatch`) and puts it in the `bridge_job_finished` event's
+`librivox_match`:
+
+- `matched`: matched to the job's recording;
+- `kept`: an adopted book already matched to something else, which the fold kept;
+- `unmatched`: neither, or a result the fold refused (another library or
+  project than the job's, or no book indexed at its path).
+
+The message claims the recording only when it is `matched`, and an `unmatched`
+one goes out as a warning. The wording is in
+[Bridge messages](../server/backups-and-notifications.md#bridge-messages).
 
 "Where is this recording" is read from those stored rows alone
 (`catalog.WorkRecordingBooks`): indexed books whose `book_matches` row names that
@@ -154,9 +199,11 @@ Two things drop the identity, because the server does not read
 - a fold lost between the job's commit and the fold, such as a crash;
 - [Clear community matches](../server/api/reference.md#delete-apiv1admincommunity-matches).
 
-Adding the recording again repairs either. When the folder the Bridge plans now,
-or its fallback, is the one it placed (it holds the project's `librivox.json`),
-the Bridge only rescans it, and the fold records the match.
+Adding the recording again repairs either while the path holds no match. When
+the folder the Bridge plans now, or its fallback, is the one it placed (it holds
+the project's `librivox.json`), the Bridge only rescans it and reports
+`adopted: true`, and the fold records the match. A match recorded at the path
+since then, such as a bulk run's, stays, and the notification says `kept`.
 
 ## Fetching from archive.org only
 
@@ -173,7 +220,9 @@ The Bridge reads the manifest from **its own** metadata service
 A metadata service that is down never ends the job. Each read is tried 4 times
 (5, 10 and 20 seconds apart), then the run fails with no code and keeps its
 staging folder and state for the next attempt. A definite `404` for the project
-ends it as `not_found`.
+ends it as `not_found`. Any other permanent `4xx` (all but `404`, `408`, `425` and
+`429`: `metaops.ErrRefused`) is a refusal, not an outage. The run reads once,
+fails at once with no code, and removes its staging folder and state.
 
 Every section and cover URL must be `https` on `archive.org` or a subdomain of it
 (`AllowedURL`). The Bridge checks every section's URL before anything is fetched
@@ -188,12 +237,15 @@ Only audio is kept:
 - a `Content-Type` other than none, `audio/*`, `application/octet-stream`,
   `binary/octet-stream` or `application/ogg` is never written;
 - a whole file whose first bytes (past any zero padding in its first 4 KB) are no
-  ID3 tag, MPEG frame sync, `OggS`, `fLaC` or MP4 `ftyp` is removed;
+  ID3 or APE tag, MPEG frame sync, RIFF `WAVE`, `OggS`, `fLaC` or MP4 `ftyp` is
+  removed;
 - an empty body never counts as a finished section.
 
 Each is tried again like a dropped connection. Three attempts in a row that add
-nothing to a section fail the job `archive_unavailable`, and so does a `4xx`
-other than `408`, `416` and `429`.
+nothing to a section fail the job `archive_unavailable`, and the run keeps its
+staging folder and state as it does through a metadata outage, so the next
+attempt resumes. A `4xx` other than `408`, `416` and `429` also fails it
+`archive_unavailable`, and removes them.
 
 ## Placement and names
 
@@ -246,8 +298,8 @@ the mount's `os.Root`:
 The mapping is checked again before each section, before the cover and marker,
 and before the rename.
 
-The state file records the parent, the destination, the partials' validators and,
-once placed, the count and bytes. So:
+The state file records the library, the paired server's id, the parent, the
+destination, the partials' validators and, once placed, the count and bytes. So:
 
 - a stop, or a lost claim, keeps the staging folder and the state, and the next
   attempt follows them instead of planning again;
@@ -257,10 +309,36 @@ once placed, the count and bytes. So:
   write) is adopted when the folder or its fallback holds this project's
   `librivox.json`, and is never fetched again;
 - a cancel, a failure, or the runner abandoning the job removes the staging
-  folder, an author folder it made that is empty, and the state.
+  folder, an author folder it made that is empty, and the state. When the staging
+  folder can't be removed now (the mount is away, or the library isn't listed
+  yet), the state stays, so the sweep or a re-add finds it;
+- a state of another server is dropped when it is read, so a run plans afresh,
+  and Abandon and the sweep never act on another server's same-numbered library.
+  A state with no server id counts as this server's.
 
-A lost claim that the server never hands out again leaves its staging folder,
-hidden and unindexed.
+A second run of the same library and project, claimed while the first is still
+ending (a re-add right after a cancel of a parked run), waits up to about two
+minutes for it, then fails. Abandon leaves a running fetch alone.
+
+### The 7-day sweep
+
+Like `audible.import`'s, a sweep (`librivoxjob`'s `Handler.Sweep`) clears states unused for 7
+days (`StagingMaxAge`). A run touches its state when it loads it and when it ends.
+The app runs the sweep after each mapping check, not at start-up, because the
+staging folders are inside the libraries, which are known only after a heartbeat
+and the check. The sweep:
+
+- skips a fetch that is running here, and one whose job row the runner still
+  holds (`store.OpenServerJobs`), such as a recovered job waiting for its lane. If
+  it can't read those rows, it sweeps nothing;
+- keeps a state whose library isn't a checked writable mapping now, or whose
+  staging folder can't be removed;
+- otherwise removes the state, its staging folder and the author folder it made.
+  For a placed book or another server's state it drops only the state file;
+- removes other old regular files in the state folder, never a folder.
+
+A staging folder whose state is gone is out of its reach: it stays, hidden and
+unindexed.
 
 ## `.audiosilo/librivox.json`
 

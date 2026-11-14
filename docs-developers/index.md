@@ -108,8 +108,9 @@ reserved for it.
 (`/connect#code=…`), so it never reaches server logs. The connect page redeems it
 with `POST /auth/redeem`, which returns a pairing token that keeps the invite's
 remaining uses and expiry. The page then offers two carriers: an HTTPS `web_url`
-(for the QR code and Universal Links) and an `audiosilo://connect?...` custom-scheme
-deep link. The app or web player exchanges the pairing token for a device-scoped
+(for the QR code: the app's scanner reads it, and a phone's camera app opens the
+web player) and an `audiosilo://connect?...` custom-scheme deep link. The app or
+web player exchanges the pairing token for a device-scoped
 session (`POST /auth/exchange`), claiming one invite use per device. So each device
 being set up can scan the same QR code.
 

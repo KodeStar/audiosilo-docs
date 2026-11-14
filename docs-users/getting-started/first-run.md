@@ -112,7 +112,9 @@ See [Reach your server from outside your home](./remote-access.md).
 
 ![Step 5: the Audiobookshelf import](/img/screenshots/setup/abs.png)
 
-**Open the import** brings each person's listening progress across from Audiobookshelf (see [the import](../admin/import.md)). It opens the import in a new tab, and the flow stays open in this one. Audiobookshelf's `metadata.json` files are read as they are, with nothing to set.
+**Open the import** brings each person's listening progress across from Audiobookshelf (see [the import](../admin/import.md)). It opens the import in a new tab, and the flow stays open in this one.
+
+AudioSilo reads the `metadata.json` files Audiobookshelf leaves beside your books. Audiobookshelf writes them there only with its **Store metadata with item** setting on, which is off by default. [Move over from Audiobookshelf](./coming-from-audiobookshelf.md) covers that, matching your books afterwards, and the folder layouts that read differently.
 
 ### Step 6: Backups and updates
 
@@ -128,7 +130,7 @@ Copy backups to another disk now and then. See [Backups](../admin/backups.md).
 
 ![Step 7: a pairing QR code for your phone](/img/screenshots/setup/phone.png)
 
-Scan the code with your phone's camera. It opens the app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. See [Connect the app to your server](../listening/connecting.md).
+Install the AudioSilo app on your phone, open it and tap **Scan a QR code**, then scan this code. The app signs in as you. The phone's camera app opens the web player instead. The code works once, for ten minutes, and **New code** makes another. See [Connect the app to your server](../listening/connecting.md).
 
 If you opened the console on the server itself (`localhost`), the code needs a home or public address from [step 4](#step-4-how-will-people-reach-the-server). The step tells you if one is missing.
 

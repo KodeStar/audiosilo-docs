@@ -64,7 +64,7 @@ AudioSilo takes each book's details from these sources:
 
 - **Folder names.** The book's folder (or file) is the title, its parent folder the series, and the folder above that the author. A leading number like `03 - Title` is the book's place in the series (`02.5` works too). `Author/Title/` with no series folder works as well.
 - **The files' tags.** Title (usually the album tag), author, narrator, series and genres. AudioSilo ignores junk titles like "Track 01".
-- **Audiobookshelf's `metadata.json`**, when the book's folder has one. See [Coming from Audiobookshelf](#coming-from-audiobookshelf).
+- **Audiobookshelf's `metadata.json`**, when the book's folder has one. See [Audiobookshelf's metadata.json files](#coming-from-audiobookshelf).
 - **The audio itself**: durations and any chapters in the file.
 - **The community database**, for chapters only: a book with no chapters of its own gets them once it is [matched](../admin/books.md#community-chapters).
 
@@ -84,16 +84,16 @@ With tags first, a series tag in the files still wins. With folder names first, 
 
 Many tools put the series name in the album tag, so every book in a series has the same album. AudioSilo spots this and takes the book's own title from its title tag, file name or folder name instead. A book named after its series, like `Dune`, keeps the album as its title.
 
-## Coming from Audiobookshelf
+## Audiobookshelf's metadata.json files {/* #coming-from-audiobookshelf */}
 
-Audiobookshelf can leave a `metadata.json` file in each book's folder (its **Store metadata with item** setting). AudioSilo reads it, so your matches and corrections from Audiobookshelf come across.
+Audiobookshelf can leave a `metadata.json` file in each book's folder. It does so only with its **Store metadata with item** setting on, which is off by default (see [Move over from Audiobookshelf](coming-from-audiobookshelf.md)). AudioSilo reads the file, so your matches and corrections from Audiobookshelf come across.
 
 - Its title, authors, narrators, series, description, genres, ASIN, ISBN and similar details win over the tags.
 - A book with an ASIN or ISBN in the file counts as [matched](../admin/books.md#matching-with-community-metadata) straight away.
 - Your edits in the admin console still win over the file.
 - When the file changes, the next scan picks it up.
 
-AudioSilo never writes to the file. To ignore these files, add `metadata.json` to the library's [skipped files](../admin/libraries.md#skipping-files-and-folders). To bring listening progress across, see [Import your Audiobookshelf history](../admin/import.md).
+AudioSilo never writes to the file. To ignore these files, add `metadata.json` to the library's [skipped files](../admin/libraries.md#skipping-files-and-folders).
 
 ## Covers
 

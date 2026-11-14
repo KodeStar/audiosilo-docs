@@ -1822,8 +1822,11 @@ Two things write it:
   `catalog.MatchAnchor`). A bulk edit refuses one;
 - the fold of a done `librivox.fetch` (`catalog.FoldLibrivoxFetch`), for the book
   the Bridge placed: `how` `accepted`, `set_by` the admin who asked, no run and no
-  offered identifiers. It replaces a row already at that path and touches no
-  other (see [Add from LibriVox](../bridge/librivox.md#the-books-identity)).
+  offered identifiers. By the result's `adopted`, it replaces a row already at
+  that path (a placed book, which also drops the path's leftover ASIN and ISBN),
+  keeps it (an adopted book), or replaces it and drops nothing (no `adopted`, an
+  older Bridge). It touches no other path (see
+  [Add from LibriVox](../bridge/librivox.md#the-books-identity)).
 
 An empty work id unlinks the book. That clears the one book's community values,
 cover and row, as

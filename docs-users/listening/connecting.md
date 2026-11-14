@@ -3,28 +3,41 @@ title: Connect the app to your server
 description: "Sign in to your AudioSilo server from the web player or the iOS and Android apps, with a QR code, an invite or a password."
 ---
 
-Before you can listen, the iOS and Android apps or the web player must sign in to your server. If you run the server, scan a pairing code from the admin console. If someone invited you, open the invite link they sent.
+Before you can listen, the iOS and Android apps or the web player must sign in to your server. In the app, a QR code is quickest. Install the app, tap **Scan a QR code** and scan the code your server shows, with nothing to type.
 
 You do this once per device. The app stays signed in until you sign out, your password changes, or an admin signs the device out.
 
-## If you run the server
+## Sign in the app with a QR code {/* #scanning-the-qr-code-with-your-phone */}
 
-1. Sign in to the [admin console](../admin/console-tour.md).
-2. Find a pairing code, a QR code that signs a device in. The first-time setup ends with a **Connect a phone** step that shows one. Later, open **People**, then your own page, and select **Pair a device**.
-3. Point your phone's camera at the pairing code and tap the link it finds.
+1. Install AudioSilo from the App Store or Google Play. See [Get the apps](mobile-apps.md).
+2. Open the app and tap **Scan a QR code**.
+3. Point the camera at your QR code.
 
-The phone opens the app, or the web player, signed in as you. You can also sign in to the app with your admin username and password. See [First run](../getting-started/first-run.md#set-up-your-server).
+The app signs in to the server and shows **Your library is ready**.
+
+Where to find your QR code:
+
+- **If you run the server**, open the [admin console](../admin/console-tour.md) and go to **People**, your name, then **Pair a device**. The **Connect a phone** step of first-time setup shows one too.
+- **If someone invited you**, it is on your invite page, the page your invite link opens. Open the link on a computer and scan the code from there.
+
+Scan with the app, not with the phone's camera app. The camera app opens a web page instead. An invite's code opens the invite page, and other codes open the web player in the browser.
+
+Each device can scan the same invite's QR code, up to the invite's number of uses.
 
 ## If someone invited you
 
 1. Open the invite link you were sent. It looks like `https://books.example.com/connect#code=…`.
 2. The server's connect page signs the invite in.
 3. Choose where to listen:
-   - **Open web player** - listen in this browser, with nothing to install.
-   - **Open in app** - sign in the app on this device. If nothing happens, the app isn't installed. See [Get the apps](mobile-apps.md).
-   - The QR code - scan it to sign in your other devices, such as your phone.
+   - The QR code: scan it with the app on your phone, as above.
+   - **Open in app**: sign in the app on this device. If nothing happens, the app isn't installed.
+   - **Open web player**: listen in this browser, with nothing to install.
 
-![The server's connect page with a pairing QR code and Open in app and Open web player buttons](/img/screenshots/server/connect-page.png)
+![The server's connect page with a pairing QR code, Open in app and Open web player, and the app store links](/img/screenshots/server/connect-page.png)
+
+Opened on a phone, the page leads with getting the app instead of a QR code. Install AudioSilo from the store links on the page, then open the invite link again and tap **Open in app**. Or tap **Open web player** to listen in the browser now. An Android phone without Google Play can download the app's APK from the link under the store buttons.
+
+![The invite page on a phone: get the app first, the store links, then Open web player and Open in app](/img/screenshots/server/phone-connect-invite.png)
 
 :::tip
 Anyone who opens your invite link can sign in as you, so don't post it publicly.
@@ -32,30 +45,26 @@ Anyone who opens your invite link can sign in as you, so don't post it publicly.
 
 If the invite has expired or is used up, the page says so. Ask for a new one. The admin's side is in [Invite people](../admin/users-and-invites.md).
 
-## Scanning the QR code with your phone
-
-Point your phone's camera at a pairing code and tap the link it finds. The phone opens signed in, in the web player or the app.
-
-Each device can scan the same invite's QR code, up to the invite's number of uses. If the app is installed, you can also tap **Scan a QR code** on its connect screen. Only the iOS and Android apps can scan.
-
 ## Connecting from the app
 
 **In the web player** there is nothing to type. It already knows the server it came from, so tap **Sign in**.
 
 ![The web player's connect screen: the server it belongs to, with Sign in and Try the demo](/img/screenshots/web-player/connect.png)
 
-**In the iOS and Android apps:**
+**In the iOS and Android apps**, without a QR code:
 
-1. Enter the server address, for example `books.example.com`, and tap **Continue**.
+1. Under **Or enter the server address**, enter the address, for example `books.example.com`, and tap **Continue**.
 2. Check the server the app found and tap **Sign in**.
 3. Choose **Invite code** or **Username and password**.
 4. Enter your code, or your username and password, and tap **Sign in**.
+
+If you run the server, your admin username and password work here too. The sign-in step also has **No password? Scan a QR code instead**, which opens the scanner.
 
 The app adds `https://` to the address. Type `http://` yourself for a server that only answers plain HTTP. Do the same at home for a server on its default self-signed certificate (see [Plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect)).
 
 If the server can't be reached, check the address for typos and that the server is on. A home address like `192.168.1.20:8080` only works on your home network.
 
-Instead of an address, you can tap **Scan a QR code** in the apps, or **I have a pairing link** in the web player and paste the link.
+The web player has no scanner. Instead, tap **I have a pairing link** and paste the link.
 
 An **invite code** looks like `9M4K-P2TQ-WX7V-3RHD`. Many accounts have no password, which is normal. You can [set one](account.md#password) whenever you like.
 
@@ -89,7 +98,7 @@ A [password](account.md#password) is the most dependable way back in. With one, 
 
 You don't need a new invite:
 
-- On a signed-in device, open your [account page](account.md#pair-another-device) and tap **Show a pairing code**. Scan it with the new device within 10 minutes.
+- On a signed-in device, open your [account page](account.md#pair-another-device) and tap **Show a pairing code**. Scan it with the app's **Scan a QR code** on the new device within 10 minutes.
 - Or sign in with your username and [password](account.md#password).
 - A watch signs in from your phone. See [Listen on your Apple Watch](apple-watch.md#setting-it-up) or [Listen on your Wear OS watch](wear-os.md#setting-it-up).
 

@@ -453,7 +453,7 @@ mistyped entry still verifies.
 | | `invite` | `recovery` |
 |---|---|---|
 | Minted by | Admin (`POST /admin/users/{id}/authcode`) | The user themself (`POST /auth/recovery`) |
-| Defaults | 5 uses, 1-day expiry (`defaultAuthCodeMaxUses` and `defaultAuthCodeTTLDays` in `handlers_admin.go`). An explicit `0` means unlimited uses or no expiry. | Unlimited uses, never expires |
+| Defaults | 5 uses, 1-day expiry (`defaultAuthCodeMaxUses` and `defaultAuthCodeTTLDays` in `handlers_admin.go`). An explicit `0` means unlimited uses or no expiry. The console's invite dialog asks for 7 days unless changed. | Unlimited uses, never expires |
 | Cardinality | One *active* invite per user | At most one recovery code per user |
 | Listable | Yes (`ListAuthCodes`, metadata only) | No. It shows only as `User.HasRecovery` |
 | Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin). A password change or reset, or Sign out everywhere, also removes a leaked code (see [Password changes end sessions](#password-changes-end-sessions)). |

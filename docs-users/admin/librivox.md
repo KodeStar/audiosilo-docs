@@ -38,8 +38,9 @@ To add a book, open **Library > LibriVox** in the admin console.
 3. Pick the library, when you have more than one books library.
 4. Press **Add**, or **Add to** *your library* when there is only one.
 
-The recording's row shows the Bridge's progress. When it is done, the row says
-**In library** with a link to the book.
+The recording's row shows the Bridge's progress, and the library it is going
+into when you have more than one. When it is done, the row says **In library**
+with a link to the book.
 
 **LibriVox page** on a row opens the recording on librivox.org.
 
@@ -62,8 +63,14 @@ books library.
 The book goes to the library you opened the page from. With more than one books
 library, you can pick another under **Add to**.
 
-The row shows the progress, with **Cancel** while it runs. Once the book is in,
-the row says **In your library**, and **Open** opens its page.
+The row shows the progress, with **Cancel** under it while it runs. Once the
+book is in, the row says **In your library**, and **Open** opens its page.
+
+You can leave the page while the book downloads. While the app stays open, the
+Library shows the book as soon as it is in.
+
+If the Bridge goes offline while the page is open, the page stays and says so.
+You can keep searching, and **Add** and **Cancel** wait until the Bridge is back.
 
 ## What lands in your library
 
@@ -102,8 +109,12 @@ waiting for does not wait.
 **Cancel** in the [Jobs](bridge.md#jobs) list on **Server > Settings > Bridge**.
 A cancelled book leaves nothing behind in the library.
 
-If the Bridge stops part way, it picks up where it left off: sections it already
-downloaded are kept, and a section cut off part way usually resumes.
+If the Bridge stops part way, it picks up where it left off. Sections it already
+downloaded are kept, and a section cut off part way usually resumes. That holds
+when archive.org stops answering too, so adding the book again later carries on.
+
+A download left unfinished and unused for 7 days is cleared from the Bridge's
+hidden folder.
 
 ## When adding fails
 
@@ -122,7 +133,14 @@ The row says why. Press the add button (**Add to** *your library*) again to try 
 ## Good to know
 
 - The server tells you when a book is added or fails, in the bell and your
-  [notifications](notifications.md).
+  [notifications](notifications.md). The message says how the book is matched:
+  - **matched to its LibriVox recording**, the usual case;
+  - **kept the match it had**, when the book was in the library already with
+    another match;
+  - **couldn't be matched**, sent as a warning. Add the recording again from
+    **Library > LibriVox** to match it.
+- A link to **Find on LibriVox** for a library this server doesn't have shows
+  **This link doesn't point to anything here.**
 - [Clear community matches](server.md#community-metadata) removes the match of
   books added from LibriVox too. To get it back, press **Add** on the recording
   again. When the book is still in the folder the Bridge put it in, the Bridge

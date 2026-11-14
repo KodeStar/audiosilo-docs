@@ -72,6 +72,7 @@ Everything else works with the server alone.
 
 - Install with [Docker](getting-started/quickstart-docker.md), on [Unraid](getting-started/install-unraid.md), on a [Synology NAS](getting-started/install-synology.md), or [without Docker](getting-started/install-binary.md).
 - [Set up your server](getting-started/first-run.md): the first-run checklist.
+- [Move over from Audiobookshelf](getting-started/coming-from-audiobookshelf.md): read the same folders, then bring book details and listening history across.
 - [Reach your server from outside your home](getting-started/remote-access.md): a domain name and a trusted certificate.
 - [Back up your server](admin/backups.md): scheduled and manual backups, and restore.
 - [Notifications](admin/notifications.md): new books, failed scans and sign-ins, on your phone, Discord or a webhook.

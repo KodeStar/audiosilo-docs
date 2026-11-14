@@ -687,14 +687,17 @@ module:
 - a **writing** kind for a books library: it needs a writable mapping, else
   `library_not_writable`, and a podcast library is `not_book_library`;
 - no book path, since the book does not exist until the job places it;
-- params `{librivox_id, work_id, recording_id, library_id}`, built by the server;
+- params `{librivox_id, work_id, recording_id, library_id, title}`, built by the
+  server (`title` optional);
 - deduped per library and project;
 - **not** quiet: done is notified, named by the book its result names; a failed
-  or parked one names only its library, since only a done job's result names the
-  book.
+  or parked one is named by the params' `title`, since only a done job's result
+  names the book.
 
 It runs in the `download` lane, so it takes turns with `audible.import` and the
-ordinary `podcast.fetch` slot, and its partial download survives a restart. When
+ordinary `podcast.fetch` slot, and its partial download survives a restart. While
+it is parked it gives its slot back (`jobs.Reporter.Yield`) and takes one again
+before it carries on (see [Parked fetches](librivox.md#parked-fetches)). When
 it ends done, the server records the book as the recording. See
 [Add from LibriVox](librivox.md).
 

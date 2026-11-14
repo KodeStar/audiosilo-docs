@@ -485,13 +485,16 @@ and two URL carriers.
 **Server:**
 
 - `internal/api/qr.go` `buildPairing` emits two links:
-  - `web_url` (`<base>/web/connect?token=…`) is encoded in the QR. It opens the app
-    through Universal Links or App Links on claimed domains, and otherwise the web
-    player.
+  - `web_url` (`<base>/web/connect?token=…`) is encoded in the QR. The app's own
+    scanner reads it. A phone's camera app opens it at the web player, since the
+    store apps claim no domain (only a build named in `app_links` does).
   - `uri` (`audiosilo://connect?server=<base>&token=<pairing_token>`) uses the custom
     scheme.
 - The flow is `POST /auth/redeem` (a code for a pairing payload), then
   `POST /auth/exchange` (a pairing token for a device-scoped session).
+- The redeem payload adds two optional fields for the connect page: `admin`
+  (true when the code pairs an admin's account) and `links.apk` beside
+  `links.ios` and `links.android` (the store links). The player reads neither.
 
 **Frontend:**
 
@@ -1610,14 +1613,17 @@ not quiet, deduped per library and project, and in no module.
   `GET /admin/librivox/work` and `POST /admin/librivox/fetch`. All are `404
   metadata_off` while community metadata is off. There is no `/server` flag: a
   client gates on the `librivox` feature.
-- The server builds its params, `{librivox_id, work_id, recording_id, library_id}`,
-  with the work and recording from metaserve's `lookup?librivox_id=` at queue
-  time. The Bridge reads them leniently and ignores unknown fields.
+- The server builds its params, `{librivox_id, work_id, recording_id, library_id,
+  title}`, with the work, recording and title from metaserve's
+  `lookup?librivox_id=` at queue time. `title` is optional and the Bridge ignores
+  it. The Bridge reads the params leniently and ignores unknown fields.
 - The Bridge reads the manifest from its own metadata service and downloads only
   from `https` archive.org hosts, checking every redirect.
 - It reports progress steps `manifest|download|cover|place|rescan`. The result is
-  `{library_id, path, librivox_id, files, bytes}`, where `path` is the book path
-  that `POST /bridge/rescan` answered.
+  `{library_id, path, librivox_id, files, bytes, adopted}`, where `path` is the
+  book path that `POST /bridge/rescan` answered. `adopted` is `false` only when
+  this run placed the folder. The Bridge always sends it, and the server reads it
+  as optional for an older Bridge.
 - A failure is `{code, message}`, with `not_writable`, `exists`, `disk_full`,
   `not_found`, `archive_unavailable` or `metadata_off`.
 - It uses no new Bridge route.
@@ -1625,7 +1631,10 @@ not quiet, deduped per library and project, and in no module.
   (`{version, librivox_id, work_id, recording_id, archive_id}`) into the book's
   folder. The server does not read it yet, and its scanner skips the name.
 - The server folds a done result into the book's `book_matches` row
-  ([Matches by work id](#matches-by-work-id)).
+  ([Matches by work id](#matches-by-work-id)), by `adopted`: a placed book
+  replaces the path's match and drops its leftover ASIN and ISBN, an adopted one
+  keeps a match already there. The `bridge_job_finished` event carries
+  `librivox_match` (`matched`, `kept`, `unmatched`).
 
 See [Add from LibriVox](../bridge/librivox.md).
 
