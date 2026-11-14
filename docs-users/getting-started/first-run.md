@@ -59,9 +59,10 @@ The `reset-admin` command sets a new admin password and prints it once. Run the 
 
 - After `-u`, use your `PUID:PGID`. The reminder prints the right ones.
 - `--data` goes before `reset-admin`. With several admins, add the username at the end.
-- It works while the server runs. Every session that used the old password is signed out within a minute, and the first-run auth code stops working.
+- It works while the server runs. Every session that used the old password is signed out within a minute, and the first-run auth code stops working. If it says revoking that code failed, the new password still works: revoke the code in [People > Invites](../admin/users-and-invites.md).
+- It refuses while a restore is waiting for the next start, since the restore would replace the new password. Start the server once, or cancel the restore in [Backups](../admin/backups.md), then run it again.
 
-The reminder stops once an admin signs in with a password, or after `reset-admin`. A server started with `--setup` never prints it.
+`reset-admin` also ends the reminder. A server started with `--setup` never prints it.
 
 ### Choose the password in your browser instead
 
@@ -185,7 +186,6 @@ If you opened the console on the server itself (`localhost`), the code needs a h
 Everyone else needs an invite of their own. **Invite someone** opens one in People. An invite signs them in, so they don't need a password.
 
 **Finish setup** ends the flow and opens the Overview. If a choice needs a restart (a local metadata copy or an HTTPS setting), the Overview reminds you until the server restarts.
-
 
 ## The Finish setting up card
 

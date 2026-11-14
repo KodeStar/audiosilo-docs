@@ -178,7 +178,7 @@ await step('the console flow', async () => {
   await tall('setup/phone.png');
   await button('Finish setup').click();
 
-  // The Overview card lists the two skipped steps.
+  // The Overview card lists the skipped Bridge step.
   const card = page.locator('[aria-labelledby="finish-setup-heading"]');
   await card.waitFor({timeout: 20000});
   await card.getByRole('link', {name: 'Add a Bridge'}).waitFor({timeout: 10000});
