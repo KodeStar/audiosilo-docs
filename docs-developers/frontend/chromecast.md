@@ -141,6 +141,7 @@ The pure rules are `cast-media.ts`:
   | `codec` | The book needs the transcoder and the server has none. |
   | `no-connection` | The book's server isn't signed in. |
   | `episode` | A podcast episode, which never casts. |
+  | `proxy` | The address in use is the origin of the connection's [proxy headers](state-and-data.md#proxy-headers) (`behindProxy`). The receiver fetches by itself and can't send them, so the proxy would turn it away. |
 
 - **`castNeedsTranscode`** is true for the server's `direct_playable: false`, or for a
   codec the Default Media Receiver doesn't play (`CAST_UNPLAYABLE_CODECS`: ALAC, the

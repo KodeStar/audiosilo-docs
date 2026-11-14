@@ -5,7 +5,7 @@ description: "Set a password, pair another device, sign out a lost phone, check 
 
 Each server you use has its own **account page**. There you set your password, pair another device, see your signed-in devices, and sign out.
 
-![A server's account page on a computer: Password, Pair another device, signed-in devices, Listening sync and API keys](/img/screenshots/web-player/account.png)
+![A server's account page on a computer: Password, Pair another device, Proxy headers, signed-in devices, Listening sync and API keys](/img/screenshots/web-player/account.png)
 
 ## Opening it
 
@@ -42,6 +42,18 @@ On a phone with a paired watch, a card signs the watch in to this server. On an 
 ## At home and away
 
 If the server has home and away addresses, an **At home and away** card lists them. In the apps, the one in use is marked **In use**. See [At home and away](connecting.md#at-home-and-away).
+
+## Proxy headers
+
+For a server behind a sign-in proxy, the **Proxy headers** card holds the headers this device sends with its requests. See [Behind a sign-in proxy](../getting-started/remote-access.md#behind-a-sign-in-proxy) for what they are for.
+
+1. Tap **Add headers** (or **Change headers**).
+2. If the server has more than one `https://` address, pick the one that goes through the proxy under **Send to**.
+3. Enter each header's name and value, then tap **Save headers**.
+
+The card then lists each header's name and the address it's sent with requests to. It never shows a saved value again. When you change the headers, a saved value's field says **Kept as it is**, and the value stays unless you type a new one. **Remove headers** stops this device sending them.
+
+The card needs an `https://` address. If this device reaches the server only over plain HTTP, the card says so and offers no **Add headers**. A demo account shows the card only when it already has headers.
 
 ## Signed-in devices
 

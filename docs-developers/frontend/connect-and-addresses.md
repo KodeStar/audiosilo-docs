@@ -32,6 +32,22 @@ counted by `StepDots` (`CONNECT_STEPS`): Start, Sign in and Ready.
   [`lan_url`](../server/configuration.md#home-address-lan_url)).
 - The server's error.
 
+#### Proxy headers on the connect screen
+
+Off the served player, a **Proxy headers** toggle opens a `ProxyHeadersEditor`
+for the address as the listener typed it (`typedUrl`, never the field after the
+flow rewrites it to a plain-http fallback). The set is held in memory as the
+session's `pendingProxyHeaders`, and only for an https origin. The flow's bare
+clients are `connectClient(base)` (`src/api/connect-client.ts`) and
+`probeServerId`, through `connectProxyHeaders(url)`: the pending set for that
+origin, else a signed-in connection's set for it (a second person on the same
+server). A reconnect's sign-in (`ownId`) takes only the pending set or that
+connection's own set, never another connection's. The scanner hands a code back
+to a new `ConnectStart`, which takes up the pending set, so a QR code pairs with
+the headers when its address is the field's. The flow's layout drops the pending
+set when the flow is left, and a sign-in stores it with the connection (see
+[Proxy headers](state-and-data.md#proxy-headers)).
+
 #### Pairing links, QR codes and invite links
 
 Native offers **Scan a QR code** (`/connect/scan`, `expo-camera`). Web offers **I have a

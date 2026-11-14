@@ -13,7 +13,8 @@ on your phone. There is no subscription, and your files are never changed.
 ## Get started
 
 1. Install the server with [Docker](getting-started/quickstart-docker.md), on
-   [Unraid](getting-started/install-unraid.md), or
+   [Unraid](getting-started/install-unraid.md), on a
+   [Synology NAS](getting-started/install-synology.md), or
    [without Docker](getting-started/install-binary.md).
 2. [Set up your server](getting-started/first-run.md): create your admin account
    and add your audiobook folder.

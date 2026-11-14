@@ -43,6 +43,7 @@ Everything else works with the server alone.
 - [Cast](listening/chromecast.md): play on a Chromecast, TV or Nest speaker.
 - [App settings](listening/settings.md): playback, downloads, appearance and language.
 - [Your account](listening/account.md): password, devices and listening sync.
+- [Connect through a sign-in proxy](getting-started/remote-access.md#behind-a-sign-in-proxy) such as Cloudflare Access, with headers the app sends.
 - [API keys](listening/api-keys.md): let a dashboard or script reach your server.
 
 ## Household and sharing
@@ -69,7 +70,7 @@ Everything else works with the server alone.
 
 ## Running the server
 
-- Install with [Docker](getting-started/quickstart-docker.md), on [Unraid](getting-started/install-unraid.md), or [without Docker](getting-started/install-binary.md).
+- Install with [Docker](getting-started/quickstart-docker.md), on [Unraid](getting-started/install-unraid.md), on a [Synology NAS](getting-started/install-synology.md), or [without Docker](getting-started/install-binary.md).
 - [Set up your server](getting-started/first-run.md): the first-run checklist.
 - [Reach your server from outside your home](getting-started/remote-access.md): a domain name and a trusted certificate.
 - [Back up your server](admin/backups.md): scheduled and manual backups, and restore.

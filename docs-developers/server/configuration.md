@@ -886,7 +886,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_SESSION_DAYS` | `activity.session_days` | integer, 30-3650 |
 | `AUDIOSILO_BACKUP_SCHEDULE` | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` |
 | `AUDIOSILO_BACKUP_KEEP` | `backups.keep` | integer, 1-365 |
-| `AUDIOSILO_BACKUP_DIR` | `backups.dir` | absolute path |
+| `AUDIOSILO_BACKUP_DIR` | `backups.dir` | absolute path; the Docker entrypoint also gives the folder to `PUID`/`PGID` (see [Under Docker](#under-docker)) |
 | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | `modules.podcasts.enabled` | `strconv.ParseBool` (`true`/`1`/…); locks the console toggle when set |
 | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | `modules.contributions.enabled` | `strconv.ParseBool` (`true`/`1`/…); each module's toggle is `AUDIOSILO_MODULES_<ID>_ENABLED` |
 | `AUDIOSILO_PODCAST_DISCOVERY_ENABLED` | `podcasts.discovery.enabled` | `strconv.ParseBool` (`false`/`0`/… turns it off); read at start |
@@ -1252,3 +1252,52 @@ tools.
 | `<data>/restore.json` | A restore waiting for the next start (removed when it is applied or refused) |
 | `<data>/restore-result.json` | How the last restore went |
 | `<data>/audiosilo.db.before-restore-<time>` | Only when a restore couldn't copy the database it replaced: that database's files, renamed aside |
+
+## Folder permissions
+
+The server needs read and write access to its data and backups folders and read
+access to its libraries. It checks them itself on every install, and the Docker
+image's entrypoint checks them once more before the server starts.
+
+### The server's own checks
+
+The server words a refused folder in `internal/fsaccess`. Before
+`config.Load` and `store.Open`, the launcher writes a probe file in the data
+folder and opens `audiosilo.db`, `-wal` and `-shm` read-write. A refusal stops
+the start with `the data folder isn't usable: ...`, naming the path, the user
+`uid:gid`, the owner and the fix, rather than SQLite's "unable to open database
+file". The fix (`fsaccess.Hint`) is `PUID` and `PGID` set to the owner only in a
+container (`/.dockerenv` or `/run/.containerenv`); outside one it is running the
+server as the owner. It never advises running as root. It warns `backups will fail` at start when
+the backups folder exists and refuses it (`backup.Service.CheckFolder`). A
+refused backup is `permission_denied` (see
+[Backups](backups-and-notifications.md#status)), and a library root the server
+can't list is [unavailable](scanner.md#the-unavailable-root-guard).
+
+### Under Docker
+
+The image's `docker-entrypoint.sh` starts as root, gives the server's user its
+folders, checks them as that user, then drops to it with `su-exec PUID:PGID`
+(default `1000:1000`). The server runs as root only when `PUID` is `0`.
+`su-exec` sets only that group, so access a host user has through another group
+doesn't reach the server.
+
+- **Ownership.** It runs `chown -R` on the data folder (`--data`, `/data` by
+  default). When `AUDIOSILO_BACKUP_DIR` is an absolute path, it gives the user
+  that folder and only AudioSilo's own files in it (`audiosilo-*.db` and
+  `.audiosilo-*`, regular files, `chown -h`), since a backups share may hold other
+  apps' files. A path that is the container's root, however spelled, or that
+  holds a `..`, is skipped. The data folder's `chown -R` crosses into a share
+  mounted under it, so a backups share belongs at a path of its own, never
+  `/data/backups`.
+- **Checks.** As the server's user, it writes a `mktemp` file in the data and
+  backups folders and reads one entry of every other mounted folder (the
+  audiobooks, by the rule of the setup's mount hints). For a folder that fails
+  it prints the folder, the user, the folder's owner and the fix (`PUID` and
+  `PGID` set to the owner, or giving the user access), and carries on. Every
+  check and every step on the backups folder is bounded by `timeout 5`. A check
+  cut off says the folder didn't answer, with no owner advice.
+- **Under `--user`** (compose `user:`) it skips the chown, runs the same checks,
+  and its fix names `user:` instead of `PUID` and `PGID`.
+
+`scripts/test-entrypoint.sh` tests the entrypoint in Docker. CI doesn't run it.

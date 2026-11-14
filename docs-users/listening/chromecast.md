@@ -37,6 +37,7 @@ Which addresses work:
 - **HTTPS with a trusted certificate** works, such as [Let's Encrypt](../getting-started/remote-access.md#a-real-certificate-with-autocert-lets-encrypt) or a [reverse proxy](../getting-started/remote-access.md#behind-a-reverse-proxy) with a real certificate.
 - **A self-signed `https://` address doesn't work.** A Cast device can't click through a certificate warning.
 - **`localhost` doesn't work.** Connect to the server by its network address instead.
+- **An address behind a sign-in proxy doesn't work.** A Cast device can't send the [proxy headers](../getting-started/remote-access.md#behind-a-sign-in-proxy), so the app won't cast through that address.
 
 A downloaded book still casts from your server, so the server must be reachable.
 

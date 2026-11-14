@@ -2039,8 +2039,12 @@ drops. The scanner **aborts without pruning** when any of these holds:
 1. the root doesn't answer the bounded root probe within 2 seconds. A hung
    hard mount would otherwise hold the one scan worker and every scan queued
    behind it;
-2. the library root is missing or not a readable directory (`os.Stat` before
-   discovery);
+2. the library root is missing or not a directory (`os.Stat` before
+   discovery), or the server's user may not list it (`fsaccess.CheckRead`). A
+   root another user owns, as on a NAS share, would otherwise read as an empty
+   library scanned OK. The error names the folder, the user the server runs as,
+   the folder's owner and the fix (see
+   [Folder permissions](configuration.md#the-servers-own-checks));
 3. discovery returns **zero** audio files while the index still has books. An
    existing but empty mount point looks exactly like this, and letting the
    prune step run would wipe every indexed book. The one exception: when the

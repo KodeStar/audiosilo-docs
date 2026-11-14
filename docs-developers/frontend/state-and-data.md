@@ -39,6 +39,10 @@ endpoints themselves.
     server keeps the stored app when a request has no header.
 
   See [Client identification](../server/api/index.md#client-identification-x-audiosilo-client).
+- **Proxy headers.** A connection's [proxy headers](#proxy-headers) are the
+  constructor's sixth argument. `request()` and every hand-built request send
+  them, `authHeaders()` hands them to the media layers with the token, and
+  `proxyHeadersFor(url)` gives them alone for a URL that carries `?token=`.
 - **Path-addressed everything.** Content calls are
   `GET /libraries/{id}/{item,chapters,cover,stream}?path=…` and the like. The path
   rides as a query parameter, never a URL segment, because encoded slashes are a
@@ -1546,6 +1550,51 @@ Tokens are stripped before the metadata is persisted.
 `serverId` on a connection persisted before that field existed. It runs after
 [the launch reset](#the-launch-reset), so it never reads wrongly-keyed records.
 
+#### Proxy headers
+
+A connection to a server behind a sign-in proxy (Cloudflare Access, Authentik,
+Authelia) can carry custom headers, `Connection.proxyHeaders` (`{ origin,
+headers }`). The rules are in `src/lib/proxy-headers.ts` and the storage in
+`src/lib/proxy-headers-store.ts`. They are credentials, kept like the token:
+
+- **Storage.** They live in memory and in secure-store under
+  `audiosilo.proxy-headers.<id>` (see [Storage layers](#storage-layers)). `persist`
+  strips them and keeps only the non-secret `hasProxyHeaders` marker, and
+  `hydrate` reads them beside the token for a marked connection only. They never
+  reach AsyncStorage, the query cache, a URL or a log line.
+- **Lifetime.** They go wherever the token goes: sign-out, a retired identity,
+  the auth reset, a connection `hydrate` drops. The identity migration copies them
+  in its token step (`copyProxyHeaders`). `removeConnection` deletes the token
+  first, so a failed delete stops the removal with the headers still kept. A new
+  connection to a server another connection here reaches with headers takes a
+  copy of that set under its own id.
+- **One https origin.** A set names the origin (scheme, host and port) it was
+  entered for. `proxyHeaderRecord` is the one rule: a request to that origin
+  carries the set, and any other URL gets none: a plain-http URL, another port,
+  or the home address unless the set was entered for it (an https home address
+  is one of the Account card's choices). A set for an http origin is refused at entry and dropped
+  at load (`cleanProxyHeaders`). Reserved names (`Authorization`, `Cookie`,
+  `Host`, `Range`, `Content-Type`, `Content-Length`, `Connection`,
+  `Transfer-Encoding`, `X-AudioSilo-Client`) and values with control characters
+  are refused the same way.
+- **Web.** Only a request same-origin with the page carries them. The server's
+  CORS lists a fixed set of request headers, so a custom one cross-origin would
+  fail its preflight. `<img>` and `<audio>` can't carry them and rely on the
+  proxy's browser sign-in.
+- **Redirects** are the platform HTTP stack's to follow. On Android (checked
+  2026-11-14 on a Pixel 6a, a GET 302 from https to another https host) every
+  stack (okhttp fetch and downloads, expo-image, Media3) sends the custom headers
+  on to the new origin and drops `Authorization`; iOS is unchecked. The origin rule
+  covers only the first request (follow-up fe#295). The UI says "sent with requests
+  to &lt;origin&gt;" and never claims more (`src/i18n/locales.test.ts` refuses
+  "nowhere else", "go only" and "https only" in every locale).
+- **Not carried:** Chromecast (`castBlockReason` `proxy`), the watch apps (the
+  pair message is unchanged) and calendar apps (the `releases.ics` link).
+
+The connect flow and the Account card that edit them are in
+[Connect and home/away addresses](connect-and-addresses.md#proxy-headers-on-the-connect-screen)
+and [You and settings](you-and-settings.md#account-srccomponentsaccount).
+
 #### Signing in: `setSession`
 
 `setSession({ serverId, user, ... })` refuses an empty `server_id`. Then it adds
@@ -2197,7 +2246,7 @@ There are two deliberate tiers. Know which one you are writing to.
 | Layer | Module | Backing | Used for |
 |---|---|---|---|
 | Plain | `src/lib/storage.ts` (`getItem`/`setItem`/`removeItem`, JSON-serialized) | AsyncStorage on native; localStorage on web, through AsyncStorage's web shim | connection metadata, settings, language pref, downloads registry, progress mirror and queue, the listening outbox, open span and sync state, device id |
-| Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain, Android Keystore) on native. On iOS it uses the `audiosilo.tokens.afu` keychain service, readable after first unlock (see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)). localStorage on web, where SecureStore doesn't exist. | **session tokens** (`audiosilo.token.<connectionId>`), plus profile PIN hashes (`audiosilo.profilePin.<profileId>`) and the device's copy of an upcoming calendar link (`audiosilo.upcoming-calendar.<connectionId>`) |
+| Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain, Android Keystore) on native. On iOS it uses the `audiosilo.tokens.afu` keychain service, readable after first unlock (see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)). localStorage on web, where SecureStore doesn't exist. | **session tokens** (`audiosilo.token.<connectionId>`), plus profile PIN hashes (`audiosilo.profilePin.<profileId>`), the device's copy of an upcoming calendar link (`audiosilo.upcoming-calendar.<connectionId>`) and a connection's [proxy headers](#proxy-headers) (`audiosilo.proxy-headers.<connectionId>`) |
 
 The split exists because these values are secrets. Hardware-backed storage on
 native is worth the extra API for them, while everything else is non-sensitive
