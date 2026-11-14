@@ -184,17 +184,23 @@ that no content cache reads:
   the queue and reading progress;
 - the console's bell and the community metadata cache;
 - a token's last-seen touch (the token cache drops the touched row itself);
-- the Bridge's heartbeat, and its job reports' lease and progress.
+- the Bridge's heartbeat, and its job reports' lease and progress;
+- the unknown-ASIN report's lookups (`unknown_asin_reports`).
 
 A user-state write leaves the generation where it was, unless it changed a row
 outside its table's rule in `userStateTables`. For example, a progress row that
 is added, removed or re-keyed moves the generation, because the Health summary's
-duplicate ranking reads those keys. SQLite's pre-update hook does this check, so
+duplicate ranking reads those keys. An `unknown_asin_reports` row added or
+removed, or its `unknown` answer changed, moves it too, because Health's
+`unknown_asin` kind reads them. A lookup that only renews `checked_at` or
+`sent_at` does not. SQLite's pre-update hook does this check, so
 a misfiled write only empties the caches.
 
 `store.GenMap` is the small map the token cache and the library cache use. Its
 entries all belong to one generation. The caller takes the generation before its
-read, and a newer generation empties the map.
+read, and a newer generation empties the map. The generation sees only this
+process's writes, so the token cache also reads a row again once it is a minute
+old (see [The per-request lookup and its cache](auth-and-security.md#the-per-request-lookup-and-its-cache)).
 
 ### `internal/auth`
 

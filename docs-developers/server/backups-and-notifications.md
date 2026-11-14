@@ -269,7 +269,8 @@ No IP address is stored.
 
 Notes on the longer rows:
 
-- **`user.update`.** Details gain `can_add_members` when the request sets it.
+- **`user.update`.** Details gain `can_add_members` when the request sets it,
+  and `username_was` (the name before) when it renames the account.
   Whenever the request carries `managed_by`, details also gain `managed_by` (the
   owner's username, or `null`), `member_kind` and `member_access`, as the
   account is after the change.

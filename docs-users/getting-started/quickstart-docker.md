@@ -67,7 +67,7 @@ On the very first start, the log shows the admin password and an auth code **onc
   Config file    : /data/config.yaml
 ```
 
-Save both now. [Set up your server](./first-run.md) says what each is for.
+Save both now. [Set up your server](./first-run.md) says what each is for. If you lose them, see [If you lose the password](./first-run.md#if-you-lose-the-password).
 
 ## 3. Open it
 
@@ -81,10 +81,10 @@ The iOS and Android apps connect over plain HTTP at home instead (see [Plain HTT
 
 ## 4. Set up your server
 
-The first time you sign in to the admin console, it opens **Set up your server**. Its first step asks for your books folder:
+The first time you sign in to the admin console, it opens **Set up your server**:
 
-1. Type **`/library`**, the path inside the container.
-2. Press **Check folder**.
+1. Choose your own username and password, or keep the printed ones.
+2. For the books folder, type **`/library`**, the path inside the container, and press **Check folder**.
 3. Follow the remaining steps, or skip any of them.
 
 The server scans your books in the background. [Set up your server](./first-run.md#set-up-your-server) walks through every step. Then [get the apps](../listening/mobile-apps.md) and [connect a phone or browser](../listening/connecting.md).

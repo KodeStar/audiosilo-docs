@@ -24,7 +24,7 @@ Download your system's file from [GitHub releases](https://github.com/KodeStar/a
 ./audiosilo --data ./data
 ```
 
-1. The first start prints the admin password and an auth code **once**. Save them.
+1. The first start prints the admin password and an auth code **once**. Save them. If you lose them, `./audiosilo --data ./data reset-admin` sets a new password (see [If you lose the password](./first-run.md#if-you-lose-the-password)).
 2. Open `https://localhost:8080/admin`. Expect a certificate warning at first; accept it.
 3. Sign in as `admin`. The console walks you through [setting up your server](./first-run.md).
 

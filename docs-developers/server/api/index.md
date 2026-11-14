@@ -313,7 +313,9 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 
 | `code` | Status | When |
 |---|---|---|
-| `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`) |
+| `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`), or renaming one to it (`PATCH /admin/users/{id}`) |
+| `username_required` | `400` | an empty username on `POST /admin/users` or `PATCH /admin/users/{id}` (from 2.7.0) |
+| `current_password_incorrect` | `401` | `POST /auth/password` with a wrong `current_password` (from 2.7.0). A client tells this `401` apart from a session that ended, and keeps the session |
 | `name_taken` | `409` | a library or share name already in use (create, rename) |
 | `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: its rules change only by granting or revoking the library |
 | `config_library` | `409` | a library the server's config declares: renaming it or moving its folder (`PATCH /admin/libraries/{id}`, from 2.4.0), or deleting it (`DELETE /admin/libraries/{id}`, from 2.4.1) |
@@ -508,7 +510,7 @@ Status mapping is consistent across handlers:
 | Status | Meaning |
 |---|---|
 | `400` | malformed body / unknown JSON field, missing or invalid parameter (`path is required`, `invalid cursor`, non-integer `{id}`), path escaping the library root, domain validation (`mode must be "book" or "collection"`, admin needs a password, password too short) |
-| `401` | missing/invalid/expired token, bad credentials, invalid auth code, wrong `current_password` |
+| `401` | missing/invalid/expired token, bad credentials, invalid auth code, wrong `current_password` (`current_password_incorrect`) |
 | `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password/cast token) or on a household member route, a kid household member on the routes a kid can't use, a member managing members, adding a member while it is switched off, bad setup token |
 | `404` | library/user/share/invite not found, another user's (or an unknown) bookmark or note on an edit, `no book at that path`, a path with a hidden (dot) segment on any content route (it reads as missing, after the scope check: `library.ContentPath`), feature not configured (demo mode off, well-known files unset) |
 | `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, the household member cap, a session or pairing code for a member the admin disabled, the admin's household refusals, signing out the device making the request, starting someone's progress on a book they can't see, setup already completed |

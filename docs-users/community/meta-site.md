@@ -169,6 +169,21 @@ recaps for a book you know well.
 
 ![The contribute coverage browser](/img/screenshots/meta/contribute.png)
 
+### Adding a missing book
+
+The database has gaps. A book it doesn't have still plays in AudioSilo, with the
+details from its tags and folders. To add it:
+
+1. Open [Add a book](https://meta.audiosilo.app/add).
+2. Look the book up by its Audible ASIN or its title, in a public copy of
+   Audible's catalogue.
+3. Pick the exact narration and check the details the page would record.
+4. The last step opens a prefilled entry on GitHub for the bot to file.
+
+In the admin console, a book the database doesn't know offers **Add it**, which
+opens this page with the book already filled in, by its ASIN or by its title
+and author. See [Weak matches](../admin/health.md#weak-matches).
+
 Good to know:
 
 - Many entries came from a public Audible catalogue and haven't been checked by

@@ -29,14 +29,15 @@ On the very first start, the log shows the admin password and an auth code **onc
   Config file    : /config/config.yaml
 ```
 
-Save both now. [Set up your server](./first-run.md) says what each is for.
+Save both now. [Set up your server](./first-run.md) says what each is for. If you lose them, see [If you lose the password](./first-run.md#if-you-lose-the-password).
 
 ## 3. Open it and add your books
 
 1. Click the AudioSilo icon and choose **WebUI**. Your browser warns about the certificate the first time; accept it.
 2. Go to `/admin` and sign in as `admin` with the printed password.
-3. **Set up your server** opens. For the books folder, type **`/audiobooks`** (the path inside the container, not the `/mnt/user/...` share) and press **Check folder**.
-4. Follow the remaining steps, or skip any of them.
+3. **Set up your server** opens. Choose your own username and password, or keep the printed ones.
+4. For the books folder, type **`/audiobooks`** (the path inside the container, not the `/mnt/user/...` share) and press **Check folder**.
+5. Follow the remaining steps, or skip any of them.
 
 [Set up your server](./first-run.md#set-up-your-server) walks through every step. Then [connect a phone or browser](../listening/connecting.md). The web player is at `/web`.
 

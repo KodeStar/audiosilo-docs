@@ -186,10 +186,16 @@ stays valid while the database's
   generation alone. So the touch drops that token's cached row itself
   (`auth.Service.resolve`).
 - Expiry needs no write, so the cache checks it on every hit.
+- A cached row is read again once it is a minute old (`maxCachedTokenAge`). The
+  generation counts writes through this process's handle only, and
+  `reset-admin` run beside a running server writes from another process (see
+  [Commands](configuration.md#cli-flags-cmdaudiosilo)). Such a write is seen
+  within a minute, at one more read a minute for a token in use.
 - The cache never holds a cast token (its grant and parent) or a pairing token
   (its one use), and holds nothing for a refusal.
 
-A write that bypassed the generation would leave a revoked token honoured.
+A write through this process that bypassed the generation would leave a
+revoked token honoured until the row's minute was up.
 
 ### Cast tokens
 
@@ -563,12 +569,19 @@ or change their own password:
   password-less player user, onboarded by pairing, who wants a way back in.
 - **Changing** an existing password requires `current_password`
   (`auth.CheckPassword`), so a stolen session token can't plant a persistent
-  credential.
+  credential. A wrong one is `401` with `code: "current_password_incorrect"`,
+  which a client tells apart from a session that ended: the console keeps its
+  session and asks again.
 - An **empty** password is rejected. Only an admin can clear a password, through
   `PATCH /admin/users/{id}`. The guard that an admin must keep a password still
   applies underneath: `SetPassword` refuses to clear an admin's password.
 - A change ends the caller's other sessions (see
   [Password changes end sessions](#password-changes-end-sessions)).
+- An admin's change counts as choosing their own password
+  (`auth.NoteOwnPassword`), as does `PATCH /admin/users/{id}` on the admin's own
+  account. For the first-run admin it ends the start's sign-in hint and turns
+  `GET /admin/setup`'s `printed_password` false (see
+  [Configuration](configuration.md#cli-flags-cmdaudiosilo)).
 
 ## Password changes end sessions
 
@@ -613,7 +626,8 @@ A [cast token](#cast-tokens) needs no write. Its parent session is checked on
 every request, so it ends with the session that minted it.
 
 The write moves the content generation, so the token cache refuses an ended
-token on the very next request, media `?token=` included. A shipped app takes
+token on the very next request (`reset-admin`, from another process, within a
+minute), media `?token=` included. A shipped app takes
 its existing 401 path: it shows as signed out, and the person pairs again.
 
 **The sign-in race.** A password sign-in could verify the old hash while the
