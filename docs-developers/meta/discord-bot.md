@@ -1,6 +1,6 @@
 ---
 title: Discord notification bot
-description: Deploy the private AudioSilo watchlist bot and understand its held feed notifications and delayed community announcements.
+description: Deploy the private AudioSilo watchlist bot and understand when its feed notifications and community announcements are sent.
 ---
 
 ## Purpose
@@ -18,10 +18,10 @@ fetch is a silent baseline; reordering and entries aging out do not notify.
 A new item ID waits `NOTIFY_HOLD` (6 hours by default) before its DM.
 [meta-sync](./sync-bot.md#every-stores-copy-of-a-book) often adds a book's
 other stores in a later cycle, so the wait lets the linked page fill in first.
-If the entry changes while it waits, the one DM carries the latest version, and
-the wait still counts from when the ID first appeared. A change to an entry
-that is not waiting, such as a date correction to one already sent or in the
-baseline, goes out at once. Polling continues while entries wait, and `status`
+If the entry changes while it waits, its DM carries the latest version the bot
+has read, and the wait still counts from when the ID first appeared. A change
+to an entry that is not waiting, such as a date correction to one already sent
+or in the baseline, goes out at once. Polling continues while entries wait, and `status`
 counts them among its queued notifications. `NOTIFY_HOLD=0` sends new entries
 at once and releases anything still waiting.
 
