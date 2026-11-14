@@ -24,8 +24,8 @@ needs an admin.
 1. Click **Invite someone** (on the People or Invites page).
 2. Enter **Their name**.
 3. Optionally, enter a **Password (optional)** of at least 8 characters. It
-   lets them sign in to the web player with their name and password too. Leave
-   it empty and they pair their devices with the link only.
+   lets them sign in with their name and password too, in the web player or the
+   app. Leave it empty and they pair their devices with the link only.
 4. Choose **What can they listen to?**: **All libraries**, one library, one of
    your [shares](sharing.md), or **Decide later**.
 5. Choose how many **Devices it can pair** (5 by default) and when it
