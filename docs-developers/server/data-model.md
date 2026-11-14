@@ -2058,7 +2058,7 @@ These are scanned values, like `released`, and every index rewrites them.
 ### Match hints from an import
 
 `book_hints` (migration 0074) holds the ASIN and ISBN another app gave a book.
-Today the only source is `abs`: an applied
+Today the only source is `abs`. An applied
 [Audiobookshelf import](#listening-imports) writes one row for each book here that
 an ABS book with an identifier pairs with (`importer.identifiersFor`, by path, then
 by title and author, across every book; see
@@ -2091,8 +2091,8 @@ only, never its import hint (`catalog.UnknownASINCandidates`).
 replacing the person's previous import, deletes that import's rows by `import_id`
 (index `idx_book_hints_import`). A row a later import took over stays with it, and
 a row this import took over from an earlier one goes, even while the earlier import
-is still applied. `import_id` has no foreign key: like `book_matches.run_id`, the
-row outlives the import's record.
+is still applied. `import_id` has no foreign key, so the row outlives the import's record, as
+`book_matches.run_id` does.
 
 **Durability.** The table is path-keyed with no FK to `books`, so a rebuild keeps
 it. A move carries it (`moveBookState`). A disc join copies the first part's row

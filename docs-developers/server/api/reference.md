@@ -8628,7 +8628,7 @@ the person's access.
 
 The console's **Server > Settings > Import**: another server's listening
 history copied into a person's own, so someone moving to AudioSilo keeps their
-stats, and Audiobookshelf's ASIN and ISBN for the books here kept as
+stats. It also keeps Audiobookshelf's ASIN and ISBN for the books here as
 [match hints](../data-model.md#match-hints-from-an-import) (`book_hints`). v1 reads **Audiobookshelf** (ABS) only and is **admin only**: no
 capability flag, no player route (the console ships inside the server). The
 work is `internal/importer` (the ABS client, matching, planning, the background
@@ -8781,7 +8781,7 @@ added since the review is found.
 #### Identifiers (match hints)
 
 The fetch also keeps every ABS book with a valid ASIN or ISBN in the libraries the
-token sees (`Payload.identified`, whoever's history it is in). Review and apply pair
+token sees (`Payload.Identified`, JSON `identified`, whoever's history it is in). Review and apply pair
 them with books here (`importer.identifiersFor`):
 
 - among **every** book here, whatever the target user can access, as the hints are
