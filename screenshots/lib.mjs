@@ -102,14 +102,18 @@ export const PHONE = {width: 430, height: 932};
 // Sherlock Holmes the live catalogue files under that work (b-j-harrison-2014), so its
 // series shows the books the seed lacks, each dated by its first release. The admin
 // Series shot and the player's upcoming pass set it for their shots and revert it.
+// The work both LibriVox shots search for (the console's Add from LibriVox and the
+// player's Find on LibriVox), so they show the same search: one with many recordings.
+export const LIBRIVOX_QUERY = 'The Wind in the Willows';
+
 export const HOLMES_MATCH = {author: 'Sir Arthur Conan Doyle', title: 'Adventures of Sherlock Holmes', asin: 'B00OQT6ZJ6'};
 
-// Makes the viewport as tall as the page (between min and max, at the desktop
-// width), so a long card or every card is in the shot; the caller restores
+// Makes the viewport as tall as the page (between min and max, at `width`, the desktop
+// width unless given), so a long card or every card is in the shot; the caller restores
 // DESKTOP_CONTEXT.viewport.
-export const fitViewportToPage = async (p, min, max, settle = 800) => {
+export const fitViewportToPage = async (p, min, max, settle = 800, width = DESKTOP_CONTEXT.viewport.width) => {
   const height = await p.evaluate(() => document.documentElement.scrollHeight);
-  await p.setViewportSize({width: DESKTOP_CONTEXT.viewport.width, height: Math.min(Math.max(height, min), max)});
+  await p.setViewportSize({width, height: Math.min(Math.max(height, min), max)});
   await sleep(settle);
 };
 

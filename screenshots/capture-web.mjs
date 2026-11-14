@@ -33,6 +33,7 @@ import {
   DESKTOP_CONTEXT,
   FIXTURES,
   HOLMES_MATCH,
+  LIBRIVOX_QUERY,
   HOUR,
   MIN,
   PHONE,
@@ -1537,16 +1538,27 @@ function findShowsDirectory(pod) {
   return {results, art};
 }
 
+// Stand in for part of the real `/server` answer on `ctx`: `patch` edits the parsed body.
+async function routeServerInfo(ctx, patch) {
+  const origin = new URL(BASE).origin;
+  await ctx.route(
+    (url) => url.origin === origin && url.pathname === '/api/v1/server',
+    async (route) => {
+      const res = await route.fetch();
+      const info = await res.json();
+      patch(info);
+      return route.fulfill({response: res, json: info});
+    },
+  );
+}
+
 // Route the Find shows answers on `ctx` (see above). Returns the stand-in's state.
 async function routeFindShows(ctx, pod, stand) {
   const origin = new URL(BASE).origin;
   const at = (p) => (url) => url.origin === origin && url.pathname === `/api/v1${p}`;
   const json = (route, status, body) => route.fulfill({status, contentType: 'application/json', body: JSON.stringify(body)});
-  await ctx.route(at('/server'), async (route) => {
-    const res = await route.fetch();
-    const info = await res.json();
+  await routeServerInfo(ctx, (info) => {
     info.capabilities = {...info.capabilities, podcasts: true, podcast_discovery: true, podcast_opml: true};
-    return route.fulfill({response: res, json: info});
   });
   await ctx.route(at('/podcasts/discovery/providers'), (route) =>
     json(route, 200, {providers: [{id: 'itunes', available: true}, {id: 'podcast_index', available: false}]}),
@@ -2546,22 +2558,15 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
 // the search and the work are the server's real answers (live community metadata).
 // Nothing is added, so no job is queued.
 const LIBRIVOX_SHOT = 'web-player/find-librivox.png';
-const LIBRIVOX_QUERY = 'The Wind in the Willows';
 if (wanted(LIBRIVOX_SHOT)) {
   await step('find on librivox', async () => {
     if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: Find on LibriVox is an admin page');
     const origin = new URL(BASE).origin;
     const ctx = await newCaptureContext();
-    await ctx.route(
-      (url) => url.origin === origin && url.pathname === '/api/v1/server',
-      async (route) => {
-        const res = await route.fetch();
-        const info = await res.json();
-        info.capabilities = {...info.capabilities, bridge: true};
-        info.bridge = {version: '0.7.0', features: [...(info.bridge?.features ?? []), 'librivox']};
-        return route.fulfill({response: res, json: info});
-      },
-    );
+    await routeServerInfo(ctx, (info) => {
+      info.capabilities = {...info.capabilities, bridge: true};
+      info.bridge = {version: '0.7.0', features: [...(info.bridge?.features ?? []), 'librivox']};
+    });
     let session = null;
     try {
       const page = await ctx.newPage();
@@ -2580,9 +2585,7 @@ if (wanted(LIBRIVOX_SHOT)) {
       await tid(page, 'librivox-hit').click({timeout: 30000});
       await tid(page, 'librivox-recording').waitFor({timeout: 30000});
       await tid(page, 'librivox-add').waitFor({timeout: 15000});
-      await sleep(SETTLE_MS);
-      await page.mouse.move(0, 0);
-      await shoot(page, LIBRIVOX_SHOT);
+      await settleShoot(page, LIBRIVOX_SHOT, SETTLE_MS);
     } finally {
       if (session) await api(session, 'POST', '/auth/logout').catch(() => {});
       await ctx.close();

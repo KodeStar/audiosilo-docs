@@ -41,6 +41,7 @@ import {
   CACHE,
   DAY,
   HOLMES_MATCH,
+  LIBRIVOX_QUERY,
   MIN,
   PHONE,
   addHousehold,
@@ -1545,7 +1546,6 @@ await step('bridge: make a read-along', async () => {
 // server's default lookup, so it needs the network) for a work with many LibriVox
 // recordings and opens it beside the results. Nothing is added: no job is queued,
 // so no book gains a match. The player's Find on LibriVox is capture-web.mjs's.
-const LIBRIVOX_QUERY = 'The Wind in the Willows';
 await step('bridge: add from LibriVox', async () => {
   if (!wanted(...LIBRIVOX_SHOTS)) return;
   if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
@@ -1554,19 +1554,17 @@ await step('bridge: add from LibriVox', async () => {
   const info = await api(token, 'GET', '/server');
   if (!info?.bridge?.features?.includes('librivox')) throw new Error('this server build has no librivox.fetch');
 
-  if (wanted('admin/librivox.png')) {
-    await open(page, '/library/librivox');
-    await page.getByLabel('Title or author').fill(LIBRIVOX_QUERY);
-    const hit = page.getByRole('list', {name: 'Search results'})
-      .getByRole('button', {name: new RegExp(`^${LIBRIVOX_QUERY}`)}).first();
-    await hit.waitFor({timeout: 30000});
-    await hit.click();
-    const recordings = page.getByRole('list', {name: 'Recordings'});
-    await recordings.getByText(/^Read by /).first().waitFor({timeout: 30000});
-    await recordings.getByRole('button', {name: /^Add/}).first().waitFor({timeout: 15000});
-    await sleep(800);
-    await shoot(page, 'admin/librivox.png');
-  }
+  await open(page, '/library/librivox');
+  await page.getByLabel('Title or author').fill(LIBRIVOX_QUERY);
+  const hit = page.getByRole('list', {name: 'Search results'})
+    .getByRole('button', {name: new RegExp(`^${LIBRIVOX_QUERY}`)}).first();
+  await hit.waitFor({timeout: 30000});
+  await hit.click();
+  const recordings = page.getByRole('list', {name: 'Recordings'});
+  await recordings.getByText(/^Read by /).first().waitFor({timeout: 30000});
+  await recordings.getByRole('button', {name: /^Add/}).first().waitFor({timeout: 15000});
+  await sleep(800);
+  await shoot(page, 'admin/librivox.png');
 });
 
 await step('webhook deliveries', async () => {
@@ -1752,9 +1750,7 @@ await step('connect page on a phone', async () => {
     await p3.goto(`${ORIGIN}/connect#code=${inviteCode}`, {waitUntil: 'networkidle', timeout: 45000});
     await p3.locator('#phone-lead').waitFor({state: 'visible', timeout: 15000});
     // Tall enough for the whole page (the store links end it), never shorter than a phone.
-    const height = await p3.evaluate(() => document.documentElement.scrollHeight);
-    await p3.setViewportSize({width: PHONE.width, height: Math.max(PHONE.height, Math.min(height, 1600))});
-    await sleep(800);
+    await fitViewportToPage(p3, PHONE.height, 1600, 800, PHONE.width);
     await shoot(p3, 'server/phone-connect-invite.png');
   } finally {
     await phone.close();
