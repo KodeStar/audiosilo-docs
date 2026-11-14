@@ -524,8 +524,10 @@ The Overview is built on `GET /admin/stats`, `GET /admin/sessions/live`,
   `features/health/unmatched-prompt.tsx`): the `unmatched` category's count,
   ignored books left out, with **Match automatically** opening Health's Not
   matched list. It shows only while that count is above zero, so never while
-  community metadata is off. Library > Books shows the same notice while
-  browsing.
+  community metadata is off. It never starts a run. Library > Books shows the
+  same notice while browsing, Settings > Import's Past imports card once an import
+  is applied, and the setup flow's abs step (there with `newTab`, so Health opens
+  in a new tab and the flow stays open).
 - **Listening now** (`GET /admin/sessions/live`) has one card per live session,
   playing first, each linking to Activity > Live now. A card's second line is the chapter label described
   under [Activity > Live now](#activity--live-now), else the author or device.
@@ -1906,7 +1908,7 @@ outside `AppShell`. `Root` signs the admin in, then `SignedIn` renders the bare
 shows with the setup state loaded decides, once (`redirectDecision` in
 `setup-model.ts`). The Overview, where a plain visit to `/admin` lands, goes to
 the flow. Any other page stays: a bookmark, a reload, the flow itself, or a link
-the flow opens in a new tab (the ABS step's **Open the import**, the Reach
+the flow opens in a new tab (the ABS step's **Match automatically**, the Reach
 step's HTTPS settings), which starts a session of its own. Either way the session
 is marked, so later pages in it are never redirected: **Finish later** (a link
 to Overview) and moving on from a deep link stay where they go.
@@ -2018,9 +2020,18 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
      (`addressMismatch`).
    - The TLS mode, with what it means for phones, plus `tls_home_http` in
      self-signed mode. These are restart settings, badged.
-6. **abs.** Points to Server > Settings > Import (in a new tab) and says that
-   ABS `metadata.json` files are read. An info-only step: Continue records
-   `done`, Skip `skipped`.
+6. **abs.** The listening import itself, inline: Settings > Import's
+   `ImportFlow` (`features/imports/import-topic.tsx`) with `embedded` (no step
+   counter). It also says that ABS `metadata.json` files are read.
+   - While a books library is scanning or waiting to (`booksScanning` over the
+     polled libraries, no wire field), `blocked` turns Connect off with "Wait for
+     the scan to finish", because the import pairs ABS's books with the ones the
+     scan finds. Only Connect waits; the fields, Continue and Skip don't.
+   - `offerMatch` shows the `UnmatchedPrompt` once the server has a books library
+     and none is scanning, before any import is applied. After an apply, the
+     Past imports card shows it instead (one render site). Either way it opens
+     Health in a new tab.
+   - Continue records `done` whatever was imported, Skip `skipped`.
 7. **backups.** `backups.schedule` and `keep` (1-365), the backup folder shown
    read-only, and `general.update_check`. `backups.dir` is restart-only and
    read-only in the settings API.

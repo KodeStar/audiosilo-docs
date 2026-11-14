@@ -160,8 +160,14 @@ await step('the console flow', async () => {
   await tall('setup/reach.png');
   await leave('Continue', 'Coming from Audiobookshelf?');
 
-  // 6. Audiobookshelf: an info-only step, so Continue records it done.
-  await shoot(page, 'setup/abs.png');
+  // 6. Audiobookshelf: the import inline (its empty Connect form, on now the scan
+  // has finished) and, below it, the not-matched offer once the issues load
+  // (community metadata is on and no book is matched). No Audiobookshelf is
+  // needed; Continue records the step done.
+  await page.getByLabel('Audiobookshelf address').waitFor({timeout: 15000});
+  await page.getByRole('link', {name: 'Match automatically'}).waitFor({timeout: 15000}).catch(() => {});
+  await sleep(600);
+  await tall('setup/abs.png');
   await leave('Continue', 'Backups and updates');
 
   // 7. Backups and updates.

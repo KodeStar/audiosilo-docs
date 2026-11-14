@@ -95,8 +95,8 @@ was deleted." Once the folder is back, **Retry** scans it. See
 **Not matched to community metadata** has a **Match automatically** card above
 its list. It looks up every book in the list in one pass. Nothing changes until
 you review and apply what it found. While there are unmatched books, the
-overview and **Library > Books** show how many, with a **Match automatically**
-button that opens this list.
+overview, **Library > Books** and an applied import's **Past imports** show how
+many, with a **Match automatically** button that opens this list.
 
 1. Pick a library and click **Find matches**. You can leave the page while it
    runs.
@@ -150,9 +150,18 @@ If you don't trust where your tags came from, check **Confident** before you
 apply. Correct the tag, or match the book by hand, to stop it coming back.
 :::
 
-An ASIN from an Audiobookshelf `metadata.json` counts as the book's own straight
-away (see
-[Audiobookshelf's metadata.json files](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
+### Audiobookshelf's ASINs and ISBNs
+
+Audiobookshelf's identifiers reach AudioSilo in two ways, and they count
+differently:
+
+- **From an [Audiobookshelf import](import.md#match-your-books-after-an-import).**
+  They are match hints, like tags. A match looks them up before the book's tags,
+  and the book stays **Not matched** until a match applies. A wrong one can look
+  confident too, and correcting the tag doesn't stop it: match the book by hand.
+- **From a `metadata.json` file beside the book.** The ASIN or ISBN counts as the
+  book's own straight away, so the book is matched (see
+  [Audiobookshelf's metadata.json files](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
 
 ### Store listings with no ASIN or ISBN
 

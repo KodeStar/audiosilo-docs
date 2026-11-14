@@ -84,7 +84,9 @@ with community metadata** or run [Match automatically](health.md#matching-every-
 
 - the book's tagged title, author, series, narrators and language, and its
   length;
-- any ASIN or ISBN, and what you type;
+- its ASIN or ISBN, else one from its tags or an
+  [Audiobookshelf import](import.md#match-your-books-after-an-import), and what
+  you type;
 - up to three names from its path (the author, series and book folders), never
   the full path.
 
