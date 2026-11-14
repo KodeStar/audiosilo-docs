@@ -63,6 +63,10 @@ To match many books at once, use **Match automatically** on the Health page
 
 If the dialog says "meta.audiosilo.app isn't answering", try again in a minute.
 
+If the book isn't in the community database at all, it stays unmatched and
+plays as normal. The database has gaps. To add a missing book to it, see
+[Contributing](../community/meta-site.md#contributing).
+
 ### What matching sends
 
 The server sends search terms to AudioSilo Meta only when you open **Match

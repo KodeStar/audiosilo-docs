@@ -30,6 +30,7 @@ Want to look first? [Try the demo](demo.md) without installing anything.
 - [Listen offline](listening/offline-downloads.md) by downloading books to your device.
 - [Reach your server from outside your home](getting-started/remote-access.md).
 - [Invite people](admin/users-and-invites.md) or [add your household](listening/household.md).
+- [Move over from Audiobookshelf](getting-started/coming-from-audiobookshelf.md).
 - Listen on your [Apple Watch](listening/apple-watch.md) or [Wear OS watch](listening/wear-os.md), [in the car](listening/in-the-car.md) or [on a Chromecast](listening/chromecast.md).
 - [Read the ebook](listening/reading-the-ebook.md) and [follow along with the narration](admin/making-read-along.md).
 - [Back up your server](admin/backups.md), and update it ([Docker](getting-started/quickstart-docker.md#update), [Unraid](getting-started/install-unraid.md#update), [without Docker](getting-started/install-binary.md#update)).

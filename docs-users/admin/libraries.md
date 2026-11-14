@@ -127,7 +127,7 @@ Some folders hold audio that isn't an audiobook, such as sample clips or an
 | `Extras/` | every folder named `Extras`, wherever it is (the trailing `/` means folders only) |
 | `Podcasts/*` | everything inside the `Podcasts` folder at the top of the library |
 | `/Extras` | only the `Extras` folder at the top of the library |
-| `metadata.json` | the `metadata.json` files Audiobookshelf leaves in book folders (see [Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)) |
+| `metadata.json` | the `metadata.json` files Audiobookshelf leaves in book folders (see [Audiobookshelf's metadata.json files](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)) |
 | `# publisher samples` | nothing: a line starting with `#` is a comment |
 
 `*` stands for any run of characters and `?` for one character. Upper and lower

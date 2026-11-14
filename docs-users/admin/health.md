@@ -128,6 +128,10 @@ doesn't have the book. It is listed under **Not found**. You can still match it
 by hand. The [match dialog](books.md#matching-with-community-metadata) lists the
 closest candidates, however low they scored.
 
+The community database has gaps, so some books stay unmatched. They still play
+and keep the details from their tags and folders. To add a missing book to the
+database, see [Contributing](../community/meta-site.md#contributing).
+
 ### ASIN and ISBN tags are hints
 
 An ASIN or ISBN in a book's tags is only a hint for a match, because tags are
@@ -143,7 +147,7 @@ apply. Correct the tag, or match the book by hand, to stop it coming back.
 
 An ASIN from an Audiobookshelf `metadata.json` counts as the book's own straight
 away (see
-[Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
+[Audiobookshelf's metadata.json files](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
 
 ### Store listings with no ASIN or ISBN
 
