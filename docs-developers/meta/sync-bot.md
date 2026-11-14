@@ -258,7 +258,7 @@ A store search that has no answer within 5 seconds is not waited for. libex
 fetches a store it has not seen while the search waits, which can take half a
 minute. The service asks it again once, with the full timeout, at the end of the
 cycle's discovery, so a copy it finds still lands in that cycle's pull request.
-When that retry fails too, the service asks Audible's own catalogue
+When that retry gets no answer either, the service asks Audible's own catalogue
 ([when libex's search does not answer](#when-libexs-search-does-not-answer)).
 When Audible cannot answer either, or the fallback is off, the service writes
 the production without that store, and the region follow-up asks it again
@@ -309,12 +309,13 @@ does not answer.
 
 A store is **on hold** when libex has said it cannot reach that store's Audible
 marketplace: the service sends libex no search of that store for 5 minutes, or
-for as long as libex's `Retry-After` asks.
+for as long as libex's `Retry-After` asks, at most an hour.
 
 - **What sends a search to Audible.** No answer from libex, which means a
   timeout, a server fault, libex saying it cannot reach Audible, or a store on
-  hold. A 404 is an answer (the store does not sell the book), and so is a
-  search libex rejects. Neither goes to Audible.
+  hold. A 404 is an answer (the store does not sell the book). A search libex
+  rejects is an answer no retry changes, and fails that store alone. Neither
+  goes to Audible.
 - **How the service asks.** In the retry pass at the end of discovery, it
   searches the store's own Audible marketplace by the production's title and
   first author. A store on hold sends libex nothing, so its searches go to
@@ -338,14 +339,16 @@ for as long as libex's `Retry-After` asks.
 - **When a store counts as dead.** After three searches of one store in a
   row that got no answer, the service gives the store's next search libex's
   full timeout instead of 5 seconds. A store libex has not seen yet is slow on
-  a healthy day, not dead, and this one wait tells the two apart. If that
-  search gets no answer either, the store is dead for the rest of the cycle.
-  The service then asks libex nothing more about it, and sends its
-  searches straight to Audible. Any answer, copies or a 404, starts the count
-  over. A store on hold never becomes dead.
-- **Only while Audible can be asked.** Once the Audible breaker is open, a search left
-  to Audible alone could only fail. From then on held stores fail at once, no
-  store becomes dead, and the service behaves as with the fallback off.
+  a healthy day, not dead, and this wait tells the two apart. If that search
+  gets no answer either, the store is dead for the rest of the cycle. The
+  service then asks libex nothing more about it, and sends its searches
+  straight to Audible. Any answer, copies or a 404, starts the count over, so
+  a store that stays slow gets the full timeout once in every four searches.
+  A store on hold never becomes dead.
+- **Only while Audible can be asked.** Once the Audible breaker is open, a
+  search left to Audible alone could only fail. From then on held stores fail
+  at once, no store is dead (libex is asked about a dead store again), and the
+  service behaves as with the fallback off.
 
 A cycle that made region searches and got not one answer, from libex or from
 Audible, is degraded. The cycle log and the pull request body say so, and
@@ -1046,7 +1049,7 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 | `SYNC_DRY_RUN` | off | Do everything except push and open a pull request. Leaves the diff in the clone and prints the pull request body. |
 | `LIBEX_BASE` | `https://libexdb.com` | For tests and local fakes. |
 | `SYNC_AUDIBLE_FALLBACK` | on | Ask Audible's public catalog API for a book record or series listing that libex says it cannot give right now, and for a region search libex does not answer. `off` keeps the service to libex alone. |
-| `SYNC_AUDIBLE_SEARCH_BUDGET` | `1200` | Region searches a cycle may ask Audible's catalogue [when libex's search does not answer](#when-libexs-search-does-not-answer), apart from the 300 record and series requests. `0` asks none. Only with `SYNC_AUDIBLE_FALLBACK` on. |
+| `SYNC_AUDIBLE_SEARCH_BUDGET` | `1200` | Region searches a cycle may ask Audible's catalogue [when libex's search does not answer](#when-libexs-search-does-not-answer), apart from the 300 record and series requests. `0` asks none, which turns the search fallback off. Only with `SYNC_AUDIBLE_FALLBACK` on. |
 | `SYNC_TOOLS_DIR` | `/app/bin` | Where `metaimport`, `metafmt` and `metacheck` live. Empty means resolve on `PATH`. |
 | `SYNC_INTAKE_URL` | - | metaserve's address, for [the reported-ASIN lane](#the-reported-asin-lane). The lane runs only with this and the token both set. https, or plain http to a loopback host only. |
 | `SYNC_INTAKE_TOKEN` | - | The Bearer token of the intake queue's `GET` (metaserve's `METASERVE_INTAKE_TOKEN`). |

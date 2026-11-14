@@ -610,8 +610,9 @@ exclusive planning modes:
 `{"asin","anchor"}` line per row. Each listed row is another marketplace's copy
 of the production the catalogued `anchor` ASIN belongs to, as the caller proved
 it. [The series-completion bot](./sync-bot.md#every-stores-copy-of-a-book)
-proves it by SKU group, as libex or Audible's catalogue states it. The import merges the row's ASIN onto the anchor's
-recording and resolves nothing from the row's credits or series, so it mints no
+proves it by SKU group, as libex or Audible's catalogue states it. The import
+merges the row's ASIN onto the anchor's recording and resolves nothing from the
+row's credits or series, so it mints no
 person, work or series. It still refuses a row whose anchor is not a catalogued
 retail recording (`copy-anchor-unknown`, a LibriVox recording included), whose
 language is not the recording's (`copy-language`), whose runtime does not match
