@@ -23,7 +23,8 @@ It serves no public traffic. It talks only to:
 - libexdb.com;
 - api.github.com;
 - Audible's public catalog API (`api.audible.*`), only when libex says it cannot
-  reach Audible or libex's store search does not answer, and not at all with
+  reach Audible, a live libex lookup does not answer within 5 seconds, or
+  libex's store search does not answer, and not at all with
   `SYNC_AUDIBLE_FALLBACK=off`;
 - metaserve's intake queue, with
   [the reported-ASIN lane](#the-reported-asin-lane) enabled;
@@ -298,6 +299,25 @@ it. Its store's backoff does not grow: the follow-up asks again the next day,
 or, when a memo entry keeps the copy out, once that entry expires. A copy
 outside the follow-up's window, of a book in a catalogued series, still arrives
 through its own marketplace's new-release or coming-soon feed.
+
+### When libex's live lookups do not answer
+
+libex keeps a mirror (`/db/...`) and fetches what the mirror lacks from Audible
+while the request waits. When libex cannot reach Audible, that live fetch
+answers only after about 30 seconds, with a 503. So the service waits 5 seconds
+for a live book record or series listing, and up to 40 seconds for a chapter
+list, and treats no answer as libex saying it cannot reach Audible:
+
+- it does not ask again, and holds that kind of lookup for 5 minutes;
+- with `SYNC_AUDIBLE_FALLBACK` on, a book record or series listing goes to
+  Audible's own catalogue at once, and so does every one asked during the hold;
+- a chapter list has no Audible fallback, so it gets the longer wait: a slow
+  answer from a working libex still arrives. When none comes, the book is
+  written without chapters.
+
+When Audible cannot answer either, the series stays queued for a later cycle
+and spends none of its attempts. The mirror, the feeds and the store searches
+keep their own timeouts.
 
 ### When libex's search does not answer
 
@@ -1058,7 +1078,7 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 | `SYNC_REGIONS` | all 11 | `us uk ca au de fr es it jp in br`, exactly the meta schema's region enum. |
 | `SYNC_DRY_RUN` | off | Do everything except push and open a pull request. Leaves the diff in the clone and prints the pull request body. |
 | `LIBEX_BASE` | `https://libexdb.com` | For tests and local fakes. |
-| `SYNC_AUDIBLE_FALLBACK` | on | Ask Audible's public catalog API for a book record or series listing that libex says it cannot give right now, and for a region search libex does not answer. `off` keeps the service to libex alone. |
+| `SYNC_AUDIBLE_FALLBACK` | on | Ask Audible's public catalog API for a book record or series listing that libex says it cannot give right now or does not give within 5 seconds, and for a region search libex does not answer. `off` keeps the service to libex alone. |
 | `SYNC_AUDIBLE_SEARCH_BUDGET` | `1200` | Region searches a cycle may ask Audible's catalogue [when libex's search does not answer](#when-libexs-search-does-not-answer), apart from the 300 record and series requests. `0` asks none, which turns the search fallback off. Only with `SYNC_AUDIBLE_FALLBACK` on. |
 | `SYNC_TOOLS_DIR` | `/app/bin` | Where `metaimport`, `metafmt` and `metacheck` live. Empty means resolve on `PATH`. |
 | `SYNC_INTAKE_URL` | - | metaserve's address, for [the reported-ASIN lane](#the-reported-asin-lane). The lane runs only with this and the token both set. https, or plain http to a loopback host only. |
