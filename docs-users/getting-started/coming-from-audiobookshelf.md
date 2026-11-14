@@ -11,12 +11,12 @@ The AudioSilo server never writes to your books folder. It can read the folder w
 
 ## Bring your book details across
 
-Audiobookshelf keeps each book's details, such as its matched ASIN, your edits and its series, in a `metadata.json` file. By default it keeps these files in its own metadata folder, not beside your books, so AudioSilo can't see them. Its **Store metadata with item** setting is off by default ([Audiobookshelf's server settings](https://github.com/advplyr/audiobookshelf/blob/master/server/objects/settings/ServerSettings.js)).
+Audiobookshelf keeps each book's details, such as its matched ASIN, your edits and its series, in a `metadata.json` file. By default it keeps these files in its own metadata folder, not beside your books, so AudioSilo can't see them. Its **Store metadata with item** setting, which puts the file in each book's folder instead, is off by default.
 
-To have Audiobookshelf put the file in each book's folder:
+Turning the setting on doesn't write files for the books already there. Audiobookshelf writes a book's file into its folder the next time it saves a change to that book. To bring a book's details across:
 
 1. In Audiobookshelf, open **Settings** and turn on **Store metadata with item**.
-2. Audiobookshelf writes a book's file into its folder the next time it saves a change to that book, such as an edit or a match. Turning the setting on doesn't write files for books it doesn't change.
+2. In Audiobookshelf, change the book, for example edit its details or match it. Audiobookshelf writes its `metadata.json` beside it.
 3. In the AudioSilo admin console, [rescan the library](../admin/libraries.md#rescanning).
 
 A book with a `metadata.json` file then shows its Audiobookshelf details in AudioSilo, and one with an ASIN or ISBN in it counts as matched. See [Audiobookshelf's metadata.json files](organizing-your-library.md#coming-from-audiobookshelf) for what the file brings.
