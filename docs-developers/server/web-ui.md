@@ -519,7 +519,13 @@ The Overview is built on `GET /admin/stats`, `GET /admin/sessions/live`,
   About, cached ten minutes.
 - **`GET /admin/libraries`** gives the offline-library notices.
 - **`GET /admin/issues`** gives the "Needs attention" card: up to six
-  categories with something to fix, each linking to its Health queue.
+  categories with something to fix, each linking to its Health queue. It also
+  gives the "*N* books not matched" notice (`UnmatchedPrompt`,
+  `features/health/unmatched-prompt.tsx`): the `unmatched` category's count,
+  ignored books left out, with **Match automatically** opening Health's Not
+  matched list. It shows only while that count is above zero, so never while
+  community metadata is off. Library > Books shows the same notice while
+  browsing.
 - **Listening now** (`GET /admin/sessions/live`) has one card per live session,
   playing first, each linking to Activity > Live now. A card's second line is the chapter label described
   under [Activity > Live now](#activity--live-now), else the author or device.
@@ -901,8 +907,12 @@ Any other failure keeps the dialog open with its message.
   host for three notices: loopback (only this computer), a home address by
   `isHomeHost`, the server's own rule (a private or link-local IP, a `.local`,
   `.lan`, `.home.arpa` or `.internal` name, or a single-label name; this network
-  only, the info tone), and `https://` at an IP address (a self-signed
-  certificate warning). A public host name gets none of them. The link's base is
+  only, the info tone), and a certificate warning: `https://` while
+  the server runs in self-signed TLS mode (`runsSelfSigned`, from the settings'
+  `network.tls_mode`; unknown while settings load or a TLS mode change waits for
+  a restart), at an IP address or a name like `nas.local` alike, or `https://`
+  at an IP address whatever the mode, since such an address rarely has a
+  certificate browsers trust. A public host name gets none of them. The link's base is
   `baseURL`: the public address, else the address the console was opened at, so
   a home address set in Settings does not change it.
 - **A person's page** is `/admin/people/user/<id>`, with its tab in `?tab=`:
@@ -1084,6 +1094,9 @@ The review dialog:
 - words a `none` item from its `detail` (`weak_match` with its `score`,
   `identifier_unknown`, `work_unknown`), and a `review` item from its own
   (`length_differs`, `dramatization_only`, `identifier_disagrees`);
+- heads the Not found tab with what that means (the books still play) and the
+  Help complete the community database setting, and gives each `none` row
+  **Add it** (`AddItLink`), a link to meta.audiosilo.app's Add a book page;
 - lists a change's `match` as "the community match" when no ASIN or ISBN is
   written beside it (`changeParts`);
 - posts the admin's picks as `exclude` and `include` ids.
@@ -1094,6 +1107,21 @@ A small apply can finish between two polls.
 
 Marketplace names come from `lib/regions.ts` (`Intl.DisplayNames`, with each
 store's domain), shared with the Settings select.
+
+##### Add it
+
+`lib/meta-site.ts` `addBookUrl` builds the link to `https://meta.audiosilo.app/add`,
+always the public community site, even for a server pointed at another
+`metadata.base_url`. The page reads one parameter, `q`, and acts on it at once:
+an Audible ASIN (`B0` and eight more letters or digits) opens that record, and
+anything else is searched for. The link carries the best way to find the book:
+an Audible ASIN (one the admin typed, else the book's own), else the words the
+admin searched with, else its title and author, else nothing. The match
+dialog's empty state (`NotInDatabase`), Match automatically's Not found rows
+(title and author) and Health's `unknown_asin` rows (the book's ASIN) use it.
+`unknown_asin` books have their own Health card, listed only while the
+unknown-ASIN report is on, and their fix is the match dialog, which finds them
+by title.
 
 #### Health > Jobs
 
@@ -1424,7 +1452,10 @@ A **Setup** card shows too (see [The Setup card](#the-setup-card)).
 ##### The job list
 
 The job list (`bridge-jobs.tsx`) has a state filter and cancel. It sums up the
-result with `resultSummary` and shows the raw JSON under Details. A cancelled
+result with `resultSummary` and shows the raw JSON under Details. A job's
+progress shows while it is open, and a failed or cancelled job keeps the last
+step it reported as "Last step: *step*" (`listedProgress`), the clue to where
+it stopped; a done job shows none. A cancelled
 row of any kind is `CancelledStatus` (see
 [Cancelling](../bridge/pairing-and-jobs.md#cancelling)), never its raw `error`.
 
@@ -1835,9 +1866,10 @@ The same sponsor line closes every GitHub Release's notes (the GoReleaser
 ### The first-run setup flow
 
 "Set up your server" (`features/setup/`) is the console's first-run flow. Its
-eight steps take a new admin from the first sign-in to a named, matched library
-and a paired phone. The account itself still comes from the first-run banner or
-the [`/setup` page](#first-run-setup-page-setup). The flow is console-only and
+nine steps take a new admin from the first sign-in, through their own username
+and password, to a named, matched library and a paired phone. The account itself
+still comes from the first-run banner or the
+[`/setup` page](#first-run-setup-page-setup). The flow is console-only and
 admin-only. It has no capability flag, and the player never asks for it.
 
 The headless first-run banner (`writeBanner` in `pkg/launcher`) prints the
@@ -1850,6 +1882,15 @@ base URL: `public_url`, else one derived from `tls.mode` and `bind`.
  Connect a device: open https://audiosilo.example.com/ and enter the auth code.
  (API: POST /api/v1/auth/redeem or /api/v1/auth/login.)
 ```
+
+Until an admin signs in with a password, each later start prints a reminder with
+the `reset-admin` command instead (see
+[Configuration](configuration.md#cli-flags-cmdaudiosilo)). The console's sign-in
+page says the same as the first-run default: the username `admin`, the password
+in the server log (with Docker, the container's log), and `reset-admin` when it
+is lost. It shows "open the setup link from the server log" instead only while
+the server's `/setup` page is open (`setupPageOpen`), and adds no other signal
+about whether the server is claimed.
 
 #### Where it shows
 
@@ -1908,11 +1949,24 @@ is disabled.
 
 #### The steps
 
-The step ids, in order, are `folder naming metadata reach abs backups phone
-bridge` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
+The step ids, in order, are `account folder naming metadata reach abs backups
+bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
 (`StepFooter`).
 
-1. **folder.** A typed path, with no folder picker and no new listing route.
+1. **account.** The admin's own username and password (`AccountStep`, rules in
+   `accountPlan`). A changed username goes through
+   `PATCH /admin/users/{id}` `{username}`; the session stays, and the console
+   renames its signed-in user. A new password goes through the caller's own
+   `POST /auth/password` with the current one, which keeps this session; its
+   `401 current_password_incorrect` shows on the Current password field and
+   never ends the console's session. While the envelope's `printed_password` is
+   true (the admin still has the password the log printed), a new password is
+   required and a notice says why; otherwise it is optional. Skip is labelled
+   "Keep *name* and this password". The step leaves the first-run auth code
+   alone (the phone step points at it) and says to revoke it in People >
+   Invites. A password the admin sets on their own account in People counts as
+   chosen too (`notePasswordChosen`).
+2. **folder.** A typed path, with no folder picker and no new listing route.
    `POST /admin/setup/preview` checks it and returns:
    - the counts;
    - `same_root`, shown as a warning;
@@ -1923,8 +1977,8 @@ bridge` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    listed as already added, and those named in `config_libraries` are marked
    "From your config". The library is **not** created here. The folder and
    name become a draft, kept in `localStorage` (`audiosilo.setup.draft`,
-   `parseDraft`) until step 3.
-2. **naming.** The preview's samples, as a two-column table per book (tags,
+   `parseDraft`) until the metadata step.
+3. **naming.** The preview's samples, as a two-column table per book (tags,
    folders), with the rows that differ highlighted (`compareField`,
    `disagreements`). Then the `metadata_source` pick (`RadioCards`), with the
    preview's `suggested` side preselected and badged for the draft. A books
@@ -1932,7 +1986,15 @@ bridge` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    made) keeps its own source preselected, with the suggestion as a hint.
    Choosing the other PATCHes it, which re-resolves its books, with the same
    toast as Libraries.
-3. **metadata.** `metadata.enabled`, `region` and `mode`. The step states the
+4. **metadata.** `metadata.enabled`, `region` and `mode`. While the settings
+   envelope's `metadata.region_chosen` is `false` and the region isn't locked
+   (`offerRegion`), the marketplace starts at the one nearest the browser
+   (`browserNearestRegion` in `lib/nearest-region.ts`: the region of each of
+   `navigator.languages` in order, then the time zone, mapped to the nearest
+   store, else none). Continue then saves the region even when it equals the
+   saved value, so it counts as chosen. Settings > Community metadata offers the
+   same store with **Use *store*** or **Keep no preference**
+   (`RegionSuggestion`), except when it is the US store. The step states the
    mirror's size up front, and `mode` is restart-only. The draft then becomes
    the library (`useCreateDraftLibrary`: `POST /admin/libraries` with the
    draft's source), and its scan starts. Skip keeps the settings but still
@@ -1940,7 +2002,7 @@ bridge` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    scanning or queued, and the one the flow made once it is done, from
    `useLibraries`' `scan`. `useScanWatcher` runs on the page, since the shell
    isn't mounted.
-4. **reach.**
+5. **reach.**
    - The browser's `location.origin` is offered as `lan_url`, `public_url` or
      both (`reachOffers`). A home-network host by the server's own rule
      (`isHomeHost`) suits the home address first. Loopback suits neither.
@@ -1951,16 +2013,12 @@ bridge` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
      (`addressMismatch`).
    - The TLS mode, with what it means for phones, plus `tls_home_http` in
      self-signed mode. These are restart settings, badged.
-5. **abs.** Points to Server > Settings > Import (in a new tab) and says that
+6. **abs.** Points to Server > Settings > Import (in a new tab) and says that
    ABS `metadata.json` files are read. Continue records `done` only once the
    import was opened, else `skipped`.
-6. **backups.** `backups.schedule` and `keep` (1-365), the backup folder shown
+7. **backups.** `backups.schedule` and `keep` (1-365), the backup folder shown
    read-only, and `general.update_check`. `backups.dir` is restart-only and
    read-only in the settings API.
-7. **phone.** An `api.pairSelf()` QR, single use and valid ten minutes; New
-   code refetches. The web player in a new tab with its own token
-   (`usePlayerTab`, only with the `web_player` capability). The ffmpeg line
-   from `useSystem().tools`, and the household note.
 8. **bridge.** What a Bridge is, a compose snippet, and the existing pairing
    dialog (`usePairCode`, `PairDialog`).
    - The snippet is `bridgeCompose`, from audiosilo-bridge's
@@ -1969,8 +2027,16 @@ bridge` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
      its one `/audiobooks` volume's comment says it is an example.
    - Once `useBridge()` reports a paired Bridge, the step shows
      `BridgeSetupList` from the heartbeat's `setup` block instead.
-   - Finish setup records `done`, paired or not, because the Bridge is
-     optional. Skip records `skipped`.
+   - Continue records `done`, paired or not, because the Bridge is optional.
+     Skip records `skipped`.
+9. **phone**, the last. An `api.pairSelf()` QR, single use and valid ten
+   minutes; New code refetches. How signing in works: the admin by this code,
+   or the app's address and password, or the log's auth code; everyone else by
+   an invite of their own, which needs no password (**Invite someone** opens
+   People's invite dialog in a new tab). The web player in a new tab with its
+   own token (`usePlayerTab`, only with the `web_player` capability). The ffmpeg
+   line from `useSystem().tools`, and the household note. Its primary button is
+   Finish setup.
 
 #### The Overview card
 
@@ -2066,6 +2132,11 @@ What the page shows after a redeem:
   the phone holding it can't scan it. `showPhone` leads with "Get the app, then
   come back to this link", moves the store links under it, and puts **Open web
   player** first.
+- A code typed into the form, not one from an invite link's fragment, has no
+  link to open again. `redeem(code, fromLink)` then swaps the phone lead and the
+  keep-this-page-open hint for the `*Typed` strings ("come back to this page",
+  "enter your invite code on this page again"), on `data-i18n` so a language
+  change keeps them.
 - Everywhere, a **Get the AudioSilo app** block with the App Store, Google Play
   and APK links. They are static in `index.html`, so they show before any
   redeem too, and match the payload's `links` (`TestConnectPageStoreLinks`).

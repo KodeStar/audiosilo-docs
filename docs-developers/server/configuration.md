@@ -57,11 +57,60 @@ library's root and default view.
 | `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding, the MP3-in-Matroska remux and the watch renditions. **`""` disables it.** Then `?transcode=1` returns 503 and the `transcode` capability reports false. An `.mka` is served as stored (no remux, `direct_playable: false`). The `renditions` capability is false, and `rendition=` answers `404 rendition_unavailable` |
 | `--setup` | `false` | First-run **setup page**. Instead of auto-creating the admin and printing credentials once, the server mints a one-time token and enables the guarded `/setup` page, where the admin's username and password are chosen in the browser (see [Built-in web UI](web-ui.md#first-run-setup-page-setup)). Either way, the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) then adds the books folder and the rest on the first `/admin` visit |
 
-**One command** (`command` in `cmd/audiosilo/main.go`). After the flags,
-`audiosilo version` prints `audiosilo <version>` and exits `0` before anything
-touches the data directory. Any other positional argument, or `version` with an
-argument after it, prints a usage error and exits `2`, as the flag package does
-for a bad flag.
+**Commands** (`command` in `cmd/audiosilo/main.go`) come after the flags. Any
+other positional argument prints a usage error and exits `2`, as the flag
+package does for a bad flag.
+
+- `audiosilo version` prints `audiosilo <version>` and exits `0` before anything
+  touches the data directory. An argument after it is a usage error.
+- `audiosilo [--data <dir>] reset-admin [username]` (`launcher.ResetAdmin`) sets
+  a new random password on an admin of the server in `--data` and prints it
+  once. It is the way back in when the first-run password is lost. A flag after
+  the command is a usage error, since the flag package stops at the command.
+
+`reset-admin` picks the only admin, or the one named. It exits `2` (a
+`launcher.UsageError`, listing the admins) for an unknown name, an account that
+isn't an admin, or several admins with no name. It exits `1` and changes nothing
+when:
+
+- there is no `audiosilo.db` in the data directory;
+- the file isn't an AudioSilo database (`store.Inspect`), which it never
+  migrates;
+- a restore is waiting for the next start (`backup.RestorePending`), which would
+  replace the new password;
+- the database has migrations pending (an older release left it: the server
+  upgrades it, and backs it up, at its next start);
+- there is no admin yet, or the admin is disabled.
+
+The password is set through `auth.SetPassword`, the console's rule: every
+session, open pairing code and remembered browser of the account ends. It also
+revokes the auth code the first start printed beside the password
+(`auth.RevokeInitialAdminCode`: that admin's unlimited, never-expiring invite
+labelled `auth.InitialAdminCodeLabel`), and ends the start's sign-in hint
+(`auth.NoteAdminSignIn`). If that revoke fails, the command still prints the new
+password, since the old one is gone, then exits `1` with the error and asks for
+the code to be revoked in the console (People > Invites). It runs beside a running server. That server checks
+the new password at once, since a sign-in reads the database. A session it has
+already checked is answered from its token cache until the row is read again:
+at the server's next content write, or a minute after it last read the row
+(`maxCachedTokenAge`, see
+[Tokens](auth-and-security.md#tokens-session-pairing-and-api-keys)). A restart
+ends them at once.
+
+**The sign-in hint.** The first-run banner's `ensureAdmin` writes the
+`server_state` row `first_admin` (see [Data model](data-model.md#server-state)).
+While that admin has not signed in, every later start prints a framed reminder
+(`launcher.signInHint`): the console's address, the username, and the
+`reset-admin` command for this install. Inside a container
+(`fsaccess.InContainer`) the command is prefixed with
+`docker exec -u <uid>:<gid> <container>`, the server's own ids, so it never
+makes a root-owned file in the data folder. The binary is named by its path when
+that name on `$PATH` is not this binary (the LinuxServer.io image's
+`/app/audiosilo/audiosilo`). Words are quoted for the system's shell (single
+quotes, or double quotes on Windows). An admin's password sign-in, an admin
+setting their own password (`POST /auth/password`, or `PATCH /admin/users/{id}`
+on their own account) or `reset-admin` ends it. A server with no row, an
+upgraded or `--setup` one, never prints it.
 
 A bare tool name (no path separator) is resolved **next to the server
 executable first**, then on `$PATH`. An explicit path is used as it is. If a
@@ -441,7 +490,7 @@ of the service's database and answers the same questions itself (see
 | `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, and `GET /libraries/{id}/meta` and `GET /meta/work` both return 404. The `metadata` capability reports false, so players hide the enriched-book material entirely. The key seeds the initial state only. An admin can switch it at runtime (see below) |
 | `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled.** Mirror mode still needs it, because it is the fallback and the site links (`web_url`, the attribution's `source_url`) name it |
 | `metadata.mode` | string, `"remote"` | Where the lookups are answered. `remote` asks `base_url` for each book. `mirror` keeps a local copy of the service's database in `<data>/meta-mirror/` and answers from it (see [Mirror mode](#mirror-mode-metadatamode-mirror)). Any case, stored lower case. Empty (a `config.yaml` written before the key existed) reads as `remote`. Any other value is a config error naming the allowed ones. **Read at start** (a restart setting) |
-| `metadata.region` | string, `""` | The Audible marketplace a community match prefers when a recording sells in several. One of `us`, `uk`, `ca`, `au`, `de`, `fr`, `es`, `it`, `jp`, `in`, `br` (the community metadata's region vocabulary), any case, stored lower case. `""` means no preference, so the US store's ASIN comes first. The region orders each match candidate's `asins` (the preferred store's, then `us`, then the rest). It breaks a runtime tie between recordings in favour of the one selling there, and it is what a [bulk match](api/reference.md#bulk-community-matching) repick looks for. It says nothing about a library's language, because a match sends only the book's own. Applies live |
+| `metadata.region` | string, `""` | The Audible marketplace a community match prefers when a recording sells in several. One of `us`, `uk`, `ca`, `au`, `de`, `fr`, `es`, `it`, `jp`, `in`, `br` (the community metadata's region vocabulary), any case, stored lower case. `""` means no preference, so the US store's ASIN comes first. The region orders each match candidate's `asins` (the preferred store's, then `us`, then the rest). It breaks a runtime tie between recordings in favour of the one selling there, and it is what a [bulk match](api/reference.md#bulk-community-matching) repick looks for. It says nothing about a library's language, because a match sends only the book's own. Applies live. Until it is chosen here, in the environment or by an admin's save (`metadata.region_chosen` on `GET /admin/settings`), the console offers the store nearest the admin's browser |
 | `metadata.report_unknown` | bool, `false` | The opt-in daily report of unknown Audible ASINs (see [The unknown-ASIN report](#the-unknown-asin-report-metadatareport_unknown)). Runs only while `metadata.enabled` is on too, and never on a demo server. Applies live. In the console it is **Server > Settings > Community metadata**, *Help complete the community database* (setting id `metadata.report_unknown`), greyed out while the lookup is off. `AUDIOSILO_METADATA_REPORT_UNKNOWN` wins at every start and locks it |
 
 **What applies live.** An admin can switch `metadata.enabled` on or off from the
@@ -526,6 +575,11 @@ The console words the run from `GET /admin/settings`'s read-only
 [API reference](api/reference.md#get-apiv1adminsettings)). What it stores is in
 [Data model](data-model.md#unknown-asin-reports): ASINs only, never a book or
 path.
+
+While the report is on, Health lists the books whose own ASIN it found unknown
+as the `unknown_asin` kind (see [Issues](scanner.md#issues)). Those books still
+count as matched. The kind is left out while the report is off, since the
+lookups that find them stop.
 
 #### Mirror mode (`metadata.mode: mirror`)
 

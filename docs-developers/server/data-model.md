@@ -1347,10 +1347,11 @@ itself, one row per key: `key` (primary key), `value` (the key's own JSON) and
 `updated_at` (fixed-width millisecond UTC). These are not settings. Nobody types
 them in `config.yaml`, and no `AUDIOSILO_*` variable sets them. The table is
 durable but not part of either half. It names no book and can't be rebuilt, so
-a backup carries it like every other table. `catalog/server_state.go` reads a
-key with `getServerState`, where a value that can't be read counts as none, and
-writes one with `putServerState`. Both take a querier or execer, so a caller can
-read and write one key in a single transaction.
+a backup carries it like every other table. `store.GetState` reads a key, where
+a value that can't be read counts as none, and `store.PutState` writes one
+(`catalog/server_state.go` names them `getServerState` and `putServerState`).
+Both take a querier or execer, so a caller can read and write one key in a
+single transaction. Keys are written by code, so a new key needs no migration.
 
 Its keys:
 
@@ -1382,6 +1383,21 @@ Its keys:
   and the flow opens on the first console visit. `catalog.UpdateSetupState`
   merges a change into it in one writer transaction. Migration `0053` writes it
   finished and dismissed on an upgraded server.
+- `first_admin`: the admin a headless first start made with a printed password,
+  `{"user_id":1,"signed_in":false,"chose_password":false}`. Only the start that
+  made the admin writes it (`auth.MarkFirstAdmin`), after the banner. A start
+  that made the admin but failed before the banner writes it too. While
+  `signed_in` is false, each later start prints the sign-in hint (see
+  [Configuration](configuration.md#cli-flags-cmdaudiosilo)). An admin's password
+  sign-in (`auth.NoteAdminSignIn`), `reset-admin`, or the admin's own password
+  change sets it. `chose_password` is set once that admin sets their own
+  password (`auth.NoteOwnPassword`), and drives `GET /admin/setup`'s
+  `printed_password`. No row, on an upgraded server or a `--setup` one, means
+  no hint and no backfill.
+- `metadata_region_chosen`: `true` once an admin saved `metadata.region` from the
+  console, "No preference" included (`catalog.NoteRegionChosen`). With a region
+  in `config.yaml` or the environment it counts as chosen anyway. It drives
+  `GET /admin/settings`'s `metadata.region_chosen`.
 - `upcoming`: the [upcoming releases](api/reference.md#upcoming-releases) job's
   run status (`catalog.UpcomingRun`). It holds `last_run_at`,
   `last_success_at`, `last_error`, `failures` (failed runs since the last
@@ -1718,7 +1734,10 @@ tables at the request.
 It names no book, library or path. A row whose ASIN no book holds any more is
 deleted at the start of the next run. The table is derived and disposable:
 losing it only means the ASINs are looked up and sent again. It is written
-through the user-state path, because no content cache reads it. `MAX(sent_at)`
+through the user-state path. Health's `unknown_asin` kind reads which rows are
+`unknown`, so a row added or removed, or its `unknown` changed, moves the content
+generation, while a lookup that only renews `checked_at` or `sent_at` does not
+(`store.userStateTables`). `MAX(sent_at)`
 keeps the report to once a day across restarts. The run status is the
 `unknown_asin_report` key of [`server_state`](#server-state).
 
@@ -1787,7 +1806,8 @@ keeps the report to once a day across restarts. The run status is the
   (FK to `users`, `ON DELETE SET NULL`), `created_at`. An admin's "ignore this"
   on a Health issue. `kind` is one of `catalog.IssueKinds` (`scan_error`,
   `suspect`, `split_discs`, `duplicate`, `no_cover`, `unmatched`,
-  `no_chapters`, `detailed_chapters`, `transcode`). It is path-keyed like the
+  `unknown_asin`, `series_spellings`, `no_chapters`, `detailed_chapters`,
+  `transcode`). It is path-keyed like the
   rest of this group, so an ignore survives a rebuild, moves with the book
   (`MoveDurableState`) and needn't point at an indexed book.
 

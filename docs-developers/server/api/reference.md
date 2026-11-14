@@ -631,10 +631,14 @@ A shipped app takes its existing 401 path: signed out, pair again. The response
 carries no count. A client that wants to say what happened reads
 [`GET /me/devices`](#get-apiv1medevices) again.
 
+An admin's change also ends the first-run sign-in hint and turns
+[`GET /admin/setup`](#get-apiv1adminsetup)'s `printed_password` false for the
+first-run admin.
+
 | Status | Meaning |
 |---|---|
 | `400` | password missing or too short |
-| `401` | `current_password` incorrect |
+| `401` | `current_password` incorrect: `code: "current_password_incorrect"` (2.7.0), so a client can tell it from a session that ended and keep the session. An older server sends no code |
 | `403` | demo account (`demo_account`); a kid's account (`kid_account`, also when the owner's switch to kid commits between the wrapper and the write) |
 | `429` | account-mutation limit tripped |
 
@@ -5495,7 +5499,8 @@ Create an account.
 Response `201`: the created account as the admin's user object above (re-read after
 the insert, so its stored defaults, `can_add_members` among them, are there). `409`
 `username already taken` (`code: "username_taken"`) on a duplicate username; `400`
-with a specific message on a validation failure: `admin_needs_password`,
+with a specific message on a validation failure: `username_required` (an empty
+`username`; 2.7.0 adds the code to the old message), `admin_needs_password`,
 `password_too_short` (see [error codes](index.md#error-envelope-and-status-conventions)).
 
 ### `GET /api/v1/admin/users/{id}`
@@ -5559,6 +5564,7 @@ Edit an account in place. Any subset of:
 
 | Body field | Type | Notes |
 |---|---|---|
+| `username` | string | 2.7.0: renames the account, by the rule a new account's name follows: not `""` (`400 username_required`), not another account's (`409 username_taken`). The account keeps its sessions, since tokens name the user by id. The console's first-run Your account step uses it |
 | `role` | string | `"admin"` \| `"user"` |
 | `password` | string | `""` clears the password (non-admins only); a non-empty one is refused when the request leaves the account a kid (beside Make independent, or an assign as a grown-up, it is fine). Replacing or clearing a password the account had ends its sessions (below) |
 | `disabled` | bool | reversible lockout; disabling revokes nothing but blocks all token use |
@@ -5595,15 +5601,18 @@ always is, or it is `400 admin_needs_password`).
 - **A password reset ends the person's sessions.** Replacing or clearing
   a password the account had ends their sessions exactly as a
   [self-service change](#post-apiv1authpassword) does, in the same transaction. Only
-  the admin's own session survives, when the account is the admin's.
+  the admin's own session survives, when the account is the admin's. A non-empty
+  password an admin sets on their **own** account counts as their own choice
+  (`auth.NoteOwnPassword`), as [`POST /auth/password`](#post-apiv1authpassword)
+  does. One another admin set for them does not.
 
 Response `200`: the updated user object (with the fields above).
 
 | Status | Meaning |
 |---|---|
-| `400` | admin must keep a password (`admin_needs_password`) / password too short (`password_too_short`); `managed_by` that isn't a positive id or `null`; `code: "member_fields_required"` (`managed_by: <id>` without both `member_kind` and `member_access`, or either of those without it); a `kind` or `access` that isn't one of the two values; `code: "kid_no_password"` (a non-empty `password` when the request leaves the account a kid: a kid with no household change in it, or an assign as a kid) |
+| `400` | `username_required` (an empty `username`); admin must keep a password (`admin_needs_password`) / password too short (`password_too_short`); `managed_by` that isn't a positive id or `null`; `code: "member_fields_required"` (`managed_by: <id>` without both `member_kind` and `member_access`, or either of those without it); a `kind` or `access` that isn't one of the two values; `code: "kid_no_password"` (a non-empty `password` when the request leaves the account a kid: a kid with no household change in it, or an assign as a kid) |
 | `404` | user not found (the account, or the owner named by `managed_by`) |
-| `409` | would demote/disable the last enabled admin (`last_admin`); `code: "member_not_admin"` (making a member an admin, or assigning an admin as a member); `code: "owner_is_member"` (the owner is a member); `code: "owner_is_demo"` (the owner is a demo account); `code: "member_is_demo"` (the account being assigned is a demo account); `code: "self_managed"` (`managed_by` is the account itself); `code: "has_members"` (the account has members of its own) |
+| `409` | `username_taken` (a rename to another account's name); would demote/disable the last enabled admin (`last_admin`); `code: "member_not_admin"` (making a member an admin, or assigning an admin as a member); `code: "owner_is_member"` (the owner is a member); `code: "owner_is_demo"` (the owner is a demo account); `code: "member_is_demo"` (the account being assigned is a demo account); `code: "self_managed"` (`managed_by` is the account itself); `code: "has_members"` (the account has members of its own) |
 
 What `user.update` records: [Audit log](../backups-and-notifications.md#audit-log).
 
@@ -6369,7 +6378,7 @@ what the first does).
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
 | `added_before` | date | - | exclusive upper bound, same formats |
-| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `series_spellings`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
+| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `unknown_asin`, `series_spellings`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
 | `issue_ignored` | `true`\|`false` | - | with `issue`, list **only** the books an admin ignored for it; without `issue` it is `400 issue_ignored needs an issue` |
 | `sort` | string | `title` | `title` \| `author` \| `surname` \| `series` \| `narrator` \| `published` \| `added` \| `duration` \| `size` |
 | `order` | string | `asc` | `asc` \| `desc` |
@@ -8010,7 +8019,7 @@ a scan last finished.
 
 - `categories` - one entry per kind, always in this order: `scan_error`,
   `suspect`, `split_discs`, `duplicate`, `no_cover`, `unmatched`,
-  `series_spellings`, `no_chapters`, `detailed_chapters`, `transcode`. Some of
+  `unknown_asin`, `series_spellings`, `no_chapters`, `detailed_chapters`, `transcode`. Some of
   them need a word:
   - `series_spellings` is a book whose main series another book of its library
     spells another way: the same series in a different case, accent, punctuation
@@ -8029,6 +8038,12 @@ a scan last finished.
     as `duplicate`.
   - `unmatched` is **left out while community metadata is off**, since there is
     nothing to match against.
+  - `unknown_asin` is a book whose own ASIN the community database doesn't know,
+    as the [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)
+    last found it, with no ISBN and no community match. It still counts as
+    matched, so it is never `unmatched` too. It is **left out while
+    `metadata.report_unknown` is off**, since only the report's lookups find
+    such a book. A client that doesn't know the kind can skip it.
 
   What puts a book in each kind is in [Issues](../scanner.md#issues).
 - `count` - books that need attention, not counting the ones an admin ignored
@@ -9136,6 +9151,7 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
     "upcoming": true,
     "report_unknown": false,
     "available": true,
+    "region_chosen": true,
     "upcoming_status": {
       "last_run_at": "2026-10-30T04:12:00.000Z",
       "last_success_at": "2026-10-30T04:12:00.000Z",
@@ -9189,6 +9205,7 @@ effect. Lists are never `null`.
 | `players.web_dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_WEB_DIR` |
 | `players.web_player` | read-only: where `/web` is served from - `"embedded"` (baked into the build), `"dir"` (from `web_dir`) or `""` (not mounted) |
 | `metadata.region` | the preferred Audible marketplace (`""` = none; see [Configuration](../configuration.md#community-metadata-metadata)) |
+| `metadata.region_chosen` | read-only (2.7.0): `false` only while no marketplace was ever chosen: none in `config.yaml` or the environment, and no admin ever saved `metadata.region` here (the `server_state` key `metadata_region_chosen`, written by any save carrying the field, `""` included). A failed read counts as chosen. While it is `false`, the console's setup flow preselects the marketplace nearest the admin's browser (its languages, then its time zone) and Settings offers it. An older server sends no field, and the console offers nothing |
 | `metadata.mode` | `"remote"` (ask `base_url` for each book) or `"mirror"` (keep a local copy and answer from it; see [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)). A restart setting: a saved change is listed in `restart_pending`, and `GET /admin/system`'s `metadata.mode` keeps the running mode until the restart |
 | `metadata.upcoming` | the [upcoming releases](#upcoming-releases) job's switch (config `upcoming.enabled`, default `true`). Applies at once: switched on (with metadata on) it runs soon when no run has succeeded for a day; switched off it stops a run in flight. The live `upcoming` [capability](#get-apiv1server) is `metadata` **and** this |
 | `metadata.upcoming_status` | read-only (2.6.0): how the job's runs went, absent without a metadata service. `last_run_at`, `last_success_at` (both absent before the first run; equal when the last run worked), `last_error` (the last failed run's error, cleared by a success), `next_run_at`, `series` (local series matched to a community series) and `items` (what they lack in all). The console's Settings > Metadata words it |
@@ -9907,14 +9924,16 @@ server and this request:
     "peer_trusted": false
   },
   "config_libraries": ["Audiobooks"],
-  "mount_hints": ["/audiobooks", "/podcasts"]
+  "mount_hints": ["/audiobooks", "/podcasts"],
+  "printed_password": true
 }
 ```
 
 - `state` is server-wide (the `server_state` key `setup_state`; see
   [Data model](../data-model.md#server-state)). The step ids, in the console's
-  order, are `folder`, `naming`, `metadata`, `reach`, `abs`, `backups`,
-  `phone` and `bridge`, each `"done"` or `"skipped"`; an absent id is a step
+  order, are `account`, `folder`, `naming`, `metadata`, `reach`, `abs`,
+  `backups`, `bridge` and `phone` (2.7.0 added `account` first and moved `phone`
+  last), each `"done"` or `"skipped"`; an absent id is a step
   not yet seen. A server with no row (a fresh one) answers `finished: false`,
   `dismissed: false`, `steps: {}`; migration `0053` stored an upgraded server
   as finished and dismissed.
@@ -9937,6 +9956,12 @@ server and this request:
   systems, when the table can't be read, and once the flow is finished, unless
   its folder step was skipped and can still be reopened from the Overview card
   (only that step offers them).
+- `printed_password` (2.7.0) is true while the caller is the admin the first
+  start made and still has the password it printed in the log
+  (`auth.PrintedPassword`, the `server_state` key `first_admin`). The console's
+  Your account step then asks for a new password. It is false for an admin who
+  chose theirs, on the `--setup` page or since, and when the read fails (the
+  step then asks for nothing).
 
 | Status | Meaning |
 |---|---|
