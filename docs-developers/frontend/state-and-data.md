@@ -1581,8 +1581,11 @@ headers }`). The rules are in `src/lib/proxy-headers.ts` and the storage in
   CORS lists a fixed set of request headers, so a custom one cross-origin would
   fail its preflight. `<img>` and `<audio>` can't carry them and rely on the
   proxy's browser sign-in.
-- **Redirects** are the platform HTTP stack's to follow, so whether a 3xx takes
-  the headers to another origin is unverified. The UI says "sent with requests
+- **Redirects** are the platform HTTP stack's to follow. On Android (checked
+  2026-11-14 on a Pixel 6a, a GET 302 from https to another https host) every
+  stack (okhttp fetch and downloads, expo-image, Media3) sends the custom headers
+  on to the new origin and drops `Authorization`; iOS is unchecked. The origin rule
+  covers only the first request (follow-up fe#295). The UI says "sent with requests
   to &lt;origin&gt;" and never claims more (`src/i18n/locales.test.ts` refuses
   "nowhere else", "go only" and "https only" in every locale).
 - **Not carried:** Chromecast (`castBlockReason` `proxy`), the watch apps (the
