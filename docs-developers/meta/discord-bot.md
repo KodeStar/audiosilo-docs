@@ -1,6 +1,6 @@
 ---
 title: Discord notification bot
-description: Deploy the private AudioSilo watchlist bot and understand its feed notifications and delayed community announcements.
+description: Deploy the private AudioSilo watchlist bot and understand its held feed notifications and delayed community announcements.
 ---
 
 ## Purpose
@@ -16,21 +16,22 @@ A preorder becoming a release has a new ID, so both events notify. The first
 fetch is a silent baseline; reordering and entries aging out do not notify.
 
 A new item ID waits `NOTIFY_HOLD` (6 hours by default) before its DM.
-meta-sync often adds a book's other stores in a later cycle, so the wait lets
-the linked page fill in first. If the entry changes while it waits, the one DM
-carries the latest version, and the wait still counts from when the ID first
-appeared. A change to an entry that is not waiting, such as a date correction
-to one already sent or in the baseline, goes out at once. Polling continues
-while entries wait, and `status` counts them as queued. `NOTIFY_HOLD=0` sends
-new entries at once and releases anything still waiting.
+[meta-sync](./sync-bot.md#every-stores-copy-of-a-book) often adds a book's
+other stores in a later cycle, so the wait lets the linked page fill in first.
+If the entry changes while it waits, the one DM carries the latest version, and
+the wait still counts from when the ID first appeared. A change to an entry
+that is not waiting, such as a date correction to one already sent or in the
+baseline, goes out at once. Polling continues while entries wait, and `status`
+counts them among its queued notifications. `NOTIFY_HOLD=0` sends new entries
+at once and releases anything still waiting.
 
 Members can DM `status`, `pause`, `resume`, `stop` or `help`. `stop` deletes their
 subscription, pending messages and waiting entries. Replacing a URL also clears
-that user's old pending messages; a waiting entry the new list still contains
-keeps its wait and arrives once due, and the rest are dropped. `pause` keeps
-waiting entries, which arrive after `resume` once due. Members who leave the
-configured server are removed on the next successful membership check. Blocked
-DMs pause delivery until `resume`.
+that user's old pending messages and drops the waiting entries the new list
+does not contain. The others keep their wait. `pause` keeps waiting entries,
+which arrive after `resume` once due. Members who leave the configured server
+are removed on the next successful membership check. Blocked DMs pause delivery
+until `resume`.
 
 ## Community announcements
 
@@ -131,7 +132,9 @@ Delivery retries survive restarts, and so do waiting entries with the time
 each first appeared. A waiting entry is saved like a pending message and joins
 the queue once its wait is over and anything already queued has been sent. A
 crash between Discord accepting a message and its local acknowledgment can
-produce a duplicate. Back up `state.json` while
-the bot is stopped; deleting the volume loses subscriptions and delivery history.
-Corrupt state and failed state writes stop the service instead of silently
-resetting it. The container health check checks connectivity and worker progress.
+produce a duplicate.
+
+Back up `state.json` while the bot is stopped; deleting the volume loses
+subscriptions and delivery history. Corrupt state and failed state writes stop
+the service instead of silently resetting it. The container health check checks
+connectivity and worker progress.
