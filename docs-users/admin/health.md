@@ -38,6 +38,7 @@ Click a card to open its list.
 | **Likely duplicates** | Copies of one book in the same library. | Compare them side by side. See [Duplicates](#duplicates). |
 | **Missing covers** | No cover in the book's folder or files. | **Upload a cover** opens the book's page (see [Covers](books.md#covers)). |
 | **Not matched to community metadata** | The book has no community match, so players can't show its community details. Only shown while community metadata is on. | **Review match** opens the [match dialog](books.md#matching-with-community-metadata). To match the whole list, use [Match automatically](#matching-every-book-at-once). |
+| **ASIN not in the community database** | The book has an ASIN the community database doesn't know yet. It counts as matched but gets no community details. Only shown while [Help complete the community database](server.md#helping-complete-the-community-database) is on, since that is what finds them. | **Review match** finds the book by its title. **Add it** opens the [Add a book](../community/meta-site.md#adding-a-missing-book) page with its ASIN filled in. |
 | **Series spelled several ways** | Books of one series spell its name differently. | **Use this spelling**. See [Series spelled several ways](#series-spelled-several-ways). |
 | **Long books without chapters** | Books over two hours with no chapters, so listeners can't skip between them. | **Detect chapters** with your [Bridge](bridge.md) (see [Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)), or [match](books.md#matching-with-community-metadata) the book to use its [community chapters](books.md#community-chapters). |
 | **More detailed chapters available** | The community database has finer chapters that fit this copy. | **Use detailed chapters**. |
@@ -93,7 +94,9 @@ was deleted." Once the folder is back, **Retry** scans it. See
 
 **Not matched to community metadata** has a **Match automatically** card above
 its list. It looks up every book in the list in one pass. Nothing changes until
-you review and apply what it found.
+you review and apply what it found. While there are unmatched books, the
+overview and **Library > Books** show how many, with a **Match automatically**
+button that opens this list.
 
 1. Pick a library and click **Find matches**. You can leave the page while it
    runs.
@@ -129,8 +132,10 @@ by hand. The [match dialog](books.md#matching-with-community-metadata) lists the
 closest candidates, however low they scored.
 
 The community database has gaps, so some books stay unmatched. They still play
-and keep the details from their tags and folders. To add a missing book to the
-database, see [Contributing](../community/meta-site.md#contributing).
+and keep the details from their tags and folders. Each **Not found** row has
+**Add it**, which opens the
+[Add a book](../community/meta-site.md#adding-a-missing-book) page on
+meta.audiosilo.app with the book's title and author filled in.
 
 ### ASIN and ISBN tags are hints
 

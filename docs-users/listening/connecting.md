@@ -35,7 +35,7 @@ Each device can scan the same invite's QR code, up to the invite's number of use
 
 ![The server's connect page with a pairing QR code, Open in app and Open web player, and the app store links](/img/screenshots/server/connect-page.png)
 
-Opened on a phone, the page leads with getting the app instead of a QR code. Install AudioSilo from the store links on the page, then open the invite link again and tap **Open in app**. Or tap **Open web player** to listen in the browser now. An Android phone without Google Play can download the app's APK from the link under the store buttons.
+Opened on a phone, the page leads with getting the app instead of a QR code. Install AudioSilo from the store links on the page, then open the invite link again and tap **Open in app**. If you typed the code in, keep the page open and come back to it, or enter the code there again. Or tap **Open web player** to listen in the browser now. An Android phone without Google Play can download the app's APK from the link under the store buttons.
 
 ![The invite page on a phone: get the app first, the store links, then Open web player and Open in app](/img/screenshots/server/phone-connect-invite.png)
 

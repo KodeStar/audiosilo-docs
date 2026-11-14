@@ -167,7 +167,10 @@ The other settings on this topic:
   [Helping complete the community database](#helping-complete-the-community-database).
 - **Audible marketplace** (in **Matching**) - the store you buy from. When a
   recording sells in several stores, a match takes this store's ASIN. It has
-  nothing to do with your library's language. See
+  nothing to do with your library's language. Until a marketplace is chosen,
+  the card offers the one nearest you, from your browser's language and time
+  zone, unless that is the US store. **Use *store*** saves it, and **Keep no
+  preference** keeps none. See
   [Which ASIN a match takes](health.md#which-asin-a-match-takes).
 - **Service address** - `https://meta.audiosilo.app` by default. Change it only
   if you run your own.

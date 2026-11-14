@@ -94,7 +94,10 @@ The overview is the console's home page. It shows:
 A notice appears at the top when a library's folder can't be read (see
 [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing)).
 Another appears when saved settings wait for a restart (see
-[When a change takes effect](server.md#when-a-change-takes-effect)).
+[When a change takes effect](server.md#when-a-change-takes-effect)). While
+books are not matched to community metadata, a third says how many, with
+[Match automatically](health.md#matching-every-book-at-once).
+**Library > Books** shows the same notice.
 
 A new server with no libraries shows an **Add your first library** button
 instead. Until you dismiss it, a

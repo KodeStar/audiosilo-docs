@@ -119,6 +119,8 @@ filters it by state.
 
 Each job shows its book, its progress, who asked and when. Jobs the server queues
 itself say **Scheduled by the server**. When a job is done, it says what it made.
+A failed or cancelled job keeps its **Last step**, so you can see where it
+stopped.
 
 A job that **Needs attention** says why, with **Open in the Bridge**. There,
 **Retry** sends it on once you've fixed the cause. See

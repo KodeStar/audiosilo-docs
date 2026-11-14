@@ -59,12 +59,14 @@ The server prints it only once. From least to most drastic:
 
 1. **Check the logs.** `docker compose logs` often still has it, unless the container was recreated.
 2. **Ask another admin** to set a new password for you in [Invite people](./admin/users-and-invites.md).
-3. **Use the auth code**, if you saved it. It still signs the player in as the admin, but not the admin console.
-4. **Reset the database.** Stop the server, move `audiosilo.db` (and any `audiosilo.db-wal` / `audiosilo.db-shm`) out of the data folder, and start it again. You get a new password.
+3. **Run `reset-admin`.** It sets a new admin password and prints it, and your books, people and listening stay as they are. Each later start's log names the command for your install, and [If you lose the password](./getting-started/first-run.md#if-you-lose-the-password) lists them all. It also ends the first-run auth code. If it says that part failed, the new password still works: revoke the code in **People > Invites**.
+4. **Reset the database**, only if `reset-admin` can't run. Stop the server, move `audiosilo.db` (and any `audiosilo.db-wal` / `audiosilo.db-shm`) out of the data folder, and start it again. You get a new password.
 
 :::warning
-Resetting never touches your audiobooks, but it erases all accounts, listening progress, bookmarks, notes and shares. Move the files aside rather than deleting them.
+Resetting the database never touches your audiobooks, but it erases all accounts, listening progress, bookmarks, notes and shares. Move the files aside rather than deleting them.
 :::
+
+`reset-admin` refuses while a restore is waiting for the next start, since the restore would replace the new password. Start the server once, or cancel the restore in [Backups](./admin/backups.md), then run it again.
 
 ### I went back to an older server version
 

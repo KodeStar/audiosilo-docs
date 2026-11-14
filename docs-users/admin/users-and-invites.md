@@ -64,9 +64,10 @@ the console at. A notice under **Share** says when that limits who can open it:
   open the console at the server's network address, then make a new invite.
 - **Works on your home network only**: to invite someone elsewhere, set a
   public address.
-- **Their browser will warn about the certificate**: the link is `https://` at
-  an IP address. They can continue past the warning, or you can set a public
-  address with a real certificate.
+- **Their browser will warn about the certificate**: the link is `https://`
+  and the server uses its own self-signed certificate, or the link is
+  `https://` at an IP address. They can continue past the warning, or you can
+  set a public address with a real certificate.
 
 ## The People page
 
