@@ -89,8 +89,9 @@ nothing is counted twice.
 ## Match your books after an import
 
 An import doesn't match your books. It brings Audiobookshelf's ASIN and ISBN for
-every book Audiobookshelf has them for, whoever listened to it. A match run then
-looks them up in the community database.
+every book Audiobookshelf has them for in the libraries the token can see,
+whoever listened to it. A match run then looks them up in the community
+database.
 
 - The server pairs these books with yours by folder path, then by title and
   author.
@@ -101,9 +102,9 @@ looks them up in the community database.
 - A match looks Audiobookshelf's identifiers up ahead of any in the book's
   tags.
 
-So nothing shows until a match run applies. Once an import is applied, **Past
-imports** says how many books are not matched, with a **Match automatically**
-button. It opens the unmatched books in Library health, where you start the run,
+So nothing shows until a match run applies. Once an import is applied, with
+community metadata on, **Past imports** says how many books are not matched,
+with a **Match automatically** button. It opens the unmatched books in Library health, where you start the run,
 review what it found and apply it. See
 [Matching every book at once](health.md#matching-every-book-at-once).
 

@@ -157,7 +157,8 @@ differently:
 
 - **From an [Audiobookshelf import](import.md#match-your-books-after-an-import).**
   They are match hints, like tags. A match looks them up before the book's tags,
-  and the book stays **Not matched** until a match applies.
+  and the book stays **Not matched** until a match applies. A wrong one can look
+  confident too, and correcting the tag doesn't stop it: match the book by hand.
 - **From a `metadata.json` file beside the book.** The ASIN or ISBN counts as the
   book's own straight away, so the book is matched (see
   [Audiobookshelf's metadata.json files](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
