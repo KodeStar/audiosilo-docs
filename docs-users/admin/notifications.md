@@ -1,6 +1,6 @@
 ---
 title: "Get notifications"
-description: "Hear about new books, new releases, new podcast episodes, failed scans or backups, new sign-ins and updates, in the console's bell or on your phone, Discord or a webhook."
+description: "Hear about new books, new releases, new podcast episodes, failed scans or backups, new sign-ins, people waiting to sign in and updates, in the console's bell or on your phone, Discord or a webhook."
 ---
 
 Your server can tell you when something happens: new books, a new release in a
@@ -69,6 +69,7 @@ Tick a box to send that event there. It saves as you tick.
 | **New podcast episodes** | A followed show's feed brought new episodes. One message per show, with a few titles. See [Podcasts](#podcasts). |
 | **A podcast feed is failing** | A followed show's feed failed several checks in a row, is gone, or the Bridge lost its private address. |
 | **A podcast feed is back** | A feed reported as failing answered again. |
+| **Someone is waiting to sign in** | Someone signed in with [single sign-on](single-sign-on.md) and no account took them. Once per person, until you deal with them on People. The message never carries their email. |
 
 Every event shows in the bell whether you send it anywhere or not. When a server
 update adds a new event, it starts unticked on the destinations you already have.
@@ -100,5 +101,6 @@ Messages carry names, book titles, counts and a link into the console (when the
 server has a [public address](server.md#general)). They never carry a
 password, invite code, token, IP address, a folder path on the server or a
 podcast feed's address. A failing feed's message says what went wrong, such as
-the HTTP status the feed answered.
+the HTTP status the feed answered. A waiting sign-in's message has the person's
+name, never their email.
 Messages are in English.

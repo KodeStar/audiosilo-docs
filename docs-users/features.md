@@ -76,6 +76,7 @@ Everything else works with the server alone.
 - [Move over from Audiobookshelf](getting-started/coming-from-audiobookshelf.md): read the same folders, then bring book details and listening history across.
 - [Reach your server from outside your home](getting-started/remote-access.md): a domain name and a trusted certificate.
 - [Back up your server](admin/backups.md): scheduled and manual backups, and restore.
+- [Sign in with single sign-on](admin/single-sign-on.md): let people sign in to the console and the web player with Authentik, Authelia, Keycloak, Pocket ID or another OpenID Connect provider.
 - [Notifications](admin/notifications.md): new books and podcast episodes, failed scans and podcast feeds, and sign-ins, on your phone, Discord or a webhook.
 - [Activity](admin/activity.md): who is listening now, and listening over time.
 - [Server settings](admin/server.md): every setting in the admin console, plus updates and logs.
