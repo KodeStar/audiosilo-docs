@@ -934,8 +934,9 @@ auth:
 
 The provider fields (from `enabled` to `ca_file`) are read at start and shown
 read only in the console. `auto_create`, `allowed_group` and `admin_group` are
-the console's to change and apply at the next sign-in. Both group names are
-trimmed, at most 256 characters, with no control characters.
+the console's to change and apply at the next sign-in. The group names are
+checked like every console setting (see
+[the normalizers](#changing-settings-at-runtime)).
 
 ### The Bridge (no keys)
 

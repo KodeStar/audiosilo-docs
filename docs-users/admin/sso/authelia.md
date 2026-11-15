@@ -62,9 +62,5 @@ Restart the server and check **Server > Settings > Sign-in**, as in
   username and the groups in the userinfo answer rather than the ID token,
   unless you set a claims policy. AudioSilo asks the userinfo endpoint for
   whatever the ID token lacks, so no claims policy is needed.
-- **Admins from a group.** Authelia's groups come from its user database or
-  LDAP. Set **Admin group** in AudioSilo to one of them to make its members
-  admins.
-- **Verified emails.** Only an email the provider marks as verified links
-  someone to their AudioSilo account by itself. Anyone else waits for you to
-  link them.
+- **Groups.** Authelia's groups come from its user database or LDAP. Use one
+  of them to [make admins from a group](../single-sign-on.md#make-admins-from-a-group).

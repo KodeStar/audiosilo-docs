@@ -497,9 +497,7 @@ never as the batch's error. The reasons are `older`, `resume_behind`, `invalid`,
 - `invalid_email` (`400`): an account email that isn't one address.
 - `not_linkable`, `user_has_identity` and `identity_linked` (`409`, from
   [linking a waiting sign-in](reference.md#post-apiv1adminoidcpendingidlink)).
-- `admin_needs_password` (`409`) from
-  [unlinking](reference.md#delete-apiv1adminusersididentitiesidentity_id) a
-  password-less admin's identity.
+- `admin_needs_password` (`409` on unlink): see the table above.
 
 ### Using the codes
 
@@ -734,7 +732,7 @@ has them. For the others, each row says when the flag is `true`.
 | `metadata` | whether [community metadata lookup](reference.md#get-apiv1librariesidmeta) is configured. It gates the standalone [work lookup](reference.md#get-apiv1metawork) too, and the enriched-book material is drawn only when it is true |
 | `export` | whether the admin [library export](reference.md#get-apiv1adminlibrariesidexport) exists |
 | `upload`, `websocket` | roadmap phases. They will flip on when they land |
-| `oidc` | [single sign-on](reference.md#single-sign-on): `true` while `auth.oidc.enabled` was on at start, the provider config has no problem and `public_url` is set; sent `false` otherwise. While it is `true`, `auth.methods` adds `"oidc"` and `auth.oidc.name` names the provider for the button. Only a page on the server's own origin can use it |
+| `oidc` | whether [single sign-on](reference.md#single-sign-on) can run (the conditions are there); sent `false` otherwise. While it is `true`, `auth.methods` adds `"oidc"` and `auth.oidc.name` names the provider for the button. Only a page on the server's own origin can use it |
 
 ### Catalog and browsing
 

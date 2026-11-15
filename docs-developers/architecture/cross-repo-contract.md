@@ -585,13 +585,10 @@ does. A sign-in that ends without a session lands on the server's own
 `/connect#oidc=<reason>` instead (see
 [Single sign-on](../server/auth-and-security.md#single-sign-on-openid-connect)).
 
-**Frontend:** the sign-in step offers "Sign in with &lt;name&gt;"
-(`oidcButtonName`, from `auth.oidc.name`) only in the web player the server
-serves, signing in to its own server, and not on a grown-up's pass through kids
-mode. The button is a full page load of `client.oidcStartUrl()`. On
-`/connect?oidc=1` the connect screen takes the parameter off the address, calls
-`client.oidcFinish` and ends in `finishConnect`, as a pairing link does
-(`src/components/connect/oidc-sign-in.ts`).
+**Frontend:** the sign-in step offers "Sign in with &lt;name&gt;" only in the web
+player the server serves, and on `/connect?oidc=1` calls `client.oidcFinish` and
+ends in `finishConnect`, as a pairing link does (see
+[Single sign-on](../frontend/connect-and-addresses.md#single-sign-on)).
 
 **A change requires:** `/web/connect?oidc=1`, the `return` values and the finish's
 answer are the contract. The finish's `401` codes `oidc_no_sign_in` and

@@ -40,12 +40,9 @@ Restart the server and check **Server > Settings > Sign-in**, as in
 
 ## Good to know
 
-- **Groups.** Pocket ID has user groups. To make admins from one, set **Admin
-  group** in AudioSilo to its name, and check that Pocket ID sends the person's
-  groups in a claim called `groups`.
+- **Groups.** Pocket ID has user groups. To
+  [make admins from one](../single-sign-on.md#make-admins-from-a-group), check
+  that Pocket ID sends the person's groups in a claim called `groups`.
 - **Allowed people.** Pocket ID can limit a client to some user groups. The
   people it lets through still need an account in AudioSilo, made by
   **Make accounts for new people** or by you.
-- **Verified emails.** Only an email the provider marks as verified links
-  someone to their AudioSilo account by itself. Anyone else waits for you to
-  link them.

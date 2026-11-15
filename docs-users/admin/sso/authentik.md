@@ -45,11 +45,10 @@ Restart the server and check **Server > Settings > Sign-in**, as in
 ## Good to know
 
 - **Groups.** AudioSilo reads groups from a claim called `groups`. A standard
-  Authentik setup sends one in its profile scope. To make admins from a group,
-  set **Admin group** in AudioSilo to the group's name exactly as Authentik
-  shows it.
-- **Verified emails.** Only an email the provider marks as verified links
-  someone to their AudioSilo account by itself. Authentik decides that in its
+  Authentik setup sends one in its profile scope. Use group names exactly as
+  Authentik shows them to
+  [make admins from a group](../single-sign-on.md#make-admins-from-a-group).
+- **Verified emails.** Authentik decides whether an email is verified in its
   email scope mapping. If people wait under **Waiting sign-ins** marked **Not
   verified** although their email is right, check that mapping, or link them
-  by hand.
+  by hand. See [Who gets in](../single-sign-on.md#who-gets-in).

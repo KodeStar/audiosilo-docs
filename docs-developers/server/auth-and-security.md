@@ -628,14 +628,10 @@ exchange succeeded, so states sent back bare can't fill it.
 
 ### The finish
 
-`POST /auth/oidc/finish` is public and takes an optional `{"device_name"}`.
-
-- A `429` (`oidcLimiter`) or a `400` (the body) leaves the cookie, so the
-  sign-in can still be finished within its minute. Every other answer clears it.
-- No cookie is `401 oidc_no_sign_in`, with nothing charged.
-- A token that is spent, expired, unknown or of another kind, or whose account
-  is disabled or has become a household member or demo account, is
-  `401 oidc_sign_in_expired`, charged to `oidcLimiter`.
+`POST /auth/oidc/finish` is public. Its answers, which of them keep the cookie
+and which are charged to `oidcLimiter` are in the
+[API reference](api/reference.md#post-apiv1authoidcfinish). A token of another
+kind reads as `401 oidc_sign_in_expired`, like a spent or expired one.
 
 `ConsumeOIDC` takes only `KindOIDC`. A pairing token planted in the cookie (an
 invite's QR, or a person's own `POST /auth/pair`) would sign the browser in as

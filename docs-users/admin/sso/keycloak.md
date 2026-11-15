@@ -58,11 +58,10 @@ Restart the server and check **Server > Settings > Sign-in**, as in
 ## Good to know
 
 - **Verified emails.** Keycloak marks each user's email as verified or not, with
-  the **Email verified** switch on the user's page. Only a verified email links
-  someone to their AudioSilo account by itself. Anyone else waits for you to
-  link them.
-- **Admins from a group.** Make a group such as `audiosilo-admins`, add your
-  admins to it, and set **Admin group** in AudioSilo to its name.
-- **No groups, no claim.** Keycloak leaves the `groups` claim out for a user in
-  no group. Once AudioSilo has seen groups for someone, a sign-in without any
-  counts as no groups, so leaving the last group removes their admin role.
+  the **Email verified** switch on the user's page. See
+  [Who gets in](../single-sign-on.md#who-gets-in).
+- **Admins from a group.** Make a group such as `audiosilo-admins` and add your
+  admins to it, then
+  [make admins from that group](../single-sign-on.md#make-admins-from-a-group).
+  Keycloak leaves the `groups` claim out for a user in no group, so leaving the
+  last group removes their admin role.
