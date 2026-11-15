@@ -87,7 +87,7 @@ inside `ThemeProvider`, so there is one theme subscription, not one per icon.
 Don't branch on `scheme === 'dark'` yourself. The check on a solid success fill
 (the finished flag on covers and spines) is `successForeground`, never white.
 
-**The normal themes pass WCAG AA.** `src/theme/contrast.test.ts` holds every text
+**Both themes pass WCAG AA, with and without high contrast.** `src/theme/contrast.test.ts` holds every text
 pair at 4.5:1 and every non-text pair at 3:1 (field outlines, `border-strong`, the
 brand fill on the page and on its `track`), in both themes and both contrast sets.
 A token change that drops a pair below its ratio fails `npm test`.
@@ -302,13 +302,12 @@ The rules are in the frontend `CONVENTIONS.md` ("Large text", "Touch targets",
   [Testing](testing.md#the-harness)).
 - **Android keeps its activity on a font or display size change.** The
   `plugins/withFontScaleChanges.js` config plugin adds `fontScale` and `density` to
-  the main activity's `android:configChanges`, so the app re-lays out the same
-  screen instead of restarting. The plugin also gives the main activity an
-  `onConfigurationChanged` that asks React Native's DeviceInfo to re-read the
-  scale, so `useFontScale()` hears of a change made with the app open.
-- **Targets**: 44 on iOS and the web, 48 dp on Android (`minTarget()`,
-  `touchTarget()` and `slopTo44()` in `src/components/ui/touch-target.ts`). An
-  icon-only `Button` must have an `accessibilityLabel`; its props type requires it.
+  the main activity's `android:configChanges`, so the app re-lays out instead of
+  restarting. Its `onConfigurationChanged` makes React Native's DeviceInfo re-read
+  the scale, so `useFontScale()` sees a change made while the app is open.
+- **Targets**: 44 on iOS and the web, 48 dp on Android (`minTarget()`; the helpers
+  are in [the player's building blocks](player-ui.md#one-chrome-for-the-controls)).
+  An icon-only `Button` must have an `accessibilityLabel`; its props type requires it.
 - **Screen readers**: a sheet registers a modal layer (`useModalLayer` in
   `src/components/ui/modal-layer.ts`), and a full-page root that can sit behind one
   spreads `useBehindModalProps()`, so VoiceOver and TalkBack skip the page while

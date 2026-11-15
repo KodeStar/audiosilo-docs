@@ -50,9 +50,9 @@ three fast Node checks before jest:
    - Native keeps the px letter-spacing scale (`tracking-wider` is 0.5 on iOS).
    - The themed Stacks tokens resolve per theme on iOS, also through an opacity
      modifier such as `bg-brand/10`, and switch under `.dark` on web.
-   - Every `text-[Npx]` and `leading-[Npx]` in `src/` has its `web:` rem twin
-     (N/16 rem, same variants), the twin's rule comes after the px rule on the web,
-     and iOS has no rule for the twin. A slot that cannot grow may cap its twin
+   - Every `text-[Npx]` and `leading-[Npx]` in `src/` has its `web:` rem twin,
+     the twin's rule comes after the px rule on the web, and iOS has no rule for
+     the twin. A slot that cannot grow may cap its twin
      (`web:text-[length:min(...)]`). Art drawn to a fixed box is exempt (the cover,
      the A-Z rail, the connect cascade). See
      [Styling](styling.md#large-text-targets-and-screen-readers).

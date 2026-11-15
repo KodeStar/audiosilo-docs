@@ -564,14 +564,16 @@ The building blocks shared by the full player and the docked bar.
 `pillClass(look)` and `ControlPill` (`control-pill.tsx`) give every player control
 the same press, hover and focus states.
 
-**Touch targets.** A rem is 14 pt on native but 16 px on the web. Both helpers are in
+**Touch targets.** The minimum is 44 on iOS and the web and 48 dp on Android
+(`minTarget()`). A rem is 14 pt on native but 16 px on the web. The helpers are in
 `src/components/ui/touch-target.ts`:
 
 - A rem-sized control takes `hitSlop={slopTo44(rem)}`, which adds only what it
-  lacks of 44: zero for `h-11` on the web, 4 px a side for the dock's `h-9` pills.
-- A small control that must report 44 pt itself on native (a row's action, a label
-  chip) takes `touchTarget(height, width?)`. That is a 44 pt frame on native and the
-  slop on the web.
+  lacks of the minimum: zero for `h-11` on the web, 4 px a side for the dock's `h-9`
+  pills.
+- A small control that must report the minimum itself on native (a row's action, a
+  label chip) takes `touchTarget(height, width?)`. That is a 44 pt frame on iOS
+  (48 dp on Android) and the slop on the web.
 
 Tests assert them with `expectNativeTarget` (`src/testing/touch-target.ts`).
 
