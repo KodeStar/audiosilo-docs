@@ -1602,11 +1602,10 @@ only rows whose stamps agree, and `NULL` counts as matching.
 `failing_announced` *(0076, all `INTEGER NOT NULL DEFAULT 0`)* are a feed's run
 of failed polls as the admin's notifications count it. `feed_failures` counts
 the polls in a row that the feed itself failed, and `feed_network_failures`
-how many of those were network-class. `failing_announced` is set once
-`podcast_feed_failing` was raised and cleared by the next successful poll. The
-older `failures` still drives the backoff, and an unwritable library or a lost
-Bridge moves only that one. There is no backfill, so a feed already failing at
-the upgrade counts from its next failure. See
+how many of those were network-class. `failing_announced` records that
+`podcast_feed_failing` was raised for the run. The older `failures` still
+drives the backoff. A feed already failing at the upgrade counts from its next
+failure. The counting rules are in
 [Podcast events](backups-and-notifications.md#podcast-events).
 
 #### Ownership, cascades and private URLs

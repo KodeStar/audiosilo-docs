@@ -79,13 +79,12 @@ The podcast events need a [podcast library](podcasts.md). The server sends them
 like this:
 
 - **New podcast episodes** comes when a show's feed brings episodes newer than
-  the ones the server had. A show's first check sends nothing, and neither does
-  a rescan of episodes the server already had.
+  the ones the server had. A show's first check sends nothing.
 - **A podcast feed is failing** comes after three failed checks in a row. When
   the feed couldn't be reached at all, such as no answer in time, it waits for
   six. That way a short outage of the Bridge's own internet sends nothing.
-- A feed whose address says it is gone, and a private feed whose address the
-  Bridge lost, are reported at once.
+- A feed that reports it is gone, and a private feed whose address the Bridge
+  lost, are reported at once.
 - An offline Bridge, or a library the Bridge can't write to, never counts as
   the feed failing.
 - Each problem is reported once. When the feed answers again, you get

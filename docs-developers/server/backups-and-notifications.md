@@ -339,10 +339,7 @@ subscribed to its kind. A nil `*Service` does nothing, so callers don't check.
 | `podcast_feed_recovered` | `catalog.FoldPodcastJob` for the first successful `podcast.poll` after `podcast_feed_failing` | `library`, `library_id`, `show_id`, `show`, `show_path` |
 
 `notify.Kinds` lists the kinds in this order, which is the order the console
-shows. A destination's `events` list the kinds it was given, so a kind a newer
-server adds starts unticked on every existing destination. A new destination
-starts with the console's `DEFAULT_EVENTS`: `scan_failed`,
-`library_unavailable`, `update_available` and `backup_failed`.
+shows.
 
 #### Bridge event data
 
@@ -411,32 +408,33 @@ when all of these hold:
 - the episode's path wasn't indexed;
 - it isn't removed from the feed, and it was published after the show's
   previous `latest_published`. When that date is ahead of the clock (a
-  mistyped date in the feed), the newest indexed episode that isn't stands in.
+  mistyped date in the feed), the newest indexed episode not dated in the
+  future is used instead.
 
-So a show's first index, a forced rescan of a feed already indexed, a rebuilt
-index and missing rows indexed again announce nothing. The Bridge's rescan
+So nothing is announced for a show's first index, a forced rescan of a feed
+already indexed, a rebuilt index or missing rows indexed again. The Bridge's rescan
 after a poll that grew the feed does announce. `dedup_key` is the library id,
 the show id and a digest of the new episode ids (`notify.SetDigest`), so the
 scheduled scan and the Bridge's rescan can't both announce the same episodes.
 
 `podcast_feed_failing` and `podcast_feed_recovered` come from
-`catalog.FoldPodcastJob`, for `podcast.poll` jobs only. A subscribe never moves
-the run. `podcast_folded` keeps a fold that runs twice from announcing twice.
+`catalog.FoldPodcastJob`, for `podcast.poll` jobs only. A `podcast.subscribe`
+never changes the run. `podcast_folded` keeps a fold that runs twice from announcing twice.
 The run lives in `podcast_feed_state` (see the
 [data model](data-model.md#podcasts)); the older `failures` column still drives
 the backoff on its own. `catalog.feedRun.next` decides:
 
 - A failure whose code is the feed's own (`bridge.FeedFailure`: any code
-  outside `request_expired`, `bridge_lost`, `library_not_writable`,
-  `not_podcast_library`, `write_failed`, `feed_secret_missing` and
-  `identity_changed`) adds one to `feed_failures`.
+  outside `notFeedFailures`, the set the OPML import's
+  [recently failed feeds](api/reference.md#opml-import-and-export) use) adds
+  one to `feed_failures`.
 - Network-class codes (`bridge.NetworkFailure`: `dns`, `network`, `timeout`,
   `tls`) also add one to `feed_network_failures`. Every show fails with these
   at once while the Bridge's own internet is down.
 - The run is due (`feedRun.due`) at three of the feed's other failures
   (`catalog.FeedFailingAfter`) or six network failures
-  (`catalog.NetworkFailingAfter`). A mixed run is due once the two shares add
-  up to one whole, such as two answers and two timeouts.
+  (`catalog.NetworkFailingAfter`). A mixed run is due once other/3 plus
+  network/6 reaches 1, such as two HTTP errors and two timeouts.
 - `gone` is announced at once. `feed_secret_missing` is announced at once
   without counting, with `failures` 0.
 - Any other failure, such as `bridge_lost` or an unwritable library, neither
@@ -451,7 +449,7 @@ error's text, which can hold a private feed's credentials:
 
 - `show` is the show's title, or its folder when it has none, one plain line of
   at most 200 characters. `titles` are cut the same way.
-- `code` is one the messages word (`gone`, `feed_secret_missing`, `dns`,
+- `code` is one the messages have wording for (`gone`, `feed_secret_missing`, `dns`,
   `network`, `timeout`, `tls`, `not_a_feed`, `not_a_podcast`, `too_large`,
   `blocked_address`, `invalid_feed_url`) or an `http_NNN` status, else
   `failed`.
@@ -613,7 +611,10 @@ The fields:
 - `secret`: at most 256 characters, no control characters. It is a webhook's
   signing secret or an ntfy access token. A Discord destination takes none,
   because its address is its secret.
-- `events`: known kinds only, with repeats dropped.
+- `events`: known kinds only, with repeats dropped. A destination gets only the
+  kinds it lists, so a kind a newer server adds starts unticked on every
+  existing destination. The console preselects its
+  [problem events](web-ui.md#server--settings--notifications) for a new one.
 
 A server has at most 20 destinations (`409 too_many_targets`).
 
