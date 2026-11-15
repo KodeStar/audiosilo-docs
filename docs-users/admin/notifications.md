@@ -69,7 +69,7 @@ Tick a box to send that event there. It saves as you tick.
 | **New podcast episodes** | A followed show's feed brought new episodes. One message per show, with a few titles. See [Podcasts](#podcasts). |
 | **A podcast feed is failing** | A followed show's feed failed several checks in a row, is gone, or the Bridge lost its private address. |
 | **A podcast feed is back** | A feed reported as failing answered again. |
-| **Someone is waiting to sign in** | Someone signed in with [single sign-on](single-sign-on.md) and no account took them. Once per person, until you deal with them on People. The message never carries their email. |
+| **Someone is waiting to sign in** | Someone signed in with [single sign-on](single-sign-on.md) and no account took them. Once per waiting row on People. A dismissed row, or one unseen for 30 days, comes back as a new row with a new message if they try again. The message never carries their email. |
 
 Every event shows in the bell whether you send it anywhere or not. When a server
 update adds a new event, it starts unticked on the destinations you already have.

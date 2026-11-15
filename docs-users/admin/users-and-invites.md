@@ -150,7 +150,10 @@ Their invites, with **Rotate** and **Revoke**, as on the
 
 - **Role** - **Member** or **Admin**. An admin sees every library and can use
   the console. Making someone an admin asks for a password if they don't have
-  one.
+  one, unless they sign in with your
+  [single sign-on](single-sign-on.md#see-or-remove-someones-single-sign-on).
+  Their page then says **No password (signs in with Authentik)**, with your
+  provider's name. A household member never counts as signing in this way.
 - **Household** - see [Household members](#household-members).
 - **Danger zone** - [disable or delete](#disabling-vs-deleting) the account.
 

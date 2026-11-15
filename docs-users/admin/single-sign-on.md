@@ -87,7 +87,8 @@ To sign in with single sign-on, open the console or the web player and select
 back signed in.
 
 The web player offers the button only when you open it from your server, at
-the server's own address followed by `/web`.
+the server's own address followed by `/web`. It doesn't offer it while a
+grown-up signs in from [kids mode](../listening/kids-mode.md).
 
 ![The web player's sign-in screen with the Sign in with button](/img/screenshots/web-player/connect-oidc.png)
 
@@ -130,12 +131,16 @@ the provider verified it, their groups and why they wait. You also get the
 **Someone is waiting to sign in** [notification](notifications.md).
 
 1. Select **Link** to give them an existing account. Pick the account and
-   confirm. They sign in to it from then on.
+   confirm. They sign in to it from then on. When the provider verified their
+   email and one account has it, that account is already picked.
 2. Or select **Create account** to make a new ordinary account for them. You
    can type a username, or leave it empty to use one from their sign-in.
 3. Or select **Dismiss** to remove the row. It comes back if they try again.
 
 After a Link or Create account, they sign in again and get straight in.
+
+A row nobody deals with goes after 30 days without a new try. If the person
+tries again after that, they get a new row, and you get a new notification.
 
 ## Make admins from a group
 
@@ -163,6 +168,11 @@ were linked, and their last sign-in.
 
 To remove it, select **Unlink** and confirm. They can't sign in with single
 sign-on until they are linked again. Their devices stay signed in.
+
+For someone with no password who signs in this way, their page says **No
+password (signs in with Authentik)**, with your provider's name. You can make
+them an admin without setting a password, as single sign-on gets them into the
+console. A household member never counts as signing in this way.
 
 An admin with no password can't be unlinked, as it is their only way into the
 console. Set a password for them first.

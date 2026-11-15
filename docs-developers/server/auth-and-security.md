@@ -587,8 +587,8 @@ The ID token checks (`Provider.Exchange`):
 - the signature, with asymmetric algorithms only (`oidc.SigningAlgs`: RS, PS
   and ES at 256, 384 and 512 bits, and EdDSA), so an HMAC token signed with the
   client secret is refused;
-- `iss` is the configured issuer, `aud` contains the client ID, `azp` is the
-  client ID when there are several audiences, `exp` hasn't passed and `iat` is
+- `iss` is the configured issuer, `aud` contains the client ID, `azp`, when present
+  or when there are several audiences, is the client ID, `exp` hasn't passed and `iat` is
   at most 5 minutes ahead;
 - the `nonce` is the flow's.
 
@@ -681,7 +681,8 @@ counts as unverified, as it isn't the address the provider verified.
 **A waiting sign-in** is a row in `oidc_pending`, one per issuer and `sub`,
 recorded again on each attempt (`attempts`, `last_seen_at`). The server keeps
 at most 500, drops a row 30 days after it was last seen and deletes it when a
-later sign-in links or creates the account. It holds the email, the username,
+later sign-in links or creates the account. A person back after those 30 days
+gets a new row, with a new id. It holds the email, the username,
 the name and up to 50 groups, never a token. Its ids are `AUTOINCREMENT`, so a
 dismissed row's id never names another person to a console list read before.
 Each new row raises the `oidc_pending` notification

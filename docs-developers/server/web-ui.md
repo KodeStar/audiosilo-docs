@@ -1360,14 +1360,24 @@ at the next sign-in.
   "and N more"), the reason in words (`pending-model.ts`), when it was first and
   last tried, and the attempts. **Link** opens a picker that leaves out
   household members, demo accounts and the accounts in `linked_user_ids` for the
-  row's issuer, and marks admins. It preselects the one account whose email is
-  the row's, letter case aside (`suggestedAccount`); the admin still chooses. **Create account** takes an optional username.
+  row's issuer, and marks admins. When the provider verified the row's email,
+  it preselects the one account with that email, letter case aside
+  (`suggestedAccount`). An unverified email preselects nothing. The admin still
+  chooses. **Create account** takes an optional username.
   **Dismiss** asks first. A dialog stays open while the list changes under it.
 - **A person's Sign-in tab** shows a "Signed in with &lt;name&gt;" card per
   identity (`identity-card.tsx`): the provider's email, how and when it was
   linked, and the last sign-in, with **Unlink** behind a confirm. A
   `409 admin_needs_password` reads "Set a password first". The tab's **Email**
   card (`email-card.tsx`, not for a household member) sets the account's email.
+- **Signs in with single sign-on** (`signInProvider` in `pending-model.ts`): an
+  identity from the provider the server runs now (the same issuer as
+  `GET /admin/oidc/status`, while `configured`). The person's header then says
+  "No password (signs in with &lt;name&gt;)" in place of "No password (player
+  only)". Choosing Admin under the Account tab's Role then asks for no password,
+  as the server allows. A
+  household member never counts, nor does anyone while the status can't be
+  read.
 
 #### Server > Logs
 
