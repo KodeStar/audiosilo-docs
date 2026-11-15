@@ -92,15 +92,16 @@ Set the text size on your device:
 
 - **iPhone and iPad**: Settings > Accessibility > Display & Text Size > Larger Text.
 - **Android**: the font size in Android's display or accessibility settings.
-- **Web player**: your browser's font size setting.
+- **Web player**: your browser's font size setting. Reload the player after you change it.
 
 With large text, the layout changes shape to make room for the words:
 
 - A setting's name moves above its control instead of beside it.
 - Most labels wrap onto more lines instead of ending in "...".
-- In the full player, the play, skip and chapter buttons and the scrubber grow with the text, up to one and a half times their size. On a narrow screen they grow only as far as they fit.
+- On Android, the tab bar at the bottom names only the tab you are on. TalkBack still reads every tab's name.
+- In the full player, the play, skip and chapter buttons and the scrubber grow with the text, up to one and a half times their size. On a narrow screen the buttons take only the room there is, a little smaller than usual if they must.
 
-The ebook reader keeps its own text size. Change it with the reader's **−** and **+** buttons (see [Read the ebook](reading-the-ebook.md)).
+In the ebook reader, the reader's **−** and **+** buttons also change the text size (see [Read the ebook](reading-the-ebook.md)).
 
 ### High contrast
 
@@ -116,7 +117,7 @@ With high contrast on:
 
 - Text, borders and field outlines get darker in Light and lighter in Dark. Grey secondary text changes the most.
 - Pink text and status colours, such as warnings and errors, get stronger.
-- Progress bars and sliders get an outline, so their full length shows.
+- Progress bars and sliders, such as the speed slider, get an outline, so their full length shows. The full player's scrubber keeps its bars.
 
 The layout stays the same, and Light, Dark and System work as before.
 
