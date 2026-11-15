@@ -118,8 +118,8 @@ over it. The overrides are not in the CSS.
   companion's) come from `themeColors(scheme, highContrast)`, with the flag from
   `useThemeScheme()`. Never read `colors.dark` directly.
 - **Tracks**: in high contrast `ProgressBar` and the slider draw a 1px `input`
-  outline on the track, under the fill (`TrackOutline`). Pass `outline={false}`
-  for a hairline under about 4px.
+  outline on the track, under the fill (`TrackOutline`). Pass `ProgressBar`
+  `outline={false}` for a hairline under about 4px.
 
 The ratios each set holds are in the frontend `STYLEGUIDE.md` (sections 14 and 17).
 
@@ -289,12 +289,16 @@ The rules are in the frontend `CONVENTIONS.md` ("Large text", "Touch targets",
   system font scale on native and the root font size over 16px on the web.
   `useLargeText()` is true from `LARGE_TEXT_SCALE` (1.3). `scaleCapped(base, scale,
   max)` sizes a px-drawn control, and `linesFor(n, large)` lifts a `numberOfLines`
-  cap. Never read `fontScale` in a screen.
+  cap. Never read `fontScale` in a screen. The web reads a browser font size change
+  at the next render, not live (nothing fires for it).
 - **Under large text a layout changes shape, not size.** `SettingRow` puts every
   control under its label, `ToggleGroup` and option tiles wrap, and fixed heights
   become `min-h-*`. The full player's transport and scrubber scale up to
   `CONTROL_MAX_SCALE` (1.5) and shrink back to fit (`controlScale` in
-  `transport-controls.tsx`). Display titles stop at 2x (`DISPLAY_MAX_FONT_SCALE`).
+  `transport-controls.tsx`). On iOS and Android, display titles stop at 2x
+  (`DISPLAY_MAX_FONT_SCALE`, as `maxFontSizeMultiplier`). Under large text the
+  Android tab bar labels only the selected tab, and that label grows to 1.3x at
+  most (`tab-label-size.ts`).
 - **px text needs a rem twin on the web.** px text does not follow the browser's
   font size, so every `text-[Npx]` and `leading-[Npx]` carries a `web:` twin of
   N/16 rem with the same variants (`text-[13px] web:text-[0.8125rem]`).
