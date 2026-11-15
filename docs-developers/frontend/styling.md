@@ -1,6 +1,6 @@
 ---
 title: Styling and the design system
-description: "How the player is styled: Uniwind className on every platform, cn(), the Stacks colour tokens and their generator, fonts, the Text variants, vendored icons, the react-native-reusables primitives in src/components/ui/ (CoverImage among them), overlays and sheets, theme switching and its default, and the react-native-web patches."
+description: "How the player is styled: Uniwind className on every platform, cn(), the Stacks colour tokens and their generator, the high-contrast sets, fonts, the Text variants, vendored icons, the react-native-reusables primitives in src/components/ui/ (CoverImage among them), overlays and sheets, theme switching and its default, large text and screen readers, and the react-native-web patches."
 ---
 
 `STYLEGUIDE.md` at the root of the frontend repo is **authoritative for the
@@ -65,6 +65,7 @@ Never hand-edit either output. `npm test` starts with
 | Hairlines | `border-border` |
 | Pressed and hover | `bg-accent` |
 | Status | `text-destructive`, `success`, `warning`, `info` |
+| Progress and slider tracks | `bg-track` |
 
 Opacity modifiers work (`bg-brand/10`).
 
@@ -83,7 +84,44 @@ token to `tokens.json`, in both themes, instead.
 (`src/theme/use-theme-colors.tsx`). It returns the resolved theme's
 `colors.light` or `colors.dark` from a context that `ThemeColorsProvider` fills
 inside `ThemeProvider`, so there is one theme subscription, not one per icon.
-Don't branch on `scheme === 'dark'` yourself.
+Don't branch on `scheme === 'dark'` yourself. The check on a solid success fill
+(the finished flag on covers and spines) is `successForeground`, never white.
+
+**Both themes pass WCAG AA, with and without high contrast.** `src/theme/contrast.test.ts` holds every text
+pair at 4.5:1 and every non-text pair at 3:1 (field outlines, `border-strong`, the
+brand fill on the page and on its `track`), in both themes and both contrast sets.
+A token change that drops a pair below its ratio fails `npm test`.
+
+### High contrast
+
+High contrast is **a run-time swap, not a third theme**. `tokens.json` has a
+`highContrast` block with `light` and `dark` overrides: only the tokens that change
+(the text colours, `border`, `border-strong`, `input`, `brand-ink`, the status
+colours, `community` and `glass-border`). `gen:tokens` validates that block and
+emits `colors.highContrast.light` and `.dark`, each theme with its overrides laid
+over it. The overrides are not in the CSS.
+
+- **When it is on**: `highContrastActive(osAsks, switchOn)` in
+  `src/theme/high-contrast.ts`. The OS asks through `src/theme/os-contrast.ts`
+  (`AccessibilityInfo.isDarkerSystemColorsEnabled` on iOS,
+  `isHighTextContrastEnabled` on Android, with their change events) and
+  `os-contrast.web.ts` (`matchMedia('(prefers-contrast: more)')`). The setting is
+  Settings > Appearance > High contrast (On or Off), stored under `audiosilo.highContrast`.
+  Off follows the OS, so the setting never turns off what the device asks for.
+- **How it is applied**: `ThemeProvider` calls `applyHighContrast`, which writes
+  the high-contrast values into Uniwind's `light` and `dark` theme variables
+  (`Uniwind.updateCSSVariables`, both schemes at once) and writes the normal values
+  back when it turns off. Every themed class, `dark:` variant and
+  `useThemeColors()` follows with no other change, and Light, Dark and System
+  keep working.
+- **A fixed scheme's colours** (a surface that is always dark, such as the
+  companion's) come from `themeColors(scheme, highContrast)`, with the flag from
+  `useThemeScheme()`. Never read `colors.dark` directly.
+- **Tracks**: in high contrast `ProgressBar` and the slider draw a 1px `input`
+  outline on the track, under the fill (`TrackOutline`). Pass `ProgressBar`
+  `outline={false}` for a hairline under about 4px.
+
+The ratios each set holds are in the frontend `STYLEGUIDE.md` (sections 14 and 17).
 
 ## Fonts
 
@@ -241,6 +279,46 @@ The migration acts only when nothing is stored under `THEME_STORAGE_KEY`
 `ThemeProvider` then only reads the stored value through
 `restoredSchemePref()`. It keeps a stored pick, and reads an unknown value as
 `dark` without writing it.
+
+## Large text, targets and screen readers
+
+The rules are in the frontend `CONVENTIONS.md` ("Large text", "Touch targets",
+"Screen-reader semantics"). The points that matter most:
+
+- **One helper for text size**, `src/lib/text-scale.ts`. `useFontScale()` is the
+  system font scale on native and the root font size over 16px on the web.
+  `useLargeText()` is true from `LARGE_TEXT_SCALE` (1.3). `scaleCapped(base, scale,
+  max)` sizes a px-drawn control, and `linesFor(n, large)` lifts a `numberOfLines`
+  cap. Never read `fontScale` in a screen. The web reads a browser font size change
+  at the next render, not live (nothing fires for it).
+- **Under large text a layout changes shape, not size.** `SettingRow` puts every
+  control under its label, `ToggleGroup` and option tiles wrap, and fixed heights
+  become `min-h-*`. The full player's transport and scrubber scale up to
+  `CONTROL_MAX_SCALE` (1.5) and shrink back to fit (`controlScale` in
+  `transport-controls.tsx`). On iOS and Android, display titles stop at 2x
+  (`DISPLAY_MAX_FONT_SCALE`, as `maxFontSizeMultiplier`). Under large text the
+  Android tab bar labels only the selected tab, and that label grows to 1.3x at
+  most (`tab-label-size.ts`).
+- **px text needs a rem twin on the web.** px text does not follow the browser's
+  font size, so every `text-[Npx]` and `leading-[Npx]` carries a `web:` twin of
+  N/16 rem with the same variants (`text-[13px] web:text-[0.8125rem]`).
+  `scripts/check-styles.cjs` fails a px size without its twin (see
+  [Testing](testing.md#the-harness)).
+- **Android keeps its activity on a font or display size change.** The
+  `plugins/withFontScaleChanges.js` config plugin adds `fontScale` and `density` to
+  the main activity's `android:configChanges`, so the app re-lays out instead of
+  restarting. Its `onConfigurationChanged` makes React Native's DeviceInfo re-read
+  the scale, so `useFontScale()` sees a change made while the app is open.
+- **Targets**: 44 on iOS and the web, 48 dp on Android (`minTarget()`; the helpers
+  are in [the player's building blocks](player-ui.md#one-chrome-for-the-controls)).
+  An icon-only `Button` must have an `accessibilityLabel`; its props type requires it.
+- **Screen readers**: a sheet registers a modal layer (`useModalLayer` in
+  `src/components/ui/modal-layer.ts`), and a full-page root that can sit behind one
+  spreads `useBehindModalProps()`, so VoiceOver and TalkBack skip the page while
+  the sheet is open. The sheet is `accessibilityViewIsModal` with
+  `onAccessibilityEscape` on iOS, and a named `role="dialog"` with `aria-modal` on
+  the web. A heading's `aria-level` comes from `headingLevelFor(variant)` unless
+  it passes `level`.
 
 ## The react-native-web seam
 

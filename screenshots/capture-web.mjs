@@ -994,6 +994,16 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
+  if (wanted(shots.settingsAppearance)) {
+    // Settings at ?section=appearance (a fresh load: the downloads shot has left Settings):
+    // Light / Dark / System and High contrast at its default, Off.
+    await step('settings appearance', async () => {
+      await page.goto(BASE + 'settings?section=appearance', {waitUntil: 'networkidle', timeout: 45000});
+      await tid(page, 'settings-high-contrast').waitFor({timeout: 15000});
+      await settleShoot(page, shots.settingsAppearance, SETTLE_MS);
+    });
+  }
+
   if (wanted(shots.search)) {
     await step('search', async () => {
       await page.goto(BASE + 'search', {waitUntil: 'networkidle', timeout: 45000});
@@ -1095,6 +1105,7 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   youStats: 'web-player/you-stats.png',
   year: 'web-player/year.png',
   settings: 'web-player/settings.png',
+  settingsAppearance: 'web-player/settings-appearance.png',
   downloads: 'web-player/downloads.png',
 });
 

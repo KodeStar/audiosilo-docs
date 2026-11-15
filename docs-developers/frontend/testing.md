@@ -39,6 +39,8 @@ three fast Node checks before jest:
      aliases);
    - that both themes carry the same keys with valid colours and no clash with
      the palette;
+   - the `highContrast` block (`parseHighContrast`: both schemes, only existing
+     theme tokens, valid colours);
    - the CSS and TS it emits.
 3. `node scripts/check-styles.cjs` compiles `src/global.css` through Uniwind's
    real compiler, with the same options Metro uses (both read the root
@@ -48,13 +50,19 @@ three fast Node checks before jest:
    - Native keeps the px letter-spacing scale (`tracking-wider` is 0.5 on iOS).
    - The themed Stacks tokens resolve per theme on iOS, also through an opacity
      modifier such as `bg-brand/10`, and switch under `.dark` on web.
+   - Every `text-[Npx]` and `leading-[Npx]` in `src/` has its `web:` rem twin,
+     the twin's rule comes after the px rule on the web, and iOS has no rule for
+     the twin. A slot that cannot grow may cap its twin
+     (`web:text-[length:min(...)]`). Art drawn to a fixed box is exempt (the cover,
+     the A-Z rail, the connect cascade). See
+     [Styling](styling.md#large-text-targets-and-screen-readers).
 
    If a Uniwind upgrade renames the compiler internals it reads, the check fails
    loudly. Update the hook; don't delete the guard.
 
 ## Global setup (`jest.setup.ts`)
 
-Loaded via `setupFilesAfterEnv`, it does six things:
+Loaded via `setupFilesAfterEnv`, it does seven things:
 
 1. **Imports `@/i18n`** so i18next is initialised with the English catalog.
    Components using `useTranslation` and the locale-aware formatters resolve
@@ -84,6 +92,10 @@ Loaded via `setupFilesAfterEnv`, it does six things:
    `jestSetup.js`, whose FlashList-to-RecyclerView swap no longer matches its
    exports. Because of this mock, any `ShelfRow` or `CoverGrid` renders its first
    items in a test.
+7. Sets the **system font scale to 1**. React Native's jest preset reports 2,
+   which every layout that reads `@/lib/text-scale` would take for large text. A
+   large-text test opts in with `await setFontScale(n)` from
+   `@/testing/font-scale`.
 
 Together these let the storage, session, sync, settings and downloads layers
 run unchanged without a device or browser. Nothing else is mocked globally.
