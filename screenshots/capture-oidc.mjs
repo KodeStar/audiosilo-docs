@@ -32,6 +32,7 @@ import {
   apiClient,
   probeServer,
   shoot,
+  showDockerPaths,
   sleep,
   stamp,
   step,
@@ -55,9 +56,8 @@ const SHOTS = [
 if (!wanted(...SHOTS)) process.exit(0);
 
 // What the shots show in place of the capture's loopback addresses.
-const SHOWN_ISSUER = 'https://auth.example.com/application/o/audiosilo/';
 const SHOWN = [
-  [ISSUER, SHOWN_ISSUER],
+  [ISSUER, 'https://auth.example.com/application/o/audiosilo/'],
   [ORIGIN, 'https://books.example.com'],
 ];
 
@@ -124,53 +124,42 @@ console.log('  ✓ oidc state');
 const browser = await chromium.launch();
 const ctx = await browser.newContext(DESKTOP_CONTEXT);
 // The answers name the issuer and the server as a real install would.
-await ctx.route(
-  (url) => url.pathname.startsWith('/api/'),
-  async (route) => {
-    const res = await route.fetch();
-    if (!/json/.test(res.headers()['content-type'] ?? '')) return route.fulfill({response: res});
-    const body = SHOWN.reduce((t, [from, to]) => t.replaceAll(from, to), await res.text());
-    return route.fulfill({response: res, body});
-  },
-);
+await showDockerPaths(ctx, [], SHOWN);
 const page = await ctx.newPage();
-const open = async (route) => {
+// Opens a console page, waits for `text` and lets it settle, then shoots `file`.
+const capture = async (route, text, file) => {
+  if (!wanted(file)) return;
   await page.goto(`${ORIGIN}/admin${route}`, {waitUntil: 'networkidle', timeout: 45000});
-  await page.locator('h1.display').first().waitFor({timeout: 15000});
-  await sleep(1200);
+  await page.getByText(text).first().waitFor({timeout: 15000});
+  await sleep(600);
+  await shoot(page, file);
 };
 
 await step('sign-in page with single sign-on', async () => {
+  if (!wanted('admin/login-oidc.png')) return;
   await page.goto(`${ORIGIN}/admin/`, {waitUntil: 'networkidle', timeout: 45000});
   await page.getByRole('link', {name: 'Sign in with Authentik'}).waitFor({timeout: 15000});
   await sleep(800);
   await shoot(page, 'admin/login-oidc.png');
 });
 
-await step('sign in', async () => {
-  await submitSignIn(page, PASSWORD);
-  await page.locator('h1.display').first().waitFor({timeout: 15000});
-});
-
-await step('Settings > Sign-in', async () => {
-  await open('/server?topic=signin');
-  await page.getByText('Connected to the provider').first().waitFor({timeout: 15000});
-  await shoot(page, 'admin/settings-signin.png');
-});
-
-await step('Waiting sign-ins', async () => {
-  await open('/people');
-  await page.getByText('Waiting sign-ins').first().waitFor({timeout: 15000});
-  await shoot(page, 'admin/people-waiting-signins.png');
-});
-
-await step("sam's single sign-on", async () => {
-  await open(`/people/user/${sam.id}?tab=sign-in`);
-  await page.getByText('Signed in with Authentik').first().waitFor({timeout: 15000});
-  await shoot(page, 'admin/person-signin-identity.png');
-});
+if (wanted('admin/settings-signin.png', 'admin/people-waiting-signins.png', 'admin/person-signin-identity.png')) {
+  await step('sign in', async () => {
+    if (page.url() === 'about:blank') await page.goto(`${ORIGIN}/admin/`, {waitUntil: 'networkidle', timeout: 45000});
+    await submitSignIn(page, PASSWORD);
+    await page.locator('h1.display').first().waitFor({timeout: 15000});
+  });
+  await step('Settings > Sign-in', () =>
+    capture('/server?topic=signin', 'Connected to the provider', 'admin/settings-signin.png'),
+  );
+  await step('Waiting sign-ins', () => capture('/people', 'Waiting sign-ins', 'admin/people-waiting-signins.png'));
+  await step("sam's single sign-on", () =>
+    capture(`/people/user/${sam.id}?tab=sign-in`, 'Signed in with Authentik', 'admin/person-signin-identity.png'),
+  );
+}
 
 await step("the web player's sign-in step", async () => {
+  if (!wanted('web-player/connect-oidc.png')) return;
   const player = await ctx.newPage();
   await player.goto(`${ORIGIN}/web/connect`, {waitUntil: 'networkidle', timeout: 45000});
   await probeServer(player, ORIGIN);
