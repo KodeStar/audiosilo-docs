@@ -92,6 +92,17 @@ const sidebars: SidebarsConfig = {
         'admin/notifications',
         'admin/activity',
         'admin/server',
+        'admin/single-sign-on',
+        {
+          type: 'category',
+          label: 'Single sign-on providers',
+          items: [
+            'admin/sso/authentik',
+            'admin/sso/authelia',
+            'admin/sso/keycloak',
+            'admin/sso/pocket-id',
+          ],
+        },
         'admin/import',
       ],
     },

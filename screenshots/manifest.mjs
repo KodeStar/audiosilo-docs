@@ -12,6 +12,7 @@
 //   'setup'   - capture-setup.mjs (the --setup page and the console's first-run flow)
 //   'meta'    - capture-meta.mjs (the meta.audiosilo.app site via a local metaserve)
 //   'bridge'  - capture-bridge.mjs (the Bridge's own page, a real Bridge paired with the demo server)
+//   'oidc'    - capture-oidc.mjs (single sign-on: a server of its own with OIDC on, a local discovery document)
 //   'device'  - no script: taken by hand from the simulators (the README's "Device shots")
 //
 // `readalong: true` marks a shot that needs the read-along map run.sh seeds (section
@@ -255,4 +256,10 @@ export const SHOTS = [
   {file: 'wear/watch-another-account.png', capture: 'device', title: 'Wear OS - Another account', hint: 'the home screen after Set up your watch from another account, once its listening has synced: Another account wants this watch, Switch, Keep this account'},
   {file: 'wear/phone-card-install.png', capture: 'device', title: 'Android - Wear OS watch card, install', hint: 'the account page\'s Wear OS watch card with no AudioSilo on the watch, cropped: Install AudioSilo on your watch from Google Play, Install on watch'},
   {file: 'wear/phone-downloads-preparing.png', capture: 'device', title: 'Android - On your watch, on the way', hint: 'the Downloads page\'s On your watch section, cropped: one book Downloading to your watch and one Preparing on the server'},
+  // ── Single sign-on (capture-oidc.mjs: its own server, desktop 1440x900, dark) ──
+  {file: 'admin/login-oidc.png', capture: 'oidc', title: 'Admin - Sign in with single sign-on', hint: 'the console sign-in page, signed out, on a server with single sign-on configured: the username and password form, then Sign in with Authentik'},
+  {file: 'admin/settings-signin.png', capture: 'oidc', title: 'Admin - Settings, Sign-in', hint: 'Server > Settings > Sign-in: Status Connected to the provider, the redirect URI with its copy button, the provider fields read only (Authentik, the issuer, the client ID, the secret Set), and the Who may sign in card with the Admin group set'},
+  {file: 'admin/people-waiting-signins.png', capture: 'oidc', title: 'Admin - Waiting sign-ins', hint: 'People > People with the Waiting sign-ins card above the person cards: two seeded rows (one email Not verified, one with no account), each with its groups, reason, first and last tried, attempts, and Link, Create account and Dismiss; the count on the People tab'},
+  {file: 'admin/person-signin-identity.png', capture: 'oidc', title: 'Admin - Signed in with Authentik', hint: "sam's page on the Sign-in tab: the Signed in with Authentik card (the provider's email, linked by admin, the last sign-in) with Unlink, the Password card and the Email card"},
+  {file: 'web-player/connect-oidc.png', capture: 'oidc', title: 'Web player - Sign in with single sign-on', hint: 'the served web player\'s sign-in step on a server with single sign-on: Invite code and Username and password, Sign in, then the Sign in with Authentik button'},
 ];

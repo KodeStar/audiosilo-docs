@@ -12,6 +12,9 @@ There are two ways to give someone access to your server:
   and grown-ups they live with from the player, with no invite from you. The
   person who adds them manages them. See [Add your household](../listening/household.md).
 
+People can also sign in with your identity provider, such as Authentik or
+Keycloak. See [Sign in with single sign-on](single-sign-on.md).
+
 Several people sharing one phone or tablet? Each signs in with their own
 account and switches between [profiles](../listening/profiles.md). To give
 someone only some of your books, see [Limit what someone can see](sharing.md).
@@ -136,12 +139,21 @@ Their invites, with **Rotate** and **Revoke**, as on the
   password lets them sign in to the web player by username. Changing a password
   signs them out everywhere. Kids have no password.
 - **Revoke recovery code** - only shown if they saved one from an older app.
+- **Signed in with** your provider's name - shown when they sign in with
+  [single sign-on](single-sign-on.md#see-or-remove-someones-single-sign-on),
+  with **Unlink**.
+- **Email** - their email address. A single sign-on with the same verified
+  email links to this account by itself, unless it is an admin's. Not shown
+  for a household member.
 
 ### Account
 
 - **Role** - **Member** or **Admin**. An admin sees every library and can use
   the console. Making someone an admin asks for a password if they don't have
-  one.
+  one, unless they sign in with your
+  [single sign-on](single-sign-on.md#see-or-remove-someones-single-sign-on).
+  Their page then says **No password (signs in with Authentik)**, with your
+  provider's name. A household member never counts as signing in this way.
 - **Household** - see [Household members](#household-members).
 - **Danger zone** - [disable or delete](#disabling-vs-deleting) the account.
 

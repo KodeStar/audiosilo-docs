@@ -882,6 +882,62 @@ instead of the real directories. It exists for the test harness. Never deploy
 a tagged binary; an ordinary build ignores the variable.
 :::
 
+### Single sign-on (`auth.oidc.*`)
+
+Sign in with OpenID Connect (`config/oidc.go`, `internal/oidc`): one provider,
+an authorization code flow with PKCE that the server runs itself. The capability
+is `oidc`. The flow, the decisions and the safeguards are in
+[Single sign-on](auth-and-security.md#single-sign-on-openid-connect).
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `auth.oidc.enabled` | bool, `false` | Builds the flow at start |
+| `auth.oidc.name` | string, `""` | The provider's name on the sign-in button ("Sign in with &lt;name&gt;"). Empty is `single sign-on` |
+| `auth.oidc.issuer` | URL, `""` | The provider's issuer exactly as its discovery document states it, a trailing slash included. The server reads `<issuer>/.well-known/openid-configuration` |
+| `auth.oidc.client_id` | string, `""` | The client registered at the provider |
+| `auth.oidc.client_secret` | string, `""` | The client's secret. Never in `GET /admin/settings` (only `signin.client_secret_set`), never logged. Empty with no file is a public client, which authenticates with PKCE alone |
+| `auth.oidc.client_secret_file` | path, `""` | A file holding the secret, for Docker secrets. Its trailing line break is dropped. Setting both this and `client_secret` is a problem, as is a file that can't be read, is empty or is over 4 KiB |
+| `auth.oidc.scopes` | list, `[openid, profile, email, groups]` | The scopes asked for. `openid` is always asked, first and once |
+| `auth.oidc.username_claim` | string, `preferred_username` | The claim a new account's username comes from |
+| `auth.oidc.groups_claim` | string, `groups` | The claim that lists the person's groups. A namespaced name such as `https://example.org/groups` is allowed |
+| `auth.oidc.ca_file` | path, `""` | A PEM file of certificates trusted for the provider, beside the system's (a provider on a private CA) |
+| `auth.oidc.auto_create` | bool, `false` | Makes an ordinary account for a sign-in that no account is linked to and no email matches. Off, the sign-in waits for an admin |
+| `auth.oidc.allowed_group` | string, `""` | When set, `auto_create` makes accounts only for members of this group. The others wait for an admin |
+| `auth.oidc.admin_group` | string, `""` | When set, each single sign-on sets the role: an admin in this group, an ordinary user out of it. The last enabled admin is never demoted. Empty leaves roles to the console |
+
+Single sign-on **needs `public_url`**. The redirect URI to register at the
+provider is `<public_url>/api/v1/auth/oidc/callback`, and the server builds
+every address it sends the browser or the provider to from `public_url`, never
+from the request's `Host`.
+
+**A bad config never stops the server.** `OIDCConfig.Problem` and the flow's
+own checks (the secret, the CA file) say why single sign-on can't run: no
+`public_url`, no issuer, an issuer that isn't a plain `http(s)` address, no
+client ID, or a claim name with a character outside letters, digits, `.`, `_`,
+`-`, `:` and `/`. The server logs the problem, keeps single sign-on off
+(`oidc` is `false`) and shows the reason in the console's Settings > Sign-in.
+Discovery is lazy, at the first use and then with a 1 to 15 minute backoff after
+a failure, so an unreachable provider doesn't hold up the start either.
+
+```yaml
+auth:
+  oidc:
+    enabled: true                       # [AUDIOSILO_OIDC_ENABLED]
+    name: "Authentik"                   # [AUDIOSILO_OIDC_NAME]
+    issuer: "https://auth.example.org/application/o/audiosilo/"  # [AUDIOSILO_OIDC_ISSUER]
+    client_id: "audiosilo"              # [AUDIOSILO_OIDC_CLIENT_ID]
+    # client_secret_file: /run/secrets/oidc  # [AUDIOSILO_OIDC_CLIENT_SECRET_FILE]
+    auto_create: false                  # [AUDIOSILO_OIDC_AUTO_CREATE]
+    allowed_group: ""                   # [AUDIOSILO_OIDC_ALLOWED_GROUP]
+    admin_group: ""                     # [AUDIOSILO_OIDC_ADMIN_GROUP]
+```
+
+The provider fields (from `enabled` to `ca_file`) are read at start and shown
+read only in the console. `auto_create`, `allowed_group` and `admin_group` are
+the console's to change and apply at the next sign-in. The group names are
+checked like every console setting (see
+[the normalizers](#changing-settings-at-runtime)).
+
 ### The Bridge (no keys)
 
 The server has **no setting for the [Bridge](../bridge/index.md)**, and no
@@ -948,6 +1004,19 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_BACKUP_DIR` | `backups.dir` | absolute path; the Docker entrypoint also gives the folder to `PUID`/`PGID` (see [Under Docker](#under-docker)) |
 | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | `modules.podcasts.enabled` | `strconv.ParseBool` (`true`/`1`/…); locks the console toggle when set |
 | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | `modules.contributions.enabled` | `strconv.ParseBool` (`true`/`1`/…); each module's toggle is `AUDIOSILO_MODULES_<ID>_ENABLED` |
+| `AUDIOSILO_OIDC_ENABLED` | `auth.oidc.enabled` | `strconv.ParseBool` (`true`/`1`/…); read at start |
+| `AUDIOSILO_OIDC_NAME` | `auth.oidc.name` | string; read at start |
+| `AUDIOSILO_OIDC_ISSUER` | `auth.oidc.issuer` | URL; read at start |
+| `AUDIOSILO_OIDC_CLIENT_ID` | `auth.oidc.client_id` | string; read at start |
+| `AUDIOSILO_OIDC_CLIENT_SECRET` | `auth.oidc.client_secret` | string; read at start, never saved to `config.yaml` |
+| `AUDIOSILO_OIDC_CLIENT_SECRET_FILE` | `auth.oidc.client_secret_file` | path; read at start |
+| `AUDIOSILO_OIDC_SCOPES` | `auth.oidc.scopes` | comma-separated list; read at start |
+| `AUDIOSILO_OIDC_USERNAME_CLAIM` | `auth.oidc.username_claim` | string; read at start |
+| `AUDIOSILO_OIDC_GROUPS_CLAIM` | `auth.oidc.groups_claim` | string; read at start |
+| `AUDIOSILO_OIDC_CA_FILE` | `auth.oidc.ca_file` | path; read at start |
+| `AUDIOSILO_OIDC_AUTO_CREATE` | `auth.oidc.auto_create` | `strconv.ParseBool` (`true`/`1`/…); locks the console setting |
+| `AUDIOSILO_OIDC_ALLOWED_GROUP` | `auth.oidc.allowed_group` | string; locks the console setting |
+| `AUDIOSILO_OIDC_ADMIN_GROUP` | `auth.oidc.admin_group` | string; locks the console setting |
 | `AUDIOSILO_PODCAST_DISCOVERY_ENABLED` | `podcasts.discovery.enabled` | `strconv.ParseBool` (`false`/`0`/… turns it off); read at start |
 | `AUDIOSILO_SCAN_CONCURRENCY` | `scan.concurrency` | integer, 0-64 (`0` = one per CPU, up to 8); read at start |
 | `AUDIOSILO_DB_MMAP` | `database.mmap` | `auto`, `on` or `off` (any case); any other value stops the start; read at start |
@@ -1024,6 +1093,10 @@ place that says, for each key:
 | `backups.schedule` | `backups.schedule` | `AUDIOSILO_BACKUP_SCHEDULE` | at once |
 | `backups.keep` | `backups.keep` | `AUDIOSILO_BACKUP_KEEP` | at once (pruning at the next scheduled backup) |
 | `backups.dir` | `backups.dir` | `AUDIOSILO_BACKUP_DIR` | restart; **read-only** in the console |
+| `signin.enabled`, `signin.name`, `signin.issuer`, `signin.client_id`, `signin.scopes`, `signin.username_claim`, `signin.groups_claim`, `signin.ca_file` | `auth.oidc.*` (the same names) | `AUDIOSILO_OIDC_*` | restart; **read-only** in the console |
+| `signin.auto_create` | `auth.oidc.auto_create` | `AUDIOSILO_OIDC_AUTO_CREATE` | at the next sign-in |
+| `signin.allowed_group` | `auth.oidc.allowed_group` | `AUDIOSILO_OIDC_ALLOWED_GROUP` | at the next sign-in |
+| `signin.admin_group` | `auth.oidc.admin_group` | `AUDIOSILO_OIDC_ADMIN_GROUP` | at the next sign-in |
 | `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once. Starts or stops the scheduling of feeds, downloads and retention, and gates writes. Reads and present-pin reuse stay core |
 | `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
 
@@ -1033,6 +1106,8 @@ at start from the file or its variable and never offered in the console.
 
 Also not in the console:
 
+- the OIDC client secret (`auth.oidc.client_secret` and `client_secret_file`). The
+  `signin` section carries only `client_secret_set`, whether one is configured;
 - `max_upload_bytes` (it has a variable but no setting);
 - `tls.cache_dir`, `tls.cert_file` and `tls.key_file`;
 - `server_id`;
@@ -1141,6 +1216,7 @@ The normalizers, per setting:
 | `household.max_members` | an integer from 1 to 50 (checked by `Validate`) |
 | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` (`backup.ParseSchedule`), stored in canonical form |
 | `backups.keep` | an integer from 1 to 365 (checked by `Validate`) |
+| `auth.oidc.allowed_group`, `auth.oidc.admin_group` | trimmed; at most 256 characters, no control characters; `""` allowed |
 
 Every list is trimmed, with empty entries and repeats dropped, and holds at
 most 50 entries.
@@ -1191,6 +1267,9 @@ console's Server > About and Health > System. `pkg/launcher` starts one
 - a `database.mmap` other than `auto`, `on` or `off` (any case);
 - a `rate_limit.*.rate` that is negative, infinite or not a number, or a
   negative `rate_limit.*.burst` (`0` is unset: the default).
+
+It never rejects `auth.oidc.*`: a problem there turns single sign-on off and
+the console says why (see [Single sign-on](#single-sign-on-authoidc)).
 
 Secure-by-default choices baked into `Default()` and first-run:
 

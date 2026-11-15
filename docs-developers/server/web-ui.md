@@ -441,6 +441,16 @@ signed in. The language choice shares the connect page's storage key.
   with "This account is not an administrator."
 - Every sign-out also empties the console's
   [thumbnail cache](#the-thumbnail-cache).
+- **Single sign-on.** With the `oidc` capability, the sign-in page adds
+  "Sign in with &lt;name&gt;", a link to
+  `/api/v1/auth/oidc/start?return=admin`. The server sends the browser back to
+  `/admin/#oidc=done`. `main.tsx` takes the marker out of the address before
+  the router starts (`takeOIDCReturn`), and `SessionProvider` calls
+  [`POST /auth/oidc/finish`](api/reference.md#post-apiv1authoidcfinish) once. A
+  non-admin is signed straight back out ("This account is not an
+  administrator"). A new admin session replaces the one the browser held. A
+  finish that signs no admin in leaves a stored session alone; with none, the
+  sign-in page says why.
 
 Every API call also names the console to the server with
 `X-AudioSilo-Client: AudioSilo Admin (web)` (`CLIENT_IDENTITY` in
@@ -1284,7 +1294,7 @@ Server > Settings (`features/settings/`) runs on
 [`GET`/`PATCH /admin/settings`](api/reference.md#admin-settings).
 
 **Topics.** An in-page topic list sits in `?topic=`. `general` is the default
-and has no param. The others are `network`, `players`, `metadata`,
+and has no param. The others are `network`, `signin`, `players`, `metadata`,
 `transcoding`, `household`, `demo`, `backups`, `notifications`, `import`,
 `bridge`, `modules`, and `audible` while its module is on. The list is
 `SETTINGS_PAGES` in `settings-model.ts`, less any module page (mapped in
@@ -1328,6 +1338,46 @@ there asks first.
   [`DELETE /admin/community-matches`](api/reference.md#delete-apiv1admincommunity-matches)
   and refetches what a match apply does (`invalidateMatches`, shared with Match
   automatically), plus the match runs.
+
+#### Server > Settings > Sign-in
+
+The Sign-in topic (`features/settings/signin-topic.tsx`) shows single sign-on as
+it runs, from [`GET /admin/oidc/status`](api/reference.md#get-apiv1adminoidcstatus):
+the state (off, not set up correctly with the `problem`, connected, can't reach
+the provider, or not checked yet), the redirect URI with a copy button, and the
+provider fields read only, with a line on where they are set. The client secret
+shows only as set or none. The "Who may sign in" card is a `SettingsForm` over
+`signin.auto_create`, `signin.allowed_group` and `signin.admin_group`, which apply
+at the next sign-in.
+
+#### Waiting sign-ins and a person's single sign-on
+
+- **Waiting sign-ins** (`features/people/pending-signins.tsx`) is a card on
+  People, shown while
+  [`GET /admin/oidc/pending`](api/reference.md#get-apiv1adminoidcpending) lists
+  any. The People section in the sub-bar counts them. Each row shows the name,
+  the email with a verified badge, the username, the groups (cut to a few, then
+  "and N more"), the reason in words (`pending-model.ts`), when it was first and
+  last tried, and the attempts. **Link** opens a picker that leaves out
+  household members, demo accounts and the accounts in `linked_user_ids` for the
+  row's issuer, and marks admins. When the provider verified the row's email,
+  it preselects the one account with that email, letter case aside
+  (`suggestedAccount`). An unverified email preselects nothing. The admin still
+  chooses. **Create account** takes an optional username.
+  **Dismiss** asks first. A dialog stays open while the list changes under it.
+- **A person's Sign-in tab** shows a "Signed in with &lt;name&gt;" card per
+  identity (`identity-card.tsx`): the provider's email, how and when it was
+  linked, and the last sign-in, with **Unlink** behind a confirm. A
+  `409 admin_needs_password` reads "Set a password first". The tab's **Email**
+  card (`email-card.tsx`, not for a household member) sets the account's email.
+- **Signs in with single sign-on** (`signInProvider` in `pending-model.ts`): an
+  identity from the provider the server runs now (the same issuer as
+  `GET /admin/oidc/status`, while `configured`). The person's header then says
+  "No password (signs in with &lt;name&gt;)" in place of "No password (player
+  only)". Choosing Admin under the Account tab's Role then asks for no password,
+  as the server allows. A
+  household member never counts, nor does anyone while the status can't be
+  read.
 
 #### Server > Logs
 
@@ -2168,6 +2218,11 @@ The redeem response (`PairingPayload`, built by `buildPairing` in
 - **`uri`** = `audiosilo://connect?server=…&token=…`, behind the custom-scheme
   "Open in app" button. Custom schemes are not domain-bound, so this launches
   an installed app on any self-hosted domain.
+
+A [single sign-on](auth-and-security.md#the-result-page) that ends without a
+session lands here too, on `/connect#oidc=<reason>`. `connect.js` strips the
+fragment with `history.replaceState` and shows the reason's sentence
+(`oidcMessage`, in the page's six languages) as the form's error.
 
 ## The web player at `/web`
 

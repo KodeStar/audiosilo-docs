@@ -252,7 +252,8 @@ No IP address is stored.
 
 | Area | Actions |
 |---|---|
-| `user` | `create`; `update`; `delete`; `recovery_clear`; `sign_out_everywhere` (details: `signed_out`, the sessions it ended). See the notes below the table for `update` and `delete`. |
+| `user` | `create`; `update`; `delete`; `recovery_clear`; `sign_out_everywhere` (details: `signed_out`, the sessions it ended); the [single sign-on](auth-and-security.md#single-sign-on-openid-connect) actions `oidc_link`, `oidc_create`, `oidc_unlink` and `role_sync`. See the notes below the table for `update`, `delete` and the single sign-on actions. |
+| `oidc` | `pending_dismiss` (details: `issuer`; the target is the waiting sign-in's username, else its subject, never its email) |
 | `member` | `create` (details: `member`, `kind`, `access`, `sign_in_here`); `update` (`member` plus what changed: `name`, `kind`, `access`, and `collections` as a count); `delete`; `session`; `pair`; `device_revoke` (`member`, `device_id`). These record [household members](api/reference.md#household-members) managed from the player. See the notes below the table. |
 | `invite` | `create`, `rotate`, `revoke` |
 | `library` | `create`, `update`, `reorder`, `folder_override`, `delete` |
@@ -276,6 +277,15 @@ Notes on the longer rows:
   account is after the change.
 - **`user.delete`.** Only for someone who had household members, details hold
   `members_deleted` (a count) and `members_kept` (usernames).
+- **Single sign-on.** `user.oidc_link` (details: `method`, `auto_email` or
+  `admin`, and `issuer`) and `user.oidc_create` (`issuer`) are recorded with
+  `via` `system` when the server links or makes the account at a sign-in, and
+  as the admin when the console's Link or Create does. `user.oidc_unlink`
+  (`issuer`) is the console's Unlink. `user.role_sync` (`via` `system`) is the
+  `admin_group` rule changing a role (`from`, `role`), or refusing to demote the
+  last enabled admin (`role`, `refused: last_admin`). An account's email is
+  never recorded: `user.create` says whether one was given (`email: true`) and
+  `user.update` says `email: set` or `cleared`.
 - **`member`.** The actor is the owner (an admin can be one too), and the target
   is the member's username. `DELETE /me/devices/{id}?also_members=1` also
   records one `device_revoke` per member it signs out, with the owner's device
@@ -337,6 +347,7 @@ subscribed to its kind. A nil `*Service` does nothing, so callers don't check.
 | `podcast_episodes_new` | `catalog.IndexPodcastShow`, once per show per index that found episodes new to it. See [Podcast events](#podcast-events). | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead), `count`, `titles` (the first five, newest first) |
 | `podcast_feed_failing` | `catalog.FoldPodcastJob` for a `podcast.poll` that makes the feed's run of failures due, or ends `gone` or `feed_secret_missing`. Once per run. | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead), `code`, `failures` |
 | `podcast_feed_recovered` | `catalog.FoldPodcastJob` for the first successful `podcast.poll` after `podcast_feed_failing` | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead) |
+| `oidc_pending` | the single sign-on callback, when `auth.OIDCSignIn` records a [waiting sign-in](auth-and-security.md#who-signs-in-as-whom), never for one refused outright (disabled, a household member, rate limited). Announced **once per waiting row** (`dedup_key` `pending:<id>`, kept across the person's attempts; a dismissed row recorded again is a new one, as is a row unseen for 30 days that the person's next attempt records again). | `provider` (the button's name), `person` (the name, else the username, left out when it holds an `@`, as providers often make the email the username), `reason` (the `Decide` reason). Never the email, the subject, the groups or a token |
 
 `notify.Kinds` lists the kinds in this order, which is the order the console
 shows.
@@ -538,6 +549,11 @@ The podcast messages link to the console's Library > Libraries:
 The bell words the same codes in the console's language (`feedFailureBody` in
 `lib/server-events.ts`), with the titles `Podcast feed failing: <show>` and
 `Podcast feed back: <show>`.
+
+An `oidc_pending` message reads `<person> is waiting to sign in with <provider>`
+(`Someone` without a `person`), with the reason in words and "Link it to an
+account, make one, or dismiss it in People." It links to the console's People
+page and carries the ntfy tag `hourglass`.
 
 A failed scan's `detail`, and a failed Bridge job's, is the tool's or the
 operating system's own message, which can name a folder on the server, so it

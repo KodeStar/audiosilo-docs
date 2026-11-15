@@ -149,6 +149,38 @@ The step shows the "At home and away" card only when the device already knows bo
 addresses, which means a reconnect of a connection that has them. For a new server, the
 addresses are known only once the code is redeemed, and that is the sign-in itself.
 
+#### Single sign-on
+
+The served player signing in to its own server (`onlyOwnServer(servedOrigin(),
+[server])`) asks that server's `GET /server` once. While its `oidc` capability is
+`true`, the step adds "Sign in with &lt;name&gt;" under the sign-in button
+(`oidcButtonName`: `auth.oidc.name`, else "Sign in with single sign-on"). The app,
+the Metro dev server and a player on another origin never offer it, because the
+server hands the sign-in over in a cookie on its own origin. A grown-up's pass
+through kids mode (`kidsConnectAllowed`) doesn't offer it either: the pass lives in
+memory, and the page the server returns to would meet kids mode.
+
+The button is a full page load of `client.oidcStartUrl()`
+(`/api/v1/auth/oidc/start?return=web`). The server lands the browser on
+`/web/connect?oidc=1` (`oidcReturnOrigin` tells the route and the screen apart from
+a pairing link, which wins). `ConnectStart` takes `oidc` off the address first, so a
+reload doesn't retry, then `finishOidcSignIn` calls `client.oidcFinish` and
+`finishConnect`. A refusal shows above the served card (`oidcFinishText`):
+
+| Answer | Says |
+|---|---|
+| `429` or `member_disabled` | as every sign-in words them (`sharedRefusalText`) |
+| `oidc_no_sign_in` | there is no sign-in to finish in this browser |
+| `oidc_sign_in_expired` | the sign-in expired or was already used |
+| no answer | the server couldn't be reached |
+| a session the device couldn't keep | the sign-in is spent, so sign in again |
+| anything else | signing in didn't finish |
+
+Each ends with "Sign in again": the finish can't be retried, because the server
+cleared its cookie on the first try. Nothing the flow held in memory survives the
+page loads: a reconnect, an "Add someone" and a signed-out visit's book are not
+carried across them.
+
 ### Step 3: Ready
 
 `/connect/ready?connection=` renders `ReadyScreen`. It shows:
@@ -167,7 +199,7 @@ bar wider. Browse the library dismisses to `/library`.
 ### `finishConnect`: every way in ends here
 
 **Every way in ends in `finishConnect`** (`finish-connect.ts`): a pairing link or QR, an
-invite code, a password, the demo. It stores the connection through `setSession` with:
+invite code, a password, single sign-on, the demo. It stores the connection through `setSession` with:
 
 - the server's own name when the flow knows it, from the probe or the redeem payload's
   `server_name`. A connection made by a link is not named after its host.

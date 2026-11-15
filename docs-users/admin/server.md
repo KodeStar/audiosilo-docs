@@ -16,9 +16,9 @@ server depends on (ffmpeg, the certificate, disk space, backups) is on
 
 ![Server settings, General](/img/screenshots/admin/settings.png)
 
-The topics are listed down the left (across the top on a phone). Four of them
-have their own pages: [Backups](backups.md), [Notifications](notifications.md),
-[Import](import.md) and [Bridge](bridge.md).
+The topics are listed down the left (across the top on a phone). Five of them
+have their own pages: [Sign-in](single-sign-on.md), [Backups](backups.md),
+[Notifications](notifications.md), [Import](import.md) and [Bridge](bridge.md).
 
 To change a setting:
 

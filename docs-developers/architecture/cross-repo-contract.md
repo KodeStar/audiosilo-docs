@@ -571,6 +571,29 @@ contract inside the frontend repo, not the server's (see
 [The message contract](../frontend/apple-watch.md#the-message-contract) and
 [The Data Layer contract](../frontend/wear-os.md#the-data-layer-contract)).
 
+### Single sign-on in the web player
+
+Single sign-on (capability `oidc`) is a third way from a browser to a session,
+beside pairing and a password. It couples the server and the web player only;
+the native apps don't offer it.
+
+**Server:** `GET /auth/oidc/start?return=web` sends the browser to the identity
+provider, and the callback lands it on `/web/connect?oidc=1` with the finished
+sign-in in an `HttpOnly` cookie, never a token in the address.
+`POST /auth/oidc/finish` reads that cookie and answers as `POST /auth/exchange`
+does. A sign-in that ends without a session lands on the server's own
+`/connect#oidc=<reason>` instead (see
+[Single sign-on](../server/auth-and-security.md#single-sign-on-openid-connect)).
+
+**Frontend:** the sign-in step offers "Sign in with &lt;name&gt;" only in the web
+player the server serves, and on `/connect?oidc=1` calls `client.oidcFinish` and
+ends in `finishConnect`, as a pairing link does (see
+[Single sign-on](../frontend/connect-and-addresses.md#single-sign-on)).
+
+**A change requires:** `/web/connect?oidc=1`, the `return` values and the finish's
+answer are the contract. The finish's `401` codes `oidc_no_sign_in` and
+`oidc_sign_in_expired` are mirrored in the player's error codes.
+
 ## 8. Capability flags: `GET /api/v1/server`
 
 **What couples:** feature negotiation, so any app build can talk to any server
@@ -618,6 +641,10 @@ By what decides their value, the flags are:
   exactly `upcoming`. They gate the
   [calendar feed](../server/api/reference.md#the-calendar-feed) and
   [`/me/upcoming/cover`](../server/api/reference.md#get-apiv1meupcomingcover).
+- **Single sign-on:** `oidc` is true while `auth.oidc.enabled` was on at start,
+  the provider config has no problem and `public_url` is set, and is sent `false`
+  otherwise. While it is true, `auth.methods` adds `"oidc"` and `auth.oidc.name`
+  names the provider (see [Single sign-on in the web player](#single-sign-on-in-the-web-player)).
 - **Reserved:** `upload` and `websocket` are reserved for **planned** phases.
   `POST /uploads` and WebSocket sync are not shipped.
 

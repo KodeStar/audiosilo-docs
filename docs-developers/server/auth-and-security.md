@@ -70,13 +70,14 @@ codes/tokens in the response body and store only the hash.
 | Pairing | `auth.KindPairing` | [Pairing tokens](#pairing-tokens) |
 | API key | `auth.KindAPI` | [API keys](#api-keys) |
 
-Three more kinds have narrow jobs:
+Four more kinds have narrow jobs:
 
 | Kind | Constant | Held by |
 |---|---|---|
 | [Cast token](#cast-tokens) | `auth.KindCast` | a Chromecast receiver, handed one by a player |
 | [Bridge token](#bridge-tokens) | `auth.KindBridge` | the paired Bridge |
 | [Calendar feed token](#calendar-feed-tokens) | `auth.KindFeed` | a listener's calendar app |
+| [Single sign-on token](#the-finish) | `auth.KindOIDC` | a browser between the provider's callback and `POST /auth/oidc/finish`, for 60 seconds |
 
 ### Session tokens
 
@@ -521,6 +522,237 @@ password and uses the reconnect flow instead (see
 codes they minted earlier. Both are due for removal once those clients age out.
 :::
 
+## Single sign-on (OpenID Connect)
+
+Single sign-on (capability `oidc`) lets a person sign in through the server's
+identity provider instead of a password or a pairing. The server runs an
+authorization code flow with PKCE (S256) against one provider. The pieces:
+
+- `internal/oidc` holds no storage and no routes. `Provider` wraps go-oidc and
+  `x/oauth2` (discovery, the authorization URL, the code exchange and the ID
+  token's checks), `Sealer` the flow cookie, `Claims` what a sign-in says, and
+  `Decide` what it does with an account. Every part but `Provider` is pure.
+- `auth/identities.go` stores it: `OIDCSignIn`, the waiting sign-ins and the
+  linked identities (tables in
+  [Data model](data-model.md#single-sign-on-tables)).
+- `api/handlers_oidc.go` has the routes.
+
+The admin console and the web player the server serves offer it. The native
+apps don't: they keep pairing by QR code or invite. The config is in
+[Configuration](configuration.md#single-sign-on-authoidc).
+
+### The flow
+
+1. **`GET /auth/oidc/start?return=web|admin`.** `return` is an enum, and
+   anything else is `400`. While single sign-on is off or misconfigured, the
+   route redirects to the [result page](#the-result-page) (`off`,
+   `unavailable`). The server builds every address from `public_url`, never
+   from the request's `Host`. A request on another host goes first to the same
+   route on `public_url`'s host, once (`hop=1`), so the cookie is set where the
+   provider returns. So does a plain HTTP request straight from a browser (home
+   HTTP) while `public_url` is https, because a browser drops a `Secure` cookie
+   set over plain HTTP. Then the server makes the flow (`state`, `nonce` and
+   the PKCE verifier, 32 random bytes each, and `return`), seals it into the
+   flow cookie and redirects to the provider's authorization URL.
+2. **`GET /auth/oidc/callback`.** The provider sends the browser back here. The
+   handler deletes the flow cookie whatever happens, then refuses, in order:
+   - an address locked out by `oidcLimiter` (`rate_limited`);
+   - a request with no flow cookie (`expired`, nothing charged);
+   - a cookie that doesn't open (`failed`) or is past its ten minutes
+     (`expired`);
+   - a `state` that isn't the cookie's (compared in constant time);
+   - the provider's `?error=`, such as a person who cancelled (`failed`,
+     nothing charged);
+   - a failed code exchange or a refused ID token (`failed`);
+   - a flow used before (`Replay`, `failed`).
+
+   A refusal marked "nothing charged" doesn't count toward the lockout; every
+   other refusal does. A provider that doesn't answer in time is `unavailable`,
+   also not charged.
+3. **The decision.** `auth.OIDCSignIn` reads the accounts, calls `Decide` and
+   writes the result in one durable transaction (see
+   [Who signs in as whom](#who-signs-in-as-whom)).
+4. **The hand-over.** A sign-in that signs in gets a token of kind `oidc`
+   (`auth.KindOIDC`), single use, 60 seconds. The token goes in the done cookie,
+   **never in a URL**: a link carrying it would sign whoever opens it in as its
+   owner (a login CSRF). The handler then redirects to `/admin/#oidc=done` or
+   `/web/connect?oidc=1`.
+5. **`POST /auth/oidc/finish`.** The page the browser lands on calls it. The
+   handler clears the done cookie, spends the token once (`auth.ConsumeOIDC`)
+   and answers exactly as [`POST /auth/exchange`](api/reference.md#post-apiv1authexchange)
+   does, with a new session. The console signs a non-admin straight back out.
+
+The ID token checks (`Provider.Exchange`):
+
+- the signature, with asymmetric algorithms only (`oidc.SigningAlgs`: RS, PS
+  and ES at 256, 384 and 512 bits, and EdDSA), so an HMAC token signed with the
+  client secret is refused;
+- `iss` is the configured issuer, `aud` contains the client ID, `azp`, when present
+  or when there are several audiences, is the client ID, `exp` hasn't passed and `iat` is
+  at most 5 minutes ahead;
+- the `nonce` is the flow's.
+
+The server asks the userinfo endpoint only when the ID token lacks the email,
+the username or the groups. Userinfo's `sub` must equal the ID token's. Every
+call one sign-in makes to the provider (discovery when due, the token request,
+the keys, userinfo) shares one 20 second deadline (`oidc.CallBudget`), under
+the API's 30 second request timeout. An error never carries the provider's
+response body.
+
+### The cookies
+
+| Cookie | Holds | Lifetime |
+|---|---|---|
+| The flow cookie | `state`, `nonce`, the PKCE verifier, `return` and the time, sealed with AES-GCM under a key made at start (`oidc.Sealer`) | 10 minutes; deleted at the callback |
+| The done cookie | the `oidc` token | 60 seconds; cleared by the finish |
+
+Both are `HttpOnly` and `SameSite=Lax`. Their names and place depend on
+`public_url` (`oidcCookieName`):
+
+- **On an https `public_url`:** `__Host-audiosilo_oidc` and
+  `__Host-audiosilo_oidc_done`, `Secure`, Path `/`, no `Domain`. The prefix
+  makes the browser refuse one planted by a sibling subdomain or by a plain
+  HTTP answer.
+- **On a plain http `public_url`:** `audiosilo_oidc` and
+  `audiosilo_oidc_done`, Path `/api/v1/auth/oidc/`, not `Secure`. A cookie
+  without `Secure` can't take the prefix, so someone on the network path can
+  plant one.
+
+A browser sends a Path `/` cookie to every page of that host name, whatever the
+port or path. So another app served under the same host name receives the
+`__Host-` cookies while they live. Serve AudioSilo on a host name of its own.
+
+Because the sealing key lives in memory, a restart ends every flow in flight:
+its callback reads as `failed`. `Replay` remembers a `state` only once its
+exchange succeeded, so states sent back bare can't fill it.
+
+### The finish
+
+`POST /auth/oidc/finish` is public. Its answers, which of them keep the cookie
+and which are charged to `oidcLimiter` are in the
+[API reference](api/reference.md#post-apiv1authoidcfinish). A token of another
+kind reads as `401 oidc_sign_in_expired`, like a spent or expired one.
+
+`ConsumeOIDC` takes only `KindOIDC`. A pairing token planted in the cookie (an
+invite's QR, or a person's own `POST /auth/pair`) would sign the browser in as
+someone else, so it is refused and left unspent. `POST /auth/exchange` in turn
+refuses an `oidc` token, and every route that takes a token refuses it
+(`TestOIDCTokenRefusedOnEveryRoute`). Sign out everywhere ends one not yet
+finished, so do a move into a household and the switch to a kid, and the daily
+`PrunePairingTokens` deletes the spent and expired ones.
+
+A page on another site can't make the browser send the done cookie with a
+`POST` (`SameSite=Lax`), nor read the answer. The web player calls the finish
+only from its own origin.
+
+### Who signs in as whom
+
+`oidc.Decide` makes the one decision. A sign-in is never matched on its
+username.
+
+1. **A linked identity** (the issuer and `sub` in `user_identities`) signs in
+   as its account. It is refused when the account is disabled (`disabled`), or
+   is now a household member or a demo account (`not_allowed`).
+2. **An email that matches accounts** (trimmed, ASCII case-insensitive):
+   - unverified: it waits (`unverified_email`);
+   - any match is an admin: it waits (`admin_account`). An admin's account is
+     never linked by email;
+   - exactly one eligible account: the identity is linked to it
+     (`link_method` `auto_email`) and signs in;
+   - no eligible account: it waits (`not_eligible`);
+   - several: it waits (`several_matches`).
+
+   An eligible account is no demo account, no household member, not disabled,
+   and has no identity from this issuer yet.
+3. **No match, `auto_create` on:** the server makes an ordinary,
+   password-less account, unless `allowed_group` is set and the person isn't
+   in it (it waits, `not_allowed`). The username comes from the username claim,
+   else the email's local part, else the name, folded to a username (never
+   `demo_`), numbered on a clash, `user` when nothing is left. The email is
+   copied only when verified.
+4. **Otherwise** it waits: `auto_create_off` for a verified email, `no_match`
+   for none.
+
+The email and its verified flag come from the same source (the ID token, else
+userinfo). `email_verified` is `true` or the string `"true"`. An email that
+cleaning changed (cut to 254 bytes, trimmed, a control character dropped)
+counts as unverified, as it isn't the address the provider verified.
+
+**A waiting sign-in** is a row in `oidc_pending`, one per issuer and `sub`,
+recorded again on each attempt (`attempts`, `last_seen_at`). The server keeps
+at most 500, drops a row 30 days after it was last seen and deletes it when a
+later sign-in links or creates the account. A person back after those 30 days
+gets a new row, with a new id. It holds the email, the username,
+the name and up to 50 groups, never a token. Its ids are `AUTOINCREMENT`, so a
+dismissed row's id never names another person to a console list read before.
+Each new row raises the `oidc_pending` notification
+([Events](backups-and-notifications.md#events)). An admin links it, makes an
+account for it or dismisses it ([admin routes](api/reference.md#admin-single-sign-on)).
+An admin may link a waiting sign-in to an admin's account by hand.
+
+### Roles from a group
+
+With `admin_group` set, every sign-in that signs in (a linked one, a new link
+or a new account) sets the role: an admin in the group, an ordinary user out of
+it. Group names match exactly, case included.
+
+- The last enabled admin is never demoted. The refusal is logged and audited
+  (`user.role_sync` with `refused: last_admin`), and the sign-in goes on.
+- A sign-in that carried **no groups claim at all**, in neither the ID token
+  nor userinfo, leaves the role alone while its identity has never carried
+  one. So a provider that never sends the claim demotes no one, and the server
+  logs a warning. Once a sign-in through the identity has carried the claim,
+  even as an empty list, `user_identities.groups_seen` is set, and from then on
+  an absent claim means no groups and demotes. Keycloak, for one, leaves the
+  claim out for a person in no group. The console's Link and Create set
+  `groups_seen` only when the waiting row holds a group, since its stored list
+  can't tell an absent claim from an empty one.
+- `allowed_group` counts an absent claim as no groups.
+
+The groups claim is a list of strings or a single string. The server reads up
+to 2000 groups, so each is there to match, and drops a name over 256 bytes or
+with a control character rather than mend it into another name. A claim of
+another shape, such as a list of objects or numbers, counts as absent. The
+claim's name may be namespaced (`https://example.org/groups`).
+
+Sessions don't expire, so a change at the provider takes effect at the
+person's next single sign-on. Logout is local (`POST /auth/logout`): disabling
+someone at the provider ends no session here. Disable the account in the
+console, or use Sign out everywhere.
+
+### The result page
+
+A sign-in that ends without a session lands on the server's own connect page at
+`/connect#oidc=<reason>`, which words each reason in the console's six
+languages:
+
+| Reason | When |
+|---|---|
+| `off` | single sign-on isn't on |
+| `unavailable` | its config has a problem, or the provider didn't answer |
+| `pending` | the sign-in waits for an admin |
+| `not_allowed` | the person isn't in `allowed_group`, or their account is a household member or demo account now |
+| `disabled` | their account is disabled |
+| `failed` | the flow was refused, or the provider ended it |
+| `expired` | the flow took more than ten minutes, or finished in another browser |
+| `rate_limited` | the address is locked out |
+
+### An admin's way in
+
+`ErrAdminNeedsPassword` asks an admin for a password **or a linked identity
+from the single sign-on that can run now**: its issuer is the configured one,
+and single sign-on is enabled and has no problem (`auth.SetSSOIssuer`, read at
+each check). So a password-less account with such an identity may be promoted,
+and an admin with one may clear their password. An identity from a provider no
+longer configured, or any identity while single sign-on is off, is no way in.
+Unlinking a password-less admin's identity from the running provider is
+`409 admin_needs_password`. Password sign-in and `reset-admin` stay as the way
+back in when the provider is down.
+
+An admin's single sign-on calls `NoteAdminSignIn` as a password sign-in does,
+which stops the start-up sign-in hint (`first_admin` in
+[Server state](data-model.md#server-state)).
+
 ## Demo-account restrictions
 
 Public demo mode (`config.demo.*`) creates throwaway `is_demo` accounts. These
@@ -665,8 +897,10 @@ disabled, `can_add_members`. A refused field therefore changes nothing.
   inside the write, so two admins removing each other at once can't both pass.
   The console can never be locked out.
 - **`ErrAdminNeedsPassword`.** An account cannot become, or remain, an admin
-  without a password. This is enforced on create, on promote and on password
-  clear.
+  without a way in: a password, or a linked identity from the single sign-on
+  that can run now (see [An admin's way in](#an-admins-way-in)). This is
+  enforced on create, on promote, on password clear and on unlinking an
+  identity.
 - **No self-delete.** The delete *handler* enforces this as well. An admin may
   disable their own account, which is reversible, but never delete it, which is
   not.
@@ -1457,7 +1691,7 @@ unresolved join, so `rel_path` keys stay consistent (see
 
 ## Rate limiting
 
-`internal/api/ratelimit.go` has two mechanisms, and `api.New` wires seven
+`internal/api/ratelimit.go` has two mechanisms, and `api.New` wires eight
 buckets. The three token buckets take their rates from `rate_limit.*`, read at
 start (`RateLimitConfig.Effective`). An unset value is the default in the table
 (see [Configuration](configuration.md#rate-limits-rate_limit)). The lockouts and
@@ -1470,6 +1704,7 @@ caps are fixed.
 | `mediaLimiter` | Token bucket per credential (`rateLimiter`) | `rate_limit.media`, ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`), once they authenticate. These are the routes `requireBookMediaAuth` and `requireMediaAuth` wrap, both `mediaAuth`. See [Signed-in requests are limited per credential](#signed-in-requests-are-limited-per-credential) |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem`, `POST /auth/exchange`, and the Bridge's pairing exchange `POST /bridge/pair` (one shared counter) |
+| `oidcLimiter` | Failure lockout per IP | 10 failures / 15 min | Single sign-on's `GET /auth/oidc/callback` and `POST /auth/oidc/finish` (one shared counter). A callback with no flow cookie, the provider's `?error=`, a provider that doesn't answer and a finish with no cookie charge nothing, since any page can make a visitor's browser send those. A locked-out callback redirects to `/connect#oidc=rate_limited` |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
 | `accountLimiter` | **Attempt** cap per IP (`Acquire`) | 10 / 15 min | `POST /auth/password`, `POST /auth/recovery`, `POST /auth/tokens` and `DELETE /auth/tokens/{id}` (create and revoke; listing is not counted). Also adding a household member, and a member's session and pairing code (`POST /me/household/members`, `.../{id}/session`, `.../{id}/pair`), charged only after the API-key, demo and member refusals |
 
@@ -1500,9 +1735,10 @@ page loads forty-odd chunks.
 Both structures sweep stale entries, so a flood of distinct IPs can't grow
 memory without bound.
 
-**`Retry-After`.** A refusal from any of the four lockouts and caps
+**`Retry-After`.** A refusal from any of the five lockouts and caps
 (`allowAttempt`, `acquireAccountBudget`, the demo cap) is a `429` with
-`Retry-After`. Its value is the seconds until the lockout ends (`LockedFor`,
+`Retry-After`. The single sign-on callback is the exception: it is a browser
+redirect, so it sends `Retry-After` on the redirect to the result page. Its value is the seconds until the lockout ends (`LockedFor`,
 rounded up by `setRetryAfter`, at least 1). Before 2.5.0 only the account
 limiter sent one.
 
@@ -1512,7 +1748,7 @@ or the authenticated API), it is the longer of the credential's and the
 address's waits. A refusal charges the address too, and the next request meets
 the address's bucket first.
 
-**Podcast discovery and OPML** have budgets of their own, outside the seven
+**Podcast discovery and OPML** have budgets of their own, outside the eight
 buckets. They are per user and held in memory, so a restart resets them
 (`internal/podcast/discovery`, `handlers_podcast_discovery.go`). The full tables
 are in [Podcast discovery](api/reference.md#podcast-discovery) in the API
@@ -1732,6 +1968,11 @@ survive Universal Link and App Link routing.
   in player's to 2 minutes.
 
 Follow the fragment convention for any new durable secret.
+
+**Single sign-on puts no secret in a URL.** Its token rides in the
+`HttpOnly` done cookie and is traded by `POST /auth/oidc/finish`, because a
+link holding it would sign anyone who opens it in (see [The finish](#the-finish)).
+The redirects carry only `#oidc=done`, `?oidc=1` or a result reason.
 
 ## The allowed + denied test rule
 

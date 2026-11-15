@@ -56,8 +56,9 @@
 #            BRIDGE_VERSION (the version the Bridge page shows, default the
 #              checkout's git describe; set the release's, e.g. 0.3.0),
 #            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT /
-#              SHOTS_MIRROR_PORT / SHOTS_BRIDGE_PORT / SHOTS_AUDIBLE_PORT (default
-#              8790 / 8791 / 8795 / 8792 / 8793 / 8794 - move them
+#              SHOTS_MIRROR_PORT / SHOTS_BRIDGE_PORT / SHOTS_AUDIBLE_PORT /
+#              SHOTS_OIDC_PORT / SHOTS_OIDC_IDP_PORT (default
+#              8790 / 8791 / 8795 / 8792 / 8793 / 8794 / 8796 / 8797 - move them
 #              when a run in another checkout holds those ports; two runs in one
 #              checkout share .cache/ and clash).
 set -euo pipefail
@@ -83,6 +84,9 @@ META_PORT="${SHOTS_META_PORT:-8795}"
 MIRROR_PORT="${SHOTS_MIRROR_PORT:-8792}"
 BRIDGE_PORT="${SHOTS_BRIDGE_PORT:-8793}"
 AUDIBLE_PORT="${SHOTS_AUDIBLE_PORT:-8794}"
+OIDC_PORT="${SHOTS_OIDC_PORT:-8796}"
+OIDC_IDP_PORT="${SHOTS_OIDC_IDP_PORT:-8797}"
+OIDC_DATA="$CACHE/oidc-data"
 BRIDGE_DATA="$CACHE/bridge-data"
 MIRROR_DATA="$CACHE/mirror-data"
 
@@ -272,6 +276,7 @@ cleanup() {
   [ -n "${META_PID:-}" ] && kill "$META_PID" 2>/dev/null || true
   [ -n "${BRIDGE_PID:-}" ] && kill "$BRIDGE_PID" 2>/dev/null || true
   [ -n "${AUDIBLE_PID:-}" ] && kill "$AUDIBLE_PID" 2>/dev/null || true
+  [ -n "${OIDC_PID:-}" ] && kill "$OIDC_PID" 2>/dev/null || true
   # Stopped before its folder goes, so nothing writes there meanwhile.
   [ -n "${MIRROR_PID:-}" ] && { kill "$MIRROR_PID" 2>/dev/null; wait "$MIRROR_PID" 2>/dev/null; } || true
   rm -rf "$MIRROR_DATA"
@@ -431,6 +436,41 @@ if [ "${SKIP_ADMIN:-0}" != "1" ]; then
   else
     echo "  ! no setup URL in $CACHE/setup.log: the setup shots keep their previous images"
   fi
+fi
+
+# Single sign-on: a server of its own (fresh data dir, no library) with OIDC on in
+# its config.yaml, its issuer a discovery document capture-oidc.mjs serves on
+# 127.0.0.1 (see its header). Started only when an OIDC shot is wanted.
+if [ "${SKIP_ADMIN:-0}" != "1" ] && manifest_wanted capture oidc; then
+  echo "==> capturing single sign-on on :$OIDC_PORT"
+  OIDC_ISSUER="http://127.0.0.1:$OIDC_IDP_PORT/application/o/audiosilo/"
+  rm -rf "$OIDC_DATA" && mkdir -p "$OIDC_DATA"
+  cat > "$OIDC_DATA/config.yaml" <<OIDC_CONFIG
+bind: "127.0.0.1:$OIDC_PORT"
+public_url: "http://127.0.0.1:$OIDC_PORT"
+update_check: false
+tls:
+  mode: "off"
+auth:
+  oidc:
+    enabled: true
+    name: "Authentik"
+    issuer: "$OIDC_ISSUER"
+    client_id: "audiosilo"
+    client_secret: "capture-only-secret"
+OIDC_CONFIG
+  AUDIOSILO_WEB_DIR="$FRONTEND/dist" "$SERVER_BIN" --data "$OIDC_DATA" > "$CACHE/oidc.log" 2>&1 &
+  OIDC_PID=$!
+  wait_healthy "http://127.0.0.1:$OIDC_PORT/healthz" "$CACHE/oidc.log" "single sign-on server"
+  OIDC_PASSWORD="$(admin_password "$CACHE/oidc.log")"
+  if [ -z "$OIDC_PASSWORD" ]; then
+    echo "  ! no admin password in $CACHE/oidc.log: the single sign-on shots keep their previous images"
+  else
+    AS_ORIGIN="http://127.0.0.1:$OIDC_PORT" ADMIN_PASSWORD="$OIDC_PASSWORD" \
+      OIDC_DB="$OIDC_DATA/audiosilo.db" OIDC_ISSUER="$OIDC_ISSUER" node capture-oidc.mjs
+  fi
+  kill "$OIDC_PID" 2>/dev/null || true
+  OIDC_PID=""
 fi
 
 # The Bridge's own page: a real Bridge, built with its page embedded, on a fresh
