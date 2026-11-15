@@ -995,14 +995,12 @@ async function captureWide(name, viewport, shots) {
   }
 
   if (wanted(shots.settingsAppearance)) {
-    // Settings with the Appearance pane open (its section link): Light / Dark / System and
-    // High contrast at Off (so the page shows the normal colours).
+    // Settings at ?section=appearance (a fresh load: the downloads shot has left Settings):
+    // Light / Dark / System and High contrast at its default, Off.
     await step('settings appearance', async () => {
       await page.goto(BASE + 'settings?section=appearance', {waitUntil: 'networkidle', timeout: 45000});
       await tid(page, 'settings-high-contrast').waitFor({timeout: 15000});
-      await sleep(SETTLE_MS);
-      await page.mouse.move(0, 0);
-      await shoot(page, shots.settingsAppearance);
+      await settleShoot(page, shots.settingsAppearance, SETTLE_MS);
     });
   }
 

@@ -55,7 +55,7 @@ A browser can't tell Wi-Fi from mobile data, so in the web player **On Wi-Fi** d
 
 Choose **Light**, **Dark**, or **System** to follow your device. On a tablet or computer, the profile menu also has a quick light/dark switch.
 
-**High contrast** makes text, borders and status colours stronger, in Light and in Dark. **Off** follows your device's contrast setting. See [High contrast](#high-contrast).
+**High contrast** makes text, borders and status colours stronger, in Light and in Dark. See [High contrast](#high-contrast).
 
 ![Settings on a computer with Appearance open: Light, Dark and System, and High contrast (On or Off) below them](/img/screenshots/web-player/settings-appearance.png)
 
@@ -88,7 +88,7 @@ The player follows your device's text size, contrast setting and screen reader. 
 
 ### Text size
 
-The app uses the text size you set on your device. There is no separate text size in the app.
+Set the text size on your device:
 
 - **iPhone and iPad**: Settings > Accessibility > Display & Text Size > Larger Text.
 - **Android**: the font size in Android's display or accessibility settings.
@@ -104,7 +104,7 @@ The ebook reader keeps its own text size. Change it with the reader's **−** an
 
 ### High contrast
 
-High contrast turns on when your device asks for more contrast:
+High contrast turns on when your device asks for more contrast, even with the app's setting **Off** (the setting tells you so):
 
 - **iPhone and iPad**: Settings > Accessibility > Display & Text Size > Increase Contrast.
 - **Android**: **High contrast text** in Android's accessibility settings (**Outline text** on Android 16).
@@ -120,7 +120,7 @@ With high contrast on:
 
 The layout stays the same, and Light, Dark and System work as before.
 
-When your device already asks for more contrast, the app shows high contrast even with the setting **Off**, and the setting tells you so. To turn it off, change the setting on your device.
+To turn off the high contrast your device asks for, change the setting on your device.
 
 ### Screen readers
 
