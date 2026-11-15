@@ -113,7 +113,7 @@ INSERT INTO tokens(user_id, token_hash, kind, device_name, created_at, last_seen
   VALUES(${sam.id}, 'capture-oidc-sam-web', 'session', 'Web player', ${q(stamp(now - 2 * HOUR))}, ${q(stamp(now - 2 * HOUR))}, 'audiosilo-web');
 INSERT INTO oidc_pending(issuer, subject, email, email_verified, username, name, groups, reason, first_seen_at, last_seen_at, attempts)
   VALUES(${q(ISSUER)}, 'b2e4d8c0-7a1f-4c35-8d92-6e0f1a3c5b77', 'jo.reed@example.com', 0, 'jo', 'Jo Reed',
-         '["family","audiobooks"]', 'unverified_email', ${q(stamp(now - 50 * MIN))}, ${q(stamp(now - 12 * MIN))}, 2);
+         '["family","audiobooks"]', 'no_match', ${q(stamp(now - 50 * MIN))}, ${q(stamp(now - 12 * MIN))}, 2);
 INSERT INTO oidc_pending(issuer, subject, email, email_verified, username, name, groups, reason, first_seen_at, last_seen_at, attempts)
   VALUES(${q(ISSUER)}, 'e7a1c3f5-2b9d-4e60-a8c4-91d3f0b6e2a8', 'alex@example.com', 1, 'alex', 'Alex Moreno',
          '["family"]', 'auto_create_off', ${q(stamp(now - 3 * 24 * HOUR))}, ${q(stamp(now - 3 * 24 * HOUR))}, 1);
