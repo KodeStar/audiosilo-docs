@@ -102,6 +102,7 @@ answer's `Content-Encoding` and passes it through.
 
 Every route requires a **session bearer token**, except the public set:
 `/server`, `/healthz`, `/auth/redeem`, `/auth/exchange`, `/auth/login`,
+single sign-on's `/auth/oidc/start`, `/auth/oidc/callback` and `/auth/oidc/finish`,
 `/demo/session`, `/bridge/pair`, `/setup`, the well-known files and the static UI.
 
 ```
@@ -128,7 +129,7 @@ surfaces as a user's "last activity". The request also records its address
 
 ### Getting a session token
 
-There are four ways to obtain a session token:
+There are five ways to obtain a session token:
 
 1. **Auth-code pairing** (the primary flow). `POST /auth/redeem` with an invite
    or recovery code returns a *pairing payload*, without consuming a use. The
@@ -148,6 +149,13 @@ There are four ways to obtain a session token:
    `POST /me/household/members/{id}/session`, returns the member's session
    envelope, signed in on the owner's device (see
    [Household members](reference.md#household-members)).
+5. **Single sign-on** (capability `oidc`), in a browser only. The browser goes
+   to `GET /auth/oidc/start`, signs in at the identity provider and comes back
+   to the server. The page it lands on calls `POST /auth/oidc/finish`, which
+   answers as `/auth/exchange` does. The finish reads a cookie the server set,
+   so only a page on the server's own origin can use it: the console and the
+   web player the server serves. See
+   [Single sign-on](reference.md#single-sign-on).
 
 An already-authenticated client can mint a fresh pairing payload for another
 device with `POST /auth/pair`. That token is single-use with a 10-minute TTL,
@@ -320,7 +328,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: its rules change only by granting or revoking the library |
 | `config_library` | `409` | a library the server's config declares: renaming it or moving its folder (`PATCH /admin/libraries/{id}`, from 2.4.0), or deleting it (`DELETE /admin/libraries/{id}`, from 2.4.1) |
 | `last_admin` | `409` | demoting or disabling the last enabled admin |
-| `admin_needs_password` | `400` | an admin without a password (creating one, promoting a password-less account, or clearing an admin's password) |
+| `admin_needs_password` | `400` | an admin without a way in: creating one without a password, promoting a password-less account, or clearing an admin's password, unless the account has an identity from the single sign-on that can run now. `409` when [unlinking](reference.md#delete-apiv1adminusersididentitiesidentity_id) that identity from a password-less admin |
 | `password_too_short` | `400` | a password under the minimum length |
 | `cannot_delete_self` | `400` | an admin deleting their own account |
 | `path_not_absolute` | `400` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` with a relative path |
@@ -481,6 +489,17 @@ never as the batch's error. The reasons are `older`, `resume_behind`, `invalid`,
   failure for an hour.
 - `rendition_pending` (`503`, `Retry-After: 15`): still encoding.
 - `rendition_error` (`503`, `Retry-After: 60`): a failure that isn't the file's.
+
+**[Single sign-on](reference.md#single-sign-on):**
+
+- `oidc_no_sign_in` and `oidc_sign_in_expired` (`401`, from
+  `POST /auth/oidc/finish`).
+- `invalid_email` (`400`): an account email that isn't one address.
+- `not_linkable`, `user_has_identity` and `identity_linked` (`409`, from
+  [linking a waiting sign-in](reference.md#post-apiv1adminoidcpendingidlink)).
+- `admin_needs_password` (`409`) from
+  [unlinking](reference.md#delete-apiv1adminusersididentitiesidentity_id) a
+  password-less admin's identity.
 
 ### Using the codes
 
@@ -684,6 +703,7 @@ therefore never staler than one built fresh, and nothing on the wire changes
     "upcoming_covers": true,
     "listening_sync": true,
     "renditions": true,
+    "oidc": false,
     "contributions": false,
     "podcasts": false,
     "audible": false
@@ -714,6 +734,7 @@ has them. For the others, each row says when the flag is `true`.
 | `metadata` | whether [community metadata lookup](reference.md#get-apiv1librariesidmeta) is configured. It gates the standalone [work lookup](reference.md#get-apiv1metawork) too, and the enriched-book material is drawn only when it is true |
 | `export` | whether the admin [library export](reference.md#get-apiv1adminlibrariesidexport) exists |
 | `upload`, `websocket` | roadmap phases. They will flip on when they land |
+| `oidc` | [single sign-on](reference.md#single-sign-on): `true` while `auth.oidc.enabled` was on at start, the provider config has no problem and `public_url` is set; sent `false` otherwise. While it is `true`, `auth.methods` adds `"oidc"` and `auth.oidc.name` names the provider for the button. Only a page on the server's own origin can use it |
 
 ### Catalog and browsing
 

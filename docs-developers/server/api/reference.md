@@ -77,7 +77,8 @@ else and gate features on the flags.
     "upcoming_calendar": true,
     "upcoming_covers": true,
     "listening_sync": true,
-    "renditions": true
+    "renditions": true,
+    "oidc": false
   },
   "auth": { "methods": ["auth_code", "password"] },
   "renditions": ["watch"],
@@ -239,6 +240,21 @@ support separately.
 It gates the console's [Audible routes](#audible-accounts) and the scheduled polls.
 The Bridge's own Audible routes work either way. Only the console reads it. The
 player has no Audible surface and doesn't mirror it.
+
+`oidc` says [single sign-on](#single-sign-on) can run: `auth.oidc.enabled` was on
+at start, the provider config has no problem and `public_url` is set. It is sent
+`false` otherwise and is absent on an older server. Discovery is lazy, so a
+provider that doesn't answer still reads `true`, and the sign-in then ends on the
+result page's `unavailable`. While it is `true`, the `auth` block names the method
+and the provider:
+
+```json
+"auth": { "methods": ["auth_code", "password", "oidc"], "oidc": { "name": "Authentik" } }
+```
+
+`auth.oidc.name` is the button's name ("Sign in with Authentik"), `single sign-on`
+when none is configured. While the flag is `false`, `auth` holds only the two
+methods.
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -407,6 +423,8 @@ stays valid afterwards (governed by the invite's remaining uses and expiry, so
 one QR can pair several devices), while a token from `/auth/pair` or the demo
 flow is single-use and revoked on success. Shares the redeem rate limiter:
 10 failed attempts per IP per 15 minutes.
+It refuses a single sign-on's token, which only
+[`POST /auth/oidc/finish`](#post-apiv1authoidcfinish) takes.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -573,6 +591,68 @@ Either field is omitted when unknown, and the answer is `{}` when neither is.
 |---|---|
 | `200` | the addresses (`{}` when neither is known) |
 | `401` | no valid session or API key |
+
+### Single sign-on
+
+Sign in with OpenID Connect (capability `oidc`). Three public routes run the
+browser's flow; the trust model is in
+[Single sign-on](../auth-and-security.md#single-sign-on-openid-connect). A native
+app doesn't use them. The server's own console and the web player it serves do,
+because the finish reads a cookie the server set on its own origin.
+
+#### `GET /api/v1/auth/oidc/start`
+
+*Public; a browser navigation, not a fetch.* Starts a sign-in and redirects to the
+provider.
+
+| Param | Meaning |
+|---|---|
+| `return` | required: `web` (back to the web player) or `admin` (back to the console). Anything else is `400`, so a return address can't be smuggled in |
+| `hop` | set by the server itself on its one redirect to `public_url`'s host (below) |
+
+The answer is a redirect:
+
+- `302` to the provider's authorization URL, with the flow cookie set;
+- `302` to the same route on `public_url`, once, when the request came on another
+  host, or over plain HTTP straight from a browser while `public_url` is https;
+- `303` to `/connect#oidc=off` while single sign-on is off, or
+  `/connect#oidc=unavailable` while its config has a problem or discovery fails.
+
+#### `GET /api/v1/auth/oidc/callback`
+
+*Public; the provider's redirect.* The redirect URI to register at the provider
+is `<public_url>/api/v1/auth/oidc/callback`. It takes the provider's `code` and
+`state`, or `error`. It always deletes the flow cookie and answers `303`:
+
+- to `/admin/#oidc=done` or `/web/connect?oidc=1` (the flow's `return`) when the
+  sign-in signs in, with the done cookie set. No token is ever in the address;
+- otherwise to `/connect#oidc=<reason>`: `off`, `unavailable`, `pending`,
+  `not_allowed`, `disabled`, `failed`, `expired` or `rate_limited`
+  ([what each means](../auth-and-security.md#the-result-page)). A locked-out
+  address also gets `Retry-After`.
+
+#### `POST /api/v1/auth/oidc/finish`
+
+*Public; same origin.* Trades the sign-in the done cookie holds for a session.
+Call it from the page the callback lands on.
+
+| Body field | Type | Required | Notes |
+|---|---|---|---|
+| `device_name` | string | no | as for [`/auth/exchange`](#post-apiv1authexchange). The body may be empty |
+
+Response `200`: exactly [`POST /auth/exchange`](#post-apiv1authexchange)'s answer,
+the session envelope with `token`, `user`, `server_id` and, with `addresses`, the
+server's addresses. The console signs a non-admin back out at once.
+
+| Status | Meaning |
+|---|---|
+| `400` | a body that isn't valid JSON. The cookie stays, so the sign-in can still be finished within its minute |
+| `401` | `code: "oidc_no_sign_in"`: no finished sign-in in this browser (no cookie). Nothing is charged |
+| `401` | `code: "oidc_sign_in_expired"`: the sign-in was used, expired after 60 seconds, or its account is disabled or has become a household member or demo account. Charged to the single sign-on lockout |
+| `429` | the address is locked out (10 failures in 15 minutes, shared with the callback), with `Retry-After`. The cookie stays |
+
+Every answer but a `400` or a `429` clears the cookie, so the finish can't be
+retried: sign in again.
 
 ## Self-service account
 
@@ -5453,7 +5533,8 @@ All accounts, wrapped as `{ "users": [ … ] }`:
       "member_access": null,
       "can_add_members": true,
       "members_count": 2,
-      "display_name": ""
+      "display_name": "",
+      "email": "sam@example.org"
     },
     {
       "id": 12,
@@ -5482,6 +5563,7 @@ Each user is the [`/me`](#get-apiv1me) object plus the household member fields
 | `can_add_members` | the admin's per-person switch (default `true`) |
 | `members_count` | how many members this person has |
 | `display_name` | the name the owner typed for a member, always present (`""` for everyone else; kept when the member is made independent, though `/me` then leaves it off) |
+| `email` | the account's email, `""` for none. Only the admin sees it, never `/me` or the audit log. A [single sign-on](#single-sign-on) with a verified email links to the one ordinary account that has it. Not unique |
 
 The same fields are on `GET /admin/users/{id}`'s `user`, on the `PATCH` answer and on
 the create's.
@@ -5495,6 +5577,7 @@ Create an account.
 | `username` | string | yes | |
 | `password` | string | admins only | optional for non-admins (pairing-only accounts); required for `role: "admin"` |
 | `role` | string | yes | `"admin"` or `"user"` |
+| `email` | string | no | trimmed, at most 254 bytes, one `@` with text on both sides and no spaces, else `400 invalid_email`. `""` or absent is none |
 
 Response `201`: the created account as the admin's user object above (re-read after
 the insert, so its stored defaults, `can_add_members` among them, are there). `409`
@@ -5531,9 +5614,30 @@ One account plus everything the console needs to manage it:
   ],
   "members": [ { "id": 12, "name": "Evie", "username": "evie", "kind": "kid", "access": "collections",
                  "created_at": "2026-10-13T10:00:00.000Z", "devices": 1, "disabled": false } ],
-  "member_collections": []
+  "member_collections": [],
+  "identities": [
+    {
+      "id": 3,
+      "issuer": "https://auth.example.org/application/o/audiosilo/",
+      "subject": "8d1f0c2e",
+      "email": "sam@example.org",
+      "username": "sam",
+      "link_method": "admin",
+      "linked_by": { "id": 1, "username": "admin" },
+      "linked_at": "2026-11-15T10:00:00.000Z",
+      "last_sign_in_at": "2026-11-15T10:02:11.000Z"
+    }
+  ]
 }
 ```
+
+- `identities` - the account's [single sign-on](#single-sign-on) identities,
+  oldest first (`[]` for none). `email` and `username` are the provider's as last
+  seen. `link_method` is `auto_email` (its verified email matched this account),
+  `admin` (an admin linked it) or `created` (the account was made for it).
+  `linked_by` is the admin who linked it, `null` when the server did it on its own
+  or that admin's account is gone. `last_sign_in_at` is `null` before its first
+  sign-in.
 
 - `members` - this person's own household members, oldest first (`[]` for none):
   each the owner's list's member (`id`, `name`, `username`, `kind`, `access`,
@@ -5566,8 +5670,9 @@ Edit an account in place. Any subset of:
 |---|---|---|
 | `username` | string | 2.7.0: renames the account, by the rule a new account's name follows: not `""` (`400 username_required`), not another account's (`409 username_taken`). The account keeps its sessions, since tokens name the user by id. The console's first-run Your account step uses it |
 | `role` | string | `"admin"` \| `"user"` |
-| `password` | string | `""` clears the password (non-admins only); a non-empty one is refused when the request leaves the account a kid (beside Make independent, or an assign as a grown-up, it is fine). Replacing or clearing a password the account had ends its sessions (below) |
+| `password` | string | `""` clears the password (for an admin only when they have an identity from the single sign-on that can run now); a non-empty one is refused when the request leaves the account a kid (beside Make independent, or an assign as a grown-up, it is fine). Replacing or clearing a password the account had ends its sessions (below) |
 | `disabled` | bool | reversible lockout; disabling revokes nothing but blocks all token use |
+| `email` | string | the account's email, checked as on create (`400 invalid_email`); `""` clears it. Recorded in the audit log only as `set` or `cleared` |
 | `can_add_members` | bool | the per-person switch: may this person add household members |
 | `managed_by` | int \| `null` | an owner's id: "Assign to someone", with `member_kind` and `member_access` beside it. `null`: "Make independent" |
 | `member_kind` | string | `"kid"` \| `"grownup"`; only with a `managed_by` id |
@@ -5754,6 +5859,122 @@ Each entry is the same invite metadata as `auth_codes` in
 is stored) and never lists recovery codes. `expires_at` / `redeemed_at` are
 omitted when unset; `max_uses: 0` = unlimited. An empty server returns
 `{ "invites": [] }`. `401` anonymous, `403` non-admin.
+
+## Admin: single sign-on
+
+All *Admin*. What the console's Settings > Sign-in and People's Waiting sign-ins
+card read and do. The rules behind them are in
+[Single sign-on](../auth-and-security.md#single-sign-on-openid-connect).
+
+### `GET /api/v1/admin/oidc/status`
+
+Single sign-on as it runs now. When discovery is due, the call tries it first.
+
+```json
+{
+  "enabled": true,
+  "configured": true,
+  "name": "Authentik",
+  "issuer": "https://auth.example.org/application/o/audiosilo/",
+  "client_id": "audiosilo",
+  "client_secret_set": true,
+  "redirect_uri": "https://books.example.org/api/v1/auth/oidc/callback",
+  "scopes": ["openid", "profile", "email", "groups"],
+  "username_claim": "preferred_username",
+  "groups_claim": "groups",
+  "discovery": { "state": "ok", "checked_at": "2026-11-15T10:00:00.000Z" }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `enabled` | `auth.oidc.enabled` was on at start |
+| `configured` | it can run: the same value as the `oidc` capability |
+| `problem` | why it can't run, in words, absent when it can |
+| `redirect_uri` | the address to register at the provider, `""` without a `public_url` |
+| `scopes`, `username_claim`, `groups_claim` | the values in use, defaults filled in |
+| `discovery` | absent while single sign-on can't run. `state` is `ok`, `error` (with `error`) or `pending` (not tried yet), with `checked_at` |
+
+### `GET /api/v1/admin/oidc/pending`
+
+The waiting sign-ins seen in the last 30 days, the newest first, and the accounts
+that already hold an identity from each issuer among them.
+
+```json
+{
+  "pending": [
+    {
+      "id": 7,
+      "issuer": "https://auth.example.org/application/o/audiosilo/",
+      "subject": "5b0e7a91",
+      "email": "jo@example.org",
+      "email_verified": false,
+      "username": "jo",
+      "name": "Jo Reed",
+      "groups": ["family"],
+      "reason": "unverified_email",
+      "first_seen_at": "2026-11-15T09:40:00.000Z",
+      "last_seen_at": "2026-11-15T09:55:12.000Z",
+      "attempts": 2
+    }
+  ],
+  "linked_user_ids": { "https://auth.example.org/application/o/audiosilo/": [4] }
+}
+```
+
+`reason` is why no account took the sign-in: `unverified_email`, `no_match`,
+`several_matches`, `not_eligible`, `not_allowed`, `auto_create_off` or
+`admin_account` ([what each means](../auth-and-security.md#who-signs-in-as-whom)).
+`groups` holds at most 50. The console's Link leaves out the accounts in
+`linked_user_ids` for the row's issuer, which Link would refuse.
+
+### `POST /api/v1/admin/oidc/pending/{id}/link`
+
+Links a waiting sign-in to an account, which then signs in with it. Body
+`{ "user_id": 4 }`. An admin may link one to an admin's account here, which the
+server never does on its own. The row goes, and `user.oidc_link` is audited with
+`method: "admin"`.
+
+Response `200`: the account as the [admin's user object](#get-apiv1adminusers).
+
+| Status | Meaning |
+|---|---|
+| `400` | an id that isn't a number, or no `user_id` |
+| `404` | the waiting sign-in or the account is gone |
+| `409` | `code: "not_linkable"`: a household member or demo account. `code: "user_has_identity"`: the account has an identity from this provider. `code: "identity_linked"`: the sign-in was linked to an account meanwhile |
+
+### `POST /api/v1/admin/oidc/pending/{id}/create`
+
+Makes an ordinary, password-less account for a waiting sign-in and links it.
+Optional body `{ "username": "jo" }`; without one the server makes a username
+from the sign-in as an automatic account would get. A verified email is copied
+onto the account. The row goes, and `user.oidc_create` is audited.
+
+Response `201`: the new account as the admin's user object.
+
+| Status | Meaning |
+|---|---|
+| `400` | an id that isn't a number, or a body that isn't valid JSON |
+| `404` | the waiting sign-in is gone |
+| `409` | `code: "username_taken"`; `code: "identity_linked"`: the sign-in was linked to an account meanwhile |
+
+### `DELETE /api/v1/admin/oidc/pending/{id}`
+
+Dismisses a waiting sign-in. The person's next attempt records it again, as a
+new row. Response `204`; `404` when it is gone. Audited as
+`oidc.pending_dismiss`, never with the email.
+
+### `DELETE /api/v1/admin/users/{id}/identities/{identity_id}`
+
+Unlinks one of an account's identities. The person can't sign in with it until it
+is linked again. Their devices stay signed in. Response `204`. Audited as
+`user.oidc_unlink`.
+
+| Status | Meaning |
+|---|---|
+| `400` | an id that isn't a number |
+| `404` | no such account, or no such identity on it |
+| `409` | `code: "admin_needs_password"`: the account is an admin with no password, and this is an identity from the single sign-on that can run now, their way in. Set a password first |
 
 ## Admin: libraries & shares
 
@@ -9233,6 +9454,23 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
   "modules": {
     "contributions": false
   },
+  "signin": {
+    "enabled": true,
+    "name": "Authentik",
+    "issuer": "https://auth.example.org/application/o/audiosilo/",
+    "client_id": "audiosilo",
+    "scopes": [],
+    "username_claim": "",
+    "groups_claim": "",
+    "ca_file": "",
+    "auto_create": false,
+    "allowed_group": "",
+    "admin_group": "audiosilo-admins",
+    "client_secret_set": true,
+    "scopes_default": ["openid", "profile", "email", "groups"],
+    "username_claim_default": "preferred_username",
+    "groups_claim_default": "groups"
+  },
   "locked": { "players.web_dir": "AUDIOSILO_WEB_DIR" },
   "restart_settings": [
     "network.bind", "network.tls_mode", "network.tls_home_http", "network.tls_hosts", "players.web_dir",
@@ -9270,6 +9508,9 @@ effect. Lists are never `null`.
 | `backups.schedule` | `""` (off), `daily:HH:MM` or `weekly:DAY:HH:MM` in the server's time zone; stored in canonical form (see [Backups](#admin-backups)) |
 | `backups.keep` | how many scheduled backups are kept, 1-365 (manual and before-restore backups stay until deleted; the newest three before-upgrade backups are kept apart) |
 | `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |
+| `signin.*` | [single sign-on](../configuration.md#single-sign-on-authoidc). The provider fields (`enabled`, `name`, `issuer`, `client_id`, `scopes`, `username_claim`, `groups_claim`, `ca_file`) are read-only restart settings (`400 setting_read_only`). `auto_create`, `allowed_group` and `admin_group` apply at the next sign-in |
+| `signin.client_secret_set` | read-only: whether a client secret is configured. The secret itself is never sent |
+| `signin.scopes_default`, `signin.username_claim_default`, `signin.groups_claim_default` | read-only facts: what an empty provider field stands for |
 | `modules.<id>` | each [managed module's](../modules.md) toggle, by module id (`false` by default; config key `modules.<id>.enabled`, variable `AUDIOSILO_MODULES_<ID>_ENABLED`). Applies at once, with no restart. [`GET /admin/modules`](#get-apiv1adminmodules) says more about each |
 | `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it (before 2.7.0 also `"launcher"`, a launcher override, which only the archived desktop manager set) |
 | `restart_settings` | the setting ids read only at start (fixed) |
@@ -9306,7 +9547,7 @@ written so a form can show it under the field:
 | `400` | | not a JSON object of sections |
 | `400` | `invalid_setting` | a value of the wrong type, one its normalizer refuses, a config that doesn't validate (e.g. `tls_mode: "autocert"` without `tls_hosts`, demo on without a library), a `demo.library` that names no library (`field: "demo.library"`), a change that would leave `config.yaml` invalid on its own because a value it needs comes only from an `AUDIOSILO_*` variable (the file keeps its own values for those; e.g. `demo.enabled: true` while the library is only in `AUDIOSILO_DEMO_LIBRARY`; the `error` names the variable), a `general.session_days` outside 30-3650, a `household.max_members` outside 1-50, or turning `metadata.enabled` on when no metadata service exists (`available` is false; `field: "metadata.enabled"` - set a valid `metadata.base_url` and restart first). Also JSON `null` for a setting that can't be unset (anything but `demo.max_users`, whose `null` means the default), refused with "enter a value" |
 | `400` | `unknown_setting` | a section or name that isn't a setting (including the read-only extras such as `metadata.available`) |
-| `400` | `setting_read_only` | `players.web_dir` or `backups.dir` |
+| `400` | `setting_read_only` | `players.web_dir`, `backups.dir` or a `signin` provider field |
 | `409` | `setting_locked` | a setting an environment variable or the launcher sets (see `locked`) |
 | `500` | | `config.yaml` couldn't be written; nothing changed |
 

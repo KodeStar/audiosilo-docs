@@ -137,7 +137,8 @@ When you add a new per-user or per-library-config table, follow the pattern:
 
 ### Accounts & credentials
 
-**`users`** *(0001; `is_demo` added in 0005; the household member columns in 0044)*.
+**`users`** *(0001; `is_demo` added in 0005; the household member columns in 0044;
+`email` in 0077)*.
 Its columns:
 
 - `id`, `username` (UNIQUE), `role` (`'admin'` or `'user'`), `disabled`,
@@ -147,6 +148,13 @@ Its columns:
 - `is_demo` flags throwaway demo-mode accounts, so the background reaper
   deletes by flag rather than by username prefix. A prefix could catch a real
   account named `demo_*`.
+- `email` *(0077)*: `TEXT NOT NULL DEFAULT ''`, `''` for none. An address an
+  admin typed, or a single sign-on's verified email copied onto the account it
+  made. It is **not unique**, so a sign-in counts the accounts that have its
+  address when it decides. The partial index `idx_users_email` is on
+  `email COLLATE NOCASE WHERE email <> ''`, the ASCII case folding that
+  decision uses, and emails are stored trimmed. Only the admin's user object
+  carries it, never `/me`.
 
 There is deliberately **no `last_login` column**. Last activity is derived from
 `MAX(tokens.last_seen)`.
@@ -191,7 +199,8 @@ in 0044)* holds opaque bearer tokens. Its columns:
 - `client_app`, `client_version`, `client_platform`, `last_ip` and
   `created_on_token_id`, described after the kinds.
 
-`kind` is `'session'`, `'pairing'`, `'api'`, `'cast'`, `'bridge'` or `'feed'`:
+`kind` is `'session'`, `'pairing'`, `'api'`, `'cast'`, `'bridge'`, `'feed'` or
+`'oidc'`:
 
 - `'api'`: a user-minted personal API key. Its label rides in `device_name`.
 - `'cast'` *(0043)*: a cast token, with its `cast_grants` row (below).
@@ -204,6 +213,10 @@ in 0044)* holds opaque bearer tokens. Its columns:
   `Calendar feed`. At most one per user is live, enforced by the partial
   unique index `idx_tokens_feed_user` *(0060)* on `user_id` over live feed
   tokens.
+- `'oidc'`: a [single sign-on](auth-and-security.md#the-finish) not yet
+  finished. Single use, `expires_at` 60 seconds on, spent by
+  `POST /auth/oidc/finish`. The daily retention job deletes it once it is spent
+  or expired, with the pairing tokens.
 
 `client_app`, `client_version` and `client_platform` are the newest valid
 [`X-AudioSilo-Client`](api/index.md#client-identification-x-audiosilo-client)
@@ -233,7 +246,7 @@ It decides:
   with the move (`auth.leaveOwners`).
 
 The admin console lists live session and API-key tokens as **devices**, never
-pairing, cast, bridge or feed tokens (`auth.ListDevices`). It can revoke one
+pairing, cast, bridge, feed or `oidc` tokens (`auth.ListDevices`). It can revoke one
 (`auth.RevokeDevice`).
 
 **`cast_grants`** *(0043)* holds what a **cast token** may read. A cast token
@@ -271,6 +284,39 @@ redeemable codes:
 Both kinds redeem through the same path. See
 [Auth & security](auth-and-security.md#auth-codes-invite-vs-recovery) for the
 lifecycle (supersede-on-mint, rotate, atomic claim).
+
+#### Single sign-on tables
+
+Two tables *(0077)* hold [single sign-on](auth-and-security.md#single-sign-on-openid-connect).
+Both are durable, as they belong to accounts, not the index.
+
+**`user_identities`**: an account's identity at the OpenID provider. A sign-in
+with that issuer and `sub` signs in as the account. Its columns:
+
+- `id`; `user_id` (FK `ON DELETE CASCADE`, so it goes with its account).
+- `issuer`, `subject`: UNIQUE together, so one identity names one account.
+  UNIQUE(`user_id`, `issuer`) allows one identity per provider per account.
+- `email`, `username`: the provider's, as last seen. The console shows them;
+  nothing matches on them again.
+- `link_method`: `'auto_email'` (a verified email matching one eligible
+  account), `'admin'` (the console's Link) or `'created'` (an account made for
+  it), a column CHECK.
+- `linked_by`: the admin who linked it, FK `ON DELETE SET NULL` with the partial
+  index `idx_user_identities_linked_by`; `NULL` when the server linked it or made its account on its own.
+- `linked_at`, `last_sign_in_at` (`NULL` until the first sign-in through it).
+- `groups_seen`: `INTEGER NOT NULL DEFAULT 0`, set once a sign-in through it
+  carried the groups claim, even an empty list, or the console linked it from
+  a waiting row holding a group. From then on a sign-in without the claim means
+  no groups (see [Roles from a group](auth-and-security.md#roles-from-a-group)).
+
+**`oidc_pending`**: the sign-ins no account took, waiting for an admin to link,
+create or dismiss. One row per `issuer` and `subject` (UNIQUE), upserted on each
+attempt. Its columns are `id` (`INTEGER PRIMARY KEY AUTOINCREMENT`, so a
+dismissed row's id is never handed out again), `issuer`, `subject`, `email`,
+`email_verified`, `username`, `name`, `groups` (JSON, at most 50), `reason` (the
+`Decide` reason), `first_seen_at`, `last_seen_at` (index `idx_oidc_pending_seen`)
+and `attempts`. Code caps it at 500 rows and prunes rows unseen for 30 days. It
+never holds a token or a code.
 
 ### Libraries & shares
 
@@ -1399,7 +1445,7 @@ Its keys:
   printing the banner. While
   `signed_in` is false, each later start prints the sign-in hint (see
   [Configuration](configuration.md#cli-flags-cmdaudiosilo)). An admin's password
-  sign-in (`auth.NoteAdminSignIn`), `reset-admin`, or the admin's own password
+  sign-in or single sign-on (`auth.NoteAdminSignIn`), `reset-admin`, or the admin's own password
   change sets it. `chose_password` is set once that admin sets their own
   password or `reset-admin` gives them a new one (both `auth.NoteOwnPassword`),
   and drives `GET /admin/setup`'s
@@ -2242,6 +2288,7 @@ The migration history so far:
 | 0073 | `podcast_episode_indexed` | `podcast_episodes.indexed_at`, backfilled from each episode's `books.indexed_at` (see [Podcasts](#podcasts)) |
 | 0074 | `book_hints` | [Match hints from an import](#match-hints-from-an-import): `book_hints` (`library_id` `ON DELETE CASCADE`, `path`, `source`, `asin` and `isbn` `TEXT NOT NULL DEFAULT ''`, `import_id` `INTEGER NOT NULL DEFAULT 0`, `set_at`; primary key `(library_id, path, source)`) and the index `idx_book_hints_import` on `import_id`. No data moves |
 | 0076 | `podcast_feed_notices` | `podcast_feed_state.feed_failures`, `feed_network_failures` and `failing_announced` (`INTEGER NOT NULL DEFAULT 0`), the failing-feed run of the podcast notifications (see [Podcasts](#podcasts)). No backfill |
+| 0077 | `oidc` | [Single sign-on](#single-sign-on-tables): `users.email` (`TEXT NOT NULL DEFAULT ''`) with the partial index `idx_users_email` (`email COLLATE NOCASE WHERE email <> ''`), `user_identities` (UNIQUE `(issuer, subject)` and `(user_id, issuer)`, `user_id` `ON DELETE CASCADE`, `linked_by` `ON DELETE SET NULL` with `idx_user_identities_linked_by`) and `oidc_pending` (`AUTOINCREMENT`, UNIQUE `(issuer, subject)`, `idx_oidc_pending_seen`). No data moves |
 
 ## SQLite choices
 
