@@ -334,9 +334,9 @@ subscribed to its kind. A nil `*Service` does nothing, so callers don't check.
 | `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title`, plus per-kind fields. See [Bridge event data](#bridge-event-data). |
 | `bridge_job_failed` | the same hook, for a job that moved **into** `failed` or into a notable `needs_attention`. See [Bridge event data](#bridge-event-data). | as `bridge_job_finished`, plus `code` and `detail` |
 | `book_released` | the [upcoming releases](api/reference.md#upcoming-releases) job (`upcoming.Runner`, wired to `API.announceReleases`). See [`book_released`](#book_released). | `count`, `titles` (the first five, each `Title (Series #position)`, or `Title (Series)` without a position) |
-| `podcast_episodes_new` | `catalog.IndexPodcastShow`, once per show per index that found episodes new to it. See [Podcast events](#podcast-events). | `library`, `library_id`, `show_id`, `show`, `show_path`, `count`, `titles` (the first five, newest first) |
-| `podcast_feed_failing` | `catalog.FoldPodcastJob` for a `podcast.poll` that makes the feed's run of failures due, or ends `gone` or `feed_secret_missing`. Once per run. | `library`, `library_id`, `show_id`, `show`, `show_path`, `code`, `failures` |
-| `podcast_feed_recovered` | `catalog.FoldPodcastJob` for the first successful `podcast.poll` after `podcast_feed_failing` | `library`, `library_id`, `show_id`, `show`, `show_path` |
+| `podcast_episodes_new` | `catalog.IndexPodcastShow`, once per show per index that found episodes new to it. See [Podcast events](#podcast-events). | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead), `count`, `titles` (the first five, newest first) |
+| `podcast_feed_failing` | `catalog.FoldPodcastJob` for a `podcast.poll` that makes the feed's run of failures due, or ends `gone` or `feed_secret_missing`. Once per run. | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead), `code`, `failures` |
+| `podcast_feed_recovered` | `catalog.FoldPodcastJob` for the first successful `podcast.poll` after `podcast_feed_failing` | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead) |
 
 `notify.Kinds` lists the kinds in this order, which is the order the console
 shows.
@@ -531,7 +531,7 @@ The podcast messages link to the console's Library > Libraries:
 
 | Kind | Title | Text |
 |---|---|---|
-| `podcast_episodes_new` | `1 new episode of <show>` or `N new episodes of <show>`; private: `A private podcast has N new episodes` | the titles, one a line, then `and N more`; none for a private show |
+| `podcast_episodes_new` | `1 new episode of <show>` or `N new episodes of <show>`; private: `A private podcast has 1 new episode` or `A private podcast has N new episodes` | the titles, one a line, then `and N more`; none for a private show |
 | `podcast_feed_failing` | `A podcast feed is failing: <show>`; private: `A private podcast feed is failing` | the code in words (`notify.feedCodeText`), `The feed answered HTTP <status>.` or `The Bridge couldn't check the feed.`, then `N checks in a row failed.` when `failures` is more than 1 |
 | `podcast_feed_recovered` | `A podcast feed is back: <show>`; private: `A private podcast feed is back` | "The feed answered again, so new episodes arrive as before." |
 
@@ -732,8 +732,10 @@ A Discord delivery is one embed, posted to the webhook address:
 ```
 
 - The title is cut at 256 characters and the description at 4000.
-- The colour is blue for information, amber for `library_unavailable` and
-  `podcast_feed_failing`, and red for `scan_failed` and `backup_failed`.
+- The colour is blue for information, amber for `library_unavailable`,
+  `podcast_feed_failing`, a Bridge job that needs attention and a LibriVox book
+  left unmatched, and red for `scan_failed`, `backup_failed` and a failed Bridge
+  job.
 - `allowed_mentions` is empty, so a book title or a device name containing
   `@everyone` pings nobody.
 
