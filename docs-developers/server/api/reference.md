@@ -5577,7 +5577,7 @@ Create an account.
 | `username` | string | yes | |
 | `password` | string | admins only | optional for non-admins (pairing-only accounts); required for `role: "admin"` |
 | `role` | string | yes | `"admin"` or `"user"` |
-| `email` | string | no | trimmed, at most 254 bytes, one `@` with text on both sides and no spaces, else `400 invalid_email`. `""` or absent is none |
+| `email` | string | no | trimmed, at most 254 bytes, an `@` with text before and after it, and no spaces or control characters, else `400 invalid_email`. `""` or absent is none |
 
 Response `201`: the created account as the admin's user object above (re-read after
 the insert, so its stored defaults, `can_add_members` among them, are there). `409`
@@ -5882,7 +5882,7 @@ Single sign-on as it runs now. When discovery is due, the call tries it first.
   "scopes": ["openid", "profile", "email", "groups"],
   "username_claim": "preferred_username",
   "groups_claim": "groups",
-  "discovery": { "state": "ok", "checked_at": "2026-11-15T10:00:00.000Z" }
+  "discovery": { "state": "ok", "checked_at": "2026-11-15T10:00:00Z" }
 }
 ```
 
@@ -5893,7 +5893,7 @@ Single sign-on as it runs now. When discovery is due, the call tries it first.
 | `problem` | why it can't run, in words, absent when it can |
 | `redirect_uri` | the address to register at the provider, `""` without a `public_url` |
 | `scopes`, `username_claim`, `groups_claim` | the values in use, defaults filled in |
-| `discovery` | absent while single sign-on can't run. `state` is `ok`, `error` (with `error`) or `pending` (not tried yet), with `checked_at` |
+| `discovery` | absent while single sign-on can't run. `state` is `ok`, `error` (with `error`) or `pending` (not tried yet). `checked_at` is the last try, absent before the first |
 
 ### `GET /api/v1/admin/oidc/pending`
 
