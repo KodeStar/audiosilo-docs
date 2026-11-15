@@ -1587,7 +1587,7 @@ show id. The current tables:
 | `podcast_feed_hashes` | Current and previous URL hashes, keyed `(library_id, sha256, show_path)`. Cascades with its indexed show. |
 | `podcast_episodes` | A rebuildable one-to-one row for `books.id`, with cascade. It holds the library and show path; the episode id and GUID; the publication; season, episode, type and explicit; the feed duration; the file's `present`; the generation; the removed time; and the duration source. 0054 adds `sha256`, `timeline_changed`, `fetch_json` and `feed_sig`. 0073 adds `indexed_at` (described after the table). |
 | `podcast_follows` | Durable `(user_id, library_id, show_path)`, the created time and the followed `show_id`. There is no FK to the show or `books`, so pruning keeps it, but a different show at the same path does not inherit private access. |
-| `podcast_feed_state` | Server-owned `(library_id, show_path, show_id)` validators; the last check, success and status; the error code and text; `secret_missing`; the failure count; the next poll. Not written to disk per poll. |
+| `podcast_feed_state` | Server-owned `(library_id, show_path, show_id)` validators; the last check, success and status; the error code and text; `secret_missing`; the failure count; the next poll. Not written to disk per poll. 0076 adds the failing-feed run (described after the table). |
 | `podcast_policies` | Durable `(library_id, show_path, show_id)` policy: `mode` (`keep`, `on_demand`, `archive`), `keep` (1..1000), `days` (0..365), `updated_at`. No override means Keep 3, days 7. |
 | `podcast_fetch_state` | Server-owned `(library_id, rel_path, show_id)` summary: a nullable `last_job_id`, failures, the next attempt, and a safe error code and text. Separate from poll status, with no FK to jobs or the episode index. |
 | `podcast_folded` | `job_id` primary key and the fold time `at`. Makes ended-job follow and status effects idempotent. |
@@ -1597,6 +1597,16 @@ index wrote the row with. A rollback scans a podcast library as books, so an
 older server can rewrite a books row in place. That row then no longer matches
 its stamp, and the next scan re-indexes the show. `PodcastEpisodeRows` counts
 only rows whose stamps agree, and `NULL` counts as matching.
+
+`podcast_feed_state.feed_failures`, `feed_network_failures` and
+`failing_announced` *(0076, all `INTEGER NOT NULL DEFAULT 0`)* are a feed's run
+of failed polls as the admin's notifications count it. `feed_failures` counts
+the polls in a row that the feed itself failed, and `feed_network_failures`
+how many of those were network-class. `failing_announced` records that
+`podcast_feed_failing` was raised for the run. The older `failures` still
+drives the backoff. A feed already failing at the upgrade counts from its next
+failure. The counting rules are in
+[Podcast events](backups-and-notifications.md#podcast-events).
 
 #### Ownership, cascades and private URLs
 
@@ -2231,6 +2241,7 @@ The migration history so far:
 | 0071 | `audible_sync_followups` | The `audible_title_match_update` trigger, recreated so a `preorder` title is left out of the sync and its release re-offers the book's place; `audible_accounts.refusal_ended_at` (see [The Bridge](#the-bridge)). No data moves |
 | 0073 | `podcast_episode_indexed` | `podcast_episodes.indexed_at`, backfilled from each episode's `books.indexed_at` (see [Podcasts](#podcasts)) |
 | 0074 | `book_hints` | [Match hints from an import](#match-hints-from-an-import): `book_hints` (`library_id` `ON DELETE CASCADE`, `path`, `source`, `asin` and `isbn` `TEXT NOT NULL DEFAULT ''`, `import_id` `INTEGER NOT NULL DEFAULT 0`, `set_at`; primary key `(library_id, path, source)`) and the index `idx_book_hints_import` on `import_id`. No data moves |
+| 0076 | `podcast_feed_notices` | `podcast_feed_state.feed_failures`, `feed_network_failures` and `failing_announced` (`INTEGER NOT NULL DEFAULT 0`), the failing-feed run of the podcast notifications (see [Podcasts](#podcasts)). No backfill |
 
 ## SQLite choices
 
