@@ -9751,8 +9751,11 @@ A destination reads:
 *Admin.* `{"targets": [...], "events": [...], "kinds": [...]}`: the
 destinations (oldest first), the event kinds the server knows (`book_added`,
 `scan_failed`, `library_unavailable`, `new_device`, `invite_redeemed`,
-`update_available`, `backup_failed`, `bridge_job_finished`, `bridge_job_failed`)
-and the destination kinds.
+`update_available`, `backup_failed`, `bridge_job_finished`, `bridge_job_failed`,
+`book_released`, `podcast_episodes_new`, `podcast_feed_failing`,
+`podcast_feed_recovered`) and the destination kinds. New kinds are added to
+the end of the list, and a destination saved before a kind existed doesn't
+have it in its `events` until an admin adds it.
 
 ### `POST /api/v1/admin/notifications`
 
@@ -9834,7 +9837,11 @@ A failed delivery is not an HTTP error here: the answer is `200` either way,
 
 `data` per kind is in [Events](../backups-and-notifications.md#events) (a
 failed scan's `detail` is here, for the bell, but never sent to a destination);
-`next_before` is `0` on the last page. A `before` that isn't a non-negative
+`next_before` is `0` on the last page. A podcast event names its show by
+`show` and `show_path`, and carries a failed feed's `code`, never the feed's
+address. A private show's podcast events carry `private: true` instead of
+`show` and `show_path`, with an empty `titles`
+([Podcast events](../backups-and-notifications.md#podcast-events)). A `before` that isn't a non-negative
 number, or a `kind` that isn't an event kind, is `400`.
 
 ## Admin: audit log

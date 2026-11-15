@@ -324,7 +324,7 @@ subscribed to its kind. A nil `*Service` does nothing, so callers don't check.
 
 | Kind | Fired by | `data` |
 |---|---|---|
-| `book_added` | `Scanner.OnRunFinished`: a scan job ending `ok` or `partial` that added books (once per scan) | `library`, `library_id`, `count`, `titles` (the first five) |
+| `book_added` | `Scanner.OnRunFinished`: a scan job ending `ok` or `partial` that added books (once per scan), never for a podcast library, whose episodes are `podcast_episodes_new` | `library`, `library_id`, `count`, `titles` (the first five) |
 | `scan_failed` | a scan job ending `failed` | `library`, `library_id`, `run_id`, `detail` (the error, as the scan's log has it; **bell only**, see below) |
 | `library_unavailable` | a scan job ending `unavailable`, only when the library's previous scan that reached an answer wasn't unavailable. `catalog.PreviousRunStatus` passes over cancelled, interrupted and running scans, so a restart in between doesn't announce it again. | `library`, `library_id` |
 | `new_device` | every pairing exchange (`POST /auth/exchange`), and a password sign-in (`POST /auth/login`) unless an earlier session of the same person already carried its `device_id` (`auth.IssueSession`). A sign-in without a `device_id` always counts. Never for demo accounts. | `user`, `device` (the name the client sent, one plain line of at most 100 characters), `app` (from `X-AudioSilo-Client`, may be empty) |
@@ -334,9 +334,15 @@ subscribed to its kind. A nil `*Service` does nothing, so callers don't check.
 | `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title`, plus per-kind fields. See [Bridge event data](#bridge-event-data). |
 | `bridge_job_failed` | the same hook, for a job that moved **into** `failed` or into a notable `needs_attention`. See [Bridge event data](#bridge-event-data). | as `bridge_job_finished`, plus `code` and `detail` |
 | `book_released` | the [upcoming releases](api/reference.md#upcoming-releases) job (`upcoming.Runner`, wired to `API.announceReleases`). See [`book_released`](#book_released). | `count`, `titles` (the first five, each `Title (Series #position)`, or `Title (Series)` without a position) |
+| `podcast_episodes_new` | `catalog.IndexPodcastShow`, once per show per index that found episodes new to it. See [Podcast events](#podcast-events). | `library`, `library_id`, `show_id`, `show`, `show_path`, `count`, `titles` (the first five, newest first) |
+| `podcast_feed_failing` | `catalog.FoldPodcastJob` for a `podcast.poll` that makes the feed's run of failures due, or ends `gone` or `feed_secret_missing`. Once per run. | `library`, `library_id`, `show_id`, `show`, `show_path`, `code`, `failures` |
+| `podcast_feed_recovered` | `catalog.FoldPodcastJob` for the first successful `podcast.poll` after `podcast_feed_failing` | `library`, `library_id`, `show_id`, `show`, `show_path` |
 
 `notify.Kinds` lists the kinds in this order, which is the order the console
-shows.
+shows. A destination's `events` list the kinds it was given, so a kind a newer
+server adds starts unticked on every existing destination. A new destination
+starts with the console's `DEFAULT_EVENTS`: `scan_failed`,
+`library_unavailable`, `update_available` and `backup_failed`.
 
 #### Bridge event data
 
@@ -390,6 +396,69 @@ holds, and the server must hold no copy of it anywhere.
 - The first run, and the first read of a series, is a **silent baseline**. What
   is out already is marked, not announced.
 - `dedup_key` is `released:` plus a digest of the run's work ids.
+
+#### Podcast events
+
+The three podcast kinds go to the admins only. The catalog raises them through
+`catalog.SetPodcastNotice` after the write that found them commits, and
+`notify.Service.PodcastNotice` turns each `catalog.PodcastNotice` into an
+event.
+
+`podcast_episodes_new` comes from `catalog.IndexPodcastShow`. An episode is new
+when all of these hold:
+
+- the show was indexed before under the same `show_id`;
+- the episode's path wasn't indexed;
+- it isn't removed from the feed, and it was published after the show's
+  previous `latest_published`. When that date is ahead of the clock (a
+  mistyped date in the feed), the newest indexed episode that isn't stands in.
+
+So a show's first index, a forced rescan of a feed already indexed, a rebuilt
+index and missing rows indexed again announce nothing. The Bridge's rescan
+after a poll that grew the feed does announce. `dedup_key` is the library id,
+the show id and a digest of the new episode ids (`notify.SetDigest`), so the
+scheduled scan and the Bridge's rescan can't both announce the same episodes.
+
+`podcast_feed_failing` and `podcast_feed_recovered` come from
+`catalog.FoldPodcastJob`, for `podcast.poll` jobs only. A subscribe never moves
+the run. `podcast_folded` keeps a fold that runs twice from announcing twice.
+The run lives in `podcast_feed_state` (see the
+[data model](data-model.md#podcasts)); the older `failures` column still drives
+the backoff on its own. `catalog.feedRun.next` decides:
+
+- A failure whose code is the feed's own (`bridge.FeedFailure`: any code
+  outside `request_expired`, `bridge_lost`, `library_not_writable`,
+  `not_podcast_library`, `write_failed`, `feed_secret_missing` and
+  `identity_changed`) adds one to `feed_failures`.
+- Network-class codes (`bridge.NetworkFailure`: `dns`, `network`, `timeout`,
+  `tls`) also add one to `feed_network_failures`. Every show fails with these
+  at once while the Bridge's own internet is down.
+- The run is due (`feedRun.due`) at three of the feed's other failures
+  (`catalog.FeedFailingAfter`) or six network failures
+  (`catalog.NetworkFailingAfter`). A mixed run is due once the two shares add
+  up to one whole, such as two answers and two timeouts.
+- `gone` is announced at once. `feed_secret_missing` is announced at once
+  without counting, with `failures` 0.
+- Any other failure, such as `bridge_lost` or an unwritable library, neither
+  counts nor resets the run. An offline Bridge claims no polls, so it adds
+  nothing either.
+- The run announces once (`failing_announced`). The next successful poll
+  resets it and, after an announcement, raises `podcast_feed_recovered` once.
+- A job for a replaced show (another `show_id` at the path) changes nothing.
+
+The data carry codes and names only, never the feed's address, its host or an
+error's text, which can hold a private feed's credentials:
+
+- `show` is the show's title, or its folder when it has none, one plain line of
+  at most 200 characters. `titles` are cut the same way.
+- `code` is one the messages word (`gone`, `feed_secret_missing`, `dns`,
+  `network`, `timeout`, `tls`, `not_a_feed`, `not_a_podcast`, `too_large`,
+  `blocked_address`, `invalid_feed_url`) or an `http_NNN` status, else
+  `failed`.
+- `failures` is the feed's failures in a row, 0 for a lost secret.
+
+A private show is hidden from admins who don't follow it. Its events carry
+`private: true` instead of `show` and `show_path`, and `titles` is empty.
 
 #### Bridge messages
 
@@ -459,6 +528,18 @@ A `book_released` message reads `1 new release in your series` (or `N new
 releases in your series`), with the titles one a line and `and N more` after
 the fifth. It links to the console's Library > Series and carries the ntfy tag
 `new` (priority 3). The bell shows the first three titles, then "and N more".
+
+The podcast messages link to the console's Library > Libraries:
+
+| Kind | Title | Text |
+|---|---|---|
+| `podcast_episodes_new` | `1 new episode of <show>` or `N new episodes of <show>`; private: `A private podcast has N new episodes` | the titles, one a line, then `and N more`; none for a private show |
+| `podcast_feed_failing` | `A podcast feed is failing: <show>`; private: `A private podcast feed is failing` | the code in words (`notify.feedCodeText`), `The feed answered HTTP <status>.` or `The Bridge couldn't check the feed.`, then `N checks in a row failed.` when `failures` is more than 1 |
+| `podcast_feed_recovered` | `A podcast feed is back: <show>`; private: `A private podcast feed is back` | "The feed answered again, so new episodes arrive as before." |
+
+The bell words the same codes in the console's language (`feedFailureBody` in
+`lib/server-events.ts`), with the titles `Podcast feed failing: <show>` and
+`Podcast feed back: <show>`.
 
 A failed scan's `detail`, and a failed Bridge job's, is the tool's or the
 operating system's own message, which can name a folder on the server, so it
@@ -624,10 +705,12 @@ non-ASCII titles encoded. With a secret, the service sends it as
 
 - `message` falls back to the title when an event has no text.
 - `click` is left out when there is no link.
-- Priority is 4 for `scan_failed`, `library_unavailable` and `backup_failed`,
-  and 3 otherwise.
+- Priority is 4 for `scan_failed`, `library_unavailable`, `backup_failed`,
+  `bridge_job_failed` and `podcast_feed_failing`, and 3 otherwise.
 - Tags are emoji shortcodes: `books`, `warning`, `electric_plug`, `iphone`,
-  `envelope`, `package`, `new` for a release, and `white_check_mark` for a test.
+  `envelope`, `package`, `new` for a release, `studio_microphone` for new
+  podcast episodes, and `white_check_mark` for a finished Bridge job, a feed
+  that is back and a test.
 
 ### Discord
 
@@ -648,8 +731,8 @@ A Discord delivery is one embed, posted to the webhook address:
 ```
 
 - The title is cut at 256 characters and the description at 4000.
-- The colour is blue for information, amber for `library_unavailable`, and red
-  for `scan_failed` and `backup_failed`.
+- The colour is blue for information, amber for `library_unavailable` and
+  `podcast_feed_failing`, and red for `scan_failed` and `backup_failed`.
 - `allowed_mentions` is empty, so a book title or a device name containing
   `@everyone` pings nobody.
 

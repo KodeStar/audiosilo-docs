@@ -1102,6 +1102,10 @@ hours, or use `retry_after_seconds` clamped to 60 seconds through 24 hours.
 - Turning the module off stops scheduling and folding, and holds queued podcast
   jobs. Jobs already claimed can finish.
 
+The fold also keeps the feed's run of failures for the admin's notifications,
+apart from the backoff. See
+[Podcast events](../server/backups-and-notifications.md#podcast-events).
+
 **Downloads and retention.** The same scheduler considers them at startup, every
 minute, after follow or policy changes, and after committed podcast outcomes,
 including an unchanged poll.

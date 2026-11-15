@@ -1,11 +1,12 @@
 ---
 title: "Get notifications"
-description: "Hear about new books, new releases, failed scans or backups, new sign-ins and updates, in the console's bell or on your phone, Discord or a webhook."
+description: "Hear about new books, new releases, new podcast episodes, failed scans or backups, new sign-ins and updates, in the console's bell or on your phone, Discord or a webhook."
 ---
 
 Your server can tell you when something happens: new books, a new release in a
-series you hold, a failed scan or backup, a new sign-in, an update. You always
-see these in the **bell** in the [admin console](console-tour.md). You can also
+series you hold, new podcast episodes, a failed scan or backup, a new sign-in,
+an update. You always see these in the **bell** in the
+[admin console](console-tour.md). You can also
 send them to your phone with [ntfy](https://ntfy.sh), to a Discord channel, or
 to a webhook such as Home Assistant. You need to be an admin.
 
@@ -55,7 +56,7 @@ Tick a box to send that event there. It saves as you tick.
 
 | Event | When it happens |
 |---|---|
-| **New books added** | A scan found new books. |
+| **New books added** | A scan found new books. A podcast library's new episodes come as **New podcast episodes** instead. |
 | **A scan failed** | A library couldn't be scanned. See [Health > Jobs](health.md#jobs). |
 | **A library went offline** | A library's folder can't be read, such as an unmounted drive. Nothing was removed. |
 | **Someone signed in** | A sign-in from a new device or browser. |
@@ -65,12 +66,40 @@ Tick a box to send that event there. It saves as you tick.
 | **A Bridge job finished** | The [Bridge](bridge.md) finished a job, such as [characters and recaps](generating-characters-and-recaps.md) or a [read-along](making-read-along.md). |
 | **A Bridge job failed or needs attention** | A Bridge job stopped with an error, or is waiting for you. |
 | **New releases in your series** | A book came out in a series you hold, and you don't have it. Needs **Check for upcoming releases** on ([Community metadata](server.md#community-metadata)). |
+| **New podcast episodes** | A followed show's feed brought new episodes. One message per show, with a few titles. See [Podcasts](#podcasts). |
+| **A podcast feed is failing** | A followed show's feed failed several checks in a row, is gone, or the Bridge lost its private address. |
+| **A podcast feed is back** | A feed reported as failing answered again. |
 
-Every event shows in the bell whether you send it anywhere or not.
+Every event shows in the bell whether you send it anywhere or not. When a server
+update adds a new event, it starts unticked on the destinations you already have.
+
+## Podcasts
+
+The podcast events need a [podcast library](podcasts.md). The server sends them
+like this:
+
+- **New podcast episodes** comes when a show's feed brings episodes newer than
+  the ones the server had. A show's first check sends nothing, and neither does
+  a rescan of episodes the server already had.
+- **A podcast feed is failing** comes after three failed checks in a row. When
+  the feed couldn't be reached at all, such as no answer in time, it waits for
+  six. That way a short outage of the Bridge's own internet sends nothing.
+- A feed whose address says it is gone, and a private feed whose address the
+  Bridge lost, are reported at once.
+- An offline Bridge, or a library the Bridge can't write to, never counts as
+  the feed failing.
+- Each problem is reported once. When the feed answers again, you get
+  **A podcast feed is back**, also once.
+
+Only the followers of a [private feed](podcasts.md#private-feeds) can see its
+show. So its messages say "a private podcast", with no show name and no episode
+titles.
 
 ## What a message carries
 
 Messages carry names, book titles, counts and a link into the console (when the
 server has a [public address](server.md#general)). They never carry a
-password, invite code, token, IP address or a folder path on the server.
+password, invite code, token, IP address, a folder path on the server or a
+podcast feed's address. A failing feed's message says what went wrong, such as
+the HTTP status the feed answered.
 Messages are in English.

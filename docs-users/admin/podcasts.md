@@ -93,6 +93,9 @@ The server has the Bridge check each followed show's feed for new episodes. It
 checks recently active shows more often than quiet ones. The console's Bridge job list
 leaves these routine checks out.
 
+You can get a [notification](notifications.md#podcasts) when a followed show has
+new episodes, or when its feed keeps failing.
+
 Turning the Podcasts module off stops following, feed checks and downloads.
 Shows and episodes already on the server stay and still play.
 
