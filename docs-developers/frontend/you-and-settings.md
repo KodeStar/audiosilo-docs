@@ -227,7 +227,9 @@ shortcuts, never a second copy. The rules are the pure `settings-model.ts`:
     Household is a page of its own (see [Household page and members](household.md)).
   - `settingsGroups(supportAvailable)` drops Support where `isSupportAvailable()` says
     the build can't link to it (Apple builds).
-  - There is no Accessibility pane. The app has no setting of its own for it, and the
+  - There is no Accessibility pane. The one accessibility setting, **High contrast**,
+    sits in the Appearance pane under Light, Dark and System (see
+    [High contrast](styling.md#high-contrast)). Text size follows the system, and the
     style guide says not to show a switch that does nothing.
 - `parseSettingsSection` maps `preferences`, absent, unknown or a hidden pane to the
   first pane (`playback`). `accounts` is the signed-in servers. `household`
@@ -236,7 +238,8 @@ shortcuts, never a second copy. The rules are the pure `settings-model.ts`:
 - `settingsLayout(width, phone)`: from a **measured** 720 px (`SPLIT_MIN`), a grouped
   section nav sits beside one pane's card. Narrower, every pane is stacked under its
   group's heading, and the page scrolls once to the pane a link names. Inside a card, a
-  wide control sits beside its label from 560 px (`INLINE_MIN`).
+  wide control sits beside its label from 560 px (`INLINE_MIN`). Under large text
+  (`useLargeText()`) every control sits under its label, whatever the width.
 
 The pane bodies (`settings-panes.tsx`, `SettingsPaneBody`) use the same store keys as the
 rest of the app. The Playback pane ends with `EffectsSettings`, the Smart speed and
