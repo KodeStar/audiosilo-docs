@@ -994,6 +994,18 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
+  if (wanted(shots.settingsAppearance)) {
+    // Settings with the Appearance pane open (its section link): Light / Dark / System and
+    // High contrast at Off (so the page shows the normal colours).
+    await step('settings appearance', async () => {
+      await page.goto(BASE + 'settings?section=appearance', {waitUntil: 'networkidle', timeout: 45000});
+      await tid(page, 'settings-high-contrast').waitFor({timeout: 15000});
+      await sleep(SETTLE_MS);
+      await page.mouse.move(0, 0);
+      await shoot(page, shots.settingsAppearance);
+    });
+  }
+
   if (wanted(shots.search)) {
     await step('search', async () => {
       await page.goto(BASE + 'search', {waitUntil: 'networkidle', timeout: 45000});
@@ -1095,6 +1107,7 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   youStats: 'web-player/you-stats.png',
   year: 'web-player/year.png',
   settings: 'web-player/settings.png',
+  settingsAppearance: 'web-player/settings-appearance.png',
   downloads: 'web-player/downloads.png',
 });
 

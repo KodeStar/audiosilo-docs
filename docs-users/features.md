@@ -42,6 +42,7 @@ Everything else works with the server alone.
 - [In the car](listening/in-the-car.md): Apple CarPlay and Android Auto.
 - [Cast](listening/chromecast.md): play on a Chromecast, TV or Nest speaker.
 - [App settings](listening/settings.md): playback, downloads, appearance and language.
+- [Accessibility](listening/settings.md#accessibility): the app follows your device's text size and screen reader, with a high-contrast mode.
 - [Your account](listening/account.md): password, devices and listening sync.
 - [Connect through a sign-in proxy](getting-started/remote-access.md#behind-a-sign-in-proxy) such as Cloudflare Access, with headers the app sends.
 - [API keys](listening/api-keys.md): let a dashboard or script reach your server.
