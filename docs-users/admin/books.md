@@ -148,8 +148,9 @@ book in the community database:
 
 This needs [community metadata](server.md#community-metadata) switched on. It
 works with **Check for upcoming releases** switched off too: the server still looks up
-which book each recording is, and nothing else. Two copies with the same ASIN or
-ISBN are copies of one recording, so they aren't listed as other recordings.
+which book each recording is, and nothing else. Two books with the same ASIN (or,
+when one has no ASIN, the same ISBN) are copies of one recording, so a recording is
+listed once, never once per copy.
 Within one library, Health lists them as [Likely duplicates](health.md#duplicates).
 
 A listener only sees the recordings they can open. Someone whose share holds

@@ -2337,10 +2337,11 @@ abridgement or a dramatisation.
   `description`).
 - **Which books.** Books in books libraries only (never a podcast), inside the
   caller's share scope (the same filter as every list), with the same `work_id`.
-  Never the book itself, and each recording once: a book sharing an ASIN or ISBN
-  (compared normalized: case, spaces and hyphens aside) with the book or with a
-  book already listed is a copy of the same recording and is left out (within
-  one library, Health lists it as a duplicate).
+  Never the book itself, and each recording once: a copy of the book or of a
+  book already listed is left out (within one library, Health lists it as a
+  duplicate). Two books are copies when their ASINs match, or, when either has
+  no ASIN, when their ISBNs match (compared normalized: case, spaces and hyphens
+  aside). Two different ASINs are two recordings, even with one print ISBN.
 - **Order.** The book's own library first, then by title, then by narrator, then
   by library and path; of copies, the first in this order is the one listed. At
   most 20 recordings.
@@ -2925,8 +2926,8 @@ books qualify, [the pick](#the-pick-among-recordings) decides which is `local`.
 **`local_others`** (capability `other_recordings`) lists every **other** candidate
 of the entry's work (a book of the caller's in a series named like a rail or
 ordering, as above), `[{ "library_id": …, "path": … }]`, in the pick's order,
-beside `local`. Each recording appears once: a candidate sharing a normalized
-ASIN or ISBN with `local` or with one already listed is a copy and is left out:
+beside `local`. Each recording appears once: a copy of `local` or of one already
+listed (the same rule as [`other_recordings`](#other-recordings)) is left out:
 
 ```json
 {
