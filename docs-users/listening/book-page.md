@@ -62,7 +62,7 @@ When the community database matches the book to a free LibriVox recording, the c
 Below the About card:
 
 - **Other versions** lists copies of the same book in your other libraries or servers.
-- **Other recordings in your library** lists the other recordings of this book that you can open: another narrator, an abridged one, a dramatisation. Each shows its narrator, its length and how far you are in it. Your place is kept separately for each recording. See [More than one recording of a book](#more-than-one-recording-of-a-book).
+- **Other recordings in your library** lists the other recordings of this book that you can open. See [More than one recording of a book](#more-than-one-recording-of-a-book).
 - **Your listening** shows how long you've listened, your speed, and when you started and finished. On Android it also shows what [Smart speed](full-player.md#smart-speed-and-voice-boost) has saved.
 - **In the house** shows who else on your server is on this book, when you both [share your listening](in-the-house.md).
 
@@ -72,7 +72,7 @@ Your server may hold one book in more than one recording, such as two narrators 
 
 - **On the book's page**, the **Other recordings in your library** card lists the others. Tap one to open its page.
 - **On a series page**, the recordings share one spine. A **2 recordings** chip beside the book opens a list of them, each with its narrator, length and your progress. See [Series pages](browsing.md#series-pages).
-- **When a book ends**, the next book in the series comes in the recording read by the same narrator as the one you just finished. If none is, it's one you've started, then one in the same library, then an unabridged one. See [What plays next](end-of-book.md#what-plays-next).
+- **When a book ends**, the next book in the series comes in the recording read by the same narrator as the one you just finished, when there is one. See [What plays next](end-of-book.md#what-plays-next) for the full order.
 
 ![The Other recordings in your library card, with a second recording read by Peter Yearsley](/img/screenshots/web-player/book-other-recordings.png)
 

@@ -1759,10 +1759,8 @@ file in `<data>/meta-mirror/`, not a table here (see
 **derived**: the next run rebuilds it from the books and the community
 metadata. Each is path-keyed with no FK to `books` and cascaded with its
 library. They are written through the user-state path. No content cache reads
-them except `upcoming_owned`'s rows and `work_id`, which every list book's
-`work_id` reads (server#241): a row added or removed, or a changed `work_id`,
-moves the content generation, and a re-check that only renews `checked_at` or
-`id_key` does not (see [Overview](overview.md#internalstore)).
+them except `upcoming_owned`, which every list book's `work_id` reads (server#241;
+when its writes move the content generation: [Overview](overview.md#internalstore)).
 
 - **`upcoming_owned`**: each owned book's community work. It maps
   `(library_id, path)` (primary key) to `work_id` (`''` for no community

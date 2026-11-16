@@ -1042,10 +1042,9 @@ dramatisation. All of it is additive and `omitempty`:
 - `/item`'s `other_recordings`: the caller's other recordings of the work, in the
   list shape, within their share scope, never a copy with the same ASIN or ISBN.
 - `/meta` rail entries' `local_others`, beside `local`.
-- The pick: of several recordings, `local` (and so `/next`) is the one read by the
-  narrator of the requested book (the book just finished), then one started, then
-  one in its library, then an unabridged one
-  ([the rule](../server/api/reference.md#the-pick-among-recordings)).
+- The pick: of several recordings, `local` (and so `/next`) is chosen by
+  [the pick among recordings](../server/api/reference.md#the-pick-among-recordings),
+  the narrator of the book just finished first.
 
 The player reads the fields, not the flag. Absent fields (an older server, metadata
 off) mean one recording per work, as before: the book page shows no card and the

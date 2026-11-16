@@ -47,8 +47,7 @@ plain link stays `/library`.
   - `SeriesMode`: series cards with a mini shelf of owned spines and dashed gaps.
     The shelf shows a work held in several recordings as one spine
     ([one entry per work](#one-entry-per-work)), but the card's line counts
-    recordings: "N books" is the server's `/series` count, and the in-progress
-    and finished counts are `recordingCounts`, per recording in the same unit.
+    recordings (see its Counts rule).
     A card fetches its books once it shows. On a `series_books` server, the cards
     that show together share one request (see
     [Series cards share one request](state-and-data.md#capability-gated-reads-player-redesign-phase-1a));
