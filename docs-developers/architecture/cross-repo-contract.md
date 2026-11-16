@@ -2325,8 +2325,7 @@ appeared, and holds it against that device's spans until it has seen the Stay.
   `invalid`. The outbox sends a queued `stay` as a `jump` when the flag is gone by
   the time it sends.
 - The server's rule (when a Stay wins, the hold, what ends it) is
-  [A Stay](../server/api/reference.md#a-stay) in the reference. It lives in
-  `resolveListen`, not `ResolvePlace`, so the reader is unchanged.
+  [A Stay](../server/api/reference.md#a-stay) in the reference.
 - The player, the Apple Watch and Wear OS each send it and offer the kept place at
   once when their `stay` comes back held by another device's
   ([Stay wins](../frontend/playback.md#stay-wins)).

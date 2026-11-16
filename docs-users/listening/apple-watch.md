@@ -73,6 +73,8 @@ Then the watch downloads the files from your server, and the row says how far it
 
 If a book stays waiting, open AudioSilo on the watch. If it says **Couldn't download**, tap **Try again** or send it again.
 
+After the watch restarts, AudioSilo can't read its sign-in or books until you unlock the watch once. A sign-in or book you send before then waits, and goes ahead once you've unlocked the watch and opened AudioSilo.
+
 ## In Downloads on your iPhone
 
 The [Downloads](offline-downloads.md#the-downloads-page) page on your iPhone has an **On your Apple Watch** section. It lists every book you sent and every book the watch holds.
@@ -167,7 +169,3 @@ If watchOS asks whether AudioSilo may use your local network, allow it. Over pla
 To switch accounts, tap **Set up Apple Watch** on the other account's card on your iPhone. Switching removes the old account's books from the watch.
 
 Signing out on your iPhone leaves the watch signed in. To cut off a lost watch, tap **Sign out** on its row under [Signed-in devices](account.md#signed-in-devices).
-
-## Good to know
-
-- **After the watch restarts**, AudioSilo can't read its sign-in or books until you unlock the watch once. A sign-in or book you send before then waits, and goes ahead once you've unlocked the watch and opened AudioSilo.

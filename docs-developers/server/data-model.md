@@ -829,13 +829,11 @@ other writer clears them. With a stale version, the old rule applies.
 **Stay columns** *(0080)*. Both are `NULL` for none.
 
 - `stay_version` is the version a winning Stay wrote (a sync listen with `start`
-  `stay`). While it is set, another device's span on a base below it never moves
-  the place. The Stay's own device writing again keeps it, and every other writer
+  `stay`), which holds the row against other devices' spans until another writer
   clears it.
 - `edit_version` is the version of the row's last explicit write that isn't
   listening: a `PATCH`, an import's apply or undo, a move or join, a sync `finish`
-  or `unfinish`. A `PUT` is an old app's listening and never sets it. A Stay made on
-  a base below it resolves as a plain `jump`.
+  or `unfinish`, never a `PUT`. A Stay on a base below it does not win.
 
 See [A Stay](api/reference.md#a-stay) for the rule.
 

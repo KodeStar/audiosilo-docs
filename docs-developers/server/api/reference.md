@@ -4200,9 +4200,7 @@ then holds the row for it.
   it, and those that arrive after it are held. A Stay is tapped online right after
   the offer, so it normally arrives first.
 
-A Stay replayed is `duplicate`, never applied twice. A client whose `stay` comes
-back `diverged` `kept: "stored"` (another device's Stay holds the row) offers the
-kept place again at once.
+A Stay replayed is `duplicate`, never applied twice.
 
 ### `GET /api/v1/libraries/{id}/bookmarks` · `POST /api/v1/libraries/{id}/bookmarks`
 

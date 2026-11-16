@@ -705,8 +705,9 @@ one runs makes it go round once more. It sends chunks of 200 events and sets
 layout and the car's headless task start it.
 
 A queued span whose `start` is `stay` goes as a `jump` while the connection's
-`/server` doesn't say `listening_stay` (`eventsForServer`, on every send path), and
-the stored event keeps its `stay` and its id
+`/server` doesn't say `listening_stay` (`eventsForServer`, on every send path: the
+batch, one by one, and the web page's keepalive), and the stored event keeps its `stay`
+and its id
 ([Stay wins](playback.md#stay-wins)).
 
 Each answer is handled like this:

@@ -96,17 +96,22 @@ it has come, "Downloading 3 of 10 files · 45%" (`Labels.downloading`, the perce
 seek bar). Away from 1x, one more line gives the wall-clock time left in the phone's phrase
 (`Skips.wallClockLine`, `formatTimeLeft`). At 1x that line is absent.
 
-**Starting to play** (`Playback/WatchAudioEngine.swift`). A start the player refused before its
-audio moved is often the system pausing it: Siri, a call or an alert, whose interruption `began`
-can arrive up to 2 s after the pause, or headphones that went away. So the "couldn't start" message
-waits `StartRefusal.INTERRUPTION_SLACK` (2 s, `Core/StartRefusal.swift`), and an interruption's
-`began` or a route change whose old device is gone within it makes the pause the system's: nothing
-shows. The engine's own timer is the wait, matched to its refusal by the stamp, so a clock set back
-meanwhile can't drop the message. Headphones gone (`oldDeviceUnavailable`, one route-change
-observer) pause a play, also one whose queue is still settling, which would otherwise start on
-whatever route is left when it lands. Nothing resumes it. A file that fails stops the book with
-its span ending where the audio last moved (`lastAdvance`), not at the moment of the failure.
-`StartRefusal` is Apple Watch only: Wear OS reads Media3's reasons (`SystemPause`).
+## Playing and syncing
+
+**Starting to play** (`Playback/WatchAudioEngine.swift`):
+
+- **A refused start.** A start the player refused before its audio moved is often the system
+  pausing it: Siri, a call or an alert, whose interruption `began` can arrive up to 2 s after the
+  pause, or headphones that went away. So the "couldn't start" message waits
+  `StartRefusal.INTERRUPTION_SLACK` (2 s, `Core/StartRefusal.swift`), on the engine's own timer.
+  An interruption's `began`, or a route change whose old device is gone, within it makes the pause
+  the system's: nothing shows. `StartRefusal` is Apple Watch only: Wear OS reads Media3's reasons
+  (`SystemPause`).
+- **Headphones gone** (`oldDeviceUnavailable`, one route-change observer) pause the book, even
+  while its queue is still settling, which would otherwise start on whatever route is left.
+  Nothing resumes it.
+- **A file that fails** stops the book, its span ending where the audio last moved
+  (`lastAdvance`), not at the moment of the failure.
 
 **Spans** follow the phone's rules
 ([Listening spans](playback.md#listening-spans-sync-v2)), except that the watch cuts every 15 s
@@ -117,14 +122,10 @@ within the 5 s keep. The launch's first span takes the move's reason (`recovered
 that book's and a resume from this watch's own place, not when `Resume.plan` took the server's
 row (`loadsFromRow`).
 
-**Stay** is the phone's too ([Stay wins](playback.md#stay-wins)).
-`SpanRecorder.standBy(..., stay:)` sends the Stay at once, playing or paused, as a bare span
-whose `start` is `stay` when the cached `/server` said `listening_stay` (`AppModel.takesStay`), else
-`jump`. Playing, the next span begins there as a `jump`. A bare `stay` carried on by a close or a
-kill's recovery goes as a `jump` (`Spans.carried`). The outbox sends a queued `stay` as a `jump`
-while the flag is off (`Outbox.takesStay`, read as each body is built, the background upload's
-too). A `stay` that comes back held by another device's Stay (`AckRules.staysHeld`) offers the
-kept place at once (`OfferThrottle.shouldShow(..., stayHeld:)`).
+**Stay** is the phone's too ([Stay wins](playback.md#stay-wins)): `SpanRecorder.standBy(..., stay:)`,
+gated by the cached `/server`'s `listening_stay` (`AppModel.takesStay`), `Spans.carried`,
+`Outbox.takesStay` (read as each body is built, the background upload's too), and
+`AckRules.staysHeld` with `OfferThrottle.shouldShow(..., stayHeld:)`.
 
 **Addresses.** The home rule is the [phone's](connect-and-addresses.md#the-pick-rule-srclibserver-addressts):
 no token before the `server_id` probe. The pick is dropped on backgrounding and probed again while active.
@@ -232,8 +233,7 @@ A server's own answer at any address ends it, since the token is single use.
 
 **Send again for the account signed in.** A `pair` for the account the watch already holds first
 asks `GET /me` with the token it keeps. The token stays only when the server answers with the
-pair's own user (`AccountRules.keepsToken`), so a Send again no longer leaves another session on
-the server each time. A `401`, any other refusal or no answer at all exchanges the pair's token as
+pair's own user (`AccountRules.keepsToken`), so a Send again adds no session on the server. A `401`, any other refusal or no answer at all exchanges the pair's token as
 a first sign-in does: with no answer the watch may only be at an address it can't reach, and the
 exchange tries `base_url`, away and home. Kept, the watch takes the pair's label, user name and
 addresses (`keepSignIn`), and the pair's token runs out unused. The server gate is asked again
@@ -340,7 +340,8 @@ Always `transferUserInfo`:
 ```
 
 `asked_at` is when the listener tapped Remove. A Remove asked again carries the first one's
-(`removeAskedAt`, the row's `remove_asked_at`). A `remove` takes only a copy added no later than it
+(`removeAskedAt`, the row's `remove_asked_at`), except over a copy with no `added_at`, where it
+carries the new tap's ([Who sees what](#who-sees-what)). A `remove` takes only a copy added no later than it
 was asked (`RemoveMessage.covers`, also for a held row), so asking again never takes a copy that
 came back since. With either time unknown, from an older phone or a copy from before 2.7.0, it
 takes the copy as before.
@@ -433,10 +434,10 @@ The watch only says what it holds now, and `transferUserInfo` answers nothing, s
 - **Once seen in `watch-state`, a book that leaves it is gone**, so the row goes: removed by hand on
   the watch, or the watch left that account.
 - **A listed copy older than the row's last Send** shows where that Send stands, not "On your
-  watch": a book sent again while it was being removed. Older means an `added_at` before the Send by
-  over a second, since the round trip can lose a millisecond, never on a row the watch has listed
-  since that Send, which took its copy as the one sent. A copy with a `remove` still on its way
-  reads the same. A Remove whose book was added after it was asked is over.
+  watch": a book sent again while it was being removed. Older means an `added_at` over a second
+  before the Send (the round trip can lose a millisecond). A row the watch has listed since that
+  Send never counts: its copy is the one sent. A copy with a `remove` still on its way reads the
+  same. A Remove whose book was added after it was asked is over.
 - **Remove** says removing until `watch-state` drops the book, and that survives a restart. It
   never claims the removal finished while the message is outstanding.
   - A `remove` delivered while the watch says it is signed out or on another account reads as
@@ -509,11 +510,9 @@ never written over: the index stays unread and `reload` tries again at each `cat
 keeps what waits in memory (`stuck`) and tries again at each save, joining the file if it reads by
 then (a discard drops it with the rest).
 
-Wear OS is not direct-boot aware (it runs no process before the first unlock), reads `watch-state`
-as a Data Layer item, with no identical-context drop, and has no activation. It shares only the
-undecodable index (`DownloadIndex` sets an unreadable or corrupt one aside, `JsonFile.load`, the
-same vectors) and the failed move: `DownloadIndex` and `Outbox` write nothing until
-`JsonFile.setAside` has the file out of the way.
+Wear OS is not direct-boot aware, reads `watch-state` as a Data Layer item, with no
+identical-context drop, and has no activation. It shares only the unreadable index and the failed
+move ([Wear OS](wear-os.md#storage-and-identity)).
 
 ## One delegate on each side
 

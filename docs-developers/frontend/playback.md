@@ -842,43 +842,6 @@ session and saves this device's place at once (`saveLoadedPlace`). That save and
 session's later ones go through even when the other device has saved again since the
 offer. A timed-out toast lifts nothing. The book page shows no line there.
 
-### Stay wins
-
-A Stay is an explicit choice. On a server with `listening_stay`, the server applies
-its place even when the other device kept playing after the offer appeared, and
-holds it against that device's spans until it has seen the Stay
-([the rule](../server/api/reference.md#a-stay)).
-
-`standByPlace` makes the Stay's span start with `stay` when the connection's
-`/server` said `listening_stay` (`usesListeningStay`), else with `jump`. An unknown
-flag counts as no, unlike `usesListeningSync`, because a server without it refuses
-the start as `invalid`.
-
-- **The Stay is sent at once**, playing or paused, as a span that moved nowhere
-  (`sendStill`, a paused move's), on the version the answer acknowledged. So the
-  other device's sync answers stop offering this device's place from before it.
-  Playing, that span ends there and the next one begins there as a `jump`.
-- **One `stay` per answer.** A bare `stay` (`spanSaysSomething` counts it as a
-  deliberate move) gives the next play a `jump`, not a second `stay`
-  (`carriedStart`), and so does a paused Stay with no place to send. That play may
-  come hours later, and the server measures a Stay's slack from its span's end, so a
-  `stay` then would beat what another device chose since.
-- **A Stay with no place to send** while the book plays (a load holds the place)
-  goes in the span the next cut closes. With no span open, it waits for the one
-  `openMissingSpan` opens, only while that play goes on. A close with none open
-  (`takeSpan`: the pause, the end) leaves the next play a `jump`, and a cut with
-  none open leaves it waiting.
-- **The flag gone.** The outbox sends a queued `stay` as a `jump` when the flag is
-  gone by then (`eventsForServer`, on every send path: the batch, one by one, and the
-  page's keepalive). The stored event keeps its `stay` and its id.
-- **A Stay held by another.** This device's `stay` that comes back `diverged`
-  `kept: stored` means another device's Stay holds the row (`staysHeld`). The kept
-  place is offered at once (`offerLoadedPlace`'s `stayHeld`), still once a launch
-  per place.
-
-The Apple Watch and Wear OS do the same
-([Apple Watch](apple-watch.md#the-core-boundary)).
-
 ### Listening spans (Sync v2)
 
 On a server with `listening_sync`, the place reaches the server as **listening
@@ -980,6 +943,42 @@ The events go to the outbox and are sent from there
 ([Offline](offline.md#listening-sync-the-outbox)). On this path the player posts no
 history spans, because the server writes history from the listening, and saves no
 `PUT`.
+
+### Stay wins
+
+A Stay is an explicit choice. On a server with `listening_stay`, the server applies
+its place even when the other device kept playing after the offer appeared, and
+holds it against that device's spans until it has seen the Stay
+([the rule](../server/api/reference.md#a-stay)).
+
+`standByPlace` makes the Stay's span start with `stay` when the connection's
+`/server` said `listening_stay` (`usesListeningStay`), else with `jump`. An unknown
+flag counts as no, unlike `usesListeningSync`, because a server without it refuses
+the start as `invalid`.
+
+- **The Stay is sent at once**, playing or paused, as a span that moved nowhere
+  (`sendStill`, a paused move's), on the version the answer acknowledged. So the
+  other device's sync answers stop offering this device's place from before it.
+  Playing, that span ends there and the next one begins there as a `jump`.
+- **One `stay` per answer.** A bare `stay` (`spanSaysSomething` counts it as a
+  deliberate move) gives the next play a `jump`, not a second `stay`
+  (`carriedStart`), and so does a paused Stay with no place to send. That play may
+  come hours later, and the server measures a Stay's slack from its span's end, so a
+  `stay` then would beat what another device chose since.
+- **A Stay with no place to send** while the book plays (a load holds the place)
+  goes in the span the next cut closes. With no span open, it waits for the one
+  `openMissingSpan` opens, only while that play goes on. A close with none open
+  (`takeSpan`: the pause, the end) leaves the next play a `jump`, and a cut with
+  none open leaves it waiting.
+- **The flag gone.** The outbox sends a queued `stay` as a `jump`
+  ([the outbox](offline.md#listening-sync-the-outbox)).
+- **A Stay held by another.** This device's `stay` that comes back `diverged`
+  `kept: stored` means another device's Stay holds the row (`staysHeld`). The kept
+  place is offered at once (`offerLoadedPlace`'s `stayHeld`), still once a launch
+  per place.
+
+The Apple Watch and Wear OS do the same
+([Apple Watch](apple-watch.md#playing-and-syncing)).
 
 ### One tab plays at a time (web)
 
