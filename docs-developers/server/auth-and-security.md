@@ -256,8 +256,8 @@ differences:
 
 A mint drops the oldest of its own kind past that kind's cap, so opening the
 editor on many books never drops a token a receiver is playing, and casting never
-drops the editor's. It reads no more than
-a cast token, so the route lets any caller ask for one.
+drops the editor's. It reads no more than a cast token, so anyone who may mint a
+cast token may ask for one.
 
 Other properties:
 

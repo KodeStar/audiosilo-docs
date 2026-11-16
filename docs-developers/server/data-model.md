@@ -251,8 +251,8 @@ pairing, cast, bridge, feed or `oidc` tokens (`auth.ListDevices`). It can revoke
 (`auth.RevokeDevice`).
 
 **`cast_grants`** *(0043)* holds what a **cast token** may read. A cast token
-is a `tokens` row of kind `'cast'` with `expires_at` 24 hours on
-(`POST /cast/token`, capability `cast`; see
+is a `tokens` row of kind `'cast'` with `expires_at` 24 hours on (4 for an
+editor token) (`POST /cast/token`, capability `cast`; see
 [Auth & security](auth-and-security.md#cast-tokens)). Its grant row holds:
 
 - `token_id`: PK, FK CASCADE to `tokens`.
@@ -268,7 +268,7 @@ A cast token without a grant is never valid, and neither is one whose parent
 is gone, signed out or expired. [Cast tokens](auth-and-security.md#cast-tokens)
 covers how dead ones are pruned and how many a person keeps. The partial index
 `idx_tokens_cast_expiry` is on `tokens(expires_at) WHERE kind = 'cast'`. A
-grant is not moved with its book, because it lives only 24 hours.
+grant is not moved with its book, because it lives 24 hours at most.
 
 **`auth_codes`** *(0001; `kind` + `redeemed_at` added in 0010)* holds
 redeemable codes:
