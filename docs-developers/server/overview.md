@@ -195,8 +195,8 @@ duplicate ranking reads those keys. An `unknown_asin_reports` row added or
 removed, or its `unknown` answer changed, moves it too, because Health's
 `unknown_asin` kind reads them. A lookup that only renews `checked_at` or
 `sent_at` does not. Likewise an `upcoming_owned` row added or removed, or its
-`work_id` changed, moves it, because every list book's `work_id` reads them
-(server#241); a re-check that only renews `checked_at` or `id_key` does not. SQLite's pre-update hook does this check, so
+`work_id` or `id_key` changed, moves it, because every list book's `work_id` reads
+them (server#241); a re-check that only renews `checked_at` does not. SQLite's pre-update hook does this check, so
 a misfiled write only empties the caches.
 
 `store.GenMap` is the small map the token cache and the library cache use. Its

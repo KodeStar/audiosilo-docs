@@ -1767,7 +1767,8 @@ when its writes move the content generation: [Overview](overview.md#internalstor
   match). `id_key` holds the identifiers the work was resolved by, which is the
   metadata cache's key, so a changed ASIN resolves again. It also has
   `checked_at`. Index on `work_id`. A book with no recorded match takes its
-  [work key](#a-books-work-key) from here. This first step of the job runs
+  [work key](#a-books-work-key) from here, while `id_key` is still its
+  identifiers' key. This first step of the job runs
   whenever metadata is on, even with the job switched off.
 - **`upcoming_series`**: maps a local series (`library_id`, folded
   `series_key`) to the community series it is, one row each. `series_id` is
