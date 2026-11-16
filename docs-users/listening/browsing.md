@@ -118,6 +118,8 @@ Each series gets a card with a small shelf of your books and a line such as "4 o
 
 A book in more than one series appears in each. *Guards! Guards!*, for example, is Discworld book 8 and City Watch book 1.
 
+Two recordings of one book, such as two narrators, share one spine on the card's shelf. The card's line still counts each recording as a book, so a series of four books with one held twice reads "5 books". Its in-progress and finished counts go by recording too. The series page counts it once. See [More than one recording of a book](book-page.md#more-than-one-recording-of-a-book).
+
 ### Collections
 
 Collections are lists of books you make yourself, such as "Road trip" or "Book club". This section shows your **Favourites**, your own collections, any **shared with you**, and **New collection**. Collections belong to a server, not a library, so here the picker chooses a server.
@@ -155,10 +157,12 @@ A series page lays the series out like a bookcase.
 - **At the top**: the series name, the author, how many books it has and how many you have.
 - **A progress track**: finished books in green, the one you're on in pink, missing ones hatched.
 - **A reading-order switch** (**Publication**, **Chronological** or **Recommended**), for series with more than one order. Your choice is remembered per series on that device. The [book page's Series tab](recaps-and-characters.md#series-with-more-than-one-reading-order) shares your choice.
-- **The bookcase**: a spine for each book, in order. Books you don't have are pale "ghost" spines. One that isn't out yet shows its [release date](upcoming.md#on-series-pages).
+- **The bookcase**: a spine for each book, in order. Books you don't have are pale "ghost" spines. One that isn't out yet shows its [release date](upcoming.md#on-series-pages). A book you have in more than one recording is one spine, showing the recording you're on (else the one you finished last, else the one your server picks).
 - **Under the shelf**: the chosen book and one action, such as **Resume**, **Queue it** (adds it to [Up next](up-next.md)), or **View on AudioSilo Meta** for a book you don't have.
-- **Every book in the series**, listed below.
+- **Every book in the series**, listed below. A book you have in more than one recording carries a **2 recordings** chip, here and under the shelf. Tap it to choose one: each shows its narrator, length and your progress in it.
 - **Keep ahead offline**, a shortcut to [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready).
+
+![A series page with both recordings of one book listed, each with its narrator, length and progress](/img/screenshots/web-player/series-recordings.png)
 
 The ghost spines and reading orders come from the community database, [AudioSilo Meta](../community/meta-site.md), so your server needs community metadata switched on. Without it, the page shows only the books you have.
 

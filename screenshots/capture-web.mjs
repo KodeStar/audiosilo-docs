@@ -23,7 +23,7 @@ import {chromium} from 'playwright';
 import path from 'node:path';
 import http from 'node:http';
 import https from 'node:https';
-import {mkdir} from 'node:fs/promises';
+import {cp, mkdir, rm} from 'node:fs/promises';
 import {existsSync, readFileSync, statSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {createHash, randomUUID} from 'node:crypto';
@@ -57,6 +57,7 @@ import {
   stamp,
   step,
   tid,
+  waitForScans,
   wanted,
 } from './lib.mjs';
 
@@ -1327,12 +1328,22 @@ function podcastFixture() {
 
 // The newest id in a server feed table (sqlite3), so teardown removes only this pass's rows.
 const lastId = (table) => Number(sqlite(`SELECT COALESCE(MAX(id), 0) FROM ${table};`).trim() || 0);
+// The audit and event feeds' newest ids before a pass, and the teardown that drops the
+// rows the pass added after them.
+const feedMarks = () => ({audit: lastId('audit_events'), events: lastId('server_events')});
+const dropFeedRows = (marks) => {
+  try {
+    sqlite(`DELETE FROM audit_events WHERE id > ${marks.audit};\nDELETE FROM server_events WHERE id > ${marks.events};`);
+  } catch (e) {
+    console.log(`  ! this pass's audit and event rows left in the server's feeds: ${e.message}`);
+  }
+};
 
 async function provisionPodcasts(pod) {
   if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no podcast library to add');
   if (!existsSync(PODCASTS_DIR)) throw new Error(`no seeded shows at ${PODCASTS_DIR} (run.sh section 2c)`);
   Object.assign(pod, podcastFixture());
-  pod.marks = {audit: lastId('audit_events'), events: lastId('server_events')};
+  pod.marks = feedMarks();
   const {token} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD}, PODCAST_CLIENT);
   pod.admin = token;
   const call = (method, p, body) => api(token, method, p, body, PODCAST_CLIENT);
@@ -1362,11 +1373,7 @@ async function unprovisionPodcasts(pod) {
   if (pod.library) await call('DELETE', `/admin/libraries/${pod.library.id}`).catch((e) => console.log(`  ! podcast library left: ${e.message}`));
   if (pod.moduleOn) await call('PATCH', '/admin/settings', {modules: {podcasts: false}}).catch((e) => console.log(`  ! Podcasts module left on: ${e.message}`));
   await api(pod.admin, 'POST', '/auth/logout').catch(() => {});
-  try {
-    sqlite(`DELETE FROM audit_events WHERE id > ${pod.marks.audit};\nDELETE FROM server_events WHERE id > ${pod.marks.events};`);
-  } catch (e) {
-    console.log(`  ! this pass's audit and event rows left in the server's feeds: ${e.message}`);
-  }
+  dropFeedRows(pod.marks);
   console.log('  ✓ podcast library removed again');
 }
 
@@ -2602,6 +2609,123 @@ if (wanted(LIBRIVOX_SHOT)) {
       await ctx.close();
     }
   });
+}
+
+// ── Other recordings of a work (server#241) ─────────────────────────────────
+// One work held in two recordings: the seeded Alice and Peter Yearsley's, which run.sh
+// seeds into .cache/recordings (section 2f). For this pass the second is copied into the
+// library and scanned, takes the seeded Alice's series tag, and both are matched to the
+// work as the console's Match dialog accepts them, their narrators taken (live community
+// metadata, through the dialog's own route, /admin/libraries/{id}/book/match).
+// Afterwards both are unlinked, the copy removed and the library scanned again, and the
+// pass's audit and event rows dropped, so no later shot shows any of it.
+const RECORDINGS_SHOTS = {
+  book: 'web-player/book-other-recordings.png',
+  series: 'web-player/series-recordings.png',
+};
+const RECORDINGS_DIR = path.resolve(process.env.RECORDINGS_DIR || path.join(CACHE, 'recordings'));
+const LIBRARY_DIR = path.resolve(process.env.LIBRARY_DIR || path.join(CACHE, 'library'));
+const ALICE = {
+  work: 'alices-adventures-in-wonderland',
+  title: "Alice's Adventures in Wonderland",
+  series: SERIES.find((x) => x.series === 'Alice' && x.index === '1'),
+  // The seeded recording (its folder) and the second (run.sh section 2f), with their
+  // recording ids in the community database.
+  seeded: {path: "Lewis Carroll/Alice's Adventures in Wonderland, by Lewis Carroll", recording: 'kristen-mcquillin'},
+  second: {path: "Lewis Carroll/Alice's Adventures in Wonderland", recording: 'peter-yearsley'},
+};
+
+// The Lewis Carroll books the admin list holds, by path.
+async function carrollBooks(token) {
+  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Lewis Carroll')}&limit=50`);
+  return new Map((list?.books ?? []).map((b) => [b.path, b]));
+}
+
+// A scan of library `id`, checked once done: `ready` must hold for the Lewis Carroll books.
+async function scanUntil(token, id, ready) {
+  await api(token, 'POST', `/admin/libraries/${id}/scan`);
+  await waitForScans(api, token, 60000);
+  if (!ready(await carrollBooks(token))) throw new Error('the scan never got there');
+}
+
+async function captureRecordings() {
+  if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no admin to match the recordings');
+  const second = path.join(RECORDINGS_DIR, ALICE.second.path);
+  if (!existsSync(second)) throw new Error(`no second recording at ${second} (run.sh section 2f)`);
+  const marks = feedMarks();
+  const copy = path.join(LIBRARY_DIR, ALICE.second.path);
+  let libraryId = 0;
+  const edit = (p) => `/admin/libraries/${libraryId}/book${pathQuery(p)}`;
+  const matched = [];
+  try {
+    await asAdmin(async (token) => {
+      const seeded = (await carrollBooks(token)).get(ALICE.seeded.path);
+      if (!seeded) throw new Error(`no seeded book at ${ALICE.seeded.path}`);
+      libraryId = seeded.library_id;
+      await cp(second, copy, {recursive: true});
+      await scanUntil(token, libraryId, (books) => books.has(ALICE.second.path));
+      await api(token, 'PATCH', edit(ALICE.second.path), {set: {series: ALICE.series.series, series_index: ALICE.series.index}});
+      // What the match dialog shows, searched by the work's title: one search serves both.
+      const found = await api(token, 'GET',
+        `/admin/libraries/${libraryId}/book/match${pathQuery(ALICE.seeded.path)}&q=${encodeURIComponent(ALICE.title)}`);
+      const work = (found?.candidates ?? []).find((c) => c.work_id === ALICE.work);
+      for (const r of [ALICE.seeded, ALICE.second]) {
+        const rec = (work?.recordings ?? []).find((x) => x.id === r.recording);
+        if (!rec) throw new Error(`the match dialog offers no recording ${r.recording} of ${ALICE.work}`);
+        await api(token, 'PATCH', edit(r.path), {
+          set: {narrator: rec.narrators.map((n) => n.name).join(', ')},
+          source: 'community',
+          match: {work_id: ALICE.work, recording_id: r.recording, asin: '', isbn: ''},
+        });
+        matched.push(r.path);
+      }
+      console.log(`  ✓ two recordings of ${ALICE.work}: ${matched.join(' and ')}`);
+    });
+
+    const ctx = await newCaptureContext({storageState: AUTH});
+    try {
+      const page = await ctx.newPage();
+      await page.goto(BASE, {waitUntil: 'networkidle', timeout: 45000});
+      const {cid} = await playerSession(page);
+      const at = (route) => page.goto(`${BASE}${route}`, {waitUntil: 'networkidle', timeout: 45000});
+      if (wanted(RECORDINGS_SHOTS.book)) {
+        await step('recordings: book page', async () => {
+          await at(`book/${libraryId}?connection=${encodeURIComponent(cid)}&path=${encodeURIComponent(ALICE.seeded.path)}`);
+          const card = tid(page, 'book-other-recordings');
+          await card.waitFor({timeout: 30000});
+          await imagesLoaded(page, '/cover');
+          await shootElement(page, card, RECORDINGS_SHOTS.book);
+        });
+      }
+      if (wanted(RECORDINGS_SHOTS.series)) {
+        await step('recordings: series picker', async () => {
+          await at(`series?connection=${encodeURIComponent(cid)}&library=${libraryId}&name=${encodeURIComponent(ALICE.series.series)}`);
+          await firstVisible(page.getByRole('button', {name: /^2 recordings,/})).click({timeout: 30000});
+          await tid(page, 'series-recordings').waitFor({timeout: 15000});
+          await imagesLoaded(page, '/cover');
+          await settleShoot(page, RECORDINGS_SHOTS.series, SETTLE_MS);
+        });
+      }
+    } finally {
+      await ctx.close();
+    }
+  } finally {
+    await asAdmin(async (token) => {
+      for (const p of matched) {
+        await api(token, 'PATCH', edit(p), {match: {work_id: ''}})
+          .catch((e) => console.log(`  ! ${p} left matched: ${e.message}`));
+      }
+      await rm(copy, {recursive: true, force: true});
+      if (libraryId) await scanUntil(token, libraryId, (books) => !books.has(ALICE.second.path));
+    }).catch((e) => console.log(`  ! the second recording left: ${e.message}`));
+    dropFeedRows(marks);
+    console.log('  ✓ the second recording removed again');
+  }
+}
+
+if (wanted(...Object.values(RECORDINGS_SHOTS))) {
+  console.log('== other recordings ==');
+  await step('other recordings', captureRecordings);
 }
 
 // ── Unauthenticated screens ─────────────────────────────────────────────────

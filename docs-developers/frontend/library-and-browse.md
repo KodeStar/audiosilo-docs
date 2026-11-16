@@ -45,6 +45,9 @@ plain link stays `/library`.
     `src/components/series/people-mode.tsx`: portrait cards, letter heads, and
     the "no author listed" count;
   - `SeriesMode`: series cards with a mini shelf of owned spines and dashed gaps.
+    The shelf shows a work held in several recordings as one spine
+    ([one entry per work](#one-entry-per-work)), but the card's line counts
+    recordings (see its Counts rule).
     A card fetches its books once it shows. On a `series_books` server, the cards
     that show together share one request (see
     [Series cards share one request](state-and-data.md#capability-gated-reads-player-redesign-phase-1a));
@@ -306,7 +309,35 @@ Where each one goes is
 - `use-series-data.ts`: the page's reads beyond the shared `src/api` hooks
   `useAllLibraryBooks` and `useProgressLookup`. `useElsewhereBooks` runs one
   search per other server for copies of the series elsewhere. `usePlacedBooks`
-  fetches an `/item` for each book a rail places in another library.
+  fetches an `/item` for each book a rail places in another library, its
+  `local_others` included.
+- `recordings-picker.tsx`: `RecordingsChip`, the "2 recordings" picker chip of a
+  work held more than once, beside the caption's badge under the shelf and beside
+  the list row's action. It opens its own dialog (a sheet on a phone) of every
+  recording, each a `RecordingRow` (`src/components/library/recording-row.tsx`, shared
+  with the book page's Other recordings card); a press opens that book.
+
+### One entry per work
+
+A work the listener holds in several recordings (server#241) is ONE entry of the
+series model, so one spine, one list row and one segment of the progress track:
+
+- **Which books.** With a rail (`railEntries`), a rail work's `local` plus its
+  `local_others`, and the series' own books with the same `Book.work_id`. Without
+  one (`localEntries`, and a Library series card's `MiniShelf`), `groupByWork`
+  gathers the series' own books by `work_id`, each group at its first book's place.
+  A book without a `work_id` is a group of its own.
+- **The entry** (`workEntry`). `copy`, the recording it shows, is `pickShown`'s:
+  the one the listener is on (started, not finished; the latest played of several),
+  else the latest finished one, else the first, which is the server's pick (`local`)
+  or the first in series order. `recordings` lists every one with its own progress,
+  and `RecordingsChip` reads it.
+- **Counts.** The series page's `seriesStats` counts works ("4 of 4"). The
+  Library card counts recordings (`recordingCounts`), in the unit of `/series`.
+- **Older servers.** Without `work_id` and `local_others` (an older server, or
+  community metadata off) every book is its own entry, as before. Home's Next keeps
+  the server's [pick](../server/api/reference.md#the-pick-among-recordings) from
+  `/next`, and `/series` counts are unchanged.
 
 The series page reads community rails only on a `metadata` server, and shares
 reading-order picks with the book page (`useSeriesOrderings`). Under its list,

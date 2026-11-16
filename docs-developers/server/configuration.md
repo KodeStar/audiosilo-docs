@@ -792,7 +792,7 @@ series with the `book_released`
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `upcoming.enabled` | bool, `true` | The job's switch. It runs only while `metadata.enabled` is on too, so the default follows the metadata lookup. Applies live. In the console it is **Server > Settings > Community metadata**, *Check for upcoming releases* (setting id `metadata.upcoming`). `AUDIOSILO_UPCOMING_ENABLED` wins at every start and locks it |
+| `upcoming.enabled` | bool, `true` | The job's switch. It runs only while `metadata.enabled` is on too, so the default follows the metadata lookup. Switched off with metadata on, the job still runs its first step alone (each book's community work from its ASIN or ISBN, daily and after a scan settles), because a book's [`work_id`](api/reference.md#get-apiv1librariesidbooks) rides on the player's lists; no series, feed, items, announcements or status. Applies live. In the console it is **Server > Settings > Community metadata**, *Check for upcoming releases* (setting id `metadata.upcoming`). `AUDIOSILO_UPCOMING_ENABLED` wins at every start and locks it |
 | `upcoming.window_days` | int, `90` | How many days back a release still counts as new (`released` rather than `missing`), 1-365 (the community feed's limit). Anything else is a config error naming the key. Read at start, from the config file or `AUDIOSILO_UPCOMING_WINDOW_DAYS` only. Never offered in the console |
 
 The job sends what the metadata lookup already sends (a book's ASIN or ISBN, then

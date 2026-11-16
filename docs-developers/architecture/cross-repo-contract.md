@@ -613,7 +613,8 @@ By what decides their value, the flags are:
   `false`; the kinds are a top-level `renditions` list, seam 5).
 - **Always true:** `admin_ui`, `api_keys` (the server accepts user-minted API keys)
   and `export`.
-- **The runtime metadata switch:** `metadata`, `meta_bundle` and `meta_covers`.
+- **The runtime metadata switch:** `metadata`, `meta_bundle`, `meta_covers` and
+  `other_recordings` (each `false`, not absent, while it is off).
 - **Always true on a server that has them:** `browse_people`, `cover_sizes`,
   `next_book` and every flag added after it, including `household` and `cast`
   ([seam 14](#14-listening-in-the-house-and-casting)), `household_members`
@@ -994,6 +995,9 @@ These are all additive:
   and the orderings. The server resolves `local` **per request, after the shared
   cache, on a copy**, and never stores it there. A failure placing the caller's books
   sends the envelope without `local` rather than failing it.
+- `local_others` `[{library_id, path}]` beside `local`: the caller's other recordings
+  of that work (see [Other recordings of a work](#other-recordings-of-a-work)), per
+  request like `local`.
 
 Two query params sit behind the `meta_bundle` capability:
 
@@ -1024,6 +1028,29 @@ other series.
    without `local`.
 
 The wire shape is the same as for one series.
+
+### Other recordings of a work
+
+*(server#241, capability `other_recordings`, which tracks `metadata`.)* One work
+can sit in a library as several recordings: another narrator, an abridgement, a
+dramatisation. All of it is additive and `omitempty`:
+
+- `Book.work_id` on every book: the recorded match's work, else the work the book's
+  current ASIN or ISBN resolved to. The upcoming releases job's first step resolves
+  it whenever metadata is on, even with the job switched off. It is a display hint
+  only: durable state stays path-keyed.
+- `/item`'s `other_recordings`: the caller's other recordings of the work, in the
+  list shape, within their share scope, each recording once (a copy shares the
+  ASIN, or the ISBN when one has no ASIN).
+- `/meta` rail entries' `local_others`, beside `local`.
+- The pick: of several recordings, `local` (and so `/next`) is chosen by
+  [the pick among recordings](../server/api/reference.md#the-pick-among-recordings),
+  the requested book's narrator first (on `/next`, the book just finished).
+
+The player reads the fields, not the flag. Absent fields (an older server, metadata
+off) mean one recording per work, as before: the book page shows no card and the
+series shelf a spine per book (see
+[One entry per work](../frontend/library-and-browse.md#one-entry-per-work)).
 
 ### The persistent metadata cache
 

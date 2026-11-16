@@ -185,7 +185,8 @@ that no content cache reads:
 - the console's bell and the community metadata cache;
 - a token's last-seen touch (the token cache drops the touched row itself);
 - the Bridge's heartbeat, and its job reports' lease and progress;
-- the unknown-ASIN report's lookups (`unknown_asin_reports`).
+- the unknown-ASIN report's lookups (`unknown_asin_reports`);
+- the upcoming releases job's tables, `upcoming_owned` included.
 
 A user-state write leaves the generation where it was, unless it changed a row
 outside its table's rule in `userStateTables`. For example, a progress row that
@@ -193,7 +194,9 @@ is added, removed or re-keyed moves the generation, because the Health summary's
 duplicate ranking reads those keys. An `unknown_asin_reports` row added or
 removed, or its `unknown` answer changed, moves it too, because Health's
 `unknown_asin` kind reads them. A lookup that only renews `checked_at` or
-`sent_at` does not. SQLite's pre-update hook does this check, so
+`sent_at` does not. Likewise an `upcoming_owned` row added or removed, or its
+`work_id` or `id_key` changed, moves it, because every list book's `work_id` reads
+them (server#241); a re-check that only renews `checked_at` does not. SQLite's pre-update hook does this check, so
 a misfiled write only empties the caches.
 
 `store.GenMap` is the small map the token cache and the library cache use. Its

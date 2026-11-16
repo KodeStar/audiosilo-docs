@@ -163,6 +163,9 @@ The other settings on this topic:
   get a [notification](notifications.md#what-to-send). A calendar app in the
   cloud, like Google Calendar, needs a public HTTPS **Public address** with a
   trusted certificate.
+  Switched off, the server still looks up which community book each of your
+  books is, so the players can keep
+  [recordings of the same book](books.md#recordings-of-the-same-book) together.
 - **Help complete the community database** - off by default. See
   [Helping complete the community database](#helping-complete-the-community-database).
 - **Audible marketplace** (in **Matching**) - the store you buy from. When a

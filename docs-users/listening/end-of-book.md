@@ -32,6 +32,8 @@ AudioSilo picks the next book the same way everywhere:
 
 A book in more than one series follows its main series first, then its others. After an omnibus of books 1-3, the next book is book 4.
 
+When your server holds the next book in more than one recording, such as two narrators, AudioSilo picks one: the recording read by the same narrator as the book you just finished, else one you've started, else one in the same library, else an unabridged one. The others are on that book's page (see [More than one recording of a book](book-page.md#more-than-one-recording-of-a-book)). This needs community metadata switched on.
+
 If the server is still scanning a series folder, the next book's folder plays even before it's scanned.
 
 If nothing comes next, the card says **End of the series**. If the community database has a next book that your server doesn't have, it shows as a pale cover with **View on AudioSilo Meta**. AudioSilo never tries to play a book you don't have, and skips any gap in the series.

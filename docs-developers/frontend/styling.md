@@ -194,7 +194,10 @@ These are hand-built on primitives:
 - `Toast`: an imperative `toast({ title, description, action })`, rendered by
   the root `ShellToastHost` (see [Toasts](shell.md#toasts));
 - `RowSurface` and `PressableRow`: the quiet hairline list row. The book page's
-  chapter rows use it too.
+  chapter rows use it too. `InsetRow` is a tappable row inside a card's list,
+  with no surface of its own: a 48 px target, the `accent` fill when pressed (and
+  hovered on the web), then a chevron. The book page's Other versions and Other
+  recordings and the series recordings picker use it.
 
 A primitive that renders its own text node reuses `EYEBROW_CLASS` for the
 eyebrow style.
