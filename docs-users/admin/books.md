@@ -127,6 +127,34 @@ You can't unlink while a
 [match run](health.md#matching-every-book-at-once) is applying matches to that
 library.
 
+### Recordings of the same book
+
+Your server may hold one book in more than one recording: two narrators, an
+abridged and an unabridged one, a dramatisation. The players keep them
+together, with one spine on a series page and an **Other recordings in your
+library** card on each book's page (see
+[More than one recording of a book](../listening/book-page.md#more-than-one-recording-of-a-book)).
+
+The server knows two recordings are the same book when both lead to the same
+book in the community database:
+
+- **A match you made in the console** counts first, with
+  [Match with community metadata](#matching-with-community-metadata) or
+  [Match automatically](health.md#matching-every-book-at-once). Use it for a
+  recording with no ASIN or ISBN, or one whose identifier leads to the wrong
+  book.
+- **Otherwise, the book's ASIN or ISBN.** The server looks it up once a day and
+  shortly after a scan finds new or changed books.
+
+This needs [community metadata](server.md#community-metadata) switched on. It
+works with **Upcoming releases** switched off too: the server still looks up
+which book each recording is, and nothing else. Two copies with the same ASIN or
+ISBN are copies of one recording, so they aren't listed as other recordings.
+Within one library, Health lists them as [Likely duplicates](health.md#duplicates).
+
+A listener only sees the recordings they can open. Someone whose share holds
+one recording sees no sign of the other.
+
 ## A book's page
 
 Click any book to open its page.

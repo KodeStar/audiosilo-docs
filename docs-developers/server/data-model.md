@@ -1758,14 +1758,19 @@ file in `<data>/meta-mirror/`, not a table here (see
 (`internal/upcoming`, `catalog/upcoming.go`) works out. Every table is
 **derived**: the next run rebuilds it from the books and the community
 metadata. Each is path-keyed with no FK to `books` and cascaded with its
-library. They are written through the user-state path, because no content
-cache reads them.
+library. They are written through the user-state path. No content cache reads
+them except `upcoming_owned`'s rows and `work_id`, which every list book's
+`work_id` reads (server#241): a row added or removed, or a changed `work_id`,
+moves the content generation, and a re-check that only renews `checked_at` or
+`id_key` does not (see [Overview](overview.md#internalstore)).
 
 - **`upcoming_owned`**: each owned book's community work. It maps
   `(library_id, path)` (primary key) to `work_id` (`''` for no community
   match). `id_key` holds the identifiers the work was resolved by, which is the
   metadata cache's key, so a changed ASIN resolves again. It also has
-  `checked_at`. Index on `work_id`.
+  `checked_at`. Index on `work_id`. A book with no recorded match takes its
+  [work key](#a-books-work-key) from here. This first step of the job runs
+  whenever metadata is on, even with the job switched off.
 - **`upcoming_series`**: maps a local series (`library_id`, folded
   `series_key`) to the community series it is, one row each. `series_id` is
   part of the key, because a local series can be several, and one `''` row
@@ -1884,8 +1889,9 @@ keeps the report to once a day across restarts. The run status is the
   stay untouched) or in a loose data-dir file. It is therefore path-keyed
   durable state that moves with `MoveDurableState` and is part of any database
   backup.
-- **`book_matches`** *(0069; `offered_asin` and `offered_isbn` in 0070)*: a
-  book's recorded community match, described after this list.
+- **`book_matches`** *(0069; `offered_asin` and `offered_isbn` in 0070; the
+  `work_id` index in 0079)*: a book's recorded community match, described after
+  this list.
 - **`book_hints`** *(0074)*: PK `(library_id, path, source)`, `asin`, `isbn`,
   `import_id`, `set_at`. Identifiers another app gave a book, kept as hints for a
   community match only. See
@@ -1922,7 +1928,7 @@ or an apply took, with or without an ASIN or ISBN. Columns:
   ASIN stays off.
 
 `run_id` and `set_by` have no foreign keys, because runs are pruned and the row
-outlives either.
+outlives either. Index `idx_book_matches_work` on `work_id` *(0079)*.
 
 Two things write it:
 
@@ -1957,6 +1963,20 @@ this row alone. `catalog.matchedExpr`
 What needs an identifier tests `asin` or `isbn` itself: community chapters, the
 unknown-ASIN report, upcoming releases, a repick, the Bridge's estimate and the
 community step of `/next`.
+
+#### A book's work key
+
+*(server#241)* A book's community work is `catalog.workIDExpr`: its
+`book_matches.work_id`, else a non-empty `upcoming_owned.work_id` resolved from
+the book's current identifiers, else `''`. The recorded match wins, so an
+admin's console match corrects a work the identifiers led to. It rides on every
+book the API sends as [`work_id`](api/reference.md#get-apiv1librariesidbooks),
+omitted when `''`. Books sharing it are recordings of one work:
+`catalog.OtherRecordings` finds them for `/item`'s
+[`other_recordings`](api/reference.md#other-recordings) through
+`idx_book_matches_work` and `idx_upcoming_owned_work`, and keeps each only when
+its own work key is the work. The key is a display grouping, never an identity:
+user state stays keyed by path.
 
 `/meta` reads the row only when the book's identifiers find nothing. A book with
 neither, or one the upstream does not know, answers from its recorded match
@@ -2309,6 +2329,7 @@ The migration history so far:
 | 0076 | `podcast_feed_notices` | `podcast_feed_state.feed_failures`, `feed_network_failures` and `failing_announced` (`INTEGER NOT NULL DEFAULT 0`), the failing-feed run of the podcast notifications (see [Podcasts](#podcasts)). No backfill |
 | 0077 | `oidc` | [Single sign-on](#single-sign-on-tables): `users.email` (`TEXT NOT NULL DEFAULT ''`) with the partial index `idx_users_email` (`email COLLATE NOCASE WHERE email <> ''`), `user_identities` (UNIQUE `(issuer, subject)` and `(user_id, issuer)`, `user_id` `ON DELETE CASCADE`, `linked_by` `ON DELETE SET NULL` with `idx_user_identities_linked_by`) and `oidc_pending` (`AUTOINCREMENT`, UNIQUE `(issuer, subject)`, `idx_oidc_pending_seen`). No data moves |
 | 0078 | `chapter_edits` | `chapter_edits` (an admin's edited chapter list per book, durable and path-keyed, `library_id` `ON DELETE CASCADE`, `updated_by` `ON DELETE SET NULL`; see [Edited chapters](community-chapters.md#edited-chapters)) and `cast_grants.editor` (`INTEGER NOT NULL DEFAULT 0`, the [editor tokens](auth-and-security.md#cast-tokens)). No data moves |
+| 0079 | `book_matches_work` | The index `idx_book_matches_work` on `book_matches(work_id)`, so a work's recordings ([a book's work key](#a-books-work-key)) are found from the recorded matches as from `upcoming_owned` (already indexed by `idx_upcoming_owned_work`). No data moves |
 
 ## SQLite choices
 

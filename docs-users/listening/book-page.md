@@ -62,8 +62,21 @@ When the community database matches the book to a free LibriVox recording, the c
 Below the About card:
 
 - **Other versions** lists copies of the same book in your other libraries or servers.
+- **Other recordings in your library** lists the other recordings of this book that you can open: another narrator, an abridged one, a dramatisation. Each shows its narrator, its length and how far you are in it. Your place is kept separately for each recording. See [More than one recording of a book](#more-than-one-recording-of-a-book).
 - **Your listening** shows how long you've listened, your speed, and when you started and finished. On Android it also shows what [Smart speed](full-player.md#smart-speed-and-voice-boost) has saved.
 - **In the house** shows who else on your server is on this book, when you both [share your listening](in-the-house.md).
+
+## More than one recording of a book
+
+Your server may hold one book in more than one recording, such as two narrators of *The Hobbit*, or an abridged and an unabridged one. AudioSilo keeps them together when it knows they are the same book. It learns that from the community database: each recording is matched by its ASIN or ISBN, or by an admin in the console (see [Recordings of the same book](../admin/books.md#recordings-of-the-same-book)).
+
+- **On the book's page**, the **Other recordings in your library** card lists the others. Tap one to open its page.
+- **On a series page**, the recordings share one spine. A **2 recordings** chip beside the book opens a list of them, each with its narrator, length and your progress. See [Series pages](browsing.md#series-pages).
+- **When a book ends**, the next book in the series comes in the recording read by the same narrator as the one you just finished. If none is, it's one you've started, then one in the same library, then an unabridged one. See [What plays next](end-of-book.md#what-plays-next).
+
+Each recording keeps its own place, bookmarks and notes. Only recordings you can open are listed, so someone who can see one recording never hears about the other.
+
+This needs community metadata switched on and a recent server. Without them, each recording is a book of its own, as before.
 
 ## The tabs
 

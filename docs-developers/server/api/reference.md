@@ -48,6 +48,7 @@ else and gate features on the flags.
     "export": true,
     "meta_bundle": true,
     "meta_covers": true,
+    "other_recordings": true,
     "browse_people": true,
     "series_memberships": true,
     "series_books": true,
@@ -125,6 +126,7 @@ series flags:
 | Flag | Value | Gates |
 |---|---|---|
 | `meta_bundle` | the same as `metadata` | the [`/meta`](#get-apiv1librariesidmeta) query params `include=previous` and `spoilers=hide` (an older server ignores both and sends the full envelope) |
+| `other_recordings` | the same as `metadata`, sent `false` (not absent) while it is off | a work's other recordings together: [`other_recordings`](#other-recordings) on `/item` and [`local_others`](#owned-entries-local) on `/meta`'s rail entries. A book's [`work_id`](#get-apiv1librariesidbooks) rides on every book whatever the flag, whenever the server knows it. A client reads the fields themselves (absent means one recording per work), so nothing needs to wait on the flag |
 | `browse_people` | always `true` | the browse lists [`/authors`, `/narrators`](#get-apiv1librariesidauthors--get-apiv1librariesidnarrators) and [`/series`](#get-apiv1librariesidseries), and the `narrator` filter on [`/books`](#get-apiv1librariesidbooks) |
 | `cover_sizes` | always `true` | cover thumbnails, [`/cover?size=`](#get-apiv1librariesidcover) |
 | `next_book` | always `true` | [`/next`](#get-apiv1librariesidnext), what to play after a book |
@@ -1187,6 +1189,7 @@ probed; `added_at` when unknown. Every book response (lists, search, recent,
 | `genres` | string[] | the book's genres: the files' genre tag (split on `;` and NUL, never `,`; placeholders such as `Audiobook`, `Speech`, `Spoken Word` and `Other` dropped), an Audiobookshelf `metadata.json`, or an admin edit. Each label once, compared case-insensitively, the first spelling kept; at most 50, each at most 64 characters. Sent on list and search pages too, so a client can filter a loaded library on the device |
 | `tags` | string[] | freeform tags, as `genres`, from an Audiobookshelf `metadata.json` or an admin edit only (no audio tag carries them) |
 | `generated` | boolean | `true` when the book's `.audiosilo/` folder holds characters, recaps or a description the [Bridge](#the-bridge) generated on this server (read from the book's attachment signature, so a file that failed its checks still counts); omitted otherwise. A client asks [`/meta`](#generated-content) for such a book even when it has no `asin` or `isbn` |
+| `work_id` | string | the community work the book is a recording of: its recorded match's work (`book_matches`: a console match, a match run's or an Add from LibriVox), else the work its current ASIN or ISBN resolved to (the [upcoming releases](#upcoming-releases) job's first step, which runs whenever metadata is on). Books with the same `work_id` are recordings of one work (another narrator, an abridgement, a dramatisation). A grouping hint for display only: never an identity for durable state, which stays path-keyed. Omitted when unknown |
 | `ebook` | object | `{"path", "size"}`: the book's ebook (capability `ebooks`), the one readable `.epub` the scan found beside its audio (DRM is not judged) (see [A book's ebook](../scanner.md#a-books-ebook)): its library-relative `path` (for display: the file is fetched by the **book's** path at [`/ebook`](#get-apiv1librariesidebook)) and its `size` in bytes when last scanned. Omitted when the book has none |
 
 A book at a range, here as the omnibus of Mistborn 1-3 that is also book 1 of a
@@ -2253,7 +2256,7 @@ not the community-written `community_description` on
 [`/meta`](#get-apiv1librariesidmeta). The other fields every book carries
 (`published`, `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags`,
 `cover_color`, `cover_version`, and `series_index_end`, `series_list`,
-`generated` and `ebook` when they apply) are described under
+`generated`, `ebook` and `work_id` when they apply) are described under
 [`/books`](#get-apiv1librariesidbooks); each is omitted when empty or unknown.
 
 `chapters_source` says where the book's `chapters` come from:
@@ -2313,6 +2316,39 @@ indexed on its behalf. The same holds for `/chapters`, `/cover`, `/meta` and `/n
 | `400` | missing `path` / invalid library id |
 | `403` | `no access to this path`: the path, or the book it resolves to, is outside the caller's share scope |
 | `404` | `no book at that path` (not indexable) |
+
+#### Other recordings
+
+`other_recordings` (capability `other_recordings`) lists the caller's **other**
+recordings of the book's community work: the books with the same
+[`work_id`](#get-apiv1librariesidbooks), such as another narrator, an
+abridgement or a dramatisation.
+
+```json
+"work_id": "the-martian",
+"other_recordings": [
+  { "library_id": 1, "rel_path": "Andy Weir/The Martian (Wil Wheaton)", "title": "The Martian",
+    "author": "Andy Weir", "narrator": "Wil Wheaton", "duration": 39612.3, "work_id": "the-martian" }
+]
+```
+
+- **Shape.** Each is a book in the list shape of
+  [`/books`](#get-apiv1librariesidbooks) (no `files`, `chapters` or
+  `description`).
+- **Which books.** Books in books libraries only (never a podcast), inside the
+  caller's share scope (the same filter as every list), with the same `work_id`.
+  Never the book itself, and never a copy whose ASIN or ISBN is the book's
+  (compared normalized: case, spaces and hyphens aside). That copy is the same
+  recording again (within one library, Health lists it as a duplicate).
+- **Order.** The book's own library first, then by title, then by narrator, then
+  by path. At most 20.
+- **Omitted** when there are none, while community metadata is off, in a podcast
+  library, and for a book with no `work_id`. Like `readalong`, it is an extra:
+  when the books can't be read, the book goes out without it (the failure is
+  logged).
+
+Only this single-book response carries it, never a list row. A server before
+the capability omits it, and a client then shows one recording per work.
 
 ### `GET /api/v1/libraries/{id}/chapters`
 
@@ -2443,6 +2479,10 @@ Otherwise the local steps decide, in order, and the first one with an answer win
      answers in its place. The server places that entry for the caller exactly as
      `/meta` places [`local`](#owned-entries-local). When it is placed, the answer
      is `next` + `book` + `work`.
+   - **Several recordings of the next work.** When the caller holds the next
+     work in more than one recording, `next` is
+     [the pick](#the-pick-among-recordings): the narrator of the book just
+     finished first. The others ride on `work` as `local_others`.
    - **An entry the server can't place.** The caller's copy may be untagged, or
      filed under a series named unlike the rail, or the caller may not have it.
      Failing to place proves nothing, so the steps below answer, and the entry
@@ -2864,9 +2904,11 @@ case, accents, punctuation and spacing ignored (`The Expanse` matches `the
 Expanse!`). Each entry gets at most one book, the first that applies:
 
 1. the current work's entry: the book the request is for;
-2. a book the server already knows to be that work (from the community answers it
-   has cached, in memory or else in its database, fresh or stale; never a new
-   upstream call, so placement doesn't change with a restart);
+2. a book the server already knows to be that work: its
+   [`work_id`](#get-apiv1librariesidbooks) (a recorded match first, else the
+   work its ASIN or ISBN resolved to), else what the community answers it has
+   cached say about its identifiers (in memory or else in its database, fresh or
+   stale; never a new upstream call, so placement doesn't change with a restart);
 3. in an alternate order, the book the main view placed for the same work;
 4. a book of a series named like this view (the rail's or ordering's own name)
    whose `series_index` equals the entry's numeric position. An entry at a range
@@ -2876,8 +2918,43 @@ Expanse!`). Each entry gets at most one book, the first that applies:
 
 A book known to be a particular work is placed by that identity only, never by
 its number, so a novella numbered like the next volume holds no slot. When two
-books qualify, one in the requested book's library wins, then library order, then
-path.
+books qualify, [the pick](#the-pick-among-recordings) decides which is `local`.
+
+**`local_others`** (capability `other_recordings`) lists every **other** book of
+the entry's work the caller can open, `[{ "library_id": …, "path": … }]`, in the
+pick's order, beside `local`:
+
+```json
+{
+  "id": "the-martian",
+  "title": "The Martian",
+  "position": "1",
+  "local": { "library_id": 1, "path": "Andy Weir/The Martian" },
+  "local_others": [{ "library_id": 1, "path": "Andy Weir/The Martian (Wil Wheaton)" }]
+}
+```
+
+- Only books known to be the work (rule 2) count. An entry placed by its number
+  (rule 4) has none.
+- On the current work's entry, it is every other book of the work: `local` is
+  the requested book.
+- A copy sharing the ASIN or ISBN of the book in `local` is the same recording
+  again and is left out, as on [`/item`](#other-recordings).
+- It is worked out per request like `local`, never cached, and omitted when
+  `local` is the only one, and on an older server.
+
+##### The pick among recordings
+
+Of several books of one work, `local` is the first by these tests, in order
+(server#241):
+
+1. read by the same narrator as the requested book (on [`/next`](#get-apiv1librariesidnext),
+   the book just finished), compared with case, spacing and punctuation
+   ignored. A requested book with no narrator skips this test;
+2. started by the caller and not finished;
+3. in the requested book's library;
+4. not known to be abridged (an unknown `abridged` counts as unabridged);
+5. library sort order, then path.
 
 `local` is an extra: when the caller's books can't be read, the envelope is sent
 without it (the failure is logged) rather than failing the lookup.

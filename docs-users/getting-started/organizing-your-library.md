@@ -38,6 +38,12 @@ A folder of unrelated single-file books, like `Short Stories/` holding three `.m
 
 Overrides survive rescans. See [Folder detection](../admin/libraries.md#folder-detection).
 
+### More than one recording of a book
+
+Keep each recording in its own folder, such as `The Hobbit (Rob Inglis)/` and `The Hobbit (Andy Serkis)/`, or in different libraries. Each is a book of its own, with its own progress.
+
+With community metadata on, the players still show them together: one spine on a series page and an **Other recordings in your library** card on the book's page. That works once each recording is matched to the same book in the community database, by its ASIN or ISBN or by an admin. See [Recordings of the same book](../admin/books.md#recordings-of-the-same-book).
+
 ## Supported formats
 
 AudioSilo plays these audio files:

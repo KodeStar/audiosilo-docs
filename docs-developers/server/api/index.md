@@ -676,6 +676,7 @@ therefore never staler than one built fresh, and nothing on the wire changes
     "metadata": true,
     "meta_bundle": true,
     "meta_covers": true,
+    "other_recordings": true,
     "browse_people": true,
     "series_memberships": true,
     "series_books": true,
@@ -742,6 +743,7 @@ has them. For the others, each row says when the flag is `true`.
 |---|---|
 | `meta_bundle` | `include=previous` and `spoilers=hide` on [`/meta`](reference.md#get-apiv1librariesidmeta). Always equal to `metadata` |
 | `meta_covers` | the server serving the community covers that a book's `/meta` envelope hands out, at [`/meta/cover`](reference.md#get-apiv1librariesidmetacover). Always equal to `metadata`. Without it the web player shows placeholders for those covers, since its CSP takes images only from the server. Native apps load the `cover_url` directly |
+| `other_recordings` | a work's other recordings together: [`other_recordings`](reference.md#other-recordings) on `/item` and [`local_others`](reference.md#owned-entries-local) on `/meta`'s rail entries, and the [pick](reference.md#the-pick-among-recordings) among them for `local` and `/next`. Always equal to `metadata`, sent `false` while it is off. A book's `work_id` rides on every book either way, whenever the server knows it. The player reads the fields, not the flag: absent fields mean one recording per work |
 | `browse_people` | the browse lists [`/authors`, `/narrators`](reference.md#get-apiv1librariesidauthors--get-apiv1librariesidnarrators) and [`/series`](reference.md#get-apiv1librariesidseries), and `narrator=` on [`/books`](reference.md#get-apiv1librariesidbooks) |
 | `cover_sizes` | `?size=160\|320\|640` thumbnails on [`/cover`](reference.md#get-apiv1librariesidcover). The server takes `96` too from 2.5.1, but the flag is also true on older servers, which refuse `96` |
 | `next_book` | [`/next`](reference.md#get-apiv1librariesidnext), the server's answer to what plays after a book |

@@ -22,7 +22,8 @@ only draw. The user-facing tour is [A book's page](/users/listening/book-page).
 | `book-chapters-tab.tsx` | `BookChaptersTab`: "The whole book" (`BookTimeline` + legend + axis) and the rows |
 | `book-details-tab.tsx` + `book-details-model.ts` | `BookDetailsTab`: the playback notice, the files table, the path; `fileRows`, `visibleFiles`, `playbackMode`, and the About card's `aboutContent`, `labelGroups` and `languageName` |
 | `book-about.tsx` | `BookAbout`: the About card, its genre and tag chips, and `openLabelBooks` |
-| `book-aside.tsx` | `BookAside`: `BookAbout`, Other versions (`BookVersions`), Your listening |
+| `book-aside.tsx` | `BookAside`: `BookAbout`, Other versions (`BookVersions`), Other recordings in your library (`OtherRecordings`), Your listening |
+| `other-recordings.tsx` | `OtherRecordings`: the card of the item's `other_recordings` (server#241), each a `RecordingRow` |
 | `book-skeleton.tsx` | The loading layout |
 
 `book-page.tsx` holds four pieces:
@@ -417,7 +418,18 @@ hero and the tabs.
     no link.
 - **Other versions** - `BookVersions`: every other copy (`useBookCopies`) with where it
   lives and its quality, each opening that copy's page. Nothing shows when there is
-  none.
+  none. Each is an `InsetRow`.
+- **Other recordings in your library** - `OtherRecordings` (`other-recordings.tsx`,
+  server#241): the item's [`other_recordings`](../server/api/reference.md#other-recordings),
+  the listener's other recordings of the book's community work (another narrator, an
+  abridgement), in the server's order. Each is a `RecordingRow`
+  (`src/components/library/recording-row.tsx`, shared with the series recordings
+  picker): the cover, "Read by *narrator*" (`recordingLabel`, else the title), then
+  the library when it is not the page's, abridged, the length and the listener's own
+  progress in it (`useSavedProgress` through `savedProgressView`: "Finished" or "40%
+  listened"), with a progress bar while in progress; a press opens that book. The card shows only when
+  the field is present and non-empty, so an older server, community metadata off or a
+  work held once shows nothing.
 - **Your listening** - `listeningFigures`, the figures the records hold, never
   estimated:
   - listened time from this book's history spans (`listeningSummary`, the end credits'
