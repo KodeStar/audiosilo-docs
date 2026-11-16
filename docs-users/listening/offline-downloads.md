@@ -28,7 +28,7 @@ The **Downloads** tab shows everything stored on the device you're using.
 - **Storage**: how much room your downloads take, by server, and how much is still free.
 - **Automatic downloads**: the rules for downloads you don't start yourself (below).
 - **In progress**: downloads running now, waiting, or stopped.
-- **On your Apple Watch** in the iPhone app, or **On your watch** in the Android app, with a paired watch: the books on your watch. See [Apple Watch](apple-watch.md#in-downloads-on-your-iphone) or [Wear OS](wear-os.md#in-downloads-on-your-phone).
+- **On your Apple Watch** in the iPhone app, or **On your watch** in the Android app, with a paired watch: the books on your watch and the ones on their way to it. See [Apple Watch](apple-watch.md#in-downloads-on-your-iphone) or [Wear OS](wear-os.md#in-downloads-on-your-phone).
 - **Ready offline**: the books on this device. Tap one to open it, or **Remove** to delete it from the device. The book, your progress and your bookmarks stay safe on the server.
 - **Podcast episodes**: the episodes on this device, each with its show.
 

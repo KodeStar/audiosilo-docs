@@ -33,7 +33,7 @@ For a Wear OS watch, see [Listen on your Wear OS watch](wear-os.md).
 
 ![The watch before it is set up: Open AudioSilo on your iPhone and choose Set up Apple Watch](/img/screenshots/watch/watch-set-up.png)
 
-The sign-in works once, for 10 minutes. If it runs out, tap **Send again** on the card.
+The sign-in works once, for 10 minutes. If it runs out, tap **Send again** on the card. When the watch already uses this account and can reach your server, Send again keeps its sign-in, so the watch doesn't show up twice under Signed-in devices.
 
 If the watch can't reach your server, see [A self-signed server](#a-self-signed-server).
 
@@ -61,9 +61,13 @@ Then open AudioSilo on the watch. The watch only asks for a book while the app i
 
 If the watch isn't ready for the book yet (still signing in, or on another account), it holds the book for up to 7 days and starts it once it can.
 
+While the watch is being set up for another account, your iPhone doesn't send the book and says so. Send it again once the watch has signed in.
+
 ### How a download goes
 
-**On the way**, on the watch's home screen, shows each book coming and how far it has got. The server first prepares the watch's copy, about 430 MB for a 20-hour book. That can take a while for a long book the first time. You don't need to keep looking at the watch while it works. When it's done, the book moves to **On this watch**.
+**On the way**, on the watch's home screen, shows each book coming. The server first prepares the watch's copy, about 430 MB for a 20-hour book. That can take a while for a long book the first time. You don't need to keep looking at the watch while it works.
+
+Then the watch downloads the files from your server, and the row says how far it has got, such as *Downloading 3 of 10 files · 45%*. When it's done, the book moves to **On this watch**.
 
 ![On the way on the watch: Preparing on the server](/img/screenshots/watch/watch-on-the-way.png)
 
@@ -71,13 +75,21 @@ If a book stays waiting, open AudioSilo on the watch. If it says **Couldn't down
 
 ## In Downloads on your iPhone
 
-The [Downloads](offline-downloads.md#the-downloads-page) page on your iPhone has an **On your Apple Watch** section. It lists every book you sent and every book the watch holds, with how far each has got.
+The [Downloads](offline-downloads.md#the-downloads-page) page on your iPhone has an **On your Apple Watch** section. It lists every book you sent and every book the watch holds.
 
 ![On your Apple Watch in Downloads on an iPhone: books with their sizes](/img/screenshots/watch/phone-downloads-section.png)
 
-A row can lag behind the watch's own screen. If a row says it couldn't download or reach the watch, tap **Send again**.
+A book on its way says where it has got to:
 
-To take a book off the watch from your iPhone, tap **Remove** on its row. Your place in the book is kept.
+- **Preparing on the server**, with how many of its files are ready, such as *2 of 10 files ready*.
+- **Downloading to your watch**, with a percentage, such as *45%*. The watch fetches the book from your server, not from your iPhone.
+- **On your watch**, with its size, once it's done.
+
+If the watch is waiting for a connection or for your server, a second line says so.
+
+A row can lag behind the watch's own screen. With AudioSilo closed on the watch, the percentage moves only as each file arrives. If a row says it couldn't download or reach the watch, tap **Send again**.
+
+To take a book off the watch from your iPhone, tap **Remove** on its row. Your place in the book is kept. If you send the book again afterwards, the watch keeps the new copy.
 
 ## Storage
 
@@ -109,7 +121,7 @@ At any speed other than 1x, a small line under the progress says how long the ch
 
 Before it plays, the watch asks your server for your place if it can. If another device is somewhere else in the book, it offers **Jump there** or **Stay here**. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 
-With no headphones connected, watchOS asks where to listen. If you pick the watch speaker, AudioSilo checks once that you mean it. Removing your headphones pauses the book.
+With no headphones connected, watchOS asks where to listen. If you pick the watch speaker, AudioSilo checks once that you mean it. Removing your headphones pauses the book, even while it's still starting. If a call or Siri cuts in just as you tap **Play**, the book pauses with no error message.
 
 ## A run without your phone
 
@@ -155,3 +167,7 @@ If watchOS asks whether AudioSilo may use your local network, allow it. Over pla
 To switch accounts, tap **Set up Apple Watch** on the other account's card on your iPhone. Switching removes the old account's books from the watch.
 
 Signing out on your iPhone leaves the watch signed in. To cut off a lost watch, tap **Sign out** on its row under [Signed-in devices](account.md#signed-in-devices).
+
+## Good to know
+
+- **After the watch restarts**, AudioSilo can't read its sign-in or books until you unlock the watch once. A sign-in or book you send before then waits, and goes ahead once you've unlocked the watch and opened AudioSilo.
