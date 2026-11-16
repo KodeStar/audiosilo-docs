@@ -768,9 +768,9 @@ rules are the pure `chapters-edit-model.ts`, and the paste dialog is
 
 - The editor reads the page once when it opens: the files laid end to end by
   their `chapter_basis` lengths (`detailSpans`), the `chapter_basis` it saves
-  against, and one draft row per chapter (`draftFromChapters`). A row that starts
-  a file is `fixed`: its title is editable, its time is not, and it can't be
-  deleted.
+  against, and one draft row per chapter, plus one for any file no chapter starts
+  (`draftFromChapters`). A row that starts a file is `fixed`: its title is
+  editable, its time is not, and it can't be deleted.
 - Rows take a whole-book time (`parseTime`: `h:mm:ss`, `m:ss` or seconds, each
   with a fraction) and a title. Add after a row, Add at playhead, Delete, Shift
   all (refused when a chapter would leave its file, `crosses_file`) and Paste
@@ -778,7 +778,8 @@ rules are the pure `chapters-edit-model.ts`, and the paste dialog is
   **Replace chapters**) all return new rows or a refusal the editor words.
 - `validateDraft` mirrors the server's rules (see
   [Edited chapters](community-chapters.md#edited-chapters)) and marks the rows
-  that break one. **Save chapters** stays off until the list holds.
+  that break one. **Save chapters** stays off until something changed and the
+  list holds.
 - **Save chapters** sends `PUT …/book/chapters` (`editRequest`) and settles the
   page from its answer. A `400 chapters_invalid` is worded by its `detail`, and
   a `409 chapters_basis` says the files changed and refetches the book.
