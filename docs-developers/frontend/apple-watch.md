@@ -122,8 +122,8 @@ within the 5 s keep. The launch's first span takes the move's reason (`recovered
 that book's and a resume from this watch's own place, not when `Resume.plan` took the server's
 row (`loadsFromRow`).
 
-**Stay** is the phone's too ([Stay wins](playback.md#stay-wins)): `SpanRecorder.standBy(..., stay:)`,
-gated by the cached `/server`'s `listening_stay` (`AppModel.takesStay`), `Spans.carried`,
+**Stay** is the phone's too ([Stay wins](playback.md#stay-wins)):
+`SpanRecorder.standBy(..., stay:)`, gated by the cached `/server`'s `listening_stay` (`AppModel.takesStay`), `Spans.carried`,
 `Outbox.takesStay` (read as each body is built, the background upload's too), and
 `AckRules.staysHeld` with `OfferThrottle.shouldShow(..., stayHeld:)`.
 
@@ -232,13 +232,13 @@ nothing and asks to send again. Otherwise it exchanges at once
 A server's own answer at any address ends it, since the token is single use.
 
 **Send again for the account signed in.** A `pair` for the account the watch already holds first
-asks `GET /me` with the token it keeps. The token stays only when the server answers with the
-pair's own user (`AccountRules.keepsToken`), so a Send again adds no session on the server. A `401`, any other refusal or no answer at all exchanges the pair's token as
-a first sign-in does: with no answer the watch may only be at an address it can't reach, and the
-exchange tries `base_url`, away and home. Kept, the watch takes the pair's label, user name and
-addresses (`keepSignIn`), and the pair's token runs out unused. The server gate is asked again
-unless it stands, so a server that was too old can take the book behind the pair. Wear OS does the
-same.
+asks `GET /me` with the token it keeps. The token stays only when the server answers with the pair's
+own user (`AccountRules.keepsToken`), so a Send again adds no session on the server. A `401`, any
+other refusal or no answer at all exchanges the pair's token as a first sign-in does: with no answer
+the watch may only be at an address it can't reach, and the exchange tries `base_url`, away and
+home. Kept, the watch takes the pair's label, user name and addresses (`keepSignIn`), and the pair's
+token runs out unused. The server gate is asked again unless it stands, so a server that was too old
+can take the book behind the pair. Wear OS does the same.
 
 ### `book`, phone to watch
 
@@ -280,7 +280,7 @@ The optional fields:
 | `added_at` | on a book: when this copy was added, the phone's `asked_at` for a book it sent, else the watch's clock |
 | `files_ready`, `files_total` | on a book preparing or downloading: how many of its files the server has ready, of how many |
 | `waiting` | on a book preparing or downloading: `connection` or `server`, what it waits for (`DownloadWait`) |
-| `progress` | on a book downloading: the share of its audio on the watch, a whole number from 0 to 99 |
+| `progress` | on a book downloading: the share of its audio on the watch, a multiple of 5 from 0 to 95 |
 | `launch_id` | new at each launch; the phone ignores it |
 
 `launch_id` exists because the session drops a context identical to the last one it took. A phone
@@ -341,9 +341,9 @@ Always `transferUserInfo`:
 
 `asked_at` is when the listener tapped Remove. A Remove asked again carries the first one's
 (`removeAskedAt`, the row's `remove_asked_at`), except over a copy with no `added_at`, where it
-carries the new tap's ([Who sees what](#who-sees-what)). A `remove` takes only a copy added no later than it
-was asked (`RemoveMessage.covers`, also for a held row), so asking again never takes a copy that
-came back since. With either time unknown, from an older phone or a copy from before 2.7.0, it
+carries the new tap's ([Who sees what](#who-sees-what)). A `remove` takes only a copy added no later
+than it was asked (`RemoveMessage.covers`, also for a held row), so asking again never takes a copy
+that came back since. With either time unknown, from an older phone or a copy from before 2.7.0, it
 takes the copy as before.
 
 The watch keeps a `remove` on disk from its arrival until its turn (`held-books.json`), and those
