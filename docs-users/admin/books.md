@@ -369,7 +369,7 @@ for listeners too, edit its **Series number** on
   [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
   doesn't write it back.
 - **The community database has no genres or tags yet**, so matching never changes them.
-- **A book with edited chapters offers no Detect chapters** on the
+- **A book using your edited chapters offers no Detect chapters** on the
   [Health](health.md) page. Revert the edit first.
 - **The chapter editor's player plays each file as it is stored.** A file your
   browser can't play doesn't load there, but you can still type the times.
