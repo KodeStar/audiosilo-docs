@@ -25,7 +25,7 @@ to understand before you change the schema.
     `collection_items` and `ratings`;
   - per-library config: `folder_overrides`, `book_enrichment`,
     `issue_ignores`, `book_overrides`, `chapter_overrides`, `chapter_choices`,
-    `book_covers`, `book_matches` and `book_hints`.
+    `chapter_edits`, `book_covers`, `book_matches` and `book_hints`.
 
   The rest of a listener's own state hangs off the account rather than a path:
   `collections`, `collection_shares`, `listening_goals` and
@@ -68,7 +68,7 @@ Why no FK across the seam? There are three reasons:
 
 Move-tracking covers the remaining gap, a file that *moves* on disk. The
 scanner fingerprints files (`books.content_hash`) and calls
-`catalog.MoveDurableState` to carry all fifteen path-keyed book tables from the
+`catalog.MoveDurableState` to carry every path-keyed book table from the
 old path to the new one (see [Scanner](scanner.md#move-detection)). That is
 every table above except `folder_overrides`, which is keyed by folder, not
 book. When an admin joins a folder's disc folders into one book,
@@ -115,6 +115,7 @@ erDiagram
     libraries ||--o{ scan_runs : "scan history"
     libraries ||--o{ community_chapters : "path-keyed, NO FK to books"
     libraries ||--o{ chapter_choices : "path-keyed, NO FK to books"
+    libraries ||--o{ chapter_edits : "path-keyed, NO FK to books"
     users ||--o{ progress : ""
     users ||--o{ reading_progress : "path-keyed, NO FK to books"
     libraries ||--o{ reading_progress : ""
@@ -250,8 +251,8 @@ pairing, cast, bridge, feed or `oidc` tokens (`auth.ListDevices`). It can revoke
 (`auth.RevokeDevice`).
 
 **`cast_grants`** *(0043)* holds what a **cast token** may read. A cast token
-is a `tokens` row of kind `'cast'` with `expires_at` 24 hours on
-(`POST /cast/token`, capability `cast`; see
+is a `tokens` row of kind `'cast'` with `expires_at` 24 hours on (4 for an
+editor token) (`POST /cast/token`, capability `cast`; see
 [Auth & security](auth-and-security.md#cast-tokens)). Its grant row holds:
 
 - `token_id`: PK, FK CASCADE to `tokens`.
@@ -259,12 +260,15 @@ is a `tokens` row of kind `'cast'` with `expires_at` 24 hours on
   resolved first. There is no FK to the index.
 - `parent_token_id`: the session that minted it. FK CASCADE to `tokens`,
   indexed.
+- `editor` *(0078)*: `INTEGER NOT NULL DEFAULT 0`, `1` for an editor token,
+  which the console's chapter editor streams with (see
+  [Cast tokens](auth-and-security.md#cast-tokens)).
 
 A cast token without a grant is never valid, and neither is one whose parent
 is gone, signed out or expired. [Cast tokens](auth-and-security.md#cast-tokens)
 covers how dead ones are pruned and how many a person keeps. The partial index
 `idx_tokens_cast_expiry` is on `tokens(expires_at) WHERE kind = 'cast'`. A
-grant is not moved with its book, because it lives only 24 hours.
+grant is not moved with its book, because it lives 24 hours at most.
 
 **`auth_codes`** *(0001; `kind` + `redeemed_at` added in 0010)* holds
 redeemable codes:
@@ -633,11 +637,11 @@ same shape for a chaptered single-file m4b and for a folder of mp3 parts:
 See [Scanner](scanner.md#chapter-normalization) for how these are built.
 
 The `chapters` rows do not always hold the scan's own chapters. While a book
-plays a community recording's chapter list instead of its own, or the chapters
-a Bridge found in its narration, the rows hold those chapters.
-`books.chapters_source` says which: `''` for the scan's own, `'community'` or
-`'generated'`. `chapters_fit` names the fit in the rows, so an unchanged one is
-not rewritten. Podcast episodes use `'id3_chap'` for their validated CHAP
+plays a community recording's chapter list instead of its own, the chapters a
+Bridge found in its narration, or an admin's edited list, the rows hold those
+chapters. `books.chapters_source` says which: `''` for the scan's own,
+`'community'`, `'generated'` or `'edited'`. `chapters_fit` names the fit in the
+rows, so an unchanged one is not rewritten. Podcast episodes use `'id3_chap'` for their validated CHAP
 attachment, without the book source-choice pipeline (see
 [Podcasts](#podcasts)). `books.scanned_chapters` always holds the scan's own
 chapters as JSON with their scanned titles. `UpsertBook` writes it, as it
@@ -646,14 +650,18 @@ writes `scanned`.
 `refreshEffective` (`applyChapterSource`) picks the source in the same
 transaction:
 
-1. The community's chapters go over the scan's when a current check fitted
+1. An admin's edited list (`chapter_edits`, below) goes over every other source
+   while the book's files are the ones it was made on. On other files it is
+   dormant and the rules below decide.
+2. Otherwise the community's chapters go over the scan's when a current check fitted
    and either an admin chose them (`chapter_choices`, below) or, with no
    choice, the book has no chapters of its own.
-2. Otherwise, with no choice, a stored `chapters.json` that fits the book's
+3. Otherwise, with no choice, a stored `chapters.json` that fits the book's
    files goes over them
    ([Generated chapters](community-chapters.md#generated-chapters)).
 
-Chapter renames apply after, either way.
+Chapter renames apply after, except over an edited list, whose titles are its
+own.
 
 **`community_chapters`** *(0035)* holds a book's last community chapter check:
 
@@ -683,6 +691,17 @@ source. PK `(library_id, path)`, no FK to `books`. `source` is `files` or
 `book_overrides`. It is kept apart from that table because it is not a
 metadata value (no part of `edited` / `edited_fields`). It moves with the
 book's other edits and is never copied onto a joined book.
+
+**`chapter_edits`** *(0078)* holds an admin's own chapter list for a book, made
+in the console's chapter editor. PK `(library_id, path)`, an FK to `libraries`
+`ON DELETE CASCADE`, no FK to `books`. `list` is a `metadata.ChapterList` (the
+shape of a Bridge's `chapters.json`, generator `console`): the chapters on the
+whole-book timeline and the files they were made on, each with its book-relative
+path, size and `duration_ms`. The other columns are `updated_by` (`ON DELETE SET
+NULL`) and `updated_at`. When it applies:
+[Edited chapters](community-chapters.md#edited-chapters). Like
+`chapter_choices`, it moves with the book's other edits and is never copied onto
+a joined book, which is other audio.
 
 **`book_more_series`** *(0041)* holds a book's other series by key: one row per
 series in `more_series` that isn't its main one.
@@ -2289,6 +2308,7 @@ The migration history so far:
 | 0074 | `book_hints` | [Match hints from an import](#match-hints-from-an-import): `book_hints` (`library_id` `ON DELETE CASCADE`, `path`, `source`, `asin` and `isbn` `TEXT NOT NULL DEFAULT ''`, `import_id` `INTEGER NOT NULL DEFAULT 0`, `set_at`; primary key `(library_id, path, source)`) and the index `idx_book_hints_import` on `import_id`. No data moves |
 | 0076 | `podcast_feed_notices` | `podcast_feed_state.feed_failures`, `feed_network_failures` and `failing_announced` (`INTEGER NOT NULL DEFAULT 0`), the failing-feed run of the podcast notifications (see [Podcasts](#podcasts)). No backfill |
 | 0077 | `oidc` | [Single sign-on](#single-sign-on-tables): `users.email` (`TEXT NOT NULL DEFAULT ''`) with the partial index `idx_users_email` (`email COLLATE NOCASE WHERE email <> ''`), `user_identities` (UNIQUE `(issuer, subject)` and `(user_id, issuer)`, `user_id` `ON DELETE CASCADE`, `linked_by` `ON DELETE SET NULL` with `idx_user_identities_linked_by`) and `oidc_pending` (`AUTOINCREMENT`, UNIQUE `(issuer, subject)`, `idx_oidc_pending_seen`). No data moves |
+| 0078 | `chapter_edits` | `chapter_edits` (an admin's edited chapter list per book, durable and path-keyed, `library_id` `ON DELETE CASCADE`, `updated_by` `ON DELETE SET NULL`; see [Edited chapters](community-chapters.md#edited-chapters)) and `cast_grants.editor` (`INTEGER NOT NULL DEFAULT 0`, the [editor tokens](auth-and-security.md#cast-tokens)). No data moves |
 
 ## SQLite choices
 

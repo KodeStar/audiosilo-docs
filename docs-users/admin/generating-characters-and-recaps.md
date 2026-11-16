@@ -192,7 +192,9 @@ The Bridge never guesses. When it can't find the chapters with confidence, the j
 pauses and says why. You can:
 
 - **add chapter markers to the audio file** with your tagging tool, then cancel
-  the job, or
+  the job,
+- cancel the job and [set the chapters yourself](books.md#edit-chapter-times-and-titles)
+  in the console, or
 - cancel the job and leave the book as it is.
 
 ### Where found chapters show, and turning them off
@@ -202,8 +204,9 @@ were found on this server. In the console, the book's
 [Chapters card](books.md#chapters-found-in-the-narration) shows them and turns
 them off or on.
 
-A book's own chapters always win, then the community database's, then the found
-ones. Replacing or re-encoding the file stops them being used.
+Chapters you [edit on the book's page](books.md#edit-chapter-times-and-titles)
+win, then the book's own, then the community database's, then the found ones.
+Replacing or re-encoding the file stops found chapters being used.
 
 ## Costs and the monthly cap
 

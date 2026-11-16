@@ -187,6 +187,67 @@ The **Chapters** card shows the book's chapters as a timeline and a list.
 Click a chapter's title to rename it. A revert button puts the file's title
 back.
 
+#### Edit chapter times and titles
+
+**Edit chapters** on the Chapters card lets you move, add, delete and rename
+chapters. Your list is saved on the server. The audio files are not changed.
+
+![The chapter editor with its player and a new chapter after chapter 1](/img/screenshots/admin/book-chapters-edit.png)
+
+Each row is a chapter's start time and title. Times count from the start of the
+book, like `1:02:03` or `12:34.5`. A row with a lock starts one of the book's
+files. You can rename it, but its time is fixed and it can't be deleted, so no
+chapter runs from one file into the next.
+
+To edit the chapters:
+
+1. Open the book's page and click **Edit chapters** on the Chapters card.
+2. Change the rows:
+   - type a new time or title;
+   - click **+** on a row to add a chapter after it, or the bin to delete it;
+   - enter seconds in **Shift all by** (negative for earlier) and click
+     **Shift** to move every unlocked chapter. Nothing moves if a chapter
+     would leave its file.
+3. Click **Save chapters**.
+
+Players use the new chapters, and downloaded copies update theirs. The card
+says **Chapters edited on this server.**, with who saved them and when. While
+your list is in use, rename its chapters in the editor.
+
+**Find the moment by ear.** Click a row's number to load its file in the
+editor's player. Step back or forward by a second or a tenth, or click **Play
+5 s** to hear the chapter's start. **Set to playhead** moves the chapter there,
+and **Add at playhead** adds one.
+
+**Paste a list.** Click **Paste timestamps** and paste one chapter a line, the
+time and title either way round:
+
+```
+0:00 Opening credits
+12:34 Chapter 1
+Chapter 2 1:02:03.5
+```
+
+The preview lists the chapters and the lines it left out. **Replace chapters**
+uses it. A pasted chapter within a second of a file's start gives its title to
+that file's locked row.
+
+**What a save needs.** Chapters start at least a second apart, inside the book.
+Each title is one line of at most 200 bytes, and a book has at most 2,000
+chapters. The editor marks a row that breaks a rule and saves once it's fixed.
+If the book's files change while you edit, nothing is saved. Cancel and edit
+again.
+
+**Revert edit** deletes your list. The book goes back to the community's
+chapters, the ones found in the narration, or the files' own.
+
+Your list belongs to the book's files as they were. If a file is replaced,
+re-encoded, renamed, added or removed, the card says **Your edited chapters are
+set aside** and listeners get the book's other chapters. Put the files back to
+use your list again, or revert it. Moving the book's folder keeps your edit,
+and so does renaming a book that is one audio file loose in the library, not in
+a folder of its own.
+
 #### Community chapters
 
 The community database on [AudioSilo Meta](https://meta.audiosilo.app) has chapter lists for most
@@ -308,3 +369,7 @@ for listeners too, edit its **Series number** on
   [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
   doesn't write it back.
 - **The community database has no genres or tags yet**, so matching never changes them.
+- **A book using your edited chapters offers no Detect chapters** on the
+  [Health](health.md) page. Revert the edit first.
+- **The chapter editor's player plays each file as it is stored.** A file your
+  browser can't play doesn't load there, but you can still type the times.

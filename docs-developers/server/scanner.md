@@ -1774,7 +1774,7 @@ predicate over `books b`, shared by the counts (`IssueCounts`) and the lists
 | `unknown_asin` | its own ASIN is one the [unknown-ASIN report](configuration.md#the-unknown-asin-report-metadatareport_unknown) found the community database doesn't know (an `unknown_asin_reports` row with `unknown = 1`, matched on the upper-cased, trimmed ASIN; `unknownASINExpr`), and it has no ISBN, no `book_matches` row and no ASIN a community match gave it (`book_overrides` of source `community`), so matching it by hand settles it. It still counts as matched (`matchedExpr`), so Match automatically skips it. The summary lists the kind only while the report is on, since only its lookups fill the table |
 | `series_spellings` | another book of its library spells its main series another way: the same `series_key`, a different `series`. This takes two range seeks on `idx_books_series_key`, for a spelling below its own or above. `SeriesSpellingGroups` lists them per series from the same predicate, and the console's fix sets one spelling with a bulk edit |
 | `no_chapters` | it is longer than **2 hours** and has at most one chapter. The console shows why community chapters weren't used from the row's `chapters_check` (a failed [community chapter check](community-chapters.md)) |
-| `detailed_chapters` | its last community chapter check is `refine` (the community's finer chapters fit), and it has no `chapter_source` choice. Picking either source settles it |
+| `detailed_chapters` | its last community chapter check is `refine` (the community's finer chapters fit), it has no `chapter_source` choice and no edited chapter list. Picking either source, or editing the chapters, settles it |
 | `transcode` | its codec doesn't play in browsers (`media.DirectPlayable`) |
 | `duplicate` | it is one of a group of copies (below) |
 
@@ -1845,12 +1845,12 @@ through the fingerprint:
   `reclassified` skips such a pair: nested paths with different sizes. An
   equal size, a single-part folder, is still the same book.
 - A real match calls `catalog.MoveDurableState(lib, oldPath, newPath)`. A
-  same-path call is a no-op. It moves **all fifteen** path-keyed book tables:
+  same-path call is a no-op. It moves every path-keyed book table, among them
   `progress`, `bookmarks`, `notes`, `listening_history`,
   `listening_sessions`, `listening_daily`, `favourites`, `up_next`,
   `collection_items`, `ratings`, `book_enrichment`, `issue_ignores`,
-  `book_overrides`, `chapter_overrides` and `book_covers`. So a rename or move
-  never orphans a user's position, queue entry, collection entry or rating, a
+  `book_overrides`, `chapter_overrides`, `chapter_choices`, `chapter_edits`,
+  `book_covers` and `book_matches`. So a rename or move never orphans a user's position, queue entry, collection entry or rating, a
   book's attached ASIN, an issue an admin ignored, or an admin's edits and
   custom cover.
 
@@ -1860,9 +1860,9 @@ through the fingerprint:
 
 1. **The book's own state** (`moveBookState`). `book_enrichment` and
    `issue_ignores` move with `UPDATE OR REPLACE`. Then, if the moved book has
-   any metadata override, chapter override or custom cover, the destination's
-   rows in **all three** of those tables are deleted first, and the moved
-   book's set takes their place. Edits and cover follow the book as one set,
+   any metadata override, chapter override, chapter choice, edited chapter
+   list, custom cover or recorded community match, the destination's rows in
+   **all six** of those tables are deleted first, and the moved book's set takes their place. Edits and cover follow the book as one set,
    so a stale lock or cover left at the new path by an earlier book can't merge
    in. A moved book with none of them keeps the new path's own rows, as any
    book appearing there would.

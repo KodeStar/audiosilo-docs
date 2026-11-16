@@ -61,6 +61,7 @@ Everything else works with the server alone.
 - [Organize your audiobook files](getting-started/organizing-your-library.md): folder layout and supported formats.
 - [Libraries](admin/libraries.md): add folders, rescan and schedule scans.
 - [Fix book details](admin/books.md): match books with community metadata, or edit them by hand.
+- [Edit a book's chapters](admin/books.md#edit-chapter-times-and-titles): move, add, delete and rename chapters in the console, with a player to find each start. The files are not changed.
 - [Library health](admin/health.md): find books that could be better and match many at once.
 - [Community metadata](community/meta-site.md): a free database of books, series and release dates.
 - [Characters, recaps and chapters](admin/generating-characters-and-recaps.md) for books the community hasn't covered. **(Bridge)**

@@ -761,6 +761,48 @@ use (`chapter_source: "generated"`):
 The card follows the book's `chapters.detect` job (`useBookGenerateJob` with
 `KIND_DETECT`) and fetches the book again when it ends.
 
+**The chapter editor.** **Edit chapters** in the card's header (any book with
+files) swaps the card's body for `ChaptersEditor` (`chapters-editor.tsx`). Its
+rules are the pure `chapters-edit-model.ts`, and the paste dialog is
+`chapters-paste-dialog.tsx`.
+
+- The editor reads the page once when it opens: the files laid end to end by
+  their `chapter_basis` lengths (`detailSpans`), the `chapter_basis` it saves
+  against, and one draft row per chapter, plus one for any file no chapter starts
+  (`draftFromChapters`). A row that starts a file is `fixed`: its title is
+  editable, its time is not, and it can't be deleted.
+- Rows take a whole-book time (`parseTime`: `h:mm:ss`, `m:ss` or seconds, each
+  with a fraction) and a title. Add after a row, Add at playhead, Delete, Shift
+  all (refused when a chapter would leave its file, `crosses_file`) and Paste
+  timestamps (`parseTimestamps`, then `rowsFromPaste`, with a preview before
+  **Replace chapters**) all return new rows or a refusal the editor words.
+- `validateDraft` mirrors the server's rules (see
+  [Edited chapters](community-chapters.md#edited-chapters)) and marks the rows
+  that break one. **Save chapters** stays off until something changed and the
+  list holds.
+- **Save chapters** sends `PUT …/book/chapters` (`editRequest`) and settles the
+  page from its answer. A `400 chapters_invalid` is worded by its `detail`, and
+  a `409 chapters_basis` says the files changed and refetches the book.
+  **Cancel** with changes, or leaving the page, asks first (`LeaveGuard`).
+- The player (`Scrubber`) streams the chosen row's file with an editor token
+  (`useBookMediaToken`: `POST /cast/token` with `"editor": true`, never the
+  session token) and opens at the row's place in that file. It steps by 1 s and
+  0.1 s, plays 5 s from the row's start, and sets the row's start or adds a
+  chapter at the playhead, which never passes the file's end. A load failure mints
+  a new token once (the old one may have expired or been capped), then says the
+  audio didn't load. It plays the file as stored, so a file the browser can't
+  play doesn't load.
+
+With an edited list in use (`chapter_source: "edited"`), the card says
+"Chapters edited on this server." with `chapter_edit`'s author and time, and
+offers **Revert edit** (`DELETE …/book/chapters`, behind a `ConfirmDialog`).
+The list's titles can't be renamed in place, the Community panel offers no
+action and notes that the edit is used over the community's
+(`communityState`), and `chapterSourceAction` offers nothing. A dormant edit
+(`chapter_edit.state: "dormant"`) shows a warning notice with **Revert edit**.
+Health's `rowFix` offers no **Detect chapters** for an edited book and says why
+(`health.detect.edited`).
+
 ##### The Read-along card
 
 The **Read-along** card (`features/book/readalong-card.tsx`,

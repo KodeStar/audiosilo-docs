@@ -257,7 +257,7 @@ No IP address is stored.
 | `member` | `create` (details: `member`, `kind`, `access`, `sign_in_here`); `update` (`member` plus what changed: `name`, `kind`, `access`, and `collections` as a count); `delete`; `session`; `pair`; `device_revoke` (`member`, `device_id`). These record [household members](api/reference.md#household-members) managed from the player. See the notes below the table. |
 | `invite` | `create`, `rotate`, `revoke` |
 | `library` | `create`, `update`, `reorder`, `folder_override`, `delete` |
-| `book` | `edit`, `bulk_edit`, `enrichment`, `cover_set`, `cover_remove` |
+| `book` | `edit`, `bulk_edit`, `enrichment`, `cover_set`, `cover_remove`; `chapters_edited` (details: `chapter_count`) and `chapters_reverted` (the [chapter editor](community-chapters.md#edited-chapters)); `match_run`, `asin_repick` and `match_refresh` (a [bulk match run](api/reference.md#bulk-community-matching) started; details: `run`, `books`, `region`), `match_apply`, `match_stop` and `match_clear` |
 | `share` | `create`, `update`, `delete`, `add_paths`, `remove_paths`, `grant`, `revoke` |
 | `device` | `revoke` |
 | `progress` | `edit` |

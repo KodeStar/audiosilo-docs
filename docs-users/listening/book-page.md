@@ -84,7 +84,7 @@ At the top, **The whole book** timeline shows each chapter, the part you've hear
 
 Below it, every chapter is listed in order, with its length or a tick once you've heard it. Tap a chapter to listen from there.
 
-Some books get their chapters from the community database, or from your server's [Bridge](../admin/generating-characters-and-recaps.md#books-without-chapters), which finds them in the narration. A line at the end of the list says where they came from.
+Some books get their chapters from the community database, or from your server's [Bridge](../admin/generating-characters-and-recaps.md#books-without-chapters), which finds them in the narration. On others, an admin [edited the chapters](../admin/books.md#edit-chapter-times-and-titles) on your server. A line at the end of the list says where they came from.
 
 A book with no chapter marks lists its files. One long file is split into 30-minute **Parts**. Change their length under **Chapter length** in [Settings](settings.md#playback).
 
