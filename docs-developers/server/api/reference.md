@@ -2262,6 +2262,8 @@ not the community-written `community_description` on
   than the files' own (see [Community chapters](../community-chapters.md)).
 - `"generated"`: the chapters a Bridge found in the narration of a book with none
   of its own (see [Generated chapters](../community-chapters.md#generated-chapters)).
+- `"edited"`: a list an admin made in the console's chapter editor (see
+  [Edited chapters](../community-chapters.md#edited-chapters)).
 - `"id3_chap"`: a podcast's validated MP3 CHAP attachment.
 - absent otherwise.
 
@@ -2361,11 +2363,12 @@ multi-file mp3 parts render identically.
   book's audio (an admin chose them, or the files have no chapters of their own);
 - `"generated"` when they are the chapters a Bridge found in the narration of a
   book with no chapters of its own (its `.audiosilo/chapters.json`);
+- `"edited"` when they are a list an admin made in the console's chapter editor;
 - `"id3_chap"` for a podcast's validated MP3 CHAP attachment;
 - **absent** for other files' own chapters, and on servers before it.
 
 The chapters keep the same shape either way, so an old client
-plays community or generated chapters as ordinary ones. See
+plays community, generated or edited chapters as ordinary ones. See
 [Community chapters](../community-chapters.md) and
 [Generated chapters](../community-chapters.md#generated-chapters).
 
@@ -5498,6 +5501,13 @@ may mint (it can play); an API key may not. How long a cast token lives, how man
 person keeps, what ends it and how dead ones are pruned:
 [Cast tokens](../auth-and-security.md#cast-tokens).
 
+The optional `"editor": true` mints an **editor token**. The console's chapter
+editor sends it for the `<audio>` element that plays the book while an admin sets
+chapter times. It is the same one-book, media-only token, but it lives 4 hours
+and counts against a cap of its own, so editing never drops a token a receiver is
+playing. It allows no more than a cast token, so any caller may ask for one. A
+player never sends it.
+
 | Status | Meaning |
 |---|---|
 | `201` | `{ token, expires_at }` |
@@ -6595,7 +6605,7 @@ what the first does).
 | `has_cover` | `true`\|`false` | - | a sibling image, embedded art or a custom cover |
 | `has_chapters` | `true`\|`false` | - | **more than one** chapter (every single-part book has one) |
 | `matched` | `true`\|`false` | - | the book has an ASIN or an ISBN, or (from 2.6.0) a recorded community match without one (a `book_matches` row, see [`community_match`](#get-apiv1adminlibrariesidbook)) |
-| `edited` | `true`\|`false` | - | the book has a metadata edit, or a chapter-title edit on a chapter it still has (one on an index a rescan dropped is dormant and doesn't count) |
+| `edited` | `true`\|`false` | - | the book has a metadata edit, a chapter-title edit on a chapter it still has (one on an index a rescan dropped is dormant and doesn't count), or an edited chapter list that applies (`chapters_source` `edited`; a dormant one doesn't count) |
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
 | `added_before` | date | - | exclusive upper bound, same formats |
@@ -6709,7 +6719,8 @@ is a `400` too (`too many format or codec values`).
   unlike the player's `Book`, which omits it). `genres` and `tags` are `[]` for
   none.
 - `edited_fields` - the fields with an override (an edit or an accepted community
-  value), `[]` when none; `edited` is also true for a chapter-title edit alone.
+  value), `[]` when none; `edited` is also true for a chapter-title edit alone,
+  or an edited chapter list that applies.
 - `file_count` is `1` for a single-file book.
 - `scan_error` - the first problem reading the book's files on its last
   indexing:
@@ -6731,8 +6742,10 @@ is a `400` too (`too many format or codec values`).
   that many separate books (see
   [Folders that may hold several books](../scanner.md#folders-that-may-hold-several-books)).
 - `chapters_source` - where the book's chapters come from now: `files` (the
-  scan's own), `community` (a community chapter list fitted onto the audio) or
-  `generated` (the chapters a Bridge found in the narration).
+  scan's own), `community` (a community chapter list fitted onto the audio),
+  `generated` (the chapters a Bridge found in the narration) or `edited` (an
+  admin's list from the chapter editor). The console's Health `no_chapters` rows
+  offer no **Detect chapters** for an `edited` book.
 - `chapter_choice` - the admin's choice of chapter source on the book page,
   `files` or `community`; omitted when it is automatic. Chapters found in the
   narration stand in only with no choice, so the console's Health `no_chapters`
@@ -7025,6 +7038,7 @@ book path).
   "indexed_at": "2026-10-03T09:12:01.33Z",
   "chapter_source": "files",
   "chapter_choice": "",
+  "chapter_basis": { "files": [ { "path": "The Martian.m4b", "size": 304112640, "duration_ms": 38040500 } ] },
   "community_chapters": {
     "status": "refine",
     "work_id": "the-martian",
@@ -7057,7 +7071,9 @@ book path).
   `""` for none), `abridged` `"true"` / `"false"` / `""`, and `genres` / `tags`
   their canonical JSON list (`"[\"Owned\"]"`, `""` for none).
 - `chapters` - every chapter with its effective `title`, the `scanned_title`
-  and whether an edit renames it.
+  and whether an edit renames it (never while an edited list applies: its titles
+  are its own). Each carries its `file_path`, in-file `start` and `end`, and
+  `book_offset`.
 - `files` - each audio file (a single-file book lists itself), with its own
   `codec` and a derived `bitrate` in bits per second (`0` when the duration is
   unknown).
@@ -7071,16 +7087,29 @@ book path).
   own folder, or the folder a single-file book sits in; `""` = the library root)
   and its folder-detection `override` (`"book"`, `"collection"` or `""`).
 - `chapter_source` - where `chapters` come from now: `"files"` (the scan's
-  own), `"community"` (the community list below, fitted onto the audio) or
+  own), `"community"` (the community list below, fitted onto the audio),
   `"generated"` (the chapters a Bridge found in the narration, its
   `chapters.json`; see
-  [Generated chapters](../community-chapters.md#generated-chapters)).
+  [Generated chapters](../community-chapters.md#generated-chapters)) or
+  `"edited"` (an admin's list from the chapter editor; see
+  [Edited chapters](../community-chapters.md#edited-chapters)).
 - `chapter_choice` - the admin's choice of source: `"files"`, `"community"`,
   or `""` when it is automatic (the community's chapters are used only for a
   `fill`: a book with no chapters of its own; chapters found in the narration
   only with no choice, when the community's don't apply). It is never
-  `"generated"`. It is not a metadata edit, so it is not in `fields` and doesn't
-  make the book `edited`.
+  `"generated"` or `"edited"`, and a choice made while an edited list exists
+  is kept for after a Revert. It is not a metadata edit, so it is not in
+  `fields` and doesn't make the book `edited`.
+- `chapter_edit` - the book's edited chapter list, omitted when it has none:
+  `state` is `"applied"` (it is `chapters` now) or `"dormant"` (the book's files
+  are not the ones it was made on, so `chapters` come from the next source);
+  `edited_by` is the username that saved it (`null` once that account is
+  deleted) and `edited_at` when.
+- `chapter_basis` - always present: the book's audio files in play order, each
+  with its `path` relative to the book (a single-file book's is its file name),
+  `size` and `duration_ms`. A
+  [`PUT …/book/chapters`](#put-apiv1adminlibrariesidbookchapters) sends it back
+  as it was read.
 - `generated_chapters_fit` - present and `true` when the book has a stored
   `chapters.json` that fits its files as they are now, so it would stand in with
   no choice whenever the community's don't apply: always while `chapter_source` is
@@ -7189,7 +7218,7 @@ one request is applied in one transaction.
 | `revert` | array | field names to put back to what the scan found |
 | `add` · `remove` | object | label field (`genres`, `tags`) → labels to add to, or take out of, the book's own list, as on the [bulk edit](#post-apiv1adminbooksbulk) (same rules and refusals) |
 | `source` | string | `"edited"` (default) or `"community"` (accepted from a [match](#get-apiv1adminlibrariesidbookmatch)) - recorded on every field this request sets |
-| `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others |
+| `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others. Refused while an edited list applies (change its titles with [`PUT …/book/chapters`](#put-apiv1adminlibrariesidbookchapters)) |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
 | `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`, else chapters a Bridge found in the narration when they fit). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included. `"generated"` is not a choice: `"files"` turns found chapters off and `"auto"` brings them back |
 | `match` | object | from 2.6.0: `{ "work_id", "recording_id"?, "asin"?, "isbn"? }`, the community match the edit was taken from. Needs `source: "community"`, and may come alone (no `set`). `{ "work_id": "" }` unlinks the book. One book at a time: the bulk edit refuses it. More under the table |
@@ -7304,7 +7333,8 @@ main series is the series the file's number belongs to. So swapping and revertin
 - a `source` other than the two above (`field: "source"`);
 - a `chapter_source` other than the three above (`field: "chapter_source"`);
 - chapter problems (`field: "chapters"`): a chapter the book doesn't have, an empty
-  title, one index both renamed and reverted;
+  title, one index both renamed and reverted, or any rename or revert while an
+  edited chapter list applies;
 - a `match` the server refuses (`field: "match"`): a nonempty work id without
   `source: "community"`, a whitespace-only work id, a `match` with no `work_id`
   (absent or null), an id over 200 characters or holding a control character, or
@@ -7315,6 +7345,77 @@ An unknown key inside `match` is `invalid request`.
 An edit is audited as `book.edit` (`chapter_source` in its details when
 sent, and `match`, the work id, `""` for an unlink). It also wakes the [community chapter checks](../community-chapters.md#when-a-book-is-checked),
 so a newly set ASIN or ISBN is checked soon after.
+
+### `PUT /api/v1/admin/libraries/{id}/book/chapters`
+
+Saves an admin's own chapter list for one book (the console's chapter editor),
+then returns the updated book page, the same body as
+[`GET …/book`](#get-apiv1adminlibrariesidbook). `?path=` required. The list
+becomes the book's first chapter source while its files are the ones it was made
+on (see [Edited chapters](../community-chapters.md#edited-chapters)). A second
+`PUT` replaces it.
+
+```json
+{
+  "basis": { "files": [
+    { "path": "01 - Down the Rabbit-Hole.mp3", "size": 7340032, "duration_ms": 917560 },
+    { "path": "02 - The Pool of Tears.mp3", "size": 6815744, "duration_ms": 851200 }
+  ] },
+  "chapters": [
+    { "start": 0, "title": "Down the Rabbit-Hole" },
+    { "start": 412.5, "title": "The Little Door" },
+    { "start": 917.56, "title": "The Pool of Tears" }
+  ]
+}
+```
+
+- `basis` - the book page's `chapter_basis`, sent back unchanged. The server
+  compares it with the book's files now (path, size and `duration_ms`, in play
+  order) and refuses a list made on other files.
+- `chapters` - each chapter's `start` on the whole-book timeline in seconds (kept
+  to the millisecond) and its `title`. Every file's start must begin a chapter: a
+  start within 50 ms of a file's start counts as that file's start. A file's start
+  is the sum of the `duration_ms` before it in `basis`.
+
+The chapters are stored with the basis, in the shape of a `chapters.json`. Saving
+is audited as `book.chapters_edited`, with `chapter_count` in its details.
+
+| Status | Meaning |
+|---|---|
+| `200` | the updated book page, `chapter_source: "edited"` and `chapter_edit.state: "applied"` |
+| `400` | `invalid library id`; `path is required`; `invalid request` (malformed JSON, an unknown key, no `basis`, or a body over 4 MiB); `code: "chapters_invalid"` with a `detail` key, below |
+| `401` / `403` | anonymous / non-admin |
+| `404` | `library not found`; `code: "book_not_found"` - no book is indexed at that path |
+| `409` | `code: "chapters_basis"` - `basis` is not the book's files now (read the book page again); `code: "not_book_library"` - a podcast library, whose episodes take their chapters from their feed |
+
+```json
+{ "error": "chapters_invalid", "code": "chapters_invalid", "detail": "order" }
+```
+
+`detail` names the first rule the list breaks:
+
+| `detail` | Refused when |
+|---|---|
+| `empty` | there are no chapters |
+| `too_many` | there are more than 2000 |
+| `out_of_range` | a start is below 0, or at or past the book's end |
+| `title` | a title is empty once trimmed, longer than 200 bytes, or holds a control character |
+| `file_start` | a file's start begins no chapter |
+| `order` | the starts are out of order, or two are less than 1 s apart |
+
+### `DELETE /api/v1/admin/libraries/{id}/book/chapters`
+
+Reverts the book's edited chapter list: the server deletes it, and the book's
+chapters come from the next source again (with its chapter renames). Returns the
+updated book page. `?path=` required. A book with no edit is answered as it is.
+Audited as `book.chapters_reverted`, only when there was an edit.
+
+| Status | Meaning |
+|---|---|
+| `200` | the updated book page, with no `chapter_edit` |
+| `400` | `invalid library id`; `path is required` |
+| `401` / `403` | anonymous / non-admin |
+| `404` | `library not found`; `code: "book_not_found"` |
 
 ### `POST /api/v1/admin/libraries/{id}/book/community-chapters`
 
@@ -8252,8 +8353,9 @@ a scan last finished.
     lists them per series.
   - `detailed_chapters` is a book whose last
     [community chapter check](../community-chapters.md) found finer community
-    chapters that fit (`refine`) and whose chapter source no admin has chosen. The
-    console's fix is a bulk edit with `chapter_source: "community"`.
+    chapters that fit (`refine`), whose chapter source no admin has chosen and
+    whose chapters no admin has edited (an edit settles it, applied or dormant).
+    The console's fix is a bulk edit with `chapter_source: "community"`.
   - `split_discs` is a book split across disc folders (a CD rip read as one book
     per disc), counted once and listed by its first disc. The console's fix sets a
     `book` [folder override](#put-apiv1adminlibrariesidfolder-override) on the

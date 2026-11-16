@@ -1047,6 +1047,35 @@ await step('book: generated description', async () => {
   await shoot(page, 'admin/book-description.png', {clip: around([await card.boundingBox()])});
 });
 
+// ── Edit chapter times ──────────────────────────────────────────────────────
+// Alice's Adventures in Wonderland (one chapter a seeded file) opens the Chapters
+// card's editor: a chapter is added after chapter 1 and titled, which chooses it,
+// so the editor's player loads its file at its start (an editor token). Never
+// saved: Cancel and Discard changes leave the book as it was, and the page with no
+// leave guard for the next step.
+await step('book: edit chapters', async () => {
+  if (!wanted('admin/book-chapters-edit.png')) return;
+  // By path: the provisioning reverses this book's author tag ("Carroll, Lewis").
+  const book = ((await api(token, 'GET', '/admin/books?limit=200'))?.books ?? [])
+    .find((b) => b.path.includes("Alice's Adventures"));
+  if (!book) throw new Error("no seeded Alice's Adventures in Wonderland");
+  await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+  const card = page.locator('section[aria-labelledby="chapters-title"]');
+  await card.getByRole('button', {name: 'Edit chapters'}).click();
+  await card.getByRole('button', {name: 'Add a chapter after chapter 1'}).click();
+  await card.getByRole('textbox', {name: 'Title of chapter 2'}).fill('The little door');
+  // The player has the new row's file once its metadata is in.
+  await page.waitForFunction(() => (document.querySelector('audio')?.readyState ?? 0) >= 1, null,
+    {timeout: 15000});
+  await page.mouse.move(0, 0);
+  await card.scrollIntoViewIfNeeded();
+  await sleep(800);
+  await shoot(page, 'admin/book-chapters-edit.png', {clip: around([await card.boundingBox()])});
+  await card.getByRole('button', {name: 'Cancel'}).click();
+  await page.getByRole('button', {name: 'Discard changes'}).click();
+  await card.getByRole('button', {name: 'Edit chapters'}).waitFor({timeout: 5000});
+});
+
 // ── A recorded community match ──────────────────────────────────────────────
 // The Hound of the Baskervilles is matched as the match dialog does it (the first
 // candidate whose recording has an ASIN) and unlinked afterwards, so later shots

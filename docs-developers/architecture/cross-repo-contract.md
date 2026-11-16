@@ -453,10 +453,13 @@ The chapters may come from somewhere other than the files:
   ([Community chapters](../server/community-chapters.md)).
 - The chapters a Bridge found in the narration of a book with none of its own
   ([Generated chapters](../server/community-chapters.md#generated-chapters)).
+- A list an admin made in the console's chapter editor, the first source of all
+  while the book's files are the ones it was made on
+  ([Edited chapters](../server/community-chapters.md#edited-chapters)).
 
 They keep this exact shape, so a player needs nothing to play them. The only
-additive marker is `chapters_source: "community"` or `"generated"` on `/chapters` and
-the `/item` book. The player mirrors it as `Book.chapters_source` and
+additive marker is `chapters_source: "community"`, `"generated"` or `"edited"` on
+`/chapters` and the `/item` book. The player mirrors it as `Book.chapters_source` and
 `ChaptersResponse.chapters_source` (the `ChaptersSource` union).
 
 - The player's book page captions such chapters. An older app shows them as ordinary
@@ -1168,6 +1171,8 @@ Capability `cast`. `POST /cast/token` `{ library_id, path }` answers
 the `?token=` of that book's cover and stream (see
 [Cast tokens as media auth](../server/api/reference.md#cast-tokens-as-media-auth)).
 Its lifetime and policy are in [Cast tokens](../server/auth-and-security.md#cast-tokens).
+The console's chapter editor adds `"editor": true` for a token with a shorter life
+and a cap of its own; a player never sends it.
 
 - The web player's CSP admits the Cast Web Sender's three scripts on
   `https://www.gstatic.com` by path in `script-src`, and nothing else.

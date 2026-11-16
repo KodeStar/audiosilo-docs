@@ -1,6 +1,6 @@
 ---
 title: "Community chapters"
-description: "How audiosilo-server fits a community recording's chapter list onto a book's own audio: where the list comes from, when a book is checked, the anchored piecewise fit and its tolerances, pause snapping, the outcomes, how a fitted list replaces the scan's chapters without touching the files, and the generated chapters a Bridge found in the narration (the source between the community's and the files')."
+description: "How audiosilo-server fits a community recording's chapter list onto a book's own audio: where the list comes from, when a book is checked, the anchored piecewise fit and its tolerances, pause snapping, the outcomes, how a fitted list replaces the scan's chapters without touching the files, and the generated chapters a Bridge found in the narration (the source between the community's and the files'), and an admin's edited list, which goes before them all."
 ---
 
 The community metadata database holds a chapter list for most recordings. Each
@@ -244,8 +244,9 @@ it is path-keyed with no FK to `books`, so an index rebuild keeps it, and
 
 Three `books` columns from the same migration go with the `chapters` rows:
 
-- `chapters_source`: `''` for the scan's own, `'community'`, or `'generated'`
-  (see [Generated chapters](#generated-chapters)).
+- `chapters_source`: `''` for the scan's own, `'community'`, `'generated'`
+  (see [Generated chapters](#generated-chapters)) or `'edited'` (see
+  [Edited chapters](#edited-chapters)).
 - `chapters_fit`: a hash of the fit in the rows, so an unchanged fit is not
   written again.
 - `scanned_chapters`: always the scan's own chapters as JSON, with their
@@ -267,7 +268,9 @@ it, because the joined book is other audio.
 recorded check. It calls `applyChapterSource`, the one statement of the rule. A
 book gets:
 
-- the **community's** chapters when the check fitted, its `basis` is the
+- an admin's **edited** list, while it applies to the book's files (see
+  [Edited chapters](#edited-chapters));
+- otherwise the **community's** chapters when the check fitted, its `basis` is the
   book's current one, and either the admin chose them or there is no choice and
   the status is `fill`;
 - otherwise the **generated** ones a Bridge found in the narration, when they
@@ -286,8 +289,9 @@ and resets `chapters_source`. `refreshEffective` then re-applies the choice in
 the same transaction, so a rescan never shows the scan's chapters for a moment.
 
 Chapter renames (`chapter_overrides`, keyed by file and start) apply after the
-source. Renaming a community chapter therefore works like any rename, and
-switching back restores the files' chapters with their own renames.
+source, except over an edited list. Renaming a community chapter therefore works
+like any rename, and switching back restores the files' chapters with their own
+renames.
 
 ## Generated chapters
 
@@ -324,7 +328,7 @@ When the list applies:
 
 - the rows are the fit;
 - `books.chapters_source` is `'generated'` (`ChaptersFromGenerated`);
-- `chapters_fit` is a hash of what the list was fitted from (`generatedKey`):
+- `chapters_fit` is a hash of what the list was fitted from (`listFitKey`):
   the stored list, the scan's own chapters, and the files' book-relative paths,
   sizes and lengths. A refresh of an unchanged book therefore neither decodes
   nor fits the list again.
@@ -332,7 +336,7 @@ When the list applies:
 When the list stops applying (the file is gone, the audio changed, a community
 fill, or a `files` choice), the scan's own chapters come back.
 
-`useChapters` is the one write of a stand-in list for both sources. On a row
+`useChapters` is the one write of a stand-in list for every source. On a row
 from before the snapshot, it records the rows as the snapshot. Then, only when
 the book's community check was made of the book as it is now, it re-stamps that
 check's basis, so the check stays current.
@@ -343,6 +347,93 @@ and `auto` brings them back. Recording a changed `chapters.json` re-resolves
 the book at once, whether the Bridge's attachments rescan or a scan's backfill
 recorded it. The players get the chapters without a re-index.
 
+## Edited chapters
+
+An admin can replace a book's chapters with a list of their own, made in the
+console's chapter editor (see
+[Built-in web UI](web-ui.md#what-the-console-has-today)). The code is
+`catalog/chapteredits.go`.
+
+The edit is a row of **`chapter_edits`** (migration `0078`): PK `(library_id,
+path)`, `list`, `updated_by` (`ON DELETE SET NULL`) and `updated_at`. `list` is a
+`metadata.ChapterList`, the shape of a Bridge's `chapters.json`, with generator
+`console`. Its `chapters` are on the whole-book timeline in milliseconds, and its
+`files` are the files the edit was made on, each with its book-relative path,
+size and `duration_ms`. It is durable admin state like `chapter_choices`:
+path-keyed with no FK to `books`, moved with the book by `MoveDurableState`,
+never copied onto a joined book (other audio), and deleted with its library.
+
+### Precedence and dormancy
+
+An edit is the **first** source. `applyChapterSource` reads it before the
+choice, so the order is edited, then a choice or the community's, then
+generated, then the files'. `applyEdited` uses the list while its files are the
+book's:
+
+- `listedOrder` matches them as `chaptersOnFiles` does for a `chapters.json`:
+  as many files, each with the same book-relative path and size. In another play
+  order the chapters move with their files (`chaptersInOrder`).
+- A loose single-file book (one audio file in the library, not a folder:
+  `!IsFolder`) is compared by its file's size alone. Renamed, the file is the
+  book moved, so the edit has already moved with it. A folder holding one file
+  is matched by path like any folder book: renaming that file leaves the edit
+  dormant until the name comes back.
+- `placeOnFiles` (pure) puts each chapter in the file its start falls in, at the
+  same place in that file by the **lengths the list was made on** (`duration_ms`
+  of its basis). Each runs to the next start or the file's end. Its
+  `book_offset` comes from the files' lengths now. Another probe that reads a
+  file a little longer or shorter therefore moves no chapter within its audio. A
+  chapter that would start at or past its file's end now leaves the edit
+  dormant.
+- A start within 50 ms of a file's start (`fileStartSnapMS`) is that file's
+  first chapter. File starts are the sums of the files' lengths in whole
+  milliseconds (`fileStartsMS`), as the console sums the basis.
+
+While it applies, the rows are the placed list, `books.chapters_source` is
+`'edited'` (`ChaptersFromEdited`) and `chapters_fit` is `listFitKey(list, "",
+files)`, so an unchanged book neither decodes nor places the list again.
+
+On other files the edit is **dormant**. The book gets the next source's
+chapters, never the edit applied to other audio. When the files come back, the
+edit applies again. The admin book page says which with `chapter_edit.state`.
+
+No chapter crosses a file. Every file starts a chapter, whose start is fixed and
+whose title the admin can change.
+
+### Renames, choices and Health
+
+- While an edit applies, the renames in `chapter_overrides` are dormant: the
+  titles are the edit's. `refreshEffective` skips them, the book page marks no
+  chapter `edited`, and a `PATCH .../book` with `chapters` is `400
+  invalid_override` with `field: "chapters"`. Revert brings the renames back.
+- A `chapter_source` choice made while an edit exists is kept and used after a
+  Revert.
+- Health's `detailed_chapters` is settled while an edit exists, applied or
+  dormant. An applied edit marks the admin row `edited`.
+- The console offers no **Detect chapters** for a row whose `chapters_source` is
+  `edited` (`rowFix`), and the Community panel offers no source to switch to.
+
+### Saving and reverting
+
+[`PUT .../book/chapters`](api/reference.md#put-apiv1adminlibrariesidbookchapters)
+calls `SaveChapterEdit`. One transaction checks the request's `basis` against the
+book's files now (`basisOf`: path, size and `duration_ms`, in play order), checks
+the chapters (`checkChapterEdit`), writes the row and runs `refreshEffective`. A
+refused list names the first rule it breaks:
+
+| `detail` | Refused when |
+|---|---|
+| `empty` | there are no chapters |
+| `too_many` | there are more than 2000 (`metadata.MaxChapterListEntries`) |
+| `out_of_range` | a start is below 0, or at or past the book's end |
+| `title` | a title fails `metadata.ListChapterTitle`, the `chapters.json` rule: 1 to 200 bytes once trimmed, no control character |
+| `file_start` | a file's start begins no chapter (within 50 ms) |
+| `order` | the starts are out of order or less than 1 s apart (`minChapterGapMS`) |
+
+The console's `chapters-edit-model.ts` mirrors these rules, so they change
+together. `DELETE` calls `RevertChapterEdit`, which deletes the row and runs
+`refreshEffective`, so the next source applies.
+
 ## On the wire
 
 Every change is additive. An old client reads community chapters as ordinary
@@ -350,27 +441,32 @@ chapters.
 
 - `GET /libraries/{id}/chapters` and the book JSON of `GET /libraries/{id}/item`
   carry `chapters_source`. It is `"community"` for community chapters,
-  `"generated"` for chapters found in the narration, and absent otherwise. An
-  old app shows either as ordinary chapters with no label. See
+  `"generated"` for chapters found in the narration, `"edited"` for an admin's
+  edited list, and absent otherwise. An old app shows any of them as ordinary
+  chapters with no label. See
   [`/chapters`](api/reference.md#get-apiv1librariesidchapters).
 - The admin book page gains:
-  - `chapter_source`, which can be `generated` too;
+  - `chapter_source`, which can be `generated` or `edited` too;
   - `chapter_choice`;
   - `community_chapters`: the check's status and detail, not the fitted list;
   - `community_checking`;
   - `generated_chapters_fit`: a stored `chapters.json` fits the files as they
     are now, so it stands in with no choice when the community's chapters don't
-    apply.
+    apply;
+  - `chapter_edit` (the edit's state, author and time) and `chapter_basis` (the
+    files a `PUT` of an edit sends back).
+- `PUT` and `DELETE .../book/chapters` save and revert an edit.
 - `PATCH .../book` and `POST /admin/books/bulk` take `chapter_source`. The
   check is
   [`POST .../book/community-chapters`](api/reference.md#post-apiv1adminlibrariesidbookcommunity-chapters).
 - `GET /admin/books` rows carry `chapters_source`, `chapters_check` and
   `chapter_choice` (omitted when automatic).
 - Health gains the `detailed_chapters` kind: a `refine` check with no choice
-  made (see [Issues](scanner.md#issues)).
+  made and no edited list (see [Issues](scanner.md#issues)).
 
-The player shows a caption under community chapters, and another ("Chapters
-found in the narration on this server") under generated ones. It refreshes a
+The player shows a caption under community chapters, another ("Chapters
+found in the narration on this server") under generated ones, and a third
+("Chapters edited on this server") under edited ones. It refreshes a
 downloaded book's saved chapters when they change. See
 [The book page](../frontend/book-page.md#the-chapters-tab) and
 [Offline](../frontend/offline.md#lifecycle). The console's panel is described

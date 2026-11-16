@@ -326,13 +326,14 @@ it to the Series, Recaps and Characters tabs as `coverFor` (see
 - else the files, each jumping by `track`. A file after one of unknown length has a
   `NaN` start, and `timelineStarts` then gives the timeline nothing.
 
-The chapters answer's `chapters_source` can end the list with a quiet caption. Both
-captions are `SOURCE_CAPTION` entries drawn by `SourceLine`:
+The chapters answer's `chapters_source` can end the list with a quiet caption. Each
+caption is a `SOURCE_CAPTION` entry drawn by `SourceLine`:
 
 | `chapters_source` | Meaning | Caption | Key and `testID` |
 |---|---|---|---|
 | `"community"` | the server fitted a community recording's chapter list onto the audio (see [Community chapters](../server/community-chapters.md)) | a globe icon and "Chapters from the AudioSilo community database" | `book.chapters.community`, `book-chapters-community` |
 | `"generated"` | a Bridge found them in the narration of a book with no chapters of its own (see [Generated chapters](../server/community-chapters.md#generated-chapters)) | the server glyph in the caption's colour and "Chapters found in the narration on this server" | `book.chapters.generated`, `book-chapters-generated` |
+| `"edited"` | an admin edited the list in the console's chapter editor (see [Edited chapters](../server/community-chapters.md#edited-chapters)) | a pen icon and "Chapters edited on this server" | `book.chapters.edited`, `book-chapters-edited` |
 
 The caption shows only when the rows are real chapters. `BookChaptersTab` takes the
 answer's `source` only while `list.kind === 'chapters'`. Nothing else changes; the

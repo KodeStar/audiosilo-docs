@@ -244,6 +244,21 @@ debugger. The token is narrow in every way:
   **current** share scope. A revoked share is a `403`, and a restored one works
   again.
 
+**Editor tokens.** The console's chapter editor plays a book's files in an
+`<audio>` element, whose URL can carry no header. It streams with a cast token
+too, minted with `"editor": true` (`auth.IssueEditorToken`), never with the
+session token. An editor token is a cast token in every rule above, with three
+differences:
+
+- its grant has `cast_grants.editor = 1` (migration `0078`);
+- it lasts 4 hours (`editorTokenTTL`);
+- a person keeps at most 5 (`maxEditorTokens`).
+
+Each cap counts only tokens of its own use. A mint drops the oldest of its own
+kind past the cap, so opening the editor on many books never drops a token a
+receiver is playing, and casting never drops the editor's. It reads no more than
+a cast token, so the route lets any caller ask for one.
+
 Other properties:
 
 - Only the SHA-256 hash is stored.

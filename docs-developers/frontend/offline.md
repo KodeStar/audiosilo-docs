@@ -395,6 +395,8 @@ A book's chapters can change on the server after it was downloaded:
 - a [community chapter list](../server/community-chapters.md) fitted onto its audio
   (`chapters_source: "community"`);
 - the chapters a Bridge found in the narration (`"generated"`);
+- an admin's list from the console's chapter editor (`"edited"`), saved, reverted
+  or set aside when the files change;
 - an admin switching it back.
 
 `startChapterRefresh` keeps a download's chapters current. The root's services start
