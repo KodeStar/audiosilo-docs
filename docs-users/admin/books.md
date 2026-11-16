@@ -143,11 +143,11 @@ book in the community database:
   [Match automatically](health.md#matching-every-book-at-once). Use it for a
   recording with no ASIN or ISBN, or one whose identifier leads to the wrong
   book.
-- **Otherwise, the book's ASIN or ISBN.** The server looks it up once a day and
-  shortly after a scan finds new or changed books.
+- **Otherwise, the book's ASIN or ISBN.** The server looks up new and changed
+  books once a day, and shortly after a scan finds some.
 
 This needs [community metadata](server.md#community-metadata) switched on. It
-works with **Upcoming releases** switched off too: the server still looks up
+works with **Check for upcoming releases** switched off too: the server still looks up
 which book each recording is, and nothing else. Two copies with the same ASIN or
 ISBN are copies of one recording, so they aren't listed as other recordings.
 Within one library, Health lists them as [Likely duplicates](health.md#duplicates).
