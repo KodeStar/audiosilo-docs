@@ -1,6 +1,6 @@
 ---
 title: "Community chapters"
-description: "How audiosilo-server fits a community recording's chapter list onto a book's own audio: where the list comes from, when a book is checked, the anchored piecewise fit and its tolerances, pause snapping, the outcomes, how a fitted list replaces the scan's chapters without touching the files, and the generated chapters a Bridge found in the narration (the source between the community's and the files'), and an admin's edited list, which goes before them all."
+description: "How audiosilo-server fits a community recording's chapter list onto a book's own audio: where the list comes from, when a book is checked, the anchored piecewise fit and its tolerances, pause snapping, the outcomes, how a fitted list replaces the scan's chapters without touching the files, the generated chapters a Bridge found in the narration (between the community's and the files'), and an admin's edited list, which goes first."
 ---
 
 The community metadata database holds a chapter list for most recordings. Each
@@ -365,9 +365,8 @@ never copied onto a joined book (other audio), and deleted with its library.
 
 ### Precedence and dormancy
 
-An edit is the **first** source. `applyChapterSource` reads it before the
-choice, so the order is edited, then a choice or the community's, then
-generated, then the files'. `applyEdited` uses the list while its files are the
+An edit is the **first** source ([the rule](#the-rule)): `applyChapterSource`
+reads it before the choice. `applyEdited` uses the list while its files are the
 book's:
 
 - `listedOrder` matches them as `chaptersOnFiles` does for a `chapters.json`:
@@ -419,16 +418,11 @@ whose title the admin can change.
 calls `SaveChapterEdit`. One transaction checks the request's `basis` against the
 book's files now (`basisOf`: path, size and `duration_ms`, in play order), checks
 the chapters (`checkChapterEdit`), writes the row and runs `refreshEffective`. A
-refused list names the first rule it breaks:
-
-| `detail` | Refused when |
-|---|---|
-| `empty` | there are no chapters |
-| `too_many` | there are more than 2000 (`metadata.MaxChapterListEntries`) |
-| `out_of_range` | a start is below 0, or at or past the book's end |
-| `title` | a title fails `metadata.ListChapterTitle`, the `chapters.json` rule: 1 to 200 bytes once trimmed, no control character |
-| `file_start` | a file's start begins no chapter (within 50 ms) |
-| `order` | the starts are out of order or less than 1 s apart (`minChapterGapMS`) |
+refused list is a `400 chapters_invalid` whose `detail` names the first rule it
+breaks ([the rules](api/reference.md#put-apiv1adminlibrariesidbookchapters)).
+The limits are `metadata.MaxChapterListEntries` (2000 chapters),
+`metadata.ListChapterTitle` (the `chapters.json` title rule), `minChapterGapMS`
+(1 s between starts) and `fileStartSnapMS` (a file's start within 50 ms).
 
 The console's `chapters-edit-model.ts` mirrors these rules, so they change
 together. `DELETE` calls `RevertChapterEdit`, which deletes the row and runs

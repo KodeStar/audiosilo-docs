@@ -261,9 +261,8 @@ is a `tokens` row of kind `'cast'` with `expires_at` 24 hours on
 - `parent_token_id`: the session that minted it. FK CASCADE to `tokens`,
   indexed.
 - `editor` *(0078)*: `INTEGER NOT NULL DEFAULT 0`, `1` for an editor token,
-  which the console's chapter editor streams with. It lives 4 hours and counts
-  against its own cap, apart from the person's cast tokens (see
-  [Editor tokens](auth-and-security.md#cast-tokens)).
+  which the console's chapter editor streams with (see
+  [Cast tokens](auth-and-security.md#cast-tokens)).
 
 A cast token without a grant is never valid, and neither is one whose parent
 is gone, signed out or expired. [Cast tokens](auth-and-security.md#cast-tokens)
@@ -641,8 +640,8 @@ The `chapters` rows do not always hold the scan's own chapters. While a book
 plays a community recording's chapter list instead of its own, the chapters a
 Bridge found in its narration, or an admin's edited list, the rows hold those
 chapters. `books.chapters_source` says which: `''` for the scan's own,
-`'community'`, `'generated'` or `'edited'`. `chapters_fit` names the fit in the rows, so an unchanged one is
-not rewritten. Podcast episodes use `'id3_chap'` for their validated CHAP
+`'community'`, `'generated'` or `'edited'`. `chapters_fit` names the fit in the
+rows, so an unchanged one is not rewritten. Podcast episodes use `'id3_chap'` for their validated CHAP
 attachment, without the book source-choice pipeline (see
 [Podcasts](#podcasts)). `books.scanned_chapters` always holds the scan's own
 chapters as JSON with their scanned titles. `UpsertBook` writes it, as it
@@ -699,9 +698,8 @@ in the console's chapter editor. PK `(library_id, path)`, an FK to `libraries`
 shape of a Bridge's `chapters.json`, generator `console`): the chapters on the
 whole-book timeline and the files they were made on, each with its book-relative
 path, size and `duration_ms`. The other columns are `updated_by` (`ON DELETE SET
-NULL`) and `updated_at`. It applies only while the book's files are those files,
-and is dormant otherwise (see
-[Edited chapters](community-chapters.md#edited-chapters)). Like
+NULL`) and `updated_at`. When it applies:
+[Edited chapters](community-chapters.md#edited-chapters). Like
 `chapter_choices`, it moves with the book's other edits and is never copied onto
 a joined book, which is other audio.
 

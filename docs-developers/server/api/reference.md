@@ -5501,12 +5501,10 @@ may mint (it can play); an API key may not. How long a cast token lives, how man
 person keeps, what ends it and how dead ones are pruned:
 [Cast tokens](../auth-and-security.md#cast-tokens).
 
-The optional `"editor": true` mints an **editor token**. The console's chapter
-editor sends it for the `<audio>` element that plays the book while an admin sets
-chapter times. It is the same one-book, media-only token, but it lives 4 hours
-and counts against a cap of its own, so editing never drops a token a receiver is
-playing. It allows no more than a cast token, so any caller may ask for one. A
-player never sends it.
+The optional `"editor": true` mints an **editor token**: the same one-book,
+media-only token, for the `<audio>` element of the console's chapter editor. A
+player never sends it. Its own life and cap:
+[Cast tokens](../auth-and-security.md#cast-tokens).
 
 | Status | Meaning |
 |---|---|

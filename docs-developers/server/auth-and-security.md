@@ -254,9 +254,9 @@ differences:
 - it lasts 4 hours (`editorTokenTTL`);
 - a person keeps at most 5 (`maxEditorTokens`).
 
-Each cap counts only tokens of its own use. A mint drops the oldest of its own
-kind past the cap, so opening the editor on many books never drops a token a
-receiver is playing, and casting never drops the editor's. It reads no more than
+A mint drops the oldest of its own kind past that kind's cap, so opening the
+editor on many books never drops a token a receiver is playing, and casting never
+drops the editor's. It reads no more than
 a cast token, so the route lets any caller ask for one.
 
 Other properties:
