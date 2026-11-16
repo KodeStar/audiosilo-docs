@@ -204,10 +204,9 @@ were found on this server. In the console, the book's
 [Chapters card](books.md#chapters-found-in-the-narration) shows them and turns
 them off or on.
 
-A book's own chapters always win, then the community database's, then the found
-ones. Replacing or re-encoding the file stops them being used. Chapters you
-[edit on the book's page](books.md#edit-chapter-times-and-titles) win over all of
-these.
+Chapters you [edit on the book's page](books.md#edit-chapter-times-and-titles)
+win, then the book's own, then the community database's, then the found ones.
+Replacing or re-encoding the file stops found chapters being used.
 
 ## Costs and the monthly cap
 
