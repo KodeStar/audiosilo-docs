@@ -78,6 +78,7 @@ else and gate features on the flags.
     "upcoming_calendar": true,
     "upcoming_covers": true,
     "listening_sync": true,
+    "listening_stay": true,
     "renditions": true,
     "oidc": false
   },
@@ -3997,7 +3998,7 @@ made the event; left out, the event resolves by last-write-wins).
 
 | `kind` | Fields | Notes |
 |---|---|---|
-| `listen` | `from_pos`, `to_pos` (required numbers), `started_at`, `ended_at`, `start`; optional `from_file` + `from_file_pos`, `to_file` + `to_file_pos`, `duration`, `playback_speed` | a span of playing: whole-book seconds on the device's timeline (finite, >= 0), RFC 3339 times with `ended_at >= started_at` at most 24 h apart. `start` is why the span began: `resume` (the loaded or resumed place), `continue` (carrying on after a cut), `moved_back` or `jump` (a deliberate move: a seek, a chapter, a bookmark, Undo, an offer's Jump), `restart` (starting again from 0). Each end may also carry its audio file (rel path) and the seconds into it (both of a pair or neither, seconds >= 0). `duration` is the device's length of the book (0 or absent: no fingerprint); `playback_speed` is in (0, 4] (0 or absent = 1) |
+| `listen` | `from_pos`, `to_pos` (required numbers), `started_at`, `ended_at`, `start`; optional `from_file` + `from_file_pos`, `to_file` + `to_file_pos`, `duration`, `playback_speed` | a span of playing: whole-book seconds on the device's timeline (finite, >= 0), RFC 3339 times with `ended_at >= started_at` at most 24 h apart. `start` is why the span began: `resume` (the loaded or resumed place), `continue` (carrying on after a cut), `moved_back` or `jump` (a deliberate move: a seek, a chapter, a bookmark, Undo, an offer's Jump), `restart` (starting again from 0), `stay` (an offer's Stay, only to a server with `listening_stay`: see [A Stay](#a-stay); an older server rejects it as `invalid`). Each end may also carry its audio file (rel path) and the seconds into it (both of a pair or neither, seconds >= 0). `duration` is the device's length of the book (0 or absent: no fingerprint); `playback_speed` is in (0, 4] (0 or absent = 1) |
 | `finish`, `unfinish` | `at` (RFC 3339) | marking the book finished or not finished; no positions, and `base_version` is ignored |
 
 Response `200`:
@@ -4089,8 +4090,8 @@ opens one):
   - **The backstop.** A `resume` or `continue` span ending more than 60 s before an
     unfinished stored place is `not_applied` `resume_behind`. So a device that
     started playing before it had the stored place (a cold start) never pulls the
-    book back. A deliberate move (`moved_back`, `jump`, `restart`) skips the
-    backstop.
+    book back. A deliberate move (`moved_back`, `jump`, `restart`, `stay`) skips
+    the backstop.
   - A span that diverged from a place its device had seen (`base_version` > 0,
     another device's row since) is real listening elsewhere. It is resolved
     instead: the further place is kept and the span's is offered.
@@ -4115,8 +4116,8 @@ opens one):
   (the phone, after the watch synced) can still offer it. It is not stored when it
   is the kept row's own device or within 30 s of the kept place.
   - A device that sends a `base_version` at or after the version the offer was
-    recorded at, and applies, clears it, because it had seen it. A `finish`, an
-    edit and a move or join clear it too.
+    recorded at, and applies, clears it, because it had seen it. A Stay that wins,
+    a `finish`, an edit and a move or join clear it too.
   - A newer diverged event replaces it only when it records an offer of its own,
     by the same two conditions. Otherwise the offer stays.
   - A `resume_behind` span that carries on (within 5 s) from its own device's
@@ -4150,6 +4151,58 @@ days (`catalog.PruneListeningEvents`, at startup and daily), while an event olde
 than 90 days is refused, so a replay of a pruned id with a clock shift up to 30 days
 different still can't apply twice. The legacy `PUT` is logged there as a `put`
 event. See [the data model](../data-model.md#durable-per-user-state-path-keyed-no-fk-to-books).
+
+#### A Stay
+
+*Capability `listening_stay`, migration `0080`.* A listener who answers another
+device's offer with Stay has made an explicit choice, so its place applies even
+when the other device kept writing after the offer appeared. The client sends it
+as a `listen` with `start: "stay"` and `base_version` set to the version it
+acknowledged on answering, as a zero-length span sent at once (`from_pos` and
+`to_pos` both its place). A client that is playing then carries on with a `jump`
+span from there. A server without the flag rejects `stay` as `invalid`, so a client
+sends `jump` there. `resolveListen` in `catalog/listening_sync.go` decides; the
+reader's [conflict rule](#the-conflict-rule-sync-v2) is unchanged.
+
+**When a Stay wins** (`staysWin`). It applies when all of these hold:
+
+- its `base_version` as sent is above 0 and at most the row's version;
+- the row is not finished;
+- no other device's Stay holds the row at a version above that base;
+- no explicit write that isn't listening came after that base
+  (`progress.edit_version`: a `PATCH`, own or admin, an import's apply or undo, a
+  move or join, a sync `finish` or `unfinish`). A `PUT` is an old app's listening,
+  not an edit, so a `PUT` since the offer does not stop a Stay. Only its time
+  counts;
+- the row's `updated_at` is no more than 2 minutes (`staySlack`) after the Stay's
+  corrected end. Listening that went on longer after it, or a Stay made offline long
+  ago, is not beaten. The rule reads `updated_at`, never `span_at`, because an old
+  place applied over newer listening keeps the later `updated_at`.
+
+A Stay that wins is `applied`: the row takes its place and its device, the offered
+place is cleared, and `progress.stay_version` is set to the version it writes.
+Otherwise the span resolves as a `jump`.
+
+**The hold** (`heldByStay`). While `stay_version` is set, another device's span on
+a base below it, or with none, never moves the place. It comes back `diverged`
+`kept: "stored"`, and its place is offered (`other_place`). A device whose base is
+at or above `stay_version` saw the Stay and resolves as before, and its own `stay`
+then holds the row for it.
+
+- The Stay's own device writing again keeps the hold.
+- Everything else clears it: another device's applied span (an Audible
+  furthest-only place too, which keeps its own rule), a `PUT`, a `PATCH`, an
+  import's apply or undo, a move or join, a `finish`, or an `unfinish` of a
+  finished row. An `unfinish` of a row that isn't finished changes nothing and
+  keeps the hold.
+- The hold has no time limit, so past `staySlack` the outcome follows arrival
+  order. The other device's later spans that reach the server before the Stay beat
+  it, and those that arrive after it are held. A Stay is tapped online right after
+  the offer, so it normally arrives first.
+
+A Stay replayed is `duplicate`, never applied twice. A client whose `stay` comes
+back `diverged` `kept: "stored"` (another device's Stay holds the row) offers the
+kept place again at once.
 
 ### `GET /api/v1/libraries/{id}/bookmarks` · `POST /api/v1/libraries/{id}/bookmarks`
 

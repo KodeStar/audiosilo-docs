@@ -703,6 +703,7 @@ therefore never staler than one built fresh, and nothing on the wire changes
     "upcoming_calendar": true,
     "upcoming_covers": true,
     "listening_sync": true,
+    "listening_stay": true,
     "renditions": true,
     "oidc": false,
     "contributions": false,
@@ -764,6 +765,7 @@ Each of these is always `true` on a server that has it.
 | `my_devices` | [`/me/devices`](reference.md#get-apiv1medevices), the caller's own signed-in devices |
 | `annotations` | a bookmark's `label` (on [`POST …/bookmarks`](reference.md#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks) and every bookmark answer), the owner's edits [`PATCH /bookmarks/{id}`](reference.md#patch-apiv1bookmarksid) and [`PATCH /notes/{id}`](reference.md#patch-apiv1notesid), the all-books lists [`/me/bookmarks`](reference.md#get-apiv1mebookmarks) and [`/me/notes`](reference.md#get-apiv1menotes), and `cursor` paging plus each row's `book` on [`/me/history`](reference.md#get-apiv1mehistory) |
 | `listening_sync` | listening sync (Sync v2): [`POST /me/listening/sync`](reference.md#post-apiv1melisteningsync), and `device_name` / `other_place` on every progress response. See [Listening sync in the player](#listening-sync-in-the-player) |
+| `listening_stay` | a listen's `start` may be `stay`, an offer's Stay, which wins over the other device's writes since the offer ([A Stay](reference.md#a-stay)). Without it, send `jump`: an older server rejects `stay` as `invalid` |
 
 #### Listening sync in the player
 

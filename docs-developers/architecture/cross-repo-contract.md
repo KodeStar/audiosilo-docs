@@ -620,8 +620,9 @@ By what decides their value, the flags are:
   ([seam 14](#14-listening-in-the-house-and-casting)), `household_members`
   ([seam 15](#15-household-members-profiles-and-kids-mode-stay-client-side)),
   `podcast_opml`, `ebooks` and `readalong` (the reader and read-along maps,
-  [seam 18](#18-the-ebook-reader)), and `listening_sync` (listening as events,
-  [seam 19](#19-listening-sync-sync-v2)).
+  [seam 18](#18-the-ebook-reader)), `listening_sync` (listening as events,
+  [seam 19](#19-listening-sync-sync-v2)) and `listening_stay` (a Stay that wins,
+  [seam 19](#stay-wins)).
 - **The Bridge's heartbeat:** `bridge` ([seam 16](#16-the-bridge)). The
   `bridge: {version, features}` block beside `capabilities` goes to a signed-in caller
   only (a session or API key of any role, not a demo account). The `bridge` flag
@@ -2238,7 +2239,8 @@ full seam.
 
 - `internal/api/handlers_listening_sync.go`.
 - `internal/catalog/listening_sync.go` (`SyncListening`).
-- Migration `0061` (`listening_events`, the progress columns).
+- Migration `0061` (`listening_events`, the progress columns), and `0080`
+  (`progress.stay_version` and `edit_version`, [Stay wins](#stay-wins)).
 - `PruneListeningEvents` in the launcher's retention.
 - The legacy `PUT` is logged as a `put` event (`SaveProgressFrom`).
 
@@ -2309,6 +2311,29 @@ device that never saw that answer still offers it.
 - The server clears the offer on the first span of that device that it applies on a
   version at or after the offer's (`other_version`). When the server kept the stored
   row, that is its next version, so the span after the answer's first one.
+
+### Stay wins
+
+A Stay on an offer is an explicit choice, so with capability `listening_stay` the
+server applies its place even when the other device kept writing after the offer
+appeared, and holds it against that device's spans until it has seen the Stay.
+
+- The client sends the Stay at once as a zero-length `listen` with `start: "stay"`
+  and the version it acknowledged on answering as `base_version`.
+- It sends `stay` only while the connection's `/server` said `listening_stay`,
+  else `jump`, because an older server's strict decoder rejects the start as
+  `invalid`. The outbox sends a queued `stay` as a `jump` when the flag is gone by
+  the time it sends.
+- The server's rule (when a Stay wins, the hold, what ends it) is
+  [A Stay](../server/api/reference.md#a-stay) in the reference. It lives in
+  `resolveListen`, not `ResolvePlace`, so the reader is unchanged.
+- The player, the Apple Watch and Wear OS each send it and offer the kept place at
+  once when their `stay` comes back held by another device's
+  ([Stay wins](../frontend/playback.md#stay-wins)).
+
+All of it is additive. A shipped client never sends `stay` and keeps the rules it
+had, except that another device's Stay can now keep its span out of the place, and
+offer it instead.
 
 ### File places
 
