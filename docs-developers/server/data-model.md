@@ -773,6 +773,7 @@ PK `(user_id, library_id, rel_path)`. Columns:
   sync)*.
 - `span_at` and `span_version` *(0062)*.
 - `change_seq` *(0066)*.
+- `stay_version` and `edit_version` *(0080)*.
 
 **Start and finish times.** The first save stamps `started_at`, and later saves
 keep it. `finished_at` is stamped when `finished` turns on and cleared when it
@@ -824,6 +825,18 @@ row's version at that time. The same device's next span in a later sync post
 compares with them, not with `updated_at`, so the span chain lasts across posts
 (see [How a batch is applied](api/reference.md#how-a-batch-is-applied)). Every
 other writer clears them. With a stale version, the old rule applies.
+
+**Stay columns** *(0080)*. Both are `NULL` for none.
+
+- `stay_version` is the version a winning Stay wrote (a sync listen with `start`
+  `stay`), which holds the row against other devices' spans until another writer
+  clears it.
+- `edit_version` is the version of the row's last explicit write that isn't
+  listening: a `PATCH`, an import's apply or undo, a move or join, a sync `finish`
+  or an `unfinish` of a finished row, never a `PUT`. A Stay on a base below it does
+  not win.
+
+See [A Stay](api/reference.md#a-stay) for the rule.
 
 **Change order** *(0066)*. `change_seq` is the order this server wrote progress
 rows in. It is drawn from the one-row, server-wide
@@ -2329,6 +2342,7 @@ The migration history so far:
 | 0077 | `oidc` | [Single sign-on](#single-sign-on-tables): `users.email` (`TEXT NOT NULL DEFAULT ''`) with the partial index `idx_users_email` (`email COLLATE NOCASE WHERE email <> ''`), `user_identities` (UNIQUE `(issuer, subject)` and `(user_id, issuer)`, `user_id` `ON DELETE CASCADE`, `linked_by` `ON DELETE SET NULL` with `idx_user_identities_linked_by`) and `oidc_pending` (`AUTOINCREMENT`, UNIQUE `(issuer, subject)`, `idx_oidc_pending_seen`). No data moves |
 | 0078 | `chapter_edits` | `chapter_edits` (an admin's edited chapter list per book, durable and path-keyed, `library_id` `ON DELETE CASCADE`, `updated_by` `ON DELETE SET NULL`; see [Edited chapters](community-chapters.md#edited-chapters)) and `cast_grants.editor` (`INTEGER NOT NULL DEFAULT 0`, the [editor tokens](auth-and-security.md#cast-tokens)). No data moves |
 | 0079 | `book_matches_work` | The index `idx_book_matches_work` on `book_matches(work_id)`, so a work's recordings ([a book's work key](#a-books-work-key)) are found from the recorded matches as from `upcoming_owned` (already indexed by `idx_upcoming_owned_work`). No data moves |
+| 0080 | `listening_stay` | Listening sync: `progress.stay_version` and `edit_version` (`INTEGER`, nullable, `NULL` on every existing row), so a Stay on another device's offer wins and holds the row ([A Stay](api/reference.md#a-stay)). No data moves |
 
 ## SQLite choices
 

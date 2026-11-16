@@ -41,7 +41,7 @@ The Wear OS app has been tested on the Wear OS emulator, not yet on a real watch
 
 You can also install AudioSilo from Google Play on the watch itself. The card then offers **Set up your watch** straight away.
 
-The sign-in works once, for 10 minutes. If it runs out, tap **Send again** on the card.
+The sign-in works once, for 10 minutes. If it runs out, tap **Send again** on the card. When the watch already uses this account and can reach your server, Send again keeps its sign-in, so the watch doesn't show up twice under Signed-in devices.
 
 Until it is signed in, the watch asks you to set it up from your phone. If your phone doesn't have AudioSilo, tap **Get AudioSilo on your phone** on the watch.
 
@@ -61,7 +61,7 @@ Once signed in, the card shows the account and how syncing is going. **Books on 
 
 ### From your phone: Send to watch
 
-On your phone, open a book's [book menu](browsing.md#the-book-menu), or **More** on its [book page](book-page.md), and tap **Send to watch**. If the watch isn't signed in to this account yet, the phone signs it in first.
+On your phone, open a book's [book menu](browsing.md#the-book-menu), or **More** on its [book page](book-page.md), and tap **Send to watch**. If the watch isn't signed in to this account yet, the phone signs it in first. While the watch is being set up for another account, the phone doesn't send the book and says so. Send it again once the watch has signed in.
 
 ![The More sheet of a book page on an Android phone, with Send to watch](pathname:///img/screenshots/wear/phone-send-to-watch.png)
 
@@ -93,7 +93,7 @@ Each row says how far the book has got: sent, delivered to your watch, waiting o
 
 ![On your watch in Downloads on an Android phone: one book downloading to the watch, one preparing on the server](pathname:///img/screenshots/wear/phone-downloads-preparing.png)
 
-To take a book off the watch from your phone, tap **Remove** on its row. If the book is playing on the watch, it stops. Your place in the book is kept.
+To take a book off the watch from your phone, tap **Remove** on its row. If the book is playing on the watch, it stops. Your place in the book is kept. If you send the book again afterwards, the watch keeps the new copy.
 
 ## Storage
 

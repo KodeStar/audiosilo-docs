@@ -704,6 +704,12 @@ one runs makes it go round once more. It sends chunks of 200 events and sets
 `listening-sync.ts` drives the launch, server-back and foreground triggers. The root
 layout and the car's headless task start it.
 
+A queued span whose `start` is `stay` goes as a `jump` while the connection's
+`/server` doesn't say `listening_stay` (`eventsForServer`, on every send path: the
+batch, one by one, and the web page's keepalive), and the stored event keeps its `stay`
+and its id
+([Stay wins](playback.md#stay-wins)).
+
 Each answer is handled like this:
 
 - Every status but `rejected` removes the event. `rejected` moves it to the
@@ -712,7 +718,8 @@ Each answer is handled like this:
   kept for has its version acknowledged (`ackVersion`, never lowered). That is
   `keptMine`: applied, or diverged with `kept: "event"`, and the row's `device_id` is
   this device's. The place reconcile is told of the rows (`onSyncAnswer`) so it can
-  offer another device's place.
+  offer another device's place. A `stay` that came back `diverged` `kept: "stored"`
+  (`staysHeld`) has the kept place offered at once.
 - An answer that arrives while the cached `listening_sync` flag is `false` makes the
   query cache ask `/server` again. The server took the events, so the cached answer
   is older than the server.

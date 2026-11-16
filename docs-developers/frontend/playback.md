@@ -812,8 +812,9 @@ it, or "another device" when the server has no name. The toast has two answers:
 
 - **Jump** acknowledges the row, then calls `seekBook` there. The next span is a
   `jump`, or `moved_back` when the place is behind.
-- **Stay**, the close button, acknowledges, then calls `standByPlace`. The next span
-  begins as a `jump`, so the server applies this device's place over the other.
+- **Stay**, the close button, acknowledges, then calls `standByPlace`, which sends
+  this device's place at once so the server applies it over the other
+  ([Stay wins](#stay-wins)).
 
 A toast that times out acknowledges nothing. It only notes the place's key
 (`ignoreOffer`), so the same place is not offered again while this device's next
@@ -828,7 +829,8 @@ The player checks for an offer:
 
 Each place is shown once per launch, and a device's places at most once per book
 every 10 minutes (`OFFER_REPEAT_MS`), since a device that plays on sends a new
-place with every span. The book page shows the same offer as a line
+place with every span. A Stay that another device's Stay held is the one exception
+to the 10 minutes ([Stay wins](#stay-wins)). The book page shows the same offer as a line
 (`ListeningOfferLine`, [Book page](book-page.md#the-primary-action-and-the-action-row)),
 on a server with the flag only.
 
@@ -868,8 +870,10 @@ A span's life:
 
 - **Opens** when the engine starts playing. `start` says why:
   - `resume`: the loaded or resumed place;
-  - `jump` or `moved_back`: a seek, a chapter, a bookmark, Undo, an offer's Jump or
-    Stay, a lock-screen scrub;
+  - `jump` or `moved_back`: a seek, a chapter, a bookmark, Undo, an offer's Jump, a
+    lock-screen scrub, and an offer's Stay on a server without `listening_stay`;
+  - `stay`: an offer's Stay on a server with `listening_stay`
+    ([Stay wins](#stay-wins));
   - `restart`: starting again from 0 (a finished book first sends `unfinish`);
   - `continue`: after a cut.
 - **Cut**: the span closes, and a `continue` span opens where it ended. A cut
@@ -885,6 +889,19 @@ A span's life:
   - After a move, the new place opens the next span with the move's reason. A move
     while paused is sent at once as a span that moved nowhere, as a save would have
     been.
+  - A deliberate move that nothing was heard after (`spanIsBareMove`: a pause or a
+    cut under a second behind a seek) gives the next span its reason too, as a
+    paused move does. Sent apart from the span before it, the move's own event can
+    come back `not_applied` `older`. A reason asked for (Stay's `stay` or `jump`)
+    still wins.
+  - A move to where the place already is, in the same file (`movesNowhere`:
+    Previous at the book's start), is no move. The span goes on and no event says
+    it. A book with unknown file lengths starts every file at 0, so the file has to
+    match too. Two cases still count as a move: the last move went elsewhere (a seek
+    still on its way reads as where it left), or the engine moved first with nothing
+    to compare (a paused lock-screen move, `from: null`).
+  - The Apple Watch and Wear OS share both rules (`Spans.isBareMove`,
+    `Spans.movesNowhere`).
   - The end of the book then sends `finish` once. The finish goes into the outbox
     only after the last span's close has landed there, including a close already
     on its way. (The web reports `paused` just before `ended`; `closesInFlight`
@@ -926,6 +943,42 @@ The events go to the outbox and are sent from there
 ([Offline](offline.md#listening-sync-the-outbox)). On this path the player posts no
 history spans, because the server writes history from the listening, and saves no
 `PUT`.
+
+### Stay wins
+
+A Stay is an explicit choice. On a server with `listening_stay`, the server applies
+its place even when the other device kept playing after the offer appeared, and
+holds it against that device's spans until it has seen the Stay
+([the rule](../server/api/reference.md#a-stay)).
+
+`standByPlace` makes the Stay's span start with `stay` when the connection's
+`/server` said `listening_stay` (`usesListeningStay`), else with `jump`. An unknown
+flag counts as no, unlike `usesListeningSync`, because a server without it refuses
+the start as `invalid`.
+
+- **The Stay is sent at once**, playing or paused, as a span that moved nowhere
+  (`sendStill`, a paused move's), on the version the answer acknowledged. So the
+  other device's sync answers stop offering this device's place from before it.
+  Playing, that span ends there and the next one begins there as a `jump`.
+- **One `stay` per answer.** A bare `stay` (`spanSaysSomething` counts it as a
+  deliberate move) gives the next play a `jump`, not a second `stay`
+  (`carriedStart`), and so does a paused Stay with no place to send. That play may
+  come hours later, and the server measures a Stay's slack from its span's end, so a
+  `stay` then would beat what another device chose since.
+- **A Stay with no place to send** while the book plays (a load holds the place)
+  goes in the span the next cut closes. With no span open, it waits for the one
+  `openMissingSpan` opens, only while that play goes on. A close with none open
+  (`takeSpan`: the pause, the end) leaves the next play a `jump`, and a cut with
+  none open leaves it waiting.
+- **The flag gone.** The outbox sends a queued `stay` as a `jump`
+  ([the outbox](offline.md#listening-sync-the-outbox)).
+- **A Stay held by another.** This device's `stay` that comes back `diverged`
+  `kept: stored` means another device's Stay holds the row (`staysHeld`). The kept
+  place is offered at once (`offerLoadedPlace`'s `stayHeld`), still once a launch
+  per place.
+
+The Apple Watch and Wear OS do the same
+([Apple Watch](apple-watch.md#playing-and-syncing)).
 
 ### One tab plays at a time (web)
 

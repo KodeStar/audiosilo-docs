@@ -65,8 +65,10 @@ changed on one watch changes on both, tests included. Swift's `rounded()` is `ro
 here, since Kotlin's `round` rounds half to even.
 
 Not ported, because they are Apple-only: `Outbox.backgroundBody` and `applyBackground`,
-`ClockSkew.clockOffset`, `BackgroundSync`, `AddressPicker.unattended` and
-`RenditionPlan.keepsTransfer`. Wear's `SyncSchedule` says when a send runs instead.
+`ClockSkew.clockOffset`, `BackgroundSync`, `AddressPicker.unattended`,
+`RenditionPlan.keepsTransfer`, `DownloadProgress` and `StartRefusal`, which follows
+AVFoundation's interruption and route-change timing. Wear's `SyncSchedule` says when a send runs
+instead, and `SystemPause` reads Media3's reasons for a pause.
 
 `PlaybackAttempt` is ported too, its failures read from Media3's error codes (mirrored as
 constants, checked against Media3 by `:wear`'s PlaybackTest). Wear's own pure pieces are
@@ -150,7 +152,9 @@ Media3 1.9.0 opens neither.
 an unsuitable output or suppressed-too-long ends the span where the audio last moved. A transient
 focus loss closes the span but keeps the wish to play.
 
-Spans, ticks, the pull before play, the offer and its throttles are the Apple Watch's.
+Spans, ticks, the pull before play, the offer and its throttles, the bare move and the move to
+nowhere, and Stay are the Apple Watch's (`SpanRecorder.kt`, `Outbox.kt`, `PlayerEngine.stay`; see
+[Stay wins](playback.md#stay-wins)).
 
 ## Storage and identity
 
@@ -160,6 +164,12 @@ Spans, ticks, the pull before play, the offer and its throttles are the Apple Wa
 exchange is `Settings.Global.DEVICE_NAME`, else `Build.MODEL`, so the User Guide does not promise
 the watch's own name.
 
+**An index that can't be read.** `JsonFile.load` tells a missing file, a value, an unreadable one
+and a corrupt one apart, with the Apple Watch's vectors. `DownloadIndex` sets an unreadable or
+corrupt index aside and starts with no books, and `DownloadIndex` and `Outbox` write nothing until
+`JsonFile.setAside` has the file out of the way. Wear OS is not direct-boot aware, so the rest of
+the Apple Watch's [first-unlock rules](apple-watch.md#before-the-first-unlock) has no twin here.
+
 `network_security_config.xml` allows cleartext, as the phone's `usesCleartextTraffic` does, for
 the [home address after the probe](connect-and-addresses.md#pairing-at-a-self-signed-servers-home-http).
 It trusts system CAs only. An away address needs trusted HTTPS.
@@ -168,7 +178,10 @@ It trusts system CAs only. An away address needs trusted HTTPS.
 
 `AppModel.receive` handles the phone's messages one at a time, in order. A `pair` is exchanged at
 `base_url`, then `away`, then the home http address under `pairingFallback`'s rule. Past
-`expires_at` the watch says "Send again from your phone". There is no typed sign-in. With no
+`expires_at` the watch says "Send again from your phone". A `pair` for the account already signed
+in asks `GET /me` first and keeps the token when the server names the pair's user
+(`AccountRules.keepsToken`), as the
+[Apple Watch](apple-watch.md#pair-phone-to-watch) does. There is no typed sign-in. With no
 node advertising `audiosilo_phone_app`, Setup offers "Get AudioSilo on your phone", which opens
 Play on the phone (`RemoteActivityHelper`).
 
@@ -178,7 +191,10 @@ The JSON messages are the [Apple Watch's](apple-watch.md#the-message-contract), 
 of UTF-8 JSON (not a DataMap). Every message from the phone carries `sent_at` (RFC 3339, set by
 `watch-model.ts` on every platform; the Apple Watch ignores it). It makes each send a new
 DataItem, since an identical put sends nothing, and it lets the watch ignore a `remove` older than
-the download it would remove. `<node>` is the target watch's node id. DataItems reach every
+the download it would remove (`removeApplies`). Where the phone sent `asked_at`, the watch orders
+by it in place of `sent_at`, and Try again counts as queued at that moment
+(`DownloadIndex.enqueue`). The watch sends no `added_at`, `launch_id` or download progress in its
+`watch-state`. `<node>` is the target watch's node id. DataItems reach every
 node, so a watch ignores items addressed to another.
 
 | Item | Path | Put by |
