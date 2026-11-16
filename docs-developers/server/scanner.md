@@ -1845,12 +1845,12 @@ through the fingerprint:
   `reclassified` skips such a pair: nested paths with different sizes. An
   equal size, a single-part folder, is still the same book.
 - A real match calls `catalog.MoveDurableState(lib, oldPath, newPath)`. A
-  same-path call is a no-op. It moves **all fifteen** path-keyed book tables:
+  same-path call is a no-op. It moves every path-keyed book table, among them
   `progress`, `bookmarks`, `notes`, `listening_history`,
   `listening_sessions`, `listening_daily`, `favourites`, `up_next`,
   `collection_items`, `ratings`, `book_enrichment`, `issue_ignores`,
-  `book_overrides`, `chapter_overrides` and `book_covers`. So a rename or move
-  never orphans a user's position, queue entry, collection entry or rating, a
+  `book_overrides`, `chapter_overrides`, `chapter_choices`, `chapter_edits`,
+  `book_covers` and `book_matches`. So a rename or move never orphans a user's position, queue entry, collection entry or rating, a
   book's attached ASIN, an issue an admin ignored, or an admin's edits and
   custom cover.
 
@@ -1860,9 +1860,9 @@ through the fingerprint:
 
 1. **The book's own state** (`moveBookState`). `book_enrichment` and
    `issue_ignores` move with `UPDATE OR REPLACE`. Then, if the moved book has
-   any metadata override, chapter override or custom cover, the destination's
-   rows in **all three** of those tables are deleted first, and the moved
-   book's set takes their place. Edits and cover follow the book as one set,
+   any metadata override, chapter override, chapter choice, edited chapter
+   list, custom cover or recorded community match, the destination's rows in
+   **all six** of those tables are deleted first, and the moved book's set takes their place. Edits and cover follow the book as one set,
    so a stale lock or cover left at the new path by an earlier book can't merge
    in. A moved book with none of them keeps the new path's own rows, as any
    book appearing there would.
