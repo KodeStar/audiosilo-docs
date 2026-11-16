@@ -433,9 +433,10 @@ const open = async (p, route, ready = (pg) => pg.locator('h1.display').first(), 
   await sleep(1500);
 };
 const bookRoute = (b) => `/library/book?library=${b.library_id}&path=${encodeURIComponent(b.path)}`;
-// A seeded book by its author and a piece of its title (or path); undefined when none.
+// A seeded book by its author (null: any) and a piece of its title (or path);
+// undefined when none.
 const bookBy = async (author, title) =>
-  ((await api(token, 'GET', `/admin/books?author=${encodeURIComponent(author)}&limit=50`))?.books ?? [])
+  ((await api(token, 'GET', `/admin/books?${author ? `author=${encodeURIComponent(author)}&` : ''}limit=200`))?.books ?? [])
     .find((b) => `${b.title} ${b.path}`.includes(title));
 // The seeded Call of the Wild, whose .audiosilo folder run.sh fills (section 2b).
 const callOfTheWild = async () => {
@@ -1055,9 +1056,8 @@ await step('book: generated description', async () => {
 // leave guard for the next step.
 await step('book: edit chapters', async () => {
   if (!wanted('admin/book-chapters-edit.png')) return;
-  // By path: the provisioning reverses this book's author tag ("Carroll, Lewis").
-  const book = ((await api(token, 'GET', '/admin/books?limit=200'))?.books ?? [])
-    .find((b) => b.path.includes("Alice's Adventures"));
+  // Any author: the provisioning may have reversed this book's ("Carroll, Lewis").
+  const book = await bookBy(null, "Alice's Adventures");
   if (!book) throw new Error("no seeded Alice's Adventures in Wonderland");
   await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
   const card = page.locator('section[aria-labelledby="chapters-title"]');
