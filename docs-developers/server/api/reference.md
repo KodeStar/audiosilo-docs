@@ -7096,8 +7096,9 @@ book path).
   `fill`: a book with no chapters of its own; chapters found in the narration
   only with no choice, when the community's don't apply). It is never
   `"generated"` or `"edited"`, and a choice made while an edited list exists
-  is kept for after a Revert. It is not a metadata edit, so it is not in
-  `fields` and doesn't make the book `edited`.
+  is kept: it decides the chapters while the edit is dormant, and after a
+  Revert. It is not a metadata edit, so it is not in `fields` and doesn't make
+  the book `edited`.
 - `chapter_edit` - the book's edited chapter list, omitted when it has none:
   `state` is `"applied"` (it is `chapters` now) or `"dormant"` (the book's files
   are not the ones it was made on, so `chapters` come from the next source);

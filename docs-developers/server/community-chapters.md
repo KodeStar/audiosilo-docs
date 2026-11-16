@@ -405,8 +405,8 @@ whose title the admin can change.
   titles are the edit's. `refreshEffective` skips them, the book page marks no
   chapter `edited`, and a `PATCH .../book` with `chapters` is `400
   invalid_override` with `field: "chapters"`. Revert brings the renames back.
-- A `chapter_source` choice made while an edit exists is kept and used after a
-  Revert.
+- A `chapter_source` choice made while an edit exists is kept. It decides the
+  chapters while the edit is dormant, and after a Revert.
 - Health's `detailed_chapters` is settled while an edit exists, applied or
   dormant. An applied edit marks the admin row `edited`.
 - The console offers no **Detect chapters** for a row whose `chapters_source` is
