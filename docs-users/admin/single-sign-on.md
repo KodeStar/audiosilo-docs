@@ -33,7 +33,9 @@ server the provider's details.
 2. Note the provider's **issuer** address, the **client ID** and the **client
    secret**. Your provider's page above says where it shows each.
 3. Add them to the server's environment, or to `config.yaml` (below).
-4. Restart the server.
+4. Restart the server. With Docker Compose, run `docker compose up -d`, which
+   recreates the container with the new variables. A plain restart keeps the
+   old ones.
 5. Open **Server > Settings > Sign-in** in the console.
 
 **Status** now reads **Connected to the provider**. The console's sign-in page
