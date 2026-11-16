@@ -2949,8 +2949,8 @@ listed (the same rule as [`other_recordings`](#other-recordings)) is left out:
   only. And the current work is the envelope's, found by the book's ASIN or ISBN
   first: when a console match names another work than the identifiers lead to,
   `/item` lists the match's work and this entry the identifiers' work.
-- A copy sharing the ASIN or ISBN of the book in `local` is the same recording
-  again and is left out, as on [`/item`](#other-recordings).
+- A copy of `local` or of a book already listed is the same recording again and
+  is left out, by the copy rule of [`/item`](#other-recordings).
 - It is worked out per request like `local`, never cached, and omitted when
   `local` is the only one, and on an older server.
 

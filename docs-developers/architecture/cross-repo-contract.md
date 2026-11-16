@@ -1040,7 +1040,8 @@ dramatisation. All of it is additive and `omitempty`:
   it whenever metadata is on, even with the job switched off. It is a display hint
   only: durable state stays path-keyed.
 - `/item`'s `other_recordings`: the caller's other recordings of the work, in the
-  list shape, within their share scope, never a copy with the same ASIN or ISBN.
+  list shape, within their share scope, each recording once (a copy shares the
+  ASIN, or the ISBN when one has no ASIN).
 - `/meta` rail entries' `local_others`, beside `local`.
 - The pick: of several recordings, `local` (and so `/next`) is chosen by
   [the pick among recordings](../server/api/reference.md#the-pick-among-recordings),
