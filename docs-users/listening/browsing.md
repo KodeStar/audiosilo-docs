@@ -162,6 +162,8 @@ A series page lays the series out like a bookcase.
 - **Every book in the series**, listed below. A book you have in more than one recording carries a **2 recordings** chip, here and under the shelf. Tap it to choose one: each shows its narrator, length and your progress in it.
 - **Keep ahead offline**, a shortcut to [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready).
 
+![A series page with both recordings of one book listed, each with its narrator, length and progress](/img/screenshots/web-player/series-recordings.png)
+
 The ghost spines and reading orders come from the community database, [AudioSilo Meta](../community/meta-site.md), so your server needs community metadata switched on. Without it, the page shows only the books you have.
 
 An omnibus numbered as a range, such as books 1-3, fills the places of the books inside it (see [Numbering an omnibus](../admin/books.md#numbering-an-omnibus-or-box-set)).

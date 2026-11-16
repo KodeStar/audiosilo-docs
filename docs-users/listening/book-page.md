@@ -74,6 +74,8 @@ Your server may hold one book in more than one recording, such as two narrators 
 - **On a series page**, the recordings share one spine. A **2 recordings** chip beside the book opens a list of them, each with its narrator, length and your progress. See [Series pages](browsing.md#series-pages).
 - **When a book ends**, the next book in the series comes in the recording read by the same narrator as the one you just finished. If none is, it's one you've started, then one in the same library, then an unabridged one. See [What plays next](end-of-book.md#what-plays-next).
 
+![The Other recordings in your library card, with a second recording read by Peter Yearsley](/img/screenshots/web-player/book-other-recordings.png)
+
 Each recording keeps its own place, bookmarks and notes. Only recordings you can open are listed, so someone who can see one recording never hears about the other.
 
 This needs community metadata switched on and a recent server. Without them, each recording is a book of its own, as before.

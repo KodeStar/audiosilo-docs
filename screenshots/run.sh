@@ -7,8 +7,10 @@
 #      (2c, .cache/podcasts: feed.json, cover and short silent episodes, two
 #      of them left off the server; capture-web.mjs adds it as a podcast
 #      library for its podcast shots and removes it again), one book's
-#      EPUB (2d, fetched once from Project Gutenberg) and another's EPUB with
-#      the read-along map a Bridge made for it (2e),
+#      EPUB (2d, fetched once from Project Gutenberg), another's EPUB with
+#      the read-along map a Bridge made for it (2e) and a second recording of
+#      Alice (2f, .cache/recordings; capture-web.mjs copies it into the
+#      library for its pass and removes it again),
 #   3. starts a demo-mode server (port 8790) serving the frontend's web export,
 #      plus a second --setup instance (port 8791) for the first-run setup shots
 #      (the --setup page and the console's "Set up your server" flow),
@@ -269,6 +271,21 @@ if [ "$RA_OK" != 1 ]; then
   echo "  (no read-along shot is wanted: carrying on)"
 fi
 
+# ── 2f. A second recording of a work (server#241) ─────────────────────────
+# Peter Yearsley's LibriVox recording of Alice's Adventures in Wonderland, a second
+# recording of the seeded one, for the manifest's `recordings: true` shots. It is
+# seeded into .cache/recordings, never the library: capture-web.mjs copies it into
+# the library for its pass and removes it again. A copy a stopped run left there is
+# removed first, so no other shot ever shows it.
+RECORDINGS="$CACHE/recordings"
+rm -rf "$LIBRARY/Lewis Carroll/Alice's Adventures in Wonderland"
+if manifest_wanted recordings true; then
+  echo "==> seeding a second recording of Alice into $RECORDINGS"
+  MAX_FILES="${MAX_FILES:-3}" bash "$SERVER/scripts/seed-librivox.sh" "$RECORDINGS" \
+    alice_wonderland_0711_librivox \
+    || echo "  ! the second recording failed to seed: the recordings shots will fail"
+fi
+
 # ── 3. Servers ──────────────────────────────────────────────────────────────
 cleanup() {
   [ -n "${MAIN_PID:-}" ] && kill "$MAIN_PID" 2>/dev/null || true
@@ -420,7 +437,7 @@ fi
 cd "$HERE"
 echo "==> capturing web player"
 AS_BASE="http://127.0.0.1:$PORT/web/" ADMIN_PASSWORD="$ADMIN_PASSWORD" PODCASTS_DIR="$PODCASTS" \
-  node capture-web.mjs
+  RECORDINGS_DIR="$RECORDINGS" LIBRARY_DIR="$LIBRARY" node capture-web.mjs
 
 if [ "${SKIP_ADMIN:-0}" != "1" ]; then
   echo "==> capturing admin console + public pages"
