@@ -2341,7 +2341,7 @@ abridgement or a dramatisation.
   (compared normalized: case, spaces and hyphens aside). That copy is the same
   recording again (within one library, Health lists it as a duplicate).
 - **Order.** The book's own library first, then by title, then by narrator, then
-  by path. At most 20.
+  by library and path. At most 20.
 - **Omitted** when there are none, while community metadata is off, in a podcast
   library, and for a book with no `work_id`. Like `readalong`, it is an extra:
   when the books can't be read, the book goes out without it (the failure is
@@ -2906,7 +2906,7 @@ Expanse!`). Each entry gets at most one book, the first that applies:
 1. the current work's entry: the book the request is for;
 2. a book the server already knows to be that work: its
    [`work_id`](#get-apiv1librariesidbooks) (a recorded match first, else the
-   work its ASIN or ISBN resolved to), else what the community answers it has
+   work its current ASIN or ISBN resolved to), else what the community answers it has
    cached say about its identifiers (in memory or else in its database, fresh or
    stale; never a new upstream call, so placement doesn't change with a restart);
 3. in an alternate order, the book the main view placed for the same work;
@@ -2920,9 +2920,10 @@ A book known to be a particular work is placed by that identity only, never by
 its number, so a novella numbered like the next volume holds no slot. When two
 books qualify, [the pick](#the-pick-among-recordings) decides which is `local`.
 
-**`local_others`** (capability `other_recordings`) lists every **other** book of
-the entry's work the caller can open, `[{ "library_id": …, "path": … }]`, in the
-pick's order, beside `local`:
+**`local_others`** (capability `other_recordings`) lists every **other** candidate
+of the entry's work (a book of the caller's in a series named like a rail or
+ordering, as above), `[{ "library_id": …, "path": … }]`, in the pick's order,
+beside `local`:
 
 ```json
 {
@@ -2936,8 +2937,14 @@ pick's order, beside `local`:
 
 - Only books known to be the work (rule 2) count. An entry placed by its number
   (rule 4) has none.
-- On the current work's entry, it is every other book of the work: `local` is
-  the requested book.
+- On the current work's entry, it is every other candidate of the work: `local`
+  is the requested book.
+- It can differ from [`/item`'s `other_recordings`](#other-recordings), which
+  reads the book's `work_id` over every book the caller can open. A recording
+  filed under no series, or under a series named unlike the rail, is on `/item`
+  only. And the current work is the envelope's, found by the book's ASIN or ISBN
+  first: when a console match names another work than the identifiers lead to,
+  `/item` lists the match's work and this entry the identifiers' work.
 - A copy sharing the ASIN or ISBN of the book in `local` is the same recording
   again and is left out, as on [`/item`](#other-recordings).
 - It is worked out per request like `local`, never cached, and omitted when

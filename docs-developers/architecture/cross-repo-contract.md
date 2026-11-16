@@ -1044,7 +1044,7 @@ dramatisation. All of it is additive and `omitempty`:
 - `/meta` rail entries' `local_others`, beside `local`.
 - The pick: of several recordings, `local` (and so `/next`) is chosen by
   [the pick among recordings](../server/api/reference.md#the-pick-among-recordings),
-  the narrator of the book just finished first.
+  the requested book's narrator first (on `/next`, the book just finished).
 
 The player reads the fields, not the flag. Absent fields (an older server, metadata
 off) mean one recording per work, as before: the book page shows no card and the
