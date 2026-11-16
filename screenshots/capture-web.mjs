@@ -57,6 +57,7 @@ import {
   stamp,
   step,
   tid,
+  waitForScans,
   wanted,
 } from './lib.mjs';
 
@@ -1327,12 +1328,22 @@ function podcastFixture() {
 
 // The newest id in a server feed table (sqlite3), so teardown removes only this pass's rows.
 const lastId = (table) => Number(sqlite(`SELECT COALESCE(MAX(id), 0) FROM ${table};`).trim() || 0);
+// The audit and event feeds' newest ids before a pass, and the teardown that drops the
+// rows the pass added after them.
+const feedMarks = () => ({audit: lastId('audit_events'), events: lastId('server_events')});
+const dropFeedRows = (marks) => {
+  try {
+    sqlite(`DELETE FROM audit_events WHERE id > ${marks.audit};\nDELETE FROM server_events WHERE id > ${marks.events};`);
+  } catch (e) {
+    console.log(`  ! this pass's audit and event rows left in the server's feeds: ${e.message}`);
+  }
+};
 
 async function provisionPodcasts(pod) {
   if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no podcast library to add');
   if (!existsSync(PODCASTS_DIR)) throw new Error(`no seeded shows at ${PODCASTS_DIR} (run.sh section 2c)`);
   Object.assign(pod, podcastFixture());
-  pod.marks = {audit: lastId('audit_events'), events: lastId('server_events')};
+  pod.marks = feedMarks();
   const {token} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD}, PODCAST_CLIENT);
   pod.admin = token;
   const call = (method, p, body) => api(token, method, p, body, PODCAST_CLIENT);
@@ -1362,11 +1373,7 @@ async function unprovisionPodcasts(pod) {
   if (pod.library) await call('DELETE', `/admin/libraries/${pod.library.id}`).catch((e) => console.log(`  ! podcast library left: ${e.message}`));
   if (pod.moduleOn) await call('PATCH', '/admin/settings', {modules: {podcasts: false}}).catch((e) => console.log(`  ! Podcasts module left on: ${e.message}`));
   await api(pod.admin, 'POST', '/auth/logout').catch(() => {});
-  try {
-    sqlite(`DELETE FROM audit_events WHERE id > ${pod.marks.audit};\nDELETE FROM server_events WHERE id > ${pod.marks.events};`);
-  } catch (e) {
-    console.log(`  ! this pass's audit and event rows left in the server's feeds: ${e.message}`);
-  }
+  dropFeedRows(pod.marks);
   console.log('  ✓ podcast library removed again');
 }
 
@@ -2634,24 +2641,21 @@ async function carrollBooks(token) {
   return new Map((list?.books ?? []).map((b) => [b.path, b]));
 }
 
-// A scan of library `id`, done once `ready` holds for the Lewis Carroll books (60 s).
+// A scan of library `id`, checked once done: `ready` must hold for the Lewis Carroll books.
 async function scanUntil(token, id, ready) {
   await api(token, 'POST', `/admin/libraries/${id}/scan`);
-  for (const until = Date.now() + 60000; Date.now() < until; ) {
-    await sleep(1000);
-    const scan = await api(token, 'GET', `/admin/libraries/${id}/scan`).catch(() => null);
-    if (scan && !scan.running && !scan.queued && ready(await carrollBooks(token))) return;
-  }
-  throw new Error('the scan never got there');
+  await waitForScans(api, token, 60000);
+  if (!ready(await carrollBooks(token))) throw new Error('the scan never got there');
 }
 
 async function captureRecordings() {
   if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no admin to match the recordings');
   const second = path.join(RECORDINGS_DIR, ALICE.second.path);
   if (!existsSync(second)) throw new Error(`no second recording at ${second} (run.sh section 2f)`);
-  const marks = {audit: lastId('audit_events'), events: lastId('server_events')};
+  const marks = feedMarks();
   const copy = path.join(LIBRARY_DIR, ALICE.second.path);
   let libraryId = 0;
+  const edit = (p) => `/admin/libraries/${libraryId}/book${pathQuery(p)}`;
   const matched = [];
   try {
     await asAdmin(async (token) => {
@@ -2660,13 +2664,12 @@ async function captureRecordings() {
       libraryId = seeded.library_id;
       await cp(second, copy, {recursive: true});
       await scanUntil(token, libraryId, (books) => books.has(ALICE.second.path));
-      const edit = (p) => `/admin/libraries/${libraryId}/book${pathQuery(p)}`;
       await api(token, 'PATCH', edit(ALICE.second.path), {set: {series: ALICE.series.series, series_index: ALICE.series.index}});
+      // What the match dialog shows, searched by the work's title: one search serves both.
+      const found = await api(token, 'GET',
+        `/admin/libraries/${libraryId}/book/match${pathQuery(ALICE.seeded.path)}&q=${encodeURIComponent(ALICE.title)}`);
+      const work = (found?.candidates ?? []).find((c) => c.work_id === ALICE.work);
       for (const r of [ALICE.seeded, ALICE.second]) {
-        // What the match dialog shows for the book, searched by the work's title.
-        const found = await api(token, 'GET',
-          `/admin/libraries/${libraryId}/book/match${pathQuery(r.path)}&q=${encodeURIComponent(ALICE.title)}`);
-        const work = (found?.candidates ?? []).find((c) => c.work_id === ALICE.work);
         const rec = (work?.recordings ?? []).find((x) => x.id === r.recording);
         if (!rec) throw new Error(`the match dialog offers no recording ${r.recording} of ${ALICE.work}`);
         await api(token, 'PATCH', edit(r.path), {
@@ -2709,17 +2712,13 @@ async function captureRecordings() {
   } finally {
     await asAdmin(async (token) => {
       for (const p of matched) {
-        await api(token, 'PATCH', `/admin/libraries/${libraryId}/book${pathQuery(p)}`, {match: {work_id: ''}})
+        await api(token, 'PATCH', edit(p), {match: {work_id: ''}})
           .catch((e) => console.log(`  ! ${p} left matched: ${e.message}`));
       }
       await rm(copy, {recursive: true, force: true});
       if (libraryId) await scanUntil(token, libraryId, (books) => !books.has(ALICE.second.path));
     }).catch((e) => console.log(`  ! the second recording left: ${e.message}`));
-    try {
-      sqlite(`DELETE FROM audit_events WHERE id > ${marks.audit};\nDELETE FROM server_events WHERE id > ${marks.events};`);
-    } catch (e) {
-      console.log(`  ! this pass's audit and event rows left in the server's feeds: ${e.message}`);
-    }
+    dropFeedRows(marks);
     console.log('  ✓ the second recording removed again');
   }
 }

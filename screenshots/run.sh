@@ -279,7 +279,7 @@ fi
 # removed first, so no other shot ever shows it.
 RECORDINGS="$CACHE/recordings"
 rm -rf "$LIBRARY/Lewis Carroll/Alice's Adventures in Wonderland"
-if manifest_wanted recordings true; then
+if [ "${SKIP_SEED:-0}" != "1" ] && manifest_wanted recordings true; then
   echo "==> seeding a second recording of Alice into $RECORDINGS"
   MAX_FILES="${MAX_FILES:-3}" bash "$SERVER/scripts/seed-librivox.sh" "$RECORDINGS" \
     alice_wonderland_0711_librivox \
