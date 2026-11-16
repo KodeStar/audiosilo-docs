@@ -833,7 +833,8 @@ other writer clears them. With a stale version, the old rule applies.
   clears it.
 - `edit_version` is the version of the row's last explicit write that isn't
   listening: a `PATCH`, an import's apply or undo, a move or join, a sync `finish`
-  or `unfinish`, never a `PUT`. A Stay on a base below it does not win.
+  or an `unfinish` of a finished row, never a `PUT`. A Stay on a base below it does
+  not win.
 
 See [A Stay](api/reference.md#a-stay) for the rule.
 

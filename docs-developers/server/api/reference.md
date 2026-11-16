@@ -4171,9 +4171,9 @@ reader's [conflict rule](#the-conflict-rule-sync-v2) is unchanged.
 - no other device's Stay holds the row at a version above that base;
 - no explicit write that isn't listening came after that base
   (`progress.edit_version`: a `PATCH`, own or admin, an import's apply or undo, a
-  move or join, a sync `finish` or `unfinish`). A `PUT` is an old app's listening,
-  not an edit, so a `PUT` since the offer does not stop a Stay. Only its time
-  counts;
+  move or join, a sync `finish`, or an `unfinish` of a finished row). A `PUT` is an
+  old app's listening, not an edit, so a `PUT` since the offer does not stop a Stay.
+  Only its time counts;
 - the row's `updated_at` is no more than 2 minutes (`staySlack`) after the Stay's
   corrected end. Listening that went on longer after it, or a Stay made offline long
   ago, is not beaten. The rule reads `updated_at`, never `span_at`, because an old
@@ -4185,9 +4185,11 @@ Otherwise the span resolves as a `jump`.
 
 **The hold** (`heldByStay`). While `stay_version` is set, another device's span on
 a base below it, or with none, never moves the place. It comes back `diverged`
-`kept: "stored"`, and its place is offered (`other_place`). A device whose base is
-at or above `stay_version` saw the Stay and resolves as before, and its own `stay`
-then holds the row for it.
+`kept: "stored"` (a cold-start `resume` or `continue` more than 60 s behind is
+`not_applied` `resume_behind`, as before), and its place is offered (`other_place`)
+when it is more than 30 s from the kept one. A device whose base is at or above
+`stay_version` saw the Stay and resolves as before, and its own `stay` then holds
+the row for it.
 
 - The Stay's own device writing again keeps the hold.
 - Everything else clears it: another device's applied span (an Audible
