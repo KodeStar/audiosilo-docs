@@ -97,12 +97,15 @@ messy, inconsistently tagged titles, with the identifier and series helpers
 beside it (`NormalizeASIN`, `NormalizeISBN`, `ValidASIN`, `ValidISBN`,
 `SeriesKey`, `SameSeries`, `SeriesForms`, `Recordings`). The server uses it for:
 
-- the admin catalog's author and narrator merge keys (`Fold`);
+- the admin catalog's author and narrator merge keys, and the credit splitting
+  and surname sort keys of `internal/names` (`Fold`);
 - identifier checks and normalizing across `internal/catalog` (edits, hints,
-  the unknown-ASIN report, Audible titles) and `internal/meta`'s lookups and
-  cache keys;
-- series keys and comparisons: `more_series`, the series rails, the export, a
-  match run's plan (`internal/matchrun`) and its series tidy;
+  the unknown-ASIN report, Audible titles), the scan's tag reading
+  (`internal/metadata`) and `internal/meta`'s lookups and cache keys;
+- series keys and comparisons: `more_series`, the series rails, the export, the
+  scan's series-from-title reading (`internal/metadata`), the upcoming job's
+  series mapping (`internal/upcoming`), a match run's plan (`internal/matchrun`)
+  and its series tidy;
 - a work's other recordings (`Recordings`, in `internal/catalog` and
   `internal/meta`);
 - the community match search's title cleaning and comparison
