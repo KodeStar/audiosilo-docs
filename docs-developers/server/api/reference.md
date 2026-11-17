@@ -3379,8 +3379,7 @@ An `.mka` holding another codec (AAC, Opus, FLAC) is served as stored,
 **A share that stops answering** (from 2.7.0). The file's open and stat wait at
 most 45 seconds (`streamOpenTimeout`): long enough for a sleeping NAS or USB disk
 to spin up, and under AVPlayer's own timeout of about 60 seconds, since AVPlayer
-doesn't retry a `503`. Past that the answer is `503 share_not_answering`
-(below), never a request held for good. Only a regular file is opened
+doesn't retry a `503`. Past that the answer is the `503` below. Only a regular file is opened
 (`metadata.OpenRegular`), so a FIFO is a `404` at once. An older player treats
 the `503` as a failed load.
 
@@ -6329,20 +6328,11 @@ change, since those make the index stale. A rename, a new default view or a new
 schedule doesn't rescan. Nor does a new `metadata_source`: every book of the
 library is re-resolved from what the last scan stored, with no disk access.
 Admin edits and accepted community values stay on top. From 2.7.0 the
-re-resolve is a resumable job:
-
-- The edit marks the library due and starts the job. The job re-resolves 200
-  books a transaction, starts over if the source changes again meanwhile, and
-  goes on after a restart.
-- The PATCH waits for it up to 20 seconds. A small library therefore answers
-  with its books re-resolved, and a large one answers then while the rest goes
-  on in the background. Until the job ends, a reader can see the new setting
-  with some books' old values.
-- A run that fails is run again after 1 minute, then after twice as long each
-  time, 6 times at most, then waits for the next edit or start.
-- A book whose stored scan can't be read is skipped and recorded as an
-  `unreadable` problem on its first file, so the next scan reads it again
-  (see [Data model](../data-model.md#a-librarys-metadata-source)).
+re-resolve is a resumable job that goes on after a restart (see
+[Data model](../data-model.md#a-librarys-metadata-source)). The PATCH waits for
+it up to 20 seconds, so a small library answers with its books re-resolved and a
+large one answers then while the rest goes on in the background. Until the job
+ends, a reader can see the new setting with some books' old values.
 
 Response `200`: the updated library (without the scan settings, as for
 create). When the edit queued a scan it adds `job`, the queued scan, as for

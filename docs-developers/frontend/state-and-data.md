@@ -1419,9 +1419,9 @@ guide: [Upcoming releases](/users/listening/upcoming).
   UTC day, so "2026" or "2026-10" is ahead only while the whole period is.
   - `formatReleaseDate` (`src/lib/format.ts`) prints "2027", "Nov 2026" or
     "12 Nov 2026". It reads the date in UTC and writes it in the app's UI
-    language with the device's region for it (`getLocale()`, such as `en-GB`),
-    so English reads "12 Nov 2026" on a British device and "Nov 12, 2026" on an
-    American one, and German "12. Nov. 2026". Other text is shown as it came.
+    language with the device's region for it (`getLocale()`, see
+    [i18n](i18n.md)), so German reads "12. Nov. 2026". Other text is shown as it
+    came.
   - `upcomingDateLabel` labels the date by kind: "Out", "Released" or "First
     released" (the metadata's one date is a work's **first** release). There is
     no line without a date.

@@ -236,10 +236,10 @@ debugger. The token is narrow in every way:
   logout, My devices or the console.
 - **Short-lived.** It lasts 24 hours. Each sending device (the token that
   mints them) keeps at most 20, and a person at most 100 over all their
-  devices. A mint past either cap drops the least recently used (from 2.7.0;
-  before, the oldest minted): ranked by the token's `last_seen`, which every
-  cover or stream request it authenticates moves at most once a minute, else
-  its mint time (`trimCastTokensSQL`). So a run of casts on one device never ends
+  devices. From 2.7.0 a mint past either cap drops the least recently used
+  token (before, the oldest minted). Recent use is the token's `last_seen`,
+  else its mint time (`trimCastTokensSQL`); every cover or stream request the
+  token authenticates moves `last_seen`, at most once a minute. So a run of casts on one device never ends
   the cast another device of the person is playing, and a sender re-minting
   drops an idle token before the one its receiver is reading. The token just
   minted is always kept, even after the clock steps back. One limit stays:

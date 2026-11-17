@@ -37,9 +37,11 @@ To open it:
 
 | You see | It means |
 |---|---|
-| **Out Nov 12, 2026** | A preorder that comes out that day. The date follows your device's region, such as **Out 12 Nov 2026**. |
+| **Out Nov 12, 2026** | A preorder that comes out that day. |
 | **Released Oct 2026** | It came out recently. |
 | **First released 2014** | A missing book, and when it first came out. |
+
+Dates follow your device's region (see [Language](settings.md#language)), so a British phone shows **Out 12 Nov 2026**.
 
 The date is the earliest audiobook release the community database knows of. Your local store may get a new book a little later.
 
