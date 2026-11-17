@@ -1497,11 +1497,13 @@ The scan gives each the probe's time (`Scanner.probeTimeout`). An on-demand
 read gives each look 10 seconds instead (`library.WithLookTimeout`,
 `Scanner.lookTimeout`), well inside the 30-second request timeout, so a share
 that stopped answering is the request's `503 share_not_answering`, not its
-timeout. The audio's own read keeps the probe's time. A Re-read whose read kept
+timeout. The audio's own read and the move check's fingerprint reads
+(`metadata.FingerprintErr`) keep the probe's time. A Re-read whose read kept
 the book as stored because a file did not answer (a look given up on, or its
 audio's read cut short) answers that `503` too, since the admin asked for the
-book as it is on disk now. `/item` stops at its first unanswered look and
-answers with the stored book (see
+book as it is on disk now. `/item` on an indexed book answers with the stored
+book: once a Matroska book's remux warm has a join given up on, it makes no
+further look (see
 [`/item`](api/reference.md#get-apiv1librariesiditem)).
 
 With a book's audio read cut short, none of its side files is looked at, since each would wait
@@ -1514,9 +1516,11 @@ the file is gone. A backfill's given-up read keeps what is stored and records
 nothing. The API answers a given-up look with `503 share_not_answering`
 ([API conventions](api/index.md)).
 
-These looks are still not bounded:
+These looks are still not bounded, or not by an on-demand read's 10 seconds:
 
-- the ffprobe read on a Re-read, which keeps the probe's 30 seconds;
+- the ffprobe read on a Re-read, and the fingerprint reads of an on-demand
+  index, a Re-read or the Bridge's rescan that looks for a move, which keep the
+  probe's 30 seconds;
 - a file cache's background open of its source (`media.FileCache`, a remux or
   a rendition being made), once the request's own look has answered. Its stats
   of the source get a scan's look time;
@@ -2260,10 +2264,11 @@ book is indexed, so its row resolves with the carried edits.
 
 When the server can't tell now, it indexes nothing, carries nothing and answers
 `503 share_not_answering`. It can't tell when the look at `from` is unknown
-(see [Move detection](#move-detection)), when the new book's fingerprint can't
-be read for a reason a retry may get past (`metadata.FingerprintErr`), or when
-the read kept the new book as stored because a file did not answer. The
-Bridge's retry, once the share answers, carries the state.
+(see [Move detection](#move-detection)), or when the new book's fingerprint
+can't be read for a reason a retry may get past (`metadata.FingerprintErr`).
+The Bridge's retry, once the share answers, carries the state. A read that
+kept the new book as stored because a file did not answer also answers that
+`503`, though the state was carried already (`readOwn`).
 
 ### A move found on demand
 
@@ -2300,9 +2305,11 @@ lifetime, capped at 10 minutes (`rescanBookTimeout`). Probing every part on a
 slow share can outlast the request timeout, and the result is still saved
 then. A path with no book any more is `404` with `code: "not_indexable"`.
 
-Each look the re-read makes waits at most 10 seconds, as an on-demand read's
-does (see [the in-process probe](#the-in-process-probe)). A share that stopped
-answering is therefore `503 share_not_answering` after about 10 seconds. The
+Each look the re-read makes at the book's files waits at most 10 seconds, as an
+on-demand read's does (see [the in-process probe](#the-in-process-probe)); its
+audio's read keeps the probe's 30 seconds. A share that stopped answering is
+therefore `503 share_not_answering` after about 10 seconds, or 30 when a stat
+answers from a cache while the audio's reads hang. The
 console shows "Couldn't read the files". The Bridge's rescan is the same.
 
 ## The unavailable-root guard

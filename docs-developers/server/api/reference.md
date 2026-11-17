@@ -2340,9 +2340,10 @@ indexed on its behalf. The same holds for `/chapters`, `/cover`, `/meta` and `/n
 
 From 2.7.0 `/item`'s looks at an indexed book's files wait at most 10 seconds
 each. On a share that stopped answering it answers with the stored book: the
-stored `ebook` and no `readalong`. It stops at the first look that goes
-unanswered (for a Matroska book, the join of a file it would warm a remux for),
-so it answers after about 10 seconds.
+stored `ebook` and no `readalong`. For a Matroska book it stops once the join
+of a file it would warm a remux for goes unanswered, so it answers after about
+10 seconds. Otherwise the ebook's look and the read-along's each wait their 10
+seconds, so a book with an ebook and a read-along map answers after about 20.
 
 #### Other recordings
 
