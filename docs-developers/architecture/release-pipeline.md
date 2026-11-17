@@ -138,7 +138,10 @@ Six binaries in all. The rest is shared:
 - **Linux packages:** `.deb` and `.rpm` (nfpm) that depend on the **distro's**
   ffmpeg and install a systemd unit (`packaging/systemd/audiosilo.service`).
 - **`checksums.txt`**. GoReleaser creates the release as a **draft**, and a person
-  reviews it before publishing. Its notes end with the `release.footer` in
+  reviews it before publishing. With `prerelease: auto`, a tag with a pre-release
+  suffix (`v2.8.0-rc.1`) is published as a pre-release, so GitHub's latest
+  release, which the update check and the LinuxServer.io image watch, stays on the
+  last stable one. Its notes end with the `release.footer` in
   `.goreleaser.yml`: the install pointers and the one sponsor line, linking
   GitHub Sponsors.
 - **Version stamping:** the same ldflags as the Docker build.
@@ -204,6 +207,10 @@ draft:
 - an amd64 boot with `--data` only (the headless first run and the self-signed
   TLS default) that must serve `/healthz` and `/web/` and log `engine=native` at
   start.
+
+`scripts/smoke-boot.sh <binary> <work-dir>` runs the same boot against any Linux
+build of the native engine, such as a local `goreleaser build --snapshot`. It listens on 18080 with
+ffmpeg and ffprobe off, and prints the server's log either way.
 
 That is a contract, because
 [linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)
