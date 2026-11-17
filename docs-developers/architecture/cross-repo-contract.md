@@ -726,7 +726,10 @@ the web image must exist before the server image builds.
 
 **Server:**
 
-- `Dockerfile` does `FROM ${WEB_IMAGE} AS web`, then `COPY --from=web /web /app/web`.
+- `Dockerfile` does `FROM --platform=$WEB_PLATFORM ${WEB_IMAGE} AS web`, then
+  `COPY --from=web /web /app/web`. The web image is published for `linux/amd64`
+  only, and `WEB_PLATFORM` (default `linux/amd64`) makes every target take that
+  copy.
 - `.github/workflows/image.yml` builds and pushes `ghcr.io/<owner>/audiosilo-server`.
 - `.github/workflows/release.yml` and `scripts/fetch-web-player.sh` embed the same
   pinned build into native binaries.

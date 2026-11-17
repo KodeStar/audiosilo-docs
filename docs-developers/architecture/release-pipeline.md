@@ -41,7 +41,7 @@ flowchart TB
     tag --> webyml
     tag --> imageyml
     tag --> relyml
-    webimg -->|"Dockerfile: FROM $WEB_IMAGE AS web, COPY --from=web /web /app/web"| imageyml
+    webimg -->|"Dockerfile: FROM --platform=$WEB_PLATFORM $WEB_IMAGE AS web, COPY --from=web /web /app/web"| imageyml
     webimg -->|"scripts/fetch-web-player.sh → -tags embedplayer"| relyml
 ```
 
@@ -103,8 +103,13 @@ The multi-stage `Dockerfile`:
   `-ldflags "-X github.com/kodestar/audiosilo-server/internal/api.Version=${VERSION}"`
   (`image.yml` passes the semver on a tag build, else `dev-<short sha>`, as the
   `VERSION` build-arg; the default is `dev`);
-- pins the player: `FROM ${WEB_IMAGE} AS web` … `COPY --from=web /web /app/web`,
-  with `ARG WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest`;
+- pins the player: `FROM --platform=$WEB_PLATFORM ${WEB_IMAGE} AS web` …
+  `COPY --from=web /web /app/web`, with
+  `ARG WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest` and
+  `ARG WEB_PLATFORM=linux/amd64`. The web image is static files published for
+  `linux/amd64` only, so every target platform (and a build on an arm64 host)
+  takes that one copy. Set `WEB_PLATFORM` only for a locally built web image of
+  another platform;
 - uses `alpine:3.24` for the final stage, with **ffmpeg installed from apk**.
   Unlike the native binaries, the Docker image does bundle ffmpeg. The stage also
   has a `PUID` and `PGID` entrypoint, which gives that user its folders and checks
@@ -166,7 +171,9 @@ compiled **into the binary**:
   `audiosilo-web` image into `internal/web/player/` (gitignored). It fails if
   `index.html` is missing. The image is the `WEB_IMAGE` env var, which
   `release.yml` sets from the lowercased owner and the `web_version` dispatch
-  input (default `latest`).
+  input (default `latest`). The script passes `docker create --platform
+  "${WEB_PLATFORM:-linux/amd64}"`, the Dockerfile's default and override:
+  without it an arm64 host finds no manifest to pull.
 - Builds use `-tags=embedplayer`. `internal/web/player_embed.go` embeds that
   directory, while the default `player_disk.go` (`//go:build !embedplayer`) serves
   from `web_dir` at runtime. The embedded player takes precedence over `web_dir`,
