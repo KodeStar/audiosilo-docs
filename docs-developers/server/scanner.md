@@ -1316,9 +1316,9 @@ reader is a port of FFmpeg's demuxer:
 Every other format goes to ffprobe.
 
 **Parity is the contract.** Every value equals what the configured ffprobe
-gives, by the rules of its FFmpeg release (`ffRules`). The probe therefore
-changes no stored duration, chapter or tag, and an upgraded server needs no
-re-index. The probe runs for these releases:
+gives, by the rules of its FFmpeg release (`ffRules`), with one departure from
+2.7.0: a header-less VBR MP3's length is counted (below). Otherwise the probe
+changes no stored duration, chapter or tag. The probe runs for these releases:
 
 - **7.1 and 8.1** (`knownRules`). They differ in MP3 gapless durations and in
   empty UTF-16 ID3 strings. The official and LinuxServer.io images are both
@@ -1343,9 +1343,8 @@ only after a restart. The release is the major.minor, so `7.1.1`,
 any shape it does not model exactly. ffprobe then reads that one file, and
 nothing is logged. The shapes are:
 
-- a VBR MP3 with no Xing or VBRI header, and a concatenated MP3. ffprobe
-  estimates the VBR file's duration from the bitrate, and keeping that estimate
-  keeps the stored duration the same;
+- a VBR MP3 with no Xing or VBRI header whose frames can't be counted (below),
+  and a concatenated MP3;
 - a FLAC with a CUESHEET block, or a FLAC or Ogg with an ID3 prefix;
 - a fragmented or compressed MP4, or one with an unknown handler or sample
   entry;
@@ -1375,6 +1374,51 @@ to ffprobe.
   or a repeated Vorbis key grows (`blockFile.check`). The walks that loop
   without reading check them every 256 ticks (`blockFile.tick`, a `probeLimit`
   panic that `fastProbe` recovers).
+
+**Header-less VBR MP3 lengths are counted** (2.7.0, server#435). For a VBR MP3
+with no Xing or VBRI header, ffprobe estimates the length from the bitrate of
+the first frames. That was 139.42 s for 150.05 s of decoded audio on a test
+book, and about 7% (some 40 minutes over 10 hours) on real books, so seeks
+landed off. The probe now counts such a file's frames instead:
+
+- A file counts as VBR when its first 64 frames, or the frames at 20-80% of the
+  file, differ in bitrate (`mp3ConstantBitrate`). A file with a header, or a CBR
+  one, is never counted, so the common case costs nothing more.
+- The count runs header to header, from the first frame to the trailing ID3v1
+  or APEv2 tags (`mp3FrameCount`), inside the file's one open, in 1 MiB windows
+  through the bounded reader, under the mount's cap (below). It resyncs past
+  junk and counts a last frame cut off by the end, as ffmpeg decodes it. It
+  matches ffmpeg on ID3v2.4 footers, Xing after junk, MPEG2 and 2.5, and APEv2
+  with ID3v1.
+- **When it falls back.** The count gives up once more than an eighth of the
+  audio was skipped as junk (`mp3MaxJunk`: a sample rate that changes,
+  free-format frames). That file then goes to ffprobe and keeps its estimate.
+  A count cut short (its deadline, the scan stopping, a read error, which ends it
+  at once) also leaves the file to ffprobe for now. With no ffprobe, a count
+  out of time is a `ProbeTimedOut`.
+- With an ffprobe whose release has no rules, an MP3's estimate is replaced by
+  the count the same way after ffprobe answers.
+
+**The one-time re-read after the upgrade.** Migration `0082` adds
+`books.duration_rev` and `duration_rev_indexed_at`. A book with no MP3 starts at
+the current revision (`catalog.durationRev`). A book holding an MP3 starts at
+0, so the next scan (the one at start, after an upgrade) indexes it once more
+though its files are unchanged (`Signature.DurationStale`), and counts it in
+the scan report as updated. That scan takes longer than a normal rescan. A row
+an older server re-indexed since (its `duration_rev_indexed_at` no longer its
+`indexed_at`) reads as stale too, so rolling back and forward again still
+works: the columns are only added.
+
+Every index then writes the current revision with its `indexed_at`, except one
+that left a header-less VBR file uncounted for now (a deadline, the scan
+stopping, a read error: `Metadata.LengthUncounted`). That writes 0, so a later
+scan tries again. A count that gave up is not retried each scan, because it
+would give up the same way. Bump `durationRev` when a change to the length
+reading should re-read the stored books.
+
+A multi-file book whose parts' lengths change moves the parts' offsets in the
+whole-book timeline. Places, bookmarks and notes on it are not remapped, as for
+the natural file order. Only header-less VBR books change.
 
 **Bounded reads on a hung share.** The file's open and its stat, the tag read
 and the narrator walk before the probe are bounded too (`readFile`), by the

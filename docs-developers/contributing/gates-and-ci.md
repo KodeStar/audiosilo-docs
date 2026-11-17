@@ -311,7 +311,9 @@ answers, with and without ffprobe installed:
   `cmd/probediff -golden`. The script writes one for the local ffprobe and,
   through docker, one for the Docker image's. `probe_golden_test.go` checks the
   probe against each with no ffprobe needed, so the plain `go test ./...` gate
-  covers it everywhere.
+  covers it everywhere. A header-less VBR MP3 fixture's length is counted, not
+  ffprobe's estimate, so the test leaves its duration out of the comparison and
+  checks it against its decoded length in `countedFixtures` instead.
 - **The live comparison.** `probe_live_test.go` compares the probe with the
   ffprobe on `PATH` over the fixtures, and over any folders of real books
   `AUDIOSILO_PROBE_DIRS` (a path list) names. It skips without an ffprobe, or
