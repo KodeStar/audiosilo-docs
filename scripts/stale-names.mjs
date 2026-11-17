@@ -44,10 +44,10 @@ function git(dir, ...args) {
 
 function gitGrep(dir, ref, pattern, ...paths) {
   try {
+    // -h drops the "<ref>:<path>:" prefix: one bare match per line.
     return git(dir, 'grep', '-hoE', pattern, ref, '--', ...paths)
       .split('\n')
-      .filter(Boolean)
-      .map((l) => l.slice(l.indexOf(':', ref.length) + 1)); // "<ref>:<match>"
+      .filter(Boolean);
   } catch (e) {
     if (e.status === 1) return []; // no match
     throw e;
@@ -144,7 +144,9 @@ function readServer(server, rev) {
       ),
     ]),
   ].sort();
-  const env = [...new Set(gitGrep(server, ref, 'AUDIOSILO_[A-Z0-9_]*[A-Z0-9]', '.'))].sort();
+  // Code, tests and config, not prose: a variable the server dropped can live on
+  // in its own README or CHANGELOG.
+  const env = [...new Set(gitGrep(server, ref, 'AUDIOSILO_[A-Z0-9_]*[A-Z0-9]', '.', ':!*.md'))].sort();
   return {repo: REPO, ref, capabilities, routes, config, settings, serverFields: serverFields.sort(), env};
 }
 
@@ -157,15 +159,15 @@ export function codeSpans(text) {
   );
 }
 
-// A route as segments, each placeholder ({id}, <id>, :id) null, and whether
-// it covers everything below it (a trailing `*`, `…` or {rest...}, or a mux
-// subtree pattern ending in `/`).
+// A route as segments, each placeholder ({id}, <id>, :id) null, whether it
+// covers everything below it (a trailing `*`, `…` or {rest...}, or a mux
+// subtree pattern ending in `/`), and whether it was under /api/v1.
 function parseRoute(path) {
   let p = path
     .replace(/\[[^\]]*\]/g, '') // `/connect[/]`, `/admin[/…]`, `/book[?path=]`: the optional part
-    .replace(/[?#].*$/, '')
-    .replace(/^\/api\/v1(?=\/|$)/, '')
-    .replace(/\/\{\$\}$/, '');
+    .replace(/[?#].*$/, '');
+  const api = /^\/api\/v1(\/|$)/.test(p);
+  p = p.replace(/^\/api\/v1(?=\/|$)/, '').replace(/\/\{\$\}$/, '');
   let open = false;
   if (/\/(\*|…|\{[^}]*\.\.\.\})$/.test(p)) {
     open = true;
@@ -178,7 +180,7 @@ function parseRoute(path) {
     .split('/')
     .filter(Boolean)
     .map((s) => (/^(\{.*\}|<.*>|:\w+)$/.test(s) ? null : s));
-  return {segs, open};
+  return {segs, open, api};
 }
 
 const segEq = (a, b) => a === null || b === null || a === b;
@@ -186,14 +188,19 @@ const segEq = (a, b) => a === null || b === null || a === b;
 /**
  * Whether a route a page names is one of the server's: placeholders match
  * anything, an open route covers what is under it, and a short form naming a
- * route's last segments (`GET /fs` for /libraries/{id}/fs) counts.
+ * route's last segments (`GET /fs` for /libraries/{id}/fs) counts. A page
+ * writes API routes without /api/v1 too, so a web subtree (the console's
+ * `/admin/`) does not cover a route below it that names an API group
+ * (`/admin/settings`): that one must be an API route.
  */
 export function routeKnown(path, routes) {
   const doc = parseRoute(path);
-  return routes.some((r) => {
-    const srv = parseRoute(r);
+  const parsed = routes.map(parseRoute);
+  const apiGroups = new Set(parsed.filter((r) => r.api).map((r) => r.segs[0]));
+  return parsed.some((srv) => {
     const prefix = (a, b) => a.segs.length >= b.segs.length && b.segs.every((s, i) => segEq(s, a.segs[i]));
-    if (srv.open && srv.segs.length > 0 && prefix(doc, srv)) return true;
+    const covers = srv.api || doc.segs.length === srv.segs.length || !apiGroups.has(doc.segs[0]);
+    if (srv.open && srv.segs.length > 0 && prefix(doc, srv) && covers) return true;
     if (doc.open && prefix(srv, doc)) return true;
     if (srv.segs.length === doc.segs.length && prefix(srv, doc)) return true;
     // The short form: the page's literal segments are the route's own last ones.

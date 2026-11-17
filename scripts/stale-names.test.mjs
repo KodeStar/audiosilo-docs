@@ -15,6 +15,7 @@ const ROUTES = [
   '/api/v1/libraries/{id}/fs',
   '/api/v1/me/collections/{id}',
   '/api/v1/auth/oidc/start',
+  '/api/v1/admin/settings',
 ];
 
 test('routeKnown: a route the server has, in the forms pages write it', () => {
@@ -29,6 +30,7 @@ test('routeKnown: a route the server has, in the forms pages write it', () => {
     '/web/reader.html',
     '/me/collections/*',
     '/auth/oidc/start',
+    '/admin/settings', // the API route, written without /api/v1
   ]) {
     assert.equal(routeKnown(path, ROUTES), true, path);
   }
@@ -42,6 +44,8 @@ test('routeKnown: a route the server does not have', () => {
     '/libraries/{id}/item/extra',
     '/collections', // a short form must end like a route, placeholders aside
     '/auth/oidc/admin',
+    '/admin/gone', // an API group: the console's /admin/ subtree does not cover it
+    '/api/v1/admin/gone',
   ]) {
     assert.equal(routeKnown(path, ROUTES), false, path);
   }
