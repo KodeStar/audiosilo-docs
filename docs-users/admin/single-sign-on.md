@@ -153,12 +153,12 @@ To manage admins at your provider, set **Admin group** under **Who may sign
 in** to a group name, such as `audiosilo-admins`.
 
 At each single sign-on, a member of that group becomes an admin, and anyone
-else becomes an ordinary user. Group names must match exactly, capital letters
+else becomes a **Listener**. Group names must match exactly, capital letters
 included. Leave it empty to set roles on People yourself.
 
 - The change happens when the person next signs in with single sign-on.
   Devices they already signed in stay signed in.
-- The last admin is never made an ordinary user.
+- The last admin is never made a listener.
 - Only a list of groups the provider sends changes a role. A sign-in without
   one never does. Keycloak, for one, leaves groups out for a person in none, so
   someone removed from every group keeps their role until you change it on
