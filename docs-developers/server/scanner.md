@@ -24,10 +24,14 @@ indexing) catches up.
 `Scanner.Scan` branches on `libraries.kind` before book detection.
 
 A kind this server doesn't know (`catalog.KnownKind`) is never scanned as
-books. Such a kind belongs to a newer server and was left by a rollback. The
-scan fails with `library.ErrUnknownKind` and is recorded as a failed run. A
-targeted index refuses any library that isn't `books` (`resolveBook`,
-`ErrNotIndexable`).
+books. Such a kind belongs to a newer server and was left by a rollback. From
+2.7.0 a scheduled or startup scan job for one records no run and raises no
+"scan failed" alert (`skipUnknownKind`): it logs one line per library, and the
+schedule counts from the skip, so a rollback doesn't alert at every scheduled
+scan and restart. A manual or settings-change scan, also one that joined a
+waiting scheduled or startup job, still fails with `library.ErrUnknownKind`,
+records a failed run and raises its alert, naming the cause. A targeted index
+refuses any library that isn't `books` (`resolveBook`, `ErrNotIndexable`).
 
 ### Scanning a podcast library
 
@@ -507,9 +511,12 @@ never through a link, including one swapped in after the walk.
 
 - A file that can't be used (not JSON, too large, not a regular file) keeps its
   signature, so it isn't read again until it changes.
-- A file that can't be read right now (gone since the walk, a flaky mount) is
-  left as it was for a skipped book, and recorded as none by a re-index. The
-  next scan reads it again.
+- A file that can't be looked at or read right now (a flaky mount) is left as
+  it was, for a skipped book and (from 2.7.0) for a re-index alike: the row
+  keeps its stored signature with no `abs_indexed_at` (`ABSReading.Unread`), so
+  the book keeps its ABS values rather than losing them for one scan, and the
+  next scan reads the file again. An entry whose lstat fails during the walk is
+  stat'ed once more (`absEntrySig`).
 
 Both cases log a warning. What the file means for a book's metadata is in
 [Data model](data-model.md#metadata-overrides-and-effective-values).
@@ -1026,6 +1033,11 @@ Only a trailing, explicitly marked number set off from the name counts. So
 tag naming several series (`Discworld #40; Moist von Lipwig #3`) is read by its
 first series when that one carries a position. A later series-part tag still
 overrides the position.
+
+A position is never NaN or an infinity (`ParseSeriesPosition`), and a
+series-part tag's is read only from 0 to 100000 (`seriesPartTag`), the bound an
+edit's position has (`metadata.ValidSeriesPosition`). Before 2.7.0 a series-part
+tag of `nan` failed the book's insert.
 
 #### The narrator
 
@@ -1592,7 +1604,9 @@ an ebook, and a digest that is not current.
 - The post-pass skips a book whose stored digest is already of the file on
   disk.
 - `SetEbookDigest` records the digest with the signature of the file it
-  hashed, and only while the row still names that ebook.
+  hashed, and only while the row still names that ebook and (from 2.7.0) still
+  holds the digest its caller read as stale, so a slow hash of an older file
+  never overwrites a newer one recorded meanwhile.
 
 A request ([`/item`](api/reference.md#get-apiv1librariesiditem)'s `readalong`,
 [`/readalong`](api/reference.md#get-apiv1librariesidreadalong)) trusts the
@@ -1600,7 +1614,9 @@ stored digest only while the file on disk still has the signature it was
 computed for. That takes one stat (`Scanner.EbookDigestNow`). Otherwise the
 request hashes the file then and records the digest under the new signature.
 An EPUB replaced since the last scan is therefore never answered with the old
-file's digest, and it is hashed once, not on every ask.
+file's digest, and it is hashed once, not on every ask. A known limit: the
+signature is the size, mtime and name, so an EPUB replaced by one of the same
+size and mtime (and name) keeps the old digest until either changes.
 
 The `.epub` is never audio.
 [`/stream`](api/reference.md#get-apiv1librariesidstream) refuses it and the
@@ -1692,7 +1708,9 @@ Two exceptions keep a damaged file from costing every scan:
 file to ffprobe (see [The in-process probe](#the-in-process-probe)). An
 ffprobe run that runs out is killed. Its `ProbeErr` wraps
 `metadata.ErrProbeTimeout`, and the problem is `probe_failed` with the detail
-`ffprobe timed out after 30s`.
+`ffprobe timed out after 30s`. The console's Health page matches that wording
+and says the file "took too long to read as audio" (the disk or share may be
+slow), not that it couldn't be read.
 
 Files that share a slow disk or a busy share can each take longer than that
 while [others are read beside them](#reading-several-files-at-once). So a read

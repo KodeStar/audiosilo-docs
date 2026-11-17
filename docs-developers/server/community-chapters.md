@@ -72,6 +72,10 @@ which an `indexed_at` in the basis would.
 
 - Due books come oldest check first, 50 at a time, with two checked at once
   (`internal/pool`'s `Each`, shared with bulk matching).
+- In [mirror mode](configuration.md#mirror-mode-metadatamode-mirror) the first
+  pass after a start (the first with metadata on, since no copy loads while it
+  is off) waits for the local copy, at most 10 minutes (`mirrorReady`), so a
+  start sends no lookups to the service while the copy loads.
 - Each check is bounded to 5 minutes, of which the pause searches get 4. Past
   that, the fit leaves the remaining boundaries unsnapped (counted as
   approximate) and is still recorded.

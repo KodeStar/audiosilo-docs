@@ -3342,8 +3342,9 @@ of its audio as plain MP3:
 
 - `Content-Type: audio/mpeg`, `Accept-Ranges: bytes`, and Range honoured;
 - chapters as ID3 `CHAP` frames;
-- a strong `ETag: "remux-<key>"` and the copy's own `Last-Modified`, so a validator
-  kept from the stored Matroska never earns a `304` or a spliced range.
+- a strong `ETag: "remux-<key>"` and (from 2.7.0) no `Last-Modified`, so a
+  validator kept from the stored Matroska never earns a `304` or a spliced range,
+  and an `If-Range` with the ETag resumes with a `206`.
 
 It is the same URL that served the Matroska before, so shipped clients stream the
 MP3 with no change. A podcast library's stream is never remuxed.
@@ -3384,7 +3385,7 @@ directory (never into the library) and keeps it in a size-capped cache
 - **Auth** as the stream's: a session or API key header, `?token=`, or a cast
   token for the file's book; the path is scope-checked as for any stream.
 - **Ready:** `200` / `206` with `Content-Type: audio/mp4`, `Accept-Ranges: bytes`,
-  Range and `If-Range`, a strong `ETag: "rw1-<key>-<size>"` and the copy's own
+  Range and `If-Range`, a strong `ETag: "rw1-<key>-<size>"` and (from 2.7.0) no
   `Last-Modified`. The ETag names one encode, so a resumed download (`Range` with
   `If-Range`) never splices bytes of two encodes; `Content-Disposition` only with
   `download=1`.

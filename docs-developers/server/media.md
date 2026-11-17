@@ -661,10 +661,12 @@ waits for them.
 
 **The response.** `media.ServeOpenedAs` serves the copy with
 `Content-Type: audio/mpeg`, `Accept-Ranges: bytes` and Range, named
-`<stem>.mp3` (the `download=1` filename). Its validators are its own: a strong
-`ETag: "remux-<key>"` and the copy's mtime as `Last-Modified`, never the
-source's. A 2.4.x client may have kept an `If-Range` or `If-Modified-Since`
-from the stored Matroska. That request gets the whole MP3, never a `304` or MP3
+`<stem>.mp3` (the `download=1` filename). Its validator is its own: a strong
+`ETag: "remux-<key>"`, never the source's. From 2.7.0 it sends no
+`Last-Modified`, since the copy's mtime is the cache's LRU clock, so an
+`If-Range: <etag>` resumes with a `206`. A 2.4.x client may have kept an
+`If-Range` or `If-Modified-Since` from the stored Matroska, and any client may
+send a date `If-Range`. Such a request gets the whole MP3, never a `304` or MP3
 bytes spliced onto Matroska. A remuxed stream is not a "transcoded" listening
 session.
 
@@ -756,8 +758,9 @@ Then `FileCache.Open` waits up to `renditionWait` for the copy. That is 45 s,
 the same as the remux's download wait. The outcomes are:
 
 - **Ready.** `serveCopy` answers through `media.ServeOpenedAs`, with Range and
-  `If-Range`. The response has `Content-Type: audio/mp4`, a strong
-  `ETag: "rw1-<key>-<size>"`, and the copy's own mtime as `Last-Modified`.
+  `If-Range`. The response has `Content-Type: audio/mp4` and a strong
+  `ETag: "rw1-<key>-<size>"`, and (from 2.7.0) no `Last-Modified`, since the
+  copy's mtime is the cache's LRU clock.
   `download=1` adds `Content-Disposition: attachment` named `<stem>.m4a`. The
   size in the ETag tells two encodes apart, should a re-encode after an eviction
   ever differ, so a resumed download never splices bytes of two encodes.

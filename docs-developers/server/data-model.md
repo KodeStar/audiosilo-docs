@@ -2082,7 +2082,9 @@ The parse is lenient, and a wrongly typed value costs only that value. The file
 may be at most 4 MiB. The parse reads:
 
 - `title` and `subtitle`;
-- `authors` and `narrators`, joined with ", ";
+- `authors` and `narrators`, joined with ", " (from 2.7.0 with "; " when a
+  name holds a comma, `Le Guin, Ursula K.`, so the credit splits back into the
+  people the file lists: `joinCredit`);
 - `series` as `"Name #seq"`. The first is the main series with its position,
   and the rest are `more_series`. A series without a position keeps the
   scanned position only while it is the same series, by `seriesKey`.
