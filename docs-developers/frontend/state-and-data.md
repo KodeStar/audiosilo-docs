@@ -1418,7 +1418,7 @@ guide: [Upcoming releases](/users/listening/upcoming).
   `src/lib/release-date.ts`. A date is compared at its own precision against the
   UTC day, so "2026" or "2026-10" is ahead only while the whole period is.
   - `formatReleaseDate` (`src/lib/format.ts`) prints "2027", "Nov 2026" or
-    "12 Nov 2026". It reads the date in UTC and writes it in the app's UI
+    "12 Nov 2026" (en-GB; "Nov 12, 2026" for en-US). It reads the date in UTC and writes it in the app's UI
     language with the device's region for it (`getLocale()`, see
     [i18n](i18n.md)), so German reads "12. Nov. 2026". Other text is shown as it
     came.
