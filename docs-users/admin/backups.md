@@ -59,9 +59,10 @@ and set `AUDIOSILO_BACKUP_DIR` to that path:
   folder and of AudioSilo's own backups in it. A NAS share can refuse that, and
   then the log names the folder and the fix (see
   [Permission denied](../troubleshooting.md#permission-denied)).
-- Never mount a share inside the data folder, such as at `/data/backups`. At
-  start the container changes the owner of everything in the data folder, and
-  that would reach into the share.
+- A share mounted inside the data folder, such as at `/data/backups`, keeps its
+  owner. The container's ownership change at start stops at it. Give the
+  server's user access to it on the host, or mount it at a path of its own as
+  above.
 
 ## Making and downloading backups
 
@@ -74,7 +75,11 @@ The **Backups** card lists every backup, newest first.
 If a backup fails, a notice gives the reason, such as a full disk or a folder
 the server can't write to. You can also get it as a [notification](notifications.md).
 For a folder the server can't write to, the notification names the folder, the
-user the server runs as and the fix.
+user the server runs as and the fix. A folder mounted read-only (`:ro` in
+Docker) is named as read-only.
+
+When the server can't read the backups folder at all, the Backups page shows
+the same folder, user and fix in place of the list.
 
 ## Before an upgrade
 

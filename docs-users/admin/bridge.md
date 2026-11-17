@@ -115,10 +115,13 @@ properly.
 The **Jobs** card lists what the Bridge was asked to do, newest first: characters
 and recaps, descriptions, chapters, read-alongs, community shares, corrections,
 podcast downloads, Audible backups and books added from LibriVox. **Show jobs**
-filters it by state.
+filters it by state, and **Kind of job** by kind.
 
-Each job shows its book, its progress, who asked and when. Jobs the server queues
-itself say **Scheduled by the server**. When a job is done, it says what it made.
+Each job shows its book, its progress, who asked and when. A podcast job names
+the show, or the feed's host while the show is new. Jobs the server queues
+itself say **Scheduled by the server**. A job a listener is waiting for, such as
+an episode they are about to play, says **High priority** and goes first. When a
+job is done, it says what it made.
 A failed or cancelled job keeps its **Last step**, so you can see where it
 stopped.
 

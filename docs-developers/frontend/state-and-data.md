@@ -992,17 +992,18 @@ Each field is read through one of two readers, never both:
   [generated work](../server/api/reference.md#generated-content) (`matched: false`
   with a `work`). So an unmatched book's generated description reaches About too.
 
-Two gates in `meta-gating.ts` decide whether a screen asks `/meta`:
+Two rules in `meta-gating.ts` decide whether `/meta` is asked for:
 
-- `bookPageMetaEnabled`: the `metadata` capability and a loaded book that is not
-  an episode, identifiers or not. Only the book page uses it. A newer server
+- `metaEnabledFor`: the `metadata` capability and a loaded book that is not
+  an episode, identifiers or not. The book page, the companion and reveal toast,
+  Home's Now card and Previously on, and the end credits use it. A newer server
   answers a book with no ASIN or ISBN from its console match (a LibriVox
   download), and an older one answers `matched: false` without asking upstream,
   so the one request is cheap either way.
-- `metaEnabledFor`: that gate and an ASIN, an ISBN **or** `generated: true`. The
-  companion and reveal toast, Home's Now card and Previously on, the end credits
-  and the offline copy (`canMatch` in `offline-meta.ts`) use it, because they ask
-  for a book in passing or for every download.
+- `matchableById`: a book that is not an episode with an ASIN, an ISBN **or**
+  `generated: true`. The offline copy (`canMatch` in `offline-meta.ts`) uses it,
+  because it runs for every download, so a book matched only in the console reads
+  as unmatched offline.
 
 The series page's anchor (`metadataAnchor`, an ASIN or ISBN) and Search's
 characters (`characterBooksToLoad`, the started books, identifiers or not) pick
@@ -1576,7 +1577,9 @@ headers }`). The rules are in `src/lib/proxy-headers.ts` and the storage in
   at load (`cleanProxyHeaders`). Reserved names (`Authorization`, `Cookie`,
   `Host`, `Range`, `Content-Type`, `Content-Length`, `Connection`,
   `Transfer-Encoding`, `X-AudioSilo-Client`) and values with control characters
-  are refused the same way.
+  are refused the same way. On Android the native player holds the same line on
+  its own (`AuthScope.headersFor` in the player module): a track at a plain-http
+  origin gets only `Authorization`, never a proxy header.
 - **Web.** Only a request same-origin with the page carries them. The server's
   CORS lists a fixed set of request headers, so a custom one cross-origin would
   fail its preflight. `<img>` and `<audio>` can't carry them and rely on the
@@ -1601,8 +1604,9 @@ and [You and settings](you-and-settings.md#account-srccomponentsaccount).
 or updates **by server and user**.
 
 - The prior connection is the one with `serverIdOf(c) === serverId` and the same
-  `user.id`. A legacy connection saved without a usable user id counts as this
-  user, since it was the server's one connection.
+  `user.id` (`priorConnection`). A legacy connection saved without a usable user
+  id counts as this user, since it was the server's one connection, but only
+  under the username it kept, when it kept one.
 - So re-pairing the same account at another URL updates its connection instead of
   adding one, while **another user on the same server is another connection**.
 - A prior connection keeps its id. A legacy id stays until the key migration
@@ -1635,6 +1639,12 @@ with their token and scoped state.
   `needsReconnect: 'server-reset'`, for them to sign in again. Dropping it would
   delete their profile, PIN and kids settings.
 - A different user is never a reason to drop one.
+
+At a home-network address (`looksLikeHomeAddress`: a private IP, a `.local` name)
+another `server_id` is as likely another box at the same address on another
+network. There only the connections named in `retire` count as stale. Everyone
+else's stays as it was, neither flagged `server-reset` nor retired, so signing in to
+another server at the same private address deletes nobody's connection.
 
 `learnAddresses` merges a `GET /addresses` answer into a connection's addresses
 (`mergeAddresses`, so a known `home` survives). The address runner calls it.
@@ -2020,6 +2030,13 @@ The offline-safe write path for listening progress:
   resume fallback when the server can't be reached. While a book plays, the
   mirror is written every 15 s, even when the save itself runs every 60 s. A span
   that a kill left open brings it forward at the next launch (`mirrorSpanEnd`).
+  A server's row in the mirror is marked `server_clock` (`progressToSave`) and
+  compared on this device's clock, its stamp moved back by the connection's known
+  skew (`localTimeOf`). Without that, a server clock running ahead let a row read
+  back hide this device's own captures for that long. Keep-newest,
+  `mirrorSpanEnd`, a tab's `otherTabsPlace` and an explicit start's read of the
+  book's speed and finish (`knownProgress`) all compare through it. `persist`
+  writes the mirror with no client yet; only the network save waits for one.
   See [The periodic save's pace](playback.md#the-periodic-saves-pace).
 - **Offline replay queue.** If the server is known to be unreachable, the save is
   queued locally (`audiosilo.progressQueue`, the latest save per

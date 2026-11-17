@@ -148,12 +148,14 @@ Their invites, with **Rotate** and **Revoke**, as on the
 
 ### Account
 
-- **Role** - **Member** or **Admin**. An admin sees every library and can use
+- **Role** - **Listener** or **Admin**. An admin sees every library and can use
   the console. Making someone an admin asks for a password if they don't have
   one, unless they sign in with your
   [single sign-on](single-sign-on.md#see-or-remove-someones-single-sign-on).
   Their page then says **No password (signs in with Authentik)**, with your
   provider's name. A household member never counts as signing in this way.
+  Changing the role of someone with household members asks first, because
+  their members' access follows theirs.
 - **Household** - see [Household members](#household-members).
 - **Danger zone** - [disable or delete](#disabling-vs-deleting) the account.
 
@@ -181,8 +183,9 @@ On a member's **Account** tab you can also:
 - **Assign to someone** - move them to another person's household. This also
   works for an ordinary account, such as one you made for a child earlier.
 
-Deleting an owner deletes their members too, unless you untick them in the
-delete dialog.
+Deleting an owner deletes the members listed in the delete dialog, unless you
+untick them. A member you untick, or one added after you opened the page, stays
+as an ordinary account.
 
 ## Editing someone's progress
 
@@ -228,7 +231,8 @@ one, stops their other invites working.
 
 - **Rotate** gives the invite a new code, with a fresh expiry. The old link and
   QR code stop working at once.
-- **Revoke** removes the invite.
+- **Revoke** removes the invite. The person's account stays. To remove it too,
+  [delete the account](#disabling-vs-deleting).
 
 Either way, devices already paired stay signed in. To stop someone's devices
 working, [disable the account](#disabling-vs-deleting).
@@ -238,7 +242,9 @@ working, [disable the account](#disabling-vs-deleting).
 - **Disable account** - their devices stop working, but nothing is lost.
   **Enable** brings everything back.
 - **Delete account** - permanent. It removes their devices, invites, progress,
-  bookmarks, notes and history. Your audio files are not touched.
+  bookmarks, notes and history. Their [Audible accounts](audible.md) go too, and
+  any backup or check waiting for them is cancelled. Your audio files are not
+  touched.
 
 When in doubt, disable.
 

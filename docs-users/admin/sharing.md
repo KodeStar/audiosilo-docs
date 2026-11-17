@@ -74,6 +74,9 @@ them. The folders will change; the purpose won't.
 
 - Whole-library access appears under **Whole libraries** on the Shares page.
   Change who has it from each person's [Access tab](users-and-invites.md#access).
+  A folder listed there beside the whole library has its own **✕** to remove
+  it. An entry that no longer gives a whole library is listed with the named
+  shares.
 - Share a book by its own folder (or file), not a folder inside it. A share
   holding only one disc folder, or one file of a multi-file book, doesn't give
   access to the book (see

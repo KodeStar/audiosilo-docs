@@ -728,7 +728,9 @@ Each answer is handled like this:
 - A `413` or `too_many_events` halves the chunk. One event alone that still gets a
   `413` moves to the list as `too_large`.
 - Any other `400` sends that chunk's events one by one, once. One refused alone moves
-  to the list as `invalid`.
+  to the list as `invalid`, except a `stay`: a server rolled back under a stale
+  cached `listening_stay` refuses it, so it goes once more as a `jump`, and the
+  cached `/server` is asked again.
 - An event older than 90 days (the server's own bound, `syncRejectAge`) is not sent.
   It moves to the list as `too_old`, so an event that never gets an answer can't hold
   its book "pending" forever.
@@ -1398,8 +1400,10 @@ Its end is the downloaded part's, so:
   the record finished. Each mirror capture in a partial queue says so
   (`ProgressSave.partial`), and `mirrorSpanEnd` also asks the download
   (`downloadEndsBefore` in `kept-offline.ts`), since a server row written into the
-  mirror since the capture carries no `partial`. Only a span that ended in the
-  book's last file (streamed, so its end is the book's) finishes it.
+  mirror since the capture carries no `partial`. `downloadEndsBefore` waits for
+  the downloads list to be read, and while it can't be read the end counts as not
+  known, so the book is never finished. Only a span that ended in the book's last
+  file (streamed, so its end is the book's) finishes it.
 
 **A partial queue's length.** Its own audio is the downloaded part's, more than 10 s
 off the indexed book's whenever a whole file is missing, so the server refused every

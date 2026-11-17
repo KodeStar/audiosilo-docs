@@ -15,7 +15,7 @@ on. It has three pages:
 Nothing here changes your audio files. Fixes are saved in AudioSilo, and an
 issue you ignore is only hidden. The one exception is **Detect chapters**. The
 Bridge
-[saves the chapters it finds](generating-characters-and-recaps.md#where-found-chapters-show-and-turning-them-off)
+[saves the chapters it finds](chapter-detection.md#where-found-chapters-show-and-turning-them-off)
 in a `.audiosilo` folder beside the book.
 
 ## Library health
@@ -38,14 +38,16 @@ Click a card to open its list.
 | **Likely duplicates** | Copies of one book in the same library. | Compare them side by side. See [Duplicates](#duplicates). |
 | **Missing covers** | No cover in the book's folder or files. | **Upload a cover** opens the book's page (see [Covers](books.md#covers)). |
 | **Not matched to community metadata** | The book has no community match, so players can't show its community details. Only shown while community metadata is on. | **Review match** opens the [match dialog](books.md#matching-with-community-metadata). To match the whole list, use [Match automatically](#matching-every-book-at-once). |
-| **ASIN not in the community database** | The book has an ASIN the community database doesn't know yet. It counts as matched but gets no community details. Only shown while [Help complete the community database](server.md#helping-complete-the-community-database) is on, since that is what finds them. | **Review match** finds the book by its title. **Add it** opens the [Add a book](../community/meta-site.md#adding-a-missing-book) page with its ASIN filled in. |
+| **ASIN not in the community database** | The book has an ASIN the community database doesn't know yet. It counts as matched but gets no community details. Only shown while [Help complete the community database](server.md#helping-complete-the-community-database) is on, since that is what finds them. A book leaves the list once the community database knows its ASIN. | **Find matches by title** looks up the whole list (see [Books with an ASIN the community doesn't know](#books-with-an-asin-the-community-doesnt-know)). **Review match** finds one book by its title. **Add it** opens the [Add a book](../community/meta-site.md#adding-a-missing-book) page with its ASIN filled in. |
 | **Series spelled several ways** | Books of one series spell its name differently. | **Use this spelling**. See [Series spelled several ways](#series-spelled-several-ways). |
-| **Long books without chapters** | Books over two hours with no chapters, so listeners can't skip between them. | **Detect chapters** with your [Bridge](bridge.md) (see [Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)), or [match](books.md#matching-with-community-metadata) the book to use its [community chapters](books.md#community-chapters). A book using chapters you [edited](books.md#edit-chapter-times-and-titles) offers no Detect chapters until you revert the edit. |
+| **Long books without chapters** | Books over two hours with no chapters, so listeners can't skip between them. | **Detect chapters** with your [Bridge](bridge.md) (see [Detect chapters](chapter-detection.md)), or [match](books.md#matching-with-community-metadata) the book to use its [community chapters](books.md#community-chapters). A book using chapters you [edited](books.md#edit-chapter-times-and-titles) offers no Detect chapters until you revert the edit. |
 | **More detailed chapters available** | The community database has finer chapters that fit this copy. | **Use detailed chapters**. |
 | **Converted to play in browsers** | The format doesn't play in web browsers, so the server converts it for the web player. The apps play it as it is. | Nothing needed: it works. |
 
-If a network share stops answering during a scan, its books show **reading it
-timed out**. They keep their length and chapters, and the next scan tries again.
+A slow disk or network share can time out a scan. Its books show **reading it
+timed out** and keep their length and chapters. A single file that took too
+long is listed under **Files that couldn't be read** with **took too long to
+read as audio**, which is not a damaged file. The next scan tries both again.
 
 ### Working through a list
 
@@ -99,7 +101,8 @@ overview, **Library > Books** and an applied import's **Past imports** show how
 many, with a **Match automatically** button that opens this list.
 
 1. Pick a library and click **Find matches**. You can leave the page while it
-   runs.
+   runs. If the community service asks for a pause, the card says so and the
+   run carries on by itself.
 2. When it's done, click **Review and apply**.
 3. Choose **What to write**:
    - **ASIN and ISBN only** marks each book matched and changes nothing else.
@@ -120,15 +123,26 @@ book's (20% when the book's narrator reads it). Weaker matches, and matches to a
 book doesn't seem to be, go to **To review**.
 
 Whatever a run writes is a **Community** value that you can revert on the
-book's page. To undo every community match at once, use
+book's page. A book you match by hand after the run found its match keeps your
+match. The run skips it and says **Matched since this run**. To undo every community match at once, use
 [Clear community matches](server.md#community-metadata). If community
 metadata lookups stop answering, the run stops early but keeps what it found.
+
+### Books with an ASIN the community doesn't know
+
+**ASIN not in the community database** has a **Find matches by title** card
+above its list. It works like **Match automatically**, but looks each book up
+by its title and records the match, so players get the community details.
+Nothing changes until you review and apply. An ASIN you set yourself is never
+replaced. A book whose ASIN the community database learns before you apply is
+left as it is.
 
 ### Weak matches
 
 When the best candidate scores under 60%, the community database most likely
 doesn't have the book. It is listed under **Not found**. You can still match it
-by hand. The [match dialog](books.md#matching-with-community-metadata) lists the
+by hand. Once a run has nothing left to review, **See the books it didn't
+find** lists them with their best scores. The [match dialog](books.md#matching-with-community-metadata) lists the
 closest candidates, however low they scored.
 
 The community database has gaps, so some books stay unmatched. They still play

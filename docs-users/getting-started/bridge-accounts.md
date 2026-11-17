@@ -118,8 +118,8 @@ it off again.
 |---|---|
 | **Not checked yet** | signed in, not checked yet (or the Audible module is off) |
 | **Signed in** | checked at least once; **Last checked** says when |
-| **Sign in again** | Audible refused the sign-in or its downloads, for example after a password change or a Bridge update. Press **Sign in again**. The account's settings are kept |
-| **Mapped on another server** | set up while the Bridge was paired with another server. Press **Change** and save |
+| **Sign in again** | Audible refused the sign-in or its downloads, for example after a password change or a Bridge update. Press **Sign in again**. The account's settings are kept. A refused download stays refused until you sign in again |
+| **Mapped on another server** | set up while the Bridge was paired with another server. Press **Change** and save. While every account is like this, the setup checklist says to map one on this server |
 
 ### Removing an account
 

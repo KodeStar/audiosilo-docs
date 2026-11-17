@@ -801,7 +801,8 @@ per-path lookups that the primary key can't, because the key leads with
 - `finish_changed_at`: when `finished` last changed, by any writer, in
   fixed-width UTC milliseconds.
   - A `PUT` sets it at its `updated_at`, capped at now.
-  - An edit sets it at now.
+  - An edit sets it at now whenever it names `finished`, even one that doesn't
+    flip the row.
   - An import's apply or undo sets it.
   - A sync `finish` or `unfinish` sets it at its corrected time.
   - A move or join keeps the newer.
@@ -889,7 +890,7 @@ re-keys a book's events with their positions shifted onto the new timeline
 `ended_at` for retention.
 
 **Retention** is 120 days (`catalog.SyncRetention`). `PruneListeningEvents`
-runs from `pkg/launcher.retention` at startup and daily, in batches of 5000.
+runs from `internal/launcher.retention` at startup and daily, in batches of 5000.
 The window is longer than the 90 days a sync accepts, so a replay of a pruned
 id can't apply twice.
 
@@ -1162,12 +1163,11 @@ The rules for saves:
   a single save, such as a "mark finished") is left out of the live list, the
   history and every total (`listenedSQL`). A session therefore appears from its
   second save.
-- **State.** A session is `playing` with a save in the last 60 s
-  (`livePlaying`), then `paused` until 10 minutes, then `ended` and off the
+- **State.** A session is `playing` with a save in the last 150 s
+  (`playingWindow`), then `paused` until 10 minutes, then `ended` and off the
   live list. A player in the background or on a downloaded book saves every
-  60 s, right on that window. Its session can read as `paused` for a moment
-  before the next save lands, in the console and in Listening in the house,
-  until the window is widened. A session continued after a long gap reads as
+  60 s, so the window allows one missed save plus some delivery delay, in the
+  console and in Listening in the house alike. A session continued after a long gap reads as
   `ended` during the gap and comes back with the late save.
 - **Transcoded.** `catalog.StreamMarks` remembers in memory which files each
   token streamed with `?transcode=1` in the last 10 minutes. A save on a book
@@ -1472,17 +1472,21 @@ Its keys:
   merges a change into it in one writer transaction. Migration `0053` writes it
   finished and dismissed on an upgraded server.
 - `first_admin`: the admin a headless first start made with a printed password,
-  `{"user_id":1,"signed_in":false,"chose_password":false}`. Only the start that
-  made the admin writes it (`auth.MarkFirstAdmin`), even one that failed before
-  printing the banner. While
+  `{"user_id":1,"signed_in":false,"chose_password":false,"code_id":7,"code_created_at":"…"}`.
+  Only the start that made the admin writes it (`auth.MarkFirstAdmin`), even one
+  that failed before printing the banner. `code_id` and `code_created_at` (2.7.0)
+  name the auth code printed beside the password: a rotation in the console
+  keeps the code's id but stamps it anew, so a rotated code, never printed, no
+  longer matches. While
   `signed_in` is false, each later start prints the sign-in hint (see
   [Configuration](configuration.md#cli-flags-cmdaudiosilo)). An admin's password
-  sign-in or single sign-on (`auth.NoteAdminSignIn`), `reset-admin`, or the admin's own password
-  change sets it. `chose_password` is set once that admin sets their own
-  password or `reset-admin` gives them a new one (both `auth.NoteOwnPassword`),
-  and drives `GET /admin/setup`'s
-  `printed_password`. No row, on an upgraded server or a `--setup` one, means
-  no hint and no backfill.
+  sign-in or single sign-on (`auth.NoteAdminSignIn`), or a password set on an
+  admin account, sets it. `chose_password` is set once a password is set on
+  that admin, by anyone (the admin, another admin or `reset-admin`), or cleared,
+  and drives `GET /admin/setup`'s `printed_password`. The same write deletes the
+  code the row names (`auth.UpdateUser`, `notePasswordSet`); a row written
+  before it named one finds the code by its label and shape. No row, on an
+  upgraded server or a `--setup` one, means no hint and no backfill.
 - `metadata_region_chosen`: `true` once an admin saved `metadata.region` from the
   console, "No preference" included (`catalog.NoteRegionChosen`). With a region
   in `config.yaml` or the environment it counts as chosen anyway. It drives
@@ -1781,8 +1785,12 @@ when its writes move the content generation: [Overview](overview.md#internalstor
   metadata cache's key, so a changed ASIN resolves again. It also has
   `checked_at`. Index on `work_id`. A book with no recorded match takes its
   [work key](#a-books-work-key) from here, while `id_key` is still its
-  identifiers' key. This first step of the job runs
-  whenever metadata is on, even with the job switched off.
+  identifiers' key. The same rule holds when the job asks which
+  works the server owns (`UpcomingOwnedWorks`), so a retagged book holds no
+  stale work. This first step of the job runs
+  whenever metadata is on, even with the job switched off, and a light run of it
+  is kicked when metadata is turned back on, about 30 seconds later, rather
+  than up to a day later.
 - **`upcoming_series`**: maps a local series (`library_id`, folded
   `series_key`) to the community series it is, one row each. `series_id` is
   part of the key, because a local series can be several, and one `''` row
@@ -1832,7 +1840,12 @@ tables at the request.
 - `unknown`: `1` when that answer was "not in the community database". `0`
   means known, and a known ASIN is never sent.
 - `sent_at`: when a report holding it was accepted, `NULL` for never. A later
-  lookup that finds an `unknown` row known clears it.
+  lookup that finds an `unknown` row known clears it. So does any
+  other lookup that finds the ASIN (a player's `/meta`, the upcoming job's work
+  ids, the chapter check: `meta.Service.SetASINFound`, wired to
+  `catalog.ClearUnknownASIN`), which marks the row known at once, so a book the
+  community added leaves Health's list without waiting for the monthly recheck.
+  An ASIN the table doesn't hold as unknown costs a read, never a write.
 
 It names no book, library or path. A row whose ASIN no book holds any more is
 deleted at the start of the next run. The table is derived and disposable:
@@ -2069,7 +2082,9 @@ The parse is lenient, and a wrongly typed value costs only that value. The file
 may be at most 4 MiB. The parse reads:
 
 - `title` and `subtitle`;
-- `authors` and `narrators`, joined with ", ";
+- `authors` and `narrators`, joined with ", " (from 2.7.0 with "; " when a
+  name holds a comma, `Le Guin, Ursula K.`, so the credit splits back into the
+  people the file lists: `joinCredit`);
 - `series` as `"Name #seq"`. The first is the main series with its position,
   and the rest are `more_series`. A series without a position keeps the
   scanned position only while it is the same series, by `seriesKey`.
@@ -2343,6 +2358,7 @@ The migration history so far:
 | 0078 | `chapter_edits` | `chapter_edits` (an admin's edited chapter list per book, durable and path-keyed, `library_id` `ON DELETE CASCADE`, `updated_by` `ON DELETE SET NULL`; see [Edited chapters](community-chapters.md#edited-chapters)) and `cast_grants.editor` (`INTEGER NOT NULL DEFAULT 0`, the [editor tokens](auth-and-security.md#cast-tokens)). No data moves |
 | 0079 | `book_matches_work` | The index `idx_book_matches_work` on `book_matches(work_id)`, so a work's recordings ([a book's work key](#a-books-work-key)) are found from the recorded matches as from `upcoming_owned` (already indexed by `idx_upcoming_owned_work`). No data moves |
 | 0080 | `listening_stay` | Listening sync: `progress.stay_version` and `edit_version` (`INTEGER`, nullable, `NULL` on every existing row), so a Stay on another device's offer wins and holds the row ([A Stay](api/reference.md#a-stay)). No data moves |
+| 0081 | `share_grant_mark` | Clears `shares.whole_library_id` on every share that no longer holds that library's whole-library rule (`share_paths` with its `library_id` and path `''`): a mark older versions left after a path edit on a grant, an interrupted grant, or deleting the library of a grant that also held another library's folders. Such a share is an ordinary one again, its folders open to change; `catalog.DeleteLibrary` now clears the mark itself |
 
 ## SQLite choices
 

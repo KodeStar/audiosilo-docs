@@ -58,8 +58,8 @@ The `reset-admin` command sets a new admin password and prints it once. Run the 
 | From a terminal | `./audiosilo --data ./data reset-admin` |
 
 - After `-u`, use your `PUID:PGID`. The reminder prints the right ones.
-- `--data` goes before `reset-admin`. With several admins, add the username at the end.
-- It works while the server runs. Every session that used the old password is signed out within a minute, and the first-run auth code stops working. If it says revoking that code failed, the new password still works: revoke the code in [People > Invites](../admin/users-and-invites.md).
+- `--data` goes before `reset-admin`. With several admins, add the username at the end. A disabled admin is never picked.
+- It works while the server runs. Every session that used the old password is signed out within a minute, and the auth code printed at first start stops working. A code made since then keeps working.
 - It refuses while a restore is waiting for the next start, since the restore would replace the new password. Start the server once, or cancel the restore in [Backups](../admin/backups.md), then run it again.
 
 `reset-admin` also ends the reminder. A server started with `--setup` never prints it.
@@ -96,7 +96,9 @@ Choose the username and password you sign in to the console with. The username i
 - If you chose your password on the `--setup` page, a new one is optional.
 - **Keep admin and this password** skips the step.
 
-A new password doesn't end the auth code from the log. Once your devices are set up, revoke it in [People > Invites](../admin/users-and-invites.md).
+Saving a new password here also ends the auth code from the log. Sign in your devices with your username and password, or with the QR code in [step 9](#step-9-connect-a-phone).
+
+If the password saves but the new username is refused, the step says the password is saved. Change the username, or press **Keep** with your current name, such as **Keep admin**, to finish the step.
 
 ### Step 2: Where are your books?
 
@@ -104,7 +106,7 @@ A new password doesn't end the auth code from the log. Once your devices are set
 
 Type the folder that holds your audiobooks and press **Check folder**. AudioSilo shows how many books it found before adding anything.
 
-- **Use the path as the server sees it.** In Docker that's the path inside the container, like `/library`, not the folder on your NAS. Folders mounted into the server are offered as buttons under the field.
+- **Use the path as the server sees it.** In Docker that's the path inside the container, like `/library`, not the folder on your NAS. Folders mounted into the server are offered as buttons under the field. **Browse** lists the server's folders to pick from.
 - **No audio files found here** usually means the wrong folder.
 - **Library name** defaults to the folder's name.
 
@@ -114,7 +116,7 @@ The library is created at the end of step 4, so its first scan uses your choices
 
 ![Step 3: sample books named from tags and from folders](/img/screenshots/setup/naming.png)
 
-Titles, authors, narrators and series can come from the files' **tags** or from the **folder names**. This step shows up to eight of your books both ways, side by side. The side with fewer blanks is marked **Suggested**.
+Titles, authors, narrators and series can come from the files' **tags** or from the **folder names**. This step shows up to eight of your books both ways, side by side. A line counts the gaps on each side, and the side with fewer is marked **Suggested**. Either way, the narrator comes from the tags.
 
 - **The files' tags first** suits well-tagged files, like most bought audiobooks.
 - **Folder names first** suits folders named like `Author / Series / 01 - Title`.
@@ -128,7 +130,7 @@ Either way, the other fills in what the first leaves empty. Changing this later 
 Community metadata adds descriptions, series and covers from the community database on AudioSilo Meta.
 
 - **Look up community metadata** turns it on or off. Off, nothing about your books leaves the server for it.
-- **Audible marketplace** is the store you buy from. The wrong one matches the wrong edition. Until one is chosen, the step picks the store nearest you from your browser's language and time zone.
+- **Audible marketplace** is the store you buy from. The wrong one matches the wrong edition. Until one is chosen, the step picks the store nearest you from your browser's language and time zone. When neither points to a store, it picks none.
 - **Metadata source** asks AudioSilo Meta for each book, or keeps a [local copy](../admin/server.md#keeping-a-local-copy) (about 1.8 GB).
 
 **Continue** (or **Skip**) adds your library and starts its first scan. You can carry on while it runs.
@@ -139,6 +141,7 @@ Community metadata adds descriptions, series and covers from the community datab
 
 Invite links and QR codes use the server's addresses. A wrong address is the usual reason a phone can't connect.
 
+- **Server name** is what the apps and invites show. Left empty, they show AudioSilo.
 - **Home address** is the server's address on your home network, like `http://192.168.1.20:8080`.
 - **Public address** works from anywhere, like `https://books.example.com`.
 - The buttons under **This browser reaches the server at** fill either one with the address you're using now.
@@ -153,7 +156,7 @@ See [Reach your server from outside your home](./remote-access.md).
 
 This step runs the [Audiobookshelf import](../admin/import.md) right here. Connect to Audiobookshelf, review what matches for each person, then apply it. It brings each person's listening progress across, and Audiobookshelf's ASIN and ISBN for your books as hints for matching.
 
-- **Wait for the scan to finish.** The import pairs Audiobookshelf's books with the ones the scan finds, so **Connect** stays off while the library's first scan runs.
+- **Add your books folder first, and wait for the scan.** The import pairs Audiobookshelf's books with the ones the scan finds. Until a books library exists and its first scan is done, the step says what it is waiting for and holds **Connect**, **Start** and **Apply**.
 - **Then match your books.** If community metadata is on and books are not matched, the step says how many, with **Match automatically**. It opens Library health in a new tab, where you [start the run](../admin/health.md#matching-every-book-at-once) and review what it found. Nothing is matched until you apply it.
 - **Continue** moves on whether or not you imported anything. The import stays in **Server > Settings > Import**.
 
@@ -185,9 +188,9 @@ Optional. A **Bridge** is a companion container that writes to your library fold
 
 ![Step 9: a pairing QR code for your phone, and how signing in works](/img/screenshots/setup/phone.png)
 
-Install the AudioSilo app on your phone, open it and tap **Scan a QR code**, then scan this code. The app signs in as you. The code works once, for ten minutes, and **New code** makes another. With no camera to hand, enter the server's address in the app and sign in with your username and password, or with the auth code from the log. See [Connect the app to your server](../listening/connecting.md).
+Install the AudioSilo app on your phone, open it and tap **Scan a QR code**, then scan this code. The app signs in as you. The code works once, for ten minutes, and **New code** makes another. With no camera to hand, enter the server's address in the app and sign in with your username and password. The auth code from the log works only if you kept the log's password in step 1. See [Connect the app to your server](../listening/connecting.md).
 
-If you opened the console on the server itself (`localhost`), the code needs a home or public address from [step 5](#step-5-how-will-people-reach-the-server). The step tells you if one is missing.
+If you opened the console on the server itself (`localhost`), the code needs a home or public address from [step 5](#step-5-how-will-people-reach-the-server). The step tells you if one is missing. Continuing without one leaves the step on the [Finish setting up card](#the-finish-setting-up-card).
 
 Everyone else needs an invite of their own. **Invite someone** opens one in People. An invite signs them in, so they don't need a password.
 
@@ -197,7 +200,7 @@ Everyone else needs an invite of their own. **Invite someone** opens one in Peop
 
 ![The Overview's Finish setting up card, listing a skipped step](/img/screenshots/setup/finish-card.png)
 
-If you skipped steps or chose **Finish later**, the Overview shows a **Finish setting up** card. Each line opens that step again. **Dismiss** hides the card for every admin.
+If you skipped steps or chose **Finish later**, the Overview shows a **Finish setting up** card. **Finish setup** counts any step you passed over as skipped. Each line opens that step again. **Dismiss** hides the card for every admin.
 
 ## What's in the data folder
 

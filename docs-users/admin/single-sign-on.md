@@ -89,8 +89,10 @@ To sign in with single sign-on, open the console or the web player and select
 back signed in.
 
 The web player offers the button only when you open it from your server, at
-the server's own address followed by `/web`. It doesn't offer it while a
-grown-up signs in from [kids mode](../listening/kids-mode.md).
+the server's own address followed by `/web`. It offers it too while a grown-up
+signs in from [kids mode](../listening/kids-mode.md). After the provider, the
+player goes back to what you were doing, such as **Add someone** or the book
+you opened.
 
 ![The web player's sign-in screen with the Sign in with button](/img/screenshots/web-player/connect-oidc.png)
 
@@ -119,7 +121,8 @@ Under **Server > Settings > Sign-in > Who may sign in**:
 - **Make accounts for new people** makes an ordinary account for someone the
   server doesn't know, instead of making them wait.
 - **Only for this group** limits that to members of one group at your
-  provider. Everyone else waits for you.
+  provider. Everyone else waits for you, including someone whose provider
+  sends no groups.
 
 These settings apply to the next sign-in, with no restart.
 
@@ -150,15 +153,16 @@ To manage admins at your provider, set **Admin group** under **Who may sign
 in** to a group name, such as `audiosilo-admins`.
 
 At each single sign-on, a member of that group becomes an admin, and anyone
-else becomes an ordinary user. Group names must match exactly, capital letters
+else becomes a **Listener**. Group names must match exactly, capital letters
 included. Leave it empty to set roles on People yourself.
 
 - The change happens when the person next signs in with single sign-on.
   Devices they already signed in stay signed in.
-- The last admin is never made an ordinary user.
-- If your provider never sends groups, roles don't change. Once it has sent
-  someone's groups, a sign-in without any counts as no groups. Keycloak, for
-  one, leaves groups out for a person in none.
+- The last admin is never made a listener.
+- Only a list of groups the provider sends changes a role. A sign-in without
+  one never does. Keycloak, for one, leaves groups out for a person in none, so
+  someone removed from every group keeps their role until you change it on
+  People.
 
 ## See or remove someone's single sign-on
 

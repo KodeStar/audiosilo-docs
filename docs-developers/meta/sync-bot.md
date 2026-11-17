@@ -495,14 +495,23 @@ days, so one bad row cannot pin the head of the queue.
   beside "Ford County: Stories", and a listing crediting one of a held book's
   two authors.
 
+  Each pair is compared a second time with "&" and the German "und" read as
+  "and", so "Daisy Jones and the Six" meets a held "Daisy Jones & The Six".
+
+  A row whose title states a volume is a duplicate only of a held work whose
+  title states the same volume. So "Circus of the Dead, Book 2" passes a held
+  "Circus of the Dead".
+
   The guard is wider than the create path's own guard on purpose. A refused
   report comes back later, while a minted duplicate needs a repair. The price
   is that a distinct book sharing a main title with a held book by the same
   author is refused too.
 
   What the guard still misses mints a work:
-  - a title whose key differs ("Daisy Jones and the Six" beside "Daisy Jones &
-    The Six");
+  - a title whose key differs in more than a conjunction;
+  - a row whose title carries a held work's series name, since the held work
+    is keyed with its series name stripped ("Rivers and Roads: The Long Way"
+    beside "Rivers & Roads: The Long Way" in the series "Rivers & Roads");
   - two spellings of one new book in the same tranche, since only held works
     are compared.
 

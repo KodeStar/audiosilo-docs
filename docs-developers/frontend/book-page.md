@@ -394,7 +394,8 @@ hero and the tabs.
   - The detail rows:
     - the publisher (the server's `publisher`, else the recording's);
     - the release date (the recording's, else the book's `published`);
-    - the work's first publication;
+    - the work's first publication, only when it is not the release date, so one
+      date shows as one "Released" row;
     - the server's `language`, a code named through `Intl.DisplayNames` in the app's
       language where the platform has it (`languageName`), else shown as sent;
     - abridged yes or no (the server's `abridged`, else the recording's). Absent means
@@ -410,12 +411,15 @@ hero and the tabs.
     after "View on AudioSilo Meta". It opens `librivoxUrl(recording)` through
     `openExternalUrl`.
     `librivoxUrl` (`book-details-model.ts`) reads the matched recording's
-    `librivox.url` and keeps it only when it is an absolute http(s) URL with a host
-    (`urlEndpoint`). It lower-cases the scheme, because the in-app browser on iOS
-    (`expo-web-browser`) refuses `HTTPS://` and `openExternalUrl` swallows the
-    error. The server checks the URL too. The player checks again because the
-    link leaves the app. With no `librivox.url`, or on an older server, there is
-    no link.
+    `librivox.url` and keeps it only when it is an absolute http(s) URL (`httpUrl`)
+    on `librivox.org` or `archive.org` (or a subdomain) with no user before the
+    host. It lower-cases the scheme, because the in-app browser on iOS
+    (`expo-web-browser`) refuses `HTTPS://`. The server checks the URL too. The
+    player checks again because the link leaves the app. With no `librivox.url`,
+    or on an older server, there is no link.
+  - Every link out goes through `openExternalUrl` (`src/lib/support.ts`), which
+    opens only an absolute http(s) URL and does nothing for any other
+    (`javascript:`, `file:`, `intent:`).
 - **Other versions** - `BookVersions`: every other copy (`useBookCopies`) with where it
   lives and its quality, each opening that copy's page. Nothing shows when there is
   none. Each is an `InsetRow`.

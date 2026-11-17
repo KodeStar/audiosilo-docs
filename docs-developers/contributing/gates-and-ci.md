@@ -181,6 +181,10 @@ the repo.
     test;
   - a test that writes a package-level variable. Pass the value in instead, as
     `hashWithCost` does for `TestHashCost`.
+- **Every package has a test.** `scripts/test-floor.sh` lists each Go package
+  under `internal/` and `pkg/` with no `*_test.go` and fails. A package tested
+  only through another's tests, or a test helper package, says so instead with a
+  `// no-tests: <why>` line in one of its files.
 - Pure-logic tests sit next to the code (`internal/api/middleware_test.go`,
   `internal/catalog/shares_test.go`, `internal/web/web_test.go`, …). Keep
   business logic out of `internal/api` handlers, so it stays unit-testable.

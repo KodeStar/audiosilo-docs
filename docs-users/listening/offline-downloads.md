@@ -86,8 +86,9 @@ A watch has its own downloads, separate from your phone's. See [Apple Watch](app
 When your device has no network, downloaded books play and everything else waits for your server:
 
 - **Home, the Library, Folders** and any other page or list show **You're offline** in place of what they haven't loaded yet. Anything already loaded stays on screen. When the network comes back, they load by themselves.
-- **Wi-Fi with no internet isn't offline.** The apps still reach a server on the same network. If a server doesn't answer, the page says so and offers **Retry**.
+- **Wi-Fi with no internet isn't offline.** The apps still reach a server on the same network. If a server doesn't answer, the page says so and offers **Retry**. With more than one server, Home names the one that didn't answer, and **Retry** asks only that one.
 - **Bookmarks, notes and ratings** aren't kept for later in the iOS and Android apps. One you make with no connection fails straight away with a message, so add it again once you're online. Only a bookmark made [from the car's screen](in-the-car.md#while-it-plays) is kept and sent later.
+- **In the web player**, a bookmark, note or rating made offline waits until the browser is back online, then saves. Closing the tab before then loses it.
 - **The player's [Text tab](companion.md#text)** is hidden for a book that isn't downloaded.
 
 ## Community notes offline

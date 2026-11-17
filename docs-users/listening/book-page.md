@@ -55,9 +55,9 @@ If neither has one, your server's [Bridge](../admin/generating-characters-and-re
 
 ![An About card with a description generated on the server](/img/screenshots/web-player/book-about-generated.png)
 
-Under the description you'll find the publisher, release date, language and whether it's abridged, when known. Then come the book's **Genres** and **Tags**. Tap one to open the [Library](browsing.md#books) filtered to it.
+Under the description you'll find the publisher, release date, language and whether it's abridged, when known. A book first published on another date also shows **First published**. Then come the book's **Genres** and **Tags**. Tap one to open the [Library](browsing.md#books) filtered to it.
 
-When the community database matches the book to a free LibriVox recording, the card ends with **Also free on LibriVox**. It opens that recording's page on librivox.org.
+When the community database matches the book to a free LibriVox recording, the card ends with **Also free on LibriVox**. It opens that recording's page on librivox.org or archive.org. The link never goes to any other site.
 
 Below the About card:
 
@@ -78,7 +78,7 @@ Your server may hold one book in more than one recording, such as two narrators 
 
 Each recording keeps its own place, bookmarks and notes. Only recordings you can open are listed, so someone who can see one recording never hears about the other.
 
-This needs community metadata switched on and a recent server. Without them, each recording is a book of its own, as before.
+The **Other recordings in your library** card needs community metadata switched on and a recent server. With it off, a series page still keeps together the recordings your server has already matched.
 
 ## The tabs
 
@@ -99,7 +99,7 @@ At the top, **The whole book** timeline shows each chapter, the part you've hear
 
 Below it, every chapter is listed in order, with its length or a tick once you've heard it. Tap a chapter to listen from there.
 
-Some books get their chapters from the community database, or from your server's [Bridge](../admin/generating-characters-and-recaps.md#books-without-chapters), which finds them in the narration. On others, an admin [edited the chapters](../admin/books.md#edit-chapter-times-and-titles) on your server. A line at the end of the list says where they came from.
+Some books get their chapters from the community database, or from your server's [Bridge](../admin/chapter-detection.md), which finds them in the narration. On others, an admin [edited the chapters](../admin/books.md#edit-chapter-times-and-titles) on your server. A line at the end of the list says where they came from.
 
 A book with no chapter marks lists its files. One long file is split into 30-minute **Parts**. Change their length under **Chapter length** in [Settings](settings.md#playback).
 

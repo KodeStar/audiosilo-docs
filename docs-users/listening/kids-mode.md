@@ -65,7 +65,7 @@ A kid in your household can have their own phone or tablet:
 1. On their card on the Household page, tap **Set up their own device**.
 2. Scan the code with the app on their device.
 
-The app there starts in kids mode by itself. See [Their devices](household.md#their-devices). A grown-up can hold **Grown-ups** and sign in with their own account to change settings, then remove themselves again.
+The app there starts in kids mode by itself. See [Their devices](household.md#their-devices). A grown-up can hold **Grown-ups** and sign in with their own account to change settings, then remove themselves again. In the web player, that sign-in offers [single sign-on](connecting.md#connecting-from-the-app) too, when your server has it. If it fails, the player goes back to kids mode and says why.
 
 ## Good to know
 

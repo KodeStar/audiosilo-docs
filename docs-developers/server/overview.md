@@ -35,7 +35,7 @@ id (see [Architecture invariants](../architecture/invariants.md)).
 
 ```text
 cmd/audiosilo/        entrypoint (flag wiring)
-pkg/launcher/         PUBLIC run loop
+internal/launcher/    the run loop
 pkg/match/            PUBLIC fuzzy book matcher
 internal/config/      YAML + env config
 internal/store/       SQLite open + migrations
@@ -65,10 +65,10 @@ testdata/library/     M4B test fixtures
 ### `cmd/audiosilo`
 
 The binary entrypoint. It only parses flags (`--data`, `--ffprobe`, `--ffmpeg`,
-`--setup`) and delegates everything to `pkg/launcher.Run`. Keep it thin. Any
-startup logic belongs in `pkg/launcher`.
+`--setup`) and delegates everything to `internal/launcher.Run`. Keep it thin. Any
+startup logic belongs in `internal/launcher`.
 
-### `pkg/launcher` (public)
+### `internal/launcher`
 
 The run loop loads the config, opens the store and wires the services. It then
 runs the first-run bootstrap: the auto-admin banner, or the token-guarded
@@ -93,11 +93,31 @@ flags set, and it overrides no configuration (see
 
 A fuzzy **same-book matcher** (`Best`, `CleanTitle`, `SeqFromTitle`,
 `Normalize`, `NormalizeSeries`, `Fold`) that identifies the same book across
-messy, inconsistently tagged titles. The server uses it for:
+messy, inconsistently tagged titles, with the identifier and series helpers
+beside it (`NormalizeASIN`, `NormalizeISBN`, `ValidASIN`, `ValidISBN`,
+`SeriesKey`, `SameSeries`, `SeriesForms`, `Recordings`). The server uses it for:
 
-- the admin catalog's author and narrator merge keys;
-- the community match search's title cleaning and comparison;
+- the admin catalog's author and narrator merge keys, and the credit splitting
+  and surname sort keys of `internal/names` (`Fold`);
+- identifier checks and normalizing across `internal/catalog` (edits, hints,
+  the unknown-ASIN report, Audible titles), the scan's tag reading
+  (`internal/metadata`) and `internal/meta`'s lookups and cache keys;
+- series keys and comparisons: `more_series`, the series rails, the export, the
+  scan's series-from-title reading (`internal/metadata`), the upcoming job's
+  series mapping (`internal/upcoming`), a match run's plan (`internal/matchrun`)
+  and its series tidy;
+- a work's other recordings (`Recordings`, in `internal/catalog` and
+  `internal/meta`);
+- the community match search's title cleaning and comparison
+  (`internal/meta`);
+- chapter-title comparison when fitting a community list
+  (`internal/chapteralign`);
 - the listening import's title tier (`internal/importer`).
+
+The Bridge imports it too (its module requires audiosilo-server): the Audible
+backup matcher (`internal/importjob`), LibriVox folder names
+(`internal/librivoxjob`) and the generation pipeline's coverage and lookup
+ladder (`internal/metaops`).
 
 `Fold` is the Unicode-aware sibling of `Normalize`. It lowercases, keeps every
 script's letters and digits, and drops spacing and punctuation. `Normalize`
@@ -339,7 +359,7 @@ over that copy. `internal/meta` puts it in front of the remote service
 copy can't.
 
 The launcher builds the runner only in mirror mode
-(`pkg/launcher/metamirror.go`) and hands it to the API with `API.SetMetaMirror`
+(`internal/launcher/metamirror.go`) and hands it to the API with `API.SetMetaMirror`
 right after `api.New`. `Run` opens the copy in the background, then checks for
 a new release on its schedule. A server started in remote mode deletes the
 folder.
@@ -358,7 +378,7 @@ For the behaviour, the schedule and the fallback, see
 Downloads a static ffmpeg and ffprobe build on demand and caches it in
 `<data>/tools` when no local copy is found. The download uses HTTPS, and the
 package checks the binaries by running `-version`. Offline, it degrades
-gracefully and retries on the next start. Only `pkg/launcher.resolveTools`
+gracefully and retries on the next start. Only `internal/launcher.resolveTools`
 consults it, after every local lookup fails.
 
 ### `internal/api`
@@ -443,12 +463,12 @@ Health > System.
 The update check behind the console's Server > About. While `update_check` is
 on, `Checker` asks GitHub Releases for the latest release once a day, and on
 "Check now" at most once a minute. The request is conditional on the last
-`ETag`, and `Checker` compares the versions. `pkg/launcher` starts it. See
+`ETag`, and `Checker` compares the versions. `internal/launcher` starts it. See
 [Update check](configuration.md#update-check).
 
 ### `internal/logring`
 
-A `slog.Handler` that `pkg/launcher` wraps around the server's logger. Every
+A `slog.Handler` that `internal/launcher` wraps around the server's logger. Every
 record still goes where it went before. Records at info and above are also
 copied as plain text into a `Ring` that keeps the newest 2000. The handler
 redacts attributes whose key names a secret and cuts long values.
@@ -552,7 +572,7 @@ for the player, and `readerCSP` for the player's reader document. See
 
 ```mermaid
 graph TD
-  cmd["cmd/audiosilo"] --> launcher["pkg/launcher"]
+  cmd["cmd/audiosilo"] --> launcher["internal/launcher"]
   launcher --> api & server & toolfetch & backup & notify
   api["internal/api<br/>(transport only)"] --> auth & catalog & library & media & config & web & backup & notify & importer & chaptercheck
   chaptercheck --> catalog & library & media & chapteralign

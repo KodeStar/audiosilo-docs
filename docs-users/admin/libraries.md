@@ -20,6 +20,11 @@ fiction and one for kids, and use [shares](sharing.md) to choose who sees which.
 The library appears straight away and its first scan starts. Listeners don't
 have to wait: books appear as the scan finds them.
 
+A **Books** library usually has a folder of its own. When the folder is
+another books library's, sits inside one or holds one, the console asks first.
+Each book would then be listed twice, once in each library. **Add anyway** goes
+ahead. Changing a library's folder asks the same, with **Save anyway**.
+
 ![Adding a library with the folder picker open](/img/screenshots/admin/library-add.png)
 
 The form also has a scan schedule, files to skip and where book details come
@@ -198,6 +203,10 @@ mean for that folder ("Here: 12 books."), then the folder's audio files.
 If the folder is a book, **Open book** opens its
 [book page](books.md#a-books-page). A book's page has a **Change detection**
 button that opens its folder here.
+
+A folder with more than 500 items lists the first 500. **Show more** lists the
+next ones. You can choose **Always one book** for a folder before the library's
+first scan has read it.
 
 ### Books split into disc folders
 

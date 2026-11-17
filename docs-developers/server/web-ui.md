@@ -262,13 +262,22 @@ per build:
   or focus fails quietly, so there is no window-wide `vite:preloadError`
   handler.
 
+A tab left open across an upgrade whose pages still open learns of it too.
+The shell's `UpdateNotice` reads `GET /server` again on every
+focus and every 5 minutes (`useServerInfoLive`). Once the version differs from
+the one the tab first saw (`versionWatch`), it shows "AudioSilo was updated"
+with Reload above every page.
+
 ### The CSP does not change
 
 The console runs under the same `script-src 'self'; style-src 'self'` policy
 (no nonce) as the connect page, so it is built to need nothing inline:
 
 - `index.html` loads only files: `/admin/theme-init.js`, which applies the
-  stored light, dark or system theme before first paint, and the Vite bundle.
+  stored light, dark or system theme before first paint and keeps
+  following the OS while the page is open, and the Vite bundle. The connect and
+  setup pages load their own copy (`internal/web/assets/theme-init.js`, the same
+  storage key) and follow the OS the same way.
   `admin-ui/scripts/check-csp.mjs` (a Vite plugin) fails the build on any inline
   `<script>`, `<style>`, `style=""` or `on*=""` attribute, and the Go test
   applies the same check to the embedded build.
@@ -538,8 +547,10 @@ The Overview is built on `GET /admin/stats`, `GET /admin/sessions/live`,
   same notice while browsing, Settings > Import's Past imports card once an import
   is applied, and the setup flow's abs step (there with `newTab`, so Health opens
   in a new tab and the flow stays open).
-- **Listening now** (`GET /admin/sessions/live`) has one card per live session,
-  playing first, each linking to Activity > Live now. A card's second line is the chapter label described
+- **Listening now** (`GET /admin/sessions/live`) has one card per person and
+  book (from 2.7.0; before, one per live session), playing first, each linking
+  to Activity > Live now. A book live on several of the person's devices is one
+  card, its state the newest session's, saying "on N devices". A card's second line is the chapter label described
   under [Activity > Live now](#activity--live-now), else the author or device.
   A failed live list reads as nobody live rather than holding the page back.
 - **Recent listening** is the stats' progress feed minus the user and book
@@ -762,7 +773,8 @@ The card follows the book's `chapters.detect` job (`useBookGenerateJob` with
 `KIND_DETECT`) and fetches the book again when it ends.
 
 **The chapter editor.** **Edit chapters** in the card's header (any book with
-files) swaps the card's body for `ChaptersEditor` (`chapters-editor.tsx`). Its
+files in a books library; a podcast library offers none, since its
+episodes take their chapters from their feed) swaps the card's body for `ChaptersEditor` (`chapters-editor.tsx`). Its
 rules are the pure `chapters-edit-model.ts`, and the paste dialog is
 `chapters-paste-dialog.tsx`.
 
@@ -1232,6 +1244,10 @@ The pure logic (bucketing, ticks, streaks, the calendar grid) lives in
 Activity > Live now (`live-page.tsx`) runs on `GET /admin/sessions/live`,
 polled every 10 seconds (`useLiveSessions`, also used by the overview and the
 people cards). Playing sessions come first.
+
+A session's app reads as sent, except AudioSilo's own: the player's
+`AudioSilo` and the watch apps' `audiosilo-watch` both read "AudioSilo", the
+platform saying which (`appLabel`).
 
 The chapter under each title is `chapterLabel`
 (`features/activity/live-model.ts`, shared with the Overview's cards and the
@@ -1969,7 +1985,7 @@ still comes from the first-run banner or the
 [`/setup` page](#first-run-setup-page-setup). The flow is console-only and
 admin-only. It has no capability flag, and the player never asks for it.
 
-The headless first-run banner (`writeBanner` in `pkg/launcher`) prints the
+The headless first-run banner (`writeBanner` in `internal/launcher`) prints the
 admin username and password, the auth code and the config file's path. It then
 sends the reader to this flow and to the connect page, using the configured
 base URL: `public_url`, else one derived from `tls.mode` and `bind`.
@@ -2034,9 +2050,10 @@ Every step writes through the ordinary admin APIs (`PATCH /admin/settings`,
 `POST /admin/libraries` with `kind: "books"`, `PATCH /admin/libraries/{id}`).
 It then marks itself with `PUT /admin/setup` (`saveSetup`).
 
-Leaving the last step sends `finished: true` with `finishMarks`. Every step
-still without a mark goes down as `skipped`, so the Overview card lists what is
-left. Once the flow is finished, a step reopened from the card goes on to the
+Leaving the last step sends `finished: true` with only that step's mark. The
+server marks every step still without one in the same write (`folder` `done`
+once a books library exists, the rest `skipped`), so the Overview card lists
+what is left and a step another tab recorded keeps its own. Once the flow is finished, a step reopened from the card goes on to the
 next step still skipped (`nextStep`), then back to Overview.
 
 Every settings write goes through `unlockedPatch`, which leaves out any setting
@@ -2061,12 +2078,15 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    never ends the console's session. While the envelope's `printed_password` is
    true (the admin still has the password the log printed), a new password is
    required and a notice says why; otherwise it is optional. Skip is labelled
-   "Keep *name* and this password". The step leaves the first-run auth code
-   alone (the phone step points at it) and says to revoke it in People >
-   Invites. A password the admin sets on their own account in People counts as
-   chosen too (`notePasswordChosen`).
-2. **folder.** A typed path, with no folder picker and no new listing route.
-   `POST /admin/setup/preview` checks it and returns:
+   "Keep *name* and this password". A password changed when the rename is then
+   refused stays said ("Your new password is saved"), and Skip becomes "Keep
+   *name*", which marks the step done. The step says a new password ends the
+   first-run auth code too: the server deletes it with the password the log
+   printed (see
+   [Configuration](configuration.md#cli-flags-cmdaudiosilo)).
+2. **folder.** A typed path, or one picked with **Browse** (the add-library
+   form's folder picker over `GET /admin/fs/dirs`). `POST /admin/setup/preview`
+   checks it and returns:
    - the counts;
    - `same_root`, shown as a warning;
    - `path_not_absolute`, `folder_unreadable` (worded for the Docker host-path
@@ -2078,8 +2098,10 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    name become a draft, kept in `localStorage` (`audiosilo.setup.draft`,
    `parseDraft`) until the metadata step.
 3. **naming.** The preview's samples, as a two-column table per book (tags,
-   folders), with the rows that differ highlighted (`compareField`,
-   `disagreements`). Then the `metadata_source` pick (`RadioCards`), with the
+   folders alone), with the rows that differ highlighted (`compareField`,
+   `disagreements`). A summary counts the gaps on each side and says the
+   narrator comes from the tags either way; the disagreement line shows only
+   when there is one. Then the `metadata_source` pick (`RadioCards`), with the
    preview's `suggested` side preselected and badged for the draft. A books
    library that exists already (a config library, or one an older `/setup`
    made) keeps its own source preselected, with the suggestion as a hint.
@@ -2090,8 +2112,11 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    (`offerRegion`), the marketplace starts at the one nearest the browser
    (`browserNearestRegion` in `lib/nearest-region.ts`: the region of each of
    `navigator.languages` in order, then the time zone, mapped to the nearest
-   store, else the US store). With the lookup on, Continue then saves the region
-   even when it equals the saved value, so it counts as chosen. Settings > Community metadata offers the
+   store; a language placing the US store gives way to a time zone placing
+   another). With the lookup on, Continue then saves the region even when it
+   equals the saved value, so it counts as chosen. With nothing to place a store
+   the field keeps the saved value and preselects none, and only an edit saves
+   it, so the server stays "never chosen". Settings > Community metadata offers the
    same store with **Use *store*** or **Keep no preference**
    (`RegionSuggestion`), except when it is the US store. The step states the
    mirror's size up front, and `mode` is restart-only. The draft then becomes
@@ -2102,6 +2127,7 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    `useLibraries`' `scan`. `useScanWatcher` runs on the page, since the shell
    isn't mounted.
 5. **reach.**
+   - The server's name, as the apps and invites show it (`general.name`).
    - The browser's `location.origin` is offered as `lan_url`, `public_url` or
      both (`reachOffers`). A home-network host by the server's own rule
      (`isHomeHost`) suits the home address first. Loopback suits neither.
@@ -2115,10 +2141,17 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
 6. **abs.** The listening import itself, inline: Settings > Import's
    `ImportFlow` (`features/imports/import-topic.tsx`) with `embedded` (no step
    counter). It also says that ABS `metadata.json` files are read.
-   - While a books library is scanning or waiting to (`booksScanning` over the
-     polled libraries, no wire field), `blocked` turns Connect off with "Wait for
-     the scan to finish", because the import pairs ABS's books with the ones the
-     scan finds. Only Connect waits; the fields, Continue and Skip don't.
+   - With no books library yet, `blocked` says the folder step comes first.
+     While a books library is scanning or waiting to (`booksScanning` over the
+     polled libraries, no wire field), it says "Wait for the scan to finish",
+     because the import pairs ABS's books with the ones the scan finds. Either
+     way Connect, Start and Apply wait; the fields, Continue and Skip don't.
+     Only this step waits: Settings > Import never does.
+   - While accounts are mapped, the map card's Back is the step's only Back.
+   - An `abs_certificate` refusal of a plain `http://` address says the address
+     redirects to Audiobookshelf's https one, whose certificate the server
+     doesn't trust, and asks for the address Audiobookshelf answers on over
+     http.
    - `offerMatch` shows the `UnmatchedPrompt` once the server has a books library
      and none is scanning, before any import is applied. After an apply, the
      Past imports card shows it instead (one render site). Either way it opens
@@ -2144,7 +2177,9 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    People's invite dialog in a new tab). The web player in a new tab with its
    own token (`usePlayerTab`, only with the `web_player` capability). The ffmpeg
    line from `useSystem().tools`, and the household note. Its primary button is
-   Finish setup.
+   Finish setup. When the page is open on the server itself and the server has
+   no home or public address, the code would point a phone back at itself: the
+   step says so, and Finish records the step `skipped`, still to do.
 
 #### The Overview card
 
@@ -2445,7 +2480,7 @@ It is locked down three ways, so it is safe even on an exposed port:
 
 1. **Off unless enabled.** The page responds only when the launcher called
    `API.EnableSetup(token)` with a freshly minted one-time token (18 random
-   bytes, `pkg/launcher`). When it was never enabled, `GET /setup` redirects to
+   bytes, `internal/launcher`). When it was never enabled, `GET /setup` redirects to
    `/admin`, the same answer as a closed page, so a normal deployment exposes no
    setup surface and doesn't say whether it was ever started with `--setup`.
    `POST /setup` there creates nothing.
@@ -2470,7 +2505,7 @@ console's flow. The handler decodes the body strictly. Any other field is
 sent.
 
 The launcher prints the token-carrying URL in a startup banner
-(`setupBanner` in `pkg/launcher`). The banner's last line reads "You'll choose
+(`setupBanner` in `internal/launcher`). The banner's last line reads "You'll choose
 an admin password, then the console walks you through the rest."
 
 ## Well-known app-association files

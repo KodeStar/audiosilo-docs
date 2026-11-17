@@ -314,7 +314,8 @@ destination, the partials' validators and, once placed, the count and bytes. So:
   yet), the state stays, so the sweep or a re-add finds it;
 - a state of another server is dropped when it is read, so a run plans afresh,
   and Abandon and the sweep never act on another server's same-numbered library.
-  A state with no server id counts as this server's.
+  A state with no server id counts as this server's. One recorded while the
+  paired server's id isn't known now is left alone by Abandon and the sweep.
 
 A second run of the same library and project, claimed while the first is still
 ending (a re-add right after a cancel of a parked run), waits up to about two
@@ -332,13 +333,38 @@ and the check. The sweep:
   holds (`store.OpenServerJobs`), such as a recovered job waiting for its lane. If
   it can't read those rows, it sweeps nothing;
 - keeps a state whose library isn't a checked writable mapping now, or whose
-  staging folder can't be removed;
+  staging folder can't be removed. When the library's mapping is gone (the server
+  no longer lists the library, or the check finds it unmapped), the state records
+  when that was seen (`Unmapped`) and ends 7 days later, its staging folder left in
+  place. A run that finds the library mapped again forgets the time. An
+  unwritable library's mapping is not gone;
 - otherwise removes the state, its staging folder and the author folder it made.
   For a placed book or another server's state it drops only the state file;
 - removes other old regular files in the state folder, never a folder.
 
-A staging folder whose state is gone is out of its reach: it stays, hidden and
-unindexed.
+**Stray staging folders.** A staging folder whose state is gone is out of the
+sweep's reach. Once a day (`strayWalkEvery`), `sweepStrays` looks in the root and
+author folders of every checked writable books library, each folder read bounded
+(`fsutil.ReadDirWithin`), for folders named exactly `.audiosilo-librivox-<id>`. It
+removes one only when all of these hold:
+
+- no state in any library, run or held job knows the project (`projectKnown`);
+- it holds only what a fetch writes there (`stagingContents`: the
+  `NN - title.ext` sections and their `.part` files, `cover.jpg`,
+  `.audiosilo/librivox.json` and atomic-write temps), with no other folder or
+  symlink;
+- its newest entry is older than 7 days.
+
+The mapping is checked again first, and the author folder is never removed.
+`clearStray` opens the folder once, through the mount's root, as a root of its own,
+and looks and removes through that, so nothing outside it can go. It removes what
+it saw, each file by its name and a folder only when empty, never recursively. So a
+file put there since the look stays, and a folder renamed away or replaced by a
+symlink is left. The look and the removal hold the project's reservation, and the
+sweep waits a bounded time for them. A library that hangs after the walk listed it
+is left for the next walk. Until a hung removal ends, a new fetch of that recording
+waits about two minutes and then fails "the Bridge is already adding this recording
+to this library".
 
 ## `.audiosilo/librivox.json`
 

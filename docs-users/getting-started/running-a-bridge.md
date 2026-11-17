@@ -13,7 +13,7 @@ You don't need a Bridge to listen to your books. Add one for:
 - [podcasts](../admin/podcasts.md), following shows and downloading their episodes;
 - [characters, recaps and descriptions](../admin/generating-characters-and-recaps.md)
   written by an AI agent;
-- [chapters](../admin/generating-characters-and-recaps.md#books-without-chapters)
+- [chapters](../admin/chapter-detection.md)
   for a book that has none, found in its narration;
 - [read-alongs](../admin/making-read-along.md), so listeners can follow the
   narration in the book's ebook;
@@ -177,7 +177,9 @@ it. Once the Bridge is paired, the console shows the same list on
 1. In the admin console, open **Server > Settings > Bridge**.
 2. Press **Connect a Bridge** and copy the code.
 3. On the Bridge's **Status** tab, under **Pair with a server**, fill in the
-   **Server address** (`http://audiosilo:8080` with the compose file above).
+   **Server address**. With the compose file above, which runs both in one
+   stack, that is `http://audiosilo:8080`. Otherwise, use the server's address
+   on your network, like `http://192.168.1.10:8080`.
 4. Paste the **Pairing code** and press **Pair**.
 
 The console then shows the Bridge as **Online**. The code works once, for 15

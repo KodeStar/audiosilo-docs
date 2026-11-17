@@ -606,23 +606,44 @@ exclusive planning modes:
 | `--relocate` | Moves a cross-language recording to the work its source rows resolve to in its stated language, creating that work when needed. |
 | `--regenerate-genres` | Re-derives catalogued works' `genres` from their own recordings' rows; touches no other field and creates nothing. |
 
+In every import but a LibriVox one, a credit list that states a name doubled
+beside the name itself, such as libex's `["XKarnation","XKarnation XKarnation"]`,
+credits one person. The import
+drops the doubled spelling onto the plain one and moves its roles there. The run
+summary lists each drop on a `doubled:` line.
+
 `--recordings-only` also takes `--copies-of <path>`, a file of one
 `{"asin","anchor"}` line per row. Each listed row is another marketplace's copy
 of the production the catalogued `anchor` ASIN belongs to, as the caller proved
 it. [The series-completion bot](./sync-bot.md#every-stores-copy-of-a-book)
 proves it by SKU group, as libex or Audible's catalogue states it. The import
 merges the row's ASIN onto the anchor's recording and resolves nothing from the
-row's credits or series, so it mints no
-person, work or series. It still refuses a row whose anchor is not a catalogued
-retail recording (`copy-anchor-unknown`, a LibriVox recording included), whose
-language is not the recording's (`copy-language`), whose runtime does not match
-(`copy-runtime-mismatch`), whose abridgement differs (`copy-abridged`), or whose
-region the recording already holds with another ASIN (`copy-region-held`).
-`--skipped` writes those codes. The row checks of every libex run still apply
-too: a malformed ASIN (`malformed-asin`), an unmapped region
-(`unmapped-region`) or language (`unmapped-language`), and an AI narrator
-(`ai-narrator`, since it is another production). The parse layer's other credit
-refusals (a placeholder, a list, a platform account, a name that slugs to
+row's credits or series, so it mints no person, work or series.
+
+It still refuses a row that does not fit the recording, under these codes:
+
+- `copy-anchor-unknown`: the anchor is not a catalogued retail recording (a
+  LibriVox recording included), two recordings carry the anchor ASIN, so which
+  production the row copies is not stated, or the row is listed as its own
+  anchor;
+- `copy-language`: the row's language is not the recording's;
+- `copy-runtime-mismatch`: the runtimes do not match;
+- `copy-abridged`: the abridgement differs;
+- `copy-region-held`: the recording already holds the row's region with
+  another ASIN.
+
+A row may be anchored on another copy the same run lists. It waits until that
+copy attaches and then attaches to the same recording, so the order of the rows
+in the file does not matter. A copy the file lists with no row in the run is a
+run-level warning, and nothing attaches for it. `--skipped` writes the codes.
+
+The row checks of every libex run still apply too: a malformed ASIN
+(`malformed-asin`), an unmapped region (`unmapped-region`) or language
+(`unmapped-language`). So do the credit refusals that say the listing is not
+the anchor's production: an AI narrator (`ai-narrator`), a platform account
+(`credit-platform-account`, a developer or test listing) and a placeholder
+narrator (`credit-cast-placeholder`, a cast not yet booked). The parse layer's
+other credit refusals (a placeholder author, a list, a name that slugs to
 nothing) guard against minting a person, so a listed row skips them. An
 unlisted row in the same run takes the ordinary `--recordings-only` path and
 keeps them all.

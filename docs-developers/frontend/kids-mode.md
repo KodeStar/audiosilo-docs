@@ -85,7 +85,10 @@ tabs. A kids profile never gets the shell:
     Before that, kids mode can't be told, and a token would be spent on a kids device.
   - The one exception is `kidsConnectAllowed()`. It covers "Add someone" opened by a
     grown-up from Who's listening? on a device with **no** grown-up. `openAddSomeone`
-    sets the intent, and `endConnectFlow` clears it when the flow unmounts.
+    sets the intent, and `endConnectFlow` clears it when the flow unmounts. On the
+    web, single sign-on carries the pass across the provider trip, and it comes back
+    only once the server's finish answers with a session
+    ([Single sign-on](connect-and-addresses.md#single-sign-on)).
 - **Nobody new signs in from kids mode** while a grown-up is on the device (`mayAddPerson`,
   `src/components/profiles/connect-intent.ts`). `finishConnect` and `addMemberHere`
   refuse ("Choose a grown-up before adding someone."), and Who's listening? disables

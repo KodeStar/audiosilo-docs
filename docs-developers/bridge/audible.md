@@ -102,9 +102,8 @@ A server or Amazon failure is a `warning` for the page, never the account kept.
 When the server's DELETE failed, the server keeps an orphaned account until an
 admin removes it
 ([`DELETE /admin/audible/accounts/{account}`](../server/api/reference.md#delete-apiv1adminaudibleaccountsaccount)).
-The admin does that from the console while the module is on, and otherwise as an
-API call, since the console hides its Audible card and page while the module is
-off.
+The admin does that from the console with **Remove** (see
+[The console](#the-console) for which card lists it).
 
 **Refused.** A `401`/`403` on a signed call (`audible.IsRefused`) marks the account
 refused (`refused_at`, `last_error`; the page's **Sign in again**). The exception
@@ -117,7 +116,10 @@ sign-in again ends it.
 The refusal's kind is its own column, `refusal_kind`: `store.RefusalSignIn`
 `sign_in` or `store.RefusalDevice` `device`. Migration `0011` set the older rows
 from their `last_error` text. So `Throttled` reads the kind, and `ThrottledText`
-is copy only.
+is copy only. A device refusal that stands is never overwritten by a sign-in one
+(`RefuseAudibleAccount`, and a poll keeps it too), so the console keeps giving the
+device's advice until a sign-in again ends it. A device refusal does replace a
+sign-in one.
 
 ### The device profile
 
@@ -265,8 +267,10 @@ template change plans by the new one. A claimed poll runs as claimed.
    catalog). Adding preorders never fails the poll. A refused listing fails the
    poll with a coded `audiblejob.Failure` (result and error, as an import's). The
    code is `audible_refused` with `ThrottledText` for a refused device, else
-   `audible_sign_in` for a refused sign-in. The server folds no poll's code, and
-   the console's Bridge jobs list words both;
+   `audible_sign_in` for a refused sign-in. The server folds `audible_refused`
+   as it folds a sync's (`FoldAudibleSync`): it marks the account refused, so the
+   console's accounts card asks for a sign-in on the Bridge. The console's Bridge
+   jobs list words both codes;
 3. reads the account's library on the server, 500 books a page
    (`GET /bridge/libraries/{id}/books`, at most 2000 pages);
 4. skips records without a usable ASIN, and states the rest from
@@ -357,8 +361,11 @@ An ASIN match is never held back by any of this.
    higher score (`MatchScored` itself is not gated by it).
    `importjob.PositionAgrees(rec, b)` compares the title's `SeriesPosition`, as
    one number, against the book's position in the title's series, else the book's
-   main series' position, where the books listing puts a folder code's number. A
-   range or no number on either side is neither.
+   main series' position. That one counts only when the title names no series, or
+   when the number is the folder code leading the book's folder, its letters the
+   series' initials as the server reads one (`folderCodeIs` ports the server's
+   `metadata.FolderCodePosition`). A franchise's number says nothing. A range or no
+   number on either side is neither.
 3. Then the single best score keeps the match.
 4. A tie for the best keeps none, unless every tied title is the same work
    (`WorkKey`: the folded title, the folded authors in any order and the series
@@ -525,7 +532,9 @@ library can list it a little after the order closes, so the title never drops ou
 of a final poll in between. That wait is capped. A delivered preorder the library
 still doesn't list is dropped `DeliveredDropAfter` (14 days) after the later of its
 `last_seen_at` (last seen pending) and its release date. Both bound when the order
-closed. The cap covers a refund, or a release under another ASIN.
+closed. The cap covers a refund, or a release under another ASIN. On the first poll
+after a gap of 14 days or more since the last, a delivered preorder it would drop
+counts from now instead, since when its order closed is not known.
 
 A dropped preorder is no longer reported, so the server marks the title `gone` at
 the next final titles PUT. What the server does with a reported preorder (the
@@ -834,8 +843,11 @@ server's scan would make a file part of an existing book when it is placed in a
 listed book's folder, or in a folder that already holds audio. The server refuses
 such a done import (`ErrImportNotOwn`, in
 [The done fold](#on-the-server-the-done-fold)). So `vacant` refuses that
-destination before the license (step 3). The one join left is a `dest_path` into a
-new disc folder of a disc set, which never takes the ASIN.
+destination before the license (step 3). The server refuses the one join left
+before it queues anything: a `dest_path` whose folder is a disc folder ("CD 3")
+directly inside an indexed book, or inside a folder with a `book` override, is
+`400 invalid_dest_path` (`checkDestOwnFolder`), since the scan would join the disc
+into that book and the fold would refuse it only after the whole download.
 
 ### Enrichment after placing
 
@@ -1067,7 +1079,8 @@ The variables are `Author`, `Series`, `Title`, `TitleShort`, `Seq`, `PaddedSeq`,
 
 The server also refuses a template over 500 bytes, a control character, a leading
 `/`, a `..` segment and a hidden, dot-led segment (the scan skips those). The
-Bridge parses the template again when it places, and allows up to 1024 bytes.
+Bridge parses the template again when it places, and takes the server's bound of
+500 bytes in the job's params too.
 
 A rendered last segment ending `.m4b`, `.m4a` or `.mp4` names the file. Anything
 else is a folder, and the title's file name (`<title>.m4b`,
@@ -1251,8 +1264,9 @@ A failure's result is `{code, message}`.
 
 - A done sync that read Audible's places (`bridge.AudibleSynced`: neither `waiting`
   nor `sync_off`) sets `last_sync_at`.
-- A sync failed with `audible_refused` sets `refused_at`, which stops the
-  scheduler. `AudibleSyncCode` reads the code from the result's `code`, or from an
+- A sync or a poll failed with `audible_refused` sets `refused_at`, which stops the
+  scheduler, and the console's accounts card says "Refused: sign in again on the
+  Bridge". `AudibleRefusalCode` reads the code from the result's `code`, or from an
   `audible_refused:` error prefix.
 - Any account PUT of the Bridge's (a fresh sign-in, an edit) clears `refused_at`
   and stamps `refusal_ended_at` (`0071`). So does a complete poll
@@ -1284,6 +1298,11 @@ For each event:
    speed and offer. It compares `finish_changed_at` for a place from before a
    finish or a restart. `furthestPastEndRatio` (the manager's wrong-match guard)
    refuses a place well past the end.
+5. While a [Stay](../server/api/reference.md#a-stay) holds the row, a place or a
+   finish heard at or before that Stay is `not_applied` `behind` (`beforeStay`).
+   The Stay's time is the end of its own `stay` span in `listening_events`. So the
+   Bridge's end-of-book finish never undoes a place the listener chose, and a
+   place heard on Audible after the Stay still applies.
 
 A device's diverged span then offers Audible's place by name (the row's
 `device_name`, in `other_place`). The rules and each event's
@@ -1322,6 +1341,8 @@ another server, person or library.
   of the last 10 minutes by `updated_at`, and records the older ones as history,
   never pushed. After the baseline, every row read is new.
 - A row the Bridge fails to record keeps the cursor, so the pass reads it again.
+- A cursor the server refuses with `400` (`link.ErrBadCursor`) goes back to the
+  feed's start, instead of stopping that account's push for good.
 - It skips rows written by `audible:<account>`.
 - A row on a title the last sync didn't list for that book stays pending (`listed`
   0, `store.PendAudiblePush`) until a sync lists it.
@@ -1445,7 +1466,9 @@ the preorder clock skip an ignored title. Migration `0066` adds `sync_queued_at`
   the book's places (`moveAudibleTitles`). So the re-match trigger offers the moved
   book's place to Audible, never a stale row an earlier book left at the new path,
   and a carry that fails leaves the titles where they were.
-- Unpairing keeps the rows; deleting a user removes their accounts (the FK).
+- Unpairing keeps the rows; deleting a user removes their accounts (the FK). The
+  delete, of a person or of an owner's household member, then cancels the gone
+  accounts' open poll, backups and sync (`catalog.CancelOrphanAudibleJobs`).
 - The Bridge's writes are user-state writes (`store/userstate.go`): titles and the
   poll times don't move the content generation; a mapping change does.
 - Free text is cleaned and bounded, never refused (one odd title never fails a
@@ -1463,13 +1486,13 @@ Bridge requirement is the `audible` feature. Its flag on `GET /server` is `false
 - the **Bridge's routes are not gated**: the Bridge's page signs in and maps
   accounts whether or not the console turned the module on (and says the module
   must be on for polls);
-- the **console's routes** (`/admin/audible/accounts`, `/admin/audible/titles`,
-  `.../poll`, backup, backup-all and the two PATCHes) answer
-  `404 module_off` while it is off;
-- `DELETE /admin/audible/accounts/{account}` is **outside** the toggle (admin only):
-  an account the Bridge can no longer remove must be removable after the module is
-  turned off. The console only shows it while the module is on, so with it off it
-  is an API call;
+- the **console's routes** (`/admin/audible/titles`, `.../poll`, backup,
+  backup-all and the two PATCHes) answer `404 module_off` while it is off;
+- `GET /admin/audible/accounts` and `DELETE /admin/audible/accounts/{account}` are
+  **outside** the toggle (admin only): an account the Bridge can no longer remove
+  must be removable after the module is turned off, so the console lists the
+  accounts kept, each with Remove. The delete is audited as `bridge.audible.remove`
+  with the account's name (its label, else "person (STORE)");
 - queued polls, imports and syncs are held while it is off, and the scheduler and
   the policy pass after a poll only run while it is on. The two sync Bridge routes
   answer `403 sync_off` while it is off.
@@ -1482,8 +1505,11 @@ flag.
 
 While the module is on, Settings > Bridge gains an **Audible accounts** card (the
 mapping read-only, title counts, Check now and Remove per account), and
-Settings > Audible lists the titles with their filters. Remove removes the account
-from this server only. The code is in `features/audible/`.
+Settings > Audible lists the titles with their filters. The card shows with no
+Bridge paired too, when it has accounts kept from an earlier one, so they stay
+removable. With the module off, Settings > Modules' Audible card lists the kept
+accounts with Remove (`kept-accounts.tsx`, under "Accounts kept while it's off").
+The code is in `features/audible/`.
 
 **Per title:**
 
@@ -1511,10 +1537,17 @@ The legal line is on the titles page and in both dialogs.
 
 - "Will go to &lt;path&gt;, beside N books of its series" and the like, with
   "(planned at the last check)";
-- a warning tone on `exists` or `error`;
+- a warning tone on `exists` or `error`, and on a plan that starts a new top
+  folder ("a new author folder" with the automatic placement, "a new folder" with
+  a template) or a new series (`series_new`), where the Bridge most likely missed
+  an author or series the library holds under another spelling;
 - a note when the plan's template isn't the account's now;
 - "Your destination is checked when the backup starts" instead, while a
   `dest_path` is set.
+
+The titles page's **Needs a look** filter lists the titles not on this server that
+a backup can still come of and whose plan warns, preorders first, since a preorder
+backs up on release day without anyone looking (`needsLook`, `lookList`).
 
 There is no `PlannedNote` on an `unavailable` or `gone` title, nor on a matched
 one, a Not this book title included, since a stored match clears the plan.

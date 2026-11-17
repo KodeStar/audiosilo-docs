@@ -63,6 +63,9 @@ books library.
 The book goes to the library you opened the page from. With more than one books
 library, you can pick another under **Add to**.
 
+If the player can't read your libraries, the page says there is nowhere to add a
+recording yet, with **Retry**.
+
 The row shows the progress, with **Cancel** under it while it runs. Once the
 book is in, the row says **In your library**, and **Open** opens its page.
 
@@ -114,7 +117,9 @@ downloaded are kept, and a section cut off part way usually resumes. That holds
 when archive.org stops answering too, so adding the book again later carries on.
 
 A download left unfinished and unused for 7 days is cleared from the Bridge's
-hidden folder.
+hidden folder. Once a day, the Bridge also removes a leftover hidden download
+folder in the library that no download of its own knows about. It removes only
+the download's own files, and leaves a folder holding anything else.
 
 ## When adding fails
 

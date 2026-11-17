@@ -358,9 +358,11 @@ names raw.
   a `works/search` work result plus the members below.
 - `score` - 0-100. An identifier hit scores 100. Otherwise it is the better of the
   structured-facts score and the typed-text score.
-- `recording_id` - the recording the identifier named. Failing that, the one a
-  `narrator` agrees with best, and failing that, the one whose runtime is closest to
-  `runtime`. Omitted when none applies. See [Dramatizations](#dramatizations).
+- `recording_id` - the recording an ASIN or a recording's ISBN named. A work's
+  print ISBN names the work and no recording, so the choice falls through. Failing
+  an identifier, it is the one a `narrator` agrees with best, and failing that, the
+  one whose runtime is closest to `runtime`. Omitted when none applies. See
+  [Dramatizations](#dramatizations).
 - `reasons` - which facts agreed. Each field is omitted when the request didn't let
   it be judged.
 
@@ -457,7 +459,8 @@ byte-identical.
 **A client must not assume it.** metaserve reads the expansion after the match has
 its answer, inside the same slot and the same 2-second budget. It is all or nothing.
 `work` present means the facts were read too. Out of budget or on a read error, the
-answer goes out as it would have without `expand`, never as a 503 of its own. A
+answer goes out as it would have without `expand`, never as a 503 of its own.
+That answer carries `Cache-Control: no-store`, so no cache repeats it. A
 match that itself runs out of budget is still the 503 above. An older metaserve
 ignores the parameter. So `work` absent on the best result is a normal answer that
 means "fetch it yourself", and a client needs that path anyway.
@@ -1340,8 +1343,8 @@ A taken report is **202**. An empty `asins` array is a 202 with three zeros:
 | **202** | Taken, as above. |
 | **400** | The body could not be read, is not a JSON object with an array member `asins`, or holds more than 200 items in that array. A bad item alone is not a 400. |
 | **413** | The body is over **8 KiB**. |
-| **415** | The `Content-Type` is not `application/json` (a charset parameter is allowed). |
-| **429** | Past this client's limit (see below; a refused POST counts), with `Retry-After` in whole seconds until its next report is allowed. |
+| **415** | The `Content-Type` is not `application/json` (a charset parameter is allowed). It is answered before the limit, so it spends nothing. |
+| **429** | Past this client's limit (see below; a refused POST counts, except a 415), with `Retry-After` in whole seconds until its next report is allowed. |
 | **503** | The report could not be checked against the artifact or stored. Nothing was recorded. |
 
 Errors are the usual `{"error": "..."}` envelope.
@@ -1349,8 +1352,8 @@ Errors are the usual `{"error": "..."}` envelope.
 **The limit** is **6 POSTs a day per client**, with a burst of 6. That means six at
 once, then one every four hours as the bucket refills. The `POST` skips the
 [API's own limit](#rate-limit-and-caching), and keeps this one even when that limit
-is turned off. The limiter runs first, so **a POST refused for size, type or format
-still spends one of the six**. A client is keyed as on the rest of the API. Behind a
+is turned off. Past the 415 check the limiter runs first, so **a POST refused
+for its size or a malformed body still spends one of the six**. A client is keyed as on the rest of the API. Behind a
 proxy, name the proxy in `METASERVE_TRUSTED_PROXIES` (see
 [Who is a client](#who-is-a-client)), or every
 reporting client shares one 6-a-day bucket.
@@ -1358,8 +1361,8 @@ reporting client shares one 6-a-day bucket.
 **A script on another origin cannot get a report taken.** The route carries no CORS
 headers and has no `OPTIONS` route, and `application/json` is required, so a
 browser's preflight fails. The only cross-origin `POST` a browser sends without a
-preflight has another `Content-Type`, which is a 415 here. Nothing is stored, but
-like any refused POST it spends one of that visitor's six.
+preflight has another `Content-Type`, which is a 415 here. Nothing is stored, and
+it spends none of that visitor's six, so a page cannot use up a visitor's reports.
 
 Every answer, on both methods, is `Cache-Control: no-store` and is not gzipped.
 
@@ -1585,7 +1588,9 @@ A route that states its own keeps it:
 
 - the [watch feeds](#caching) and the [OpenAPI document](#apiv1openapijson), at
   `max-age=3600`;
-- the [intake queue](#unknown-asin-intake-queue-optional), at `no-store`.
+- the [intake queue](#unknown-asin-intake-queue-optional), at `no-store`;
+- a `works/match` answer that asked for [`expand=work`](#expandwork) and went out
+  without it, at `no-store`.
 
 Every other status gets no default (`internal/serve/cache.go`). A catalogue error or
 503 carries no `Cache-Control`, and a 429 carries `no-store`. Only the answers whose

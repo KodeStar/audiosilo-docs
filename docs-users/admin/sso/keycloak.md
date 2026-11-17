@@ -1,6 +1,6 @@
 ---
 title: "Sign in with Keycloak"
-description: "Register AudioSilo as a client in Keycloak, with the groups client scope AudioSilo asks for, and connect your server to it."
+description: "Register AudioSilo as a client in Keycloak, add the groups client scope for group rules, and connect your server to it."
 ---
 
 These steps register AudioSilo in a Keycloak realm, so people can
@@ -23,8 +23,11 @@ differ slightly in yours.
 
 ## Add the groups scope
 
-AudioSilo asks for a `groups` scope by default. Keycloak refuses a sign-in that
-asks for a scope it doesn't know, so add one.
+AudioSilo asks for a `groups` scope only while a group rule is set: an **Admin
+group**, or **Only for this group** with **Make accounts for new people** on
+(see [Make accounts for new people](../single-sign-on.md#make-accounts-for-new-people)).
+Keycloak refuses a sign-in that asks for a scope it doesn't know, so add one
+before you set either. Without a group rule, skip this section.
 
 1. Open **Client scopes** and select **Create client scope**.
 2. Name it `groups`, keep the protocol **OpenID Connect**, and save.
@@ -35,9 +38,6 @@ asks for a scope it doesn't know, so add one.
    token** and **Add to userinfo** on.
 5. Open your `audiosilo` client, then its **Client scopes** tab, and add the
    `groups` scope as **Optional**.
-
-If you don't need groups, you can instead set AudioSilo's scopes to
-`openid,profile,email` (`AUDIOSILO_OIDC_SCOPES`).
 
 ## Connect AudioSilo
 
@@ -63,5 +63,6 @@ Restart the server and check **Server > Settings > Sign-in**, as in
 - **Admins from a group.** Make a group such as `audiosilo-admins` and add your
   admins to it, then
   [make admins from that group](../single-sign-on.md#make-admins-from-a-group).
-  Keycloak leaves the `groups` claim out for a user in no group, so leaving the
-  last group removes their admin role.
+  Keycloak leaves the `groups` claim out for a user in no group, and a sign-in
+  without it never changes a role. Someone who leaves their last group keeps
+  their role until you change it on their page.

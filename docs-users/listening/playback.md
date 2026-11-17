@@ -53,7 +53,7 @@ Each device tells the server what you listened to: from where to where, and when
 - **Nothing moves your place back by itself.** If two devices listened without seeing each other (a watch on a run while your phone was offline, say), the server keeps the place further on.
 - **You choose where to carry on.** When another device's place is more than half a minute away, the player asks: *"On Apple Watch you were at Chapter 12, 4:10. Jump there?"* **Jump** goes there. **Stay** keeps your place. The [book's page](book-page.md#listening-and-the-buttons) offers it too.
 - **Stay wins.** Your server takes the place you chose, even if the other device played on after yours asked. If that device keeps playing before it catches up, your place stays put and that device asks you instead. See [when Stay doesn't win](#good-to-know).
-- **Finished stays finished**, unless you start the book again.
+- **Finished stays finished**, unless you start the book again. Marking the book you're playing as finished stops it first and saves your place.
 - **Listening counts when it happened.** Offline listening shows in your history, Journal and stats at the time you listened, even if it syncs days later.
 
 Until it reaches the server, your listening waits on the device. Home says how many listens are waiting, and your [account page](account.md#listening-sync) shows the details.
@@ -99,7 +99,7 @@ A long single file with no chapter marks is split into **Parts**, 30 minutes eac
 
 To change their length, set **Chapter length (unchaptered)** in [Settings](settings.md#playback), from 5 to 60 minutes.
 
-Many such books can get real chapters, from the community database or from your server's Bridge (see [Generate characters and recaps](../admin/generating-characters-and-recaps.md#books-without-chapters)). See [Use the book page](book-page.md#chapters).
+Many such books can get real chapters, from the community database or from your server's Bridge (see [Detect chapters](../admin/chapter-detection.md)). See [Use the book page](book-page.md#chapters).
 
 ## Good to know
 

@@ -98,7 +98,7 @@ These revoke one:
 - a member's owner (`DELETE /me/household/members/{id}/devices/{device_id}`);
 - a change or reset of the account's password;
 - an admin, for one device or for
-  [all of them](#password-changes-end-sessions).
+  [all of them](#password-changes-and-sign-out-everywhere-end-sessions).
 
 ### Pairing tokens
 
@@ -148,6 +148,13 @@ mints for headless integrations such as dashboards and cron jobs.
 - Listing (`GET /auth/tokens`) takes `nonDemoAccount` alone (from 2.4.0).
   Opening the Account page therefore never spends the `accountLimiter` budget
   that a household behind one NAT shares.
+- A key records the device its session was made on (`created_on_token_id`,
+  `auth.madeOn`). So a household member's key made from a sign-in on the
+  owner's device ends with that sign-in, by the owner's password change, Sign
+  out everywhere or a device revoke with `also_members` (see
+  [Password changes and Sign out everywhere end sessions](#password-changes-and-sign-out-everywhere-end-sessions)).
+  A key made before v2.7.0 recorded none and stays. A mint from a session
+  signed out since the request's check answers `401`.
 
 **Containment.** An API-key caller is barred (`403`, through `denyAPIKey`) from
 every route that mints a credential:
@@ -227,7 +234,10 @@ debugger. The token is narrow in every way:
   (unknown, revoked, expired, disabled user) and also has a grant and a live
   parent. So **signing out the device that minted it** ends it, whether by
   logout, My devices or the console.
-- **Short-lived.** It lasts 24 hours, and a person keeps at most 20. Each mint
+- **Short-lived.** It lasts 24 hours. Each sending device (the token that
+  mints them) keeps at most 20, and a person at most 100 over all their
+  devices; a mint past either drops the oldest, so a run of casts on one device
+  never ends the cast another device of the person is playing. Each mint
   deletes every dead cast token: expired, with no grant, or with its parent
   gone, signed out or expired. The daily retention job runs the same prune
   (`auth.PruneCastTokens`). A dead token's row (which holds the receiver's
@@ -360,7 +370,8 @@ person's upcoming release list and nothing else:
   The new row copies the `created_on_token_id` of the session it was made from.
   That is the owner's device the sign-in was made on, or none for a sign-in on
   the person's own device. So a member signed in on their owner's device makes
-  the link "on" that device.
+  the link "on" that device. A mint from a session signed out since the
+  request's check answers `401`.
 - **One per user.** A mint deletes the earlier row in the same durable
   transaction. Migration `0060`'s partial unique index `idx_tokens_feed_user`
   (`tokens(user_id) WHERE kind = 'feed' AND revoked = 0`) refuses a second live
@@ -375,12 +386,15 @@ person's upcoming release list and nothing else:
     the admin's assign alike;
   - a move into another owner's household, when the link was made on someone
     else's device (`leaveOwners`, together with the sign-in made there). A link
-    made on the person's own device stays, as that sign-in does.
+    made on the person's own device stays, as that sign-in does;
+  - for a member's link made on the owner's device, the owner's password change,
+    Sign out everywhere, or a revoke of that device with `also_members` (the
+    link is deleted and adds nothing to the count).
 
   Deleting the account cascades. While an account is disabled, `lookupToken`
-  refuses its token. A password change or reset and the admin's Sign out
-  everywhere end sessions but leave the link alone (see
-  [Password changes end sessions](#password-changes-end-sessions)). The feed is
+  refuses its token. The person's own password change or reset and the admin's
+  Sign out everywhere end their sessions but leave their own link alone (see
+  [Password changes and Sign out everywhere end sessions](#password-changes-and-sign-out-everywhere-end-sessions)). The feed is
   the person's to end, and the console has no control for it.
 - **Behind the token, the person's own rules.** The route still applies `notKid`
   (`403` for a leftover token of a person who is now a kid) and the two `404`s.
@@ -478,7 +492,7 @@ mistyped entry still verifies.
 | Defaults | 5 uses, 1-day expiry (`defaultAuthCodeMaxUses` and `defaultAuthCodeTTLDays` in `handlers_admin.go`). An explicit `0` means unlimited uses or no expiry. The console's invite dialog asks for 7 days unless changed. | Unlimited uses, never expires |
 | Cardinality | One *active* invite per user | At most one recovery code per user |
 | Listable | Yes (`ListAuthCodes`, metadata only) | No. It shows only as `User.HasRecovery` |
-| Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin). A password change or reset, or Sign out everywhere, also removes a leaked code (see [Password changes end sessions](#password-changes-end-sessions)). |
+| Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin). A password change or reset, or Sign out everywhere, also removes a leaked code (see [Password changes and Sign out everywhere end sessions](#password-changes-and-sign-out-everywhere-end-sessions)). |
 
 Both kinds redeem through the same path. The full onboarding flow:
 
@@ -566,9 +580,14 @@ apps don't: they keep pairing by QR code or invite. The config is in
    route on `public_url`'s host, once (`hop=1`), so the cookie is set where the
    provider returns. So does a plain HTTP request straight from a browser (home
    HTTP) while `public_url` is https, because a browser drops a `Secure` cookie
-   set over plain HTTP. Then the server makes the flow (`state`, `nonce` and
-   the PKCE verifier, 32 random bytes each, and `return`), seals it into the
-   flow cookie and redirects to the provider's authorization URL.
+   set over plain HTTP. A provider discovered before is probed first (its
+   discovery document, within the sign-in's 20 second budget; an answer
+   stands 30 seconds, a failure 5 seconds, `probe`), so one gone down lands on
+   `unavailable` and the console's single sign-on status says `error`. Then the
+   server makes the flow (`state`, `nonce` and the PKCE verifier, 32 random
+   bytes each, the redirect URI and `return`), seals it into the flow cookie
+   and redirects to the provider's authorization URL. The callback's exchange
+   names the redirect URI the flow carries.
 2. **`GET /auth/oidc/callback`.** The provider sends the browser back here. The
    handler deletes the flow cookie whatever happens, then refuses, in order:
    - an address locked out by `oidcLimiter` (`rate_limited`);
@@ -588,7 +607,9 @@ apps don't: they keep pairing by QR code or invite. The config is in
    writes the result in one durable transaction (see
    [Who signs in as whom](#who-signs-in-as-whom)).
 4. **The hand-over.** A sign-in that signs in gets a token of kind `oidc`
-   (`auth.KindOIDC`), single use, 60 seconds. The token goes in the done cookie,
+   (`auth.KindOIDC`), single use, 60 seconds, minted in the decision's
+   transaction, so a Sign out everywhere can't fall between the decision and
+   the token. The token goes in the done cookie,
    **never in a URL**: a link carrying it would sign whoever opens it in as its
    owner (a login CSRF). The handler then redirects to `/admin/#oidc=done` or
    `/web/connect?oidc=1`.
@@ -607,12 +628,31 @@ The ID token checks (`Provider.Exchange`):
   at most 5 minutes ahead;
 - the `nonce` is the flow's.
 
-The server asks the userinfo endpoint only when the ID token lacks the email,
-the username or the groups. Userinfo's `sub` must equal the ID token's. Every
-call one sign-in makes to the provider (discovery when due, the token request,
-the keys, userinfo) shares one 20 second deadline (`oidc.CallBudget`), under
-the API's 30 second request timeout. An error never carries the provider's
-response body.
+The server asks for the scopes in `auth.oidc.scopes` (`oidcScopes`; the default
+and when it adds `groups` are in [Configuration](configuration.md#single-sign-on-authoidc)).
+
+The server asks the userinfo endpoint only when the ID token lacks a claim it
+needs (`askUserinfo`):
+
+- the groups, only while a group policy reads them, and then every time;
+- the email or the username, but not again for an hour once userinfo lacked it
+  for that person (per subject, at most 1000 remembered). A sign-in left
+  waiting forgets it, so an email added at the provider since decides what the
+  next attempt links to.
+
+Userinfo's `sub` must equal the ID token's. A userinfo request that fails
+leaves the ID token's claims, with a warning logged (`Claims.Partial`). A
+linked identity then signs in, keeping its stored email and username. A first
+sign-in is refused as `incomplete` (the `unavailable` result) when it has no
+email, or when `allowed_group` would read its missing groups: never an account
+made for someone the email would link, nor a waiting row saying the person
+isn't in the group.
+
+Every call one sign-in makes to the provider (discovery when due, the token
+request, the keys, userinfo) shares one 20 second deadline (`oidc.CallBudget`).
+It starts once the sign-in is past any wait for another sign-in's discovery
+(at most 5 seconds), so the two stay under the API's 30 second request
+timeout. An error never carries the provider's response body.
 
 ### The cookies
 
@@ -646,15 +686,19 @@ exchange succeeded, so states sent back bare can't fill it.
 `POST /auth/oidc/finish` is public. Its answers, which of them keep the cookie
 and which are charged to `oidcLimiter` are in the
 [API reference](api/reference.md#post-apiv1authoidcfinish). A token of another
-kind reads as `401 oidc_sign_in_expired`, like a spent or expired one.
+kind reads as `401 oidc_sign_in_expired`, like a spent or expired one. So
+does any token while single sign-on can't run (turned off since the callback;
+a token outlives a restart): nothing is charged and the token is left to
+expire, unspent.
 
 `ConsumeOIDC` takes only `KindOIDC`. A pairing token planted in the cookie (an
 invite's QR, or a person's own `POST /auth/pair`) would sign the browser in as
 someone else, so it is refused and left unspent. `POST /auth/exchange` in turn
 refuses an `oidc` token, and every route that takes a token refuses it
 (`TestOIDCTokenRefusedOnEveryRoute`). Sign out everywhere ends one not yet
-finished, so do a move into a household and the switch to a kid, and the daily
-`PrunePairingTokens` deletes the spent and expired ones.
+finished, so do unlinking the account's identity, a move into a household and
+the switch to a kid, and the daily `PruneSingleUseTokens` deletes the spent and
+expired ones.
 
 A page on another site can't make the browser send the done cookie with a
 `POST` (`SameSite=Lax`), nor read the answer. The web player calls the finish
@@ -701,7 +745,11 @@ gets a new row, with a new id. It holds the email, the username,
 the name and up to 50 groups, never a token. Its ids are `AUTOINCREMENT`, so a
 dismissed row's id never names another person to a console list read before.
 Each new row raises the `oidc_pending` notification
-([Events](backups-and-notifications.md#events)). An admin links it, makes an
+([Events](backups-and-notifications.md#events)), at most 5 an hour for the
+sign-ins from one client address and 30 an hour in all. A row over either cap
+is not announced then (reaching it is logged, at most once an hour), and may
+be at the person's next attempt. The address only counts: it is never in the
+event. An admin links it, makes an
 account for it or dismisses it ([admin routes](api/reference.md#admin-single-sign-on)).
 An admin may link a waiting sign-in to an admin's account by hand.
 
@@ -713,20 +761,25 @@ it. Group names match exactly, case included.
 
 - The last enabled admin is never demoted. The refusal is logged and audited
   (`user.role_sync` with `refused: last_admin`), and the sign-in goes on.
-- A sign-in that carried **no groups claim at all**, in neither the ID token
-  nor userinfo, leaves the role alone while its identity has never carried
-  one. So a provider that never sends the claim demotes no one, and the server
-  logs a warning. Once a sign-in through the identity has carried the claim,
-  even as an empty list, `user_identities.groups_seen` is set, and from then on
-  an absent claim means no groups and demotes. Keycloak, for one, leaves the
-  claim out for a person in no group. The console's Link and Create set
-  `groups_seen` only when the waiting row holds a group, since its stored list
-  can't tell an absent claim from an empty one.
-- `allowed_group` counts an absent claim as no groups.
+- A sign-in with **no readable groups claim** in either the ID token or
+  userinfo **never changes the role** and never promotes, whether or not the
+  identity carried one before. "No readable claim" is absent, `null`, another
+  shape, a list holding no string, or Entra's overage.
+- Only a list that is there changes the role; an empty one demotes. So a
+  renamed `groups_claim` or a dropped scope demotes no one.
+- A provider that leaves the claim out for a person in no group (Keycloak, for
+  one) needs an admin to demote that person by hand.
+- The server logs a warning once per account a run, worded by
+  `user_identities.groups_seen` (set by a sign-in that carried the claim, even
+  an empty list): never sent for this person, or sent before and not now.
+- `allowed_group` counts an absent claim as no groups (a new identity without
+  one waits as `not_allowed`), unless userinfo failed (`incomplete`, above).
 
 The groups claim is a list of strings or a single string. The server reads up
 to 2000 groups, so each is there to match, and drops a name over 256 bytes or
-with a control character rather than mend it into another name. A claim of
+with a control character rather than mend it into another name. The
+`admin_group` and `allowed_group` settings are bounded to 256 bytes the same
+way (`config.MaxOIDCGroup`). A claim of
 another shape, such as a list of objects or numbers, counts as absent. The
 claim's name may be namespaced (`https://example.org/groups`).
 
@@ -744,7 +797,7 @@ languages:
 | Reason | When |
 |---|---|
 | `off` | single sign-on isn't on |
-| `unavailable` | its config has a problem, or the provider didn't answer |
+| `unavailable` | its config has a problem, the provider didn't answer, or a first sign-in lacked a claim because userinfo failed (`incomplete`) |
 | `pending` | the sign-in waits for an admin |
 | `not_allowed` | the person isn't in `allowed_group`, or their account is a household member or demo account now |
 | `disabled` | their account is disabled |
@@ -823,14 +876,14 @@ or change their own password:
   `PATCH /admin/users/{id}`. The guard that an admin must keep a password still
   applies underneath: `SetPassword` refuses to clear an admin's password.
 - A change ends the caller's other sessions (see
-  [Password changes end sessions](#password-changes-end-sessions)).
-- An admin's change counts as choosing their own password
-  (`auth.NoteOwnPassword`), as does `PATCH /admin/users/{id}` on the admin's own
-  account. For the first-run admin it ends the start's sign-in hint and turns
-  `GET /admin/setup`'s `printed_password` false (see
+  [Password changes and Sign out everywhere end sessions](#password-changes-and-sign-out-everywhere-end-sessions)).
+- A password set on an admin account ends the start's sign-in hint. One set on
+  the first-run admin, by them or another admin (`PATCH /admin/users/{id}`), or
+  cleared, also turns `GET /admin/setup`'s `printed_password` false and deletes
+  the auth code printed beside it (see
   [Configuration](configuration.md#cli-flags-cmdaudiosilo)).
 
-## Password changes end sessions
+## Password changes and Sign out everywhere end sessions
 
 Replacing or clearing a password the account had ends the person's sessions.
 Whoever knew the old password is signed out wherever they used it.
@@ -857,15 +910,18 @@ password, and that the person can neither see nor revoke:
   - a member's session made on any of the person's devices except the kept one
     (`created_on_token_id`, the same rule as the device revoke's
     `also_members`), including a device signed out earlier;
+  - the API keys and the calendar feed link a member made from such a session
+    (the mint records the session's device, below);
   - every member's open pairing code.
 
-  A member's own paired device stays signed in.
+  A member's own paired device stays signed in, with what was made on it.
 
 What stays:
 
-- **API keys**, which are listed and revoked on their own, in the device lists
-  and `/auth/tokens`;
-- the [calendar feed token](#calendar-feed-tokens), which is the person's to end;
+- the person's own **API keys**, which are listed and revoked on their own, in
+  the device lists and `/auth/tokens`;
+- the person's own [calendar feed token](#calendar-feed-tokens), which is theirs
+  to end;
 - [Bridge tokens](#bridge-tokens), which are the Bridge's;
 - invites, which are the admin's, listed and revoked in the console.
 
@@ -887,8 +943,8 @@ hash is still the account's and the account is enabled. Otherwise it answers
 **Sign out everywhere.** The admin's `POST /admin/users/{id}/sign-out`
 (`auth.SignOutEverywhere`) is the console's button on a person's Devices tab.
 
-- It runs the same `endSessions` without a password change. When the account is
-  the admin's own, it keeps the admin's current session.
+- It runs the same `endSessions` (above) without a password change. When the
+  account is the admin's own, it keeps the admin's current session.
 - It forgets the person's browsers (`forgetBrowsers`), so each browser's next
   password sign-in is announced as a new device. A new password forgets the
   browsers too, as it always has.
@@ -1656,7 +1712,8 @@ token in `tokens.created_on_token_id`. A token's validity never reads it.
 
 Signing the owner's device out leaves those sessions alone unless the owner asks
 `?also_members=1`. That revokes them in the same transaction, restricted to
-`managed_by = caller`, and audits each member signed out
+`managed_by = caller`, with the API keys and calendar feed links those members
+made from a sign-in there, and audits each member signed out
 (`member.device_revoke`).
 
 #### Moving between households

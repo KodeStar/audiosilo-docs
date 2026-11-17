@@ -461,13 +461,14 @@ connection id is `<server_id>.<user_id>` with the answer's `user`
 | Status | Meaning |
 |---|---|
 | `400` | `pairing_token` missing |
-| `401` | `invite already used on all its devices - ask for a new invite` (the parent invite's use cap is spent) |
-| `401` | `invite has expired - ask for a new invite` (the parent invite expired after the redeem) |
-| `401` | `invalid or expired pairing token` (anything else: bogus/revoked token, single-use token already exchanged, code owner disabled) |
+| `401` | `code: "invite_used"`: the parent invite's use cap is spent (from 2.7.0) |
+| `401` | `code: "invite_expired"`: the parent invite expired after the redeem (from 2.7.0) |
+| `401` | `invalid or expired pairing token`, no `code` (anything else: bogus/revoked token, single-use token already exchanged, code owner disabled) |
 | `429` | redeem lockout tripped, with `Retry-After` |
 
-A refused exchange never burns an invite use. Its `401`s carry no `code` (unlike
-`/auth/redeem`'s): tell them apart only by the English `error`, or not at all.
+A refused exchange never burns an invite use. Its `401`s carry the same codes as
+`/auth/redeem`'s. An older server sends them with no `code`: tell those apart
+only by the English `error`, or not at all.
 
 ### `POST /api/v1/auth/login`
 
@@ -487,7 +488,11 @@ attempts per IP per 15 minutes.
 stores only its SHA-256, on the session. A sign-in whose `device_id` an earlier
 session of the same person already carried, signed out or not, is not
 announced as a `new_device` [event](#get-apiv1adminevents); one without it
-always is. The admin console sends one, and players may adopt it. The server
+always is. The admin console sends one per origin. A client sends one random
+key per server address and never a value it sends elsewhere (such as progress
+sync's `device_id`, which comes back in progress answers), since the server
+keeps this one as a secret. The player's is its sign-in key
+([Connecting](../../frontend/connect-and-addresses.md)). The server
 forgets `device_id`s so that the browser's next sign-in is announced again:
 
 - An admin signing a session out (`DELETE /admin/devices/{id}`) forgets that
@@ -496,7 +501,7 @@ forgets `device_id`s so that the browser's next sign-in is announced again:
   disabled account forgets all of that person's.
 
 A sign-in racing a password change gets no session, only `401 invalid credentials`
-(see [Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
+(see [Password changes and Sign out everywhere end sessions](../auth-and-security.md#password-changes-and-sign-out-everywhere-end-sessions)).
 
 Response `200`: `{ "token": "…", "user": { … }, "server_id": "…" }`, plus `addresses`
 on a server with that capability. It is the same shape as `/auth/exchange`.
@@ -651,7 +656,7 @@ server's addresses. The console signs a non-admin back out at once.
 |---|---|
 | `400` | a body that isn't valid JSON. The cookie stays, so the sign-in can still be finished within its minute |
 | `401` | `code: "oidc_no_sign_in"`: no finished sign-in in this browser (no cookie). Nothing is charged |
-| `401` | `code: "oidc_sign_in_expired"`: the sign-in was used, expired after 60 seconds, or its account is disabled or has become a household member or demo account. Charged to the single sign-on lockout |
+| `401` | `code: "oidc_sign_in_expired"`: the sign-in was used, expired after 60 seconds, or its account is disabled or has become a household member or demo account. Charged to the single sign-on lockout. Also while single sign-on can't run (turned off since the callback): then nothing is charged and the token is left to expire |
 | `429` | the address is locked out (10 failures in 15 minutes, shared with the callback), with `Retry-After`. The cookie stays |
 
 Every answer but a `400` or a `429` clears the cookie, so the finish can't be
@@ -703,20 +708,23 @@ had revokes:
   [`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair) for
   a member;
 - the caller's recovery code (`has_recovery` turns `false`);
-- the caller's household members' sessions made on the caller's other devices, with
-  every member's open pairing code. A member's own paired device stays.
+- the caller's household members' sessions made on the caller's other devices, the
+  API keys and calendar feed links those members made from them, and every
+  member's open pairing code. A member's own paired device stays.
 
-API keys, the [calendar feed token](#the-calendar-feed) and Bridge tokens stay, and
+The caller's own API keys and [calendar feed token](#the-calendar-feed) and the
+Bridge tokens stay, and
 a first password ends nothing (see
-[Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
+[Password changes and Sign out everywhere end sessions](../auth-and-security.md#password-changes-and-sign-out-everywhere-end-sessions)).
 An ended token is refused (`401`) on its very next request, media `?token=` included.
 A shipped app takes its existing 401 path: signed out, pair again. The response
 carries no count. A client that wants to say what happened reads
 [`GET /me/devices`](#get-apiv1medevices) again.
 
-An admin's change also ends the first-run sign-in hint and turns
-[`GET /admin/setup`](#get-apiv1adminsetup)'s `printed_password` false for the
-first-run admin.
+An admin's change also ends the first-run sign-in hint. For the first-run admin it
+turns [`GET /admin/setup`](#get-apiv1adminsetup)'s `printed_password` false and
+deletes the auth code the first start printed beside the password (a code
+rotated in the console since stays).
 
 | Status | Meaning |
 |---|---|
@@ -809,6 +817,10 @@ Response `200`:
 `token` is the bearer secret. Only its SHA-256 hash is stored, so this is the
 one time it appears. `api_key.last_seen` is `null` until the key first
 authenticates a request.
+
+A mint from a session signed out after the request was checked (a password
+change or Sign out everywhere committed in between) answers `401`, as the auth
+middleware does.
 
 | Status | Meaning |
 |---|---|
@@ -1012,8 +1024,9 @@ are untouched.
 `kind` is always sent: `books` or `podcasts`. Podcast libraries are omitted
 unless the authenticated request passes the
 [podcast client gate](../auth-and-security.md#podcast-visibility), including
-for admins. Library membership does not require a visible show, so a granted
-podcast library containing only unfollowed private shows still appears here.
+for admins, and (from 2.7.0) while the podcasts module is off. Library
+membership does not require a visible show, so a granted podcast library
+containing only unfollowed private shows still appears here.
 
 `root` (the library's folder on the server's disk) is sent only to an admin who
 is not a demo visitor. From 2.5.0 a listener and a demo session get each library
@@ -1694,7 +1707,9 @@ request for their same library/hash and the same privacy returns the open one.
 An [OPML import](#opml-import-and-export) row answers the same way as a
 follow by URL. Manual check requires
 the caller to follow a visible show and, without an open poll, refuses a check
-within 60 seconds of the last one.
+within 60 seconds of the last one. From 2.7.0 a check's failure doesn't count
+toward the feed's failing run and leaves the scheduled polls' backoff as it was
+(a `gone` is still announced at once).
 
 | Status/code | Meaning |
 |---|---|
@@ -1711,7 +1726,8 @@ within 60 seconds of the last one.
 
 Async failures appear on Request/Show status, rather than as the follow
 response's HTTP status. Codes include `invalid_feed_url`, `blocked_address`,
-`dns`, `timeout`, `tls`, `network`, `http_<status>`, `gone` (410), `too_large`,
+`dns`, `timeout`, `tls`, `network`, `http_<status>` (`http_310` is the Bridge's
+redirect loop), `gone` (410), `too_large`,
 `not_a_feed`, `not_a_podcast`, `not_podcast_library`, `library_not_writable`,
 `feed_secret_missing`, `request_expired`, `write_failed`, and server-only
 `bridge_lost`. A private request lost before claim on a server restart is
@@ -1952,7 +1968,8 @@ in order:
 15. then the slot.
 
 A busy answer refunds the budget it took, so the `Retry-After` retry runs rather
-than meeting `429`.
+than meeting `429`. From 2.7.0 so does a `400 invalid_opml`, so a corrected
+document can be sent at once (a `413` or an upload whose read failed does not).
 
 The whole document is validated before any row acts, so a refused document
 changes nothing:
@@ -2340,9 +2357,12 @@ abridgement or a dramatisation.
   caller's share scope (the same filter as every list), with the same `work_id`.
   Never the book itself, and each recording once: a copy of the book or of a
   book already listed is left out (within one library, Health lists it as a
-  duplicate). Two books are copies when their ASINs match, or, when either has
-  no ASIN, when their ISBNs match (compared normalized: case, spaces and hyphens
-  aside). Two different ASINs are two recordings, even with one print ISBN.
+  duplicate). Two books are copies when their ASINs match, or, when the later
+  book in the order below has no ASIN, when their ISBNs match (compared
+  normalized: case, spaces and hyphens aside). Two different ASINs are two
+  recordings, even with one print ISBN, and from 2.7.0 a book with an ASIN is
+  never taken in by an ISBN alone, so an ISBN-only copy listed first never hides
+  an ASIN recording that shares its print ISBN.
 - **Order.** The book's own library first, then by title, then by narrator, then
   by library and path; of copies, the first in this order is the one listed. At
   most 20 recordings.
@@ -2462,9 +2482,10 @@ its other series (`series_list`) in their order. The community rails answer firs
 but only when they can **place** the next entry on one of the caller's books.
 Otherwise the local steps decide, in order, and the first one with an answer wins:
 
-1. **`community`**: community metadata is on and the book's ASIN or ISBN matches
-   a work with at least one series rail. Unlike `/meta`, this step never reads
-   the book's recorded match.
+1. **`community`**: community metadata is on and the book's work has at least
+   one series rail. From 2.7.0 the work is found by `/meta`'s rule: the book's
+   ASIN or ISBN, else (or when it names another work) its recorded match, so a
+   book matched only in the console has a community step too.
    - **Rail order.** The rails are taken in the book's own order. First comes a
      rail named like its main series (by the rail's name or one of its orderings',
      ignoring case, accents, punctuation and spacing). Then come rails named like
@@ -2566,21 +2587,27 @@ path is authorized against the caller's share scope exactly like `/item`. The ro
 is gated by the `metadata` [capability](#get-apiv1server). When it is false the
 route returns 404, so a client that honours the flag never calls this.
 
-The server finds the book's work in two steps (`bookEnvelope`):
+The server finds the book's work in two steps (`bookEnrichment`, shared with
+[`/next`](#get-apiv1librariesidnext)), so `/item`, `/meta` and `/next` follow
+one work rule (from 2.7.0):
 
 1. **Its identifiers.** The server looks the book's `asin` or `isbn` up upstream.
    These are the effective fields on the indexed book: stored in
-   `book_enrichment`, or set by an admin edit, which wins. A book its identifiers
-   match never reads its recorded match.
-2. **Its recorded match.** When the book has neither identifier, or the upstream
-   does not know them, the server reads the book's recorded community match. That
+   `book_enrichment`, or set by an admin edit, which wins.
+2. **Its recorded match.** When the book has neither identifier, the upstream
+   does not know them, the lookup fails (an outage), or the recorded match names
+   another work than the identifiers find (its
+   [`work_id`](#get-apiv1librariesidbooks) is the recorded match's first), the
+   server reads the book's recorded community match. That
    is its `book_matches` row, shown as
    [`community_match`](#get-apiv1adminlibrariesidbook) on the console's book page:
    the `work_id` and `recording_id` an admin accepted or a match run applied. The
    server fetches that work (`works/{id}`, `meta.Service.EnrichMatch`) and uses
    the match's recording as the envelope's recording, as a lookup would. When
    the match names no recording, or one the work no longer has, that is the
-   work's first. A book with no match row is unmatched.
+   work's first. A book with no match row is unmatched. In an outage the
+   match's stored answer serves (`200`, not `502`). A recorded work the upstream
+   lacks or can't answer leaves the identifiers' answer standing.
 
 Either way the server folds the matched recording plus up to three
 series rails into one envelope, one rail per reading-order family (see
@@ -2700,7 +2727,11 @@ the upstream has none. Every `omitempty` string or number field (`subtitle`,
   `links.librivox` and `links.zip` (see
   [The `links` field](../../meta/data-model.md#the-links-field)). Each is
   optional, and the server keeps it only
-  when it is an absolute `http` or `https` URL with a host (`librivoxOf`). It
+  when it is an absolute `http` or `https` URL with a host (`librivoxURL`). From
+  2.7.0 that host must be `librivox.org` or `archive.org` (or a subdomain) in
+  plain ASCII letters, digits, hyphens and dots, with no userinfo, and the scheme
+  is lower-cased: a lookalike Unicode host or a full-width separator is
+  refused. It
   never builds either from `id`, because LibriVox's pages are named by slug. A
   cached envelope gains the field once its entry is next refreshed.
 - `series[].position` is this work's position in that series. Positions are
@@ -3224,7 +3255,7 @@ reach the client.
 | `403` | path outside the caller's share scope |
 | `404` | `no such cover` - the book is unmatched (neither its identifiers nor its recorded match find a work) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
 | `500` | `could not load book` - the book or its recorded match could not be read |
-| `502` | `metadata service unavailable` - the book's envelope couldn't be had; `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects, an answer other than `200`), or its fetch failed less than a minute ago |
+| `502` | `metadata service unavailable` - the book's envelope couldn't be had; `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects or (from 2.7.0) one from `https` down to `http`, an answer other than `200`), or its fetch failed less than a minute ago |
 
 ### `GET /api/v1/meta/work`
 
@@ -3319,8 +3350,9 @@ of its audio as plain MP3:
 
 - `Content-Type: audio/mpeg`, `Accept-Ranges: bytes`, and Range honoured;
 - chapters as ID3 `CHAP` frames;
-- a strong `ETag: "remux-<key>"` and the copy's own `Last-Modified`, so a validator
-  kept from the stored Matroska never earns a `304` or a spliced range.
+- a strong `ETag: "remux-<key>"` and (from 2.7.0) no `Last-Modified`, so a
+  validator kept from the stored Matroska never earns a `304` or a spliced range,
+  and an `If-Range` with the ETag resumes with a `206`.
 
 It is the same URL that served the Matroska before, so shipped clients stream the
 MP3 with no change. A podcast library's stream is never remuxed.
@@ -3361,7 +3393,7 @@ directory (never into the library) and keeps it in a size-capped cache
 - **Auth** as the stream's: a session or API key header, `?token=`, or a cast
   token for the file's book; the path is scope-checked as for any stream.
 - **Ready:** `200` / `206` with `Content-Type: audio/mp4`, `Accept-Ranges: bytes`,
-  Range and `If-Range`, a strong `ETag: "rw1-<key>-<size>"` and the copy's own
+  Range and `If-Range`, a strong `ETag: "rw1-<key>-<size>"` and (from 2.7.0) no
   `Last-Modified`. The ETag names one encode, so a resumed download (`Range` with
   `If-Range`) never splices bytes of two encodes; `Content-Disposition` only with
   `download=1`.
@@ -3754,7 +3786,8 @@ revoked share isn't returned.
 
 ### `GET /api/v1/me/progress`
 
-*Session.* All progress rows for the caller (offline-sync seed).
+*Session.* All progress rows for the caller (offline-sync seed). A caller with
+none gets `{"progress": []}`, never `null` (from 2.7.0).
 
 ```json
 {
@@ -3919,8 +3952,9 @@ the sub-second, so a device save made just before the edit can't outrank it. Und
 last-write-wins the edit beats what a device saved before it, while a device that
 has the book loaded overrides it on its next save. It is not playback, so it
 records no [listening session](#admin-activity). On a server with `listening_sync`
-it also clears the row's `other_place`. When it changes `finished`, it records the
-change's time (now), so an older sync `finish` or `unfinish` can't undo it.
+it also clears the row's `other_place`. When it names `finished` at all (even one
+that doesn't flip the row), it records the time (now) as the finish change, so an
+older sync `finish` or `unfinish` can't undo it.
 
 Response `200`: `{ "progress": { … } }`, the player's progress object, with its
 dates and the `device_name` of the device that saved the place, as the player's
@@ -4463,7 +4497,8 @@ spans here: the server writes history from its synced listening instead.
 ### `GET /api/v1/me/favourites`
 
 *Session.* The caller's favourites across all accessible libraries, newest
-first, enriched from the index where a book exists at the path:
+first, enriched from the index where a book exists at the path (`[]`, never
+`null`, for none, from 2.7.0):
 
 ```json
 {
@@ -5185,7 +5220,8 @@ that wants to show the link again keeps it as it keeps a session token.
 Errors, in order: `401`; `403` `kid_account`; `403` `demo_account` (a demo
 account can't make a credential); `403` for an API key (a key never mints a
 credential, [Personal API keys](#personal-api-keys)); `404` `metadata_off`; `404`
-`upcoming_off`.
+`upcoming_off`. A session signed out after the request was checked is `401`
+too, from inside the write.
 
 #### `DELETE /api/v1/me/upcoming/calendar`
 
@@ -5351,12 +5387,15 @@ listening done since a person last turned sharing on is shown.
 - `sharing` - whether the caller shares. While it is `false`, `listening` is `[]`.
   A kid household member never shares and never sees anyone (`{ "sharing": false,
   "listening": [] }`), and never appears as a row.
-- `state` - from the age of the person's newest save: `playing` within 60 seconds,
-  `paused` within 10 minutes (the session gap), else `recent`. A player that saves
-  every 60 s can read as `paused` for a moment
+- `state` - from the age of the person's newest save: `playing` within 150 seconds,
+  `paused` within 10 minutes (the session gap), else `recent`. The window covers a
+  player that saves every 60 s in the background or on a download
   ([data model](../data-model.md#listening-sessions-how-they-are-derived)).
 - `title` - the index's title, else the path's last segment (a book no longer
-  indexed); `author` and `duration` are `null` when unknown (`duration` falls back
+  indexed). From 2.7.0 a path that is no book of its own but sits in one (a
+  session saved on a disc folder, `Book/CD1`, before the discs were joined)
+  takes the holding book's title and author, when the caller's scope grants that
+  book; `author` and `duration` are `null` when unknown (`duration` falls back
   to the session's own).
 - `position` - seconds into the whole book; `chapter` and `chapter_index` (0-based)
   are the chapter at that position, as the admin's live sessions show it: both
@@ -5856,9 +5895,9 @@ always is, or it is `400 admin_needs_password`).
   a password the account had ends their sessions exactly as a
   [self-service change](#post-apiv1authpassword) does, in the same transaction. Only
   the admin's own session survives, when the account is the admin's. A non-empty
-  password an admin sets on their **own** account counts as their own choice
-  (`auth.NoteOwnPassword`), as [`POST /auth/password`](#post-apiv1authpassword)
-  does. One another admin set for them does not.
+  password set on an admin account ends the first-run sign-in hint, and one set
+  on the first-run admin (or cleared), by any admin, also turns `printed_password`
+  false and deletes the auth code the first start printed (`auth.UpdateUser`).
 
 Response `200`: the updated user object (with the fields above).
 
@@ -5884,14 +5923,27 @@ both: every value counts. Each kept member becomes an ordinary account (the thre
 member columns cleared, so only their direct grants remain), as with Make
 independent ([audited](../backups-and-notifications.md#audit-log) on `user.delete`).
 
+With `delete_members` (comma-separated ids or repeated, like `keep_members`;
+present, even empty), only the members it names are deleted and every other
+member is kept as above, so one added after the caller read the list is never
+deleted unseen. The console always sends it, with the members its dialog showed
+and left ticked. An id that isn't one of this person's members, or one
+`keep_members` also names, is `400 invalid_delete_members` and nothing is
+deleted.
+
+Deleting a person, or an owner's member with them, also cancels the open
+Audible jobs (polls, backups and syncs) of the accounts mapped to them (from
+2.7.0).
+
 The checks answer in this order: an id that isn't a number, then a malformed
-`keep_members` (`400 invalid_keep_members`), then a self-delete (`400
-cannot_delete_self`), then the account (`404`), then, inside the transaction, the
-last-admin rule and the keep list.
+`keep_members` (`400 invalid_keep_members`) or `delete_members` (`400
+invalid_delete_members`), then a self-delete (`400 cannot_delete_self`), then
+the account (`404`), then, inside the transaction, the last-admin rule and the
+keep and delete lists.
 
 | Status | Meaning |
 |---|---|
-| `400` | self-delete refused (disable your own account instead) - `cannot_delete_self`; `code: "invalid_keep_members"` (a `keep_members` entry that isn't a positive id, or isn't one of this person's members: nothing is deleted) |
+| `400` | self-delete refused (disable your own account instead) - `cannot_delete_self`; `code: "invalid_keep_members"` (a `keep_members` entry that isn't a positive id, or isn't one of this person's members: nothing is deleted); `code: "invalid_delete_members"` (a `delete_members` entry that isn't a positive id, isn't one of this person's members, or is also in `keep_members`: nothing is deleted) |
 | `404` | user not found |
 | `409` | last enabled admin - `last_admin` |
 
@@ -6213,7 +6265,9 @@ settings are not echoed; read them from
 Invalid `kind` is `400 invalid_kind`. If either library is a podcast library,
 equal, ancestor or descendant roots conflict (`409 root_overlaps`), using
 cleaned absolute paths. This also applies when moving a books root over a
-podcast root. Podcast libraries stay in this admin list regardless of the
+podcast root. Two books libraries may share a folder or nest one inside the
+other (their books are then listed twice, once in each): the server allows it,
+and from 2.7.0 the console's Add library and folder edit ask first. Podcast libraries stay in this admin list regardless of the
 player gate; book detection/export and admin book tools require books libraries
 (`409 not_book_library` where applicable).
 
@@ -6271,7 +6325,8 @@ FTS rows). The cascade also removes every user's state keyed to it (progress,
 bookmarks, notes, listening history and favourites), plus its folder overrides,
 enrichment, metadata edits, custom covers and any share path rules pointing into
 it. Its whole-library grant shares (`whole_library_id` = this library) are deleted
-too, unless one also holds rules for another library, which it keeps granting. Audio files on disk are
+too, unless one also holds rules for another library, which it keeps granting as
+an ordinary share (from 2.7.0 its grant mark is cleared). Audio files on disk are
 untouched. `204 No Content`.
 
 A library the server's config declares (see
@@ -6535,11 +6590,15 @@ filesystem root (`/`, or the working directory's drive on Windows).
 - `parent` is omitted at a filesystem root.
 - At most **1,000** entries; `truncated: true` (otherwise omitted) when there
   were more.
+- From 2.7.0 the listing runs behind a bounded lister (`library.DirLister`: 4
+  listings at once, 5 seconds each), so a folder on a hung mount answers
+  `404 folder_unreadable` at the time-out rather than holding the request. The
+  [setup preview](#post-apiv1adminsetuppreview)'s root check shares it.
 
 | Status | Meaning |
 |---|---|
 | `400` | `path must be absolute` (`code: "path_not_absolute"`) - a relative `path` |
-| `404` | `folder not found or not readable` (`code: "folder_unreadable"`) - missing, not a folder, or unreadable by the server (the OS error is not echoed) |
+| `404` | `folder not found or not readable` (`code: "folder_unreadable"`) - missing, not a folder, unreadable by the server, or not answering within 5 seconds (the OS error is not echoed) |
 | `401` / `403` | anonymous / non-admin |
 
 Bounds rationale: an admin can already point a library at any folder and then
@@ -6585,6 +6644,9 @@ rules (a share an admin fills with a whole library stays an ordinary share).
 `GET /admin/shares/{id}` and the `shares` of
 [`GET /admin/users/{id}`](#get-apiv1adminusersid) carry it too. Migration 0015
 added the column and backfilled the existing `Library: <name>` grant shares.
+The mark stays only while the share holds that library's `""` rule (from 2.7.0,
+see `0081` in [Data model](../data-model.md#migration-policy-append-only)), so the console lists
+a grant without it among the named shares.
 
 ### `POST /api/v1/admin/shares`
 
@@ -6634,7 +6696,12 @@ Response: `204 No Content`. `400` when a `library_id` is missing/zero (nothing i
 added), or with code `too_large` for more than 1000 rules. `409` with code
 `library_grant` on a whole-library grant (a share with `whole_library_id`): its
 rules change only by granting or revoking the library
-([`POST /admin/library-access`](#post-apiv1adminlibrary-access)).
+([`POST /admin/library-access`](#post-apiv1adminlibrary-access)). From 2.7.0 a
+`DELETE` of a **stray** rule on a grant (any rule but the grant's own whole
+library, which older versions let an admin add) removes it like any other;
+only the grant's own rule is `409 library_grant`. A grant share that no longer
+holds its own rule is an ordinary share: deleting its library clears the mark,
+and migration `0081` cleared the marks older versions left.
 
 ### `POST /api/v1/admin/share-access` · `DELETE /api/v1/admin/share-access`
 
@@ -6712,7 +6779,10 @@ back to the scanned value, **revert** it instead.
 | `asin` | 10 letters or digits (uppercased) |
 | `isbn` | an ISBN-10 or ISBN-13; hyphens and spaces are stripped, `x` uppercased |
 
-Values are trimmed. The player's book JSON carries the effective `published`,
+Values are trimmed. From 2.7.0 a value made only of invisible characters (such as
+U+200B, U+FEFF or U+3164) is empty: a title is refused, and a genre, tag or other
+series name is dropped. Visible text is kept whole (an inner joiner, an emoji's
+variation selector). The player's book JSON carries the effective `published`,
 `subtitle`, `publisher`, `language`, `abridged`, `genres` and `tags` on every
 book and `description` on [`/item`](#get-apiv1librariesiditem) only.
 
@@ -7017,7 +7087,9 @@ ending with that book's path in parentheses.
 
 The distinct authors (or narrators) with their book counts and total duration,
 plus spellings that look like the same person. `?library_id=` narrows to one
-library (all libraries when absent; a non-positive or non-integer id is `400`).
+library (all libraries when absent; a non-positive or non-integer id is `400`;
+from 2.7.0 a library that doesn't exist is `404 not_found`, not an empty list).
+The console treats a stale `?library=` as all libraries.
 
 ```json
 {
@@ -7358,7 +7430,7 @@ one request is applied in one transaction.
 | `revert` | array | field names to put back to what the scan found |
 | `add` · `remove` | object | label field (`genres`, `tags`) → labels to add to, or take out of, the book's own list, as on the [bulk edit](#post-apiv1adminbooksbulk) (same rules and refusals) |
 | `source` | string | `"edited"` (default) or `"community"` (accepted from a [match](#get-apiv1adminlibrariesidbookmatch)) - recorded on every field this request sets |
-| `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others. Refused while an edited list applies (change its titles with [`PUT …/book/chapters`](#put-apiv1adminlibrariesidbookchapters)) |
+| `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty, nor (from 2.7.0) only invisible characters (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others. Refused while an edited list applies (change its titles with [`PUT …/book/chapters`](#put-apiv1adminlibrariesidbookchapters)) |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
 | `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`, else chapters a Bridge found in the narration when they fit). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included. `"generated"` is not a choice: `"files"` turns found chapters off and `"auto"` brings them back |
 | `match` | object | from 2.6.0: `{ "work_id", "recording_id"?, "asin"?, "isbn"? }`, the community match the edit was taken from. Needs `source: "community"`, and may come alone (no `set`). `{ "work_id": "" }` unlinks the book. One book at a time: the bulk edit refuses it. More under the table |
@@ -7539,7 +7611,7 @@ is audited as `book.chapters_edited`, with `chapter_count` in its details.
 | `empty` | there are no chapters |
 | `too_many` | there are more than 2000 |
 | `out_of_range` | a start is below 0, or at or past the book's end |
-| `title` | a title is empty once trimmed, longer than 200 bytes, or holds a control character |
+| `title` | a title is empty once trimmed (or, from 2.7.0, made only of invisible characters), longer than 200 bytes, or holds a control character |
 | `file_start` | a file's start begins no chapter |
 | `order` | the starts are out of order, or two are less than 1 s apart |
 
@@ -7857,6 +7929,10 @@ nor an ISBN is looked up by its `community_match`.
   fallback. An admin-edited identifier keeps `none` / `identifier_unknown` and
   writes nothing. A service error or a successful lookup never triggers the
   fallback, even when the identifier resolves to a different work.
+- **Up to date by the match** (from 2.7.0). A book the fallback finds with
+  nothing to change, whose own identifier the community doesn't know (a
+  mistyped ASIN, say), is still recorded: `none` with `identifier_unknown` and
+  nothing to apply, as it would be with no match to fall back on.
 - **The lookup** uses `meta.MatchQuery.WorkID`: the service's `works/{id}`, with a
   retired slug's `301` followed online and in mirror mode.
 - **`found_by`** is `"work:<work id>"` or `"work:<work id>/<recording id>"`. A
@@ -8016,23 +8092,37 @@ are the items by outcome, `pending` the `auto` ones not applied yet, and
 `error` (omitted when empty) is why a run stopped by itself: on a `failed` run, and
 from 2.7.0 `metadata_unavailable` on a run an outage stopped early (`ready`, and
 kept through `applying` and `applied`; additive, as `error` was only on `failed`
-runs before).
+runs before). `waiting_until` (from 2.7.0, RFC 3339, omitted otherwise, never
+stored) is on the working `matching` run, in the list and in
+[`GET …/match-runs/{id}`](#get-apiv1adminmatch-runsid), while the community
+service has asked it to wait: its progress holds meanwhile, and the console says
+the run is pausing.
 
 #### `POST /api/v1/admin/match-runs`
 
-`{"library_id"?: 2, "mode"?: "match" | "repick" | "refresh"}` (omitted, or no body at all:
+`{"library_id"?: 2, "mode"?: "match" | "repick" | "refresh" | "unknown_asin"}` (omitted, or no body at all:
 every library, a `match` run). A book of a library deleted while the run works
 is left out. Starts the run in the background and answers `202` with it (as
 in the list). The admin's console polls
 [`GET …/match-runs/{id}`](#get-apiv1adminmatch-runsid) while it works.
-Audited as `book.match_run`, `book.asin_repick` or `book.match_refresh` (`run`,
-`books`, `region`).
+Audited as `book.match_run`, `book.asin_repick`, `book.match_refresh` or
+`book.match_unknown_asin` (`run`, `books`, `region`).
+
+**`unknown_asin`** (from 2.7.0, Health's unknown-ASIN card) is a match run over
+the books in Health's [`unknown_asin`](#get-apiv1adminissues) kind (less those
+ignored), found by their title. Each item's `found_by` is the book's own ASIN.
+An apply writes only while the book still has that ASIN, no ISBN and no
+recorded match, and while the report still holds that ASIN as unknown. Once a
+lookup found it, the ASIN names the book's record, so the item is `skipped`
+with `detail` `asin_known` and nothing is written (the review reads it
+`matched_since`). The apply records the match, so the book leaves the kind, and
+never replaces an ASIN an admin typed in, whatever the scope.
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request`; `mode must be "match", "repick" or "refresh"`; `code: "no_region"` - a repick with no `metadata.region` set |
+| `400` | `invalid request`; `mode must be "match", "repick", "refresh" or "unknown_asin"`; `code: "no_region"` - a repick with no `metadata.region` set |
 | `404` | `library not found` |
-| `409` | `code: "match_run_busy"` - a run is matching or applying |
+| `409` | `code: "match_run_busy"` - a run is matching or applying; `code: "report_off"` - an `unknown_asin` run while the [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown) is off (the kind is only current while it runs) |
 
 #### `GET /api/v1/admin/match-runs/{id}`
 
@@ -8093,7 +8183,11 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
 - `matched_since: true` (a match run only) when the book is matched now (an ASIN
   or ISBN, or from 2.6.0 a recorded community match) and wasn't when the run
   looked: matched since, by hand or otherwise.
-  Its `changes` are empty, and an apply leaves it alone under any scope.
+  Its `changes` are empty, and an apply leaves it alone under any scope. From
+  2.7.0 the apply checks it again in the edit's own transaction: a book matched
+  by hand while the apply runs (another ASIN, or an ASIN or ISBN set on a book
+  that was unmatched) keeps that match, nothing of the edit is written, and the
+  item is `skipped` `matched_since`.
 - `changes` is what applying would write under each scope the run's mode takes:
   fields in display order, set or reverted, and whether the cover is taken. The
   server works it out against the book now by the same rules the apply uses, so
@@ -8130,7 +8224,8 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
 - `applied` is what applying did:
   - `""`: not yet;
   - `applied`;
-  - `skipped`, with `detail` `nothing_to_change`, `matched_since` or `book_gone`;
+  - `skipped`, with `detail` `nothing_to_change`, `matched_since`, `book_gone` or
+    (an `unknown_asin` run, from 2.7.0) `asin_known`;
   - `failed`, with `edit_failed` or `cover_failed`.
 
   An `applied` item can carry `cover_failed` when its fields went on but its cover
@@ -8214,11 +8309,11 @@ with nothing to change under the scope, so a client need not exclude each one.
 An item the run recorded with nothing to change under that scope (its review
 shows no fields and no cover under it) is never taken, even if the book changed
 since, so nothing is written that the review didn't show. One that had a change
-when recorded but has none now is planned again and dropped from `apply_total`, in
-batches of up to 100, the rest before the run settles. Either way it stays
-unapplied (`applied` `""`, like an excluded item, so an `auto` one still counts as
-`pending`), not `skipped`, and `apply_done` ends at `apply_total`. The `202`'s run
-and the audit's `books` count every item taken.
+when recorded but has none now (the book took it since, or no longer has what it
+was found by) is `skipped` with `nothing_to_change`, so the review says why. The
+first kind stays unapplied (`applied` `""`, like an excluded item, so an `auto`
+one still counts as `pending`). Either way `apply_done` ends at `apply_total`.
+The `202`'s run and the audit's `books` count every item taken.
 An item recorded before 2.7.0 is planned again as before. A `match` or `repick`
 item with nothing to change is still `skipped` with `nothing_to_change`.
 
@@ -8250,7 +8345,8 @@ library; without it, every library. In one transaction it:
 - from 2.6.0, removes every recorded community match (`book_matches`);
 - rebuilds each book's effective metadata and cover;
 - removes the match runs with their reviews: every run, or for one library its
-  runs and its books' items in runs over every library.
+  runs and its books' items in runs over every library, and (from 2.7.0) such a
+  run over every library it leaves with no items.
 
 An admin's own edits and uploaded covers, the tags and
 identifiers stored in `book_enrichment` all stay, so a book whose tags carry an
@@ -8261,8 +8357,9 @@ with community metadata off (and with no service configured).
 { "books": 128, "covers": 41, "runs": 3 }
 ```
 
-`books` counts the books that had a community value, cover or recorded match, `covers` the
-community covers removed, `runs` the runs removed. Audited as
+`books` counts the indexed books that had a community value, cover or recorded
+match, `covers` the community covers removed, `runs` the runs removed (an emptied
+all-library run included). Audited as
 `book.match_clear` with the same counts (target: the library's name, empty for
 every library).
 
@@ -8340,7 +8437,7 @@ Response `200`: `{ "status": "cover set", "path": "…" }`.
 | `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` |
 | `413` | `code: "too_large"` - the image is over 16 MiB, or over 40 megapixels |
 | `415` | `code: "unsupported_image"` - not a JPEG, PNG or WebP image |
-| `502` | `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects, an answer other than `200`) |
+| `502` | `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects or (from 2.7.0) one from `https` down to `http`, an answer other than `200`) |
 
 ### `POST /api/v1/admin/covers`
 
@@ -8895,9 +8992,10 @@ The session object, shared by both session routes:
   recorded, `codec` `""` and `speed` `1`. The console labels sessions from this
   flag.
 - `finished` - a save in the session marked the book finished.
-- `state` - `playing` (a save within the last 60 seconds), `paused` (within 10
-  minutes) or `ended`. A player that saves every 60 s can read as `paused` for a
-  moment ([data model](../data-model.md#listening-sessions-how-they-are-derived)). A session can come back from `ended`: a late save whose
+- `state` - `playing` (a save within the last 150 seconds), `paused` (within 10
+  minutes) or `ended`. The window covers a player that saves every 60 s in the
+  background or on a download
+  ([data model](../data-model.md#listening-sessions-how-they-are-derived)). A session can come back from `ended`: a late save whose
   position advanced by about the time that passed (a phone that kept playing
   without saving) continues it, up to 12 hours after its last save.
 - `chapter`, `chapter_index` and `ip` are present on **live** sessions only.
@@ -8938,7 +9036,7 @@ every session recorded here.
 |---|---|---|---|
 | `user_id` | int | - | one listener |
 | `library_id` | int | - | one library |
-| `path` | string | - | one book; needs `library_id` |
+| `path` | string | - | one book; needs `library_id`; over 4096 bytes is `400 path is too long` |
 | `before` | int | - | the id of the previous page's last session: the sessions after it in this order (the next page) |
 | `before_at` | string | - | that session's `started_at` (RFC3339), with `before`: the page continues from there even if the session is gone since |
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
@@ -9739,7 +9837,7 @@ effect. Lists are never `null`.
 | `metadata.mode` | `"remote"` (ask `base_url` for each book) or `"mirror"` (keep a local copy and answer from it; see [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)). A restart setting: a saved change is listed in `restart_pending`, and `GET /admin/system`'s `metadata.mode` keeps the running mode until the restart |
 | `metadata.upcoming` | the [upcoming releases](#upcoming-releases) job's switch (config `upcoming.enabled`, default `true`). Applies at once: switched on (with metadata on) it runs soon when no run has succeeded for a day; switched off it stops a run in flight. The live `upcoming` [capability](#get-apiv1server) is `metadata` **and** this |
 | `metadata.upcoming_status` | read-only (2.6.0): how the job's runs went, absent without a metadata service. `last_run_at`, `last_success_at` (both absent before the first run; equal when the last run worked), `last_error` (the last failed run's error, cleared by a success), `next_run_at`, `series` (local series matched to a community series) and `items` (what they lack in all). The console's Settings > Metadata words it |
-| `metadata.report_unknown` | the opt-in [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)'s switch (2.6.0; config `metadata.report_unknown`, default `false`). Applies at once: switched on (with metadata on) it runs now unless a run was made in the last 23 hours, the service is in its quiet week after `not_offered`, or (mirror mode) the local copy isn't ready yet; switched off it stops a run in flight |
+| `metadata.report_unknown` | the opt-in [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)'s switch (2.6.0; config `metadata.report_unknown`, default `false`). From 2.7.0 absent, with `report_status`, without a metadata service and on a demo server, so the console shows no switch there. Applies at once: switched on (with metadata on) it runs now unless a run was made in the last 23 hours, the service is in its quiet week after `not_offered`, or (mirror mode) the local copy isn't ready yet; switched off it stops a run in flight |
 | `metadata.report_status` | read-only (2.6.0): the report's last run, absent without a metadata service and on a demo server. `state` is `never` (no run yet), `ok` (the run worked; `last_sent` ASINs were accepted, `0` = nothing new to send), `not_offered` (the `base_url` is plain `http` off this machine, so nothing is sent; or the service took no reports, and it is left alone for 7 days) or `failed` (a lookup failed, or the service failed or refused a report; tried the next day, and ASINs in reports it accepted before that still count in `last_sent`); `last_run_at` (absent before the first run) and `last_sent`. The console's Settings > Metadata words it |
 | `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |
 | `demo.max_users` | `null` = the default cap (`max_users_default`); `0` = no limit |
@@ -9752,7 +9850,7 @@ effect. Lists are never `null`.
 | `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |
 | `signin.*` | [single sign-on](../configuration.md#single-sign-on-authoidc). The provider fields (`enabled`, `name`, `issuer`, `client_id`, `scopes`, `username_claim`, `groups_claim`, `ca_file`) are read-only restart settings (`400 setting_read_only`). `auto_create`, `allowed_group` and `admin_group` apply at the next sign-in |
 | `signin.client_secret_set` | read-only: whether a client secret is configured. The secret itself is never sent |
-| `signin.scopes_default`, `signin.username_claim_default`, `signin.groups_claim_default` | read-only facts: what an empty provider field stands for |
+| `signin.scopes_default`, `signin.username_claim_default`, `signin.groups_claim_default` | read-only facts: what an empty provider field stands for. `scopes_default` holds `groups` only while `admin_group` is set or `allowed_group` is with `auto_create` on |
 | `modules.<id>` | each [managed module's](../modules.md) toggle, by module id (`false` by default; config key `modules.<id>.enabled`, variable `AUDIOSILO_MODULES_<ID>_ENABLED`). Applies at once, with no restart. [`GET /admin/modules`](#get-apiv1adminmodules) says more about each |
 | `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it (before 2.7.0 also `"launcher"`, a launcher override, which only the archived desktop manager set) |
 | `restart_settings` | the setting ids read only at start (fixed) |
@@ -10136,6 +10234,11 @@ restore waiting for, or applied at, a start:
 | `restore.pending` | the restore waiting for the next start: `{name, requested_at, requested_by, schema}` (`schema` is the backup's newest migration), or `null` |
 | `restore.last` | how the last restore went, written at start: `{name, applied_at, requested_by, ok, error, safety_copy}`. `error` (when `ok` is false) is `missing`, `unusable`, `newer` or `failed`, and the database was left as it was; `safety_copy` names the before-restore backup (or, if the database couldn't be copied, the file it was renamed to in the data folder). A restore marker that couldn't be read is reported as `error: "failed"` with an empty `name`. `null` when no restore ever ran |
 
+A backups folder the server can't list answers `500` `permission_denied` (from
+2.7.0), its message naming the folder, the server's user and the fix (the
+[folder permissions](../configuration.md#the-servers-own-checks) sentence); the
+console's Backups page shows it.
+
 ### `POST /api/v1/admin/backups`
 
 *Admin.* Starts a manual backup in the background and answers `202` with the
@@ -10160,6 +10263,7 @@ bounded by it). Every download (`GET`; a `HEAD` isn't) is audited
 |---|---|
 | `200` | the file |
 | `404` `backup_not_found` | no such backup |
+| `500` `permission_denied` | the server can't read the backup or the folder (from 2.7.0); the message says why and the fix |
 
 ### `DELETE /api/v1/admin/backups/{name}`
 
@@ -10170,6 +10274,7 @@ cancelled first. Audited (`backup.delete`).
 |---|---|
 | `204` | deleted |
 | `404` `backup_not_found` | no such backup |
+| `500` `permission_denied` | the server can't read the backup or the folder (from 2.7.0); the message says why and the fix |
 
 ### `POST /api/v1/admin/backups/{name}/restore`
 
@@ -10188,6 +10293,7 @@ reports a damaged backup as a refused restore (`restore.last.error`
 | `400` `invalid_backup` | the file can't be read as an AudioSilo database (no schema record or accounts table) |
 | `400` `backup_too_new` | it was made by a newer server (it has a migration this one doesn't ship) |
 | `404` `backup_not_found` | no such backup |
+| `500` `permission_denied` | the server can't read the backup or the folder (from 2.7.0); the message says why and the fix |
 
 ### `DELETE /api/v1/admin/restore`
 
@@ -10497,10 +10603,10 @@ server and this request:
 - `printed_password` (2.7.0) is true while the caller is the admin the first
   start made and still has the password it printed in the log
   (`auth.PrintedPassword`, the `server_state` key `first_admin`). The console's
-  Your account step then asks for a new password. It is false for an admin who
-  chose theirs, on the `--setup` page or since, after `reset-admin` gave that
-  admin a new password, and when the read fails (the step then asks for
-  nothing).
+  Your account step then asks for a new password, and says the new one ends the
+  printed auth code too. It is false once that admin's password was replaced,
+  on the `--setup` page or since, by them, another admin or `reset-admin`, and
+  when the read fails (the step then asks for nothing).
 
 | Status | Meaning |
 |---|---|
@@ -10517,11 +10623,17 @@ others keep theirs), in one writer transaction.
 { "finished": true, "steps": { "bridge": "skipped" } }
 ```
 
-Answers `200` with the whole `state` as `GET` returns it:
+Answers `200` with the whole `state` as `GET` returns it (here with the other
+steps left out):
 
 ```json
 { "finished": true, "dismissed": false, "steps": { "folder": "done", "bridge": "skipped" } }
 ```
+
+From 2.7.0 the request that finishes the flow (unfinished to finished) also
+marks every step still without an outcome: `folder` `done` when a books library
+exists, the rest `skipped`. So the console sends only the step it leaves. An
+install an upgrade marked finished is left as it is.
 
 Each request is recorded in the [audit log](#admin-audit-log) as
 `settings.setup`, its details the fields it sent. Sending `dismissed: true`
@@ -10558,7 +10670,7 @@ only (never a file's contents) and is not audited.
       "tags": { "title": "The Sign of Four (Unabridged)", "author": "Doyle, Arthur Conan",
                 "narrator": "David Clarke", "series": "Sherlock Holmes", "position": "2" },
       "path": { "title": "The Sign of the Four", "author": "Arthur Conan Doyle",
-                "narrator": "David Clarke", "series": "Sherlock Holmes", "position": "2" },
+                "narrator": "", "series": "Sherlock Holmes", "position": "2" },
       "abs": false
     }
   ],
@@ -10584,10 +10696,12 @@ only (never a file's contents) and is not audited.
   covers), all under the preview's overall limit of 15 seconds. A sample read
   still running then is ended and left out, so the answer has **fewer
   samples**; that never sets `capped`.
-- `tags` and `path` are the names a library whose `metadata_source` is `"tags"`
-  or `"path"` would show for the book (the same resolution the index uses, so
-  the preview and the library never disagree): each side falls back to the
-  other for what it leaves empty. `position` is a series position as text
+- `tags` is the names a library whose `metadata_source` is `"tags"` would show
+  for the book (the same resolution the index uses, so the preview and the
+  library never disagree), falling back to the folders for what the tags leave
+  empty. From 2.7.0 `path` is the folders alone, as a path-first library reads
+  them before any tag fills what they leave, so a tag's narrator or author never
+  shows under the folders. `position` is a series position as text
   (`"2"`, `"1-3"` for a range). `abs` is true when the book's folder has a
   `metadata.json`, which goes over both.
 - `blanks` counts, over the samples, the names each source leaves empty **on
@@ -10603,7 +10717,7 @@ only (never a file's contents) and is not audited.
 | `200` | the preview |
 | `400` | `invalid request` (no body, not JSON, an unknown field), `root is required`, `path_not_absolute` (a relative `root`) or `invalid_pattern` (a skip rule the server refuses) |
 | `401` / `403` | anonymous / non-admin |
-| `404` | `folder_unreadable` - missing, not a folder, or unreadable by the server (the OS error is not echoed) |
+| `404` | `folder_unreadable` - missing, not a folder, unreadable by the server, or (from 2.7.0) not answering within 5 seconds (the OS error is not echoed) |
 | `409` | `root_overlaps` - overlaps a podcast library's folder |
 
 ## The Bridge
@@ -10913,7 +11027,7 @@ runs out.
 | Param | Meaning |
 |---|---|
 | `library_id` | only this library's jobs (a positive integer, else `400 invalid library_id`) |
-| `path` | only jobs about this book path |
+| `path` | only jobs about this book path (over 4096 bytes: `400 path is too long`) |
 | `state` | only jobs in this state |
 | `kind` | only this job kind; without it `podcast.poll` is omitted (`kind=podcast.poll` explicitly includes routine checks); `podcast.fetch` and `podcast.retain` are listed by default |
 | `before` | the previous page's `next_before` (a positive integer, else `400 invalid before`) |
@@ -10952,7 +11066,7 @@ podcast kinds are only ever queued for a podcast library (follow and check answe
 |---|---|
 | `kind` | the job kind: one the server knows **and** the paired Bridge advertised in its last heartbeat (kinds are allow-listed twice) |
 | `library_id` | the library, when the kind is about one (every kind needs it) |
-| `path` | an indexed book in that library (optional or required, per kind); the job is about the book's own path |
+| `path` | an indexed book in that library (optional or required, per kind); the job is about the book's own path; over 4096 bytes is `400 path is too long` |
 | `params` | the kind's parameters, checked per kind (unknown fields refused), at most 16 KiB as sent (`meta.correct`: 128 KiB) |
 
 The request body is at most 132 KiB (the largest params cap,
@@ -11008,7 +11122,8 @@ The kinds:
   `sidecars.generate` job is open for the book (`generate_open`: that run finds
   them itself), while a `sidecars.describe` job is (`describe_open`), and for a
   book whose chapter source an admin chose (`chapters_chosen`: the list would
-  never be used). See [Chapterless books](../../bridge/chapters.md).
+  never be used), and from 2.7.0 for a book whose edited chapters apply
+  (`chapters_edited`; a dormant edit refuses nothing). See [Chapterless books](../../bridge/chapters.md).
 - **`readalong.align`** makes a book's read-along map. The Bridge reuses the
   transcript it kept for the book (else transcribes it; no agent), lines the words
   up with the book's ebook, and writes
@@ -11035,8 +11150,10 @@ The kinds:
   database as intake issues ("Share with the community"). It needs `library_id`
   **and** a book `path`, and takes `params` `{ "work_id": "…", "dimensions":
   ["characters", "recaps"] }`, both optional (`dimensions` from those two, each
-  once, stored in that order; absent or empty means both; `work_id` as for
-  `sidecars.generate`). It **writes nothing** into the library, so it works on any
+  once, stored in that order; absent or empty means both). With no `work_id`,
+  from 2.7.0 the server fills in the book's recorded community match
+  (`bridge.ContributeWork`), so the share is filed under the admin's match, not
+  the Bridge's own. It **writes nothing** into the library, so it works on any
   library. It is refused while a `sidecars.generate` job is open for the book
   (`generate_open`). Result: `{library_id, path, work_id, contributed, covered}`,
   where `contributed` is `{characters?, recaps?}` (the issue URLs) and `covered`
@@ -11052,7 +11169,9 @@ The kinds:
     `series`, `series_index`, `more_series`, `published`, `isbn`.
   - **Values:** each trimmed, one line, at most 500 characters, no control
     characters. `corrected` (as the community reads it, below) must be set and
-    differ from `current` as sent.
+    differ from `current` as sent. From 2.7.0 a corrected `published` must be a
+    real date, `YYYY`, `YYYY-MM` or `YYYY-MM-DD` (the edit's own rule); the
+    Bridge files it as `release_date`.
   - **`evidence`:** CRLF is read as LF, the text is trimmed, and line breaks and
     tabs are kept. At most 2000 characters, both as written and as the issue
     carries it (a line starting with `#` loses its indent and counts one more).
@@ -11129,6 +11248,10 @@ The `409` codes, each sent as `code`:
 - `chapters_chosen`: `chapters.detect` for a book whose chapter source an admin
   chose (`files` or `community`), checked before the queue
   ("an admin chose this book's chapter source, so chapters found in the narration would never be used; set it back to automatic first").
+- `chapters_edited` (from 2.7.0): `chapters.detect` for a book whose
+  [edited chapters](../community-chapters.md#edited-chapters) apply, checked
+  from the book's `chapters_source` before the queue: a found list would sit
+  under the edit, never used. Health's Detect dialog passes such a book over.
 - `readalong_open`: `sidecars.generate` while a `readalong.align` job is queued or
   working for the book (a parked one is cancelled instead), or `chapters.detect`
   while one is open
@@ -11170,7 +11293,7 @@ How each figure is worked out is in
 
 | Param | Meaning |
 |---|---|
-| `library_id`, `path` | the book (required; an indexed book's path) |
+| `library_id`, `path` | the book (required; an indexed book's path; over 4096 bytes is `400 path is too long`) |
 | `kind` | `sidecars.generate` (the default) or `readalong.align` (its own answer, below) |
 | `brief` | `1`: no look into the book's folder for an ebook (`source` is `audio`, no `ebook`) and no scan of the series (`earlier` is `[]`): the cheap answer for a label or a batch |
 
@@ -11557,6 +11680,8 @@ Bridge cannot map it through a sample episode. Use the marker route above.
 | `mode` | `full` (the default when absent) or `attachments` |
 | `from` | with `full` only: the book's path **before** a move the Bridge made |
 
+A `path` or `from` over 4096 bytes is `400 path is too long`.
+
 - **`full`** indexes whatever is at the path, a new book included (re-reading its
   audio), and answers `200 { "path": "…" }` with the book's indexed path. With
   `from`, the server also carries the book's durable state from there exactly as
@@ -11668,7 +11793,7 @@ one, an id that doesn't match is `404 unknown_account`.
 | `policy_since` | when its automatic policy began to act: a policy backs up only titles first seen after it. Set at the account's creation, when an automatic policy is turned on, and moved to the account's first complete poll |
 | `titles` | `GET /admin/audible/accounts` only: the titles counted by state, and how many are matched to a book here (`matched` leaves out a match marked "Not this book") |
 | `last_sync_at` | when its last `audible.sync` finished having read Audible's places, `null` before the first (and after a mapping to another person) |
-| `refused_at` | when a sync failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it. A refused sync the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again |
+| `refused_at` | when a sync or (from 2.7.0) a poll failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set, and the console's accounts card asks for a sign-in on the Bridge instead of showing it checked. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it. A refused sync the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again |
 | `backup_estimate` | `GET /admin/audible/accounts` only: what [Back up everything](#post-apiv1adminaudibleaccountsaccountbackup-all) would queue now, `count` titles and about `bytes` (each title's `runtime_s` x 8000, 64 kbps AAXC: approximate) |
 
 ### `GET /api/v1/bridge/users`
@@ -11882,13 +12007,15 @@ content generation: the same ASIN again is a no-op `204`.
 | Status | Meaning |
 |---|---|
 | `204` | stored, or the book had that ASIN already |
-| `400` | `invalid_request` - no `path` (or over the path limit), no valid `asin` |
+| `400` | `path is too long` (no code) - a `path` over the [length cap](index.md#path-addressed-content-path); `invalid_request` - no `path`, no valid `asin` |
 | `404` | `book_not_found` - no book of a books library indexed at that path |
 | `409` | `asin_set` - the book has another ASIN, or an admin's ASIN edit (a cleared one too): a backfill never goes under one |
 
 ### `GET /api/v1/admin/audible/accounts`
 
-*Admin, module on.* Every account, by label, each with its `titles` counts (see
+*Admin*, from 2.7.0 **not** behind the module's toggle, so Settings > Modules
+can list the accounts kept while it is off, each with Remove (an older server
+answers `404 module_off` then). A bridge token is refused. Every account, by label, each with its `titles` counts (see
 [the account object](#the-account-object)): `200 { "accounts": [Account] }`, `[]`
 for none.
 
@@ -12041,8 +12168,11 @@ out is left as it is:
   account's placement: a file path, or a folder (a last segment without an audio
   extension) the title's file goes in. At most 1024 bytes, clean (no `..`, no
   leading or trailing `/`, no `.` segment), no hidden, dot-led segment, no
-  backslash or control character. It is copied into a backup when it is queued;
-  the Bridge checks it again against its mapping.
+  backslash or control character. From 2.7.0 it is refused (`invalid_dest_path`)
+  when it is a disc folder (`CD 3`) directly inside an indexed book or a folder
+  with a `book` override, which the scan would join into that book. It is copied
+  into a backup when it is queued; the Bridge checks it again against its
+  mapping.
 - `no_sync` `true` keeps the title's book out of the account's
   [position sync](#audible-position-sync), both ways; `false` lets it sync again.
 
@@ -12194,13 +12324,17 @@ side agrees. Then:
   row, whatever its time: the row's `updated_at` never moves back, and its
   playback speed and offer are kept. A player reconciles as for any other device's
   place, so it moves to it or offers it under the row's `device_name`;
-- one at or behind the stored place, on a finished row, or heard at or before the
-  row's last finish change (a place from before a finish or a restart here) is
-  `not_applied` with `reason` **`behind`**, storing nothing on the row and making no
-  offer;
+- one at or behind the stored place, on a finished row, heard at or before the
+  row's last finish change (a place from before a finish or a restart here), or
+  heard at or before the Stay that holds the row (the end of that device's newest
+  applied `stay` span in the log: the listener chose that place, so an older one
+  coming back through Audible doesn't undo it) is `not_applied` with `reason`
+  **`behind`**, storing nothing on the row and making no offer;
 - a place past the book's end by more than 5% plus 2 minutes is `rejected`
   `duration_mismatch`; one just past it is the end;
-- a `finish` is any finish; an `unfinish` is `behind`.
+- a `finish` is any finish, unless heard at or before that Stay (`behind`, so a
+  finish sent with a place at the book's end can't end the hold); an `unfinish` is
+  `behind`.
 
 | Status | Meaning |
 |---|---|
@@ -12270,8 +12404,9 @@ page read, whose rows may be fewer, so ask again at once.
 longer remove (one from a Bridge since unpaired or replaced, or whose removal on the
 Bridge couldn't reach the server), exactly as the Bridge's delete does: its titles
 go, its open poll and sync are cancelled, and so are its open backups. It signs nothing out of
-Amazon: that is the Bridge's. `204`, known or not; audited as `bridge.audible.remove` (with `account`)
-when there was one. A bridge token is `401`.
+Amazon: that is the Bridge's. `204`, known or not; audited as `bridge.audible.remove`
+when there was one, its target the account's name (its label, else "person
+(STORE)", from 2.7.0) and `details.account` its id. A bridge token is `401`.
 
 ## Add from LibriVox
 
@@ -12452,7 +12587,7 @@ Android App Links. Served when `app_links.android_package` **and**
 
 ## First-run setup page
 
-Only active when the launcher enabled it (`--setup` / `pkg/launcher`); a normal
+Only active when the launcher enabled it (`--setup` / `internal/launcher`); a normal
 headless deployment never exposes this surface. The page self-closes the
 moment an admin exists. The one-time setup token rides in the page URL
 **fragment** (`/setup#token=…`) so it never reaches server logs; the POST

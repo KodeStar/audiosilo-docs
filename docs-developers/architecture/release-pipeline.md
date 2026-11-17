@@ -41,7 +41,7 @@ flowchart TB
     tag --> webyml
     tag --> imageyml
     tag --> relyml
-    webimg -->|"Dockerfile: FROM $WEB_IMAGE AS web, COPY --from=web /web /app/web"| imageyml
+    webimg -->|"Dockerfile: FROM --platform=$WEB_PLATFORM $WEB_IMAGE AS web, COPY --from=web /web /app/web"| imageyml
     webimg -->|"scripts/fetch-web-player.sh → -tags embedplayer"| relyml
 ```
 
@@ -103,8 +103,13 @@ The multi-stage `Dockerfile`:
   `-ldflags "-X github.com/kodestar/audiosilo-server/internal/api.Version=${VERSION}"`
   (`image.yml` passes the semver on a tag build, else `dev-<short sha>`, as the
   `VERSION` build-arg; the default is `dev`);
-- pins the player: `FROM ${WEB_IMAGE} AS web` … `COPY --from=web /web /app/web`,
-  with `ARG WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest`;
+- pins the player: `FROM --platform=$WEB_PLATFORM ${WEB_IMAGE} AS web` …
+  `COPY --from=web /web /app/web`, with
+  `ARG WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest` and
+  `ARG WEB_PLATFORM=linux/amd64`. The web image is static files published for
+  `linux/amd64` only, so every target platform (and a build on an arm64 host)
+  takes that one copy. Set `WEB_PLATFORM` only for a locally built web image of
+  another platform;
 - uses `alpine:3.24` for the final stage, with **ffmpeg installed from apk**.
   Unlike the native binaries, the Docker image does bundle ffmpeg. The stage also
   has a `PUID` and `PGID` entrypoint, which gives that user its folders and checks
@@ -138,7 +143,10 @@ Six binaries in all. The rest is shared:
 - **Linux packages:** `.deb` and `.rpm` (nfpm) that depend on the **distro's**
   ffmpeg and install a systemd unit (`packaging/systemd/audiosilo.service`).
 - **`checksums.txt`**. GoReleaser creates the release as a **draft**, and a person
-  reviews it before publishing. Its notes end with the `release.footer` in
+  reviews it before publishing. With `prerelease: auto`, a tag with a pre-release
+  suffix (`v2.8.0-rc.1`) is published as a pre-release, so GitHub's latest
+  release, which the update check and the LinuxServer.io image watch, stays on the
+  last stable one. Its notes end with the `release.footer` in
   `.goreleaser.yml`: the install pointers and the one sponsor line, linking
   GitHub Sponsors.
 - **Version stamping:** the same ldflags as the Docker build.
@@ -163,7 +171,9 @@ compiled **into the binary**:
   `audiosilo-web` image into `internal/web/player/` (gitignored). It fails if
   `index.html` is missing. The image is the `WEB_IMAGE` env var, which
   `release.yml` sets from the lowercased owner and the `web_version` dispatch
-  input (default `latest`).
+  input (default `latest`). The script passes `docker create --platform
+  "${WEB_PLATFORM:-linux/amd64}"`, the Dockerfile's default and override:
+  without it an arm64 host finds no manifest to pull.
 - Builds use `-tags=embedplayer`. `internal/web/player_embed.go` embeds that
   directory, while the default `player_disk.go` (`//go:build !embedplayer`) serves
   from `web_dir` at runtime. The embedded player takes precedence over `web_dir`,
@@ -175,7 +185,7 @@ compiled **into the binary**:
 ### ffmpeg/ffprobe are NOT bundled
 
 They're large (~80 MB each) and usually already installed, so the archives stay
-small. At startup `pkg/launcher` (`resolveTools` in `pkg/launcher/app.go`)
+small. At startup `internal/launcher` (`resolveTools` in `internal/launcher/app.go`)
 resolves each tool in order:
 
 1. an explicit `--ffmpeg` or `--ffprobe` path,
@@ -204,6 +214,10 @@ draft:
 - an amd64 boot with `--data` only (the headless first run and the self-signed
   TLS default) that must serve `/healthz` and `/web/` and log `engine=native` at
   start.
+
+`scripts/smoke-boot.sh <binary> <work-dir>` runs the same boot against any Linux
+build of the native engine, such as a local `goreleaser build --snapshot`. It listens on 18080 with
+ffmpeg and ffprobe off, and prints the server's log either way.
 
 That is a contract, because
 [linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)
@@ -237,7 +251,8 @@ footer states both.
   at. That is why the runbook publishes the web image first.
 - **Publish the native draft last.** The draft is uploaded before `release.yml`'s
   smoke test runs, and the LinuxServer.io image follows its publication. Publish
-  only once the run is green, and tick *Set as a pre-release* for a `-rc` tag.
+  only once the run is green. A `-rc` tag's draft is already a pre-release
+  (`prerelease: auto`).
 - **Docker and native builds** share the server code and the pinned player. They
   differ in three ways:
   - ffmpeg is bundled in the image, and resolved or fetched at runtime for the

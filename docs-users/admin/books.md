@@ -44,8 +44,8 @@ listeners chapter recaps and the book's community chapters.
 2. If the right book isn't listed, type in **Search the community database**,
    or paste an ASIN or ISBN, and click **Search**.
 3. Under **Possible matches**, pick the right one and click **Compare fields**.
-   Each match shows how closely it fits and whether its length matches your
-   files.
+   Each match shows how closely it fits and how its length compares with your
+   files: within 2% it matches, within 5% it is close.
 4. If the book was recorded more than once, pick the right **Edition**. Check
    its narrators and length against your files.
 5. Tick the fields to **Take**. Fields you edited yourself start unticked, and
@@ -64,8 +64,8 @@ To match many books at once, use **Match automatically** on the Health page
 If the dialog says "meta.audiosilo.app isn't answering", try again in a minute.
 
 If the book isn't in the community database at all, it stays unmatched and
-plays as normal. The database has gaps. When nothing matches, the dialog offers
-**Add it**, which opens the
+plays as normal. The database has gaps. When nothing matches, or none of the
+matches is close, the dialog offers **Add it**, which opens the
 [Add a book](../community/meta-site.md#adding-a-missing-book) page on
 meta.audiosilo.app with the book's ASIN, or your search, already filled in.
 
@@ -111,8 +111,9 @@ on its book page and in Search's characters, but not offline (see
 
 ### Unlinking a community match
 
-The book's **Community metadata** card shows what it is matched to. To remove
-the match:
+The book's **Community metadata** card shows what it is matched to. It offers
+**Unlink** whenever the book has a match, even with community metadata off. To
+remove the match:
 
 1. Click **Unlink**, beside **Compare fields**.
 2. Read the warning and click **Unlink** again. There is no undo.
@@ -300,7 +301,7 @@ tags alone isn't enough. The book must be
 
 A book that is one audio file with no chapters can get chapters from your
 [Bridge](bridge.md), which finds them in the narration (see
-[Books without chapters](generating-characters-and-recaps.md#books-without-chapters)).
+[Detect chapters](chapter-detection.md)).
 The Chapters card then says **Found in the narration on this server.** Click
 **Use the file's chapters** to turn them off, and **Use automatic** to bring
 them back.
@@ -383,7 +384,8 @@ Fix those with a [bulk edit](#changing-many-books-at-once), or use
 
 With community metadata on, a series with a matched book also shows the books
 you don't have, as dashed gaps: "You have 1, 2, 4 of 5; missing 3, 5". A gap
-shows its release date when known, marked **Preorder** or **New**.
+shows its release date when known, marked **Preorder** or **New**. Only whole
+numbers make gaps, so a novella at 2.5 you don't have is left out.
 
 With a Bridge that can write characters and recaps, **Generate for the series**
 queues them for each book in the series that has none yet.
@@ -398,7 +400,9 @@ for listeners too, edit its **Series number** on
   [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
   doesn't write it back.
 - **The community database has no genres or tags yet**, so matching never changes them.
-- **A book using your edited chapters offers no Detect chapters** on the
-  [Health](health.md) page. Revert the edit first.
+- **A value made only of invisible characters counts as empty.** A title or
+  chapter title like that is refused.
+- **A book using your edited chapters gets no chapter detection.** See
+  [Books that get no detection](chapter-detection.md#books-that-get-no-detection).
 - **The chapter editor's player plays each file as it is stored.** A file your
   browser can't play doesn't load there, but you can still type the times.

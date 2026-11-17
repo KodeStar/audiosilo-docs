@@ -726,7 +726,10 @@ the web image must exist before the server image builds.
 
 **Server:**
 
-- `Dockerfile` does `FROM ${WEB_IMAGE} AS web`, then `COPY --from=web /web /app/web`.
+- `Dockerfile` does `FROM --platform=$WEB_PLATFORM ${WEB_IMAGE} AS web`, then
+  `COPY --from=web /web /app/web`. The web image is published for `linux/amd64`
+  only, and `WEB_PLATFORM` (default `linux/amd64`) makes every target take that
+  copy.
 - `.github/workflows/image.yml` builds and pushes `ghcr.io/<owner>/audiosilo-server`.
 - `.github/workflows/release.yml` and `scripts/fetch-web-player.sh` embed the same
   pinned build into native binaries.
@@ -795,9 +798,9 @@ player.
 **Server:**
 
 - `internal/meta` resolves a book's ASIN or ISBN against `metaserve` and composes an
-  enrichment envelope. A book with neither, or one `metaserve` does not know, is
-  resolved by its recorded match instead (see
-  [Matches by work id](#matches-by-work-id)). `GET /libraries/{id}/meta` returns
+  enrichment envelope. A book with neither, one `metaserve` does not know or cannot
+  answer, or one whose recorded match names another work, is resolved by its
+  recorded match instead (see [Matches by work id](#matches-by-work-id)). `GET /libraries/{id}/meta` returns
   it, behind an admin off-switch and a bounded cache.
 - `GET /meta/work?id=…` serves one work document straight through, from the same
   cache, for the earlier books of a series the caller does not own. It is authed but
@@ -905,10 +908,10 @@ looks such a book up by `works/{id}`, following a retired slug's `301`. The rule
 run applies to such a book is in
 [Bulk community matching](../server/api/reference.md#bulk-community-matching).
 
-From 2.7.0 the server's `/meta` answers such a book from its recorded match. It
-tries the book's identifiers first, then its `book_matches` `work_id` and
-`recording_id` when they find nothing. The envelope is the same, so the wire does
-not change.
+From 2.7.0 the server's `/meta` and `/next` follow one work per book, the one
+`/item` names as `work_id` (the recorded match first), by the rule in
+[`GET /libraries/{id}/meta`](../server/api/reference.md#get-apiv1librariesidmeta).
+The envelope is the same, so the wire does not change.
 
 A book [added from LibriVox](#librivox-fetches) gets its row from the server's
 fold of the done `librivox.fetch`, with the work and recording the server resolved
@@ -916,10 +919,10 @@ at queue time (`how` `accepted`). Where a LibriVox recording is on the server is
 read from these rows alone, by their exact, non-empty `recording_id`, never from
 `/meta`'s first-recording answer for a work.
 
-The player's book page asks `/meta` for every loaded book that is not an episode
-(`bookPageMetaEnabled`), so a book matched with neither identifier shows its
-community content there. Most other surfaces keep the identifier gate
-(`metaEnabledFor`). [Enriched book metadata](../frontend/state-and-data.md#enriched-book-metadata)
+The player asks `/meta` for every loaded book that is not an episode
+(`metaEnabledFor`), so a book matched with neither identifier shows its
+community content on the book page, the companion, the Now card and the end
+credits. Only the offline copy keeps the identifier gate (`matchableById`). [Enriched book metadata](../frontend/state-and-data.md#enriched-book-metadata)
 lists which surface uses which gate.
 
 ### Community chapters from the meta side
@@ -1041,8 +1044,9 @@ dramatisation. All of it is additive and `omitempty`:
   it whenever metadata is on, even with the job switched off. It is a display hint
   only: durable state stays path-keyed.
 - `/item`'s `other_recordings`: the caller's other recordings of the work, in the
-  list shape, within their share scope, each recording once (a copy shares the
-  ASIN, or the ISBN when one has no ASIN).
+  list shape, within their share scope, each recording once. A copy shares the
+  ASIN, or the ISBN when the later book has no ASIN, so a book with an ASIN is
+  never taken in by an ISBN alone.
 - `/meta` rail entries' `local_others`, beside `local`.
 - The pick: of several recordings, `local` (and so `/next`) is chosen by
   [the pick among recordings](../server/api/reference.md#the-pick-among-recordings),
@@ -1080,7 +1084,9 @@ default of 320, and takes `96` too from 2.5.1.
 - Scope and errors are as for `/meta`: 403 or 404 for the path, 404 with metadata
   off, and 502 metadata unavailable.
 - `502 cover_unavailable` means the fetch failed. The server does not fetch that URL
-  again for a minute, and concurrent misses share one fetch.
+  again for a minute, and concurrent misses share one fetch. A redirect from https to
+  anything else fails the fetch (`netguard.Downgrade`, the rule podcast discovery's
+  fetches follow too), so a fetch begun over https stays on it.
 - `404 no cover` means the file is not an image or is over the pixel bound.
 - Only a re-encoded JPEG is served, with `ETag` `"community-<size>-<rev>-<hash>"` and
   `private, max-age=86400`.
@@ -2298,6 +2304,12 @@ place is `resume_behind`, so a cold start never pulls a book back. The player's
 `start` reasons (`moved_back`, `jump`, `restart` for a deliberate move) are what let
 a move back apply.
 
+A finish or unfinish heard at or before the row's last finish-state change
+(`finish_changed_at`) is `not_applied` `older`, so an old event never undoes a
+newer choice. Every writer that changes `finished` stamps it. A progress `PATCH`,
+the caller's own or an admin's, stamps it whenever it names `finished`, even when
+the row was already in that state.
+
 ### The offered place
 
 The server persists a diverged event's lost place on the row (`other_place`). So a
@@ -2348,10 +2360,13 @@ server builds both from the spans, at their clock-corrected device times.
 The player's online cut keeps live sessions and Listening in the house working. It
 sends `continue` spans every 15 s, or every 60 s with the app in the background or
 the book downloaded (see
-[the pace](../frontend/playback.md#the-periodic-saves-pace)). The server reads them
-against its `livePlaying` and `SessionGap` (see
+[the pace](../frontend/playback.md#the-periodic-saves-pace)). The server reads a
+session as playing for 150 s after its last span (`playingWindow`), which holds one
+missed 60 s save, and closes it after `SessionGap` (see
 [Listening sessions](../server/data-model.md#listening-sessions-how-they-are-derived)
-in the data model). At the 60 s pace a session can read as paused for a moment.
+in the data model). Its 60 s `livePlaying` still bounds continuous playback and
+which spans can be marked transcoded. Change the cadence and these windows
+together.
 
 ### Rollback to the legacy save
 

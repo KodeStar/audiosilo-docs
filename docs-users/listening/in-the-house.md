@@ -12,6 +12,8 @@ It's **off by default** and works **both ways**. You see others only while you s
 1. Open the [Household page](household.md).
 2. Under **Listening in the house**, turn on **Share what I'm listening to with the house**.
 
+If a server can't be reached, the Household page says it couldn't check that server, with **Retry**. With no network, it says you're offline and checks again by itself.
+
 There's one switch per server. When several people share a device ([profiles](profiles.md)), each sets their own. Turn it off any time: you stop showing up for others, and they disappear from your Home page.
 
 Demo accounts can't turn it on.
@@ -26,7 +28,7 @@ Demo accounts can't turn it on.
 
 ![A book's page with the In the house card: one person listening now, and the chapter](/img/screenshots/web-player/book-in-the-house.png)
 
-The cards update about once a minute. Someone whose app [saves once a minute](playback.md#your-position-follows-you) can be a further minute behind. They may show as paused for a moment.
+The cards update about once a minute. Someone whose app [saves once a minute](playback.md#your-position-follows-you) can be a further minute behind.
 
 ## Who shows up
 

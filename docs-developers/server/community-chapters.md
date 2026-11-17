@@ -72,6 +72,10 @@ which an `indexed_at` in the basis would.
 
 - Due books come oldest check first, 50 at a time, with two checked at once
   (`internal/pool`'s `Each`, shared with bulk matching).
+- In [mirror mode](configuration.md#mirror-mode-metadatamode-mirror) the first
+  pass after a start (the first with metadata on, since no copy loads while it
+  is off) waits for the local copy, at most 10 minutes (`mirrorReady`), so a
+  start sends no lookups to the service while the copy loads.
 - Each check is bounded to 5 minutes, of which the pause searches get 4. Past
   that, the fit leaves the remaining boundaries unsnapped (counted as
   approximate) and is still recorded.
@@ -385,7 +389,10 @@ book's:
   chapter that would start at or past its file's end now leaves the edit
   dormant.
 - A start within 50 ms of a file's start (`fileStartSnapMS`) is that file's
-  first chapter. File starts are the sums of the files' lengths in whole
+  first chapter, each file taking the nearest start no file before it took
+  (`snapToFiles`, so a file under 100 ms never takes its neighbour's, and a
+  file of no length shares the next file's, as in the console's editor). File
+  starts are the sums of the files' lengths in whole
   milliseconds (`fileStartsMS`), as the console sums the basis.
 
 While it applies, the rows are the placed list, `books.chapters_source` is
@@ -410,7 +417,11 @@ whose title the admin can change.
 - Health's `detailed_chapters` is settled while an edit exists, applied or
   dormant. An applied edit marks the admin row `edited`.
 - The console offers no **Detect chapters** for a row whose `chapters_source` is
-  `edited` (`rowFix`), and the Community panel offers no source to switch to.
+  `edited` (`rowFix`), the Community panel offers no source to switch to, and
+  the server refuses such a `chapters.detect` job
+  (`409 chapters_edited`, `bridge.ErrChaptersEdited`, checked from the book's
+  `chapters_source`; a dormant edit refuses nothing), and Health's Detect
+  dialog passes the book over.
 
 ### Saving and reverting
 

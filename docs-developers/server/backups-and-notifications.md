@@ -82,7 +82,7 @@ The default is `daily:03:00`. `backup.ParseSchedule` checks the value (a
 two-digit hour and minute), and the settings normalizer stores the canonical
 form.
 
-`Service.Run`, which `pkg/launcher` starts, wakes every minute. It also wakes at
+`Service.Run`, which `internal/launcher` starts, wakes every minute. It also wakes at
 once when the settings change (`SetSettings`). It counts the next slot from the
 later of these two:
 
@@ -110,7 +110,7 @@ Before-upgrade backups have their own rule, described next.
 
 ### Before an upgrade
 
-`pkg/launcher` calls `backup.BeforeUpgrade` before `store.Open` migrates the
+`internal/launcher` calls `backup.BeforeUpgrade` before `store.Open` migrates the
 database. `store.PendingMigrations` reads the database read-only and lists the
 migrations it lacks. The list is empty for a fresh install (no database, or no
 migration recorded) and for a database that is already up to date.
@@ -182,7 +182,7 @@ A restore never swaps the database under a running server. It takes two steps.
    (`{"name", "requested_at", "requested_by", "schema"}`), replacing any restore
    already waiting. `DELETE /admin/restore` removes the marker. Deleting the
    backup it names removes it too.
-2. **`ApplyPendingRestore`** runs in `pkg/launcher.Run` before `store.Open`.
+2. **`ApplyPendingRestore`** runs in `internal/launcher.Run` before `store.Open`.
    With no marker it does nothing. Otherwise it checks the backup again, in
    full this time (`store.Inspect(…, true)`, with `quick_check`). The check
    fails as `missing` when the file is gone, `unusable` when it is damaged or
@@ -347,7 +347,7 @@ subscribed to its kind. A nil `*Service` does nothing, so callers don't check.
 | `podcast_episodes_new` | `catalog.IndexPodcastShow`, once per show per index that found episodes new to it. See [Podcast events](#podcast-events). | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead), `count`, `titles` (the first five, newest first) |
 | `podcast_feed_failing` | `catalog.FoldPodcastJob` for a `podcast.poll` that makes the feed's run of failures due, or ends `gone` or `feed_secret_missing`. Once per run. | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead), `code`, `failures` |
 | `podcast_feed_recovered` | `catalog.FoldPodcastJob` for the first successful `podcast.poll` after `podcast_feed_failing` | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead) |
-| `oidc_pending` | the single sign-on callback, when `auth.OIDCSignIn` records a [waiting sign-in](auth-and-security.md#who-signs-in-as-whom), never for one refused outright (disabled, a household member, rate limited). Announced **once per waiting row** (`dedup_key` `pending:<id>`, kept across the person's attempts; a dismissed row recorded again is a new one, as is a row unseen for 30 days that the person's next attempt records again). | `provider` (the button's name), `person` (the name, else the username, left out when it holds an `@`, as providers often make the email the username), `reason` (the `Decide` reason). Never the email, the subject, the groups or a token |
+| `oidc_pending` | the single sign-on callback, when `auth.OIDCSignIn` records a [waiting sign-in](auth-and-security.md#who-signs-in-as-whom), never for one refused outright (disabled, a household member, rate limited). Announced **once per waiting row** (`dedup_key` `pending:<id>`, kept across the person's attempts; a dismissed row recorded again is a new one, as is a row unseen for 30 days that the person's next attempt records again). Announcements are capped per client address and in all (see the link). | `provider` (the button's name), `person` (the name, else the username, left out when it holds an `@`, as providers often make the email the username), `reason` (the `Decide` reason). Never the email, the subject, the groups or a token |
 
 `notify.Kinds` lists the kinds in this order, which is the order the console
 shows.

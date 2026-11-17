@@ -25,7 +25,7 @@ instead. See
   itself comes from the `--data` flag. There is **no environment variable for
   the data dir**.
 - **First run**: when the file does not exist, `config.Load` returns secure
-  defaults with `firstRun=true`, and `pkg/launcher` persists them via
+  defaults with `firstRun=true`, and `internal/launcher` persists them via
   `Config.Save`. The file is written `0600`,
   the data dir created `0700`.
 - **Annotated template**: `config.example.yaml` in the repo root mirrors this
@@ -68,32 +68,37 @@ package does for a bad flag.
   once. It is the way back in when the first-run password is lost. A flag after
   the command is a usage error, since the flag package stops at the command.
 
-`reset-admin` picks the only admin, or the one named. It exits `2` (a
-`launcher.UsageError`, listing the admins) for an unknown name, an account that
-isn't an admin, or several admins with no name. It exits `1` and changes nothing
-when:
+`reset-admin` picks the one named, or the only enabled admin (a disabled
+admin neither counts nor is listed). It exits `2` (a `launcher.UsageError`,
+listing the enabled admins) for an unknown name, an account that isn't an
+admin, or several admins with no name. It exits `1` and changes nothing when,
+checked in this order:
 
+- `--data` names no folder (said as no database), or a folder this user can't
+  reach (reported as the permission error it is);
+- a restore is waiting for the next start (`backup.RestorePending`), which would
+  replace the new password. It is checked before the database, so a damaged
+  database the restore would replace says so;
 - there is no `audiosilo.db` in the data directory;
 - the file isn't an AudioSilo database (`store.Inspect`), which it never
   migrates;
-- a restore is waiting for the next start (`backup.RestorePending`), which would
-  replace the new password;
 - the database has migrations pending (an older release left it: the server
   upgrades it, and backs it up, at its next start);
-- there is no admin yet (with no username given; a name with no admin to match
-  is the usage error above), or the admin is disabled.
+- there is no admin yet, every admin is disabled (with no username given; a
+  name with no admin to match is the usage error above), or the named admin is
+  disabled.
 
-The password is set through `auth.SetPassword`, the console's rule: every
-session, open pairing code and remembered browser of the account ends. It also
-revokes the auth code the first start printed beside the password
-(`auth.RevokeInitialAdminCode`: that admin's unlimited, never-expiring invite
-labelled `auth.InitialAdminCodeLabel`). It ends the start's sign-in hint and,
-for the first-run admin, turns `GET /admin/setup`'s `printed_password` false
-(`auth.NoteOwnPassword`, as for a password the admin chose): the password in
-the log is gone. If the revoke
-fails, the command still prints the new password, since the old one is gone,
-then exits `1` with the error and asks for the code to be revoked in the console
-(People > Invites).
+It first revokes the auth code the first start printed beside the password
+(`auth.RevokeInitialAdminCode`: the one the `first_admin` row names, so a code
+the admin rotated since, never printed, stays; on an install whose row names
+none, from before it did, that admin's unlimited, never-expiring invite
+labelled `auth.InitialAdminCodeLabel`). A failure there refuses the reset with
+nothing changed. Then it sets the password through `auth.SetPassword`, the
+console's rule: every session, open pairing code and remembered browser of the
+account ends. It ends the start's sign-in hint and, for the first-run admin,
+turns `GET /admin/setup`'s `printed_password` false: the password in the log is
+gone. If setting the password fails after the code was revoked, it exits `1`
+saying so, and running it again is the way back in.
 
 It runs beside a running server. That server checks the new password at once,
 since a sign-in reads the database. A session it has already checked can last up
@@ -111,11 +116,22 @@ While that admin has not signed in, every later start prints a framed reminder
 makes a root-owned file in the data folder (a server running as root gets no
 `-u`). The binary is named by its path when
 that name on `$PATH` is not this binary (the LinuxServer.io image's
-`/app/audiosilo/audiosilo`). Words are quoted for the system's shell (single
-quotes, or double quotes on Windows). An admin's password sign-in, an admin
-setting their own password (`POST /auth/password`, or `PATCH /admin/users/{id}`
-on their own account) or `reset-admin` ends it. A server with no row, an
-upgraded or `--setup` one, never prints it.
+`/app/audiosilo/audiosilo`). Words are quoted for the system's shell, in
+single quotes. On Windows a word that isn't plain is quoted for PowerShell
+(nothing expands inside single quotes, so a `$` or `%` in a path stays, and a
+quote inside is doubled), a quoted binary path goes behind the call operator
+`&`, and a word with a comma or an `@` is quoted too. The hint then says
+"(in PowerShell)"; a command of plain words names no shell. An admin's password
+sign-in, or a password set on an admin account, ends it. A server with no row,
+an upgraded or `--setup` one, never prints it.
+
+**The first-run code.** A password set on the first-run admin, whoever sets it
+(the account step's `POST /auth/password`, People's `PATCH /admin/users/{id}`,
+another admin's included, or `reset-admin`), or cleared (an admin with single
+sign-on), also deletes the auth code the `first_admin` row names, since it sat
+in the same log (`auth.UpdateUser`, in its own transaction). The console's
+account step says a new password ends the code. A code rotated in the console
+since was never printed and stays.
 
 A bare tool name (no path separator) is resolved **next to the server
 executable first**, then on `$PATH`. An explicit path is used as it is. If a
@@ -130,7 +146,7 @@ tool is enabled but not found locally, the launcher downloads it (see
 |---|---|---|
 | `name` | string, `""` | The server's display name, at most 64 characters with no control characters. It is `GET /server`'s `name`, the pairing payload's `server_name` (the player's sign-in screen shows it), and the name in the admin console's top bar and System and About pages. Empty means `"AudioSilo"` (`Config.DisplayName`). No environment variable |
 | `update_check` | bool, `true` | Let the server ask GitHub Releases once a day whether a newer version exists (`internal/updates`; see [Update check](#update-check)). `false` means no request is ever made |
-| `activity.session_days` | int, `400` | How many days raw listening sessions (device, app, time of day, playback mode) are kept, 30-3650. After that the daily retention job (`pkg/launcher` `retention`, which reads the live setting at each run) sums them into `listening_daily` and drops that detail. The default keeps a year of detail for Activity's longest range. Activity reads the daily totals for days past it |
+| `activity.session_days` | int, `400` | How many days raw listening sessions (device, app, time of day, playback mode) are kept, 30-3650. After that the daily retention job (`internal/launcher` `retention`, which reads the live setting at each run) sums them into `listening_daily` and drops that detail. The default keeps a year of detail for Activity's longest range. Activity reads the daily totals for days past it |
 | `server_id` | string, minted | The stable per-install identity (see [`GET /server`](api/reference.md#get-apiv1server)). Minted on first start and never changed. It is not a setting |
 
 ### Server & network
@@ -199,7 +215,7 @@ plain `http` behind TLS). Set `lan_url` to give the apps a home address; a confi
 |---|---|---|
 | `tls.mode` | `off` \| `selfsigned` \| `autocert`, default `selfsigned` | `off` = plain HTTP (use behind a TLS-terminating proxy); `selfsigned` = generate & persist a self-signed cert (LAN default); `autocert` = Let's Encrypt via ACME |
 | `tls.hosts` | []string, `[]` | autocert: hostnames to obtain certificates for. **Required when mode is `autocert`** |
-| `tls.cache_dir` | string, `<data>/certs` | autocert: certificate cache directory (re-defaulted to `<data>/certs` whenever empty) |
+| `tls.cache_dir` | string, `<data>/certs` | autocert: certificate cache directory (re-defaulted to `<data>/certs` whenever empty). The default is never written to `config.yaml`, so a data folder moved elsewhere (Docker's `/data` to the LinuxServer.io image's `/config`) takes its certificates with it. A `config.yaml` written before 2.7.0 keeps its absolute path until that line is deleted; one an admin set elsewhere is kept |
 | `tls.home_http` | bool, `true` | selfsigned only: the bind port also answers plain HTTP to home-network clients, see [Home HTTP](#home-http-tlshome_http). Ignored in the other modes |
 | `tls.cert_file` / `tls.key_file` | string, `""` | selfsigned: explicit paths for the persisted cert and key. Empty means `<data>/selfsigned-cert.pem` and `<data>/selfsigned-key.pem` |
 
@@ -583,7 +599,7 @@ path.
 
 While the report is on, Health lists the books whose own ASIN it found unknown
 as the `unknown_asin` kind (see [Issues](scanner.md#issues)). Those books still
-count as matched. The kind is left out while the report is off, since the
+count as matched. A book leaves the list as soon as any lookup finds its ASIN, not only at the recheck 30 days on. The kind is left out while the report is off, since the
 lookups that find them stop.
 
 #### Mirror mode (`metadata.mode: mirror`)
@@ -897,7 +913,7 @@ is `oidc`. The flow, the decisions and the safeguards are in
 | `auth.oidc.client_id` | string, `""` | The client registered at the provider |
 | `auth.oidc.client_secret` | string, `""` | The client's secret. Never in `GET /admin/settings` (only `signin.client_secret_set`), never logged. Empty with no file is a public client, which authenticates with PKCE alone |
 | `auth.oidc.client_secret_file` | path, `""` | A file holding the secret, for Docker secrets. Its trailing line break is dropped. Setting both this and `client_secret` is a problem, as is a file that can't be read, is empty or is over 4 KiB |
-| `auth.oidc.scopes` | list, `[openid, profile, email, groups]` | The scopes asked for. `openid` is always asked, first and once |
+| `auth.oidc.scopes` | list, unset | The scopes asked for, exactly as listed. `openid` is always asked, first and once. Unset, `openid`, `profile` and `email`, plus `groups` only while `admin_group` is set or `allowed_group` is with `auto_create` on (worked out at each sign-in's start) |
 | `auth.oidc.username_claim` | string, `preferred_username` | The claim a new account's username comes from |
 | `auth.oidc.groups_claim` | string, `groups` | The claim that lists the person's groups. A namespaced name such as `https://example.org/groups` is allowed |
 | `auth.oidc.ca_file` | path, `""` | A PEM file of certificates trusted for the provider, beside the system's (a provider on a private CA) |
@@ -1216,7 +1232,7 @@ The normalizers, per setting:
 | `household.max_members` | an integer from 1 to 50 (checked by `Validate`) |
 | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` (`backup.ParseSchedule`), stored in canonical form |
 | `backups.keep` | an integer from 1 to 365 (checked by `Validate`) |
-| `auth.oidc.allowed_group`, `auth.oidc.admin_group` | trimmed; at most 256 characters, no control characters; `""` allowed |
+| `auth.oidc.allowed_group`, `auth.oidc.admin_group` | trimmed; at most 256 characters and 256 bytes, no control characters; `""` allowed |
 
 Every list is trimmed, with empty entries and repeats dropped, and holds at
 most 50 entries.
@@ -1228,7 +1244,7 @@ environment variable's value into the file.
 ## Update check
 
 `internal/updates` asks GitHub Releases whether a newer server exists, for the
-console's Server > About and Health > System. `pkg/launcher` starts one
+console's Server > About and Health > System. `internal/launcher` starts one
 `updates.Checker` (`Run`) with the configured `update_check`:
 
 - While on, it checks a minute after the server starts, then whenever the last
@@ -1268,6 +1284,10 @@ console's Server > About and Health > System. `pkg/launcher` starts one
 - a `rate_limit.*.rate` that is negative, infinite or not a number, or a
   negative `rate_limit.*.burst` (`0` is unset: the default).
 
+A bad value an `AUDIOSILO_*` variable set says so: the error names
+the key and ends `(set by <variable>)` (`Config.envFor`), since `config.yaml`
+may not hold that key at all. One from `config.yaml` names no variable.
+
 It never rejects `auth.oidc.*`: a problem there turns single sign-on off and
 the console says why (see [Single sign-on](#single-sign-on-authoidc)).
 
@@ -1282,10 +1302,11 @@ Secure-by-default choices baked into `Default()` and first-run:
 See [Auth & security](auth-and-security.md) for the app-layer hardening these
 feed into.
 
-## `pkg/launcher` is not an embedding API {/* #launcher-options-for-embedders */}
+## `internal/launcher` is not an embedding API {/* #launcher-options-for-embedders */}
 
-`pkg/launcher.Run(ctx, opts)` is the run loop behind the headless `audiosilo`
-command. Its `Options` are only what the command's flags set:
+`internal/launcher.Run(ctx, opts)` is the run loop behind the headless
+`audiosilo` command. It moved from `pkg/launcher` in 2.7.0, so no other module
+can import it. Its `Options` are only what the command's flags set:
 
 - `DataDir` (`--data`);
 - `FFprobePath` and `FFmpegPath` (`--ffprobe` and `--ffmpeg`; `""` turns the
@@ -1307,7 +1328,7 @@ admin PWA.
 ## ffmpeg/ffprobe resolution & auto-download
 
 The binaries are **not bundled**, because they are large and usually already
-present. `pkg/launcher.resolveTools` resolves each enabled tool in order:
+present. `internal/launcher.resolveTools` resolves each enabled tool in order:
 
 1. an **explicit path** from the flag or `Options`;
 2. a copy **next to the server executable** (bare names only; `.exe` appended
@@ -1357,7 +1378,7 @@ tools.
   `.download-*` folder inside the one it fills (never the system temp folder),
   and a start removes one an exit left behind.
 - **The start-up log** says which way the probe went
-  (`pkg/launcher.resolveTools`, `metadata.ProbeRelease`). It logs one of:
+  (`internal/launcher.resolveTools`, `metadata.ProbeRelease`). It logs one of:
   - "in-process probe on", with the rules' release;
   - "in-process probe off: ffprobe is not a release it knows, so ffprobe reads
     every file";
@@ -1406,11 +1427,17 @@ the start with `the data folder isn't usable: ...`, naming the path, the user
 `uid:gid`, the owner and the fix, rather than SQLite's "unable to open database
 file". The fix (`fsaccess.Hint`) is `PUID` and `PGID` set to the owner only in a
 container (`/.dockerenv` or `/run/.containerenv`); outside one it is running the
-server as the owner. It never advises running as root. It warns `backups will fail` at start when
+server as the owner. A container started with `--user` (the entrypoint exports
+`AUDIOSILO_STARTED_AS_USER=1`) gets `user: "<uid:gid>"` instead. A read-only
+mount (`EROFS`, docker's `:ro`) counts as refused, but its fix is to mount it
+read and write, never owner advice. It never advises running as root. It warns
+`backups will fail` at start when
 the backups folder exists and refuses it (`backup.Service.CheckFolder`). A
 refused backup is `permission_denied` (see
-[Backups](backups-and-notifications.md#status)), and a library root the server
-can't list is [unavailable](scanner.md#the-unavailable-root-guard).
+[Backups](backups-and-notifications.md#status)), and so is a backups
+folder the server can't list (`GET /admin/backups` answers `500
+permission_denied` with that sentence). A library root the server can't list is
+[unavailable](scanner.md#the-unavailable-root-guard).
 
 ### Under Docker
 
@@ -1420,22 +1447,31 @@ folders, checks them as that user, then drops to it with `su-exec PUID:PGID`
 `su-exec` sets only that group, so access a host user has through another group
 doesn't reach the server.
 
-- **Ownership.** It runs `chown -R` on the data folder (`--data`, `/data` by
-  default). When `AUDIOSILO_BACKUP_DIR` is an absolute path, it gives the user
-  that folder and only AudioSilo's own files in it (`audiosilo-*.db` and
-  `.audiosilo-*`, regular files, `chown -h`), since a backups share may hold other
-  apps' files. A path that is the container's root, however spelled, or that
-  holds a `..`, is skipped. The data folder's `chown -R` crosses into a share
-  mounted under it, so a backups share belongs at a path of its own, never
-  `/data/backups`.
+- **Ownership.** It gives the user the data folder (`--data`, `/data` by
+  default) with `chown -h`, skipping files the user already owns. The
+  chown stops at each mount point under the data folder, read from mountinfo
+  (a volume or bind mount from the same disk shares the device number, so
+  `-xdev` alone can't tell): a folder mounted there, a socket or a device node
+  (`/data/docker.sock`) keeps its owner, while a regular file mounted there
+  (`/data/config.yaml`) is chowned as before. When `AUDIOSILO_BACKUP_DIR` is an
+  absolute path, it gives the user that folder and only AudioSilo's own files in
+  it (`audiosilo-*.db` and `.audiosilo-*`, regular files, `chown -h`), since a
+  backups share may hold other apps' files. A path that is the container's root,
+  however spelled, or that holds a `..`, is skipped.
 - **Checks.** As the server's user, it writes a `mktemp` file in the data and
   backups folders and reads one entry of every other mounted folder (the
   audiobooks, by the rule of the setup's mount hints). For a folder that fails
   it prints the folder, the user, the folder's owner and the fix (`PUID` and
-  `PGID` set to the owner, or giving the user access), and carries on. Every
+  `PGID` set to the owner, or giving the user access), and carries on. A data or
+  backups folder on a read-only mount (`:ro`, by mountinfo's options of the
+  mount holding it or of its filesystem) is reported as mounted read-only
+  instead of naming owners. Every
   check and every step on the backups folder is bounded by `timeout 5`. A check
   cut off says the folder didn't answer, with no owner advice.
 - **Under `--user`** (compose `user:`) it skips the chown, runs the same checks,
-  and its fix names `user:` instead of `PUID` and `PGID`.
+  and its fix names `user:` instead of `PUID` and `PGID`. It exports
+  `AUDIOSILO_STARTED_AS_USER=1`, so the server's own hint says
+  `user: "<uid:gid>"` too (the image's `PUID` is in every container's
+  environment, so the server can't tell otherwise).
 
 `scripts/test-entrypoint.sh` tests the entrypoint in Docker. CI doesn't run it.

@@ -193,8 +193,8 @@ audio changed and the place is kept. Nothing is rescaled.
 There is no Generate, community metadata, rating or series. The player's
 companion chips and tabs are off for an episode (`useCompanionData` reads
 `book.episode` as `off`). The player never asks for community metadata for an
-episode: `bookPageMetaEnabled` in `meta-gating.ts`, which `metaEnabledFor` builds
-on, is false for `book.episode`, because a feed's tags can carry an ISBN-like
+episode: `metaEnabledFor` and `matchableById` in `meta-gating.ts` are false for
+`book.episode`, because a feed's tags can carry an ISBN-like
 value.
 
 ### Wording in the player and on Home

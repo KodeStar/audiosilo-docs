@@ -182,7 +182,7 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
 | `agent` | no | the agent container is available (with its own or a handed-over credential); only characters, recaps and descriptions need it | the backend, or why it isn't ready in plain words (below) |
 | `budget` | yes | the monthly budget was saved on the page or is set by the environment (`Config.BudgetReviewed`) | "$100 a month" or "no monthly cap" |
 | `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token" |
-| `audible` | no | at least one Audible account signed in, none refused and none on an older device profile (an additive id: older servers and pages leave it out) | "1 account signed in", "1 account needs signing in again", or "... signing in again to keep backups working" when any is on an older profile; it adds "; places don't sync until then" while one is refused, and "; places not syncing for 1 account: " and the reason when an account's last position sync failed (that alone never makes it not done) |
+| `audible` | no | at least one Audible account signed in, none refused and none on an older device profile (an additive id: older servers and pages leave it out) | "1 account signed in", "1 account needs signing in again", or "... signing in again to keep backups working" when any is on an older profile, or "1 account is mapped on another server: map one on this server on the Accounts tab" when every account is mapped elsewhere; it adds "; places don't sync until then" while one is refused, and "; places not syncing for 1 account: " and the reason when an account's last position sync failed (that alone never makes it not done) |
 
 ```json
 "setup": {
@@ -640,9 +640,7 @@ listener routes.
 when empty), with no library or path. It is deduped per account, and it promotes
 an open poll to a person's priority when Check now asks. It runs in the `light`
 lane and writes nothing into a library; an ASIN it backfills goes through the
-server. A refused poll fails with a code in its result, `audible_refused` (the
-device) or `audible_sign_in` (the sign-in, for now). The server folds neither, and
-the console's Bridge jobs list words both. The module's scheduler queues it, and
+server. A refused poll fails with a code in its result. The module's scheduler queues it, and
 queued polls are held while the module is off. See
 [Audible](audible.md#the-poll-audiblepoll).
 

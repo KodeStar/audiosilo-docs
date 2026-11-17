@@ -129,6 +129,10 @@ Plain HTTP at home is also off when you give the server your own certificate fil
 
 To [cast](../listening/chromecast.md) from the apps without a trusted certificate, use this plain HTTP home address. Behind a reverse proxy, that's AudioSilo's own port, not the proxy's.
 
+### Through a VPN or Tailscale
+
+A VPN works, but the server counts a device that reaches it through the VPN's own address (such as a Tailscale `100.x.y.z` address or a `.ts.net` name) as away from home. So plain HTTP isn't offered there, and the apps need a certificate they trust on that address, as on the public one.
+
 ### Why it's safe to expose
 
 The protections are always on; there's nothing to enable:

@@ -65,7 +65,7 @@ it.
 
 The Bridge keeps a book's transcripts for 30 days. If it transcribed the book
 recently, for characters and recaps, for
-[Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)
+[Detect chapters](chapter-detection.md)
 or for an earlier read-along, making the read-along takes minutes, not hours.
 
 The Bridge runs one of these jobs at a time for a book. While one runs, start the
@@ -90,6 +90,10 @@ A read-along belongs to one ebook and one set of audio files. Replace or edit th
 EPUB, or change the audio files, and the card says **Out of date**. Press **Make
 again**. When only the ebook changed, it takes minutes. Moving or renaming the
 book's folder is fine.
+
+The server spots a changed EPUB by its size, date and name. A replacement that
+keeps all three, such as a copy that preserves the date, isn't noticed until one
+of them changes.
 
 ## Where it is saved
 

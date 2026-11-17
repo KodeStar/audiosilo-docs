@@ -13,6 +13,9 @@ source is the route table in `internal/api/api.go` and the handlers in
 All JSON API routes live under **`/api/v1`**. The server advertises the version
 in [`GET /api/v1/server`](reference.md#get-apiv1server) as `"api": "v1"`. There
 is no other versioning mechanism: no version headers and no v2.
+[API stability](stability.md) says which routes stay compatible within v1 and
+how a deprecation is announced, and the [API changelog](changelog.md) lists each
+release's additions.
 
 A few routes deliberately live *outside* the prefix:
 
@@ -120,7 +123,7 @@ Sessions have **no expiry**. They end only when something revokes them:
   (`POST /admin/users/{id}/sign-out`);
 - disabling or deleting the account;
 - a password change or reset, which keeps only the caller's session (see
-  [Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
+  [Password changes and Sign out everywhere end sessions](../auth-and-security.md#password-changes-and-sign-out-everywhere-end-sessions)).
 
 Every authenticated request bumps the token's `last_seen`, which is what
 surfaces as a user's "last activity". The request also records its address
@@ -323,16 +326,17 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 |---|---|---|
 | `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`), or renaming one to it (`PATCH /admin/users/{id}`) |
 | `username_required` | `400` | an empty username on `POST /admin/users` or `PATCH /admin/users/{id}` (from 2.7.0) |
+| `invite_used` / `invite_expired` | `401` | an invite with no uses left, or past its expiry: `POST /auth/redeem` (from 2.5.0) and `POST /auth/exchange` for a token the invite minted (from 2.7.0) |
 | `current_password_incorrect` | `401` | `POST /auth/password` with a wrong `current_password` (from 2.7.0). A client tells this `401` apart from a session that ended, and keeps the session |
 | `name_taken` | `409` | a library or share name already in use (create, rename) |
-| `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: its rules change only by granting or revoking the library |
+| `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: a `POST`, or a `DELETE` of the grant's own whole-library rule. Its rules change only by granting or revoking the library |
 | `config_library` | `409` | a library the server's config declares: renaming it or moving its folder (`PATCH /admin/libraries/{id}`, from 2.4.0), or deleting it (`DELETE /admin/libraries/{id}`, from 2.4.1) |
 | `last_admin` | `409` | demoting or disabling the last enabled admin |
 | `admin_needs_password` | `400` | an admin without a way in: creating one without a password, promoting a password-less account, or clearing an admin's password, unless the account has an identity from the single sign-on that can run now. `409` when [unlinking](reference.md#delete-apiv1adminusersididentitiesidentity_id) that identity from a password-less admin |
 | `password_too_short` | `400` | a password under the minimum length |
 | `cannot_delete_self` | `400` | an admin deleting their own account |
 | `path_not_absolute` | `400` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` with a relative path |
-| `folder_unreadable` | `404` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` on a missing or unreadable folder |
+| `folder_unreadable` | `404` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` on a missing or unreadable folder, or (from 2.7.0) one on a hung mount, after 5 seconds |
 | `invalid_setup_step` | `400` | `PUT /admin/setup` naming a step id the flow doesn't have, or an outcome other than `done` / `skipped` |
 | `book_not_found` | `404` | the Bridge's `PUT /bridge/libraries/{id}/enrichment` for no book of a books library at the path; an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
@@ -344,7 +348,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`); a [listening sync](reference.md#post-apiv1melisteningsync) body over 1 MiB (`413`) |
 | `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
 | `cover_unavailable` | `502` | `PUT /admin/libraries/{id}/cover/community`, `GET /libraries/{id}/meta/cover` or [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) when the server couldn't fetch the image (the latter two also for a minute after a failed fetch, without asking again) |
-| `not_found` | `404` | an [unknown API route](#error-envelope-and-status-conventions) (below), `DELETE /admin/libraries/{id}` for a library that doesn't exist, and [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) for a work the caller's upcoming list doesn't hand out a cover for (not listed for them, or listed without one); also `GET /admin/librivox/work` for an unknown work and `POST /admin/librivox/fetch` for a LibriVox project the community metadata doesn't know |
+| `not_found` | `404` | an [unknown API route](#error-envelope-and-status-conventions) (below), `DELETE /admin/libraries/{id}` for a library that doesn't exist, `GET /admin/authors`, `/narrators` and `/series` with a `library_id` that names no library (from 2.7.0), and [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) for a work the caller's upcoming list doesn't hand out a cover for (not listed for them, or listed without one); also `GET /admin/librivox/work` for an unknown work and `POST /admin/librivox/fetch` for a LibriVox project the community metadata doesn't know |
 | `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
 | `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`, `POST /admin/setup/preview`) |
 | `invalid_metadata_source` | `400` | a library `metadata_source` other than `"tags"` or `"path"` (`POST`/`PATCH /admin/libraries`) |
@@ -383,6 +387,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `self_managed` | `409` | `PATCH /admin/users/{id}` assigning a person to themselves |
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
+| `invalid_delete_members` | `400` | `DELETE /admin/users/{id}?delete_members=` with an entry that isn't one of that person's members, or one `keep_members` also names (from 2.7.0) |
 | `kind_unavailable` | `409` | `POST /admin/bridge/jobs` (or `GET /admin/bridge/estimate`) for a kind the paired Bridge doesn't run, or before any Bridge has reported; `POST /admin/librivox/fetch` with no Bridge paired, or one that doesn't run `librivox.fetch` |
 | `library_not_writable` | `409` | podcast follow/check, `POST /admin/librivox/fetch`, or `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`, `readalong.align`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
 | `cannot_contribute` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge's last heartbeat doesn't say it can contribute (its `setup.can_contribute`, else `estimates.sidecars.can_contribute`) |
@@ -397,6 +402,8 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `readalong_stale` | `409` | [`GET /libraries/{id}/readalong`](reference.md#get-apiv1librariesidreadalong) for a map made for another ebook or other audio, with `reason` `ebook_changed` or `audio_changed` |
 | `describe_open` | `409` | `POST /admin/bridge/jobs` for `chapters.detect` while a `sidecars.describe` job is open for the book |
 | `chapters_chosen` | `409` | `POST /admin/bridge/jobs` for `chapters.detect` for a book whose chapter source an admin chose (`files` or `community`): chapters found in the narration stand in only with no choice |
+| `chapters_edited` | `409` | `POST /admin/bridge/jobs` for `chapters.detect` for a book whose edited chapters apply (from 2.7.0): chapters found in the narration would never be used |
+| `not_book_library` | `409` | a books-only action on a podcast library: a book-writing Bridge job kind, [Add from LibriVox](reference.md#add-from-librivox), the chapter editor's `PUT …/book/chapters`, and the other admin book tools |
 | `finished` | `409` | `POST /admin/bridge/jobs/{id}/cancel` on a job that already ended |
 | `not_held` | `409` | the Bridge's `PATCH /bridge/jobs/{id}` from a claim that no longer holds the job (it ended, was cancelled, its lease ran out, or it no longer exists) |
 | `no_heartbeat` | `409` | the Bridge's `GET /bridge/jobs/next` before its first heartbeat |
@@ -412,6 +419,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `sync_off` | `403` | the Bridge's [Audible position sync](reference.md#audible-position-sync) routes (`POST /bridge/audible/accounts/{account}/listening`, `GET /bridge/progress`) while the `audible` module or the account's sync is off, or the account is paused |
 | `user_unavailable` | `403` | the same two routes when the account's person was disabled, made a kid or a demo account since it was mapped |
 | `invalid_policy` / `invalid_marketplace` | `400` | an Audible account's `policy` (not `all`, `series` or `manual`; the Bridge's PUT or the console's PATCH) or `marketplace` (not one of the metadata regions) |
+| `report_off` | `409` | `POST /admin/match-runs` with mode `unknown_asin` while the unknown-ASIN report is off (from 2.7.0) |
 | `asin_set` | `409` | the Bridge's `PUT /bridge/libraries/{id}/enrichment` for a book that has another ASIN, or an admin's ASIN edit |
 
 ### Codes by area
@@ -583,7 +591,10 @@ Two server-side guarantees apply to every `?path=`, plus a length cap.
 - browse (`/fs`);
 - removing from the queue or a collection;
 - the admin folder override (`PUT` and `DELETE`);
-- the Bridge's book read.
+- the `?path=` filters on the admin sessions and Bridge jobs lists;
+- the admin's Bridge job and estimate (`POST /admin/bridge/jobs`,
+  `POST /admin/bridge/estimate`);
+- the Bridge's book read, rescan (`path` and `from`) and ASIN enrichment.
 
 The check comes **first**. It runs before the server looks the library up, so
 an unknown or ungranted library answers 400 for such a path, not 404 or 403. It
@@ -592,10 +603,9 @@ also runs before the path is cleaned or stored. Elsewhere:
 - In a [listening sync](reference.md#post-apiv1melisteningsync) batch,
   including the Bridge's Audible listening batch, such an event is `rejected`
   `invalid` whatever its library, and the rest of the batch applies.
-- The podcast routes (unfollow, fetch, retention and policy) and the Bridge's
-  ASIN enrichment refuse such a path with their usual `400 invalid_request`:
-  a show or episode path that `feed.ShowPath` or `EpisodePath` doesn't take, or
-  no book path.
+- The podcast routes (unfollow, fetch, retention and policy) refuse such a
+  path with their usual `400 invalid_request`: a show or episode path that
+  `feed.ShowPath` or `EpisodePath` doesn't take.
 - A podcast show or episode folder name over the cap in a Bridge's feed is
   invalid.
 
@@ -898,7 +908,7 @@ older server omits it.
 | Flag | Gates |
 |---|---|
 | `podcasts` | the Podcasts module: follow, unfollow and check, new downloads, retention writes, and feed, download and retention scheduling. Needs the `podcast` Bridge feature, so it is false unless the toggle is on and that Bridge is online. Reads and valid present-pin reuse stay core, with client and private scope on player content. Players older than 2.2.0 remain excluded. The player shows Follow only while it is `true`. See [Podcasts](reference.md#podcasts) |
-| `audible` | the Audible module: the console's [Audible routes](reference.md#audible-accounts) (`404 module_off` while off), the scheduled `audible.poll`, the `audible.import` backups and the `audible.sync` position sync (its two Bridge routes are `403 sync_off` while off). Needs the Bridge's `audible` feature. Only the console reads it. The player has no Audible surface and doesn't mirror it yet |
+| `audible` | the Audible module: the console's [Audible routes](reference.md#audible-accounts) (`404 module_off` while off, except the accounts list and Remove), the scheduled `audible.poll`, the `audible.import` backups and the `audible.sync` position sync (its two Bridge routes are `403 sync_off` while off). Needs the Bridge's `audible` feature. Only the console reads it. The player has no Audible surface and doesn't mirror it yet |
 | `contributions` | the Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Needs the Bridge's `contribute` feature. The console reads it for the generate dialog's contribute switch, Share with the community and Suggest corrections, and corrections also need `meta` in `bridge.features`. The player never contributes and doesn't read it |
 
 ### Gate on the flag, not the version

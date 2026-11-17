@@ -6,6 +6,7 @@
  * 2. Shared tokens  6. Sidebar + TOC     10. Code
  * 3. Infima mapping 7. Content           11. Footer
  * 4. Base           8. Buttons + cards     12. Print
+ *                                         13. Reduced motion
  *
  * Section 2 is copied hex-for-hex from audiosilo-server/admin-ui/src/styles/
  * globals.css (names included; only the dark block's `@media screen` wrapper
@@ -307,8 +308,11 @@ mark {
 
 /* Nav items as 36px pills; the active one is a card with a hairline. Below
    997px Infima hides them (they move into the drawer), so the flex layout is
-   in the 997px block after the search input. */
-.navbar__item.navbar__link {
+   in the 997px block after the search input. A dropdown (GitHub) renders its
+   link inside a .navbar__item.dropdown wrapper, so it needs the second
+   selector to get the same pill. */
+.navbar__item.navbar__link,
+.navbar__item.dropdown > .navbar__link {
   height: 36px;
   margin: 0 1px;
   padding: 0 12px;
@@ -319,7 +323,8 @@ mark {
     color var(--dur-1) var(--ease-out);
 }
 
-.navbar__item.navbar__link:hover {
+.navbar__item.navbar__link:hover,
+.navbar__item.dropdown > .navbar__link:hover {
   background: var(--accent);
 }
 
@@ -348,7 +353,8 @@ mark {
 }
 
 @media (min-width: 997px) {
-  .navbar__item.navbar__link {
+  .navbar__item.navbar__link,
+  .navbar__item.dropdown > .navbar__link {
     display: inline-flex;
     align-items: center;
   }
@@ -575,5 +581,17 @@ pre {
 @media print {
   html[data-theme='dark'] .theme-code-block :is(pre, pre *) {
     color: var(--foreground) !important;
+  }
+}
+
+/* 13. Reduced motion: with the system's reduce-motion setting on,
+   transitions and animations apply at once. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
   }
 }

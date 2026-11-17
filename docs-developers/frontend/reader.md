@@ -379,8 +379,13 @@ only when no row was ever seen.
   already being there. That place can be another device's, or this device's own from
   before its places here were cleared, because the device id survives sign-out.
   Until then this device's saves stay diverged, so a further place it never saw is
-  never moved back. After Stay its next save applies, which is how moving back on
-  purpose works.
+  never moved back. Stay then saves the page on screen at once, once the
+  acknowledgement has landed, so the other device's place does not stand on the
+  server until the next page turn. Before any move since the reader opened, that
+  is the place it opened at, never the start of the page it landed on. An
+  acknowledgement and the reader's captures run one after another in the order
+  asked (`withReaderPlaceLock`), so the save a Jump's move makes is made on the
+  acknowledged version.
 - **The offer** (`jumpOffer`) is judged against the page on screen. When a save's
   answer kept a row this device never saw, whose place differs from the current one,
   a non-blocking card says `On {device} you were at {percent}%. Jump there?` with
