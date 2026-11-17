@@ -26,11 +26,11 @@
 // why. npm run names:sync re-pins after a server change.
 
 import {execFileSync} from 'node:child_process';
-import {globSync, readFileSync, realpathSync, writeFileSync} from 'node:fs';
+import {readFileSync, realpathSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {ROOT, docsPages, linesOutsideFences} from './pages.mjs';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SNAPSHOT = join(ROOT, 'scripts', 'server-names.json');
 const ALLOW = join(ROOT, 'scripts', 'stale-names-allow.json');
 const REPO = 'KodeStar/audiosilo-server';
@@ -150,25 +150,11 @@ function readServer(server, rev) {
 
 // ---- reading the docs ---------------------------------------------------
 
-const FENCE = /^[\s>]*(`{3,}|~{3,})/;
-
 /** The backticked spans of a page, with their line numbers, outside fenced blocks. */
 export function codeSpans(text) {
-  const spans = [];
-  let fence = null;
-  text.split(/\r?\n/).forEach((line, i) => {
-    const f = line.match(FENCE);
-    if (f) {
-      if (fence === null) fence = f[1];
-      else if (f[1][0] === fence[0] && f[1].length >= fence.length) fence = null;
-      return;
-    }
-    if (fence !== null) return;
-    for (const m of line.matchAll(/`([^`]+)`/g)) {
-      spans.push({line: i + 1, code: m[1], index: m.index, text: line});
-    }
-  });
-  return spans;
+  return linesOutsideFences(text).flatMap(({line, text: lineText}) =>
+    [...lineText.matchAll(/`([^`]+)`/g)].map((m) => ({line, code: m[1], index: m.index, text: lineText})),
+  );
 }
 
 // A route as segments, each placeholder ({id}, <id>, :id) null, and whether
@@ -247,10 +233,11 @@ export function staleNames(file, text, names) {
     // Routes.
     const route = code.match(/^(?:(?:GET|POST|PUT|PATCH|DELETE|HEAD)\s+(\/\S*)|(\/api\/v1\/\S*))$/);
     if (route) {
+      // The query and optional parts first: a `|` in them is not an alternative.
       const path = (route[1] ?? route[2]).replace(/\[[^\]]*\]/g, '').replace(/[?#].*$/, '');
       // `/podcasts/discovery/providers|search|artwork`: each alternative.
-      const [head, alts] = [path.replace(/[^/]*\|[^/]*$/, ''), path.match(/[^/]*\|[^/]*$/)?.[0]];
-      for (const p of alts ? alts.split('|').map((a) => head + a) : [path]) {
+      const alts = path.match(/^(.*\/)([^/]*\|[^/]*)$/);
+      for (const p of alts ? alts[2].split('|').map((a) => alts[1] + a) : [path]) {
         if (!routeKnown(p, names.routes)) hit(line, 'route', p);
       }
       continue;
@@ -274,7 +261,7 @@ export function staleNames(file, text, names) {
 function lint() {
   const names = JSON.parse(readFileSync(SNAPSHOT, 'utf8'));
   const allow = JSON.parse(readFileSync(ALLOW, 'utf8'));
-  const files = globSync('{docs-users,docs-developers}/**/*.{md,mdx}', {cwd: ROOT}).sort();
+  const files = docsPages('stale-names');
   const used = new Set();
   let failures = 0;
   for (const file of files) {

@@ -89,6 +89,15 @@ type MetaConfig struct {
   ]);
 });
 
+test('codeSpans keeps a fence open across a line with an info string', () => {
+  // A "```bash" line inside a ``` block opens nothing and closes nothing.
+  const spans = codeSpans('```\n```bash\n`two`\n```\n`three`\n');
+  assert.deepEqual(
+    spans.map((s) => [s.line, s.code]),
+    [[5, 'three']],
+  );
+});
+
 test('codeSpans skips fenced blocks', () => {
   const spans = codeSpans('a `one` b\n```\n`two`\n```\n`three`\n');
   assert.deepEqual(
