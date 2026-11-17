@@ -56,7 +56,7 @@ The workflows for the server, player and metadata repos, verified against
 
 | Workflow | Name | Triggers | What it does |
 |---|---|---|---|
-| `ci.yml` | `ci` | every PR; push to `main` | Four jobs side by side: **test**, **test-native**, **admin-ui** and **lint**. See [The server's `ci.yml` jobs](#the-servers-ciyml-jobs). |
+| `ci.yml` | `ci` | every PR; push to `main` | Six jobs side by side: **test**, **test-native**, **admin-ui**, **lint**, **snapshot** and **deadcode** (which never fails the run). See [The server's `ci.yml` jobs](#the-servers-ciyml-jobs). |
 | `image.yml` | `server image` | `v*` tags; push to `main`; manual dispatch (input `web_version`) | Builds the Docker image, baking the pinned web player in via the `WEB_IMAGE` build-arg, and pushes `ghcr.io/<owner>/audiosilo-server` (semver and `latest` on tags; `edge` on `main`; `sha-<short>` off a tag). See [Testing main before a release](releasing.md#testing-main-before-a-release-edge). |
 | `release.yml` | `release (native binaries)` | `v*` tags; manual dispatch (input `web_version`) | GoReleaser: cross-platform native binaries with the web player embedded (`-tags embedplayer`; the Linux ones also build the native SQLite engine in, static), published as a **draft** GitHub Release. |
 | `probe-drift.yml` | `probe-drift` | PRs and pushes to `main` touching `internal/metadata/**`, the `Dockerfile` or the workflow; weekly (Monday 05:17 UTC); manual dispatch | Job **image-ffprobe**. It builds the `internal/metadata` test binary, then runs `TestProbeMatchesLiveFFprobe` and `TestProbeMatchesGoldens` in the Dockerfile's Alpine base image, with that image's ffmpeg installed and `AUDIOSILO_PROBE_LIVE=1`. It fails when the [in-process probe](../server/scanner.md#the-in-process-probe) answers a fixture differently from the image's ffprobe (drift), or when that ffprobe is missing or of a release the probe has no rules for. It runs weekly because Alpine updates ffmpeg with no change in the repo. See [The in-process probe's fixtures](#the-in-process-probes-fixtures). |
@@ -83,7 +83,21 @@ The workflows for the server, player and metadata repos, verified against
 - **admin-ui** runs the full `scripts/build-admin.sh` (`npm ci`,
   `npm run check`, the build).
 - **lint** runs `golangci-lint-action@v9` (golangci-lint v2, config
-  `.golangci.yml`) on the default build.
+  `.golangci.yml`) on the default build, then the per-package test floor
+  (`scripts/test-floor.sh`, see [Server (Go)](#server-go)).
+- **snapshot** builds the release's `linux_amd64` target as GoReleaser would at
+  a tag: the native SQLite engine, static, with the web player and the admin
+  console embedded. It runs `goreleaser check` first, then
+  `goreleaser build --snapshot --single-target`, and boots the result with
+  `scripts/smoke-boot.sh`, the boot the release's own smoke test runs (see
+  [Smoke test, and the LinuxServer.io image downstream](../architecture/release-pipeline.md#smoke-test-and-the-linuxserverio-image-downstream)).
+  A build that breaks or doesn't start therefore shows on the pull request
+  rather than at the tag. The other release targets build at release time only.
+- **deadcode** writes a report of the functions no non-test code reaches
+  (`golang.org/x/tools/cmd/deadcode`) to the run's summary. It is
+  `continue-on-error`, so a finding never fails the run. The step fails only
+  when deadcode itself can't run, so a broken tool shows instead of an empty
+  report.
 
 Both Go test jobs get ffmpeg and ffprobe from the local `setup-ffmpeg` action.
 It installs a pinned, checksummed static build (cached between runs) of the
@@ -94,7 +108,7 @@ and the in-process probe's live comparison run in both jobs.
 
 | Workflow | Name | Triggers | What it does |
 |---|---|---|---|
-| `ci.yml` | `ci` | every PR; push to `main` | Job **check** runs, in order: Node from `.nvmrc`, `npm ci`, `npx expo install --check` (the Expo SDK pins; `expo.install.exclude` in `package.json` holds the one deliberate drift, AsyncStorage 3.x), `node scripts/check-native-dupes.mjs` (one copy of each native module), `npx tsc --noEmit`, `npm run lint`, `npm run format` (prettier `--check`), `npm test -- --ci --coverage`. |
+| `ci.yml` | `ci` | every PR; push to `main` | Job **check** runs, in order: Node from `.nvmrc`, `npm ci`, `npx expo install --check` (the Expo SDK pins; `expo.install.exclude` in `package.json` holds the one deliberate drift, AsyncStorage 3.x), `node scripts/check-native-dupes.mjs` (one copy of each native module), `npx tsc --noEmit`, `npm run lint`, `npm run knip -- --no-exit-code` (a report of unused files, exports and dependencies that never fails the run), `npm run format` (prettier `--check`), `npm test -- --ci --coverage`. |
 | `web.yml` | `web image` | push to `main`; `v*` tags; manual dispatch | `npx expo export --platform web` (built with `baseUrl=/web`) and publishes the static export as `ghcr.io/<owner>/audiosilo-web` (`:latest` from `main`, semver from tags). |
 
 ### audiosilo-meta
