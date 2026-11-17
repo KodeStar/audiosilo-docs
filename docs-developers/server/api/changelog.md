@@ -27,7 +27,7 @@ Additions:
   and `local_others` on `/meta`. Capability `other_recordings`.
 - **A Stay in listening sync.** A listen's `start` on `POST /me/listening/sync`
   can be `stay` ([A Stay](reference.md#a-stay)). Capability `listening_stay`.
-  Without it, send `jump`: an older server answers `stay` with `400`.
+  Without it, send `jump`: an older server refuses a `stay` event as `invalid`.
 - **Error codes.** `POST /auth/exchange` answers `401` with `code`
   `invite_used` or `invite_expired` for a token the invite minted.
   `POST /auth/password` answers `401 current_password_incorrect` for a wrong
