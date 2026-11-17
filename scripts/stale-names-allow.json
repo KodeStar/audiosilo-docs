@@ -1,0 +1,23 @@
+{
+  "/uploads": "planned, not shipped: the pages say so (POST /uploads)",
+  "/lookup": "the metadata service's route (audiosilo-meta), not the server's",
+  "/works/match": "the metadata service's route (audiosilo-meta), not the server's",
+  "/works/{id}": "the metadata service's route (audiosilo-meta), not the server's",
+  "/api/v1/works/match": "the metadata service's route (audiosilo-meta), not the server's",
+  "/api/v1/works/{id}/recordings/{rid}/chapters": "the metadata service's route (audiosilo-meta), not the server's",
+  "/api/v1/intake/unknown-asins": "the metadata service's intake route (audiosilo-meta), not the server's",
+  "/api/users": "Audiobookshelf's API, which the listening import reads",
+  "/api/me": "Audiobookshelf's API, which the listening import reads",
+  "/api/libraries": "Audiobookshelf's API, which the listening import reads",
+  "/api/users/{id}": "Audiobookshelf's API, which the listening import reads",
+  "podcasts.allow_networks": "the Bridge's setting, named in the cross-repo contract",
+  "metadata.health": "a field of GET /admin/system, not a config key",
+  "metadata.mirror": "a field of GET /admin/system, not a config key",
+  "metadata.await": "a label for the probe's block-file wait in the scanner page, not a config key",
+  "AUDIOSILO_ADMIN_NEXT": "named as removed (the classic console's switch)",
+  "AUDIOSILO_CARPLAY": "the player's native build variable (audiosilo-frontend)",
+  "AUDIOSILO_DEBUG_PAIR": "the player's watch debug variable (audiosilo-frontend)",
+  "AUDIOSILO_DEBUG_BOOK": "the player's watch debug variable (audiosilo-frontend)",
+  "AUDIOSILO_DEBUG_REMOVE": "the player's watch debug variable (audiosilo-frontend)",
+  "AUDIOSILO_NO_WEAR": "the player's prebuild variable (audiosilo-frontend)"
+}
