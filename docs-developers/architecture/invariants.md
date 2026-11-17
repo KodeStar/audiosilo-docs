@@ -149,8 +149,8 @@ book that "has no chapters".
 - By tests: `internal/api/*_test.go` on the server and `src/api/client.test.ts` on
   the frontend. A shape change without a matching test update fails the
   corresponding CI.
-- By the wire goldens: the server's `TestWireGolden` records the shape of 20
-  player envelopes, and the player's parity test checks `types.ts` against a
+- By the wire goldens: the server's `TestWireGolden` records the shape of
+  the player's main envelopes, and the player's parity test checks `types.ts` against a
   pinned copy of them (`npm run wire:check` in its CI). See
   [The wire goldens](../contributing/gates-and-ci.md#the-wire-goldens).
 
