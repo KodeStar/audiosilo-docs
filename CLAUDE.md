@@ -23,7 +23,11 @@ The build **fails on** broken internal links, broken anchors, and missing
 embedded images (`onBrokenLinks/onBrokenAnchors: 'throw'`) - that's the
 mechanical consistency check. Its `prebuild` step
 (`scripts/check-admonitions.mjs`) also fails on the old `:::note Title`
-admonition syntax: write `:::note[Title]`. `npm start` for the live dev loop.
+admonition syntax: write `:::note[Title]`; and the stale-name check
+(`scripts/stale-names.mjs`) fails on a capability flag, route, config key or
+`AUDIOSILO_*` variable the server no longer has, against the snapshot
+`scripts/server-names.json` (re-pin with `npm run names:sync` after a server
+change; deliberate exceptions in `scripts/stale-names-allow.json`). `npm start` for the live dev loop.
 Node 24 (workspace convention; `.nvmrc` in the sibling repos).
 
 ## Rules

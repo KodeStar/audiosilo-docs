@@ -44,6 +44,24 @@ check that pages and screenshots stay consistent - treat it exactly like the
 code repos' gates. A `prebuild` check (`scripts/check-admonitions.mjs`) also
 rejects old-style admonition titles (see Writing style below).
 
+The `prebuild` also runs the stale-name check (`scripts/stale-names.mjs`). It
+fails when a page names a server capability flag, API route, config key or
+`AUDIOSILO_` variable that the server no longer has. It reads only names in
+backticks: a flag next to the word capability (the `cast` capability, or
+`capabilities.cast`), a route written with its method (`GET /me/progress`) or
+under `/api/v1/`, a dotted key whose first part is a config section
+(`tls.mode`), and an `AUDIOSILO_` variable. Fenced
+code blocks are skipped. On the Bridge and metadata pages it checks only
+capabilities, because those pages name their own services' routes and settings.
+
+What the server has comes from `scripts/server-names.json`, a snapshot taken
+at a pinned server commit, so the build needs no network. After a server change
+lands, run `npm run names:sync` (it reads `../audiosilo-server` at `origin/main`;
+`-- --server <dir> --ref <rev>` for another), then fix the pages it reports. A
+name a page keeps on purpose, such as a planned route, the metadata service's
+routes or another repo's variable, goes in `scripts/stale-names-allow.json` with
+the reason. An entry no page needs any more fails the check too.
+
 Search (the `@easyops-cn/docusaurus-search-local` theme) builds its index
 during `npm run build`, so the search box returns nothing under `npm start`.
 To try a search, or to check how a page ranks, use the built site:

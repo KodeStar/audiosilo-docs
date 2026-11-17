@@ -8,48 +8,22 @@
 //
 // Usage: node scripts/check-admonitions.mjs (runs as the npm `prebuild`).
 
-import {globSync, readFileSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {fileURLToPath} from 'node:url';
-
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
+import {ROOT, docsPages, linesOutsideFences} from './pages.mjs';
 
 const TYPES = 'note|tip|info|warning|danger|caution|important|success|secondary';
 // An opener with a type followed by whitespace and more text (the old title).
 // Leading whitespace and blockquote markers are allowed (lists, quotes).
 const OLD_OPENER = new RegExp(`^[\\s>]*:{3,}\\s*(${TYPES})[ \\t]+\\S`);
-const FENCE = /^[\s>]*(`{3,}|~{3,})(.*)$/;
 
 function findOldOpeners(text) {
-  const hits = [];
-  let fence = null; // the open fence's marker, e.g. "```" or "~~~~"
-  text.split(/\r?\n/).forEach((line, i) => {
-    const m = line.match(FENCE);
-    if (m) {
-      const marker = m[1];
-      if (fence === null) {
-        fence = marker;
-      } else if (
-        marker[0] === fence[0] &&
-        marker.length >= fence.length &&
-        m[2].trim() === '' // a closing fence carries no info string
-      ) {
-        fence = null;
-      }
-      return;
-    }
-    if (fence === null && OLD_OPENER.test(line)) {
-      hits.push({line: i + 1, text: line.trim()});
-    }
-  });
-  return hits;
+  return linesOutsideFences(text)
+    .filter(({text: line}) => OLD_OPENER.test(line))
+    .map(({line, text: l}) => ({line, text: l.trim()}));
 }
 
-const files = globSync('{docs-users,docs-developers}/**/*.{md,mdx}', {cwd: ROOT});
-if (files.length === 0) {
-  console.error(`check-admonitions: no docs pages found under ${ROOT}`);
-  process.exit(1);
-}
+const files = docsPages('check-admonitions');
 
 let failures = 0;
 for (const file of files) {

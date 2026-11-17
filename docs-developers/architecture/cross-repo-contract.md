@@ -99,6 +99,11 @@ frontend's sign-out warning.
 - `src/api/client.ts` unwraps the envelopes. Errors become `ApiError(status, error)`.
 - `src/api/hooks.ts` exposes React Query hooks.
 
+**Checked by:** the server's wire goldens (`internal/api/testdata/wire/`,
+`TestWireGolden`) and the player's parity test over a pinned copy of them
+(`src/api/wire-parity.test.ts`, `npm run wire:check` in CI). See
+[The order for a wire change](../contributing/cross-repo-changes.md#the-order-for-a-wire-change).
+
 **A change requires:** the full [wire-change checklist](#the-wire-change-checklist).
 A field rename touches the server and every client that reads that shape.
 

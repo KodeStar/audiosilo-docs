@@ -5,8 +5,10 @@ description: "The wire-change checklist, a worked example (listening history), t
 
 The server defines the HTTP and JSON contract. The frontend mirrors it **by
 hand**, and so does the Bridge's `internal/link` for the `/bridge/*` routes. There
-is no codegen, so a wire change is never a one-repo change. Each repo's CI can be
-green while the seam is broken. This page is the procedure for landing such a
+is no codegen, so a wire change is never a one-repo change. Each repo's CI checks
+only its own side: the player's and the docs' check against a pinned copy of the
+server's (see
+[The order for a wire change](#the-order-for-a-wire-change)). This page is the procedure for landing such a
 change safely. The full map of every seam is the
 [Cross-repo contract](../architecture/cross-repo-contract.md), and the normative
 version is the workspace `CROSS-REPO.md`.
@@ -37,10 +39,13 @@ everywhere: a field rename is a multi-repo edit.
    the right middleware (`requireAuth`, `requireAdmin` or `requireMediaAuth`).
 4. **Server: test.** Add a Go test (`internal/api/*_test.go`, using the
    `newTestEnv` harness) that asserts the emitted shape. Security-critical paths
-   need an allowed **and** a denied case.
-5. **Frontend: types.** Mirror the shape in `src/api/types.ts`. Mirror **every
-   field**, including ones the client doesn't read yet. With no codegen, a
-   complete mirror is what keeps `types.ts` in step with the server.
+   need an allowed **and** a denied case. When the envelope has a wire golden,
+   rewrite it (`go test ./internal/api -run TestWireGolden -update`) and review
+   its diff; a new envelope the player reads gets a golden case.
+5. **Frontend: types.** After the server change merges, run `npm run wire:sync`
+   to copy its goldens, then mirror the shape in `src/api/types.ts`. Mirror
+   **every field**, including ones the client doesn't read yet: the wire parity
+   test fails on a field the server sends that `types.ts` does not know.
 6. **Frontend: client.** Add or extend the method in `src/api/client.ts`. It
    unwraps the envelope: lists are wrapped like `{ books }` and `{ history }`, and
    errors are `{ error }`, thrown as `ApiError`.
@@ -53,10 +58,38 @@ everywhere: a field rename is a multi-repo edit.
    any new pure logic.
 10. **The Bridge, when applicable.** Mirror the shape in its `internal/link` and
     test it there too.
-11. **Update the docs.** This site's API and seam pages follow the contract. See
+11. **Update the docs.** This site's API and seam pages follow the contract. Run
+    `npm run names:sync` to re-pin the server names snapshot. See
     [Documentation](documentation.md).
 12. **Run every touched repo's full gate** ([Gates and CI](gates-and-ci.md)),
     then ship.
+
+## The order for a wire change
+
+The server is the source of the goldens, so it lands first, and each client
+re-pins to its merge commit:
+
+1. **The server change.** Change the handler, then rewrite the goldens it moves
+   with `go test ./internal/api -run TestWireGolden -update` and read their
+   diff: it is the wire change as the player will see it. The server's gate
+   fails until the golden matches.
+2. **Merge the server pull request.**
+3. **The player.** Run `npm run wire:sync` (it reads `../audiosilo-server` at
+   `origin/main`; `-- --server <dir> --ref <rev>` for another checkout or
+   commit). It copies the goldens into `src/api/__wire__/` and pins the merge
+   commit in `source.json`. Then change `types.ts` until the parity test
+   passes: a new field as an optional one (older servers don't send it), a
+   field the player deliberately skips in the test's `UNMIRRORED` list with the
+   reason. CI's `npm run wire:check` fails while the copy and the pinned
+   commit's goldens differ.
+4. **The docs.** Run `npm run names:sync` at the same server commit, which
+   re-pins `scripts/server-names.json`, and fix any page the stale-name check
+   now reports.
+
+The player and docs pull requests can open before the server one merges, but
+their sync must be re-run at the merge commit before they merge. See
+[The cross-repo checks](gates-and-ci.md#the-cross-repo-checks) for what each
+check covers.
 
 ## Worked example: listening history
 
@@ -128,16 +161,19 @@ health review. Each one was a *pattern* there, not a one-off.
 - **Wire-contract drift.** The server emits a field the frontend's `types.ts`
   omits or mistypes (this happened with `direct_playable`, `codec`,
   `web_player`), or the frontend carries a phantom field the server never sends
-  (a removed `layout` knob lingered for months). The root cause is hand-mirroring
-  with no parity test, so both repos' gates pass independently. The
-  countermeasure is to mirror every field and test the emitted shape on both
-  sides, in the same logical change.
+  (a removed `layout` knob lingered for months). The root cause was hand-mirroring
+  with no parity test, so both repos' gates passed independently. The wire
+  goldens and the player's parity test now catch it for the envelopes they
+  cover. Everywhere else (the Bridge's `internal/link`, the admin console, an
+  envelope with no golden) the countermeasure is still to mirror every field
+  and test the emitted shape on both sides, in the same logical change.
 - **Dead code left behind.** A superseded hook or client method survives because
   TypeScript doesn't error on unused *exports* and Go only catches unused
   *unexported* symbols. When your change replaces something, **delete the old
   thing in the same change**. Search for it first.
-- **Stale docs.** Nothing checks a prose claim against the code it describes.
-  Grep the symbol, flag or route you changed across `*.md` (the workspace docs, the
+- **Stale docs.** The stale-name check catches a capability, route, config key
+  or variable the server dropped, but nothing checks a prose claim against the
+  code it describes. Grep the symbol, flag or route you changed across `*.md` (the workspace docs, the
   repo CLAUDE.mds and this site), and fix what you contradicted in the same commit.
 
 ## Branch and PR conventions
@@ -149,7 +185,9 @@ health review. Each one was a *pattern* there, not a one-off.
   in each affected repo. Cross-reference them in the PR descriptions, so a
   reviewer, or anyone reading the history later, can find the other PR.
 - **Run each touched repo's gate.** The CIs are independent, and no
-  workspace-level CI checks the seam for you.
+  workspace-level CI checks the seam for you: the wire goldens and the stale-name
+  check compare against a pinned server commit, so they see a server change only
+  once you re-sync.
 - **Releases pin the pair.** The deployable server image bakes in a pinned web
   build, so a wire change reaches users as a known-compatible pair. That holds only
   if you release in the right order. See [Releasing](releasing.md) and the
