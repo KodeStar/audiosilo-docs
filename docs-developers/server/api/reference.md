@@ -488,7 +488,11 @@ attempts per IP per 15 minutes.
 stores only its SHA-256, on the session. A sign-in whose `device_id` an earlier
 session of the same person already carried, signed out or not, is not
 announced as a `new_device` [event](#get-apiv1adminevents); one without it
-always is. The admin console sends one, and players may adopt it. The server
+always is. The admin console sends one per origin. The player (from 2.7.0)
+sends its own random sign-in key, one per server address
+(the player's `src/lib/sign-in-key.ts`), never progress
+sync's device id, which goes with every save and comes back in progress
+answers: the server keeps this one as a secret. The server
 forgets `device_id`s so that the browser's next sign-in is announced again:
 
 - An admin signing a session out (`DELETE /admin/devices/{id}`) forgets that
