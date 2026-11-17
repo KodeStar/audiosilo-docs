@@ -505,10 +505,10 @@ these steps:
    own cap, the create import with `--existing-series-only` and `--intake`,
    `metafmt`, `metacheck` and the no-new-series check. There is no `--enrich`
    pass. The lane passes `--intake` only when the pinned `metaimport libex
-   --help` lists it, and a pin without it imports the lane's rows unstamped.
-   When the listing can't be read, the turn fails before the import and charges
-   no row, so the lane never writes unstamped records on a pin that could have
-   stamped them.
+   --help` lists it, and a pin without it stamps the lane's records with the
+   bare ASIN, as the feeds' are. When the listing can't be read, the turn fails
+   before the import and charges no row, so the lane never writes bare-ASIN
+   records on a pin that could have stamped them `intake:<ASIN>`.
 
 A turn that sits out, finds nothing, or fails before a pull request exists falls
 through to the LibriVox lane's turn and series completion in the same cycle.
