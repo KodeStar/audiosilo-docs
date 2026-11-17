@@ -77,8 +77,8 @@ One directory is shared by exactly two containers.
 - The agent container sees it at `/staging`.
 
 The two run as different uids, so the root is world-writable (`0777`, not
-sticky). The Bridge makes it so when it creates it. The agent container joins the
-Bridge's group only so that a handed credential can be kept to that group (see
+sticky). The Bridge sets those modes when it creates the root. The agent container
+joins the Bridge's group only to keep a handed credential to that group (see
 [Keeping it to the Bridge's group](#keeping-it-to-the-bridges-group)).
 
 ```
@@ -414,15 +414,14 @@ When it does, the Bridge writes the hand-off for its own effective gid alone:
 - `credential/` is `0770` and `credential.json` `0440`, both chowned to the
   Bridge's group. The directory needs the group's read bit, because the runner
   opens it through an `os.Root`;
-- any ACL inherited from the staging dir is removed, so no other uid can read the
-  file.
+- any ACL inherited from the staging dir is removed, so no other uid on the
+  staging volume can read the file while it waits for the runner.
 
-No other uid on the staging volume can then read the credential while it waits
-for the runner. The runner deletes it before the CLI starts, as before.
+The runner deletes it before the CLI starts.
 
 ### Fallbacks
 
-In three cases the Bridge hands the credential to every uid instead, in the old
+In three cases the Bridge hands the credential to every uid instead, in the open
 modes (`credential/` `0777`, the file `0444`). Each is logged once as a warning
 that names the fix, and none fails a run:
 
@@ -431,16 +430,16 @@ that names the fix, and none fails a run:
   warning says to add the group with `group_add` and the Bridge's `PGID`, on an
   agent image as new as the Bridge, and to recreate the container.
 - **The volume refuses the chown or the ACL change**, as NFS and CIFS staging
-  volumes can. That run is staged in the old modes. The warning says to use a
+  volumes can. That run is staged in the open modes. The warning says to use a
   staging volume that allows chown.
 - **The runner is denied the group's file.** The two containers map ids on the
   volume differently, for example under rootless Podman's user namespaces. The
   runner refuses the job before the CLI starts and writes `credential_denied` in
-  `exit.json`. The Bridge stages that job once more in the old modes, so nothing
-  runs twice, and stays on the old modes until it restarts (`groupDenied`).
+  `exit.json`. The Bridge stages that job once more in the open modes, so nothing
+  runs twice, and stays on the open modes until it restarts (`groupDenied`).
 
-The Bridge's page and the console don't show which modes are in use. The log is
-the only place that says so.
+Only the log shows which modes are in use; the Bridge's page and the console
+don't.
 
 ### Which files are trusted
 
@@ -461,8 +460,9 @@ owner shows it on the volume (`agentbox/trust.go`):
 - **A `credential_denied` needs the job's own dir to bear it out**: the runner's
   claim on that job, a `0700` directory of the runner's uid, and the credential
   still in place 2 seconds later. The runner opens the job dir first and makes its
-  claim inside it, so a claim can't be moved onto a job it never ran. Both images
-  need a build with this rule.
+  claim inside it, so a claim can't be moved onto a job it never ran. An agent
+  image older than the Bridge makes no claim, so its `credential_denied` is never
+  believed.
 
 A file that fails these checks is logged once and treated as the job refused. Its
 reason says to restart the Bridge if the agent container now runs as another
@@ -491,17 +491,15 @@ a `Detail` that names the fix:
 
 The last two are learned only from a run, so they are kept until the Bridge
 restarts (`groupBlocked`). The Status tab's agent line shows the full reason, and the
-heartbeat carries it to the server. The setup checklist's agent step, on the
-Bridge's page and on the console's Bridge setup card, says that
-`agent.require_group` is on and the credential can't be kept to the Bridge's
-group, and that the Accounts tab says why. A book waiting for the agent
-parks `agent_unavailable` with the full reason.
+heartbeat carries it to the server. The setup checklist's agent step words it for
+a person (see [The setup checklist](pairing-and-jobs.md#the-setup-checklist)). A
+book waiting for the agent parks `agent_unavailable` with the full reason.
 
 Turn it on when other containers or users can reach the staging volume and a
-credential readable by all of them for a few seconds is not acceptable. Leave it
-off where the hand-off must keep working on any volume. A forged file can then
-only make the agent unavailable until the Bridge restarts, never hand the
-credential to every uid.
+credential readable by all of them for a few seconds is not acceptable. With it
+on, a forged file can only make the agent unavailable until the Bridge restarts,
+never hand the credential to every uid. Leave it off where the hand-off must keep
+working on any volume.
 
 ## Testing it locally
 

@@ -135,8 +135,8 @@ What matters:
 - **Keep the agent's security settings** (`user`, `group_add`, `cap_drop`,
   `read_only` and the rest) as they are. `group_add` puts the agent in the
   Bridge's group, so a credential set on the Bridge's Accounts tab is readable
-  by that group alone. `&bridge_pgid` and `*bridge_pgid` keep it equal to the
-  Bridge's `PGID`, so change the `PGID` in one place only.
+  by that group alone. It follows the Bridge's `PGID`, so change `PGID` in one
+  place only.
 
 For a smaller Bridge without speech recognition, use the `:latest-slim` image. To
 transcribe on an NVIDIA graphics card, use `:latest-cuda`.
@@ -328,13 +328,8 @@ once.
   characters (for example from `openssl rand -hex 32`). Without the same key, a
   paired Bridge won't start and you have to set its sign-ins again.
 - A credential never appears in a log. How the Bridge stores and hands out
-  credentials is in [The agent's credential](bridge-accounts.md#the-agents-credential).
-- If the Bridge can't keep a handed credential to its group (the agent isn't in
-  the group, or the work folder's drive refuses the change), it lets any user of
-  the work folder read it until the agent takes it, and its log says how to fix
-  that. To have the agent wait instead, set
-  `AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP: "true"` on the Bridge. The Bridge's
-  **Accounts** tab then says why the agent isn't ready.
+  credentials, and how to make the agent wait when it can't keep one private, is
+  in [The agent's credential](bridge-accounts.md#the-agents-credential).
 - [Unpair...](../admin/bridge.md#unpairing) in the console stops the Bridge.
   Removing the containers leaves what it saved in your library.
 

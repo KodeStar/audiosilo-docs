@@ -114,7 +114,7 @@ The settings [`sidecars.generate`](generating.md) adds, or that matter most to i
 |---|---|---|---|
 | `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` (empty is claude) | the CLI the [agent container](agent-container.md) runs for this Bridge: `claude` or `codex` |
 | `agent.staging_dir` | `AUDIOSILO_BRIDGE_AGENT_STAGING_DIR` | `<data>/staging` | the folder shared with the agent container (absolute). The compose example mounts a volume at `/staging`, outside `/bridge-data`, because the first start's ownership fix of `/bridge-data` would otherwise reach it |
-| `agent.require_group` | `AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP` | `false` | keep a credential handed over from the Accounts tab to the Bridge's group in every case. Where the Bridge would otherwise hand it to every uid on the staging volume (the agent container isn't in the group, the volume refuses the chown, the two containers map ids differently), the agent is unavailable instead, with Problem `group_required` saying why. A value that isn't a boolean stops the start. See [`agent.require_group`](agent-container.md#agentrequire_group) |
+| `agent.require_group` | `AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP` | `false` | never hand the Accounts tab's credential to every uid on the staging volume: where the Bridge would fall back to that, the agent is unavailable instead (Problem `group_required`). A value that isn't a boolean stops the start. See [`agent.require_group`](agent-container.md#agentrequire_group) |
 | `agent.claim_timeout_seconds` | `AUDIOSILO_BRIDGE_AGENT_CLAIM_TIMEOUT_SECONDS` | `120` | how long an agent job waits for the container to claim it before the book parks `agent_unavailable` (10 to 3600) |
 | `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | the monthly agent spend cap across every book, for the calendar month in UTC. `0` = no cap. The page's **Settings** tab edits it, and it is locked when the environment sets it. It applies **live**: the engine reads it per run (`pipeline.Config.MonthlyBudget` is a func). A save that changes it resumes the books and description jobs parked `budget_exceeded` ([Parks](generating.md#parks)). One still over the new cap parks again until the next month |
 | `agent.budget_reviewed_at` | | | when an admin last saved the monthly budget on the page (RFC 3339, `""` for never). The save writes it, and it is not meant to be set by hand. The setup checklist's `budget` item is done when it is set **or** the environment sets the budget (`Config.BudgetReviewed`) |
@@ -440,11 +440,7 @@ services:
     image: ghcr.io/kodestar/audiosilo-bridge:latest-agent
     restart: unless-stopped
     user: "10002:10002"
-    # The bridge's PGID above (*bridge_pgid follows it): the Bridge hands the
-    # agent credential from its Accounts tab to this group alone, never to
-    # every user on the staging volume. Without it the hand-off still works,
-    # readable by any user until the runner takes it (the Bridge's log says so
-    # once).
+    # The Bridge's PGID above (see the notes below).
     group_add: [*bridge_pgid]
     environment:
       # By name only: the value comes from your shell or .env and is never

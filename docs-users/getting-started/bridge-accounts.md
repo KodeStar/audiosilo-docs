@@ -64,6 +64,13 @@ container in instead (see [Add a Bridge](running-a-bridge.md#7-the-agents-creden
 The Bridge keeps the credential encrypted and hands it to the agent only for each
 run. Replacing a refused credential lets paused jobs carry on.
 
+If the Bridge can't keep the credential to its own group (the agent isn't in the
+group, or the work folder's drive refuses the change), any user of the work folder
+can read it until the agent picks it up, and the Bridge's log says how to fix
+that. To have the agent wait instead, set
+`AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP: "true"` on the Bridge. The **Accounts** tab
+then says why the agent isn't ready.
+
 ## Audible
 
 The **Audible** card signs the Bridge in to one or more Audible accounts. The
