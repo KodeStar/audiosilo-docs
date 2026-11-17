@@ -1576,7 +1576,9 @@ headers }`). The rules are in `src/lib/proxy-headers.ts` and the storage in
   at load (`cleanProxyHeaders`). Reserved names (`Authorization`, `Cookie`,
   `Host`, `Range`, `Content-Type`, `Content-Length`, `Connection`,
   `Transfer-Encoding`, `X-AudioSilo-Client`) and values with control characters
-  are refused the same way.
+  are refused the same way. On Android the native player holds the same line on
+  its own (`AuthScope.headersFor` in the player module): a track at a plain-http
+  origin gets only `Authorization`, never a proxy header.
 - **Web.** Only a request same-origin with the page carries them. The server's
   CORS lists a fixed set of request headers, so a custom one cross-origin would
   fail its preflight. `<img>` and `<audio>` can't carry them and rely on the
@@ -1601,8 +1603,9 @@ and [You and settings](you-and-settings.md#account-srccomponentsaccount).
 or updates **by server and user**.
 
 - The prior connection is the one with `serverIdOf(c) === serverId` and the same
-  `user.id`. A legacy connection saved without a usable user id counts as this
-  user, since it was the server's one connection.
+  `user.id` (`priorConnection`). A legacy connection saved without a usable user
+  id counts as this user, since it was the server's one connection, but only
+  under the username it kept, when it kept one.
 - So re-pairing the same account at another URL updates its connection instead of
   adding one, while **another user on the same server is another connection**.
 - A prior connection keeps its id. A legacy id stays until the key migration
@@ -1635,6 +1638,12 @@ with their token and scoped state.
   `needsReconnect: 'server-reset'`, for them to sign in again. Dropping it would
   delete their profile, PIN and kids settings.
 - A different user is never a reason to drop one.
+
+At a home-network address (`looksLikeHomeAddress`: a private IP, a `.local` name)
+another `server_id` is as likely another box at the same address on another
+network. There only the connections named in `retire` count as stale. Everyone
+else's stays as it was, neither flagged `server-reset` nor retired, so signing in to
+another server at the same private address deletes nobody's connection.
 
 `learnAddresses` merges a `GET /addresses` answer into a connection's addresses
 (`mergeAddresses`, so a known `home` survives). The address runner calls it.

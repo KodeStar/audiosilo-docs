@@ -50,7 +50,9 @@ clients are `connectClient(base)` (`src/api/connect-client.ts`) and
 `probeServerId`, through `connectProxyHeaders(url)`: the pending set for that
 origin, else a signed-in connection's set for it (a second person on the same
 server). A reconnect's sign-in (`ownId`) takes only the pending set or that
-connection's own set, never another connection's. The scanner hands a code back
+connection's own set, never another connection's. The set is read as the sign-in
+is sent, so a connection that signed out while the step was open lends nothing.
+The scanner hands a code back
 to a new `ConnectStart`, which takes up the pending set, so a QR code pairs with
 the headers when its address is the field's. The flow's layout drops the pending
 set when the flow is left, and a sign-in stores it with the connection (see
@@ -67,10 +69,10 @@ A scan from a reconnect's sign-in step keeps the reconnect. `openScanner(reconne
 hands it over in memory, never as a route param, since a link can open that route
 too. The scanner keeps it only for a code of that connection's paired or away
 address (`scanReconnect`); any other address is a new connection. An invite code's
-sign-in step takes it as its own `reconnect`. A pairing code's `/connect` takes it
+sign-in step gets it in memory (`holdReconnect`). A pairing code's `/connect` takes it
 by the code's token (`holdScanReconnect`, `takeScanReconnect`), checks the address
 again as it pairs, and `useLinkPairing` re-pairs that connection. The flow's layout
-drops what nothing took when the flow is left (`dropScanHandoffs`).
+drops what nothing took when the flow is left (`dropConnectHandoffs`).
 
 Both also take the console's **invite link**,
 `https://<base>/connect#code=XXXX-XXXX-XXXX-XXXX`. `parseInviteScan` in
@@ -156,9 +158,7 @@ The served player signing in to its own server (`onlyOwnServer(servedOrigin(),
 `true`, the step adds "Sign in with &lt;name&gt;" under the sign-in button
 (`oidcButtonName`: `auth.oidc.name`, else "Sign in with single sign-on"). The app,
 the Metro dev server and a player on another origin never offer it, because the
-server hands the sign-in over in a cookie on its own origin. A grown-up's pass
-through kids mode (`kidsConnectAllowed`) doesn't offer it either: the pass lives in
-memory, and the page the server returns to would meet kids mode.
+server hands the sign-in over in a cookie on its own origin.
 
 The button is a full page load of `client.oidcStartUrl()`
 (`/api/v1/auth/oidc/start?return=web`). The server lands the browser on
@@ -177,9 +177,32 @@ reload doesn't retry, then `finishOidcSignIn` calls `client.oidcFinish` and
 | anything else | signing in didn't finish |
 
 Each ends with "Sign in again": the finish can't be retried, because the server
-cleared its cookie on the first try. Nothing the flow held in memory survives the
-page loads: a reconnect, an "Add someone" and a signed-out visit's book are not
-carried across them.
+cleared its cookie on the first try. A session that answers once the connect screen
+has gone is signed out again, never kept.
+
+**What the flow is for survives the trip** (`src/components/connect/oidc-intent.ts`).
+The trip is two full page loads, so nothing in memory survives it. As the sign-in
+step leaves for the provider, `holdOidcIntent` writes the flow's intent to the tab's
+`sessionStorage`, stamped: a grown-up's pass through kids mode
+(`kidsConnectAllowed`), "Add someone", a signed-out visit's book, and a reconnect's
+connection with the address its sign-in step signed in through. The connect layout
+takes it once as it opens, and only on the return (`takeOidcIntent`, when
+`oidcReturnOnLoad` reads `/connect?oidc=1` and no other route of the flow). The
+stamp lasts 11 minutes (`MAX_AGE_MS`, the server's ten-minute trip limit and a
+minute's slack), and the layout drops the intent as the flow is left.
+`resumeConnectIntent` puts "Add someone" and the book back once the profiles are
+read.
+
+- **The grown-up's pass** is never put back by the address alone, because a
+  `/connect?oidc=1` typed after a trip abandoned at the provider would open the
+  flow for a child. The layout holds kids mode back for the return's own screen,
+  which shows a spinner and finishes the sign-in. `finishOidcSignIn` settles the
+  pass (`settleOidcPass`): with the server's session it comes back before
+  `finishConnect`; with none, kids mode takes the flow back and the reason shows
+  as a toast.
+- **The reconnect** goes to `finishConnect` only for the origin the return is at
+  (`takeOidcResumed`) and only with the server's session. A `?reconnect=` in the
+  return's address does nothing.
 
 ### Step 3: Ready
 
@@ -313,7 +336,8 @@ Two sign-ins skip `finishConnect`:
   at that URL (`staleToRetire`, passed to `setSession` as `retire`). That person is the
   banner's person, else the person listening, and nobody for Add someone. The new
   connection takes its place in their profile. Other people's connections stay, flagged
-  `server-reset`, for them to sign in again
+  `server-reset`, for them to sign in again. At a home-network address they stay
+  unflagged, since another box can answer there on another network
   ([Session](state-and-data.md#session-srcstoressessionts)).
 - **Anything else**: store the address signed in through.
 
@@ -325,7 +349,10 @@ top, never while another screen of the flow is over it.
 
 The **reconnect banner** (`src/components/layout/reconnect-banner.tsx`) sets
 `pendingServerUrl` to the address the connection uses now (`effectiveUrl`) and opens the
-sign-in step with `reconnect=<cid>`.
+sign-in step. It hands the step the connection it re-pairs in memory, bound to that
+address (`holdReconnect`). The step takes it once as it opens (`takeReconnect`). It is
+never a route param, because a link can open `/connect/sign-in` and must not name the
+connection a sign-in replaces, so a `?reconnect=` there does nothing.
 
 The connect screens are full screens. `ConnectFrame` shrinks its column by the keyboard
 overlap, and `ConnectInput` scrolls the focused field into view (`revealOffset`). Use

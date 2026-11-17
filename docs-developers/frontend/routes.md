@@ -197,8 +197,10 @@ so a replace stacked a second `(app)`. See
 The sign-in step takes an invite code **or** a username and password against the
 pending server (`pendingServerUrl`, read once). The first step, a **Reconnect**
 row, or the dead-token `ReconnectBanner` lead here. The banner
-(`src/components/layout/reconnect-banner.tsx`) passes `reconnect=<cid>` and the
-address in use now.
+(`src/components/layout/reconnect-banner.tsx`) sets the address in use now as the
+pending server and hands the connection it re-pairs over in memory
+(`holdReconnect`). The route takes no `reconnect` param: a link can open it, and a
+`?reconnect=` does nothing.
 
 The code field redeems invite codes. The server still redeems legacy recovery
 codes, but the app no longer mints them. Every sign-in ends in `finishConnect`.
