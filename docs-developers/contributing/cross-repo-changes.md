@@ -6,7 +6,8 @@ description: "The wire-change checklist, a worked example (listening history), t
 The server defines the HTTP and JSON contract. The frontend mirrors it **by
 hand**, and so does the Bridge's `internal/link` for the `/bridge/*` routes. There
 is no codegen, so a wire change is never a one-repo change. Each repo's CI checks
-only its own side, against a pinned copy of the other's (see
+only its own side: the player's and the docs' check against a pinned copy of the
+server's (see
 [The order for a wire change](#the-order-for-a-wire-change)). This page is the procedure for landing such a
 change safely. The full map of every seam is the
 [Cross-repo contract](../architecture/cross-repo-contract.md), and the normative

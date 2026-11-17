@@ -46,7 +46,9 @@ cd ~/dev/audiosilo/audiosilo-frontend
 npx tsc --noEmit && npm run lint && npm run format && npm test
 # after a dependency change, also:
 npx expo install --check && node scripts/check-native-dupes.mjs
-# after a server change to a wire golden (CI runs it on every PR):
+# after a server change to a wire golden, re-pin the copy (then fix types.ts):
+npm run wire:sync
+# the copy still matches the server commit it pins (CI runs it on every PR):
 npm run wire:check
 ```
 
@@ -197,8 +199,9 @@ They catch drift between the server's JSON and the player's `types.ts`:
 - **The server's goldens.** `internal/api/wire_golden_test.go` calls 20
   envelopes the player reads (the server info signed in and anonymous, pairing
   and exchange, the user, libraries, a folder listing, books, people, series,
-  search, a book, chapters, progress, listening sync, bookmarks, community
-  metadata, upcoming releases and listening in the house) against a seeded
+  search, a book, chapters, one book's progress and every book's, listening
+  sync, bookmarks, community metadata, upcoming releases and listening in the
+  house) against a seeded
   library. It compares each answer's shape with
   `internal/api/testdata/wire/<name>.json`. A shape records each field's name
   and JSON type, never a value, so ids and times don't churn it. A removed,

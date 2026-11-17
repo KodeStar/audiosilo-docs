@@ -136,10 +136,11 @@ the discipline is paired changes and paired tests, the seam catalog in the
 workspace `CROSS-REPO.md`, and the wire goldens, which check the player's main
 envelopes mechanically.
 
-**What breaks if violated.** The app breaks at runtime, and no build or test
-reports it. TypeScript trusts `types.ts`, `types.ts` no longer matches the wire,
-and the symptom shows up far from the cause: an empty screen, a `NaN` duration, a
-book that "has no chapters".
+**What breaks if violated.** The app breaks at runtime, and outside the
+envelopes the wire goldens cover no build or test reports it. TypeScript trusts
+`types.ts`, `types.ts` no longer matches the wire, and the symptom shows up far
+from the cause: an empty screen, a `NaN` duration, a book that "has no
+chapters".
 
 **Where it's enforced.**
 
