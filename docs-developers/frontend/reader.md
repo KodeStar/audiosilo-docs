@@ -207,12 +207,17 @@ The chunk size was measured. On a 25 MB book, 256 KB pieces open as fast as 1 an
 2 MB ones, at the lowest peak memory (about a plain file load's).
 
 The reader (`reader/src/chunks.js`, `createAssembly`) allocates one buffer of the
-announced size. It refuses the following as `unreadable`:
+announced size. It refuses a size over 512 MB (`MAX_BOOK_BYTES`, a `TooLargeError`)
+as `tooLarge`, and so it does a buffer the WebView could not allocate (a
+`RangeError`). It refuses the following as `unreadable`:
 
-- a size over 512 MB (`MAX_BOOK_BYTES`) or a bad chunk count;
+- a bad size or chunk count;
 - a chunk out of order, repeated or extra;
 - data that isn't base64;
 - a book larger or smaller than announced.
+
+After a refusal it drops the chunks still on their way unheard, so the one
+`tooLarge` is not followed by an `unreadable` for each of them.
 
 Then it opens the buffer as the web reader opens its `ArrayBuffer`. A newer `ready`
 (the document reloaded) stops the running transfer and starts again.
@@ -262,6 +267,19 @@ connection. The fetch writes a numbered `.part` file and moves it over the cache
 only when complete, so a cut-short download never reads as the book. A server status
 becomes an `ApiError` (a 404 is the screen's `missing`).
 
+**Sizes and storage** have their own failures (`ebook-errors.ts`):
+
+- A book over `MAX_EBOOK_BYTES` (512 MB, kept equal to the reader document's
+  `MAX_BOOK_BYTES` by a test) is an `EbookTooLargeError`. It is refused by the
+  server's `ebook.size` before any fetch, and by the copy's own length, a
+  downloaded `book.epub` included. A fetch that comes out longer than that is not
+  kept.
+- With less free space than the server's size (`engine.storageEstimate`), the
+  cache's own copies fetched longest ago are dropped first, as many as make room.
+  If that is not enough, the open is an `EbookStorageError` before any fetch. So
+  is a fetch the disk refused (a download failure of kind `storage`), or a cache
+  folder or move that failed. None leaves a partial file.
+
 - **The rule**: the download's copy (`manifest.ebookUri`) when it is there and not
   empty, else `book-<size>.epub` when it is there and not empty, else a fetch.
 - **The other way round too**: a book download copies the cache file for the
@@ -270,6 +288,11 @@ becomes an `ApiError` (a 404 is the screen's `missing`).
 - **A new `ebook.size`** (a scan saw the ebook change) misses the cache.
   `localEbook` fetches it again and drops the folder's other files (an older size, a dead fetch's
   part).
+- **Held to 512 MB in all.** After each fetch `trimCache` holds the whole cache,
+  every connection's copies together, to `MAX_EBOOK_BYTES`, so one book of the
+  largest size the reader opens always fits. The copies fetched longest ago
+  (`modificationTime`) go first, never the one just fetched or a live part. A copy
+  dropped is fetched again on its next open.
 - **Dropped with its connection**: `clearEbookCache(connectionId)` deletes the
   connection's folder. `reading-progress.ts`'s `onConnectionRemoved` calls it when
   the listener removes the connection or signs out of it. The system may also clear
@@ -312,13 +335,15 @@ Failures are plain notices (`reader.failure.*`):
 |---|---|---|
 | `drm` | a DRM-encrypted book | no |
 | `unreadable` | a file that isn't an EPUB, or a transfer the reader refused | no |
+| `tooLarge` | the app's EPUB is over `MAX_EBOOK_BYTES` (512 MB), or the reader could not allocate it (`EbookTooLargeError`, or the reader document's `tooLarge`) | no |
+| `storage` | the device had no room for the EPUB, or the cache could not be written (`EbookStorageError`) | yes |
 | `missing` | a 404 for the book or the ebook | no |
 | `fetch` | no answer, or the place couldn't be looked up | yes |
 | `start` | the reader didn't start | yes |
 | `section` | a part of the open book failed to load (the reader document reports an `error` with code `section` once the book shows) | yes |
 | `noEbook` | a link to a book without one | no |
 
-The three that get Try again are `RETRYABLE`. A `401` (`isSignedOutError`) is
+The four that get Try again are `RETRYABLE`. A `401` (`isSignedOutError`) is
 `signedOut`. While the connection needs signing in again (`useSignedOutConnection`),
 the screen shows `SignInAgainState` with Reconnect in place of the notice, a `fetch`
 failure's included. It never offers a Try again that can't work.
@@ -669,10 +694,6 @@ followed nothing). The companion's Text tab never saves a reading place at all
 Known follow-ups:
 
 - a generic save queue shared with progress sync;
-- a clearer notice for a book over the 512 MB limit or an allocation failure;
-- checking a downloaded `book.epub`'s size;
-- a cap on the cache's size;
-- a disk-full notice;
 - pinch zoom;
 - checking a download whose `book.epub` won't read against the server's map by the
   download's sha;

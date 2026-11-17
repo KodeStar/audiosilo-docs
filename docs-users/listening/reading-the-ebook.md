@@ -90,9 +90,12 @@ The reader says what went wrong, and offers **Try again** where that can help. Y
 - **Couldn't load the ebook**: the server didn't answer. Check the connection and try again.
 - **Sign in again**: your sign-in ended. Tap **Reconnect**.
 - **This ebook is locked**: it has DRM. Put a DRM-free EPUB in the book's folder.
-- **This ebook can't be opened**: the file is damaged or not a readable EPUB. In the apps, ebooks over 512 MB can't be opened.
+- **This ebook can't be opened**: the file is damaged or not a readable EPUB.
+- **This ebook is too large** or **Not enough space for the ebook**: in the apps, see [Troubleshooting](../troubleshooting.md#the-app-says-an-ebook-is-too-large-or-theres-not-enough-space).
 - **The reader didn't start**: see [Troubleshooting](../troubleshooting.md#the-ebook-reader-doesnt-start).
 
 ## Good to know
+
+In the apps, a book you read without downloading it is kept on the device so it opens faster next time. These copies take up to 512 MB in all, and the app removes the ones it fetched longest ago first.
 
 The reader opens EPUB files only, not MOBI, AZW3 or PDF. It can't search the text or keep highlights. Your [bookmarks and notes](bookmarks-and-notes.md) stay with the audiobook.
