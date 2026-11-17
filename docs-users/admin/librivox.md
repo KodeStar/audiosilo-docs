@@ -63,6 +63,9 @@ books library.
 The book goes to the library you opened the page from. With more than one books
 library, you can pick another under **Add to**.
 
+If the player can't read your libraries, the page says there is nowhere to add a
+recording yet, with **Retry**.
+
 The row shows the progress, with **Cancel** under it while it runs. Once the
 book is in, the row says **In your library**, and **Open** opens its page.
 
