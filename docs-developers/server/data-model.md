@@ -801,7 +801,8 @@ per-path lookups that the primary key can't, because the key leads with
 - `finish_changed_at`: when `finished` last changed, by any writer, in
   fixed-width UTC milliseconds.
   - A `PUT` sets it at its `updated_at`, capped at now.
-  - An edit sets it at now.
+  - An edit sets it at now whenever it names `finished`, even one that doesn't
+    flip the row.
   - An import's apply or undo sets it.
   - A sync `finish` or `unfinish` sets it at its corrected time.
   - A move or join keeps the newer.
@@ -1162,12 +1163,11 @@ The rules for saves:
   a single save, such as a "mark finished") is left out of the live list, the
   history and every total (`listenedSQL`). A session therefore appears from its
   second save.
-- **State.** A session is `playing` with a save in the last 60 s
-  (`livePlaying`), then `paused` until 10 minutes, then `ended` and off the
+- **State.** A session is `playing` with a save in the last 150 s
+  (`playingWindow`), then `paused` until 10 minutes, then `ended` and off the
   live list. A player in the background or on a downloaded book saves every
-  60 s, right on that window. Its session can read as `paused` for a moment
-  before the next save lands, in the console and in Listening in the house,
-  until the window is widened. A session continued after a long gap reads as
+  60 s, so the window allows one missed save plus some delivery delay, in the
+  console and in Listening in the house alike. A session continued after a long gap reads as
   `ended` during the gap and comes back with the late save.
 - **Transcoded.** `catalog.StreamMarks` remembers in memory which files each
   token streamed with `?transcode=1` in the last 10 minutes. A save on a book

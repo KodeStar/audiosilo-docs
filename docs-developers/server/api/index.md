@@ -583,7 +583,10 @@ Two server-side guarantees apply to every `?path=`, plus a length cap.
 - browse (`/fs`);
 - removing from the queue or a collection;
 - the admin folder override (`PUT` and `DELETE`);
-- the Bridge's book read.
+- the `?path=` filters on the admin sessions and Bridge jobs lists;
+- the admin's Bridge job and estimate (`POST /admin/bridge/jobs`,
+  `POST /admin/bridge/estimate`);
+- the Bridge's book read, rescan (`path` and `from`) and ASIN enrichment.
 
 The check comes **first**. It runs before the server looks the library up, so
 an unknown or ungranted library answers 400 for such a path, not 404 or 403. It
@@ -592,10 +595,9 @@ also runs before the path is cleaned or stored. Elsewhere:
 - In a [listening sync](reference.md#post-apiv1melisteningsync) batch,
   including the Bridge's Audible listening batch, such an event is `rejected`
   `invalid` whatever its library, and the rest of the batch applies.
-- The podcast routes (unfollow, fetch, retention and policy) and the Bridge's
-  ASIN enrichment refuse such a path with their usual `400 invalid_request`:
-  a show or episode path that `feed.ShowPath` or `EpisodePath` doesn't take, or
-  no book path.
+- The podcast routes (unfollow, fetch, retention and policy) refuse such a
+  path with their usual `400 invalid_request`: a show or episode path that
+  `feed.ShowPath` or `EpisodePath` doesn't take.
 - A podcast show or episode folder name over the cap in a Bridge's feed is
   invalid.
 

@@ -3919,8 +3919,9 @@ the sub-second, so a device save made just before the edit can't outrank it. Und
 last-write-wins the edit beats what a device saved before it, while a device that
 has the book loaded overrides it on its next save. It is not playback, so it
 records no [listening session](#admin-activity). On a server with `listening_sync`
-it also clears the row's `other_place`. When it changes `finished`, it records the
-change's time (now), so an older sync `finish` or `unfinish` can't undo it.
+it also clears the row's `other_place`. When it names `finished` at all (even one
+that doesn't flip the row), it records the time (now) as the finish change, so an
+older sync `finish` or `unfinish` can't undo it.
 
 Response `200`: `{ "progress": { … } }`, the player's progress object, with its
 dates and the `device_name` of the device that saved the place, as the player's
@@ -5351,9 +5352,9 @@ listening done since a person last turned sharing on is shown.
 - `sharing` - whether the caller shares. While it is `false`, `listening` is `[]`.
   A kid household member never shares and never sees anyone (`{ "sharing": false,
   "listening": [] }`), and never appears as a row.
-- `state` - from the age of the person's newest save: `playing` within 60 seconds,
-  `paused` within 10 minutes (the session gap), else `recent`. A player that saves
-  every 60 s can read as `paused` for a moment
+- `state` - from the age of the person's newest save: `playing` within 150 seconds,
+  `paused` within 10 minutes (the session gap), else `recent`. The window covers a
+  player that saves every 60 s in the background or on a download
   ([data model](../data-model.md#listening-sessions-how-they-are-derived)).
 - `title` - the index's title, else the path's last segment (a book no longer
   indexed); `author` and `duration` are `null` when unknown (`duration` falls back
@@ -8895,9 +8896,10 @@ The session object, shared by both session routes:
   recorded, `codec` `""` and `speed` `1`. The console labels sessions from this
   flag.
 - `finished` - a save in the session marked the book finished.
-- `state` - `playing` (a save within the last 60 seconds), `paused` (within 10
-  minutes) or `ended`. A player that saves every 60 s can read as `paused` for a
-  moment ([data model](../data-model.md#listening-sessions-how-they-are-derived)). A session can come back from `ended`: a late save whose
+- `state` - `playing` (a save within the last 150 seconds), `paused` (within 10
+  minutes) or `ended`. The window covers a player that saves every 60 s in the
+  background or on a download
+  ([data model](../data-model.md#listening-sessions-how-they-are-derived)). A session can come back from `ended`: a late save whose
   position advanced by about the time that passed (a phone that kept playing
   without saving) continues it, up to 12 hours after its last save.
 - `chapter`, `chapter_index` and `ip` are present on **live** sessions only.
@@ -8938,7 +8940,7 @@ every session recorded here.
 |---|---|---|---|
 | `user_id` | int | - | one listener |
 | `library_id` | int | - | one library |
-| `path` | string | - | one book; needs `library_id` |
+| `path` | string | - | one book; needs `library_id`; over 4096 bytes is `400 path is too long` |
 | `before` | int | - | the id of the previous page's last session: the sessions after it in this order (the next page) |
 | `before_at` | string | - | that session's `started_at` (RFC3339), with `before`: the page continues from there even if the session is gone since |
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
@@ -10913,7 +10915,7 @@ runs out.
 | Param | Meaning |
 |---|---|
 | `library_id` | only this library's jobs (a positive integer, else `400 invalid library_id`) |
-| `path` | only jobs about this book path |
+| `path` | only jobs about this book path (over 4096 bytes: `400 path is too long`) |
 | `state` | only jobs in this state |
 | `kind` | only this job kind; without it `podcast.poll` is omitted (`kind=podcast.poll` explicitly includes routine checks); `podcast.fetch` and `podcast.retain` are listed by default |
 | `before` | the previous page's `next_before` (a positive integer, else `400 invalid before`) |
@@ -10952,7 +10954,7 @@ podcast kinds are only ever queued for a podcast library (follow and check answe
 |---|---|
 | `kind` | the job kind: one the server knows **and** the paired Bridge advertised in its last heartbeat (kinds are allow-listed twice) |
 | `library_id` | the library, when the kind is about one (every kind needs it) |
-| `path` | an indexed book in that library (optional or required, per kind); the job is about the book's own path |
+| `path` | an indexed book in that library (optional or required, per kind); the job is about the book's own path; over 4096 bytes is `400 path is too long` |
 | `params` | the kind's parameters, checked per kind (unknown fields refused), at most 16 KiB as sent (`meta.correct`: 128 KiB) |
 
 The request body is at most 132 KiB (the largest params cap,
@@ -11170,7 +11172,7 @@ How each figure is worked out is in
 
 | Param | Meaning |
 |---|---|
-| `library_id`, `path` | the book (required; an indexed book's path) |
+| `library_id`, `path` | the book (required; an indexed book's path; over 4096 bytes is `400 path is too long`) |
 | `kind` | `sidecars.generate` (the default) or `readalong.align` (its own answer, below) |
 | `brief` | `1`: no look into the book's folder for an ebook (`source` is `audio`, no `ebook`) and no scan of the series (`earlier` is `[]`): the cheap answer for a label or a batch |
 
@@ -11557,6 +11559,8 @@ Bridge cannot map it through a sample episode. Use the marker route above.
 | `mode` | `full` (the default when absent) or `attachments` |
 | `from` | with `full` only: the book's path **before** a move the Bridge made |
 
+A `path` or `from` over 4096 bytes is `400 path is too long`.
+
 - **`full`** indexes whatever is at the path, a new book included (re-reading its
   audio), and answers `200 { "path": "…" }` with the book's indexed path. With
   `from`, the server also carries the book's durable state from there exactly as
@@ -11882,7 +11886,7 @@ content generation: the same ASIN again is a no-op `204`.
 | Status | Meaning |
 |---|---|
 | `204` | stored, or the book had that ASIN already |
-| `400` | `invalid_request` - no `path` (or over the path limit), no valid `asin` |
+| `400` | `path is too long` (no code) - a `path` over the [length cap](index.md#path-addressed-content-path); `invalid_request` - no `path`, no valid `asin` |
 | `404` | `book_not_found` - no book of a books library indexed at that path |
 | `409` | `asin_set` - the book has another ASIN, or an admin's ASIN edit (a cleared one too): a backfill never goes under one |
 
@@ -12194,13 +12198,17 @@ side agrees. Then:
   row, whatever its time: the row's `updated_at` never moves back, and its
   playback speed and offer are kept. A player reconciles as for any other device's
   place, so it moves to it or offers it under the row's `device_name`;
-- one at or behind the stored place, on a finished row, or heard at or before the
-  row's last finish change (a place from before a finish or a restart here) is
-  `not_applied` with `reason` **`behind`**, storing nothing on the row and making no
-  offer;
+- one at or behind the stored place, on a finished row, heard at or before the
+  row's last finish change (a place from before a finish or a restart here), or
+  heard at or before the Stay that holds the row (the end of that device's newest
+  applied `stay` span in the log: the listener chose that place, so an older one
+  coming back through Audible doesn't undo it) is `not_applied` with `reason`
+  **`behind`**, storing nothing on the row and making no offer;
 - a place past the book's end by more than 5% plus 2 minutes is `rejected`
   `duration_mismatch`; one just past it is the end;
-- a `finish` is any finish; an `unfinish` is `behind`.
+- a `finish` is any finish, unless heard at or before that Stay (`behind`, so a
+  finish sent with a place at the book's end can't end the hold); an `unfinish` is
+  `behind`.
 
 | Status | Meaning |
 |---|---|
