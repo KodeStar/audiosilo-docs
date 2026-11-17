@@ -61,6 +61,10 @@ settings...**.
 An account marked **Paused** lost its library. Choose another library for it on
 the Bridge's Accounts tab.
 
+An account marked **Refused: sign in again on the Bridge** was turned away by
+Audible at its last check. Press **Sign in again** on the account on the
+Bridge's [Accounts tab](../getting-started/bridge-accounts.md#the-accounts-states).
+
 ## The titles page
 
 ![Server > Settings > Audible: the titles and whether each is on this server](/img/screenshots/admin/audible-titles.png)
@@ -161,7 +165,8 @@ Type a path inside the library:
 - **a folder**, such as `Author/Series/Book 3`.
 
 Leave it empty for the usual place. The path can't start with a dot or contain
-`..`.
+`..`. It can't be a disc folder, such as `CD 3`, inside a book already on the
+server, because the backup would join that book.
 
 ![The Destination dialog for one title](/img/screenshots/admin/audible-destination.png)
 

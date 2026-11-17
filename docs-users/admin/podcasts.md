@@ -68,7 +68,7 @@ The player shows **Getting this episode** until it is ready. These fetches go ah
 of other downloads. A listener downloading such an episode to their device gets it
 fetched the same way first.
 
-A saved episode still plays while the Bridge is offline or the module is off.
+A saved episode still plays while the Bridge is offline.
 
 ### Space and availability
 
@@ -94,10 +94,12 @@ checks recently active shows more often than quiet ones. The console's Bridge jo
 leaves these routine checks out.
 
 You can get a [notification](notifications.md#podcasts) when a followed show has
-new episodes, or when its feed keeps failing.
+new episodes, or when its feed keeps failing. A listener's **Check for new
+episodes** doesn't count toward a failing feed.
 
-Turning the Podcasts module off stops following, feed checks and downloads.
-Shows and episodes already on the server stay and still play.
+Turning the Podcasts module off stops following, feed checks and downloads, and
+the players stop listing the podcast library. Shows and episodes stay on the
+server, and come back when you turn the module on again.
 
 ## Finding shows and moving subscriptions
 
