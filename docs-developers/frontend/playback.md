@@ -1327,12 +1327,11 @@ it. On the `PUT` path a closing page sends no `PUT` of its own, only its history
 span. What waits up to a minute is what the server holds, and so what other
 devices, the console and Listening in the house see.
 
-The server reads a session as `playing` for 60 s after its last save or span
-(`livePlaying`, [how sessions are derived](../server/data-model.md#listening-sessions-how-they-are-derived)).
-The 60 s pace sits on that window, so a book played in a pocket can read as paused
-for a moment before its next save lands. This lasts until the server widens the
-window. The server's `resume_behind` backstop is not
-touched by the pace.
+The server reads a session as `playing` for 150 s after its last save or span
+(`playingWindow`, [how sessions are derived](../server/data-model.md#listening-sessions-how-they-are-derived)).
+That window holds one missed 60 s save plus some delivery delay, so a book played
+in a pocket keeps reading as playing between its saves. The server's
+`resume_behind` backstop is not touched by the pace.
 
 #### What a kill leaves behind
 

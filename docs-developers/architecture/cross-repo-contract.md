@@ -2298,6 +2298,12 @@ place is `resume_behind`, so a cold start never pulls a book back. The player's
 `start` reasons (`moved_back`, `jump`, `restart` for a deliberate move) are what let
 a move back apply.
 
+A finish or unfinish heard at or before the row's last finish-state change
+(`finish_changed_at`) is `not_applied` `older`, so an old event never undoes a
+newer choice. Every writer that changes `finished` stamps it. A progress `PATCH`,
+the caller's own or an admin's, stamps it whenever it names `finished`, even when
+the row was already in that state.
+
 ### The offered place
 
 The server persists a diverged event's lost place on the row (`other_place`). So a
@@ -2348,10 +2354,13 @@ server builds both from the spans, at their clock-corrected device times.
 The player's online cut keeps live sessions and Listening in the house working. It
 sends `continue` spans every 15 s, or every 60 s with the app in the background or
 the book downloaded (see
-[the pace](../frontend/playback.md#the-periodic-saves-pace)). The server reads them
-against its `livePlaying` and `SessionGap` (see
+[the pace](../frontend/playback.md#the-periodic-saves-pace)). The server reads a
+session as playing for 150 s after its last span (`playingWindow`), which holds one
+missed 60 s save, and closes it after `SessionGap` (see
 [Listening sessions](../server/data-model.md#listening-sessions-how-they-are-derived)
-in the data model). At the 60 s pace a session can read as paused for a moment.
+in the data model). Its 60 s `livePlaying` still bounds continuous playback and
+which spans can be marked transcoded. Change the cadence and these windows
+together.
 
 ### Rollback to the legacy save
 

@@ -1284,6 +1284,11 @@ For each event:
    speed and offer. It compares `finish_changed_at` for a place from before a
    finish or a restart. `furthestPastEndRatio` (the manager's wrong-match guard)
    refuses a place well past the end.
+5. While a [Stay](../server/api/reference.md#a-stay) holds the row, a place or a
+   finish heard at or before that Stay is `not_applied` `behind` (`beforeStay`).
+   The Stay's time is the end of its own `stay` span in `listening_events`. So the
+   Bridge's end-of-book finish never undoes a place the listener chose, and a
+   place heard on Audible after the Stay still applies.
 
 A device's diverged span then offers Audible's place by name (the row's
 `device_name`, in `other_place`). The rules and each event's
