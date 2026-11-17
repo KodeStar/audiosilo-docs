@@ -95,9 +95,9 @@ The workflows for the server, player and metadata repos, verified against
   rather than at the tag. The other release targets build at release time only.
 - **deadcode** writes a report of the functions no non-test code reaches
   (`golang.org/x/tools/cmd/deadcode`) to the run's summary. It is
-  `continue-on-error`, so a finding never fails the run. The step fails only
-  when deadcode itself can't run, so a broken tool shows instead of an empty
-  report.
+  `continue-on-error`, so a finding never fails the run. The step shows as
+  failed (without failing the run) only when deadcode itself can't run, so a
+  broken tool shows instead of an empty report.
 
 Both Go test jobs get ffmpeg and ffprobe from the local `setup-ffmpeg` action.
 It installs a pinned, checksummed static build (cached between runs) of the

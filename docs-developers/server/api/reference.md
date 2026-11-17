@@ -10700,8 +10700,8 @@ only (never a file's contents) and is not audited.
   samples**; that never sets `capped`.
 - **A hung mount under the root** (a share mounted in a subfolder) can stop the
   walk or a sample read in a call that can't be interrupted. So the preview
-  runs on a goroutine of its own and is waited for until its 15 seconds and
-  2 more (`previewGrace`). Past that it answers `404 folder_unreadable`, and the
+  runs on a goroutine of its own and is waited for 17 seconds (its 15-second
+  budget plus `previewGrace`, 2 seconds). Past that it answers `404 folder_unreadable`, and the
   abandoned walk stops at its next look at its context. At most 2 previews run
   at once on one mount (`previewsPerMount`), and a hung one holds its slot
   until it returns.

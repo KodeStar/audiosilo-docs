@@ -221,7 +221,7 @@ draft:
   TLS default) that must serve `/healthz` and `/web/` and log `engine=native` at
   start.
 
-`scripts/smoke-boot.sh <binary> <work-dir>` is that boot, and runs it against any
+`scripts/smoke-boot.sh <binary> <work-dir>` runs that boot against any
 Linux build of the native engine, such as a local `goreleaser build --snapshot`.
 It listens on 18080 with ffmpeg and ffprobe off, and prints the server's log
 either way. The server's `ci.yml` **snapshot** job runs it on a snapshot of the
