@@ -310,9 +310,18 @@ service memoizes that refusal under the run's refusal code, so the copy is not
 sent again until the memo entry expires. Only a memo entry under one of the
 copies run's refusal codes, a review's refusal (an `ai-verify` exclusion, a
 dispute or a resolver's removal) or an open pull request holding the copy keeps
-it out of the copies run. Those codes include `ai-narrator`, `malformed-asin`,
+it out of the copies run. Those codes include `ai-narrator`,
+`credit-platform-account`, `credit-cast-placeholder`, `malformed-asin`,
 `unmapped-region` and `unmapped-language`, so an earlier selector refusal under
 one of them keeps the copy out too.
+
+A refusal memo entry lasts 45 days. Two codes last 72 hours instead:
+`missing-narrator` and `credit-cast-placeholder`. Both are usually a preorder
+whose narrator or cast is announced later, and a placeholder narrator is a cast
+not booked yet. The selector also writes `credit-cast-placeholder` for a
+placeholder author, which the copies run does not check. The code cannot tell
+the two apart, so a copy whose row the selector refused for a placeholder author
+also waits out the 72 hours. A refusal with no recorded reason lasts 7 days.
 
 A store that answers without the book is asked again after 1, 2, 4 and 7 days,
 then every 14 days. A copy that was found but did not attach (refused, kept out
@@ -493,8 +502,12 @@ these steps:
    like any other lookup with no answer. Any other outcome clears the mark.
 3. **Select and import** with completion's own tools: the same allow-list
    projection, `metaimport libex-select --reported --attach-editions`, the lane's
-   own cap, the create import with `--existing-series-only`, `metafmt`,
-   `metacheck` and the no-new-series check. There is no `--enrich` pass.
+   own cap, the create import with `--existing-series-only` and `--intake`,
+   `metafmt`, `metacheck` and the no-new-series check. There is no `--enrich`
+   pass. Before the import the lane asks whether the pinned `metaimport libex`
+   lists `--intake`. When it cannot find out, the turn fails before the import
+   and charges no row, so the lane never writes unstamped records on a pin that
+   could have stamped them.
 
 A turn that sits out, finds nothing, or fails before a pull request exists falls
 through to the LibriVox lane's turn and series completion in the same cycle.
@@ -513,8 +526,8 @@ oversized answer) is one log line and costs nothing.
 
 Any other failed step past the lookups rests the lane for `SYNC_INTAKE_EVERY`
 (48 hours at least) outside a dry run. Those steps are the rows, selection, the
-cap, the chapter lists, the import, `metafmt`, `metacheck`, the no-new-series
-check and the push. A failed import or tree check also holds its rows off for 7
+cap, the chapter lists, the check for `--intake`, the import, `metafmt`,
+`metacheck`, the no-new-series check and the push. A failed import or tree check also holds its rows off for 7
 days, so one bad row cannot pin the head of the queue.
 
 ### What it takes, and what it refuses
@@ -590,17 +603,23 @@ A lane pull request is a `sync/` branch with the usual `data`, `bot-intake` and
 reads it as a sync-bot pull request.
 
 Its body is the lane's rationale and the complete list of its ASINs, attached
-ones included, with no counts and no queue dates. Its records carry the same
-typed `libex-import` provenance as the feeds' records, with the bare ASIN as the
-ref, so retracting the lane alone means reading those lists. A merge starts
-series completion at once.
+ones included, with no counts and no queue dates. A merge starts series
+completion at once.
 
-`metaimport libex --intake` (create mode only) stamps each record a run writes
-with the ref `intake:<ASIN>` instead, so a lane run's records are one query over
-`sources[].ref` apart from the feeds'. The refresh rules read the ASIN back from
-either form. The service doesn't pass the flag (its pinned audiosilo-meta
-predates it), so its lane records keep the bare ASIN, and only the pull
-requests' lists tell them apart.
+Its records carry the same typed `libex-import` provenance as the feeds'
+records, with the ref `intake:<ASIN>` where the feeds write the bare ASIN. The
+lane's create import passes `metaimport libex --intake` (create mode only), and
+keeps it on the retry and on a founding re-run, so a lane run's records are one
+query over `sources[].ref` apart from the feeds'. The refresh rules read the
+ASIN back from either form, so a lane record takes its post-release refresh as a
+feed record does. The body says the records carry `intake:<ASIN>` only when the
+import that stood was stamped. A pin that predates the flag imports the lane's
+rows with the bare ASIN, and then only the ASIN lists tell them apart.
+
+A later completion run whose enrichment or post-release refresh changes a lane
+record adds the feed's own bare-ASIN stamp beside `intake:<ASIN>`. That stamp
+records what the feed changed, so it stays. Series completion never passes
+`--intake`.
 
 The lane stays out of the systemic stop:
 
@@ -1222,6 +1241,9 @@ last.
   the work at their position. It also makes the import refuse a row
   at an occupied position that is not another edition of the work there.
 - `--existing-series-only` separately forbids founding a series.
+- `--intake`, passed by [the reported-ASIN lane](#sharing-the-one-slot) alone,
+  stamps each record the run writes with the ref `intake:<ASIN>` instead of the
+  bare ASIN. The importer refuses it outside a create run.
 - `--skipped <path>` lists every row the import refused for a reason that has a
   refusal code, in the `--refusals` shape. Rows refused at an occupied position
   carry `position-claimed`. The service memoizes them as refusals rather than
@@ -1262,7 +1284,10 @@ The reported-ASIN lane depends on that pin. It runs only when the pinned
 `metaimport libex-select --help` lists `--reported`. On an older pin the lane
 sits every cycle out before it reads the queue, with one log line, and series
 completion is unchanged. So deploying the service before the pin is bumped is
-safe. The copies run is gated the same way. It runs only when the pinned
+safe. The lane passes `--intake` only when the pinned `metaimport libex --help`
+lists it. A pin that answers without it imports the lane's rows unstamped, and a
+turn that cannot read the listing waits for the next turn. The copies run is
+gated the same way. It runs only when the pinned
 `metaimport libex` lists `--copies-of`, and on an older pin the copies go
 through the selector and the create import like any other row. A copies run
 that exits non-zero discards the cycle's tree and fails the cycle. For the next
@@ -1289,6 +1314,7 @@ followed by a pin bump and a check in the sync repository:
 - `metaimport libex --recordings-only --copies-of`, its `{"asin","anchor"}`
   line shape and its `copy-` refusal codes.
 - `libex-select --reported`, with its standalone and identity rules.
+- `metaimport libex --intake` and the `intake:<ASIN>` ref it writes.
 - The flags of `metaimport librivox import`, the line shapes of its `--skipped`
   and `--worklist` files and its printed in-progress line.
 - The `sync/librivox-` branch prefix, which `ai-verify` reads as the LibriVox

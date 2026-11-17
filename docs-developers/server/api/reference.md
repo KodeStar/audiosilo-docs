@@ -8040,13 +8040,21 @@ The service is shared and nearly all of a run's time online is round trips, so f
 as it can.
 
 - **One round trip per book.** A `match` run sends
-  [`works/match?limit=2&expand=work`](../../meta/api.md#expandwork)
+  [`works/match?limit=2&expand=work,lean&expand_min=60`](../../meta/api.md#expandwork)
   (`MatchQuery.BestOnly`, which the dialog never sets), and the answer's `work` and
   `series_facts` are all it reads of the best candidate (`bestCandidates`). Of the
   next it reads only the score and whether an identifier found it (`Classify`), so
   that one is never fetched.
+- **A lean work.** `lean` asks for the work without its characters,
+  recaps, `recap_summary` and `position_scale`, which a match never reads, and
+  `expand_min` (the `ReviewFloor`, `MatchQuery.NoDetailsBelow`) skips the work of a
+  best under the floor. A lean work is read into its candidate only. It never enters
+  the `w:` cache, the persistent store or an enrichment, so the book's `/meta` and
+  the companion read the work whole once the match is applied. A metaserve that
+  ignores `lean` and `expand_min` inlines the whole work for any score, and the run
+  reads the same candidate from it.
 - **Fallback.** A best result with no `work` (a metaserve before v0.24.0, one out of
-  budget, a read that failed) costs the `works/{id}` and series reads for that result
+  budget, a read that failed, a best under `expand_min`) costs the `works/{id}` and series reads for that result
   alone, and nothing at all when it scores under `ReviewFloor` and no identifier found
   it, as it would be dropped anyway. That is never a failure, and its outcomes are the
   same. A best that is gone (`404`) gives way to the next. From 2.7.0 one that can't
