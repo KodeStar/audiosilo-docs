@@ -10584,11 +10584,17 @@ others keep theirs), in one writer transaction.
 { "finished": true, "steps": { "bridge": "skipped" } }
 ```
 
-Answers `200` with the whole `state` as `GET` returns it:
+Answers `200` with the whole `state` as `GET` returns it (here with the other
+steps left out):
 
 ```json
 { "finished": true, "dismissed": false, "steps": { "folder": "done", "bridge": "skipped" } }
 ```
+
+From 2.7.0 the request that finishes the flow (unfinished to finished) also
+marks every step still without an outcome: `folder` `done` when a books library
+exists, the rest `skipped`. So the console sends only the step it leaves. An
+install an upgrade marked finished is left as it is.
 
 Each request is recorded in the [audit log](#admin-audit-log) as
 `settings.setup`, its details the fields it sent. Sending `dismissed: true`
@@ -10625,7 +10631,7 @@ only (never a file's contents) and is not audited.
       "tags": { "title": "The Sign of Four (Unabridged)", "author": "Doyle, Arthur Conan",
                 "narrator": "David Clarke", "series": "Sherlock Holmes", "position": "2" },
       "path": { "title": "The Sign of the Four", "author": "Arthur Conan Doyle",
-                "narrator": "David Clarke", "series": "Sherlock Holmes", "position": "2" },
+                "narrator": "", "series": "Sherlock Holmes", "position": "2" },
       "abs": false
     }
   ],
@@ -10651,10 +10657,12 @@ only (never a file's contents) and is not audited.
   covers), all under the preview's overall limit of 15 seconds. A sample read
   still running then is ended and left out, so the answer has **fewer
   samples**; that never sets `capped`.
-- `tags` and `path` are the names a library whose `metadata_source` is `"tags"`
-  or `"path"` would show for the book (the same resolution the index uses, so
-  the preview and the library never disagree): each side falls back to the
-  other for what it leaves empty. `position` is a series position as text
+- `tags` is the names a library whose `metadata_source` is `"tags"` would show
+  for the book (the same resolution the index uses, so the preview and the
+  library never disagree), falling back to the folders for what the tags leave
+  empty. From 2.7.0 `path` is the folders alone, as a path-first library reads
+  them before any tag fills what they leave, so a tag's narrator or author never
+  shows under the folders (before, it was the resolved names too). `position` is a series position as text
   (`"2"`, `"1-3"` for a range). `abs` is true when the book's folder has a
   `metadata.json`, which goes over both.
 - `blanks` counts, over the samples, the names each source leaves empty **on

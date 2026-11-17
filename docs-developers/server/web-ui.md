@@ -2034,9 +2034,10 @@ Every step writes through the ordinary admin APIs (`PATCH /admin/settings`,
 `POST /admin/libraries` with `kind: "books"`, `PATCH /admin/libraries/{id}`).
 It then marks itself with `PUT /admin/setup` (`saveSetup`).
 
-Leaving the last step sends `finished: true` with `finishMarks`. Every step
-still without a mark goes down as `skipped`, so the Overview card lists what is
-left. Once the flow is finished, a step reopened from the card goes on to the
+Leaving the last step sends `finished: true` with only that step's mark. The
+server marks every step still without one in the same write (`folder` `done`
+once a books library exists, the rest `skipped`), so the Overview card lists
+what is left and a step another tab recorded keeps its own. Once the flow is finished, a step reopened from the card goes on to the
 next step still skipped (`nextStep`), then back to Overview.
 
 Every settings write goes through `unlockedPatch`, which leaves out any setting
@@ -2061,12 +2062,15 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    never ends the console's session. While the envelope's `printed_password` is
    true (the admin still has the password the log printed), a new password is
    required and a notice says why; otherwise it is optional. Skip is labelled
-   "Keep *name* and this password". The step leaves the first-run auth code
-   alone (the phone step points at it) and says to revoke it in People >
-   Invites. A password the admin sets on their own account in People counts as
-   chosen too (`notePasswordChosen`).
-2. **folder.** A typed path, with no folder picker and no new listing route.
-   `POST /admin/setup/preview` checks it and returns:
+   "Keep *name* and this password". A password changed when the rename is then
+   refused stays said ("Your new password is saved"), and Skip becomes "Keep
+   *name*", which marks the step done. The step says a new password ends the
+   first-run auth code too: the server deletes it with the password the log
+   printed (see
+   [Configuration](configuration.md#cli-flags-cmdaudiosilo)).
+2. **folder.** A typed path, or one picked with **Browse** (the add-library
+   form's folder picker over `GET /admin/fs/dirs`). `POST /admin/setup/preview`
+   checks it and returns:
    - the counts;
    - `same_root`, shown as a warning;
    - `path_not_absolute`, `folder_unreadable` (worded for the Docker host-path
@@ -2078,8 +2082,10 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    name become a draft, kept in `localStorage` (`audiosilo.setup.draft`,
    `parseDraft`) until the metadata step.
 3. **naming.** The preview's samples, as a two-column table per book (tags,
-   folders), with the rows that differ highlighted (`compareField`,
-   `disagreements`). Then the `metadata_source` pick (`RadioCards`), with the
+   folders alone), with the rows that differ highlighted (`compareField`,
+   `disagreements`). A summary counts the gaps on each side and says the
+   narrator comes from the tags either way; the disagreement line shows only
+   when there is one. Then the `metadata_source` pick (`RadioCards`), with the
    preview's `suggested` side preselected and badged for the draft. A books
    library that exists already (a config library, or one an older `/setup`
    made) keeps its own source preselected, with the suggestion as a hint.
@@ -2090,8 +2096,11 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    (`offerRegion`), the marketplace starts at the one nearest the browser
    (`browserNearestRegion` in `lib/nearest-region.ts`: the region of each of
    `navigator.languages` in order, then the time zone, mapped to the nearest
-   store, else the US store). With the lookup on, Continue then saves the region
-   even when it equals the saved value, so it counts as chosen. Settings > Community metadata offers the
+   store; a language placing the US store gives way to a time zone placing
+   another). With the lookup on, Continue then saves the region even when it
+   equals the saved value, so it counts as chosen. With nothing to place a store
+   the field keeps the saved value and preselects none, and only an edit saves
+   it, so the server stays "never chosen". Settings > Community metadata offers the
    same store with **Use *store*** or **Keep no preference**
    (`RegionSuggestion`), except when it is the US store. The step states the
    mirror's size up front, and `mode` is restart-only. The draft then becomes
@@ -2102,6 +2111,7 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    `useLibraries`' `scan`. `useScanWatcher` runs on the page, since the shell
    isn't mounted.
 5. **reach.**
+   - The server's name, as the apps and invites show it (`general.name`).
    - The browser's `location.origin` is offered as `lan_url`, `public_url` or
      both (`reachOffers`). A home-network host by the server's own rule
      (`isHomeHost`) suits the home address first. Loopback suits neither.
@@ -2115,10 +2125,17 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
 6. **abs.** The listening import itself, inline: Settings > Import's
    `ImportFlow` (`features/imports/import-topic.tsx`) with `embedded` (no step
    counter). It also says that ABS `metadata.json` files are read.
-   - While a books library is scanning or waiting to (`booksScanning` over the
-     polled libraries, no wire field), `blocked` turns Connect off with "Wait for
-     the scan to finish", because the import pairs ABS's books with the ones the
-     scan finds. Only Connect waits; the fields, Continue and Skip don't.
+   - With no books library yet, `blocked` says the folder step comes first.
+     While a books library is scanning or waiting to (`booksScanning` over the
+     polled libraries, no wire field), it says "Wait for the scan to finish",
+     because the import pairs ABS's books with the ones the scan finds. Either
+     way Connect, Start and Apply wait; the fields, Continue and Skip don't.
+     Only this step waits: Settings > Import never does.
+   - While accounts are mapped, the map card's Back is the step's only Back.
+   - An `abs_certificate` refusal of a plain `http://` address says the address
+     redirects to Audiobookshelf's https one, whose certificate the server
+     doesn't trust, and asks for the address Audiobookshelf answers on over
+     http.
    - `offerMatch` shows the `UnmatchedPrompt` once the server has a books library
      and none is scanning, before any import is applied. After an apply, the
      Past imports card shows it instead (one render site). Either way it opens
@@ -2144,7 +2161,9 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    People's invite dialog in a new tab). The web player in a new tab with its
    own token (`usePlayerTab`, only with the `web_player` capability). The ffmpeg
    line from `useSystem().tools`, and the household note. Its primary button is
-   Finish setup.
+   Finish setup. When the page is open on the server itself and the server has
+   no home or public address, the code would point a phone back at itself: the
+   step says so, and Finish records the step `skipped`, still to do.
 
 #### The Overview card
 
