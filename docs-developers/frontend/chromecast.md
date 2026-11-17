@@ -189,9 +189,10 @@ least recently used one, which a receiver may still be playing with (see
   - one on the file the receiver was on when the move was asked, at or past its
     place then (`Intent.from`), since that is the replaced media playing on.
 - **The asked place is held.** A queue sent puts the snapshot at the place it
-  asks for at once, as a local engine's file load does. Until the receiver plays
-  or pauses there (`landInFlight`), for at most `ASKED_MOVE_MS` after the move
-  (`holdingAsked`), no status or tick moves the snapshot. Those statuses are the
+  asks for at once, as a local engine's file load does. While the queue's load
+  is in flight, until the receiver plays or pauses there (`landInFlight`) and
+  for at most `ASKED_MOVE_MS` after the move (`holdingAsked`), no status it sends
+  or tick moves the snapshot. Those statuses are the
   media the queue replaces (its `interrupted` stop at its file's start, or a
   later file), and the replaced media never becomes the book's place. Otherwise
   the store would save that place, end the listening span the move began there,
