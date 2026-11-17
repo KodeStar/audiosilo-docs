@@ -874,8 +874,8 @@ A book this device holds loaded resumes from its engine's place on every play,
 without asking the server. A place another device saved meanwhile would therefore
 be skipped, then overwritten, since the server is last-write-wins.
 
-`startPlaceReconcile`, started from the root layout, asks the server for the loaded
-book's progress whenever the book is picked up again:
+`startPlaceReconcile`, started from the root layout and the car's stack, asks the
+server for the loaded book's progress whenever the book is picked up again:
 
 - when the app comes to the foreground, or the book's server comes back, while the
   book is loaded and settled;
