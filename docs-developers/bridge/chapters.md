@@ -312,9 +312,12 @@ yet swept and no open job follows it. Two kinds of run continue:
   `splitting`. The done-time purge removed the chapter FLACs, so `splitting` cuts
   them again. Every raw is complete, so `asr` skips. The manifest is the detected
   one, so the path goes straight on to `sanitizing`.
-- **A run cancelled or failed at `chapter_detecting`** (say, a parked detect job
-  the new generate job cancelled) goes on there, when its kept windows can run the
-  detection again. The detection then runs again from the window layer, with the
+- **A run cancelled at `chapter_detecting`** (say, a parked detect job the new
+  generate job cancelled) goes on there, when its kept windows can run the
+  detection again. One cancelled at `asr` (a chapters job parked
+  `asr_worker_waiting`) goes on from there, transcribing only the windows it hadn't
+  finished. A run that **failed** there for a reason of its own is cleared, never
+  continued, so asking again never fails the same way. The detection then runs again from the window layer, with the
   whole pipeline after it. `pipeline.DetectionRerunnable` decides, and needs all
   of these:
   - every window's raw is complete;
@@ -326,8 +329,11 @@ yet swept and no open job follows it. Two kinds of run continue:
     editor adding markers can keep the size.
 
 Both continue only while the book is still the one audio file it was
-(`audio.ResolveSource`; a folder that has gained an audio file is a multi-file
-book now).
+(`markersFile`, through `audio.ResolveSourceWithin`; a folder that has gained an
+audio file is a multi-file book now). The look at the audio is bounded. When it
+doesn't answer in time (a hung mount), the mount is gone or the file system
+refuses it, the job fails with `errAudioUnseen` and the run is kept, never cleared
+unseen.
 
 **The continue** (`continueChapters` -> `store.ContinueChapters`) waits for the
 engine's hold, as [a delete does](generating.md#how-the-bridge-runs-it). A stage

@@ -233,8 +233,8 @@ or parked. One run:
      busy through up to 40 polls, about two minutes (`giveWayTries`, the same
      bound as the [give-way wait](chapters.md#a-generate-job-after-a-detect-job);
      try again in a minute). A `chapters.detect` run at the same path (finished,
-     or stopped at its detection) is **continued** instead, so its transcription
-     is reused
+     or cancelled at its transcription or detection) is **continued** instead, so
+     its transcription is reused
      ([A generate job after a detect job](chapters.md#a-generate-job-after-a-detect-job)).
    - **The new book** takes its identity from the server's facts (title, authors,
      narrators, series and position, ASIN, ISBN), its `work_id` from the params or
@@ -294,7 +294,9 @@ The engine's own park codes (its `state.ParkCode`) plus two of the Bridge's
 (`book_not_writable`, `library_not_writable`). Each has a `hint` in the progress;
 "Retry" there is the **Retry** on the job on the Bridge's own page
 (`POST /api/jobs/{id}/retry`), which re-admits the engine book, or makes a job
-waiting on its own park look again now.
+waiting on its own park look again now. A Retry that meets the book parked again
+or cancelled between its read and its write does nothing and answers `409` "the
+book changed meanwhile; try again" (`ErrBookChanged`).
 
 A change on the page that answers a park resumes everything parked on it, engine
 books and [description jobs](#a-description-on-its-own-sidecarsdescribe) alike.
