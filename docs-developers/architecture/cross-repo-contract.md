@@ -858,18 +858,22 @@ The server, not the console, decides which ASIN a match attaches:
 Where the scoring comes from:
 
 - A mirror-mode server gets `metaserve`'s scoring with the `audiosilo-meta` version
-  in `go.mod` (v0.24.0).
+  in `go.mod` (meta#3042 or later for `lean`).
 - An online server gets the scoring of the service it asks. meta.audiosilo.app has
-  run v0.24.0 since 2026-11-05, so the position and runtime factors are live for
-  every online server that asks `works/match`.
+  run v0.24.0 or later since 2026-11-05, so the position and runtime factors are
+  live for every online server that asks `works/match`.
 - `language` and `narrator` count only from a server that sends them (2.6.0).
 - In 2.6.0 the identifier rule, the floor, title tidying and tag hints are
   server-side.
 
-A run in `match` mode also sends [`expand=work`](../meta/api.md#expandwork), so one
-answer per book carries the best work and its series facts. The dialog, a refresh and
-a repick never send it. An old `metaserve` ignores it, and then the server fetches the
-work and series itself (see
+A run in `match` mode also sends [`expand=work,lean`](../meta/api.md#expandwork) and
+`expand_min` set to the review floor, so one answer per book carries the best work and
+its series facts. `lean` drops the parts of the work a match never reads, and
+`expand_min` drops the work of a best the run would drop. The server reads that lean
+work into the candidate only and never caches or stores it. The dialog, a refresh and a
+repick send neither. An old `metaserve` ignores `lean` and `expand_min`
+and inlines the whole work, which the run reads the same way. One that ignores
+`expand` too leaves the server to fetch the work and series itself (see
 [What a run asks of the community service](../server/api/reference.md#what-a-run-asks-of-the-community-service)).
 
 ### Dramatizations

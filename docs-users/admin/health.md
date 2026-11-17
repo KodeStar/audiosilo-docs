@@ -238,6 +238,9 @@ When a book's files are gone, a scan removes it from the library and notes it in
 the log. AudioSilo remembers its progress, bookmarks, edits and cover by the
 book's path, so if the files come back to the same place, they come back too.
 
+A scan that couldn't read part of the library removes nothing. See
+[A scan says part of the folder couldn't be read](../troubleshooting.md#a-scan-says-part-of-the-folder-couldnt-be-read).
+
 ## System
 
 **Health > System** lists everything the server depends on, one row each, with

@@ -1,6 +1,6 @@
 {
   "repo": "KodeStar/audiosilo-server",
-  "ref": "820f49eee5af4f1f8add59d6ff2c1f1965a44c69",
+  "ref": "714b61e45d41a681e785a7a4adc50959c834f58e",
   "capabilities": [
     "addresses",
     "admin_ui",
@@ -534,6 +534,7 @@
     "AUDIOSILO_OIDC_SCOPES",
     "AUDIOSILO_OIDC_USERNAME_CLAIM",
     "AUDIOSILO_PERF_BOOKS",
+    "AUDIOSILO_PERF_EPISODES",
     "AUDIOSILO_PODCAST_DISCOVERY_ENABLED",
     "AUDIOSILO_PODCAST_INDEX_KEY",
     "AUDIOSILO_PODCAST_INDEX_SECRET",

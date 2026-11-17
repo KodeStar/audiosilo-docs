@@ -563,7 +563,9 @@ Two columns deserve emphasis:
 - `content_hash` is a **cheap move-detection fingerprint**: the SHA-256 of
   (size, first 64 KiB, last 64 KiB). It is not an identity and not a full hash.
 - `added_at` records when the book *first appeared on disk*: the file birth
-  time, falling back to mtime, and the earliest file for folder books. A full
+  time, falling back to mtime, and the earliest file for folder books. A birth
+  time of 0 or before 1980 (what a share that keeps none may report) counts as
+  none (see [the scanner](scanner.md#file-order)). A full
   re-index reshuffles the auto-increment `id`, but `added_at` is a stable
   chronological key. `UpsertBook` deliberately never updates it on re-index.
   The index `idx_books_added` supports the "recently added" sort.

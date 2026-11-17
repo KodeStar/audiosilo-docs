@@ -194,6 +194,18 @@ See [Getting AudioSilo into the car](./listening/in-the-car.md#getting-audiosilo
 
 AudioSilo never deletes your files.
 
+### A scan says part of the folder couldn't be read
+
+When a folder of a library, or a file in it, doesn't answer during a scan, the scan skips that folder and keeps its books as they were. In [Health > Jobs](./admin/health.md#jobs) the scan says "Part of the folder couldn't be read, so nothing was removed". Its **Log** names each folder it skipped and why.
+
+It usually means a network share or a sleeping disk stopped answering. Check that the share is mounted and the NAS is awake, then scan the library again.
+
+A book you deleted stays listed until every folder reads again. If one folder or file stays unreadable, such as a file the server isn't allowed to read, fix its [permissions](#permission-denied) or move it out of the library.
+
+### "Couldn't read the files" says the drive or share is not answering
+
+The drive or share holding the book stopped answering. **Read the files again** gives up after about 10 seconds and keeps the book as it was. A book that is starting to play gives up after about 45 seconds with "Couldn't start this book" (on the web, also "Its audio didn't load from the server"). A book that was already playing stops with "Playback stopped. Your place is saved". Check that the share is mounted and the disk is awake, then try again.
+
 ### New books I added aren't showing up
 
 The folder view shows new files at once. Search and lists need a scan. Press **Rescan** on the library, or [scan on a schedule](./admin/libraries.md#scanning-on-a-schedule). A waiting scan shows in [Health > Jobs](./admin/health.md#jobs).
