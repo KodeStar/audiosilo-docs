@@ -44,8 +44,8 @@ listeners chapter recaps and the book's community chapters.
 2. If the right book isn't listed, type in **Search the community database**,
    or paste an ASIN or ISBN, and click **Search**.
 3. Under **Possible matches**, pick the right one and click **Compare fields**.
-   Each match shows how closely it fits and whether its length matches your
-   files.
+   Each match shows how closely it fits and how its length compares with your
+   files: within 2% it matches, within 5% it is close.
 4. If the book was recorded more than once, pick the right **Edition**. Check
    its narrators and length against your files.
 5. Tick the fields to **Take**. Fields you edited yourself start unticked, and
