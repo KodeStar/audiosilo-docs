@@ -251,7 +251,8 @@ footer states both.
   at. That is why the runbook publishes the web image first.
 - **Publish the native draft last.** The draft is uploaded before `release.yml`'s
   smoke test runs, and the LinuxServer.io image follows its publication. Publish
-  only once the run is green, and tick *Set as a pre-release* for a `-rc` tag.
+  only once the run is green. A `-rc` tag's draft is already a pre-release
+  (`prerelease: auto`).
 - **Docker and native builds** share the server code and the pinned player. They
   differ in three ways:
   - ffmpeg is bundled in the image, and resolved or fetched at runtime for the

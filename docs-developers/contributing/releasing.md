@@ -138,10 +138,11 @@ When the run is green and you have published the draft, the release is out.
 
 - Releases are **`v`-prefixed semver tags** (`v*`) on each repo. There is no
   cross-repo version lockstep.
-- GoReleaser does not mark a pre-release tag (for example `v2.1.0-rc1`) as a
-  pre-release itself. Tick **Set as a pre-release** when publishing one.
-  Otherwise `releases/latest` moves to it, and the LinuxServer.io image ships it
-  to every Unraid install. A pre-release tag also moves the server image's
+- GoReleaser marks a tag with a pre-release suffix (for example `v2.8.0-rc.1`)
+  as a pre-release itself (`prerelease: auto`), so `releases/latest` stays on the
+  last stable release and the LinuxServer.io image doesn't ship it to every
+  Unraid install. Check that **Set as a pre-release** is ticked before
+  publishing one. A pre-release tag also moves the server image's
   `:latest`, since `image.yml` publishes it on every `v*` tag.
 - The server and the web player are paired by **image pinning**, not by version
   numbers. Native apps negotiate against any server version through the
