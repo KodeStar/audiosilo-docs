@@ -148,12 +148,14 @@ Their invites, with **Rotate** and **Revoke**, as on the
 
 ### Account
 
-- **Role** - **Member** or **Admin**. An admin sees every library and can use
+- **Role** - **Listener** or **Admin**. An admin sees every library and can use
   the console. Making someone an admin asks for a password if they don't have
   one, unless they sign in with your
   [single sign-on](single-sign-on.md#see-or-remove-someones-single-sign-on).
   Their page then says **No password (signs in with Authentik)**, with your
   provider's name. A household member never counts as signing in this way.
+  Changing the role of someone with household members asks first, because
+  their members' access follows theirs.
 - **Household** - see [Household members](#household-members).
 - **Danger zone** - [disable or delete](#disabling-vs-deleting) the account.
 
@@ -229,7 +231,8 @@ one, stops their other invites working.
 
 - **Rotate** gives the invite a new code, with a fresh expiry. The old link and
   QR code stop working at once.
-- **Revoke** removes the invite.
+- **Revoke** removes the invite. The person's account stays. To remove it too,
+  [delete the account](#disabling-vs-deleting).
 
 Either way, devices already paired stay signed in. To stop someone's devices
 working, [disable the account](#disabling-vs-deleting).

@@ -384,7 +384,8 @@ Fix those with a [bulk edit](#changing-many-books-at-once), or use
 
 With community metadata on, a series with a matched book also shows the books
 you don't have, as dashed gaps: "You have 1, 2, 4 of 5; missing 3, 5". A gap
-shows its release date when known, marked **Preorder** or **New**.
+shows its release date when known, marked **Preorder** or **New**. Only whole
+numbers make gaps, so a novella at 2.5 you don't have is left out.
 
 With a Bridge that can write characters and recaps, **Generate for the series**
 queues them for each book in the series that has none yet.
@@ -401,7 +402,8 @@ for listeners too, edit its **Series number** on
 - **The community database has no genres or tags yet**, so matching never changes them.
 - **A value made only of invisible characters counts as empty.** A title or
   chapter title like that is refused.
-- **A book using your edited chapters offers no Detect chapters** on the
-  [Health](health.md) page. Revert the edit first.
+- **A book using your edited chapters gets no chapter detection.** The
+  [Health](health.md) page offers no Detect chapters for it, and detecting
+  many books at once passes over it. Revert the edit first.
 - **The chapter editor's player plays each file as it is stored.** A file your
   browser can't play doesn't load there, but you can still type the times.

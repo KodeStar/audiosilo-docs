@@ -51,7 +51,8 @@ minutes. The page refreshes every ten seconds.
 
 Each card shows who is listening, the book, the chapter and how far they are.
 It also shows the device, the app and its version, whether it plays directly or
-is transcoded, the network address and when the session started.
+is transcoded, the network address and when the session started. A watch shows
+as **AudioSilo**, with **Apple Watch** or **Wear OS** as its platform.
 
 A device that [saves once a minute](../listening/playback.md#your-position-follows-you)
 can be up to a minute behind here.

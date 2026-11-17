@@ -79,9 +79,9 @@ What each section is for:
 
 The overview is the console's home page. It shows:
 
-- **Listening now**: a card for each device playing or paused in the last ten
-  minutes. Click one to see its details in
-  [Activity > Live now](activity.md#live-now).
+- **Listening now**: a card for each person and book playing or paused in the
+  last ten minutes. One book on several devices says **on N devices**. Click a
+  card to see its details in [Activity > Live now](activity.md#live-now).
 - **Totals**: books, libraries, people and books in progress.
 - **Recent listening**: who listened to what, and how far they got.
 - **Needs attention**: the kinds of library issue that have something in them.
