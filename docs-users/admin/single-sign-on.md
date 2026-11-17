@@ -89,8 +89,10 @@ To sign in with single sign-on, open the console or the web player and select
 back signed in.
 
 The web player offers the button only when you open it from your server, at
-the server's own address followed by `/web`. It doesn't offer it while a
-grown-up signs in from [kids mode](../listening/kids-mode.md).
+the server's own address followed by `/web`. It offers it too while a grown-up
+signs in from [kids mode](../listening/kids-mode.md). After the provider, the
+player goes back to what you were doing, such as **Add someone** or the book
+you opened.
 
 ![The web player's sign-in screen with the Sign in with button](/img/screenshots/web-player/connect-oidc.png)
 
