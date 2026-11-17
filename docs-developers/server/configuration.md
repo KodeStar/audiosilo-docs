@@ -174,10 +174,11 @@ asks the saved address and fails. A restart fixes it.
 The image's `HEALTHCHECK` runs `docker-entrypoint.sh healthcheck` every 30 s with
 a 10 s timeout, 3 retries and a **10 minute start period**, so a first start's or
 an upgrade's migrations on a large library finish before a failed check counts.
-Docker runs each check as root, apart from the container's start. So the
-entrypoint's `healthcheck` mode drops to `PUID:PGID` with `su-exec`, as the start
-does (see [Under Docker](#under-docker)) (root may not read
-`config.yaml` on an NFS share with `root_squash`), and runs
+Docker runs each check apart from the container's start, as root unless the
+container is started as another user (`user:`). Root may not read `config.yaml`
+on an NFS share with `root_squash`, so the entrypoint's `healthcheck` mode, when
+it runs as root, drops to `PUID:PGID` with `su-exec` as the start does (see
+[Under Docker](#under-docker)). It then runs
 `audiosilo --data <folder> healthcheck` on the data folder the start resolved
 from its own `--data`. The start records that folder in `/tmp/audiosilo-data-dir`,
 and a check with no record uses `/data`. Docker only marks the container
@@ -445,7 +446,7 @@ scan:
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `setup.skip` | bool, `false` | Marks the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) finished and dismissed at start, for an install set up by script or by this file (a public demo too). It runs after the admin is created and the config's libraries are synced, in one transaction (`catalog.SkipSetup`), and fills the step marks as leaving the last step does (see [State](web-ui.md#state)). A flow already finished is left as it is, so a later start never undoes an admin's reopened card. The [first-run banner](web-ui.md#the-first-run-setup-flow) changes with it. Read once at start, with **no console setting**. `AUDIOSILO_SETUP_SKIP` sets it too |
+| `setup.skip` | bool, `false` | Marks the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) finished and dismissed at start, for an install set up by script or by this file (a public demo too). It runs after the config's libraries are synced (and, in a default start, after the first-run admin is created), in one transaction (`catalog.SkipSetup`), and fills the step marks as leaving the last step does (see [State](web-ui.md#state)). A flow already finished is left as it is, so a later start never undoes an admin's reopened card. The [first-run banner](web-ui.md#the-first-run-setup-flow) changes with it. Read once at start, with **no console setting**. `AUDIOSILO_SETUP_SKIP` sets it too |
 
 ```yaml
 setup:
