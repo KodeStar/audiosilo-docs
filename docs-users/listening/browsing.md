@@ -118,7 +118,7 @@ Each series gets a card with a small shelf of your books and a line such as "4 o
 
 A book in more than one series appears in each. *Guards! Guards!*, for example, is Discworld book 8 and City Watch book 1.
 
-Two recordings of one book, such as two narrators, share one spine on the card's shelf. The card's line still counts each recording as a book, so a series of four books with one held twice reads "5 books". Its in-progress and finished counts go by recording too. The series page counts it once. See [More than one recording of a book](book-page.md#more-than-one-recording-of-a-book).
+Two recordings of one book, such as two narrators, share one spine on the card's shelf. Once the shelf has loaded, the card counts that book once, as the series page does. See [More than one recording of a book](book-page.md#more-than-one-recording-of-a-book).
 
 ### Collections
 

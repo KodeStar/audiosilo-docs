@@ -12,6 +12,8 @@ It's **off by default** and works **both ways**. You see others only while you s
 1. Open the [Household page](household.md).
 2. Under **Listening in the house**, turn on **Share what I'm listening to with the house**.
 
+If a server can't be reached, the Household page says it couldn't check that server, with **Retry**. With no network, it says you're offline and checks again by itself.
+
 There's one switch per server. When several people share a device ([profiles](profiles.md)), each sets their own. Turn it off any time: you stop showing up for others, and they disappear from your Home page.
 
 Demo accounts can't turn it on.

@@ -78,7 +78,7 @@ Your server may hold one book in more than one recording, such as two narrators 
 
 Each recording keeps its own place, bookmarks and notes. Only recordings you can open are listed, so someone who can see one recording never hears about the other.
 
-This needs community metadata switched on and a recent server. Without them, each recording is a book of its own, as before.
+The **Other recordings in your library** card needs community metadata switched on and a recent server. With it off, a series page still keeps together the recordings your server has already matched.
 
 ## The tabs
 

@@ -13,7 +13,7 @@ Home has a **Coming up in your series** shelf, after **Next in your series**. It
 
 ![Home's Coming up in your series shelf: covers of missing Sherlock Holmes books with their series number and date](/img/screenshots/web-player/home-upcoming.png)
 
-Tap a book to open its [series page](#on-series-pages). Tap **See all** to open the Upcoming page. The shelf only appears when it has something to show.
+Tap a book to open its [series page](#on-series-pages). Tap **See all** to open the Upcoming page. The shelf only appears when it has something to show. It leaves out a book that **Next in your series** already shows.
 
 ## The Upcoming page
 
