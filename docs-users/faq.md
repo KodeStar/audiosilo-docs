@@ -11,7 +11,7 @@ Quick answers to common questions. For problems, see [Troubleshooting](./trouble
 
 `.m4b`, `.m4a`, `.mp4`, `.mp3`, `.flac`, `.ogg`, `.opus` and `.mka`. A single `.m4b` and a folder of `.mp3` files both play as one book with chapters. `.mka` needs ffmpeg on the server.
 
-Audible's protected `.aax` and `.aaxc` files are not supported. See [Supported formats](./getting-started/organizing-your-library.md#supported-formats).
+Audible's protected `.aax` and `.aaxc` files are not supported. See [Supported formats](./getting-started/organizing-your-library.md#supported-formats). A [Bridge](./getting-started/running-a-bridge.md) can instead [back up the Audible books you bought](./admin/audible.md) as files that play.
 
 ### Do I need ffmpeg?
 

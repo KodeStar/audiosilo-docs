@@ -58,7 +58,7 @@ AudioSilo plays these audio files:
 
 Other files, like `.jpg`, `.nfo` or `.pdf`, are hidden from browsing.
 
-Audible's protected `.aax` and `.aaxc` files are **not** supported. Add DRM-free audio files instead.
+Audible's protected `.aax` and `.aaxc` files are **not** supported. Add DRM-free audio files instead. A [Bridge](./running-a-bridge.md) can [back up the Audible books you bought](../admin/audible.md) into your library as files that play.
 
 ### A book's ebook
 
