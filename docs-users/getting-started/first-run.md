@@ -58,8 +58,8 @@ The `reset-admin` command sets a new admin password and prints it once. Run the 
 | From a terminal | `./audiosilo --data ./data reset-admin` |
 
 - After `-u`, use your `PUID:PGID`. The reminder prints the right ones.
-- `--data` goes before `reset-admin`. With several admins, add the username at the end.
-- It works while the server runs. Every session that used the old password is signed out within a minute, and the first-run auth code stops working. If it says revoking that code failed, the new password still works: revoke the code in [People > Invites](../admin/users-and-invites.md).
+- `--data` goes before `reset-admin`. With several admins, add the username at the end. A disabled admin is never picked.
+- It works while the server runs. Every session that used the old password is signed out within a minute, and the auth code printed at first start stops working. A code made since then keeps working. If the printed code can't be revoked, the command stops and changes nothing.
 - It refuses while a restore is waiting for the next start, since the restore would replace the new password. Start the server once, or cancel the restore in [Backups](../admin/backups.md), then run it again.
 
 `reset-admin` also ends the reminder. A server started with `--setup` never prints it.
@@ -96,7 +96,7 @@ Choose the username and password you sign in to the console with. The username i
 - If you chose your password on the `--setup` page, a new one is optional.
 - **Keep admin and this password** skips the step.
 
-A new password doesn't end the auth code from the log. Once your devices are set up, revoke it in [People > Invites](../admin/users-and-invites.md).
+Saving a new password here also ends the auth code from the log. Sign in your devices with your username and password, or with the QR code in [step 9](#step-9-connect-a-phone).
 
 ### Step 2: Where are your books?
 
@@ -185,7 +185,7 @@ Optional. A **Bridge** is a companion container that writes to your library fold
 
 ![Step 9: a pairing QR code for your phone, and how signing in works](/img/screenshots/setup/phone.png)
 
-Install the AudioSilo app on your phone, open it and tap **Scan a QR code**, then scan this code. The app signs in as you. The code works once, for ten minutes, and **New code** makes another. With no camera to hand, enter the server's address in the app and sign in with your username and password, or with the auth code from the log. See [Connect the app to your server](../listening/connecting.md).
+Install the AudioSilo app on your phone, open it and tap **Scan a QR code**, then scan this code. The app signs in as you. The code works once, for ten minutes, and **New code** makes another. With no camera to hand, enter the server's address in the app and sign in with your username and password. The auth code from the log works only if you kept the log's password in step 1. See [Connect the app to your server](../listening/connecting.md).
 
 If you opened the console on the server itself (`localhost`), the code needs a home or public address from [step 5](#step-5-how-will-people-reach-the-server). The step tells you if one is missing.
 
