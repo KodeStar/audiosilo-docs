@@ -6317,7 +6317,8 @@ FTS rows). The cascade also removes every user's state keyed to it (progress,
 bookmarks, notes, listening history and favourites), plus its folder overrides,
 enrichment, metadata edits, custom covers and any share path rules pointing into
 it. Its whole-library grant shares (`whole_library_id` = this library) are deleted
-too, unless one also holds rules for another library, which it keeps granting. Audio files on disk are
+too, unless one also holds rules for another library, which it keeps granting as
+an ordinary share (from 2.7.0 its grant mark is cleared). Audio files on disk are
 untouched. `204 No Content`.
 
 A library the server's config declares (see
@@ -6631,6 +6632,9 @@ rules (a share an admin fills with a whole library stays an ordinary share).
 `GET /admin/shares/{id}` and the `shares` of
 [`GET /admin/users/{id}`](#get-apiv1adminusersid) carry it too. Migration 0015
 added the column and backfilled the existing `Library: <name>` grant shares.
+The mark stays only while the share holds that library's `""` rule (from 2.7.0,
+see `0081` in [Data model](../data-model.md#migration-policy-append-only)), so the console lists
+a grant without it among the named shares.
 
 ### `POST /api/v1/admin/shares`
 
@@ -6680,7 +6684,12 @@ Response: `204 No Content`. `400` when a `library_id` is missing/zero (nothing i
 added), or with code `too_large` for more than 1000 rules. `409` with code
 `library_grant` on a whole-library grant (a share with `whole_library_id`): its
 rules change only by granting or revoking the library
-([`POST /admin/library-access`](#post-apiv1adminlibrary-access)).
+([`POST /admin/library-access`](#post-apiv1adminlibrary-access)). From 2.7.0 a
+`DELETE` of a **stray** rule on a grant (any rule but the grant's own whole
+library, one an older version let an admin add) removes it like any other;
+only the grant's own rule is `409 library_grant`. A grant share that no longer
+holds its own rule is an ordinary share: deleting its library clears the mark,
+and migration `0081` cleared the marks older versions left.
 
 ### `POST /api/v1/admin/share-access` · `DELETE /api/v1/admin/share-access`
 
@@ -11100,7 +11109,8 @@ The kinds:
   `sidecars.generate` job is open for the book (`generate_open`: that run finds
   them itself), while a `sidecars.describe` job is (`describe_open`), and for a
   book whose chapter source an admin chose (`chapters_chosen`: the list would
-  never be used). See [Chapterless books](../../bridge/chapters.md).
+  never be used), and from 2.7.0 for a book whose edited chapters apply
+  (`chapters_edited`; a dormant edit refuses nothing). See [Chapterless books](../../bridge/chapters.md).
 - **`readalong.align`** makes a book's read-along map. The Bridge reuses the
   transcript it kept for the book (else transcribes it; no agent), lines the words
   up with the book's ebook, and writes
@@ -11225,6 +11235,10 @@ The `409` codes, each sent as `code`:
 - `chapters_chosen`: `chapters.detect` for a book whose chapter source an admin
   chose (`files` or `community`), checked before the queue
   ("an admin chose this book's chapter source, so chapters found in the narration would never be used; set it back to automatic first").
+- `chapters_edited` (from 2.7.0): `chapters.detect` for a book whose
+  [edited chapters](../community-chapters.md#edited-chapters) apply, checked
+  from the book's `chapters_source` before the queue: a found list would sit
+  under the edit, never used. Health's Detect dialog passes such a book over.
 - `readalong_open`: `sidecars.generate` while a `readalong.align` job is queued or
   working for the book (a parked one is cancelled instead), or `chapters.detect`
   while one is open

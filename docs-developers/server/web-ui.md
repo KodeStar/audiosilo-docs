@@ -547,8 +547,10 @@ The Overview is built on `GET /admin/stats`, `GET /admin/sessions/live`,
   same notice while browsing, Settings > Import's Past imports card once an import
   is applied, and the setup flow's abs step (there with `newTab`, so Health opens
   in a new tab and the flow stays open).
-- **Listening now** (`GET /admin/sessions/live`) has one card per live session,
-  playing first, each linking to Activity > Live now. A card's second line is the chapter label described
+- **Listening now** (`GET /admin/sessions/live`) has one card per person and
+  book (from 2.7.0; before, one per live session), playing first, each linking
+  to Activity > Live now. A book live on several of the person's devices is one
+  card, its state the newest session's, saying "on N devices". A card's second line is the chapter label described
   under [Activity > Live now](#activity--live-now), else the author or device.
   A failed live list reads as nobody live rather than holding the page back.
 - **Recent listening** is the stats' progress feed minus the user and book
@@ -771,7 +773,8 @@ The card follows the book's `chapters.detect` job (`useBookGenerateJob` with
 `KIND_DETECT`) and fetches the book again when it ends.
 
 **The chapter editor.** **Edit chapters** in the card's header (any book with
-files) swaps the card's body for `ChaptersEditor` (`chapters-editor.tsx`). Its
+files in a books library: from 2.7.0 a podcast library offers none, since its
+episodes take their chapters from their feed) swaps the card's body for `ChaptersEditor` (`chapters-editor.tsx`). Its
 rules are the pure `chapters-edit-model.ts`, and the paste dialog is
 `chapters-paste-dialog.tsx`.
 
@@ -1241,6 +1244,10 @@ The pure logic (bucketing, ticks, streaks, the calendar grid) lives in
 Activity > Live now (`live-page.tsx`) runs on `GET /admin/sessions/live`,
 polled every 10 seconds (`useLiveSessions`, also used by the overview and the
 people cards). Playing sessions come first.
+
+A session's app reads as sent, except AudioSilo's own: the player's
+`AudioSilo` and the watch apps' `audiosilo-watch` both read "AudioSilo", the
+platform saying which (`appLabel`, from 2.7.0).
 
 The chapter under each title is `chapterLabel`
 (`features/activity/live-model.ts`, shared with the Overview's cards and the

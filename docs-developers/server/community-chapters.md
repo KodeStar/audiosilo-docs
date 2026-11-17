@@ -389,7 +389,10 @@ book's:
   chapter that would start at or past its file's end now leaves the edit
   dormant.
 - A start within 50 ms of a file's start (`fileStartSnapMS`) is that file's
-  first chapter. File starts are the sums of the files' lengths in whole
+  first chapter, each file taking the nearest start no file before it took
+  (`snapToFiles`, so a file under 100 ms never takes its neighbour's, and a
+  file of no length shares the next file's, as in the console's editor). File
+  starts are the sums of the files' lengths in whole
   milliseconds (`fileStartsMS`), as the console sums the basis.
 
 While it applies, the rows are the placed list, `books.chapters_source` is
@@ -415,6 +418,10 @@ whose title the admin can change.
   dormant. An applied edit marks the admin row `edited`.
 - The console offers no **Detect chapters** for a row whose `chapters_source` is
   `edited` (`rowFix`), and the Community panel offers no source to switch to.
+  From 2.7.0 the server refuses such a `chapters.detect` job too
+  (`409 chapters_edited`, `bridge.ErrChaptersEdited`, checked from the book's
+  `chapters_source`; a dormant edit refuses nothing), and Health's Detect
+  dialog passes the book over.
 
 ### Saving and reverting
 

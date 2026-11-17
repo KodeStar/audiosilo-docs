@@ -2358,6 +2358,7 @@ The migration history so far:
 | 0078 | `chapter_edits` | `chapter_edits` (an admin's edited chapter list per book, durable and path-keyed, `library_id` `ON DELETE CASCADE`, `updated_by` `ON DELETE SET NULL`; see [Edited chapters](community-chapters.md#edited-chapters)) and `cast_grants.editor` (`INTEGER NOT NULL DEFAULT 0`, the [editor tokens](auth-and-security.md#cast-tokens)). No data moves |
 | 0079 | `book_matches_work` | The index `idx_book_matches_work` on `book_matches(work_id)`, so a work's recordings ([a book's work key](#a-books-work-key)) are found from the recorded matches as from `upcoming_owned` (already indexed by `idx_upcoming_owned_work`). No data moves |
 | 0080 | `listening_stay` | Listening sync: `progress.stay_version` and `edit_version` (`INTEGER`, nullable, `NULL` on every existing row), so a Stay on another device's offer wins and holds the row ([A Stay](api/reference.md#a-stay)). No data moves |
+| 0081 | `share_grant_mark` | Clears `shares.whole_library_id` on every share that no longer holds that library's whole-library rule (`share_paths` with its `library_id` and path `''`): a mark older versions left after a path edit on a grant, an interrupted grant, or deleting the library of a grant that also held another library's folders. Such a share is an ordinary one again, its folders open to change; `catalog.DeleteLibrary` now clears the mark itself |
 
 ## SQLite choices
 
