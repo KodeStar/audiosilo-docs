@@ -114,6 +114,7 @@ The settings [`sidecars.generate`](generating.md) adds, or that matter most to i
 |---|---|---|---|
 | `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` (empty is claude) | the CLI the [agent container](agent-container.md) runs for this Bridge: `claude` or `codex` |
 | `agent.staging_dir` | `AUDIOSILO_BRIDGE_AGENT_STAGING_DIR` | `<data>/staging` | the folder shared with the agent container (absolute). The compose example mounts a volume at `/staging`, outside `/bridge-data`, because the first start's ownership fix of `/bridge-data` would otherwise reach it |
+| `agent.require_group` | `AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP` | `false` | keep a credential handed over from the Accounts tab to the Bridge's group in every case. Where the Bridge would otherwise hand it to every uid on the staging volume (the agent container isn't in the group, the volume refuses the chown, the two containers map ids differently), the agent is unavailable instead, with Problem `group_required` saying why. A value that isn't a boolean stops the start. See [`agent.require_group`](agent-container.md#agentrequire_group) |
 | `agent.claim_timeout_seconds` | `AUDIOSILO_BRIDGE_AGENT_CLAIM_TIMEOUT_SECONDS` | `120` | how long an agent job waits for the container to claim it before the book parks `agent_unavailable` (10 to 3600) |
 | `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | the monthly agent spend cap across every book, for the calendar month in UTC. `0` = no cap. The page's **Settings** tab edits it, and it is locked when the environment sets it. It applies **live**: the engine reads it per run (`pipeline.Config.MonthlyBudget` is a func). A save that changes it resumes the books and description jobs parked `budget_exceeded` ([Parks](generating.md#parks)). One still over the new cap parks again until the next month |
 | `agent.budget_reviewed_at` | | | when an admin last saved the monthly budget on the page (RFC 3339, `""` for never). The save writes it, and it is not meant to be set by hand. The setup checklist's `budget` item is done when it is set **or** the environment sets the budget (`Config.BudgetReviewed`) |
@@ -401,7 +402,9 @@ services:
     depends_on: [audiosilo]
     environment:
       PUID: "1000"
-      PGID: "1000"
+      # &bridge_pgid names this value: the agent container's group_add below
+      # follows it, so change it here only.
+      PGID: &bridge_pgid "1000"
       # The server as the Bridge reaches it on this network.
       AUDIOSILO_BRIDGE_SERVER_URL: http://audiosilo:8080
       # The Bridge's page as your LAN reaches it (the console links to it).
@@ -415,6 +418,10 @@ services:
       AUDIOSILO_BRIDGE_AGENT_STAGING_DIR: /staging
       # The CLI the agent container runs: claude (the default) or codex.
       # AUDIOSILO_BRIDGE_AGENT_BACKEND: codex
+      # Never hand the agent credential to every user on the staging volume
+      # (the agent waits instead, saying why, when it can't be kept to the
+      # group_add group below):
+      # AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP: "true"
       # A GitHub token (a fine-grained one that can open issues on the community
       # repos) lets a job contribute its characters and recaps (contribute: issue).
       # Read live and never stored; while set it is used instead of the Accounts
@@ -433,6 +440,12 @@ services:
     image: ghcr.io/kodestar/audiosilo-bridge:latest-agent
     restart: unless-stopped
     user: "10002:10002"
+    # The bridge's PGID above (*bridge_pgid follows it): the Bridge hands the
+    # agent credential from its Accounts tab to this group alone, never to
+    # every user on the staging volume. Without it the hand-off still works,
+    # readable by any user until the runner takes it (the Bridge's log says so
+    # once).
+    group_add: [*bridge_pgid]
     environment:
       # By name only: the value comes from your shell or .env and is never
       # written here. Set the one you use; the runner reports which it found.
@@ -475,6 +488,10 @@ The points that matter:
   Bridge's `agent.staging_dir`. The agent mounts no library and no Bridge data. It
   runs as `10002:10002` with every capability dropped, `no-new-privileges`, a
   read-only root and a tmpfs `/tmp`, on a network of its own (the internet only).
+  `group_add` adds the Bridge's `PGID` through the YAML alias `*bridge_pgid`, so
+  a credential the Bridge hands over is readable by that group alone (see
+  [Keeping it to the Bridge's group](agent-container.md#keeping-it-to-the-bridges-group)).
+  Change the `PGID` on the Bridge only, and the agent follows it.
   Its credentials come in by name from the shell or a `.env` file, and are never
   written into the compose file. See [The agent container](agent-container.md).
 - **`stop_grace_period: 20s`** gives the runner time to stop the runs in progress

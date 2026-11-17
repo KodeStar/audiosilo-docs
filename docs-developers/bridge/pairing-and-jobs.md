@@ -212,6 +212,7 @@ recaps and descriptions"), but the backend mismatch, which names both CLIs:
 | `no_cli` | "the agent image has no claude CLI: use this Bridge's agent image; ..." (`agentNoCLI`) |
 | `other_backend` | "codex is signed in, but this Bridge runs claude: set agent.backend: codex and restart the Bridge, or set claude's sign-in on the Accounts tab" (`agentOtherBackend`) |
 | `no_credential` | `DetailAgentNoCredential`: "set the agent's sign-in on the Accounts tab; ..." |
+| `group_required` (`agent.require_group` is on and the handed credential can't be kept to the Bridge's group) | `DetailAgentGroupRequired`: "agent.require_group is on, and the agent's credential can't be kept to the Bridge's group: the Accounts tab says why" (no "what the agent is for" ending) |
 | a refused credential (`Refused`) | the container's own detail, saying where to replace it (else `DetailAgentNoCredential`) |
 
 The item is optional (`required: false`, an owner decision reversing FIRST-RUN

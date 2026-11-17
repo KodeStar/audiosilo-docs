@@ -34,7 +34,8 @@ A separate container holds on stock Docker seccomp:
   `/bridge-data` or the Bridge's secrets. The one exception is an agent credential
   set on the Accounts tab, which each run receives (see
   [The credential hand-off](#the-credential-hand-off));
-- it runs as a fixed uid (`10002:10002`), with `cap_drop: [ALL]`,
+- it runs as a fixed uid (`10002:10002`), with the Bridge's `PGID` added
+  (`group_add`, so a handed credential can be kept to that group), `cap_drop: [ALL]`,
   `no-new-privileges`, a read-only root, a tmpfs `/tmp`, and **its own network**
   (the internet only: it can't reach the Bridge or the server);
 - every job sees only what the Bridge staged for it, and every output is
@@ -75,8 +76,10 @@ One directory is shared by exactly two containers.
   first-start ownership fix would otherwise reach it.
 - The agent container sees it at `/staging`.
 
-The two run as different uids sharing no group, so the root is world-writable. The
-Bridge makes it so when it creates it.
+The two run as different uids, so the root is world-writable (`0777`, not
+sticky). The Bridge makes it so when it creates it. The agent container joins the
+Bridge's group only so that a handed credential can be kept to that group (see
+[Keeping it to the Bridge's group](#keeping-it-to-the-bridges-group)).
 
 ```
 <staging>/
@@ -85,8 +88,8 @@ Bridge makes it so when it creates it.
     work/                  the staged copy of the engine's dir (inputs 0444, dirs 0755)
       out/                 the agent's only writable place (0777, files 0666)
     prompt.txt             0444
-    credential/            0777, not sticky (Phase 2b, only for a hand-off)
-      credential.json      0444: the Bridge's credential for this run; the runner deletes it
+    credential/            0770 in the Bridge's group, else 0777; not sticky (only for a hand-off)
+      credential.json      0440 in that group, else 0444: the Bridge's credential for this run; the runner deletes it
     request.json           renamed from request.json.tmp: the ready signal
     claim/                 the runner's atomic claim (mkdir)
     heartbeat              touched every 5 s while the CLI runs
@@ -107,6 +110,7 @@ The runner rewrites `<staging>/runner.json` every **15 seconds**
   "heartbeat_at": "2026-10-16T09:12:44Z",
   "slots": 1,
   "handoff": true,
+  "groups": [10002, 1000],
   "clis": {
     "claude": { "version": "2.1.300", "credential": "oauth_token", "credential_since": "2026-10-16T08:00:01Z" },
     "codex":  { "version": "0.162.1", "credential": "" }
@@ -127,7 +131,9 @@ refused may work again. The runner looks for the CLIs at its start and every 10
 minutes after, or at once when a run finds its CLI missing.
 
 `handoff` (omitted by an older runner) says the runner takes the
-Bridge's credential for a run. See [The credential hand-off](#the-credential-hand-off).
+Bridge's credential for a run. `groups` (omitted by an older runner) is the
+runner's group ids, its own effective gid first, then its supplementary ones. See
+[The credential hand-off](#the-credential-hand-off).
 
 The Bridge counts the container **available** when all of these hold:
 
@@ -146,7 +152,9 @@ an `agent_unavailable` park all use the same words. The reasons are:
 - a stale heartbeat;
 - no such CLI;
 - no credential. The status names how to give one, and says when the other CLI is
-  signed in.
+  signed in;
+- with `agent.require_group` on, a handed credential that can't be kept to the
+  Bridge's group (see [`agent.require_group`](#agentrequire_group)).
 
 The engine's agent concurrency follows `slots`.
 
@@ -225,7 +233,10 @@ The runner (`agentrun`), listing the staging dir every second:
   or stopped it itself;
 - `unavailable: true`, for the cases the Bridge should treat as the agent being
   unavailable rather than a failed run: no CLI, no credential, or the container
-  stopping mid-run.
+  stopping mid-run;
+- `credential_denied: true`, when the runner's uid could not take a
+  `credential.json` handed to the Bridge's group, so the job was refused before
+  the CLI started (see [Fallbacks](#fallbacks)).
 
 The Bridge, meanwhile, **polls** every second. It doesn't use inotify, since an
 Unraid `shfs` mount may not deliver events.
@@ -351,9 +362,9 @@ always wins: its environment and secrets files stay the headless override.
   "the container is too old to take the one on the Accounts tab: update the agent
   image to this Bridge's version".
 - **How.** Before `request.json`, the Bridge writes `credential/credential.json`
-  (`0444`, synced) in a directory of its own. That directory is `0777` and **not**
-  sticky, unlike the job dir, so the runner, another uid, can delete the Bridge's
-  file:
+  (synced) in a directory of its own. That directory is **not** sticky, unlike the
+  job dir, so the runner, another uid, can delete the Bridge's file. Who may read
+  it is in [Keeping it to the Bridge's group](#keeping-it-to-the-bridges-group):
 
   ```json
   { "cli": "claude", "kind": "oauth_token", "value": "..." }
@@ -380,8 +391,8 @@ always wins: its environment and secrets files stay the headless override.
   at once resumes the books and description jobs parked `agent_credential_refused`
   and `agent_unavailable` ([Parks](generating.md#parks)).
 - **The problem as a kind.** Beside its `Detail`, `agentbox.Status` carries
-  `Problem`: `not_running`, `outdated`, `no_cli`, `other_backend` or
-  `no_credential`, and empty when available or refused. For `other_backend` it also
+  `Problem`: `not_running`, `outdated`, `no_cli`, `other_backend`,
+  `no_credential` or `group_required`, and empty when available or refused. For `other_backend` it also
   carries `Other`, the CLI that is signed in. A container too old to take the
   Accounts tab's credential is `outdated`, like another protocol. The Status tab's
   agent line keeps the full `Detail`. The setup checklist words the kind for a
@@ -391,9 +402,106 @@ always wins: its environment and secrets files stay the headless override.
 `request.json` and the protocol version are unchanged. An older Bridge never
 writes the file, and an older runner never sees one written for it.
 
-Accepted for now: the file sits `0444` in a world-writable directory between the
-Bridge writing it and the runner deleting it, before the CLI starts. A later change
-can share a group between the two uids and make it `0440`.
+### Keeping it to the Bridge's group
+
+The compose example adds the Bridge's `PGID` to the agent container with
+`group_add`. A YAML alias ties the two (`PGID: &bridge_pgid "1000"` on the
+Bridge, `group_add: [*bridge_pgid]` on the agent), so they can't differ. The
+runner then lists that gid in `runner.json`'s `groups` (`Status.ShareGroup`).
+
+When it does, the Bridge writes the hand-off for its own effective gid alone:
+
+- `credential/` is `0770` and `credential.json` `0440`, both chowned to the
+  Bridge's group. The directory needs the group's read bit, because the runner
+  opens it through an `os.Root`;
+- any ACL inherited from the staging dir is removed, so no other uid can read the
+  file.
+
+No other uid on the staging volume can then read the credential while it waits
+for the runner. The runner deletes it before the CLI starts, as before.
+
+### Fallbacks
+
+In three cases the Bridge hands the credential to every uid instead, in the old
+modes (`credential/` `0777`, the file `0444`). Each is logged once as a warning
+that names the fix, and none fails a run:
+
+- **The runner isn't in the group.** `runner.json` lists no `groups` holding the
+  Bridge's gid: no `group_add`, or an agent image older than the Bridge. The
+  warning says to add the group with `group_add` and the Bridge's `PGID`, on an
+  agent image as new as the Bridge, and to recreate the container.
+- **The volume refuses the chown or the ACL change**, as NFS and CIFS staging
+  volumes can. That run is staged in the old modes. The warning says to use a
+  staging volume that allows chown.
+- **The runner is denied the group's file.** The two containers map ids on the
+  volume differently, for example under rootless Podman's user namespaces. The
+  runner refuses the job before the CLI starts and writes `credential_denied` in
+  `exit.json`. The Bridge stages that job once more in the old modes, so nothing
+  runs twice, and stays on the old modes until it restarts (`groupDenied`).
+
+The Bridge's page and the console don't show which modes are in use. The log is
+the only place that says so.
+
+### Which files are trusted
+
+The staging dir is open to every uid that reaches the volume, so any of them can
+write a `runner.json` naming no group, or an `exit.json` saying
+`credential_denied`. Either would move the credential off the group. So the
+Bridge believes those two signals only from the runner's own uid, as the files'
+owner shows it on the volume (`agentbox/trust.go`):
+
+- **The runner's uid is pinned** by the first live `runner.json` the Bridge reads,
+  and kept until the Bridge restarts. The Bridge's own uid is never pinned. An
+  agent container moved to another user needs a Bridge restart to be believed.
+- **A live `runner.json` from a second uid ends the pin.** Two uids claim to be the
+  runner, so neither is believed, and no file moves the credential off the group
+  until the Bridge restarts.
+- **A file with more than one link doesn't count**, since it could be a link to
+  another job's file.
+- **A `credential_denied` needs the job's own dir to bear it out**: the runner's
+  claim on that job, a `0700` directory of the runner's uid, and the credential
+  still in place 2 seconds later. The runner opens the job dir first and makes its
+  claim inside it, so a claim can't be moved onto a job it never ran. Both images
+  need a build with this rule.
+
+A file that fails these checks is logged once and treated as the job refused. Its
+reason says to restart the Bridge if the agent container now runs as another
+user. It never causes a fallback: a `runner.json` naming no group from another
+uid still gets the group's modes.
+
+The pin is trust on first use, and `trust.go` lists its limits. A `runner.json`
+written before the runner's first one is pinned in its place until the real
+runner's next write. A uid unmapped in the Bridge's user namespace shows as the
+overflow uid, the same for every such uid. And the CLI runs as the runner's uid,
+so a CLI told to by an injected prompt can write files that count as the
+runner's.
+
+### `agent.require_group`
+
+`agent.require_group` (`AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP`, off by default)
+turns every fallback off. With it on, the Bridge never hands the credential to
+every uid. Instead the agent is unavailable, with `Problem` `group_required` and
+a `Detail` that names the fix:
+
+- the runner isn't in the Bridge's group (add it with `group_add`);
+- the staging volume refuses the chown or the ACL change. The job is never
+  opened to the runner;
+- the runner was denied the group's file (give both containers the same id
+  mapping).
+
+The last two are learned only from a run, so they are kept until the Bridge
+restarts (`groupBlocked`). The Status tab's agent line shows the full reason, and the
+heartbeat carries it to the server. The setup checklist's agent step, on the
+Bridge's page and on the console's Bridge setup card, says that
+`agent.require_group` is on and the credential can't be kept to the Bridge's
+group, and that the Accounts tab says why. A book waiting for the agent
+parks `agent_unavailable` with the full reason.
+
+Turn it on when other containers or users can reach the staging volume and a
+credential readable by all of them for a few seconds is not acceptable. Leave it
+off where the hand-off must keep working on any volume. A forged file can then
+only make the agent unavailable until the Bridge restarts, never hand the
+credential to every uid.
 
 ## Testing it locally
 
