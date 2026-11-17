@@ -74,12 +74,14 @@ If the connection drops while you listen:
 
 In the iOS and Android apps, playback carries on in the background:
 
-- **Android**: the lock screen and notification show previous and next chapter, a chapter scrubber, and skip buttons that use your skip lengths from [Settings](settings.md#playback).
+- **Android**: the lock screen and notification show previous and next chapter, a chapter scrubber, and skip buttons that use your skip lengths from [Settings](settings.md#playback). Tap the notification to open the app.
 - **iOS**: the lock screen and Control Centre show the chapter, a chapter scrubber, play/pause and skip buttons. Next and previous track, from headphones or a car, move by chapter.
 - **Headphones**: the play/pause and skip buttons control the book. Playback pauses for a call or a navigation prompt, and resumes after if it was playing.
 - **In the car**: see [In the car](in-the-car.md).
 
 Previous goes back to the start of the chapter. Within the first 3 seconds of a chapter, it goes to the chapter before.
+
+On Android, pressing play on your headphones, a Bluetooth device or the car works even after Android has closed the app. It resumes the book you were listening to, from your place, if that book is downloaded. A book you finished stays stopped.
 
 See [Get the apps](mobile-apps.md) for more on the apps.
 
@@ -107,5 +109,6 @@ Many such books can get real chapters, from the community database or from your 
 - **Older servers** don't combine listening from several devices. The app saves your place as before, and the protections in [Your position follows you](#your-position-follows-you) still apply. On some, **Mark as finished** needs a connection.
 - **When Stay doesn't win.** It doesn't beat listening that went on more than two minutes after it, such as when you chose Stay offline a while ago. It doesn't beat a change made since, such as marking the book finished. Then the usual rules above apply. If another device's Stay got there first, you're asked again straight away. On a server before 2.7, Stay wins only if the other device hasn't played on since your device asked, or your place is further on.
 - **MKA books.** An `.mka` book with MP3 inside plays like any MP3 book when your server has ffmpeg (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). On the very first play of a large one, a jump may not land exactly until the server has finished preparing it.
+- **MP3 files without a seek index.** Some MP3 books recorded at a varying bitrate have no index of where each moment sits in the file. Android can then get the file's length wrong, so the app uses the length your server reports instead. A jump inside such a file can land a little off. If playback can't reach your place, it stops with **Retry** and never marks the book finished.
 - **Very long single files on Android.** A book in one `.m4b` or `.m4a` file over about 41 hours shows a scrubber for the whole file on the lock screen, with no chapter buttons. Its chapters work as usual in the app.
 - **A listen the server turns down**, such as one from a download of a different length, is listed with the reason on your [account page](account.md#listening-sync).

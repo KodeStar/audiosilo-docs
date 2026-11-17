@@ -77,7 +77,9 @@ an item of an older snapshot. A connection that no profile holds still plays, wh
 CarPlay launch before the session could be read.
 
 **The fields.** The snapshot carries `version: 1`, `generatedAt`, `signedIn`, the localized
-`labels` and up to four `tabs`. The labels come from `carLabels(t)`, which reads the `car.*`
+`labels`, up to four `tabs` and, on Android, `resume`: the item id of the book a playback
+resumption starts, or null for none (see [A `MediaLibraryService`](#a-medialibraryservice)).
+The labels come from `carLabels(t)`, which reads the `car.*`
 keys: `continue`, `chapters`, `bookmark`, `bookmarkSaved`, `empty`, `signedOut` and
 `unavailable`. Each tab carries its own localized `title`.
 
@@ -150,10 +152,10 @@ No session token is ever written outside expo-secure-store for the car.
 ### When the snapshot is written
 
 `car-controller.ts` runs `startCarSync()`, from the root layout and from the car task. It is
-a no-op on the web and on a binary without the car functions. It builds and writes the
+a no-op on the web and on a binary without the car functions. It builds and writes the full
 snapshot **only once a car has connected on this device** (`audiosilo.carSeen`), so a phone
-that never meets a car never builds one. Two writes are never closer than `MIN_GAP_MS`
-(2 s). It writes:
+that never meets a car never reads lists for it or fetches car covers. While a car is
+connected, two writes are never closer than `MIN_GAP_MS` (2 s). It writes:
 
 - at start;
 - when a car connects (always a fresh build), and on Android after adopting a book the
@@ -164,6 +166,28 @@ that never meets a car never builds one. Two writes are never closer than `MIN_G
   the downloads registry, the session's connections or default connection, the library
   selection or the default speed;
 - once covers that a written snapshot lacked have been fetched, so the next one names them.
+
+**For a resumption (Android).** What a headset or Bluetooth play after a kill resumes must be
+on disk before the kill, so a pause, a stop, a paused book's move (a seek, a chapter skip,
+another device's place picked up: `pausedMove`) or another book writes a snapshot at once:
+
+- **With a car met but none connected**, the full snapshot (`writeForResumption`), on no
+  timer and from the query cache (`cachedBuild`: a server is asked only for a list the cache
+  never held). Android pauses JS timers in the background, a request's timeout included, so
+  reading the cache lets a pause there still write it. Such a write does not start the 2 s gap for
+  a car that connects right after.
+- **Before any car**, a minimal resumable snapshot (`buildResumable`). It holds the
+  resumption's book at its live place and the downloaded books (a kids profile's loaded
+  story only), with the progress rows the app last read standing in for the servers'. It
+  reads no server and fetches or prunes no cover. It is also written when the person
+  listening, their servers or the downloads change. It waits for the start's read of the
+  car-seen mark, never lands once a car was seen, and sets no
+  `audiosilo.carSnapshotWritten`, so the first car's build replaces it.
+
+Both writes go through one queue (`snapshotWrites`), and **Playback resumption** below reads
+what they wrote. A paused loaded book's play spec starts
+where it was paused (`pausedPlaceOf`), not at the device save the pause may not have written
+yet.
 
 It **never overwrites** native's last snapshot with a worse one. It skips the write:
 
@@ -292,11 +316,24 @@ SharedPreferences (`config.autoRewindMaxMs`, `config.jumpForwardMs`,
 with no JS honours the listener's Settings, as the effects switches do
 ([Smart speed and Voice boost](audio-effects.md#android-one-processor-chain)).
 
-**Playback resumption.** `onPlaybackResumption` runs on a Bluetooth or car play with an empty
-player. It starts the snapshot's first Continue listening book only when that book has a play
-spec. Media3 asks only on a play command, so merely connecting Auto never plays. With
-`isForPlayback = false` (System UI's resumption card after a reboot) it answers from the play
-spec with no side effect.
+**Playback resumption.** `onPlaybackResumption` runs on a Bluetooth, headset or car play with an empty player. It
+starts the book the snapshot names in `resume` (`CarSnapshot.resumable`), only when that book
+has a play spec, so only a downloaded book resumes. Media3 asks only on a play command, so
+merely connecting Auto never plays. With `isForPlayback = false` (System UI's resumption card
+after a reboot) it answers from the play spec with no side effect.
+
+JS picks the book (`resumableBook`):
+
+- the loaded book while it is neither stopped nor finished;
+- until a book is loaded in this runtime, the book offered last (`audiosilo.carResumable`),
+  while it is still the person listening's and kids mode is as it was then, so opening the
+  app after a kill without playing keeps it;
+- none once a book was stopped or finished here.
+
+It is never just the first Continue listening row, which after a stop is the newest book in
+progress, so a stopped or finished book stays stopped at a headset's play. A snapshot kept
+from before the field has no `resume` key and still answers with its first Continue listening
+book.
 
 `ResumptionReceiver` (a `MediaButtonReceiver`) overrides Media3 1.9's
 `shouldStartForegroundService(Context, Intent)`. It refuses to start the foreground service
@@ -304,7 +341,18 @@ when there is nothing resumable, because a foreground service that doesn't start
 within seconds crashes the app (`ForegroundServiceDidNotStartInTimeException`). A media
 button start that does go ahead goes foreground at once, with a placeholder notification
 under Media3's notification id. Media3's own notification replaces it when the book plays. If
-nothing resumes within 15 s, the service removes the placeholder and stops.
+nothing resumes within 15 s, the service removes the placeholder and stops
+(`watchResumption`). Every play `playFromCar` leaves pending is watched too: if a car play
+takes the resumption's place and then fails (it times out, or its load leaves nothing
+loaded), the start ends at once.
+
+**Remote buttons are logged on demand** (`MediaKeyLog`). Run `adb shell setprop
+log.tag.AudiosiloKeys DEBUG`, then `adb logcat -s AudiosiloKeys`. It shows each media key (the
+receiver, the service start, `onMediaButtonEvent` with the sender, the notification
+controller and the next and previous commands), each controller's connect, and what the
+player then does (a play, a pause or a move, and who asked). A book is named by a short hash
+of its item id (`MediaKeyLog.ref`), never the id itself, which holds the connection, library
+and path. The log is off by default.
 
 **Media3 is pinned.** The module's `media3Version` must be what the app resolves. Gradle takes
 the highest Media3 any dependency asks for, while the module compiles against its own

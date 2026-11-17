@@ -336,7 +336,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `password_too_short` | `400` | a password under the minimum length |
 | `cannot_delete_self` | `400` | an admin deleting their own account |
 | `path_not_absolute` | `400` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` with a relative path |
-| `folder_unreadable` | `404` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` on a missing or unreadable folder, or (from 2.7.0) one on a hung mount, after 5 seconds |
+| `folder_unreadable` | `404` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` on a missing or unreadable folder, or (from 2.7.0) one on a hung mount, after 5 seconds; a setup preview whose walk hangs on a mount under the root, after 17 seconds |
 | `invalid_setup_step` | `400` | `PUT /admin/setup` naming a step id the flow doesn't have, or an outcome other than `done` / `skipped` |
 | `book_not_found` | `404` | the Bridge's `PUT /bridge/libraries/{id}/enrichment` for no book of a books library at the path; an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |

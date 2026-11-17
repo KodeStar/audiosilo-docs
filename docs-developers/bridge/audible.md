@@ -1382,6 +1382,7 @@ below are in memory, for this loop only.
 | the server's `sync_off` | leaves the account for 5 minutes |
 | the server's `user_unavailable` or `unknown_account` | leaves the account for 15 minutes |
 | the server's `429`/`503` | waits its `Retry-After`, at least 2 minutes |
+| the server's `404` for a missing route (code `not_found` or none: a server before 2.6.0, `link.ErrNoAudibleSync`) | leaves the account for an hour, its `sync_error` saying to update the server. A `404` with another code is that answer |
 
 Health (`sync_at`, `sync_error`, and `sync_retry_at`, which no later call shortens)
 feeds only the `audible` setup item's detail ("places not syncing for N accounts:

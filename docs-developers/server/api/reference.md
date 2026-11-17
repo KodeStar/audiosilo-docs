@@ -6591,8 +6591,10 @@ filesystem root (`/`, or the working directory's drive on Windows).
 - At most **1,000** entries; `truncated: true` (otherwise omitted) when there
   were more.
 - From 2.7.0 the listing runs behind a bounded lister (`library.DirLister`: 4
-  listings at once, 5 seconds each), so a folder on a hung mount answers
-  `404 folder_unreadable` at the time-out rather than holding the request. The
+  listings at once on each mount, 5 seconds each), so a folder on a hung mount
+  answers `404 folder_unreadable` at the time-out rather than holding the
+  request. A hung listing keeps its slot until it returns, and folders on the
+  other mounts list as usual. The
   [setup preview](#post-apiv1adminsetuppreview)'s root check shares it.
 
 | Status | Meaning |
@@ -6934,8 +6936,8 @@ is a `400` too (`too many format or codec values`).
 - `scan_error` - the first problem reading the book's files on its last
   indexing:
   - `unreadable`: a file couldn't be opened, or its read was cut short on a share
-    that stopped answering (`reading it timed out`, or `too many earlier reads are
-    stuck (on this or another library), so it wasn't tried`);
+    that stopped answering (`reading it timed out`, or `too many earlier reads
+    from the same drive or share are stuck, so it wasn't tried`);
   - `empty_file`: 0 bytes;
   - `probe_failed`: ffprobe couldn't read it.
 
@@ -10696,6 +10698,13 @@ only (never a file's contents) and is not audited.
   covers), all under the preview's overall limit of 15 seconds. A sample read
   still running then is ended and left out, so the answer has **fewer
   samples**; that never sets `capped`.
+- **A hung mount under the root** (a share mounted in a subfolder) can stop the
+  walk or a sample read in a call that can't be interrupted. So the preview
+  runs on a goroutine of its own and is waited for 17 seconds (its 15-second
+  budget plus `previewGrace`, 2 seconds). Past that it answers `404 folder_unreadable`, and the
+  abandoned walk stops at its next look at its context. At most 2 previews run
+  at once on one mount (`previewsPerMount`), and a hung one holds its slot
+  until it returns.
 - `tags` is the names a library whose `metadata_source` is `"tags"` would show
   for the book (the same resolution the index uses, so the preview and the
   library never disagree), falling back to the folders for what the tags leave
@@ -10717,7 +10726,7 @@ only (never a file's contents) and is not audited.
 | `200` | the preview |
 | `400` | `invalid request` (no body, not JSON, an unknown field), `root is required`, `path_not_absolute` (a relative `root`) or `invalid_pattern` (a skip rule the server refuses) |
 | `401` / `403` | anonymous / non-admin |
-| `404` | `folder_unreadable` - missing, not a folder, unreadable by the server, or (from 2.7.0) not answering within 5 seconds (the OS error is not echoed) |
+| `404` | `folder_unreadable` - missing, not a folder, unreadable by the server, or (from 2.7.0) not answering within 5 seconds, or a walk that didn't finish within 17 seconds (the OS error is not echoed) |
 | `409` | `root_overlaps` - overlaps a podcast library's folder |
 
 ## The Bridge

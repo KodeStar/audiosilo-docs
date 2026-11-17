@@ -55,6 +55,12 @@ flowchart TB
   mount.
 - It packages the export into a tiny image with `Dockerfile.web`, pushed as
   `ghcr.io/<owner>/audiosilo-web`.
+- It pushes with `provenance: false`, so each tag is a plain single-platform
+  manifest. With the default provenance attestation the tag would be an OCI
+  index holding the amd64 image and an attestation-only entry (platform
+  `unknown/unknown`). BuildKit then refuses to resolve it for another platform
+  ("no match for platform in manifest") when the server's Dockerfile copies
+  from it, so `WEB_PLATFORM` (below) is not the only guard.
 
 Tagging gives `:latest` only from the default branch, a semver tag on `v*` tags,
 and a `:sha` tag always. GHCR references must be lowercase. `docker/metadata-action`
@@ -215,9 +221,12 @@ draft:
   TLS default) that must serve `/healthz` and `/web/` and log `engine=native` at
   start.
 
-`scripts/smoke-boot.sh <binary> <work-dir>` runs the same boot against any Linux
-build of the native engine, such as a local `goreleaser build --snapshot`. It listens on 18080 with
-ffmpeg and ffprobe off, and prints the server's log either way.
+`scripts/smoke-boot.sh <binary> <work-dir>` runs that boot against any
+Linux build of the native engine, such as a local `goreleaser build --snapshot`.
+It listens on 18080 with ffmpeg and ffprobe off, and prints the server's log
+either way. The server's `ci.yml` **snapshot** job runs it on a snapshot of the
+`linux_amd64` build on every pull request (see
+[The server's `ci.yml` jobs](../contributing/gates-and-ci.md#the-servers-ciyml-jobs)).
 
 That is a contract, because
 [linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)

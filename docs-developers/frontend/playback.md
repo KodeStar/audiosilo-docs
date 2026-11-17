@@ -58,7 +58,13 @@ live in shared JS, so all three platforms behave identically.
 - Optional native hooks, none of which the web has:
   - `onRemoteMove(handler)`: the engine has **already** moved for something
     outside the JS API and landed at `(trackIndex, positionInTrack)` (see the
-    [module's events](#the-native-module-modulesaudiosilo-player)).
+    [module's events](#the-native-module-modulesaudiosilo-player)). The listeners
+    hear the landed place after the handler (see
+    [Native bridge](#native-bridge-servicenativets)); the Cast route keeps the same
+    order.
+  - `onLanded(handler)`: a place the native service held back for a move
+    ([Native bridge](#native-bridge-servicenativets)) reached the snapshot with no
+    move told, after playing stopped. The store saves again.
   - `onRateChange(handler)`: the OS changed the speed, and the engine already runs
     at it.
   - `onSilenceSaved(handler)`: Smart speed's running total. It is not playback
@@ -172,8 +178,31 @@ the watchdog section).
 It also listens for the module's newer events on **every** binary. An older binary
 never sends them.
 
-- `onRemoteMove` updates the snapshot's `trackIndex` and `position` **before** it
-  calls the store's handler, so a save inside the handler saves the landed place.
+- `onRemoteMove` sets the snapshot's `trackIndex`, `position` and `duration`
+  (`getSnapshot` reads the landed place at once), calls the store's handler, and
+  only then tells the listeners. The store therefore ends the listening span where
+  the engine was before any save, 15 s cut or 5 s keep sees the landed place.
+- **A tick that jumped is held for its move.** The landed place reaches JS in an
+  `onProgress` just before its `onRemoteMove`: iOS sends the two together, Android
+  the move with the next position change or up to 300 ms later. So a tick that
+  jumped while playing is held for up to 600 ms (`LANDING_HOLD_MS`). A tick has
+  jumped when it moved ahead more than playing at the speed explains, plus 5 s, or
+  back more than 1 s. A play's first tick, such as a resume's auto-rewind, is never
+  held. The move replaces a held tick and keeps its file length, since a move into
+  another file lands in a tick with that file's length. With no move by then, the
+  held tick is taken as the engine's own move. Android holds the JS timers in the
+  background, so an overdue hold also ends at the next tick.
+- **A file change during a hold.** Android reports the new file's tick before the
+  item change. A held tick that playing explains (on from the old file's end) is a
+  run-on and is told at once with the new file. Any other joins the hold, so the
+  place is told once, under the new file. iOS reports the change before the new
+  file's first tick, so it takes the held tick first.
+- **A pause during a hold** leaves the tick held. Taken as playing stops, it would
+  end the span at the landed place. The store's save as playing stops has the place
+  before the jump, and the move's own save follows. A held tick that no move
+  replaces fires `onLanded` once taken, and the store saves again.
+- The native tick after the app's own seek is measured from the place the seek
+  set, so it is never held.
 - `onRateChange` is passed on.
 - `onProgress`'s optional `silenceSaved` feeds `onSilenceSaved`.
 
@@ -437,6 +466,10 @@ progress loop itself; the new queue's `playing` starts it again.
 - The app logo is the notification small icon
   (`DefaultMediaNotificationProvider.setSmallIcon` with
   `res/drawable/ic_notification.xml`).
+- **A tap on the notification opens the app.** The session activity
+  (`setSessionActivity`) and the placeholder notification's content intent are a
+  `PendingIntent` for the app's launcher activity (`openAppIntent`). It is
+  `singleTask`, so the running app comes to the front rather than a second copy.
 - `onTaskRemoved` records a "swiped away from recents" flag in shared prefs. On
   foreground, the JS layer reads it through `consumeTaskRemoved()` and resets to
   Home, matching iOS's cold-start behavior. iOS's `consumeTaskRemoved` always
@@ -445,6 +478,28 @@ progress loop itself; the new queue's `playing` starts it again.
 Android has **no deferred-seek problem**: Media3's
 `setMediaItems(items, startIndex, startPositionMs)` honors the start position
 natively.
+
+**An MP3 with no seek header is held to the server's length** (`KnownDurations.kt`).
+With no Xing, VBRI or MLLT header, Media3 1.9.0's `Mp3Extractor` guesses a constant
+bitrate from the **first** frame, so a VBR file can read as a fraction of its length
+(a 139 s file as 29.9 s).
+
+- `KnownDurationMediaSourceFactory` notes each queue item's server length (its
+  `KEY_FILE_DURATION` extra) by URI.
+- `KnownDurationExtractorsFactory` wraps the MP3 extractor. When its
+  constant-bitrate seek map disagrees with that length by more than 2 %
+  (`Retimer.AGREES`), the map is stretched onto the server's length, and the sample
+  times after a seek follow (`Retimer`). It reads nothing extra from the file.
+  Seeks then land as close as the file's average bitrate allows, as in a browser.
+- The 2 % band leaves alone a CBR file with a tag after its audio, which reads long
+  by the tag's bytes.
+- `FLAG_ENABLE_INDEX_SEEKING` is no fix. In 1.9.0 it replaces only a seeker that
+  can't seek, and where it applies (a stream with no length) every seek reads from
+  the last indexed frame on.
+
+iOS measures these files correctly. The store's own guard
+([An engine that runs off a short file](#an-engine-that-runs-off-a-short-file))
+covers both platforms.
 
 ## Building the queue: `book-queue.ts`
 
@@ -505,10 +560,28 @@ Other queue math that lives here:
   30 min by default. Synthetic chapters are computed **after** `chapterClips` and
   never fed to it, so native playback is unchanged. `BookQueue.syntheticChapters`
   flags them.
-- **`locate(offsets, bookPosition)`** and **`toBookPosition(offsets, index,
+- **`locate(offsets, bookPosition, prefer?)`** and **`toBookPosition(offsets, index,
   positionInTrack)`** convert between the whole-book timeline and per-track
   coordinates.
-- **`chapterAt`** finds the active chapter by `book_offset`.
+- **`chapterAt(chapters, bookPosition, playing?)`** finds the active chapter by
+  `book_offset`.
+- **Files that share an offset.** A file of unknown length (a server with no
+  prober, or a VBR MP3 with no header, reports 0) gives the next file the same
+  offset. `locate` resolves such a tie to the **first** of the tied files, since the
+  length is unknown rather than zero, so a book starts in its first file. A caller
+  that knows the file the place is in (the playing one, a chapter's) passes it as
+  `prefer`, and among the tied files that one wins. `chapterAt` does the same for
+  chapters that share a start in different files: the first file's wins, unless
+  `playing` names another tied file, so the player names the chapter of the file
+  it is in. Within one file, a tie is a chapter of no length before another, and the
+  later one is the chapter playing. The companion's chapter list seeks to a chapter
+  in its own file (`seekBook(offset, trackIndexById(...))`).
+- **A file's length** as the player reads it is `fileDurationOf(queue, index,
+  engine)`: the engine's, unless the server measured the file and the engine's is
+  unknown or more than `FINISHED_TOLERANCE` (5 s) shorter, then the server's. The
+  snapshot's `duration`, the seek clamp and the time left in the file use it.
+  `shortOfFileEnd` and `endsShortOfBook` feed the engine fault check
+  ([An engine that runs off a short file](#an-engine-that-runs-off-a-short-file)).
 - **`chapterCountdowns`** feeds the sleep sheet's "Or stop after" rows, with
   wall-clock times scaled by the playback rate (`rate.ts` `wallClockSeconds`).
   **`nextChapterEnd`** answers the sleep timer's question "where does the next
@@ -583,11 +656,16 @@ timeline. Speed is clamped to 0.5–2×.
   like any other seek.
 - On native it registers **`onRemoteMove`**. The engine has already moved (the
   [module's event](#the-native-module-modulesaudiosilo-player)), so the store calls
-  `userMoved` with the landed whole-book position, and persists. `lowerFloorTo`
+  `userMoved` with the landed whole-book position. `lowerFloorTo`
   lowers the resume floor to it, and `localMoves` counts it, so a
   [place reconcile](#picking-up-another-devices-place-place-reconcilets) in flight
   stands back. Without this, a lock-screen scrub back by more than the slip
-  tolerance would never save.
+  tolerance would never save. It ends the listening span where the engine was last
+  seen, then persists a microtask later, once the landed place is in the snapshot.
+  A move reported while a book loads, or at the download's index while the
+  hot-swap moves the playing file, belongs to the previous queue and is ignored.
+- **`onLanded`** (native) persists a microtask later: the save made as playing
+  stopped had the place before a held jump.
 - **`onRateChange`** sets `rate` and persists. The rate is clamped, and only an
   out-of-range speed goes back to the engine.
 - **`onSilenceSaved`** feeds
@@ -752,6 +830,41 @@ floor.
   makes that write impossible.
 - `retry()` also reloads at `max(resumeFloor, currentPosition)`, so a transient 0
   in the snapshot can't be loaded again.
+
+### An engine that runs off a short file
+
+An engine can measure a file far short: Media3 can read a VBR MP3 with no seek
+header at a fifth of its length (see [Android](#android-media3--exoplayer)).
+Unguarded, a resume past that guess would run into the next file, and a Retry would
+seek past the engine's end, get `ended` and finish the book. The store therefore never reads an engine's
+move as the listener's place until the engine has played from where the store put
+it.
+
+- **Every move the store asks for** (a load, a seek, a track jump, another tab's
+  place) goes through `askEngineTo`, which records it as `askedPlace`. The download
+  hot-swap keeps the place and is not an ask.
+- **The ask stands** until the engine has played on `PLAYED_ON` (3 s) from it in
+  its file, has moved on into a later file from within `FINISHED_TOLERANCE` of the
+  asked file's end, or the listener moved (`onRemoteMove`). An ask the engine
+  refused lapses (`withdrawAsk`), and so does one whose engine has since moved 3 s
+  in another file.
+- **While it stands, `engineFault` turns two reports into an `error`** at the asked
+  place. One is a later file while the listener wants playback. That counts only
+  when the ask was inside its file (past 0 and more than the tolerance short of its
+  server length, `shortOfFileEnd`) and the engine had not yet reported that file
+  `PLAYING_PAST` (0.5 s) beyond the ask. The other is an `ended` short of the book's end
+  (`endsShortOfBook`). Neither is a report still in the file the store last
+  showed, or in the file of an ask this one replaced, since those are from before
+  the move landed. An `ended` the store already showed is no new end either.
+- **A faulted book** (`faultedBook`) drops its engine's reports, and a play the
+  engine starts by itself (the lock screen) is paused again. A press on play
+  reloads it as Retry does. A seek or a track jump puts the engine in the target's
+  file by index (`skipToTrack`). The fault outlives the download hot-swap's new
+  `NowPlaying` (`commitLocalSwap`).
+
+Once the engine has played on from the ask, its moves and its end are the book's: a server length
+can overestimate the audio (ffprobe's bitrate estimate for a header-less VBR file),
+and a listener who played to the real end has finished.
 
 ### Picking up another device's place (`place-reconcile.ts`)
 

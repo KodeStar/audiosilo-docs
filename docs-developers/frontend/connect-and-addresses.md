@@ -122,8 +122,15 @@ The Metro dev server (`npm run web`) is not the server, so it keeps the field.
 `/connect/sign-in` renders `SignInStep`. It signs in against the address in
 `pendingServerUrl`, read once when the screen opens, in one of two ways:
 
-- **An invite code**: `redeemCode`, then `exchange`. A code handed over by an invite
-  link is submitted at once, and a refused one stays in the field with the reason.
+- **An invite code**: `redeemCode`, then `exchange` (`signInWithCode`). A code handed
+  over by an invite link is submitted at once, and a refused one stays in the field
+  with the reason. A redeem can spend one of the invite's uses, so when the exchange
+  gets no answer (the network, a `5xx`, a `408` or a `429`), the step keeps the
+  pairing token, keyed on the server and the code. The next try of the same code at
+  the same server exchanges that token again instead of redeeming a second time,
+  which would spend another use and refuse a single-use invite as used. A token the
+  server refuses for good (`isRefusedForGood`) is never kept, and a kept one refused
+  that way is dropped and the code redeemed.
 - **A username and password**: `login`. Its `device_id` is this install's own random
   sign-in key for that server address (`getSignInKey`, `src/lib/sign-in-key.ts`,
   stored under `audiosilo.signInKeys`), so signing in again from it is not announced
@@ -254,8 +261,9 @@ and what the failure means for the link (`PairOutcome`), so the two can't disagr
 **Refused** means the link is dead. It covers every `4xx` except `408` and `429`:
 
 - When the server names a code (`invite_used`, `invite_expired`, `member_disabled`),
-  `sharedRefusalText` words it. `/auth/exchange` names none today, so a link's `401`
-  takes the next rule.
+  `sharedRefusalText` words it. `/auth/exchange` names `invite_used` or
+  `invite_expired` for a token whose invite has no uses left or has expired. Any
+  other `401`, and every `401` from a server older than 2.7.0, takes the next rule.
 - A `401` or `410` is "This pairing link has expired or was already used..."
   (`pairingRefused`).
 - Any other, a `409` without a code among them, is "This pairing link can't be used..."

@@ -439,6 +439,15 @@ Every pull request touching `data/**` is checked twice:
   verdict without a model call. Each verdict comment carries a hidden key for
   this. A manual dispatch or a re-run always judges afresh.
 
+  It takes one of two repository secrets. `ANTHROPIC_API_KEY`, when set, is
+  preferred: the script sends a Messages API request with `curl`, billed per pull
+  request. Without it, `CLAUDE_CODE_OAUTH_TOKEN` (a subscription token from
+  `claude setup-token`) runs the Claude Code CLI in headless mode, and the
+  workflow installs the CLI only in that case. The subscription is shared with
+  the [series-completion bot](./sync-bot.md)'s resolver, so the API key keeps a
+  session limit there from stalling every verdict. With neither secret the
+  script writes a skip, which is a failed check.
+
 The one place that verdict is *not* advisory is the
 [series-completion bot](./sync-bot.md). Its bounded, `data/`-only batch imports
 merge themselves once the required checks pass and `ai-verified` is applied. Every

@@ -22,7 +22,7 @@ You can cast from:
 
 On an iPhone, allow AudioSilo to use your **local network** when it asks. That's how it finds Cast devices.
 
-In the iOS and Android apps the Cast button shows only once a Cast device is found on your network. On an iPhone it shows until the first tap, which starts looking for them.
+In the iOS and Android apps the Cast button shows only once a Cast device is found on your network. On an iPhone it shows until you first tap it, because that tap starts the search for Cast devices. With no network, the button is hidden unless you're already casting.
 
 If you don't see the Cast button, check that a Cast device is on and on the same network, then update the server and the app.
 

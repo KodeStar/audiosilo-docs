@@ -641,6 +641,10 @@ CI (`.github/workflows/ci.yml`) gates all of them on every PR and push:
 - **prettier `--check`** (the `format` script; fix with `npx prettier --write .`);
 - the Jest suite.
 
+The same job also runs `npm run knip -- --no-exit-code`, a report of unused
+files, exports and dependencies (config `knip.json`) for a reviewer to read.
+It is report-only, so a finding never fails the run.
+
 CI reads the Node version from `.nvmrc` (`24.16.0`) via `node-version-file`, and
 installs with a frozen `npm ci`. Keep `package-lock.json` committed in sync after
 dependency changes. See [Gates and CI](../contributing/gates-and-ci.md) for the

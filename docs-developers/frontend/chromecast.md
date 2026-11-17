@@ -68,7 +68,9 @@ The receiver's status maps back into the same per-track snapshot (`castTrackInde
 normal LAN buffer a dead stream. A move that nobody here asked for, from the TV remote,
 Google Home or the Cast notification, is reported through `onRemoteMove`. The native
 engines report the lock screen's moves the same way, so the store lowers its resume
-floor and saves.
+floor and saves, in the same order as the native engines (see
+[Native bridge](playback.md#native-bridge-servicenativets)). The route passes the local engine's
+`onLanded` on only while it plays locally.
 
 `startCastSync()` (`src/cast/cast-session.ts`) starts once from the root layout. It
 follows the driver's session events, switches the route and keeps the `useCast` store
@@ -215,13 +217,15 @@ read through `useCastButton`.
 
 The button shows only when all of these hold:
 
-- a book is loaded,
-- the device can cast,
-- the playing book's server has `cast`. An older server, or flags not known yet, means
-  no button.
+- a book is loaded;
+- the device can cast;
+- the playing book's server has `cast`, so an older server or flags not known yet
+  mean no button;
+- the device has a network (`online`, from `useDeviceOnline`), since offline no Cast
+  device can be found (the SDK's button would show an empty pill).
 
-While a session is connected it shows whatever the book, so a cast can always be
-stopped.
+While a session is connected it shows whatever the book and the network, so a cast can
+always be stopped.
 
 The button is not offered for a podcast episode (`episode` in the model, from
 `NowPlaying.episode`). A cast token never covers podcasts, and the server answers

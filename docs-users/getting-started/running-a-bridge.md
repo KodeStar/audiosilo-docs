@@ -84,7 +84,7 @@ services:
       - staging:/staging                  # the work folder it shares with the agent
     environment:
       PUID: "1000"                        # the owner of your audiobooks (Unraid: 99)
-      PGID: "1000"                        # their group (Unraid: 100)
+      PGID: &bridge_pgid "1000"           # their group (Unraid: 100); the agent's group_add follows it
       # The server, as the Bridge reaches it from its container:
       AUDIOSILO_BRIDGE_SERVER_URL: http://audiosilo:8080
       # The Bridge's page, as your network reaches it (the console links to it):
@@ -96,6 +96,7 @@ services:
     image: ghcr.io/kodestar/audiosilo-bridge:latest-agent
     restart: unless-stopped
     user: "10002:10002"
+    group_add: [*bridge_pgid]             # the Bridge's group, so only it can read the handed credential
     environment:
       # Named only: the value comes from a .env file beside this one (step 7).
       # Leave it unset to use the credential set on the Bridge's Accounts tab.
@@ -131,8 +132,11 @@ What matters:
 - **`AUDIOSILO_BRIDGE_PUBLIC_URL`** is the address of the Bridge's page on your
   network, which is your machine's address with port 8091.
 - **Keep the work folder separate** from `./bridge-data`.
-- **Keep the agent's security settings** (`user`, `cap_drop`, `read_only` and the
-  rest) as they are.
+- **Keep the agent's security settings** (`user`, `group_add`, `cap_drop`,
+  `read_only` and the rest) as they are. `group_add` puts the agent in the
+  Bridge's group, so a credential set on the Bridge's Accounts tab is readable
+  by that group alone. It follows the Bridge's `PGID`, so change `PGID` in one
+  place only.
 
 For a smaller Bridge without speech recognition, use the `:latest-slim` image. To
 transcribe on an NVIDIA graphics card, use `:latest-cuda`.
@@ -310,8 +314,8 @@ sign-in is needed.
 - **The agent** (`ghcr.io/kodestar/audiosilo-bridge:latest-agent`): the **same**
   work folder at `/staging`, another appdata folder at `/agent`, no library share
   and no port. Under **Extra Parameters**, add
-  `--user 10002:10002 --cap-drop=ALL --security-opt=no-new-privileges:true --read-only --tmpfs /tmp`,
-  and give it a Docker network of its own.
+  `--user 10002:10002 --group-add 100 --cap-drop=ALL --security-opt=no-new-privileges:true --read-only --tmpfs /tmp`,
+  and give it a Docker network of its own. `--group-add` is the Bridge's `PGID`.
 
 The two containers run as different users, so run `chmod 777` on the work folder
 once.
@@ -324,7 +328,8 @@ once.
   characters (for example from `openssl rand -hex 32`). Without the same key, a
   paired Bridge won't start and you have to set its sign-ins again.
 - A credential never appears in a log. How the Bridge stores and hands out
-  credentials is in [The agent's credential](bridge-accounts.md#the-agents-credential).
+  credentials, and how to make the agent wait when it can't keep one private, is
+  in [The agent's credential](bridge-accounts.md#the-agents-credential).
 - [Unpair...](../admin/bridge.md#unpairing) in the console stops the Bridge.
   Removing the containers leaves what it saved in your library.
 
