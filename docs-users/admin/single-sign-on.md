@@ -119,7 +119,8 @@ Under **Server > Settings > Sign-in > Who may sign in**:
 - **Make accounts for new people** makes an ordinary account for someone the
   server doesn't know, instead of making them wait.
 - **Only for this group** limits that to members of one group at your
-  provider. Everyone else waits for you.
+  provider. Everyone else waits for you, including someone whose provider
+  sends no groups.
 
 These settings apply to the next sign-in, with no restart.
 
@@ -156,9 +157,10 @@ included. Leave it empty to set roles on People yourself.
 - The change happens when the person next signs in with single sign-on.
   Devices they already signed in stay signed in.
 - The last admin is never made an ordinary user.
-- If your provider never sends groups, roles don't change. Once it has sent
-  someone's groups, a sign-in without any counts as no groups. Keycloak, for
-  one, leaves groups out for a person in none.
+- Only a list of groups the provider sends changes a role. A sign-in without
+  one never does. Keycloak, for one, leaves groups out for a person in none, so
+  someone removed from every group keeps their role until you change it on
+  People.
 
 ## See or remove someone's single sign-on
 
