@@ -2348,9 +2348,12 @@ abridgement or a dramatisation.
   caller's share scope (the same filter as every list), with the same `work_id`.
   Never the book itself, and each recording once: a copy of the book or of a
   book already listed is left out (within one library, Health lists it as a
-  duplicate). Two books are copies when their ASINs match, or, when either has
-  no ASIN, when their ISBNs match (compared normalized: case, spaces and hyphens
-  aside). Two different ASINs are two recordings, even with one print ISBN.
+  duplicate). Two books are copies when their ASINs match, or, when the later
+  book in the order below has no ASIN, when their ISBNs match (compared
+  normalized: case, spaces and hyphens aside). Two different ASINs are two
+  recordings, even with one print ISBN, and from 2.7.0 a book with an ASIN is
+  never taken in by an ISBN alone, so an ISBN-only copy listed first never hides
+  an ASIN recording that shares its print ISBN.
 - **Order.** The book's own library first, then by title, then by narrator, then
   by library and path; of copies, the first in this order is the one listed. At
   most 20 recordings.
@@ -2470,9 +2473,10 @@ its other series (`series_list`) in their order. The community rails answer firs
 but only when they can **place** the next entry on one of the caller's books.
 Otherwise the local steps decide, in order, and the first one with an answer wins:
 
-1. **`community`**: community metadata is on and the book's ASIN or ISBN matches
-   a work with at least one series rail. Unlike `/meta`, this step never reads
-   the book's recorded match.
+1. **`community`**: community metadata is on and the book's work has at least
+   one series rail. From 2.7.0 the work is found by `/meta`'s rule: the book's
+   ASIN or ISBN, else (or when it names another work) its recorded match, so a
+   book matched only in the console has a community step too.
    - **Rail order.** The rails are taken in the book's own order. First comes a
      rail named like its main series (by the rail's name or one of its orderings',
      ignoring case, accents, punctuation and spacing). Then come rails named like
@@ -2574,21 +2578,28 @@ path is authorized against the caller's share scope exactly like `/item`. The ro
 is gated by the `metadata` [capability](#get-apiv1server). When it is false the
 route returns 404, so a client that honours the flag never calls this.
 
-The server finds the book's work in two steps (`bookEnvelope`):
+The server finds the book's work in two steps (`bookEnrichment`, shared with
+[`/next`](#get-apiv1librariesidnext)):
 
 1. **Its identifiers.** The server looks the book's `asin` or `isbn` up upstream.
    These are the effective fields on the indexed book: stored in
-   `book_enrichment`, or set by an admin edit, which wins. A book its identifiers
-   match never reads its recorded match.
-2. **Its recorded match.** When the book has neither identifier, or the upstream
-   does not know them, the server reads the book's recorded community match. That
+   `book_enrichment`, or set by an admin edit, which wins. A book whose
+   identifiers find the same work as its [`work_id`](#get-apiv1librariesidbooks)
+   (the recorded match's first) never reads its recorded match.
+2. **Its recorded match.** From 2.7.0 one work rule holds for `/item`, `/meta`
+   and `/next`. When the book has neither identifier, the upstream does not know
+   them, the lookup fails (an outage), or the recorded match names another work
+   than the identifiers find, the server reads the book's recorded community
+   match. That
    is its `book_matches` row, shown as
    [`community_match`](#get-apiv1adminlibrariesidbook) on the console's book page:
    the `work_id` and `recording_id` an admin accepted or a match run applied. The
    server fetches that work (`works/{id}`, `meta.Service.EnrichMatch`) and uses
    the match's recording as the envelope's recording, as a lookup would. When
    the match names no recording, or one the work no longer has, that is the
-   work's first. A book with no match row is unmatched.
+   work's first. A book with no match row is unmatched. In an outage the
+   match's stored answer serves (`200`, not `502`). A recorded work the upstream
+   lacks or can't answer leaves the identifiers' answer standing.
 
 Either way the server folds the matched recording plus up to three
 series rails into one envelope, one rail per reading-order family (see
@@ -2708,7 +2719,11 @@ the upstream has none. Every `omitempty` string or number field (`subtitle`,
   `links.librivox` and `links.zip` (see
   [The `links` field](../../meta/data-model.md#the-links-field)). Each is
   optional, and the server keeps it only
-  when it is an absolute `http` or `https` URL with a host (`librivoxOf`). It
+  when it is an absolute `http` or `https` URL with a host (`librivoxURL`). From
+  2.7.0 that host must be `librivox.org` or `archive.org` (or a subdomain) in
+  plain ASCII letters, digits, hyphens and dots, with no userinfo, and the scheme
+  is lower-cased: a lookalike Unicode host or a full-width separator is
+  refused. It
   never builds either from `id`, because LibriVox's pages are named by slug. A
   cached envelope gains the field once its entry is next refreshed.
 - `series[].position` is this work's position in that series. Positions are

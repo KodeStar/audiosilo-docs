@@ -599,7 +599,8 @@ path.
 
 While the report is on, Health lists the books whose own ASIN it found unknown
 as the `unknown_asin` kind (see [Issues](scanner.md#issues)). Those books still
-count as matched. The kind is left out while the report is off, since the
+count as matched. A book leaves the list as soon as any lookup finds its ASIN
+(from 2.7.0), not only at the recheck 30 days on. The kind is left out while the report is off, since the
 lookups that find them stop.
 
 #### Mirror mode (`metadata.mode: mirror`)
