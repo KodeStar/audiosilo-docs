@@ -402,8 +402,7 @@ for listeners too, edit its **Series number** on
 - **The community database has no genres or tags yet**, so matching never changes them.
 - **A value made only of invisible characters counts as empty.** A title or
   chapter title like that is refused.
-- **A book using your edited chapters gets no chapter detection.** The
-  [Health](health.md) page offers no Detect chapters for it, and detecting
-  many books at once passes over it. Revert the edit first.
+- **A book using your edited chapters gets no chapter detection.** See
+  [Books that get no detection](chapter-detection.md#books-that-get-no-detection).
 - **The chapter editor's player plays each file as it is stored.** A file your
   browser can't play doesn't load there, but you can still type the times.

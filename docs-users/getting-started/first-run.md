@@ -59,7 +59,7 @@ The `reset-admin` command sets a new admin password and prints it once. Run the 
 
 - After `-u`, use your `PUID:PGID`. The reminder prints the right ones.
 - `--data` goes before `reset-admin`. With several admins, add the username at the end. A disabled admin is never picked.
-- It works while the server runs. Every session that used the old password is signed out within a minute, and the auth code printed at first start stops working. A code made since then keeps working. If the printed code can't be revoked, the command stops and changes nothing.
+- It works while the server runs. Every session that used the old password is signed out within a minute, and the auth code printed at first start stops working. A code made since then keeps working.
 - It refuses while a restore is waiting for the next start, since the restore would replace the new password. Start the server once, or cancel the restore in [Backups](../admin/backups.md), then run it again.
 
 `reset-admin` also ends the reminder. A server started with `--setup` never prints it.

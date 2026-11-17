@@ -44,12 +44,10 @@ Click a card to open its list.
 | **More detailed chapters available** | The community database has finer chapters that fit this copy. | **Use detailed chapters**. |
 | **Converted to play in browsers** | The format doesn't play in web browsers, so the server converts it for the web player. The apps play it as it is. | Nothing needed: it works. |
 
-If a network share stops answering during a scan, its books show **reading it
-timed out**. They keep their length and chapters, and the next scan tries again.
-
-A file that took too long to read is listed under **Files that couldn't be
-read** with **took too long to read as audio**. That points to a slow disk or
-network share, not a damaged file. The next scan tries it again.
+A slow disk or network share can time out a scan. Its books show **reading it
+timed out** and keep their length and chapters. A single file that took too
+long is listed under **Files that couldn't be read** with **took too long to
+read as audio**, which is not a damaged file. The next scan tries both again.
 
 ### Working through a list
 

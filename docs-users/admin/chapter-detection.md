@@ -7,7 +7,6 @@ A book that is **one audio file with no chapter markers** plays as one long
 track, so listeners can't skip between chapters. Your [Bridge](bridge.md) can
 find its chapters **in the narration**. It transcribes the audio and listens for
 the headings the narrator reads out, like "Chapter One" or "Prologue".
-Listeners get the chapters in the player as soon as they're found.
 
 Detecting chapters uses no AI agent, so it costs nothing but the time
 transcription takes. [Generating characters and recaps](generating-characters-and-recaps.md)
@@ -84,6 +83,5 @@ Replacing or re-encoding the file stops found chapters being used.
   be used. Press **Use automatic** on the card first.
 - **A book with another Bridge job open.** While the book's characters and
   recaps, description or read-along job runs, Detect chapters is refused. Queue
-  it once that job has finished. Generating characters and recaps for a book
-  with a Chapters job open replaces that job, since the run finds the chapters
-  itself.
+  it once that job has finished. Generating characters and recaps replaces an
+  open Chapters job.
