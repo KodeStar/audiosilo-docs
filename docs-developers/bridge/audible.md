@@ -102,9 +102,10 @@ A server or Amazon failure is a `warning` for the page, never the account kept.
 When the server's DELETE failed, the server keeps an orphaned account until an
 admin removes it
 ([`DELETE /admin/audible/accounts/{account}`](../server/api/reference.md#delete-apiv1adminaudibleaccountsaccount)).
-The admin does that from the console while the module is on, and otherwise as an
-API call, since the console hides its Audible card and page while the module is
-off.
+The admin does that from the console with **Remove**: on Settings > Bridge's
+Audible accounts card while the module is on (with no Bridge paired too), and on
+Settings > Modules' Audible card, under "Accounts kept while it's off", while it
+is off.
 
 **Refused.** A `401`/`403` on a signed call (`audible.IsRefused`) marks the account
 refused (`refused_at`, `last_error`; the page's **Sign in again**). The exception
@@ -1476,13 +1477,13 @@ Bridge requirement is the `audible` feature. Its flag on `GET /server` is `false
 - the **Bridge's routes are not gated**: the Bridge's page signs in and maps
   accounts whether or not the console turned the module on (and says the module
   must be on for polls);
-- the **console's routes** (`/admin/audible/accounts`, `/admin/audible/titles`,
-  `.../poll`, backup, backup-all and the two PATCHes) answer
-  `404 module_off` while it is off;
-- `DELETE /admin/audible/accounts/{account}` is **outside** the toggle (admin only):
-  an account the Bridge can no longer remove must be removable after the module is
-  turned off. The console only shows it while the module is on, so with it off it
-  is an API call;
+- the **console's routes** (`/admin/audible/titles`, `.../poll`, backup,
+  backup-all and the two PATCHes) answer `404 module_off` while it is off;
+- `GET /admin/audible/accounts` and `DELETE /admin/audible/accounts/{account}` are
+  **outside** the toggle (admin only): an account the Bridge can no longer remove
+  must be removable after the module is turned off, so the console lists the
+  accounts kept, each with Remove. The delete is audited as `bridge.audible.remove`
+  with the account's name (its label, else "person (STORE)");
 - queued polls, imports and syncs are held while it is off, and the scheduler and
   the policy pass after a poll only run while it is on. The two sync Bridge routes
   answer `403 sync_off` while it is off.
@@ -1495,8 +1496,11 @@ flag.
 
 While the module is on, Settings > Bridge gains an **Audible accounts** card (the
 mapping read-only, title counts, Check now and Remove per account), and
-Settings > Audible lists the titles with their filters. Remove removes the account
-from this server only. The code is in `features/audible/`.
+Settings > Audible lists the titles with their filters. The card shows with no
+Bridge paired too, when it has accounts kept from an earlier one, so they stay
+removable. With the module off, Settings > Modules' Audible card lists the kept
+accounts with Remove (`kept-accounts.tsx`). Remove removes the account from this
+server only and cancels its open poll, backups and sync. The code is in `features/audible/`.
 
 **Per title:**
 
@@ -1524,10 +1528,17 @@ The legal line is on the titles page and in both dialogs.
 
 - "Will go to &lt;path&gt;, beside N books of its series" and the like, with
   "(planned at the last check)";
-- a warning tone on `exists` or `error`;
+- a warning tone on `exists` or `error`, and on a plan that starts a new top
+  folder ("a new author folder" with the automatic placement, "a new folder" with
+  a template) or a new series (`series_new`), where the Bridge most likely missed
+  an author or series the library holds under another spelling;
 - a note when the plan's template isn't the account's now;
 - "Your destination is checked when the backup starts" instead, while a
   `dest_path` is set.
+
+The titles page's **Needs a look** filter lists the titles not on this server that
+a backup can still come of and whose plan warns, preorders first, since a preorder
+backs up on release day without anyone looking (`needsLook`, `lookList`).
 
 There is no `PlannedNote` on an `unavailable` or `gone` title, nor on a matched
 one, a Not this book title included, since a stored match clears the plan.
