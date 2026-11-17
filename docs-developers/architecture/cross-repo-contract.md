@@ -1089,7 +1089,9 @@ default of 320, and takes `96` too from 2.5.1.
 - Scope and errors are as for `/meta`: 403 or 404 for the path, 404 with metadata
   off, and 502 metadata unavailable.
 - `502 cover_unavailable` means the fetch failed. The server does not fetch that URL
-  again for a minute, and concurrent misses share one fetch.
+  again for a minute, and concurrent misses share one fetch. A redirect from https to
+  anything else fails the fetch (`netguard.Downgrade`, the rule podcast discovery's
+  fetches follow too), so a fetch begun over https stays on it.
 - `404 no cover` means the file is not an image or is over the pixel bound.
 - Only a re-encoded JPEG is served, with `ETag` `"community-<size>-<rev>-<hash>"` and
   `private, max-age=86400`.

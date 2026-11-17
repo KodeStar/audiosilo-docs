@@ -883,7 +883,10 @@ tries again.
 - Any other refusal stops as `failed` with its code. A network failure or a
   timeout stops as `failed` with none.
 - Try again re-uploads, which is safe: rows already done answer
-  `already_following` or `already_queued`.
+  `already_following` or `already_queued`. The server gives back the rate-limit
+  token of an import it answered `503 opml_busy` or `400 invalid_opml`, so that
+  answer does not count against the next upload. A `413` or an upload whose read
+  failed keeps its token.
 
 The controller holds its timers in the background and looks again at once on the
 way back. It checks `mayActFor` before each upload, and sends nothing more after

@@ -213,6 +213,10 @@ into the library.
 - `dimensions` is drawn from `characters` and `recaps`, each once, stored in that
   order. Absent or empty means both.
 - A `work_id` is at most 200 bytes, with no control characters.
+- With no `work_id`, the server fills it from the book's recorded community match
+  (`bridge.ContributeWork`), so the share files under the work an admin matched
+  in the console, not the Bridge's own match of the book. A book with no recorded
+  match is queued as it came.
 
 The server refuses the job `409 generate_open` while a `sidecars.generate` job is
 open for the book. It refuses a new generate job `409 contribute_open` while a
@@ -236,7 +240,8 @@ generate job for the book replaced what it was sharing").
 
 - the job's `work_id` (a retired slug is followed to its survivor and recorded on
   the book);
-- the Bridge's own match for the engine book (the console sends no `work_id`);
+- the Bridge's own match for the engine book, when the server had no recorded
+  match to fill in;
 - the engine book's exact identifiers.
 
 An unmatched book fails ("Match the book first"). A share never proposes a new
@@ -379,6 +384,10 @@ community reads it, decoded and trimmed (`asRead`). It compares that with
 `current`, changes nothing and is refused. For example, a corrected
 `Tom &amp; Jerry` reads `Tom & Jerry`. That is refused against a current
 `Tom & Jerry`, and is a correction of a current `Tom &amp; Jerry`.
+
+**A corrected date.** A corrected `published` must be a real date, `YYYY`,
+`YYYY-MM` or `YYYY-MM-DD` (`metadata.ValidDate`, the console edit's own rule),
+because the Bridge files it as the recording's `release_date`.
 
 **Evidence.** An `evidence` of exactly `_No response_` (the form's blank field),
 or one that reads as nothing, is "evidence is required". `evidence` keeps its line
