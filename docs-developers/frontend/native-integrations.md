@@ -465,9 +465,9 @@ On the JS side, `index.ts` (the `package.json` `main`) imports `src/car/register
 `AppRegistry.registerHeadlessTask`, and the task's code loads only when it runs. Elsewhere
 the file is empty.
 
-`runCarTask` (`car-task.ts`) does four things. The first three are `startCarStack`, which
-iOS runs too (`startCarWork`) when a car connects, so a CarPlay-first launch gets the same
-controllers:
+`runCarTask` (`car-task.ts`) does four things. The first three make up `startCarStack`.
+iOS also runs it when a car connects (`startCarWork`), so a CarPlay-first launch gets the
+same controllers:
 
 1. It runs `bootstrapPlayback()`, the root layout's launch steps as one memoised run:
    - storage migration, the connection identity migration included;
@@ -487,8 +487,8 @@ controllers:
      and the iOS widget sync.
 
    Each is a shared start (`sharedStart`, see
-   [Overview](overview.md#controllers-a-car-only-session-needs)), so the root layout's
-   later starts add nothing.
+   [Overview](overview.md#controllers-a-car-only-session-needs)), so when the root layout
+   starts them later, nothing runs twice.
 3. It starts the car sync.
 4. It resolves once **no car is connected** and the player has been idle for
    `CAR_TASK_IDLE_MS` (30 s), or at once when the car leaves while the player is idle.

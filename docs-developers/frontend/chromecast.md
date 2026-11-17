@@ -130,14 +130,46 @@ These guards keep a route switch correct:
   persisted, and a removed connection's tokens are dropped (`onConnectionRemoved`). What
   a cast token may read and how long it lives are the server's rules (see
   [Cast tokens](../server/auth-and-security.md#cast-tokens)).
-- A token the receiver was refused is replaced: `prepareCast(..., { freshToken })`
-  mints a new one in place of the cached one (see
+- When the receiver refuses its token, `prepareCast(..., { freshToken })` mints a
+  new one to replace the cached one (see
   [A receiver refused its token](#a-receiver-refused-its-token)).
+
+The pure rules are `cast-media.ts`:
+
+- **`castBlockReason`** says why a book can't be cast. The Cast button and the cast
+  engine share it.
+
+  | Reason | When |
+  |---|---|
+  | `unsupported` | The server has no `cast` flag. |
+  | `local-address` | The address is this device: `localhost`, `*.localhost`, the loopback range, `::1`, `0.0.0.0` (`isReachableByReceiver`). |
+  | `codec` | The book needs the transcoder and the server has none. |
+  | `no-connection` | The book's server isn't signed in. |
+  | `episode` | A podcast episode, which never casts. |
+  | `proxy` | The address in use is the origin of the connection's [proxy headers](state-and-data.md#proxy-headers) (`behindProxy`). The receiver fetches by itself and can't send them, so the proxy would turn it away. |
+
+- **`castNeedsTranscode`** is true for the server's `direct_playable: false`, or for a
+  codec the Default Media Receiver doesn't play (`CAST_UNPLAYABLE_CODECS`: ALAC, the
+  AC-3 family, DTS, TrueHD, WMA, AMR). Such a book casts with `?transcode=1` when the
+  server has `transcode`. The receiver can't seek a transcoded stream, so a start or
+  seek inside one asks for the stream from that point (`&t=`, `itemStartingAt`). A full
+  transcoder (`503`) makes the receiver report an error. That reaches the store as the
+  engine's `error` state, which shows the player's Retry.
+
+The web player's Remote Playback prompt (`el.remote.prompt()`) was **removed** for this
+reason. It hands the receiver the element's own URL, which carries the session token.
+
+The web's route picker is now Safari's AirPlay only. `service.web.ts`'s
+`canShowRoutePicker` and `showRoutePicker` answer only where the element has
+`webkitShowPlaybackTargetPicker` (`hasAirPlayPicker`). The output pill beside the Cast
+button is labelled "Audio output" on every platform. It opens AirPlay on iOS and
+Safari, and the media output panel on Android.
 
 ### A receiver refused its token
 
 The server keeps a bounded number of cast tokens per sending device and ends the
-least recently used one, which a receiver may still be playing with. So
+least recently used one, which a receiver may still be playing with (see
+[Cast tokens](../server/auth-and-security.md#cast-tokens)). So
 `CastPlaybackService` treats a refusal as a reason to mint once more:
 
 - **A load the receiver refuses** is sent once more with a new token (`freshToken`).
@@ -178,37 +210,6 @@ book's end, read when no load of ours is in flight. A session it did not load
 starts from the play state it was taken over in (`adoptQueue`). A queue sent again
 after a refusal, a seek or a skip plays by it, since the receiver reads `buffering`
 or `loading` while it takes one.
-
-The pure rules are `cast-media.ts`:
-
-- **`castBlockReason`** says why a book can't be cast. The Cast button and the cast
-  engine share it.
-
-  | Reason | When |
-  |---|---|
-  | `unsupported` | The server has no `cast` flag. |
-  | `local-address` | The address is this device: `localhost`, `*.localhost`, the loopback range, `::1`, `0.0.0.0` (`isReachableByReceiver`). |
-  | `codec` | The book needs the transcoder and the server has none. |
-  | `no-connection` | The book's server isn't signed in. |
-  | `episode` | A podcast episode, which never casts. |
-  | `proxy` | The address in use is the origin of the connection's [proxy headers](state-and-data.md#proxy-headers) (`behindProxy`). The receiver fetches by itself and can't send them, so the proxy would turn it away. |
-
-- **`castNeedsTranscode`** is true for the server's `direct_playable: false`, or for a
-  codec the Default Media Receiver doesn't play (`CAST_UNPLAYABLE_CODECS`: ALAC, the
-  AC-3 family, DTS, TrueHD, WMA, AMR). Such a book casts with `?transcode=1` when the
-  server has `transcode`. The receiver can't seek a transcoded stream, so a start or
-  seek inside one asks for the stream from that point (`&t=`, `itemStartingAt`). A full
-  transcoder (`503`) makes the receiver report an error. That reaches the store as the
-  engine's `error` state, which shows the player's Retry.
-
-The web player's Remote Playback prompt (`el.remote.prompt()`) was **removed** for this
-reason. It hands the receiver the element's own URL, which carries the session token.
-
-The web's route picker is now Safari's AirPlay only. `service.web.ts`'s
-`canShowRoutePicker` and `showRoutePicker` answer only where the element has
-`webkitShowPlaybackTargetPicker` (`hasAirPlayPicker`). The output pill beside the Cast
-button is labelled "Audio output" on every platform. It opens AirPlay on iOS and
-Safari, and the media output panel on Android.
 
 ## The drivers
 

@@ -2063,10 +2063,9 @@ once a books library exists, the rest `skipped`), so the Overview card lists
 what is left and a step another tab recorded keeps its own. Once the flow is finished, a step reopened from the card goes on to the
 next step still skipped (`nextStep`), then back to Overview.
 
-A server started with `setup.skip` finishes and dismisses the flow itself, filling
-the marks the same way (see
-[First-run setup](configuration.md#first-run-setup-setup)), so `useSetupRedirect`
-never opens it.
+A server started with [`setup.skip`](configuration.md#first-run-setup-setup)
+finishes and dismisses the flow itself, filling the marks the same way, so
+`useSetupRedirect` never opens it.
 
 Every settings write goes through `unlockedPatch`, which leaves out any setting
 that the envelope's `locked` names. The server would refuse such a setting with

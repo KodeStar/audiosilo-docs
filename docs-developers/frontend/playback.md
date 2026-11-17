@@ -888,12 +888,12 @@ book's progress whenever the book is picked up again:
 tells the check before the engine starts and waits for it up to `PICK_UP_WAIT_MS`
 (1.5 s, `pickUpBeforePlay`), so a move lands before any of the old place sounds.
 The snapshot shows `loading` meanwhile, so the Play control shows its spinner. A
-tap on it then pauses, and any other press joins the same wait; the latest press
-starts the engine. A check slower than the wait goes on while the book plays. A
-press from the lock screen, a headset or the car in the background waits for
-nothing: there the engine is already playing, so the move comes as early as the
-answer does. One check is out at a time, and a press waits for the one already
-out, as when the app coming to the front started it.
+tap on it then pauses. Any other press joins the same wait, and the latest press
+decides whether the engine starts. A check slower than the wait goes on while the
+book plays. A press from the lock screen, a headset or the car in the background
+doesn't wait: the engine is already playing there, so the move comes as early as
+the answer does. Only one check runs at a time. A press waits for a check already
+running, such as one started when the app came to the front.
 
 While the check is out, the store holds its saves (`holdSaves`, 5 s at most), so the
 stale place is never written.

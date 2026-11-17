@@ -144,18 +144,17 @@ Two conventions keep this layout healthy:
 
 CarPlay and Android Auto can play a book with no root layout mounted: Android's
 headless task, or a CarPlay-first launch on iOS. So anything a car session needs
-is a framework-free controller, never a hook or a component, and the car's stack
-(`startCarStack` in `src/car/car-task.ts`) starts it as well as the root layout.
-The end of a book (`startBookEndWatch`), keep-ahead, the chapter and read-along
-refreshes of downloads, the iOS widget sync, the place reconcile, the listening sync
-and address routing all work this way (see
-[Native integrations](native-integrations.md)).
+is a framework-free controller, never a hook or a component, and both the root
+layout and the car's stack (`startCarStack` in `src/car/car-task.ts`) start it.
+[Native integrations](native-integrations.md#booting-js-without-an-activity) lists
+them.
 
 Each is a **shared start**. `sharedStart(run)` in `src/lib/shared-start.ts`
-returns a start whose every call returns its own release. The first start calls
-`run`, and the last release calls its teardown; a second release of one holder
-does nothing. Two runs at once would race for the same module state, and either
-teardown would clear it under the other. The first start's arguments win.
+returns a start function, and each call to it returns its own release. The first
+call runs `run`, and the last release runs its teardown. Releasing the same holder
+twice does nothing. Two runs at once would race for the same module state, and
+either teardown would clear it under the other. When calls pass different
+arguments, the first call's are used.
 
 ## Where each topic lives
 

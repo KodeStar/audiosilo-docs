@@ -60,31 +60,31 @@ It is a shared start (`sharedStart`, see
 [Overview](overview.md#controllers-a-car-only-session-needs)): the root layout
 starts it (`root-services-impl.tsx`), and so does the car's stack, so a book
 played only from CarPlay or Android Auto is finished too. The root's
-`BookEndedRoute` renders nothing. It only tells the watch which route is on
+`BookEndedRoute` renders nothing. It only tells the controller which route is on
 screen and gives it the root layout's router, and clears both when it unmounts.
 
-The watch subscribes to the player store and acts on the **edge** from not ended
+The controller subscribes to the player store and acts on the **edge** from not ended
 to ended (`selectIsEnded`), once per ended book and only with `nowPlaying` set.
 It runs the flow a microtask later, after the engine's own `ended` handling has
-read `nowPlaying`. A book already ended when the watch starts is taken too: on
-Android the activity, and the root layout with it, can go while the service
-plays the book to its end, and the end is finished when the app opens again.
+read `nowPlaying`. It also takes a book that had already ended before it started.
+On Android the activity, and the root layout with it, can close while the service
+plays the book to its end. The book is then finished when the app opens again.
 
 On the edge it records whether a sleep timer was running for the book
 (`useAutoPlayHold`, see [Moving on](#moving-on-end-of-bookts)), then calls
 `finishBook()`. What it does next depends on the route and the app state:
 
 - **The credits are already open** (`/finished`, opened early from the menu).
-  The watch only drops the finished book from Up next. The credits' own
+  The controller only drops the finished book from Up next. The credits' own
   countdown and Play now take over, in the background too.
-- **In the foreground with a route**, the watch navigates to
+- **In the foreground with a route**, the controller navigates to
   `finishedHref(…, true)` (`/finished?…&auto=1`). It uses `router.replace` when
   the app is on `/player`, so the credits take the player's place, and
   `router.push` otherwise.
 - **In the background, or with no root layout mounted** (a car-only session), it
   never navigates. `/player` and `/finished` are root `fullScreenModal`s, and iOS
   cannot present one from the background; a book that ended while the phone was
-  locked came back to a black screen. Instead the watch drops the finished book
+  locked came back to a black screen. Instead the controller drops the finished book
   from Up next at once. Then:
   - with `autoPlayNext` on and no sleep-timer hold, it resolves the next book
     (`resolveUpNext`) and starts it **in place** (`advanceTo`), so the mini

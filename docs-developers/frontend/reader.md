@@ -207,17 +207,17 @@ The chunk size was measured. On a 25 MB book, 256 KB pieces open as fast as 1 an
 2 MB ones, at the lowest peak memory (about a plain file load's).
 
 The reader (`reader/src/chunks.js`, `createAssembly`) allocates one buffer of the
-announced size. It refuses a size over 512 MB (`MAX_BOOK_BYTES`, a `TooLargeError`)
-as `tooLarge`, and so it does a buffer the WebView could not allocate (a
-`RangeError`). It refuses the following as `unreadable`:
+announced size. It refuses two cases as `tooLarge`: a size over 512 MB
+(`MAX_BOOK_BYTES`, a `TooLargeError`), and a buffer the WebView could not allocate
+(a `RangeError`). It refuses the following as `unreadable`:
 
 - a bad size or chunk count;
 - a chunk out of order, repeated or extra;
 - data that isn't base64;
 - a book larger or smaller than announced.
 
-After a refusal it drops the chunks still on their way unheard, so the one
-`tooLarge` is not followed by an `unreadable` for each of them.
+After a refusal it ignores the chunks still arriving, so a single `tooLarge` is
+not followed by an `unreadable` for each one.
 
 Then it opens the buffer as the web reader opens its `ArrayBuffer`. A newer `ready`
 (the document reloaded) stops the running transfer and starts again.
@@ -267,19 +267,6 @@ connection. The fetch writes a numbered `.part` file and moves it over the cache
 only when complete, so a cut-short download never reads as the book. A server status
 becomes an `ApiError` (a 404 is the screen's `missing`).
 
-**Sizes and storage** have their own failures (`ebook-errors.ts`):
-
-- A book over `MAX_EBOOK_BYTES` (512 MB, kept equal to the reader document's
-  `MAX_BOOK_BYTES` by a test) is an `EbookTooLargeError`. It is refused by the
-  server's `ebook.size` before any fetch, and by the copy's own length, a
-  downloaded `book.epub` included. A fetch that comes out longer than that is not
-  kept.
-- With less free space than the server's size (`engine.storageEstimate`), the
-  cache's own copies fetched longest ago are dropped first, as many as make room.
-  If that is not enough, the open is an `EbookStorageError` before any fetch. So
-  is a fetch the disk refused (a download failure of kind `storage`), or a cache
-  folder or move that failed. None leaves a partial file.
-
 - **The rule**: the download's copy (`manifest.ebookUri`) when it is there and not
   empty, else `book-<size>.epub` when it is there and not empty, else a fetch.
 - **The other way round too**: a book download copies the cache file for the
@@ -299,6 +286,19 @@ becomes an `ApiError` (a 404 is the screen's `missing`).
   the cache directory any time, and the next open fetches again. On the web
   `clearEbookCache` is a no-op (`ebook-file.ts`), because the web host fetches each
   time or reads the download.
+
+**Sizes and storage** have their own failures (`ebook-errors.ts`):
+
+- A book over `MAX_EBOOK_BYTES` (512 MB, kept equal to the reader document's
+  `MAX_BOOK_BYTES` by a test) is an `EbookTooLargeError`. The app refuses it
+  before any fetch when the server's `ebook.size` is over the limit, and when a
+  local copy is, a downloaded `book.epub` included. A fetch that comes out longer than that is not
+  kept.
+- When free space (`engine.storageEstimate`) is less than the server's size, the
+  cache drops its copies fetched longest ago until there is room.
+  If that is not enough, the open is an `EbookStorageError` before any fetch. So
+  is a fetch the disk refused (a download failure of kind `storage`), or a cache
+  folder or move that failed. None leaves a partial file.
 
 ## The screen
 

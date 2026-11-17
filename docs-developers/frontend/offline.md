@@ -330,8 +330,8 @@ file the manifest lists with the same `relPath` that still exists on disk, where
 the server's list now puts it, under the name it was saved by. So a list that
 gained, lost or reordered a file fetches only the new files. Each file still to
 fetch gets a name no kept file holds: its index when that is free, else the next
-free number past the list (`storedIndex` reads either). A retry that fails again
-keeps listed the kept files of the paths it never reached.
+free number past the list (`storedIndex` reads either). If the retry fails again,
+the manifest still lists the kept files it had not reached.
 
 `runOne` lists each finished file in the persisted entry as it lands, so this
 survives a restart too (`reviveEntry` in
