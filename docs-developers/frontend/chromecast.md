@@ -175,6 +175,27 @@ least recently used one, which a receiver may still be playing with (see
 - **A load the receiver refuses** is sent once more with a new token (`freshToken`).
   An error while a load of ours is in flight counts as a refusal
   (`ReceiverRefused`), and the load is sent again at the same place.
+- **A later file playing first is a refusal too.** When the receiver plays or
+  pauses a later file than the one asked for before it ever played or paused the
+  asked file (`skippedPast`), it was refused that file and skipped on, perhaps to
+  a file in its cache. Its errors need not reach the phone, as on Android. That
+  counts while the load is in flight, or within `ASKED_MOVE_MS` of the move once
+  the load answered, since later a file the receiver played unseen may have run
+  on into the next. A buffering or loading status does not count: a new media
+  session's first status can still name the media it replaces, and the native
+  SDK's status carries no session id to tell them apart. So a move with a valid
+  token mints nothing. Nor does the file the receiver was on when the move was
+  asked count, at or past where it was then (`Intent.from`), since that is the
+  replaced media playing on.
+- **The asked place is held.** A queue sent puts the snapshot at the place it
+  asks for at once, as a local engine's file load does. Until the receiver plays
+  or pauses there (`landInFlight`), for at most `ASKED_MOVE_MS` after the move
+  (`holdingAsked`), no status or tick moves the snapshot. Those statuses are the
+  media the queue replaces (its `interrupted` stop at its file's start, or a
+  later file), and the replaced media never becomes the book's place. Otherwise
+  the store would save that place, end the listening span the move began there,
+  raise its resume floor past the asked place so that every save below it is
+  refused, or read a later file as the engine running off the asked one.
 - **A receiver that stops on an error mid-book** is loaded again with a new token,
   playing on when it was. This happens only as the error arrives; an error already
   shown is the listener's to retry, since the receiver repeats it on every status
@@ -211,7 +232,10 @@ the receiver's own `playing`, `paused` or stop (the TV remote, Google Home) or t
 book's end, read when no load of ours is in flight. A session it did not load
 starts from the play state it was taken over in (`adoptQueue`). A queue sent again
 after a refusal, a seek or a skip plays by it, since the receiver reads `buffering`
-or `loading` while it takes one.
+or `loading` while it takes one. A queue goes out by the play intent as it is when
+it is sent, since a play or pause may come while a token is minted. A play or
+pause given while the queue is on its way reaches the media it replaces, so it is
+sent again once the receiver has taken the queue.
 
 ## The drivers
 
@@ -230,6 +254,12 @@ in two cases:
 
 Status comes from the `RemoteMediaClient` events, with reads bounded to 1.5 s, because
 an Android getter can hang.
+
+The load request (`nativeLoadRequest`, `sdk-shapes.ts`) carries the place twice: in
+the queue data (`startIndex`, `startTime`) and as a top-level `startTime`, as the web
+sender's request does (`currentTime`). A receiver given the place only in the queue
+data started a queue sent paused at 0:00. The top-level `startTime` is what makes a
+paused recast start where it was asked.
 
 ### Web
 
