@@ -118,7 +118,10 @@ sign-in again ends it.
 The refusal's kind is its own column, `refusal_kind`: `store.RefusalSignIn`
 `sign_in` or `store.RefusalDevice` `device`. Migration `0011` set the older rows
 from their `last_error` text. So `Throttled` reads the kind, and `ThrottledText`
-is copy only.
+is copy only. A device refusal that stands is never overwritten by a sign-in one
+(`RefuseAudibleAccount`, and a poll keeps it too), so the console keeps giving the
+device's advice until a sign-in again ends it. A device refusal does replace a
+sign-in one.
 
 ### The device profile
 
@@ -360,8 +363,11 @@ An ASIN match is never held back by any of this.
    higher score (`MatchScored` itself is not gated by it).
    `importjob.PositionAgrees(rec, b)` compares the title's `SeriesPosition`, as
    one number, against the book's position in the title's series, else the book's
-   main series' position, where the books listing puts a folder code's number. A
-   range or no number on either side is neither.
+   main series' position. That one counts only when the title names no series, or
+   when the number is the folder code leading the book's folder, its letters the
+   series' initials as the server reads one (`folderCodeIs` ports the server's
+   `metadata.FolderCodePosition`). A franchise's number says nothing. A range or no
+   number on either side is neither.
 3. Then the single best score keeps the match.
 4. A tie for the best keeps none, unless every tied title is the same work
    (`WorkKey`: the folded title, the folded authors in any order and the series
@@ -528,7 +534,9 @@ library can list it a little after the order closes, so the title never drops ou
 of a final poll in between. That wait is capped. A delivered preorder the library
 still doesn't list is dropped `DeliveredDropAfter` (14 days) after the later of its
 `last_seen_at` (last seen pending) and its release date. Both bound when the order
-closed. The cap covers a refund, or a release under another ASIN.
+closed. The cap covers a refund, or a release under another ASIN. On the first poll
+after a gap of 14 days or more since the last, a delivered preorder it would drop
+counts from now instead, since when its order closed is not known.
 
 A dropped preorder is no longer reported, so the server marks the title `gone` at
 the next final titles PUT. What the server does with a reported preorder (the
@@ -1334,6 +1342,8 @@ another server, person or library.
   of the last 10 minutes by `updated_at`, and records the older ones as history,
   never pushed. After the baseline, every row read is new.
 - A row the Bridge fails to record keeps the cursor, so the pass reads it again.
+- A cursor the server refuses with `400` (`link.ErrBadCursor`) goes back to the
+  feed's start, instead of stopping that account's push for good.
 - It skips rows written by `audible:<account>`.
 - A row on a title the last sync didn't list for that book stays pending (`listed`
   0, `store.PendAudiblePush`) until a sync lists it.
