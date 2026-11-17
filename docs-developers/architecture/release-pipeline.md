@@ -178,7 +178,7 @@ compiled **into the binary**:
 ### ffmpeg/ffprobe are NOT bundled
 
 They're large (~80 MB each) and usually already installed, so the archives stay
-small. At startup `pkg/launcher` (`resolveTools` in `pkg/launcher/app.go`)
+small. At startup `internal/launcher` (`resolveTools` in `internal/launcher/app.go`)
 resolves each tool in order:
 
 1. an explicit `--ffmpeg` or `--ffprobe` path,
