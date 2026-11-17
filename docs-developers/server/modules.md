@@ -139,7 +139,6 @@ artwork and image cache, so turning the module back on starts empty. See
 The `audible` module mounts its console routes with the admin wrapper
 (`moduleRoutes.Admin`), as the podcasts' admin storage routes are:
 
-- `GET /admin/audible/accounts`
 - `GET /admin/audible/titles`
 - `POST /admin/audible/accounts/{account}/poll`
 
@@ -147,10 +146,12 @@ Its Bridge routes are not gated, because the Bridge's page signs in either way.
 The exceptions are the two position sync routes, which act for a person and
 answer `403 sync_off` while the module is off.
 
-`DELETE /admin/audible/accounts/{account}` is deliberately mounted outside the
-toggle (`requireAdmin` only). It removes an account the Bridge can no longer
-remove, which the scheduler would otherwise poll for good, so it must work after
-the module is turned off.
+`GET /admin/audible/accounts` and `DELETE /admin/audible/accounts/{account}` are
+deliberately mounted outside the toggle (`requireAdmin` only; the list from
+2.7.0). The DELETE removes an account the Bridge can no longer remove, which the
+scheduler would otherwise poll for good, so it must work after the module is
+turned off, and Settings > Modules lists the accounts kept while it is off,
+each with Remove.
 
 ## Jobs a module owns
 

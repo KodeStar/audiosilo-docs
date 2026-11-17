@@ -414,6 +414,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `sync_off` | `403` | the Bridge's [Audible position sync](reference.md#audible-position-sync) routes (`POST /bridge/audible/accounts/{account}/listening`, `GET /bridge/progress`) while the `audible` module or the account's sync is off, or the account is paused |
 | `user_unavailable` | `403` | the same two routes when the account's person was disabled, made a kid or a demo account since it was mapped |
 | `invalid_policy` / `invalid_marketplace` | `400` | an Audible account's `policy` (not `all`, `series` or `manual`; the Bridge's PUT or the console's PATCH) or `marketplace` (not one of the metadata regions) |
+| `report_off` | `409` | `POST /admin/match-runs` with mode `unknown_asin` while the unknown-ASIN report is off (from 2.7.0) |
 | `asin_set` | `409` | the Bridge's `PUT /bridge/libraries/{id}/enrichment` for a book that has another ASIN, or an admin's ASIN edit |
 
 ### Codes by area
@@ -902,7 +903,7 @@ older server omits it.
 | Flag | Gates |
 |---|---|
 | `podcasts` | the Podcasts module: follow, unfollow and check, new downloads, retention writes, and feed, download and retention scheduling. Needs the `podcast` Bridge feature, so it is false unless the toggle is on and that Bridge is online. Reads and valid present-pin reuse stay core, with client and private scope on player content. Players older than 2.2.0 remain excluded. The player shows Follow only while it is `true`. See [Podcasts](reference.md#podcasts) |
-| `audible` | the Audible module: the console's [Audible routes](reference.md#audible-accounts) (`404 module_off` while off), the scheduled `audible.poll`, the `audible.import` backups and the `audible.sync` position sync (its two Bridge routes are `403 sync_off` while off). Needs the Bridge's `audible` feature. Only the console reads it. The player has no Audible surface and doesn't mirror it yet |
+| `audible` | the Audible module: the console's [Audible routes](reference.md#audible-accounts) (`404 module_off` while off, except the accounts list and Remove), the scheduled `audible.poll`, the `audible.import` backups and the `audible.sync` position sync (its two Bridge routes are `403 sync_off` while off). Needs the Bridge's `audible` feature. Only the console reads it. The player has no Audible surface and doesn't mirror it yet |
 | `contributions` | the Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Needs the Bridge's `contribute` feature. The console reads it for the generate dialog's contribute switch, Share with the community and Suggest corrections, and corrections also need `meta` in `bridge.features`. The player never contributes and doesn't read it |
 
 ### Gate on the flag, not the version

@@ -8067,23 +8067,37 @@ are the items by outcome, `pending` the `auto` ones not applied yet, and
 `error` (omitted when empty) is why a run stopped by itself: on a `failed` run, and
 from 2.7.0 `metadata_unavailable` on a run an outage stopped early (`ready`, and
 kept through `applying` and `applied`; additive, as `error` was only on `failed`
-runs before).
+runs before). `waiting_until` (from 2.7.0, RFC 3339, omitted otherwise, never
+stored) is on the working `matching` run, in the list and in
+[`GET …/match-runs/{id}`](#get-apiv1adminmatch-runsid), while the community
+service has asked it to wait: its progress holds meanwhile, and the console says
+the run is pausing.
 
 #### `POST /api/v1/admin/match-runs`
 
-`{"library_id"?: 2, "mode"?: "match" | "repick" | "refresh"}` (omitted, or no body at all:
+`{"library_id"?: 2, "mode"?: "match" | "repick" | "refresh" | "unknown_asin"}` (omitted, or no body at all:
 every library, a `match` run). A book of a library deleted while the run works
 is left out. Starts the run in the background and answers `202` with it (as
 in the list). The admin's console polls
 [`GET …/match-runs/{id}`](#get-apiv1adminmatch-runsid) while it works.
-Audited as `book.match_run`, `book.asin_repick` or `book.match_refresh` (`run`,
-`books`, `region`).
+Audited as `book.match_run`, `book.asin_repick`, `book.match_refresh` or
+`book.match_unknown_asin` (`run`, `books`, `region`).
+
+**`unknown_asin`** (from 2.7.0, Health's unknown-ASIN card) is a match run over
+the books in Health's [`unknown_asin`](#get-apiv1adminissues) kind (less those
+ignored), found by their title. Each item's `found_by` is the book's own ASIN.
+An apply writes only while the book still has that ASIN, no ISBN and no
+recorded match, and while the report still holds that ASIN as unknown. Once a
+lookup found it, the ASIN names the book's record, so the item is `skipped`
+with `detail` `asin_known` and nothing is written (the review reads it
+`matched_since`). The apply records the match, so the book leaves the kind, and
+never replaces an ASIN an admin typed in, whatever the scope.
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request`; `mode must be "match", "repick" or "refresh"`; `code: "no_region"` - a repick with no `metadata.region` set |
+| `400` | `invalid request`; `mode must be "match", "repick", "refresh" or "unknown_asin"`; `code: "no_region"` - a repick with no `metadata.region` set |
 | `404` | `library not found` |
-| `409` | `code: "match_run_busy"` - a run is matching or applying |
+| `409` | `code: "match_run_busy"` - a run is matching or applying; `code: "report_off"` - an `unknown_asin` run while the [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown) is off (the kind is only current while it runs) |
 
 #### `GET /api/v1/admin/match-runs/{id}`
 
@@ -8185,7 +8199,8 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
 - `applied` is what applying did:
   - `""`: not yet;
   - `applied`;
-  - `skipped`, with `detail` `nothing_to_change`, `matched_since` or `book_gone`;
+  - `skipped`, with `detail` `nothing_to_change`, `matched_since`, `book_gone` or
+    (an `unknown_asin` run, from 2.7.0) `asin_known`;
   - `failed`, with `edit_failed` or `cover_failed`.
 
   An `applied` item can carry `cover_failed` when its fields went on but its cover
@@ -9797,7 +9812,7 @@ effect. Lists are never `null`.
 | `metadata.mode` | `"remote"` (ask `base_url` for each book) or `"mirror"` (keep a local copy and answer from it; see [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)). A restart setting: a saved change is listed in `restart_pending`, and `GET /admin/system`'s `metadata.mode` keeps the running mode until the restart |
 | `metadata.upcoming` | the [upcoming releases](#upcoming-releases) job's switch (config `upcoming.enabled`, default `true`). Applies at once: switched on (with metadata on) it runs soon when no run has succeeded for a day; switched off it stops a run in flight. The live `upcoming` [capability](#get-apiv1server) is `metadata` **and** this |
 | `metadata.upcoming_status` | read-only (2.6.0): how the job's runs went, absent without a metadata service. `last_run_at`, `last_success_at` (both absent before the first run; equal when the last run worked), `last_error` (the last failed run's error, cleared by a success), `next_run_at`, `series` (local series matched to a community series) and `items` (what they lack in all). The console's Settings > Metadata words it |
-| `metadata.report_unknown` | the opt-in [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)'s switch (2.6.0; config `metadata.report_unknown`, default `false`). Applies at once: switched on (with metadata on) it runs now unless a run was made in the last 23 hours, the service is in its quiet week after `not_offered`, or (mirror mode) the local copy isn't ready yet; switched off it stops a run in flight |
+| `metadata.report_unknown` | the opt-in [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)'s switch (2.6.0; config `metadata.report_unknown`, default `false`). From 2.7.0 absent, with `report_status`, without a metadata service and on a demo server, so the console shows no switch there. Applies at once: switched on (with metadata on) it runs now unless a run was made in the last 23 hours, the service is in its quiet week after `not_offered`, or (mirror mode) the local copy isn't ready yet; switched off it stops a run in flight |
 | `metadata.report_status` | read-only (2.6.0): the report's last run, absent without a metadata service and on a demo server. `state` is `never` (no run yet), `ok` (the run worked; `last_sent` ASINs were accepted, `0` = nothing new to send), `not_offered` (the `base_url` is plain `http` off this machine, so nothing is sent; or the service took no reports, and it is left alone for 7 days) or `failed` (a lookup failed, or the service failed or refused a report; tried the next day, and ASINs in reports it accepted before that still count in `last_sent`); `last_run_at` (absent before the first run) and `last_sent`. The console's Settings > Metadata words it |
 | `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |
 | `demo.max_users` | `null` = the default cap (`max_users_default`); `0` = no limit |
@@ -11969,7 +11984,9 @@ content generation: the same ASIN again is a no-op `204`.
 
 ### `GET /api/v1/admin/audible/accounts`
 
-*Admin, module on.* Every account, by label, each with its `titles` counts (see
+*Admin*, from 2.7.0 **not** behind the module's toggle, so Settings > Modules
+can list the accounts kept while it is off, each with Remove (an older server
+answers `404 module_off` then). A bridge token is refused. Every account, by label, each with its `titles` counts (see
 [the account object](#the-account-object)): `200 { "accounts": [Account] }`, `[]`
 for none.
 
@@ -12358,8 +12375,9 @@ page read, whose rows may be fewer, so ask again at once.
 longer remove (one from a Bridge since unpaired or replaced, or whose removal on the
 Bridge couldn't reach the server), exactly as the Bridge's delete does: its titles
 go, its open poll and sync are cancelled, and so are its open backups. It signs nothing out of
-Amazon: that is the Bridge's. `204`, known or not; audited as `bridge.audible.remove` (with `account`)
-when there was one. A bridge token is `401`.
+Amazon: that is the Bridge's. `204`, known or not; audited as `bridge.audible.remove`
+when there was one, its target the account's name (its label, else "person
+(STORE)", from 2.7.0) and `details.account` its id. A bridge token is `401`.
 
 ## Add from LibriVox
 
