@@ -5573,7 +5573,9 @@ code instead.
 ### `POST /api/v1/me/household/members/{id}/session`
 
 No body. Signs the member in on the caller's device, as `sign_in_here` does (named as
-the caller's device, `created_on_token_id` the caller's token). Response `201`: the
+the caller's device, `created_on_token_id` the caller's token). Both raise the
+`new_device` notification for the member, as any sign-in does (see
+[Notifications](../backups-and-notifications.md#events)). Response `201`: the
 session envelope. Used for "They'll also use this phone" and "Sign in on this
 device".
 
@@ -5607,8 +5609,11 @@ itself). A device that signs in with it is the member's own: it records no
 
 Response `200`: a bare array of the member's live sessions and API keys, each shaped as
 a [`GET /me/devices`](#get-apiv1medevices) row with `current` always `false` and no
-`member_sign_ins` (`[]` when none). `400` `invalid member id`, `403` as above, `404`
-not the caller's member. No rate limit.
+`member_sign_ins` (`[]` when none). For a grown-up member every `last_ip` is `""`:
+only a kid's addresses are their owner's to see. The member and their devices are
+read in one snapshot (`auth.MemberDevices`), and ownership is checked before any
+device is read. `400` `invalid member id`, `403` as above, `404` not the caller's
+member. No rate limit.
 
 ### `DELETE /api/v1/me/household/members/{id}/devices/{device_id}`
 

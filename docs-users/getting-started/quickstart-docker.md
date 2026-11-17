@@ -112,6 +112,24 @@ This updates the server and the web player together. Your books are never change
   docker logs audiosilo   # the admin password and auth code, shown once
   ```
 
+- **Health check.** The image checks every 30 seconds that the server answers, and `docker ps` shows the container as `healthy` or `unhealthy`. Docker doesn't restart an unhealthy container by itself. To have it restarted, add an autoheal container and a label:
+
+  ```yaml
+  services:
+    audiosilo:
+      # ...the service above, plus:
+      labels:
+        autoheal: "true"
+    autoheal:
+      image: willfarrell/autoheal:latest
+      restart: unless-stopped
+      environment:
+        AUTOHEAL_CONTAINER_LABEL: autoheal
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+  ```
+
+  The check waits 10 minutes after a start before a failure counts, so an update that changes the database on a large library isn't restarted part way through. It reads the same data folder and settings as the server. After you change the port or HTTPS settings in the console, restart the container, or the check asks the new address and fails.
 - **Books on a network share (SMB/NFS):** mount the share on the Docker host, then mount that path into the container. If the share goes away, the server keeps your books and progress; they come back when the share does.
 - **HTTPS with a reverse proxy from the start:** follow the [Caddy](https://audiosilo.app/blog/audiosilo-with-caddy/), [SWAG](https://audiosilo.app/blog/audiosilo-with-swag/) or [Traefik](https://audiosilo.app/blog/audiosilo-with-traefik/) guide. Each has a Compose file with both AudioSilo and the proxy.
 

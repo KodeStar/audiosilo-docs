@@ -13,6 +13,7 @@
   "podcasts.allow_networks": "the Bridge's setting, named in the cross-repo contract",
   "metadata.health": "a field of GET /admin/system, not a config key",
   "metadata.mirror": "a field of GET /admin/system, not a config key",
+  "setup.can_contribute": "a field of the Bridge heartbeat's setup block, not a config key",
   "metadata.await": "a label for the probe's block-file wait in the scanner page, not a config key",
   "AUDIOSILO_ADMIN_NEXT": "named as removed (the classic console's switch)",
   "AUDIOSILO_CARPLAY": "the player's native build variable (audiosilo-frontend)",

@@ -202,6 +202,19 @@ Everyone else needs an invite of their own. **Invite someone** opens one in Peop
 
 If you skipped steps or chose **Finish later**, the Overview shows a **Finish setting up** card. **Finish setup** counts any step you passed over as skipped. Each line opens that step again. **Dismiss** hides the card for every admin.
 
+## Skip the setup flow
+
+If you set the server up by script or in `config.yaml`, you can skip the flow. Set the environment variable `AUDIOSILO_SETUP_SKIP=true`, or add this to `config.yaml`:
+
+```yaml
+setup:
+  skip: true
+```
+
+When it starts with this set, the server marks the flow finished. Steps you already finished keep their mark. The books folder step counts as done once a books library exists, and the rest count as skipped. The Finish setting up card is dismissed. The admin console then never opens the flow. A flow that was already finished is left as it is.
+
+On a new server with this set, the first-run banner's console line reads `Admin console:` instead of `Finish setting up:`.
+
 ## What's in the data folder
 
 The data folder (`--data`, or `/data` under Docker) holds:
