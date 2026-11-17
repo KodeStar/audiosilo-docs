@@ -89,7 +89,9 @@ The overview is the console's home page. It shows:
 - **Books per library**. A count that looks wrong is a cue to check that
   library's [folder detection](libraries.md#folder-detection).
 - **Server**: the version, whether a newer one is out, and which features are
-  on.
+  on. **Address** shows the server's **Public address** and **Home address**
+  from [General](server.md#general). With neither set, it shows this browser's
+  address.
 
 A notice appears at the top when a library's folder can't be read (see
 [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing)).

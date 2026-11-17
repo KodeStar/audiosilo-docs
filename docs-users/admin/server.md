@@ -320,6 +320,9 @@ update:
 The server never installs an update. You always update it yourself. Before you update,
 see [Before an upgrade](backups.md#before-an-upgrade).
 
+A console tab left open while the server updates says **AudioSilo was
+updated**. Press **Reload** to open the new console.
+
 ![An update available, with the sponsor line](/img/screenshots/admin/update-notice.png)
 
 The **About** card below lists the server's details, such as how it is
