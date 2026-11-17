@@ -183,9 +183,11 @@ least recently used one, which a receiver may still be playing with (see
   Receiver skips a refused queue item and tries the next, so its error names the
   last file it tried. The service keeps `intended`: the place its own load, seek or
   file jump asked for, or the next file's start once one ended, until the receiver
-  plays or pauses there. The reload goes there (`refusedPlace`), or further along
-  the same file when the receiver played on for `ASKED_MOVE_MS` (8 s) or more. It
-  yields to a receiver that has settled on another file.
+  plays or pauses there. The reload goes there (`refusedPlace`). When the error comes
+  `ASKED_MOVE_MS` (8 s) or more after the move, it goes to where the receiver was
+  last seen in that file, if that is further on. In that case, a receiver that
+  settled on another file meanwhile is followed instead: the reload goes to the
+  error's own file.
 - **Stale statuses are hidden for a bounded time.** While the queue is sent again,
   the files the receiver skips on to are not the book's place, for at most
   `ASKED_MOVE_MS` after the error, so a load never answered hides nothing for good.
@@ -195,13 +197,13 @@ least recently used one, which a receiver may still be playing with (see
   a status says where, because the receiver holds the book and a failed load would
   hand it back to the phone while the receiver plays on. A seek, file jump or play
   refused that way fails.
-- **Mints are capped.** A new mint comes only once the receiver has played with the
-  last one at the intended place, and never more than two per `REMINT_EVERY_MS`
-  (a minute) per book loaded, one when the last token never played. The count is
-  kept across loads and resets, and another book may mint at once. So a failure
-  with another cause never mints on every try, since each mint can end another
-  receiver's token. A queue refused while a mint is on its way waits on that mint
-  and is sent again after it.
+- **Mints are capped.** Within `REMINT_EVERY_MS` (a minute) of a book's last mint,
+  another comes only when the receiver has played with the last token at the
+  intended place, and never a third. A token that never played gets one more mint
+  a minute after it was minted. The count is kept across loads and resets, and
+  another book may mint at once. So a failure with another cause never mints on
+  every try, since each mint can end another receiver's token. A queue refused
+  while a mint is on its way waits on that mint and is sent again after it.
 
 **Play or pause after a reload** follows `playIntent`, the latest settled word
 from either side: this phone's `play`, or its `pause` or `load` (sent paused), or
@@ -354,10 +356,11 @@ where the TV got to when it comes back (`refresh`).
 
 ## Known limits
 
-- **Little run on a real Cast device.** Every rule above is unit-tested. The
-  refused-token rules come from an Android phone casting to a Default Media
-  Receiver, which showed how that receiver skips a refused queue item. The iOS
-  background behaviour and the web sender have no such run recorded here.
+- **Tested on one real Cast setup only.** Every rule above is unit-tested. Only an
+  Android phone (a Pixel 6a) casting to a Default Media Receiver has been run
+  against a real Cast device, and that run showed how the receiver skips a refused
+  queue item. The iOS sender, its background behaviour and the web sender have not
+  been run against one.
 - iOS: the sender is suspended in the background (above), and there are no iOS
   lock-screen controls for a cast.
 - The receiver shows no chapter list.
