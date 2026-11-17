@@ -795,9 +795,9 @@ player.
 **Server:**
 
 - `internal/meta` resolves a book's ASIN or ISBN against `metaserve` and composes an
-  enrichment envelope. A book with neither, or one `metaserve` does not know, is
-  resolved by its recorded match instead (see
-  [Matches by work id](#matches-by-work-id)). `GET /libraries/{id}/meta` returns
+  enrichment envelope. A book with neither, one `metaserve` does not know or cannot
+  answer, or one whose recorded match names another work, is resolved by its
+  recorded match instead (see [Matches by work id](#matches-by-work-id)). `GET /libraries/{id}/meta` returns
   it, behind an admin off-switch and a bounded cache.
 - `GET /meta/work?id=…` serves one work document straight through, from the same
   cache, for the earlier books of a series the caller does not own. It is authed but
@@ -905,10 +905,18 @@ looks such a book up by `works/{id}`, following a retired slug's `301`. The rule
 run applies to such a book is in
 [Bulk community matching](../server/api/reference.md#bulk-community-matching).
 
-From 2.7.0 the server's `/meta` answers such a book from its recorded match. It
-tries the book's identifiers first, then its `book_matches` `work_id` and
-`recording_id` when they find nothing. The envelope is the same, so the wire does
-not change.
+From 2.7.0 the server's `/meta` and `/next` follow one work per book, the one
+`/item` names as `work_id` (the recorded match first). They read the book's
+`book_matches` `work_id` and `recording_id` when:
+
+- the book has no ASIN or ISBN;
+- `metaserve` does not know its identifiers;
+- the lookup fails, as in an outage, where the match's stored answer is served
+  (`200`, not a `502`);
+- the recorded match names another work than the identifiers resolve to.
+
+A recorded work `metaserve` lacks or cannot answer leaves the identifiers' answer
+standing. The envelope is the same, so the wire does not change.
 
 A book [added from LibriVox](#librivox-fetches) gets its row from the server's
 fold of the done `librivox.fetch`, with the work and recording the server resolved
@@ -1041,8 +1049,9 @@ dramatisation. All of it is additive and `omitempty`:
   it whenever metadata is on, even with the job switched off. It is a display hint
   only: durable state stays path-keyed.
 - `/item`'s `other_recordings`: the caller's other recordings of the work, in the
-  list shape, within their share scope, each recording once (a copy shares the
-  ASIN, or the ISBN when one has no ASIN).
+  list shape, within their share scope, each recording once. A copy shares the
+  ASIN, or the ISBN when the later book has no ASIN, so a book with an ASIN is
+  never taken in by an ISBN alone.
 - `/meta` rail entries' `local_others`, beside `local`.
 - The pick: of several recordings, `local` (and so `/next`) is chosen by
   [the pick among recordings](../server/api/reference.md#the-pick-among-recordings),
