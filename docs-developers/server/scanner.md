@@ -1373,23 +1373,54 @@ to ffprobe.
   without reading check them every 256 ticks (`blockFile.tick`, a `probeLimit`
   panic that `fastProbe` recovers).
 
-**Bounded reads on a hung share.** The tag read and the narrator walk before the
-probe are bounded too (`readFile`), by the ffprobe run's timeout, the caller's
-context and the probe's byte budget.
+**Bounded reads on a hung share.** The file's open and its stat, the tag read
+and the narrator walk before the probe are bounded too (`readFile`), by the
+ffprobe run's timeout, the caller's context and the probe's byte budget.
 
+- The open and its stat, and while armed every read from the file, run on a
+  goroutine of their own and are waited for only until the deadline
+  (`metadata.await`: `openBlockFile`, `blockFile.waitRead`). An `open` or a
+  `pread` on an NFS or SMB share that stopped answering therefore costs a
+  goroutine, never a stuck scan reader. An open given up on counts as a tag
+  read out of time.
 - A tag read out of time skips the probe and leaves the file to ffprobe, which
   can be killed and has its own timeout.
 - A tag read past the byte budget leaves the tags unread, and the probe still
   runs.
-- While armed, every read from the file runs on its own goroutine and is waited
-  for only until the deadline (`blockFile.waitRead`). A `pread` on an NFS or SMB
-  share that stopped answering therefore costs a goroutine, never a stuck scan
-  reader.
-- Once 16 such abandoned reads are outstanding process-wide
-  (`maxAbandonedReads`), a new read fails fast without opening the file. This
-  is logged once until they have all returned.
-- `os.Open` and `Stat` are not bounded. The scan's root check catches a dead
-  mount before discovery.
+- The file is opened `O_NONBLOCK` and must be a regular file. A FIFO or a
+  device is turned away at once with an `OpenErr`, never waited for and never
+  read as audio.
+- The scan's move fingerprint (`metadata.Fingerprint`) is bounded the same way,
+  and is skipped after a read cut short.
+- An ffprobe killed at its timeout that has not ended 5 seconds later
+  (`ffprobeKillGrace`, an ffprobe stuck in an NFS read) is left behind and
+  counted as an abandoned read.
+
+**One hung share holds back only itself.** Abandoned reads are counted per
+mount (`stuckByMount`, a `mounts.PerMount`). Once 16 are outstanding on one
+mount (`maxAbandonedReads`), a new read from a file there fails fast. The file
+is not opened, no ffprobe runs, and its tags stay unread. This is logged once,
+with the mount, until they have all returned. Reads already under way can take
+the count past 16. Files on every other mount read as usual.
+
+`internal/mounts` names a path's mount from the mount table alone, with no
+filesystem call, so it answers at once even for a path on a hung share:
+
+- The table is `/proc/self/mountinfo` on Linux and `getfsstat` with
+  `MNT_NOWAIT` on macOS. It is read again every 10 seconds on a goroutine of its
+  own, and a re-read that fails keeps the last table.
+- A path belongs to the longest mount point above it, by the path's text.
+- A mount's key is the filesystem it is of (`Mount.Device`: mountinfo's
+  `major:minor`, the fsid on macOS), not its mount point. A share unmounted and
+  mounted again at the same path starts with nothing stuck, and two bind mounts
+  of one share (two libraries of one NAS inside a container) share one cap. The
+  mount point still names the mount in the log.
+- On another OS, or when the first read of the table fails, every path is on
+  its volume root (`/`), which gives one cap for the whole process.
+
+The scan's root check still catches a mount that is dead before discovery
+(see [The job queue](#the-job-queue)). These bounds cover a share that hangs
+partway through a scan.
 
 What a cut-short read does to the stored book is in
 [Read problems](#read-problems).
@@ -1724,17 +1755,37 @@ On a very slow share where many files time out, the retries make the scan
 slower than reading one file at a time would. Lower `scan.concurrency` there.
 
 **A read cut short on a hung share.** Any file of an already-indexed book can
-come back with its read cut short, or refused at the abandoned-read cap
+come back with its read cut short, or refused at its mount's abandoned-read cap
 (`Metadata.TagsUnread`, `ReadRefused`; see
-[The in-process probe](#the-in-process-probe)). Then the book's row is not
-rewritten at all (`catalog.recordReadProblem`). Names, length, codec, chapters,
-cover flag, mtime and size stay as the last full read left them. Only the
-problem is recorded, with ffprobe or without, so the next scan reads the file
-again. The problem is `unreadable`, with the detail:
+[The in-process probe](#the-in-process-probe)). A FIFO turned away counts the
+same. A file whose length ran out of time even when read alone counts too: an
+ffprobe time-out, or with no ffprobe the in-process read's `ProbeTimedOut`
+(`library.readCutShort`). The scan then sets `Book.ReadCutShort`, and the
+book's row is not rewritten at all (`catalog.recordReadProblem`). Names,
+length, codec, chapters, cover flag, mtime and size stay as the last full read
+left them. Only the problem is recorded, with ffprobe or without, so the next
+scan reads the file again (`problemCleared` never clears a read still cut
+short). The problem is `unreadable`, with the detail:
 
-- "reading it timed out"; or
-- for a refused read, "too many earlier reads are stuck (on this or another
-  library), so it wasn't tried", because the cap is process-wide.
+- "reading it timed out" (an in-process length read out of time says this
+  too); or
+- for a refused read, "too many earlier reads from the same drive or share are
+  stuck, so it wasn't tried", because the cap is per mount.
+
+An ffprobe time-out records `probe_failed` (above) instead. A folder book
+records the problem of the part that was cut short, even over an earlier
+part's lasting problem, so the next scan asks the right file again.
+
+A length out of time can repeat on every scan, for example on a damaged part.
+So when it is the only problem (`Book.LengthOnly`: every file's tags were read,
+none was cut short or refused), the stored book is kept only while its files
+are the stored ones (`catalog.sameFiles`): the same paths in the same order,
+and the same sizes except for the parts whose length timed out
+(`BookFile.LengthUnread`). With a part added, gone, renamed or changed, the
+book is written whole with the part's problem and counted as updated. This
+holds for an on-demand index too. A cut-short or refused read keeps the book
+whatever its files, because rewriting it would store names built from its
+paths alone.
 
 A new book read this way is written with its path's names.
 

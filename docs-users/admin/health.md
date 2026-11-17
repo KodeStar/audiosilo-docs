@@ -48,6 +48,8 @@ A slow disk or network share can time out a scan. Its books show **reading it
 timed out** and keep their length and chapters. A single file that took too
 long is listed under **Files that couldn't be read** with **took too long to
 read as audio**, which is not a damaged file. The next scan tries both again.
+A drive or share that stops answering holds up only the libraries on it. The
+other libraries scan as usual.
 
 ### Working through a list
 
