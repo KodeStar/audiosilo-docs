@@ -47,6 +47,10 @@ Click a card to open its list.
 If a network share stops answering during a scan, its books show **reading it
 timed out**. They keep their length and chapters, and the next scan tries again.
 
+A file that took too long to read is listed under **Files that couldn't be
+read** with **took too long to read as audio**. That points to a slow disk or
+network share, not a damaged file. The next scan tries it again.
+
 ### Working through a list
 
 - **Ignore** hides a book from this list, even through rescans. **Show
