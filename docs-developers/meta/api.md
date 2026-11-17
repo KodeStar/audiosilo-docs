@@ -218,7 +218,8 @@ and its [bulk match run](../server/api/reference.md#what-a-run-asks-of-the-commu
 | `narrator` | A narrator guess, **repeatable**. The first 4 are read. See [How `language` and `narrator` are read](#how-language-and-narrator-are-read). |
 | `asin` · `isbn` | Looked up exactly as on [`/api/v1/lookup`](#apiv1lookupasinisbnlibrivox_id). A hit scores 100. An ASIN longer than 20 characters is ignored, and so is an ISBN longer than 20 once hyphens and spaces are taken out. |
 | `limit` | Default 10, capped at 20. A non-numeric or non-positive value falls back to the default. |
-| `expand` | What to inline, as a comma-separated list or by repeating the parameter. `work` is the one value read (see [`expand=work`](#expandwork)). Any other value is ignored. |
+| `expand` | What to inline, as a comma-separated list or by repeating the parameter. `work` inlines the best result's work, and `lean` beside it leaves the work's community sidecars out (see [`expand=work`](#expandwork)). Any other value is ignored. |
+| `expand_min` | With `expand`: the score (1-100) under which the best result is not expanded. A value outside 1-100 is ignored. |
 
 At least one of `q`, `title`, `author`, `series`, `asin` or `isbn` must carry a
 value (400 `one of q, title, author, series, asin or isbn is required`). A
@@ -294,11 +295,12 @@ were tuned on the server's harness, and each is pinned in `match_factors_test.go
 
 | Factor | Value | Applies to |
 |---|---|---|
-| `positionConflictFactor` | 0.8 | a work in the named series at another position than the stated one, unless a membership's range covers it (an omnibus) |
+| `positionConflictFactor` | 0.8 | a work in the named series at another position than the stated one, unless a membership's range covers it (an omnibus). It applies to the typed text's reading too, unless the text names that work by its title or its volume |
 | `languageMismatchFactor` | 0.8 | a work in another known language than a stated `language` |
 | `runtimeMismatchFactor` | 0.85 | a work whose closest recording is more than 25% off `runtime` |
 
-No factor touches an identifier hit, which scores 100 whatever else disagrees. The
+No factor touches an identifier hit, which scores 100 whatever else disagrees. It
+also ranks first among the results at 100, so a `limit` never cuts it. The
 narrator fact and the language factor apply only to a request that states
 `narrator` or `language`. The position and runtime factors apply to any request
 stating a position or a runtime.
@@ -329,11 +331,15 @@ exactly.
 Such a work's series agreement isn't marked down for a weak title. Its title counts
 at least as much as a generic record's at the stated volume. This covers the
 series-named first volume whose file names only the subtitle, a pack against its
-range, and `American Dragons, Book 3`.
+range, and `American Dragons, Book 3`. A title that shares nothing with the
+request's is lifted only while the request's title names no other work that could
+be the book: one by a named author, in no other stated language, whose runtime
+isn't ruled out.
 
-The series guess resolves to the series spelled as named when the pool holds one
-(`Dark Road Series` is `Dark Road`). Otherwise it resolves to every series that
-fits. So beside the series it names, these gain nothing: a fuzzy sub-series
+Each series guess resolves on its own. It resolves to the series spelled as named
+when the pool holds one (`Dark Road Series` is `Dark Road`). Otherwise it resolves
+to every series that fits. A loose guess beside a spelled one (`Dresden` beside
+`The Dresden Files`) therefore adds nothing. So beside the series it names, these gain nothing: a fuzzy sub-series
 (`Frontlines: Evolution` for `Frontlines`), a shorter name (`Summoner` beside
 `Summoner School`) or a spin-off.
 
@@ -452,9 +458,21 @@ byte-identical.
   adds one work and at most 16 small objects, whatever the series' length. A series
   with no entry is one nothing is known about. The member is omitted when it would
   be empty.
-- **Which result.** The first, or, at its score, the one an identifier found. This
-  route's own ranking ties on the title, so an identifier hit can rank second. Find
-  the best by that rule rather than taking `results[0]`.
+- **Which result.** The first. An identifier hit ranks first, so it is always the
+  one expanded. A metaserve before this rule could rank an identifier hit second
+  in a tie at 100, so a client that also talks to older servers re-sorts
+  identifier hits first, as audiosilo-server does.
+
+**`lean`.** `expand=work,lean` inlines the work without its characters, recaps,
+`recap_summary` and `position_scale`. Those community sidecars are most of a long
+work's bytes, and a bulk match reads none of them. The `community_description`
+stays. Send both values: an older metaserve ignores `lean` and still inlines the
+whole work. `lean` alone inlines nothing.
+
+**`expand_min`.** `expand_min=<1-100>` skips the expansion when the best result
+scores under it, for a client that drops a weak best unread. An identifier hit
+scores 100, so it is always expanded. The answer is otherwise whole, and an older
+metaserve ignores the parameter and expands whatever the score.
 
 **A client must not assume it.** metaserve reads the expansion after the match has
 its answer, inside the same slot and the same 2-second budget. It is all or nothing.

@@ -551,10 +551,17 @@ A lane pull request is a `sync/` branch with the usual `data`, `bot-intake` and
 reads it as a sync-bot pull request.
 
 Its body is the lane's rationale and the complete list of its ASINs, attached
-ones included, with no counts and no queue dates. Retracting the lane alone
-means reading those lists, since its records carry the same typed
-`libex-import` provenance as the feeds' records. A merge starts series
-completion at once.
+ones included, with no counts and no queue dates. Its records carry the same
+typed `libex-import` provenance as the feeds' records, with the bare ASIN as the
+ref, so retracting the lane alone means reading those lists. A merge starts
+series completion at once.
+
+`metaimport libex --intake` (create mode only) stamps each record a run writes
+with the ref `intake:<ASIN>` instead, so a lane run's records are one query over
+`sources[].ref` apart from the feeds'. The refresh rules read the ASIN back from
+either form. The service does not pass the flag yet, because its pinned
+audiosilo-meta predates it. Records a lane run wrote without it keep the bare
+ASIN, and only the pull requests' lists tell them apart.
 
 The lane stays out of the systemic stop:
 
@@ -983,7 +990,9 @@ instructions.
 
 - **Auth is always a subscription login, never an API key.** Claude reads
   `CLAUDE_CODE_OAUTH_TOKEN`, the long-lived token `claude setup-token` mints.
-  That is the same transport audiosilo-meta's own `ai-verify.yml` uses. Codex
+  audiosilo-meta's own `ai-verify.yml` falls back to the same transport, but
+  prefers an `ANTHROPIC_API_KEY` when the repository has one, so the resolver's
+  use of the subscription can't stall the verdicts. Codex
   reads the ChatGPT login in `~/.codex/auth.json`, mounted into the container.
   No key is read from the environment, composed into argv, or written to disk.
 - **The agent never sees the GitHub token.** The service *removes*
