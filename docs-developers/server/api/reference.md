@@ -3376,12 +3376,15 @@ An `.mka` holding another codec (AAC, Opus, FLAC) is served as stored,
 `audio/x-matroska`. See
 [Remuxing Matroska](../media.md#remuxing-matroska-medianewremuxer).
 
-**A share that stops answering** (from 2.7.0). The file's open and stat wait at
-most 45 seconds (`streamOpenTimeout`): long enough for a sleeping NAS or USB disk
-to spin up, and under AVPlayer's own timeout of about 60 seconds, since AVPlayer
-doesn't retry a `503`. Past that the answer is the `503` below. Only a regular file is opened
-(`metadata.OpenRegular`), so a FIFO is a `404` at once. An older player treats
-the `503` as a failed load.
+**A share that stops answering** (from 2.7.0). A book's file served as stored
+has its open and stat wait at most 45 seconds (`streamOpenTimeout`): long enough
+for a sleeping NAS or USB disk to spin up, and under AVPlayer's own timeout of
+about 60 seconds, since AVPlayer doesn't retry a `503`. Past that the answer is
+the `503` below. Only a regular file is opened (`metadata.OpenRegular`), so a
+FIFO is a `404` at once. An older player treats the `503` as a failed load. Not
+bounded yet: a podcast episode's open (`library.OpenPodcast`), and the source
+file's look before a transcode (`?transcode=1`), a Matroska remux or a watch
+rendition.
 
 | Status | Meaning |
 |---|---|

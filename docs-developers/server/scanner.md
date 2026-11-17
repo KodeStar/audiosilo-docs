@@ -1452,13 +1452,15 @@ ffprobe run's timeout, the caller's context and the probe's byte budget.
   (`ffprobeKillGrace`, an ffprobe stuck in an NFS read) is left behind and
   counted as an abandoned read.
 
-**Side reads are bounded too** (2.7.0, `metadata.Bounded`). Every other look a
-scan, an on-demand index or a request makes at a library file goes through the
-same bound: the call runs on a goroutine of its own, is waited for while its
-context lives and at most a timeout, and is counted on its mount when given up
-on. Each call holds one of its mount's 16 slots (below) until it returns, so a
-burst on a share that just stopped answering (a page of covers) makes no more
-calls than the cap. At the cap a new call is refused at once. The calls are:
+**Side reads are bounded too** (2.7.0, `metadata.Bounded`). The other looks a
+scan, an on-demand index or a request makes at a library file, listed below, go
+through the same bound: the call runs on a goroutine of its own, is waited for
+while its context lives and at most a timeout, and is counted on its mount when
+given up on. Each call holds one of its mount's 16 slots (below) until it
+returns, so a burst on a share that just stopped answering (a page of covers)
+makes no more calls than the cap. With every slot held, a new call waits for one
+within its own timeout and is given up on unmade when none frees. Once 16 reads
+there are abandoned, a new call is refused at once. The calls are:
 
 - a book's side files in a scan: the Audiobookshelf `metadata.json` read, the
   `.audiosilo/` attachments' lstats and reads, the ebook check, the cover
@@ -1466,7 +1468,7 @@ calls than the cap. At the cap a new call is refused at once. The calls are:
   the check of a recorded problem (`problemCleared`);
 - the backfill's embedded cover read;
 - in the API, `/item`'s look at the book's ebook, every cover, thumbnail and
-  show artwork, and a stream's open and stat.
+  show artwork, and the open and stat of a book's file streamed as stored.
 
 The scan gives each the probe's time (`Scanner.probeTimeout`). With a book's
 audio read cut short, none of its side files is looked at, since each would wait
@@ -1477,8 +1479,10 @@ image's stat, any other file's read of its last bytes, since a stat can answer
 from a cache while reads hang) and clears the problem when it answers, or when
 the file is gone. A backfill's given-up read keeps what is stored and records
 nothing. The API answers a given-up look with `503 share_not_answering`
-([API conventions](api/index.md)). The walk's own listings and lstats are not
-bounded yet.
+([API conventions](api/index.md)). Not bounded yet: the walk's own listings and
+lstats, an on-demand index's first look for the book's ebook (`ebookOnDisk`),
+and a podcast episode's or a transcode's, remux's or rendition's open of its
+source.
 
 **One hung share holds back only itself.** Abandoned reads are counted per
 mount (`stuckByMount`, a `mounts.PerMount`). Once 16 are outstanding on one
