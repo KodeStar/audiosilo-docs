@@ -14,7 +14,7 @@ The Journal is part of [You](you.md#finding-you):
 - **In the web player's** [quick search](browsing.md#quick-search-in-the-web-player): **Journal**, under Go to.
 - **From a book**: **See all in your journal** on its **Bookmarks** or **Notes** tab.
 
-It has three tabs: **Diary**, **Bookmarks** and **Notes**.
+It has three tabs: **Diary**, **Bookmarks** and **Notes**. The **Bookmarks** and **Notes** tabs show how many you have once every server has answered, so you can see your notes count without opening that tab.
 
 ## The Diary
 

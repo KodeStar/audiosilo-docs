@@ -25,7 +25,7 @@ The **Downloads** tab shows everything stored on the device you're using.
 
 ![The Downloads page: storage by server, the automatic download rules, and the books ready offline](/img/screenshots/web-player/downloads.png)
 
-- **Storage**: how much room your downloads take, by server, and how much is still free.
+- **Storage**: how much room your downloads take, by server, and how much is still free. The figure grows while a download runs.
 - **Automatic downloads**: the rules for downloads you don't start yourself (below).
 - **In progress**: downloads running now, waiting, or stopped.
 - **On your Apple Watch** in the iPhone app, or **On your watch** in the Android app, with a paired watch: the books on your watch and the ones on their way to it. See [Apple Watch](apple-watch.md#in-downloads-on-your-iphone) or [Wear OS](wear-os.md#in-downloads-on-your-phone).

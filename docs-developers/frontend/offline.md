@@ -1214,9 +1214,17 @@ reached means it plans nothing this time.
     sixth server and on fold into "N more servers";
   - an **Other apps** segment on a device (`capacity - free - ours`). A browser can't
     see other apps;
-  - `used`, preferring the engine's `totalBytesUsed` over the registry's sum.
+  - `used`: the larger of the registry's sum plus what the running downloads have
+    written (`growingBytes`), and the engine's measure (`totalBytesUsed`) plus each
+    download's own growth since the measure was read (`grownSince`, against
+    `heldByKey` taken with it). Both are in whole megabytes, so the figure grows
+    while a download runs without changing on every progress tick, also past a
+    device-wide measure larger than the listed books. A retried download counts only
+    past the files its failed attempt kept, so it is not counted twice;
+  - Other apps is read against the disk as it was at the measure, so its share stays
+    steady while a download grows.
 
-  `useStorage` re-reads both only when a book lands or leaves.
+  `useStorage` re-reads the measure and the estimate only when a book lands or leaves.
 - `unsupportedReason` - `insecure`, `no-cache` or `no-worker`, for the page's
   unsupported state.
 

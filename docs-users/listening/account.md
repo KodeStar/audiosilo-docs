@@ -63,6 +63,8 @@ To cut off a lost or sold phone, tap **Sign out** on its row and confirm. It los
 
 To sign out this device, use [Sign out](#signing-out) at the bottom of the page.
 
+If the server signed this device out, the list can't load and shows **Reconnect** instead. Tap it to sign in again.
+
 ## Listening sync
 
 The **Listening sync** card shows whether what you heard on this device has reached the server, and when it last synced. Listening waits on the device while you're offline and goes by itself when the server is reachable. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).

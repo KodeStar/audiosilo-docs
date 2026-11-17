@@ -37,7 +37,7 @@ To open it:
 
 | You see | It means |
 |---|---|
-| **Out Nov 12, 2026** | A preorder that comes out that day. |
+| **Out Nov 12, 2026** | A preorder that comes out that day. The date follows your device's region, such as **Out 12 Nov 2026**. |
 | **Released Oct 2026** | It came out recently. |
 | **First released 2014** | A missing book, and when it first came out. |
 
