@@ -24,8 +24,8 @@ the same treatment as an old player.
 | **Bridge-internal** | `/api/v1/bridge/*` | Built for the Bridge, which negotiates what it can do with the server in its heartbeat. A route or field can change in any release |
 | **Experimental** | A Stable-path route or field the [API reference](reference.md) marks as experimental | Can change or go in any release. No route is marked experimental today |
 
-A client that calls a console or Bridge route takes on that route's churn. Read
-the [API changelog](changelog.md) before upgrading the server it talks to.
+A client that calls a console or Bridge route takes on that route's churn, and
+the [API changelog](changelog.md) does not list those changes.
 
 ## What the server guarantees for Stable routes
 

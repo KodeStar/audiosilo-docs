@@ -102,10 +102,8 @@ A server or Amazon failure is a `warning` for the page, never the account kept.
 When the server's DELETE failed, the server keeps an orphaned account until an
 admin removes it
 ([`DELETE /admin/audible/accounts/{account}`](../server/api/reference.md#delete-apiv1adminaudibleaccountsaccount)).
-The admin does that from the console with **Remove**: on Settings > Bridge's
-Audible accounts card while the module is on (with no Bridge paired too), and on
-Settings > Modules' Audible card, under "Accounts kept while it's off", while it
-is off.
+The admin does that from the console with **Remove** (see
+[The console](#the-console) for which card lists it).
 
 **Refused.** A `401`/`403` on a signed call (`audible.IsRefused`) marks the account
 refused (`refused_at`, `last_error`; the page's **Sign in again**). The exception
@@ -1510,8 +1508,8 @@ mapping read-only, title counts, Check now and Remove per account), and
 Settings > Audible lists the titles with their filters. The card shows with no
 Bridge paired too, when it has accounts kept from an earlier one, so they stay
 removable. With the module off, Settings > Modules' Audible card lists the kept
-accounts with Remove (`kept-accounts.tsx`). Remove removes the account from this
-server only and cancels its open poll, backups and sync. The code is in `features/audible/`.
+accounts with Remove (`kept-accounts.tsx`, under "Accounts kept while it's off").
+The code is in `features/audible/`.
 
 **Per title:**
 

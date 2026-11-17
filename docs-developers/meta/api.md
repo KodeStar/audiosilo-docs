@@ -1352,9 +1352,8 @@ Errors are the usual `{"error": "..."}` envelope.
 **The limit** is **6 POSTs a day per client**, with a burst of 6. That means six at
 once, then one every four hours as the bucket refills. The `POST` skips the
 [API's own limit](#rate-limit-and-caching), and keeps this one even when that limit
-is turned off. A wrong `Content-Type` is answered 415 before the limiter. After
-that the limiter runs first, so **a POST refused for size or format still spends
-one of the six**. A client is keyed as on the rest of the API. Behind a
+is turned off. Past the 415 check the limiter runs first, so **a POST refused
+for its size or a malformed body still spends one of the six**. A client is keyed as on the rest of the API. Behind a
 proxy, name the proxy in `METASERVE_TRUSTED_PROXIES` (see
 [Who is a client](#who-is-a-client)), or every
 reporting client shares one 6-a-day bucket.

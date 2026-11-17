@@ -71,11 +71,10 @@ docker build --build-arg WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest \
 docker push ghcr.io/kodestar/audiosilo-server:dev
 ```
 
-The web image is published for `linux/amd64` only (static files, which any
-platform can copy). The `WEB_PLATFORM` build arg (default `linux/amd64`) makes
-every target, and a build on an arm64 host, take that copy.
-`scripts/fetch-web-player.sh` reads the same variable from the environment. Set
-it only for a locally built web image of another platform.
+The `WEB_PLATFORM` build arg (default `linux/amd64`) pins the web image's
+platform, as [the release pipeline](../architecture/release-pipeline.md#2-server-docker-image---audiosilo-servergithubworkflowsimageyml)
+explains; `scripts/fetch-web-player.sh` reads the same variable from the
+environment.
 
 The image builds the native SQLite engine in by default. Add
 `--build-arg SQLITE_ENGINE=modernc` for the pure-Go one (see

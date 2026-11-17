@@ -640,10 +640,7 @@ listener routes.
 when empty), with no library or path. It is deduped per account, and it promotes
 an open poll to a person's priority when Check now asks. It runs in the `light`
 lane and writes nothing into a library; an ASIN it backfills goes through the
-server. A refused poll fails with a code in its result, `audible_refused` (the
-device) or `audible_sign_in` (the sign-in, for now). The server folds
-`audible_refused` as it folds a sync's, marking the account refused, and the
-console's Bridge jobs list words both. The module's scheduler queues it, and
+server. A refused poll fails with a code in its result. The module's scheduler queues it, and
 queued polls are held while the module is off. See
 [Audible](audible.md#the-poll-audiblepoll).
 

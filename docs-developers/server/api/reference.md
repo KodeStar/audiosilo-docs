@@ -488,11 +488,11 @@ attempts per IP per 15 minutes.
 stores only its SHA-256, on the session. A sign-in whose `device_id` an earlier
 session of the same person already carried, signed out or not, is not
 announced as a `new_device` [event](#get-apiv1adminevents); one without it
-always is. The admin console sends one per origin. The player (from 2.7.0)
-sends its own random sign-in key, one per server address
-(the player's `src/lib/sign-in-key.ts`), never progress
-sync's device id, which goes with every save and comes back in progress
-answers: the server keeps this one as a secret. The server
+always is. The admin console sends one per origin. A client sends one random
+key per server address and never a value it sends elsewhere (such as progress
+sync's `device_id`, which comes back in progress answers), since the server
+keeps this one as a secret. The player's is its sign-in key
+([Connecting](../../frontend/connect-and-addresses.md)). The server
 forgets `device_id`s so that the browser's next sign-in is announced again:
 
 - An admin signing a session out (`DELETE /admin/devices/{id}`) forgets that
@@ -2588,18 +2588,17 @@ is gated by the `metadata` [capability](#get-apiv1server). When it is false the
 route returns 404, so a client that honours the flag never calls this.
 
 The server finds the book's work in two steps (`bookEnrichment`, shared with
-[`/next`](#get-apiv1librariesidnext)):
+[`/next`](#get-apiv1librariesidnext)), so `/item`, `/meta` and `/next` follow
+one work rule (from 2.7.0):
 
 1. **Its identifiers.** The server looks the book's `asin` or `isbn` up upstream.
    These are the effective fields on the indexed book: stored in
-   `book_enrichment`, or set by an admin edit, which wins. A book whose
-   identifiers find the same work as its [`work_id`](#get-apiv1librariesidbooks)
-   (the recorded match's first) never reads its recorded match.
-2. **Its recorded match.** From 2.7.0 one work rule holds for `/item`, `/meta`
-   and `/next`. When the book has neither identifier, the upstream does not know
-   them, the lookup fails (an outage), or the recorded match names another work
-   than the identifiers find, the server reads the book's recorded community
-   match. That
+   `book_enrichment`, or set by an admin edit, which wins.
+2. **Its recorded match.** When the book has neither identifier, the upstream
+   does not know them, the lookup fails (an outage), or the recorded match names
+   another work than the identifiers find (its
+   [`work_id`](#get-apiv1librariesidbooks) is the recorded match's first), the
+   server reads the book's recorded community match. That
    is its `book_matches` row, shown as
    [`community_match`](#get-apiv1adminlibrariesidbook) on the console's book page:
    the `work_id` and `recording_id` an admin accepted or a match run applied. The
@@ -6699,7 +6698,7 @@ added), or with code `too_large` for more than 1000 rules. `409` with code
 rules change only by granting or revoking the library
 ([`POST /admin/library-access`](#post-apiv1adminlibrary-access)). From 2.7.0 a
 `DELETE` of a **stray** rule on a grant (any rule but the grant's own whole
-library, one an older version let an admin add) removes it like any other;
+library, which older versions let an admin add) removes it like any other;
 only the grant's own rule is `409 library_grant`. A grant share that no longer
 holds its own rule is an ordinary share: deleting its library clears the mark,
 and migration `0081` cleared the marks older versions left.
@@ -10238,8 +10237,7 @@ restore waiting for, or applied at, a start:
 A backups folder the server can't list answers `500` `permission_denied` (from
 2.7.0), its message naming the folder, the server's user and the fix (the
 [folder permissions](../configuration.md#the-servers-own-checks) sentence); the
-console's Backups page shows it. A download, delete or restore the folder
-refuses answers the same.
+console's Backups page shows it.
 
 ### `POST /api/v1/admin/backups`
 
@@ -10703,7 +10701,7 @@ only (never a file's contents) and is not audited.
   library never disagree), falling back to the folders for what the tags leave
   empty. From 2.7.0 `path` is the folders alone, as a path-first library reads
   them before any tag fills what they leave, so a tag's narrator or author never
-  shows under the folders (before, it was the resolved names too). `position` is a series position as text
+  shows under the folders. `position` is a series position as text
   (`"2"`, `"1-3"` for a range). `abs` is true when the book's folder has a
   `metadata.json`, which goes over both.
 - `blanks` counts, over the samples, the names each source leaves empty **on
@@ -11795,7 +11793,7 @@ one, an id that doesn't match is `404 unknown_account`.
 | `policy_since` | when its automatic policy began to act: a policy backs up only titles first seen after it. Set at the account's creation, when an automatic policy is turned on, and moved to the account's first complete poll |
 | `titles` | `GET /admin/audible/accounts` only: the titles counted by state, and how many are matched to a book here (`matched` leaves out a match marked "Not this book") |
 | `last_sync_at` | when its last `audible.sync` finished having read Audible's places, `null` before the first (and after a mapping to another person) |
-| `refused_at` | when a sync or (from 2.7.0) a poll failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set, and the console's accounts card asks for a sign-in on the Bridge ("Refused: sign in again on the Bridge") instead of showing it checked. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it. A refused sync the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again |
+| `refused_at` | when a sync or (from 2.7.0) a poll failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set, and the console's accounts card asks for a sign-in on the Bridge instead of showing it checked. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it. A refused sync the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again |
 | `backup_estimate` | `GET /admin/audible/accounts` only: what [Back up everything](#post-apiv1adminaudibleaccountsaccountbackup-all) would queue now, `count` titles and about `bytes` (each title's `runtime_s` x 8000, 64 kbps AAXC: approximate) |
 
 ### `GET /api/v1/bridge/users`

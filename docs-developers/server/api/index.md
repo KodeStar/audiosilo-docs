@@ -329,7 +329,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `invite_used` / `invite_expired` | `401` | an invite with no uses left, or past its expiry: `POST /auth/redeem` (from 2.5.0) and `POST /auth/exchange` for a token the invite minted (from 2.7.0) |
 | `current_password_incorrect` | `401` | `POST /auth/password` with a wrong `current_password` (from 2.7.0). A client tells this `401` apart from a session that ended, and keeps the session |
 | `name_taken` | `409` | a library or share name already in use (create, rename) |
-| `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: its rules change only by granting or revoking the library. From 2.7.0 a `DELETE` of a stray rule on one (not the grant's own whole library) goes like any other |
+| `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: a `POST`, or a `DELETE` of the grant's own whole-library rule. Its rules change only by granting or revoking the library |
 | `config_library` | `409` | a library the server's config declares: renaming it or moving its folder (`PATCH /admin/libraries/{id}`, from 2.4.0), or deleting it (`DELETE /admin/libraries/{id}`, from 2.4.1) |
 | `last_admin` | `409` | demoting or disabling the last enabled admin |
 | `admin_needs_password` | `400` | an admin without a way in: creating one without a password, promoting a password-less account, or clearing an admin's password, unless the account has an identity from the single sign-on that can run now. `409` when [unlinking](reference.md#delete-apiv1adminusersididentitiesidentity_id) that identity from a password-less admin |

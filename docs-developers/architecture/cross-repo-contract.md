@@ -909,17 +909,9 @@ run applies to such a book is in
 [Bulk community matching](../server/api/reference.md#bulk-community-matching).
 
 From 2.7.0 the server's `/meta` and `/next` follow one work per book, the one
-`/item` names as `work_id` (the recorded match first). They read the book's
-`book_matches` `work_id` and `recording_id` when:
-
-- the book has no ASIN or ISBN;
-- `metaserve` does not know its identifiers;
-- the lookup fails, as in an outage, where the match's stored answer is served
-  (`200`, not a `502`);
-- the recorded match names another work than the identifiers resolve to.
-
-A recorded work `metaserve` lacks or cannot answer leaves the identifiers' answer
-standing. The envelope is the same, so the wire does not change.
+`/item` names as `work_id` (the recorded match first), by the rule in
+[`GET /libraries/{id}/meta`](../server/api/reference.md#get-apiv1librariesidmeta).
+The envelope is the same, so the wire does not change.
 
 A book [added from LibriVox](#librivox-fetches) gets its row from the server's
 fold of the done `librivox.fetch`, with the work and recording the server resolved

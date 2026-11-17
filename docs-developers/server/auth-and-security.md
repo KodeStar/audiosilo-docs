@@ -628,9 +628,8 @@ The ID token checks (`Provider.Exchange`):
   at most 5 minutes ahead;
 - the `nonce` is the flow's.
 
-The server asks for the scopes in `auth.oidc.scopes` exactly as listed. Unset,
-it asks for `openid`, `profile` and `email`, plus `groups` only while
-`admin_group` is set, or `allowed_group` with `auto_create` on (`oidcScopes`).
+The server asks for the scopes in `auth.oidc.scopes` (`oidcScopes`; the default
+and when it adds `groups` are in [Configuration](configuration.md#single-sign-on-authoidc)).
 
 The server asks the userinfo endpoint only when the ID token lacks a claim it
 needs (`askUserinfo`):
@@ -762,14 +761,15 @@ it. Group names match exactly, case included.
 
 - The last enabled admin is never demoted. The refusal is logged and audited
   (`user.role_sync` with `refused: last_admin`), and the sign-in goes on.
-- A sign-in that carried **no readable groups claim**, in neither the ID
-  token nor userinfo (absent, `null`, of another shape, a list holding no
-  string, Entra's overage included), **never changes the role** and never
-  promotes, whether or not the identity carried one before. Only a list that
-  is there changes it, an empty one demoting. So a renamed `groups_claim` or a
-  dropped scope demotes no one, and a provider that leaves the claim out for a
-  person in no group (Keycloak, for one) needs an admin to demote that person
-  by hand. The server logs a warning once per account a run, worded by
+- A sign-in with **no readable groups claim** in either the ID token or
+  userinfo **never changes the role** and never promotes, whether or not the
+  identity carried one before. "No readable claim" is absent, `null`, another
+  shape, a list holding no string, or Entra's overage.
+- Only a list that is there changes the role; an empty one demotes. So a
+  renamed `groups_claim` or a dropped scope demotes no one.
+- A provider that leaves the claim out for a person in no group (Keycloak, for
+  one) needs an admin to demote that person by hand.
+- The server logs a warning once per account a run, worded by
   `user_identities.groups_seen` (set by a sign-in that carried the claim, even
   an empty list): never sent for this person, or sent before and not now.
 - `allowed_group` counts an absent claim as no groups (a new identity without
@@ -943,8 +943,7 @@ hash is still the account's and the account is enabled. Otherwise it answers
 **Sign out everywhere.** The admin's `POST /admin/users/{id}/sign-out`
 (`auth.SignOutEverywhere`) is the console's button on a person's Devices tab.
 
-- It runs the same `endSessions` without a password change, members' sessions,
-  API keys and calendar links made on the person's devices included. When the
+- It runs the same `endSessions` (above) without a password change. When the
   account is the admin's own, it keeps the admin's current session.
 - It forgets the person's browsers (`forgetBrowsers`), so each browser's next
   password sign-in is announced as a new device. A new password forgets the
