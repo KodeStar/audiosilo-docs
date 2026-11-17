@@ -342,7 +342,7 @@ these:
 
 | Kind | Meaning |
 |---|---|
-| `unreadable` | a path that discovery couldn't read |
+| `unreadable` | a path that discovery couldn't read, or a folder it skipped because the folder or one of its audio files didn't answer ([A folder that does not answer](#a-folder-that-does-not-answer)) |
 | `moved` | a book moved from `path` to `to` |
 | `joined` | a disc book at `path` whose state was carried into the joined book at `to`. Code `length_unknown` when its listening state stayed on its own path ([Joined books](#joined-books-disc-sets)) |
 | `split` | a joined book at `path` read as its discs again |
@@ -783,7 +783,10 @@ Before 2.4.0 a folder book's files played in byte order (`os.ReadDir`'s), so
   as above.
 
 `addedAt` is the file's birth (creation) time where the OS records it
-(`birthtime_darwin.go`, `birthtime_linux.go`), and otherwise its mtime. That
+(`birthtime_darwin.go`, `birthtime_linux.go`), and otherwise its mtime. A birth
+time of 0 or before 1980 counts as none (`birthKnown`), so the mtime stands in.
+macOS answers 0 for a file on an rclone NFS share, which would otherwise date
+the book 1970. That
 gives "recently added" a stable chronological key that survives re-indexing. A
 book none of whose files can be looked at by then (gone since discovery) is
 stamped with the current time, as first seen.
@@ -1466,11 +1469,41 @@ there are abandoned, a new call is refused at once. The calls are:
   `.audiosilo/` attachments' lstats and reads, the ebook check, the cover
   search's stats and listing, the cover version's look, the added-date stat, and
   the check of a recorded problem (`problemCleared`);
+- in a scan, discovery's own looks (the folder listings, a `.audiosilo/`
+  folder's listing, a `metadata.json`'s lstat and each audio file's lstat in
+  `statAudio`, see
+  [A folder that does not answer](#a-folder-that-does-not-answer)), the
+  tag-only suspect check (`suspectFromTags`) and the read-along ebook's
+  hashing, each of its reads a call of its own;
 - the backfill's embedded cover read;
+- an on-demand read's looks (`/item`'s index of a book not indexed yet, an
+  admin's Re-read and the Bridge's rescan): the path's join and stat, the
+  on-disk spelling check (`dirPresent`), the folder's listing and its audio
+  files' lstats, the `metadata.json` and `.audiosilo/` looks, the move check
+  (`bookOnDisk`), the ebook's first look (`ebookOnDisk`) and the files beside
+  the audio;
 - in the API, `/item`'s look at the book's ebook, every cover, thumbnail and
-  show artwork, and the open and stat of a book's file streamed as stored.
+  show artwork, `GET /readalong`'s read of the map and its look at the ebook,
+  and every look a stream makes at its file: the path's join
+  (`library.SafeJoinBounded`), the open and stat of a file streamed as stored,
+  a transcode's look at its source, a remux's or watch rendition's look at its
+  source (`media.Source`), and a podcast episode's checks and open
+  (`library.OpenPodcast`). A stream's looks share one 45-second bound from the
+  request's start, so the joins and the open together wait no longer than an
+  open alone did. A stream that waited on a remux gives its next look at least
+  10 seconds (`API.afterWait`), since that wait was no look at the file.
 
-The scan gives each the probe's time (`Scanner.probeTimeout`). With a book's
+The scan gives each the probe's time (`Scanner.probeTimeout`). An on-demand
+read gives each look 10 seconds instead (`library.WithLookTimeout`,
+`Scanner.lookTimeout`), well inside the 30-second request timeout, so a share
+that stopped answering is the request's `503 share_not_answering`, not its
+timeout. The audio's own read keeps the probe's time. A Re-read whose read kept
+the book as stored because a file did not answer (a look given up on, or its
+audio's read cut short) answers that `503` too, since the admin asked for the
+book as it is on disk now. When `/item`'s join of a file it would warm a remux
+for goes unanswered, it looks at neither the ebook nor the read-along map and
+answers with the stored book, rather than spending its whole time on three
+looks at the same share. With a book's
 audio read cut short, none of its side files is looked at, since each would wait
 out its time too. A side file given up on otherwise keeps the book as stored and
 records an `unreadable` problem on that file (`library.givenUp`), over a lasting
@@ -1479,10 +1512,18 @@ image's stat, any other file's read of its last bytes, since a stat can answer
 from a cache while reads hang) and clears the problem when it answers, or when
 the file is gone. A backfill's given-up read keeps what is stored and records
 nothing. The API answers a given-up look with `503 share_not_answering`
-([API conventions](api/index.md)). Not bounded yet: the walk's own listings and
-lstats, an on-demand index's first look for the book's ebook (`ebookOnDisk`),
-and a podcast episode's or a transcode's, remux's or rendition's open of its
-source.
+([API conventions](api/index.md)).
+
+These looks are still not bounded:
+
+- the ffprobe read on a Re-read, which keeps the probe's 30 seconds;
+- a file cache's background open of its source (`media.FileCache`, a remux or
+  a rendition being made), once the request's own look has answered. Its stats
+  of the source get a scan's look time;
+- a podcast episode's demand fetch's open;
+- the `/fs` browse listing and its pending-book check (`hasAudio`);
+- the scan's stat of the library root, which
+  [the root probe](#the-unavailable-root-guard) guards.
 
 **One hung share holds back only itself.** Abandoned reads are counted per
 mount (`stuckByMount`, a `mounts.PerMount`). Once 16 are outstanding on one
@@ -1518,6 +1559,32 @@ What a cut-short read does to the stored book is in
 **A file neither reads** keeps ffprobe's error as its `ProbeErr`
 (`ErrProbeRejected` included), with FFmpeg's context address dropped
 (`[mp3 @ 0xcbcc3c000]` is stored as `[mp3]`).
+
+#### A folder that does not answer
+
+Discovery's looks wait at most the probe's time each. A folder whose listing is
+given up on is skipped for the run. So is a folder holding an audio file whose
+lstat is given up on, or fails the way a share fails (`shareFault`). That is any
+error but the file being gone (`ENOENT`, or `ENOTDIR` for a folder above it
+replaced): `EIO` and `ESTALE` from a soft-mounted NFS share, `ENOTCONN` and
+`ETIMEDOUT` from a FUSE pool or a network mount that dropped, and a permission
+error from a share that allowed the listing but refuses the look. A file the
+folder listed a moment ago says nothing about whether it is there, so its book
+is kept as stored rather than built without it.
+
+A disc folder directly in a skipped folder, or in a folder above one, is
+skipped with it (`dropUnanswered`). So no book is joined from the discs that
+answered, and no joined book is split into them. A `.audiosilo/` folder that
+won't list keeps its book's attachments as stored.
+
+The run is then [partial](#scan-history-scan_runs). Its skipped books are kept
+as stored, nothing in the library is pruned, and
+[move detection](#move-detection) never gives a skipped book's state to a copy
+elsewhere. The run's log records an `unreadable` event for each skipped folder,
+with the OS's message. A folder that stays unreadable (a permission nobody
+fixes, a file the share keeps refusing) therefore keeps every scan of that
+library partial. Books whose files are gone stay in the library until the
+folder reads again or is removed.
 
 #### With no ffprobe
 
@@ -2013,6 +2080,14 @@ through the fingerprint:
   `book_covers` and `book_matches`. So a rename or move never orphans a user's position, queue entry, collection entry or rating, a
   book's attached ASIN, an issue an admin ignored, or an admin's edits and
   custom cover.
+- After a [partial](#scan-history-scan_runs) discovery a book not found is not
+  known to be gone, since its folder may be one the walk skipped. So
+  `detectMoves` looks at each old path a new book matches (`bookOnDisk`,
+  bounded, erring toward present) and moves only one that is gone from disk. A
+  look given up on, or one that failed in a way a retry may get past (`EIO`,
+  `ESTALE`, `ENOTCONN`, `ETIMEDOUT`, `EHOSTDOWN`: `transientFault`), is unknown
+  (`diskUnknown`), never gone. A permission error counts as present. So a copy
+  of a stuck book never takes its state.
 
 ### The two transactions of a move
 
@@ -2105,7 +2180,8 @@ probes the book, while the other waits for it and loads what it stored.
 - A waiter whose own request ends stops waiting.
 - A Re-read waits for a held flight, then reads the book afresh.
 - From 2.7.0 no read waits on another read of the book for longer than one
-  look's time (`probeTimeout`) while that read has not returned, and never on a
+  look's time (`lookTimeout`: 10 seconds for an on-demand read, the probe's
+  time for a scan's) while that read has not returned, and never on a
   read a stopped scan left behind (`waitFlight`). A scan's read that has
   returned is waited on until its batch write. A scan then keeps the book as
   stored with an `unreadable` problem (`keepLeft`); an on-demand read gives up
@@ -2182,6 +2258,13 @@ hold:
 Otherwise `from` is ignored and logged. The state is carried before the new
 book is indexed, so its row resolves with the carried edits.
 
+When the server can't tell now, it indexes nothing, carries nothing and answers
+`503 share_not_answering`. That is when the look at `from` is unknown (given up
+on, or failed in a way a retry may get past), or when the new book's
+fingerprint can't be read for such a reason (`metadata.FingerprintErr`). It is
+also the answer when the read kept the new book as stored because a file did
+not answer. The Bridge's retry, once the share answers, carries the state.
+
 ### A move found on demand
 
 A book renamed or moved on disk and opened before a scan reaches it (a renamed
@@ -2197,6 +2280,13 @@ book (`leadIndex`) looks for where it was before:
    `IndexMoved`'s is (progress, bookmarks and the rest), and the old row is
    dropped.
 
+When it can't tell (a candidate's look is unknown, or the fingerprint of the
+book not indexed yet is unread for a reason a retry may get past:
+`fingerprintUnknown`), `IndexPath` and `ReindexPath` index nothing and answer
+`503 share_not_answering`, and so does every request waiting on the same read.
+A book indexed without its state would leave that state on the old row for the
+next scan's prune. A request once the share answers carries it.
+
 ### Reading one book again
 
 `POST /admin/libraries/{id}/book/rescan?path=` (the console's "Read the files
@@ -2209,6 +2299,12 @@ The re-read runs on a context detached from the request: the server's
 lifetime, capped at 10 minutes (`rescanBookTimeout`). Probing every part on a
 slow share can outlast the request timeout, and the result is still saved
 then. A path with no book any more is `404` with `code: "not_indexable"`.
+
+Each look the re-read makes at the share waits at most 10 seconds
+(`library.WithLookTimeout`). A share that stopped answering is therefore
+`503 share_not_answering` with `Retry-After: 30` after about 10 seconds, and so
+is a re-read that kept the book as stored because a file did not answer. The
+console shows "Couldn't read the files". The Bridge's rescan is the same.
 
 ## The unavailable-root guard
 
@@ -2231,11 +2327,13 @@ drops. The scanner **aborts without pruning** when any of these holds:
    discovery is what the rules asked for, and the scan prunes.
 
 A *per-entry* read error during the walk is related but distinct. It is
-commonly a permission-denied subtree on a partly readable mount. The scanner
-warns and **skips** it, and does not fail the scan. Aborting the whole scan
-would be worse, but silently dropping those books would let the prune step
-remove them. An audio file gone by the time discovery looks at it makes the
-scan partial the same way (see
+commonly a permission-denied subtree on a partly readable mount, or a folder on
+a share that stopped answering. The scanner warns and **skips** it, and does not
+fail the scan. Aborting the whole scan would be worse, but silently dropping
+those books would let the prune step remove them, so the run is partial and
+prunes nothing (see
+[A folder that does not answer](#a-folder-that-does-not-answer)). An audio file
+gone by the time discovery looks at it makes the scan partial the same way (see
 [A rescan that finds nothing changed](#a-rescan-that-finds-nothing-changed)).
 
 ### Reporting it to the console

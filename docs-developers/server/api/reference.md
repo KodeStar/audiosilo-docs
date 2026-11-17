@@ -2336,10 +2336,15 @@ indexed on its behalf. The same holds for `/chapters`, `/cover`, `/meta` and `/n
 | `400` | missing `path` / invalid library id |
 | `403` | `no access to this path`: the path, or the book it resolves to, is outside the caller's share scope |
 | `404` | `no book at that path` (not indexable) |
-| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the read of the book this request was waiting on; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book has not returned in time (its share stopped answering) |
+| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the read of the book this request was waiting on; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book has not returned in time (its share stopped answering), when a look at the share while indexing a book not indexed yet waited 10 seconds, or when a move the book may have made can't be checked now (see [A move found on demand](../scanner.md#a-move-found-on-demand)) |
 
-From 2.7.0 `/item`'s look at the book's ebook waits at most 10 seconds. On a
-share that stopped answering it answers with the stored `ebook`.
+From 2.7.0 `/item`'s looks at an indexed book's files wait at most 10 seconds
+each. On a share that stopped answering it answers with the stored book: the
+stored `ebook` and no `readalong`. For a Matroska book the first look is the
+join of each file the server would warm a remux for. Once that goes unanswered,
+`/item` looks at neither the ebook nor the read-along map, so it answers after
+about 10 seconds rather than spending its whole 30 on three looks at the same
+share.
 
 #### Other recordings
 
@@ -3376,15 +3381,19 @@ An `.mka` holding another codec (AAC, Opus, FLAC) is served as stored,
 `audio/x-matroska`. See
 [Remuxing Matroska](../media.md#remuxing-matroska-medianewremuxer).
 
-**A share that stops answering** (from 2.7.0). A book's file served as stored
-has its open and stat wait at most 45 seconds (`streamOpenTimeout`): long enough
-for a sleeping NAS or USB disk to spin up, and under AVPlayer's own timeout of
-about 60 seconds, since AVPlayer doesn't retry a `503`. Past that the answer is
-the `503` below. Only a regular file is opened (`metadata.OpenRegular`), so a
-FIFO is a `404` at once. An older player treats the `503` as a failed load. Not
-bounded yet: a podcast episode's open (`library.OpenPodcast`), and the source
-file's look before a transcode (`?transcode=1`), a Matroska remux or a watch
-rendition.
+**A share that stops answering** (from 2.7.0). Every look a stream makes at
+its file shares one bound of 45 seconds from the request's start
+(`streamOpenTimeout`): the path's join, the open and stat of a file served as
+stored, the source's look before a transcode (`?transcode=1`), a Matroska remux
+or a watch rendition, and a podcast episode's checks and open
+(`library.OpenPodcast`). That is long enough for a sleeping NAS or USB disk to
+spin up, and under AVPlayer's own timeout of about 60 seconds, since AVPlayer
+doesn't retry a `503`. Past it the answer is the `503` below. A stream that
+waited on a remux, which is no look at the file, gives its next look at least
+10 seconds. Only a regular file is opened (`metadata.OpenRegular`), so a FIFO
+is a `404` at once. An older player treats the `503` as a failed load. Still
+not bounded: a file cache's background open of its source once the request's
+look answered, and a podcast episode's demand fetch.
 
 | Status | Meaning |
 |---|---|
@@ -3394,7 +3403,7 @@ rendition.
 | `403` | path outside the caller's scope |
 | `404` | file does not exist, or isn't audio; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
 | `422` | `code: "rendition_failed"`: ffmpeg refused this file, its copy came out more than 1 s short of the source, or the encode ran past its 2-hour timeout; remembered for an hour (or until the file changes), then tried again. `Retry-After` is the seconds the remembered refusal has left (1 to 3600) |
-| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full); from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the file's open has not answered within 45 seconds (a drive or share that stopped answering) |
+| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full); from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the file's looks (its join, open, or a transcode's, remux's, rendition's or podcast episode's look) have not answered within 45 seconds of the request's start (a drive or share that stopped answering) |
 
 #### Watch renditions
 
@@ -3464,6 +3473,7 @@ one file), each `path` as `/stream` takes it, with its `state`:
 | `401` | no token, or not a session or API key |
 | `403` | the path is outside the caller's access |
 | `404` | no book at that path; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory |
+| `503` | from 2.7.0, `code: "share_not_answering"` (`Retry-After: 30`): the join or stat of one of the book's files has not answered within 10 seconds (a drive or share that stopped answering). The whole answer is the `503` |
 
 ### `GET /api/v1/libraries/{id}/cover`
 
@@ -3697,7 +3707,7 @@ indexed copy for the bytes it sends:
 | `404` | `code: "no_readalong"` (`this book has no read-along`): the book has no map, a map that fails its checks, or no ebook; the path is a part of the book, not its own; or the library is a podcast library. `no book at this path` when there is no book there |
 | `409` | `code: "readalong_stale"` with `reason` (`ebook_changed` or `audio_changed`): the map was made for another ebook or other audio; an admin makes it again |
 | `500` | `could not load the read-along`: the file is there but can't be read right now (logged) |
-| `503` | `request timed out`: the book lookup ran past the request timeout |
+| `503` | `request timed out`: the book lookup ran past the request timeout; from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the map's read, or the look at or hashing of the book's ebook, has not answered within 10 seconds (a drive or share that stopped answering) |
 
 ### `GET /api/v1/libraries/{id}/reading-progress`
 
@@ -8828,7 +8838,7 @@ unreadable files.
 | `200` | the book page, re-read; check `book.scan_error` to see whether the problem is gone |
 | `400` | `invalid library id`; `path is required` |
 | `404` | `library not found`; `code: "not_indexable"` - there is no book at that path any more (gone from disk, not a book, or skipped by the library's ignore rules) |
-| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the re-read, instead of a `500`; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book, held on a share that stopped answering, has not returned in time |
+| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the re-read, instead of a `500`; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book, held on a share that stopped answering, has not returned in time, when one of the re-read's looks at the share waited 10 seconds, or when the re-read kept the book as stored because a file did not answer |
 
 ### `GET /api/v1/admin/jobs`
 
@@ -11743,7 +11753,11 @@ A `path` or `from` over 4096 bytes is `400 path is too long`.
   edits, covers, enrichment, Bridge jobs, the favourites of the folders it left),
   then drops the old row, but only when no book is at `from` on disk any more and
   the two fingerprints match; otherwise `from` is ignored (logged), never an
-  error. So a rescan after a rename no longer defeats move detection.
+  error. So a rescan after a rename no longer defeats move detection. When that
+  can't be known now (the look at `from`, or at the new book's fingerprint, was
+  given up on or failed in a way a retry may get past), the server indexes
+  nothing, carries nothing and answers `503 share_not_answering`. A retry once
+  the share answers carries the state.
 - **`attachments`** re-reads only the book's
   [`.audiosilo/` files](../../bridge/attachments.md), never its audio: the
   Bridge's call after writing characters, recaps, a description, chapters or a
@@ -11772,7 +11786,7 @@ through a hidden (dot) folder is never indexed. The body is at most 8 KiB.
 | `200` | `{ path }` (`full`), or `{ path, attachments }` (`attachments`) |
 | `400` | `library_id and path are required`; `mode must be full or attachments`; `invalid from`; `from is only for a full rescan` |
 | `404` | `library not found`; `code: "not_indexable"` - nothing indexable at that path (gone, not a book, in a hidden folder, outside the library, or skipped by its ignore rules), or for `attachments` no indexed book there |
-| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the read, instead of a `500`; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book has not returned in time |
+| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the read, instead of a `500`; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book has not returned in time, when one of the read's looks at the share waited 10 seconds (`attachments` too), when the read kept the book as stored because a file did not answer, or when a move from `from` can't be checked now |
 
 ## Audible accounts
 
