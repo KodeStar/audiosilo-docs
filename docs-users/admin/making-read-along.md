@@ -65,7 +65,7 @@ it.
 
 The Bridge keeps a book's transcripts for 30 days. If it transcribed the book
 recently, for characters and recaps, for
-[Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)
+[Detect chapters](chapter-detection.md)
 or for an earlier read-along, making the read-along takes minutes, not hours.
 
 The Bridge runs one of these jobs at a time for a book. While one runs, start the

@@ -115,6 +115,7 @@ const sidebars: SidebarsConfig = {
         'admin/bridge',
         'admin/podcasts',
         'admin/generating-characters-and-recaps',
+        'admin/chapter-detection',
         'admin/making-read-along',
         'admin/audible',
         'admin/librivox',

@@ -13,7 +13,7 @@ You don't need a Bridge to listen to your books. Add one for:
 - [podcasts](../admin/podcasts.md), following shows and downloading their episodes;
 - [characters, recaps and descriptions](../admin/generating-characters-and-recaps.md)
   written by an AI agent;
-- [chapters](../admin/generating-characters-and-recaps.md#books-without-chapters)
+- [chapters](../admin/chapter-detection.md)
   for a book that has none, found in its narration;
 - [read-alongs](../admin/making-read-along.md), so listeners can follow the
   narration in the book's ebook;

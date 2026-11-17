@@ -15,7 +15,7 @@ on. It has three pages:
 Nothing here changes your audio files. Fixes are saved in AudioSilo, and an
 issue you ignore is only hidden. The one exception is **Detect chapters**. The
 Bridge
-[saves the chapters it finds](generating-characters-and-recaps.md#where-found-chapters-show-and-turning-them-off)
+[saves the chapters it finds](chapter-detection.md#where-found-chapters-show-and-turning-them-off)
 in a `.audiosilo` folder beside the book.
 
 ## Library health
@@ -40,7 +40,7 @@ Click a card to open its list.
 | **Not matched to community metadata** | The book has no community match, so players can't show its community details. Only shown while community metadata is on. | **Review match** opens the [match dialog](books.md#matching-with-community-metadata). To match the whole list, use [Match automatically](#matching-every-book-at-once). |
 | **ASIN not in the community database** | The book has an ASIN the community database doesn't know yet. It counts as matched but gets no community details. Only shown while [Help complete the community database](server.md#helping-complete-the-community-database) is on, since that is what finds them. A book leaves the list once the community database knows its ASIN. | **Find matches by title** looks up the whole list (see [Books with an ASIN the community doesn't know](#books-with-an-asin-the-community-doesnt-know)). **Review match** finds one book by its title. **Add it** opens the [Add a book](../community/meta-site.md#adding-a-missing-book) page with its ASIN filled in. |
 | **Series spelled several ways** | Books of one series spell its name differently. | **Use this spelling**. See [Series spelled several ways](#series-spelled-several-ways). |
-| **Long books without chapters** | Books over two hours with no chapters, so listeners can't skip between them. | **Detect chapters** with your [Bridge](bridge.md) (see [Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)), or [match](books.md#matching-with-community-metadata) the book to use its [community chapters](books.md#community-chapters). A book using chapters you [edited](books.md#edit-chapter-times-and-titles) offers no Detect chapters until you revert the edit. |
+| **Long books without chapters** | Books over two hours with no chapters, so listeners can't skip between them. | **Detect chapters** with your [Bridge](bridge.md) (see [Detect chapters](chapter-detection.md)), or [match](books.md#matching-with-community-metadata) the book to use its [community chapters](books.md#community-chapters). A book using chapters you [edited](books.md#edit-chapter-times-and-titles) offers no Detect chapters until you revert the edit. |
 | **More detailed chapters available** | The community database has finer chapters that fit this copy. | **Use detailed chapters**. |
 | **Converted to play in browsers** | The format doesn't play in web browsers, so the server converts it for the web player. The apps play it as it is. | Nothing needed: it works. |
 

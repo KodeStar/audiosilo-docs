@@ -99,7 +99,7 @@ A long single file with no chapter marks is split into **Parts**, 30 minutes eac
 
 To change their length, set **Chapter length (unchaptered)** in [Settings](settings.md#playback), from 5 to 60 minutes.
 
-Many such books can get real chapters, from the community database or from your server's Bridge (see [Generate characters and recaps](../admin/generating-characters-and-recaps.md#books-without-chapters)). See [Use the book page](book-page.md#chapters).
+Many such books can get real chapters, from the community database or from your server's Bridge (see [Detect chapters](../admin/chapter-detection.md)). See [Use the book page](book-page.md#chapters).
 
 ## Good to know
 

@@ -123,7 +123,7 @@ it on once you've fixed the cause.
 | The Bridge can't share with the community | Sign the Bridge in to GitHub (see [Bridge accounts](../getting-started/bridge-accounts.md#github)). |
 | The community database has no entry for this book yet | Cancel and generate again kept local. Your copy is already saved. |
 | The ebook couldn't be read | Cancel, then generate again. It then reads the audio. |
-| The chapters couldn't be found in the narration | See [When no chapters are found](#when-no-chapters-are-found). |
+| The chapters couldn't be found in the narration | See [When no chapters are found](chapter-detection.md#when-no-chapters-are-found). |
 
 **Failed** means it couldn't go on, with the reason. **Cancel** stops a job at
 any point.
@@ -160,55 +160,12 @@ mark.
 
 Recaps and spoiler protection go by chapter, so a book needs chapters first. For a
 book that is **one audio file with no chapter markers**, the Bridge finds the
-chapters **in the narration**. It listens for the headings the narrator reads
-out, like "Chapter One" or "Prologue".
+chapters **in the narration**. Generating such a book needs nothing extra. The
+run finds the chapters first and saves them straight away, so listeners get them
+hours before the recaps.
 
-Generating such a book needs nothing extra. The run finds the chapters first and
-saves them straight away, so listeners get them hours before the recaps.
-
-### Detect chapters, without characters and recaps
-
-You can also find a book's chapters on their own, with no agent cost, from the
-[Health](health.md#the-kinds-of-issue) page. Its **Long books without chapters**
-list offers **Detect chapters** on each row, and for the books you tick.
-
-![Health > Long books without chapters, with Detect chapters on a book](/img/screenshots/admin/health-detect-chapters.png)
-
-1. Press **Detect chapters**. The confirmation shows how long transcription will
-   take. When it needs a worker and none is connected, it says the job waits
-   until one connects.
-2. Press **Detect chapters** again to queue it.
-3. Follow it as a **Chapters** job in
-   [Server > Settings > Bridge](bridge.md#jobs). A job that pauses also shows
-   on the book's Chapters card, with the reason.
-
-![The Detect chapters confirmation](/img/screenshots/admin/detect-chapters-dialog.png)
-
-Generating characters and recaps later reuses that transcription. If you cancel
-a Chapters job and detect chapters again, it carries on from what was already
-transcribed.
-
-### When no chapters are found
-
-The Bridge never guesses. When it can't find the chapters with confidence, the job
-pauses and says why. You can:
-
-- **add chapter markers to the audio file** with your tagging tool, then cancel
-  the job,
-- cancel the job and [set the chapters yourself](books.md#edit-chapter-times-and-titles)
-  in the console, or
-- cancel the job and leave the book as it is.
-
-### Where found chapters show, and turning them off
-
-In the player they work like any other chapters, and the chapter list says they
-were found on this server. In the console, the book's
-[Chapters card](books.md#chapters-found-in-the-narration) shows them and turns
-them off or on.
-
-Chapters you [edit on the book's page](books.md#edit-chapter-times-and-titles)
-win, then the book's own, then the community database's, then the found ones.
-Replacing or re-encoding the file stops found chapters being used.
+To find a book's chapters on their own, with no agent cost, see
+[Detect chapters](chapter-detection.md).
 
 ## Costs and the monthly cap
 

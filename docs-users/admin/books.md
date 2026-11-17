@@ -301,7 +301,7 @@ tags alone isn't enough. The book must be
 
 A book that is one audio file with no chapters can get chapters from your
 [Bridge](bridge.md), which finds them in the narration (see
-[Books without chapters](generating-characters-and-recaps.md#books-without-chapters)).
+[Detect chapters](chapter-detection.md)).
 The Chapters card then says **Found in the narration on this server.** Click
 **Use the file's chapters** to turn them off, and **Use automatic** to bring
 them back.
