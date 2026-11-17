@@ -181,8 +181,9 @@ On a member's **Account** tab you can also:
 - **Assign to someone** - move them to another person's household. This also
   works for an ordinary account, such as one you made for a child earlier.
 
-Deleting an owner deletes their members too, unless you untick them in the
-delete dialog.
+Deleting an owner deletes the members listed in the delete dialog, unless you
+untick them. A member you untick, or one added after you opened the page, stays
+as an ordinary account.
 
 ## Editing someone's progress
 
