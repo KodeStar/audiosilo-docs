@@ -72,7 +72,7 @@ Every move you make in the car saves your new place.
 
 ## When a book ends in the car
 
-This works the same when you never opened the app on your phone:
+This works even if you never opened the app on your phone:
 
 - The book is marked finished and leaves [Up next](up-next.md).
 - With **Automatically play next book** on, the next book starts in the car. See [Playing on automatically](end-of-book.md#playing-on-automatically).

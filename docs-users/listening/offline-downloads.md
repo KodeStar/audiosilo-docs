@@ -60,7 +60,7 @@ If a download stops (the connection dropped, say), it stays in **In progress** a
 
 Many audiobooks are made of several files. Files that finished before the download stopped are kept, so **Retry** fetches only the missing ones. This survives closing the app too.
 
-**Retry** first asks your server for the book's current list of files. A file added since is fetched, and a file the server no longer has isn't asked for. Each kept file is matched by its name, so it stays kept even if the list now has it in another place. With no connection, **Retry** uses the list it already has.
+**Retry** first asks your server for the book's current list of files. A file added since is fetched, and a file the server no longer has is skipped. Files already saved are kept, even if the list now has them in another order. With no connection, **Retry** uses the list it already has.
 
 If some files of a downloaded book disappear from your device, the book moves back to **In progress** and says some of its files are no longer on this device. **Retry** fetches only those files. A book that [Keep the next books ready](#keep-the-next-books-ready) downloaded is removed instead, and downloaded again while it's still one of your next books.
 

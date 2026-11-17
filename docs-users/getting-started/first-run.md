@@ -211,9 +211,9 @@ setup:
   skip: true
 ```
 
-When it starts with this set, the server marks the flow finished. Steps you already finished keep their mark. The books folder step counts as done once a books library exists, and the rest count as skipped. The Finish setting up card is dismissed. The admin console then never opens the flow. A flow that was already finished is left as it is.
+When it starts with this set, the server marks the flow finished and dismisses the **Finish setting up** card, so the admin console never opens the flow. Steps you already finished stay finished, and a flow that was already finished is left as it is.
 
-On a new server with this set, the first-run banner's console line reads `Admin console:` instead of `Finish setting up:`.
+On a new server with this set, the message the server prints on its first start shows `Admin console:` instead of `Finish setting up:`.
 
 ## What's in the data folder
 

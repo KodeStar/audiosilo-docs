@@ -43,7 +43,7 @@ Four rules protect your place:
 
 - **A book never silently restarts from the beginning.** If a streamed book can't find your place, the player shows **Retry** instead of starting at zero.
 - **An earlier position can't overwrite your progress by accident.** Only a move back you make yourself counts, including a scrub from the lock screen, headphones or a car. If you listened offline while another device got further, the further place isn't overwritten, and for the book you're playing the player asks which to keep. See [Listening on more than one device](#listening-on-more-than-one-device).
-- **You pick up another device's place.** If a book is still loaded here and you've listened further elsewhere, the player jumps to the newer place and says so, with **Undo**. When you press play in the app after a pause of a minute or more, it asks your server first, so you don't hear the old place. The play button shows a spinner while it asks, for at most 1.5 seconds.
+- **You pick up another device's place.** If a book is still loaded here and you've listened further elsewhere, the player jumps to the newer place and says so, with **Undo**. When you press play in the app after a pause of a minute or more, the app asks your server for your latest place first, so you don't hear the old one. The play button shows a spinner while it waits, for at most 1.5 seconds.
 - **Auto-rewind.** After a pause, playback backs up a few seconds so you catch the sentence again. Change it in [Settings](settings.md#playback).
 
 ## Listening on more than one device
