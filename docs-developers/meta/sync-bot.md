@@ -342,8 +342,8 @@ list, and treats no answer as libex saying it cannot reach Audible:
 
 Any other failure of a live book record or series listing is treated the same
 way after one request: a 502, a 503, a 504, a 408, a refused connection or a
-reset. Those used to walk the 5xx retries (5, 15, 45 seconds and on), about five
-and a half minutes a lookup, before the Audible fallback was asked. A live
+reset. Those skip the 5xx retries (5, 15, 45 seconds and on, about five and a
+half minutes a lookup) and go straight to the Audible fallback. A live
 chapter list, which has no fallback, keeps those retries, and so do the mirror
 and the feeds. A 429 and the other 4xx answers keep their own handling.
 
@@ -598,9 +598,9 @@ series completion at once.
 `metaimport libex --intake` (create mode only) stamps each record a run writes
 with the ref `intake:<ASIN>` instead, so a lane run's records are one query over
 `sources[].ref` apart from the feeds'. The refresh rules read the ASIN back from
-either form. The service does not pass the flag yet, because its pinned
-audiosilo-meta predates it. Records a lane run wrote without it keep the bare
-ASIN, and only the pull requests' lists tell them apart.
+either form. The service doesn't pass the flag (its pinned audiosilo-meta
+predates it), so its lane records keep the bare ASIN, and only the pull
+requests' lists tell them apart.
 
 The lane stays out of the systemic stop:
 

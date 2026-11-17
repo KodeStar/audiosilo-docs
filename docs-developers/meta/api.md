@@ -338,8 +338,8 @@ isn't ruled out.
 
 Each series guess resolves on its own. It resolves to the series spelled as named
 when the pool holds one (`Dark Road Series` is `Dark Road`). Otherwise it resolves
-to every series that fits. A loose guess beside a spelled one (`Dresden` beside
-`The Dresden Files`) therefore adds nothing. So beside the series it names, these gain nothing: a fuzzy sub-series
+to every series that fits. So beside the series it names, these gain nothing: a
+loose guess (`Dresden` beside `The Dresden Files`), a fuzzy sub-series
 (`Frontlines: Evolution` for `Frontlines`), a shorter name (`Summoner` beside
 `Summoner School`) or a spin-off.
 
@@ -458,8 +458,8 @@ byte-identical.
   adds one work and at most 16 small objects, whatever the series' length. A series
   with no entry is one nothing is known about. The member is omitted when it would
   be empty.
-- **Which result.** The first. An identifier hit ranks first, so it is always the
-  one expanded. A metaserve before this rule could rank an identifier hit second
+- **Which result.** The first, so an identifier hit is always the one expanded.
+  An older metaserve could rank an identifier hit second
   in a tie at 100, so a client that also talks to older servers re-sorts
   identifier hits first, as audiosilo-server does.
 
@@ -470,8 +470,8 @@ stays. Send both values: an older metaserve ignores `lean` and still inlines the
 whole work. `lean` alone inlines nothing.
 
 **`expand_min`.** `expand_min=<1-100>` skips the expansion when the best result
-scores under it, for a client that drops a weak best unread. An identifier hit
-scores 100, so it is always expanded. The answer is otherwise whole, and an older
+scores under it, for a client that drops a weak best unread. The answer is
+otherwise whole, and an older
 metaserve ignores the parameter and expands whatever the score.
 
 **A client must not assume it.** metaserve reads the expansion after the match has

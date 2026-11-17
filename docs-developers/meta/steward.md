@@ -73,10 +73,9 @@ The merge call is pinned to the judged SHA. Immediately before the merge, the
 steward reads the changed-file list again for that head, so a non-data file
 pushed at the last moment is still refused. When a pull request merges, the
 steward closes its linked data issue with a comment. The one exception is a
-partial correction batch: the intake workflow applies part of one as "Applies
-part of #N" and labels the issue `data:needs-human`, leaving the rest on it for a
-maintainer. When the merged pull request says it applies only part of a
-`data:needs-human` issue, the issue stays open. For a pull request carried in
+partial correction batch: the intake workflow applies part of an issue as
+"Applies part of #N" and labels it `data:needs-human`, so a merged pull request
+saying it applies only part of such an issue leaves it open for a maintainer. For a pull request carried in
 parts, the steward reads the original's body for that line. A `data:needs-human`
 issue that any other merged pull request answers is closed as usual.
 
