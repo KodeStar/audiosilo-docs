@@ -204,7 +204,8 @@ Good to know:
 - An ASIN isn't sent again for a month.
 
 A line under the switch says when the last report went out, and whether it
-failed. A failed report is tried again the next day.
+failed. A report that stopped part way says how many ASINs it sent. The server
+tries the rest again the next day.
 
 #### Keeping a local copy
 

@@ -50,7 +50,8 @@ by itself and where, whether places sync, and how many of its titles are on this
 server.
 
 Each account has **Check now**, **Account settings...**, **Back up everything...**
-and **Remove...**. **View titles** opens the titles page.
+and **Remove...**. **View titles** opens the titles page. While no Bridge is
+paired, the card still lists the accounts this server keeps, with **Remove...**.
 
 ![The Account settings dialog](/img/screenshots/admin/audible-backup-settings.png)
 
@@ -73,9 +74,13 @@ Bridge's [Accounts tab](../getting-started/bridge-accounts.md#the-accounts-state
 preordered. Each row says whether the title is **On this server** (with a link to
 the book) or **Not here**, and has its buttons: **Back up**, **Not this book** and
 **Destination...**. A title that isn't here yet says where its backup would go.
+It warns when that is a new author folder, a new folder or the first book of a
+series here. Check the spelling matches your other books, or choose a
+[destination](#choosing-a-destination).
 
 Use **Search titles**, **Account**, **State** and **On this server** to narrow the
-list.
+list. **On this server** > **Needs a look** lists the titles not here whose
+backup would go to a place with a warning.
 
 | State | Means |
 |---|---|
@@ -284,11 +289,15 @@ removes it everywhere, including from your Amazon device list.
 
 **Remove...** in the console is for an account the Bridge can no longer remove,
 such as one from a Bridge you replaced. It removes the account from **this server
-only**, so also remove the device in your Amazon account. Books already on your
-server stay.
+only**, so also remove the device in your Amazon account. Any check, backup or
+sync that hasn't finished is cancelled. Books already on your server stay. If
+your Bridge still has the account, its checks fail until you map it again on the
+Bridge.
 
 ## Good to know
 
 - Turning the Audible module off stops checks, backups and syncing. Accounts and
-  titles are kept. Turn it back on to remove an account in the console.
+  titles are kept. While it is off, the Audible card in
+  [Server > Settings > Modules](server.md#modules) lists the kept accounts, each
+  with **Remove...**.
 - Error messages never include your Amazon account's details.
