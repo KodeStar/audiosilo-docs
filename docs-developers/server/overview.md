@@ -93,11 +93,28 @@ flags set, and it overrides no configuration (see
 
 A fuzzy **same-book matcher** (`Best`, `CleanTitle`, `SeqFromTitle`,
 `Normalize`, `NormalizeSeries`, `Fold`) that identifies the same book across
-messy, inconsistently tagged titles. The server uses it for:
+messy, inconsistently tagged titles, with the identifier and series helpers
+beside it (`NormalizeASIN`, `NormalizeISBN`, `ValidASIN`, `ValidISBN`,
+`SeriesKey`, `SameSeries`, `SeriesForms`, `Recordings`). The server uses it for:
 
-- the admin catalog's author and narrator merge keys;
-- the community match search's title cleaning and comparison;
+- the admin catalog's author and narrator merge keys (`Fold`);
+- identifier checks and normalizing across `internal/catalog` (edits, hints,
+  the unknown-ASIN report, Audible titles) and `internal/meta`'s lookups and
+  cache keys;
+- series keys and comparisons: `more_series`, the series rails, the export, a
+  match run's plan (`internal/matchrun`) and its series tidy;
+- a work's other recordings (`Recordings`, in `internal/catalog` and
+  `internal/meta`);
+- the community match search's title cleaning and comparison
+  (`internal/meta`);
+- chapter-title comparison when fitting a community list
+  (`internal/chapteralign`);
 - the listening import's title tier (`internal/importer`).
+
+The Bridge imports it too (its module requires audiosilo-server): the Audible
+backup matcher (`internal/importjob`), LibriVox folder names
+(`internal/librivoxjob`) and the generation pipeline's coverage and lookup
+ladder (`internal/metaops`).
 
 `Fold` is the Unicode-aware sibling of `Normalize`. It lowercases, keeps every
 script's letters and digits, and drops spacing and punctuation. `Normalize`
