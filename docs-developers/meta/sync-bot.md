@@ -341,8 +341,8 @@ list, and treats no answer as libex saying it cannot reach Audible:
   written without chapters.
 
 Any other failure of a live book record or series listing is treated the same
-way after one request: a 502, a 503, a 504, a 408, a refused connection or a
-reset. Those skip the 5xx retries (5, 15, 45 seconds and on, about five and a
+way after one request: any 5xx, a 408, or a connection refused or dropped.
+Those skip the 5xx retries (5, 15, 45 seconds and on, about five and a
 half minutes a lookup) and go straight to the Audible fallback. A live
 chapter list, which has no fallback, keeps those retries, and so do the mirror
 and the feeds. A 429 and the other 4xx answers keep their own handling.
