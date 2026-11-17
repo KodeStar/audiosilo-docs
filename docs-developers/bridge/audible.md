@@ -265,8 +265,10 @@ template change plans by the new one. A claimed poll runs as claimed.
    catalog). Adding preorders never fails the poll. A refused listing fails the
    poll with a coded `audiblejob.Failure` (result and error, as an import's). The
    code is `audible_refused` with `ThrottledText` for a refused device, else
-   `audible_sign_in` for a refused sign-in. The server folds no poll's code, and
-   the console's Bridge jobs list words both;
+   `audible_sign_in` for a refused sign-in. The server folds `audible_refused`
+   as it folds a sync's (`FoldAudibleSync`): it marks the account refused, so the
+   console's accounts card asks for a sign-in on the Bridge. The console's Bridge
+   jobs list words both codes;
 3. reads the account's library on the server, 500 books a page
    (`GET /bridge/libraries/{id}/books`, at most 2000 pages);
 4. skips records without a usable ASIN, and states the rest from
@@ -834,8 +836,11 @@ server's scan would make a file part of an existing book when it is placed in a
 listed book's folder, or in a folder that already holds audio. The server refuses
 such a done import (`ErrImportNotOwn`, in
 [The done fold](#on-the-server-the-done-fold)). So `vacant` refuses that
-destination before the license (step 3). The one join left is a `dest_path` into a
-new disc folder of a disc set, which never takes the ASIN.
+destination before the license (step 3). The server refuses the one join left
+before it queues anything: a `dest_path` whose folder is a disc folder ("CD 3")
+directly inside an indexed book, or inside a folder with a `book` override, is
+`400 invalid_dest_path` (`checkDestOwnFolder`), since the scan would join the disc
+into that book and the fold would refuse it only after the whole download.
 
 ### Enrichment after placing
 
@@ -1251,8 +1256,9 @@ A failure's result is `{code, message}`.
 
 - A done sync that read Audible's places (`bridge.AudibleSynced`: neither `waiting`
   nor `sync_off`) sets `last_sync_at`.
-- A sync failed with `audible_refused` sets `refused_at`, which stops the
-  scheduler. `AudibleSyncCode` reads the code from the result's `code`, or from an
+- A sync or a poll failed with `audible_refused` sets `refused_at`, which stops the
+  scheduler, and the console's accounts card says "Refused: sign in again on the
+  Bridge". `AudibleRefusalCode` reads the code from the result's `code`, or from an
   `audible_refused:` error prefix.
 - Any account PUT of the Bridge's (a fresh sign-in, an edit) clears `refused_at`
   and stamps `refusal_ended_at` (`0071`). So does a complete poll
@@ -1450,7 +1456,9 @@ the preorder clock skip an ignored title. Migration `0066` adds `sync_queued_at`
   the book's places (`moveAudibleTitles`). So the re-match trigger offers the moved
   book's place to Audible, never a stale row an earlier book left at the new path,
   and a carry that fails leaves the titles where they were.
-- Unpairing keeps the rows; deleting a user removes their accounts (the FK).
+- Unpairing keeps the rows; deleting a user removes their accounts (the FK). The
+  delete, of a person or of an owner's household member, then cancels the gone
+  accounts' open poll, backups and sync (`catalog.CancelOrphanAudibleJobs`).
 - The Bridge's writes are user-state writes (`store/userstate.go`): titles and the
   poll times don't move the content generation; a mapping change does.
 - Free text is cleaned and bounded, never refused (one odd title never fails a
