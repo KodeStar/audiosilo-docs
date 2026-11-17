@@ -47,7 +47,7 @@ If the invite has expired or is used up, the page says so. Ask for a new one. Th
 
 ## Connecting from the app
 
-**In the web player** there is nothing to type. It already knows the server it came from, so tap **Sign in**. If your server has [single sign-on](../admin/single-sign-on.md), the next step also offers **Sign in with** and its name.
+**In the web player** there is nothing to type. It already knows the server it came from, so tap **Sign in**. If your server has [single sign-on](../admin/single-sign-on.md), the next step also offers **Sign in with** and its name. After it, the web player goes back to where you started, such as **Add someone** or the book you were opening.
 
 ![The web player's connect screen: the server it belongs to, with Sign in and Try the demo](/img/screenshots/web-player/connect.png)
 
