@@ -64,8 +64,8 @@ To match many books at once, use **Match automatically** on the Health page
 If the dialog says "meta.audiosilo.app isn't answering", try again in a minute.
 
 If the book isn't in the community database at all, it stays unmatched and
-plays as normal. The database has gaps. When nothing matches, the dialog offers
-**Add it**, which opens the
+plays as normal. The database has gaps. When nothing matches, or none of the
+matches is close, the dialog offers **Add it**, which opens the
 [Add a book](../community/meta-site.md#adding-a-missing-book) page on
 meta.audiosilo.app with the book's ASIN, or your search, already filled in.
 
