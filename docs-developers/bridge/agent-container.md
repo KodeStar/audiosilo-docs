@@ -461,13 +461,14 @@ owner shows it on the volume (`agentbox/trust.go`):
   claim on that job, a `0700` directory of the runner's uid, and the credential
   still in place 2 seconds later. The runner opens the job dir first and makes its
   claim inside it, so a claim can't be moved onto a job it never ran. An agent
-  image older than the Bridge makes no claim, so its `credential_denied` is never
-  believed.
+  image older than the Bridge makes its claim through the job dir's path instead,
+  so run the same version of both images.
 
-A file that fails these checks is logged once and treated as the job refused. Its
-reason says to restart the Bridge if the agent container now runs as another
-user. It never causes a fallback: a `runner.json` naming no group from another
-uid still gets the group's modes.
+A file that fails these checks never causes a fallback. A `runner.json` naming no
+group from another uid still gets the group's modes, and is logged once. A
+`credential_denied` that fails them is the job refused. When another uid wrote
+it, that is logged once too, and the job's reason says to restart the Bridge if
+the agent container now runs as another user.
 
 The pin is trust on first use, and `trust.go` lists its limits. A `runner.json`
 written before the runner's first one is pinned in its place until the real

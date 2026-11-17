@@ -65,7 +65,8 @@ The Bridge keeps the credential encrypted and hands it to the agent only for eac
 run. Replacing a refused credential lets paused jobs carry on.
 
 If the Bridge can't keep the credential to its own group (the agent isn't in the
-group, or the work folder's drive refuses the change), any user of the work folder
+group, the work folder's drive refuses the change, or the two containers see
+different user ids on it), any user of the work folder
 can read it until the agent picks it up, and the Bridge's log says how to fix
 that. To have the agent wait instead, set
 `AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP: "true"` on the Bridge. The **Accounts** tab
