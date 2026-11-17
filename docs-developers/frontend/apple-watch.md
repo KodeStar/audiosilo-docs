@@ -105,11 +105,14 @@ seek bar). Away from 1x, one more line gives the wall-clock time left in the pho
   pause, or headphones that went away. So the "couldn't start" message waits
   `StartRefusal.INTERRUPTION_SLACK` (2 s, `Core/StartRefusal.swift`), on the engine's own timer.
   An interruption's `began`, or a route change whose old device is gone, within it makes the pause
-  the system's: nothing shows. `StartRefusal` is Apple Watch only: Wear OS reads Media3's reasons
-  (`SystemPause`).
+  the system's: nothing shows. The stamps are a monotonic clock's (`StartRefusal.Stamp`), so a
+  clock step within the slack can't read Siri's pause as a failed start. `StartRefusal` is Apple
+  Watch only: Wear OS reads Media3's reasons (`SystemPause`).
 - **Headphones gone** (`oldDeviceUnavailable`, one route-change observer) pause the book, even
   while its queue is still settling, which would otherwise start on whatever route is left.
-  Nothing resumes it.
+  Nothing resumes it, not even the end of an interruption that held the book paused when they
+  went. Whether an interruption's end plays the book again is `Core/StartRefusal.swift`'s
+  `InterruptionResume`.
 - **A file that fails** stops the book, its span ending where the audio last moved
   (`lastAdvance`), not at the moment of the failure.
 
@@ -117,10 +120,13 @@ seek bar). Away from 1x, one more line gives the wall-clock time left in the pho
 ([Listening spans](playback.md#listening-spans-sync-v2)), except that the watch cuts every 15 s
 while its last sync answered. A bare move and a move to nowhere are the phone's
 (`Spans.isBareMove`, `Spans.movesNowhere`; the phone's `spanIsBareMove` and `movesNowhere`).
-Only the watches store the span when it opens, so only they recover a move that a kill cut short
-within the 5 s keep. The launch's first span takes the move's reason (`recoveredMove`) when it is
-that book's and a resume from this watch's own place, not when `Resume.plan` took the server's
-row (`loadsFromRow`).
+The watches store every span when it opens, and the phone a move's, so a move that a kill cut
+short within the 5 s keep is recovered. The next span takes the move's reason (`recoveredMove`)
+when it is that book's and a resume from this watch's own place, not when `Resume.plan` took the
+server's row (`loadsFromRow`). The move is kept on disk too (`open-span-move.json`,
+`OpenSpanStore.saveMove`) until a span opens, so a launch that ends before the book plays (a
+background wake) leaves it to the next. It leaves the store only once that span is stored, and
+leaving the account forgets it.
 
 **Stay** is the phone's too ([Stay wins](playback.md#stay-wins)):
 `SpanRecorder.standBy(..., stay:)`, gated by the cached `/server`'s `listening_stay` (`AppModel.takesStay`), `Spans.carried`,
@@ -236,7 +242,10 @@ asks `GET /me` with the token it keeps. The token stays only when the server ans
 own user (`AccountRules.keepsToken`), so a Send again adds no session on the server. A `401`, any
 other refusal or no answer at all exchanges the pair's token as a first sign-in does: with no answer
 the watch may only be at an address it can't reach, and the exchange tries `base_url`, away and
-home. Kept, the watch takes the pair's label, user name and addresses (`keepSignIn`), and the pair's
+home. The token kept is then ended on the server, best effort (`AccountRules.endsKeptToken`), but
+only once the transfers and runs still carrying it are cancelled and asked for again with the new
+one (`DownloadManager.tokenReplaced`). Ended first, they would be refused `401` and fail their
+books as signed out. Kept, the watch takes the pair's label, user name and addresses (`keepSignIn`), and the pair's
 token runs out unused. The server gate is asked again unless it stands, so a server that was too old
 can take the book behind the pair. Wear OS does the same.
 
@@ -298,7 +307,10 @@ state changed.
   is broken (`DownloadWait.ends`). Bytes in flight never end it: a transfer the server dropped still
   delivers what was on the wire, and one file's bytes say nothing of another's broken transfer.
   While the app is in front, a book waiting on the connection asks again after 10 s, doubling to
-  every 60 s (`DownloadWait.retryDelay`).
+  every 60 s (`DownloadWait.retryDelay`). A success the watch can't decode (another build's
+  format, a proxy's page) is no wait: the server answered and would say the same again, so the
+  book fails with "Your server sent something this watch can't read." (`RenditionPlan.UNREADABLE`),
+  and Try again asks afresh.
 - **`progress`** is by audio time, not bytes, because the server encodes a book's files one by
   one, so a file's size is known only once it is ready, while every file's duration is in the
   timeline (`Core/DownloadProgress.swift`). Each file weighs its duration, or the same as every
@@ -493,7 +505,8 @@ later, never written over) and a corrupt one. A launch that can't read decides a
 - the open span is not recovered;
 - `HeldBooks` writes nothing over its file, and writes again, once it can, what no file could take;
 - `Files.deviceId` is not read. The outbox asks for it only to send, and an id there but unreadable
-  is never written over.
+  is never written over. An ask gets a stand-in that is never cached or written
+  (`Core/DeviceIdFile.swift`), so the first ask after the unlock reads the real id.
 
 Once the keychain reads (`AppModel.catchUp`: `becameActive`, a phone message, a sign-in, the
 refresh task, a background upload's answer), the watch reads again the account, the server, acks,
@@ -502,6 +515,13 @@ joins the held books, and every `remove` left over is finished. The outbox copy 
 aside joins in the same launch. Then the span is recovered, the books are released and the state is
 published. A background download event reads the index itself first (`DownloadManager.handle`);
 before the first unlock it is dropped.
+
+**An account left while the index is unread** takes its books with it. `removeAll` removes the
+unread index and every book folder at once when it can, since a kill before the index is read would
+bring the books back, and cancels every transfer of the download session, since one of a book no
+record names would land under the same book queued by the next account. What the index holds once
+it reads is that account's: dropped with its files, never joined under the account signed in now
+(`DownloadIndexJoin`).
 
 **A download index that does not decode** is moved aside (`downloads-unread-*.json`, never written
 over) and the watch starts with no books. Until the index has been read, the phone is told nothing
