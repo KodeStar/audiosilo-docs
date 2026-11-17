@@ -6731,7 +6731,10 @@ back to the scanned value, **revert** it instead.
 | `asin` | 10 letters or digits (uppercased) |
 | `isbn` | an ISBN-10 or ISBN-13; hyphens and spaces are stripped, `x` uppercased |
 
-Values are trimmed. The player's book JSON carries the effective `published`,
+Values are trimmed. From 2.7.0 a value made only of invisible characters (such as
+U+200B, U+FEFF or U+3164) is empty: a title is refused, and a genre, tag or other
+series name is dropped. Visible text is kept whole (an inner joiner, an emoji's
+variation selector). The player's book JSON carries the effective `published`,
 `subtitle`, `publisher`, `language`, `abridged`, `genres` and `tags` on every
 book and `description` on [`/item`](#get-apiv1librariesiditem) only.
 
@@ -7377,7 +7380,7 @@ one request is applied in one transaction.
 | `revert` | array | field names to put back to what the scan found |
 | `add` · `remove` | object | label field (`genres`, `tags`) → labels to add to, or take out of, the book's own list, as on the [bulk edit](#post-apiv1adminbooksbulk) (same rules and refusals) |
 | `source` | string | `"edited"` (default) or `"community"` (accepted from a [match](#get-apiv1adminlibrariesidbookmatch)) - recorded on every field this request sets |
-| `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others. Refused while an edited list applies (change its titles with [`PUT …/book/chapters`](#put-apiv1adminlibrariesidbookchapters)) |
+| `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty, nor (from 2.7.0) only invisible characters (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others. Refused while an edited list applies (change its titles with [`PUT …/book/chapters`](#put-apiv1adminlibrariesidbookchapters)) |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
 | `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`, else chapters a Bridge found in the narration when they fit). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included. `"generated"` is not a choice: `"files"` turns found chapters off and `"auto"` brings them back |
 | `match` | object | from 2.6.0: `{ "work_id", "recording_id"?, "asin"?, "isbn"? }`, the community match the edit was taken from. Needs `source: "community"`, and may come alone (no `set`). `{ "work_id": "" }` unlinks the book. One book at a time: the bulk edit refuses it. More under the table |
@@ -7558,7 +7561,7 @@ is audited as `book.chapters_edited`, with `chapter_count` in its details.
 | `empty` | there are no chapters |
 | `too_many` | there are more than 2000 |
 | `out_of_range` | a start is below 0, or at or past the book's end |
-| `title` | a title is empty once trimmed, longer than 200 bytes, or holds a control character |
+| `title` | a title is empty once trimmed (or, from 2.7.0, made only of invisible characters), longer than 200 bytes, or holds a control character |
 | `file_start` | a file's start begins no chapter |
 | `order` | the starts are out of order, or two are less than 1 s apart |
 
@@ -7876,6 +7879,10 @@ nor an ISBN is looked up by its `community_match`.
   fallback. An admin-edited identifier keeps `none` / `identifier_unknown` and
   writes nothing. A service error or a successful lookup never triggers the
   fallback, even when the identifier resolves to a different work.
+- **Up to date by the match** (from 2.7.0). A book the fallback finds with
+  nothing to change, whose own identifier the community doesn't know (a
+  mistyped ASIN, say), is still recorded: `none` with `identifier_unknown` and
+  nothing to apply, as it would be with no match to fall back on.
 - **The lookup** uses `meta.MatchQuery.WorkID`: the service's `works/{id}`, with a
   retired slug's `301` followed online and in mirror mode.
 - **`found_by`** is `"work:<work id>"` or `"work:<work id>/<recording id>"`. A
@@ -8112,7 +8119,11 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
 - `matched_since: true` (a match run only) when the book is matched now (an ASIN
   or ISBN, or from 2.6.0 a recorded community match) and wasn't when the run
   looked: matched since, by hand or otherwise.
-  Its `changes` are empty, and an apply leaves it alone under any scope.
+  Its `changes` are empty, and an apply leaves it alone under any scope. From
+  2.7.0 the apply checks it again in the edit's own transaction: a book matched
+  by hand while the apply runs (another ASIN, or an ASIN or ISBN set on a book
+  that was unmatched) keeps that match, nothing of the edit is written, and the
+  item is `skipped` `matched_since`.
 - `changes` is what applying would write under each scope the run's mode takes:
   fields in display order, set or reverted, and whether the cover is taken. The
   server works it out against the book now by the same rules the apply uses, so
@@ -8233,11 +8244,11 @@ with nothing to change under the scope, so a client need not exclude each one.
 An item the run recorded with nothing to change under that scope (its review
 shows no fields and no cover under it) is never taken, even if the book changed
 since, so nothing is written that the review didn't show. One that had a change
-when recorded but has none now is planned again and dropped from `apply_total`, in
-batches of up to 100, the rest before the run settles. Either way it stays
-unapplied (`applied` `""`, like an excluded item, so an `auto` one still counts as
-`pending`), not `skipped`, and `apply_done` ends at `apply_total`. The `202`'s run
-and the audit's `books` count every item taken.
+when recorded but has none now (the book took it since, or no longer has what it
+was found by) is `skipped` with `nothing_to_change`, so the review says why. The
+first kind stays unapplied (`applied` `""`, like an excluded item, so an `auto`
+one still counts as `pending`). Either way `apply_done` ends at `apply_total`.
+The `202`'s run and the audit's `books` count every item taken.
 An item recorded before 2.7.0 is planned again as before. A `match` or `repick`
 item with nothing to change is still `skipped` with `nothing_to_change`.
 
@@ -8269,7 +8280,8 @@ library; without it, every library. In one transaction it:
 - from 2.6.0, removes every recorded community match (`book_matches`);
 - rebuilds each book's effective metadata and cover;
 - removes the match runs with their reviews: every run, or for one library its
-  runs and its books' items in runs over every library.
+  runs and its books' items in runs over every library, and (from 2.7.0) such a
+  run over every library it leaves with no items.
 
 An admin's own edits and uploaded covers, the tags and
 identifiers stored in `book_enrichment` all stay, so a book whose tags carry an
@@ -8280,8 +8292,9 @@ with community metadata off (and with no service configured).
 { "books": 128, "covers": 41, "runs": 3 }
 ```
 
-`books` counts the books that had a community value, cover or recorded match, `covers` the
-community covers removed, `runs` the runs removed. Audited as
+`books` counts the indexed books that had a community value, cover or recorded
+match, `covers` the community covers removed, `runs` the runs removed (an emptied
+all-library run included). Audited as
 `book.match_clear` with the same counts (target: the library's name, empty for
 every library).
 
