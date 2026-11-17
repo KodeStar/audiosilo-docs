@@ -1020,8 +1020,9 @@ are untouched.
 `kind` is always sent: `books` or `podcasts`. Podcast libraries are omitted
 unless the authenticated request passes the
 [podcast client gate](../auth-and-security.md#podcast-visibility), including
-for admins. Library membership does not require a visible show, so a granted
-podcast library containing only unfollowed private shows still appears here.
+for admins, and (from 2.7.0) while the podcasts module is off. Library
+membership does not require a visible show, so a granted podcast library
+containing only unfollowed private shows still appears here.
 
 `root` (the library's folder on the server's disk) is sent only to an admin who
 is not a demo visitor. From 2.5.0 a listener and a demo session get each library
@@ -1702,7 +1703,9 @@ request for their same library/hash and the same privacy returns the open one.
 An [OPML import](#opml-import-and-export) row answers the same way as a
 follow by URL. Manual check requires
 the caller to follow a visible show and, without an open poll, refuses a check
-within 60 seconds of the last one.
+within 60 seconds of the last one. From 2.7.0 a check's failure doesn't count
+toward the feed's failing run and leaves the scheduled polls' backoff as it was
+(a `gone` is still announced at once).
 
 | Status/code | Meaning |
 |---|---|
@@ -1719,7 +1722,8 @@ within 60 seconds of the last one.
 
 Async failures appear on Request/Show status, rather than as the follow
 response's HTTP status. Codes include `invalid_feed_url`, `blocked_address`,
-`dns`, `timeout`, `tls`, `network`, `http_<status>`, `gone` (410), `too_large`,
+`dns`, `timeout`, `tls`, `network`, `http_<status>` (`http_310` is the Bridge's
+redirect loop), `gone` (410), `too_large`,
 `not_a_feed`, `not_a_podcast`, `not_podcast_library`, `library_not_writable`,
 `feed_secret_missing`, `request_expired`, `write_failed`, and server-only
 `bridge_lost`. A private request lost before claim on a server restart is
@@ -1960,7 +1964,8 @@ in order:
 15. then the slot.
 
 A busy answer refunds the budget it took, so the `Retry-After` retry runs rather
-than meeting `429`.
+than meeting `429`. From 2.7.0 so does a `400 invalid_opml`, so a corrected
+document can be sent at once (a `413` or an upload whose read failed does not).
 
 The whole document is validated before any row acts, so a refused document
 changes nothing:
@@ -3247,7 +3252,7 @@ reach the client.
 | `403` | path outside the caller's share scope |
 | `404` | `no such cover` - the book is unmatched (neither its identifiers nor its recorded match find a work) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
 | `500` | `could not load book` - the book or its recorded match could not be read |
-| `502` | `metadata service unavailable` - the book's envelope couldn't be had; `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects, an answer other than `200`), or its fetch failed less than a minute ago |
+| `502` | `metadata service unavailable` - the book's envelope couldn't be had; `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects or (from 2.7.0) one from `https` down to `http`, an answer other than `200`), or its fetch failed less than a minute ago |
 
 ### `GET /api/v1/meta/work`
 
@@ -5918,6 +5923,10 @@ and left ticked. An id that isn't one of this person's members, or one
 `keep_members` also names, is `400 invalid_delete_members` and nothing is
 deleted.
 
+Deleting a person, or an owner's member with them, also cancels the open
+Audible jobs (polls, backups and syncs) of the accounts mapped to them (from
+2.7.0).
+
 The checks answer in this order: an id that isn't a number, then a malformed
 `keep_members` (`400 invalid_keep_members`) or `delete_members` (`400
 invalid_delete_members`), then a self-delete (`400 cannot_delete_self`), then
@@ -8388,7 +8397,7 @@ Response `200`: `{ "status": "cover set", "path": "…" }`.
 | `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` |
 | `413` | `code: "too_large"` - the image is over 16 MiB, or over 40 megapixels |
 | `415` | `code: "unsupported_image"` - not a JPEG, PNG or WebP image |
-| `502` | `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects, an answer other than `200`) |
+| `502` | `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects or (from 2.7.0) one from `https` down to `http`, an answer other than `200`) |
 
 ### `POST /api/v1/admin/covers`
 
@@ -11084,8 +11093,10 @@ The kinds:
   database as intake issues ("Share with the community"). It needs `library_id`
   **and** a book `path`, and takes `params` `{ "work_id": "…", "dimensions":
   ["characters", "recaps"] }`, both optional (`dimensions` from those two, each
-  once, stored in that order; absent or empty means both; `work_id` as for
-  `sidecars.generate`). It **writes nothing** into the library, so it works on any
+  once, stored in that order; absent or empty means both). With no `work_id`,
+  from 2.7.0 the server fills in the book's recorded community match
+  (`bridge.ContributeWork`), so the share is filed under the admin's match, not
+  the Bridge's own. It **writes nothing** into the library, so it works on any
   library. It is refused while a `sidecars.generate` job is open for the book
   (`generate_open`). Result: `{library_id, path, work_id, contributed, covered}`,
   where `contributed` is `{characters?, recaps?}` (the issue URLs) and `covered`
@@ -11101,7 +11112,9 @@ The kinds:
     `series`, `series_index`, `more_series`, `published`, `isbn`.
   - **Values:** each trimmed, one line, at most 500 characters, no control
     characters. `corrected` (as the community reads it, below) must be set and
-    differ from `current` as sent.
+    differ from `current` as sent. From 2.7.0 a corrected `published` must be a
+    real date, `YYYY`, `YYYY-MM` or `YYYY-MM-DD` (the edit's own rule); the
+    Bridge files it as `release_date`.
   - **`evidence`:** CRLF is read as LF, the text is trimmed, and line breaks and
     tabs are kept. At most 2000 characters, both as written and as the issue
     carries it (a line starting with `#` loses its indent and counts one more).
@@ -11719,7 +11732,7 @@ one, an id that doesn't match is `404 unknown_account`.
 | `policy_since` | when its automatic policy began to act: a policy backs up only titles first seen after it. Set at the account's creation, when an automatic policy is turned on, and moved to the account's first complete poll |
 | `titles` | `GET /admin/audible/accounts` only: the titles counted by state, and how many are matched to a book here (`matched` leaves out a match marked "Not this book") |
 | `last_sync_at` | when its last `audible.sync` finished having read Audible's places, `null` before the first (and after a mapping to another person) |
-| `refused_at` | when a sync failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it. A refused sync the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again |
+| `refused_at` | when a sync or (from 2.7.0) a poll failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set, and the console's accounts card asks for a sign-in on the Bridge ("Refused: sign in again on the Bridge") instead of showing it checked. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it. A refused sync the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again |
 | `backup_estimate` | `GET /admin/audible/accounts` only: what [Back up everything](#post-apiv1adminaudibleaccountsaccountbackup-all) would queue now, `count` titles and about `bytes` (each title's `runtime_s` x 8000, 64 kbps AAXC: approximate) |
 
 ### `GET /api/v1/bridge/users`
@@ -12092,8 +12105,11 @@ out is left as it is:
   account's placement: a file path, or a folder (a last segment without an audio
   extension) the title's file goes in. At most 1024 bytes, clean (no `..`, no
   leading or trailing `/`, no `.` segment), no hidden, dot-led segment, no
-  backslash or control character. It is copied into a backup when it is queued;
-  the Bridge checks it again against its mapping.
+  backslash or control character. From 2.7.0 it is refused (`invalid_dest_path`)
+  when it is a disc folder (`CD 3`) directly inside an indexed book or a folder
+  with a `book` override, which the scan would join into that book. It is copied
+  into a backup when it is queued; the Bridge checks it again against its
+  mapping.
 - `no_sync` `true` keeps the title's book out of the account's
   [position sync](#audible-position-sync), both ways; `false` lets it sync again.
 
