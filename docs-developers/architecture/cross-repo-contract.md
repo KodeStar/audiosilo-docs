@@ -919,10 +919,10 @@ at queue time (`how` `accepted`). Where a LibriVox recording is on the server is
 read from these rows alone, by their exact, non-empty `recording_id`, never from
 `/meta`'s first-recording answer for a work.
 
-The player's book page asks `/meta` for every loaded book that is not an episode
-(`bookPageMetaEnabled`), so a book matched with neither identifier shows its
-community content there. Most other surfaces keep the identifier gate
-(`metaEnabledFor`). [Enriched book metadata](../frontend/state-and-data.md#enriched-book-metadata)
+The player asks `/meta` for every loaded book that is not an episode
+(`metaEnabledFor`), so a book matched with neither identifier shows its
+community content on the book page, the companion, the Now card and the end
+credits. Only the offline copy keeps the identifier gate (`matchableById`). [Enriched book metadata](../frontend/state-and-data.md#enriched-book-metadata)
 lists which surface uses which gate.
 
 ### Community chapters from the meta side
