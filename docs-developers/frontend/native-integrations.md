@@ -173,8 +173,8 @@ another device's place picked up: `pausedMove`) or another book writes a snapsho
 
 - **With a car met but none connected**, the full snapshot (`writeForResumption`), on no
   timer and from the query cache (`cachedBuild`: a server is asked only for a list the cache
-  never held). Android holds the JS timers in the background, where a request's timeout is
-  one of them, so a pause there still writes it. Such a write does not start the 2 s gap for
+  never held). Android pauses JS timers in the background, a request's timeout included, so
+  reading the cache lets a pause there still write it. Such a write does not start the 2 s gap for
   a car that connects right after.
 - **Before any car**, a minimal resumable snapshot (`buildResumable`). It holds the
   resumption's book at its live place and the downloaded books (a kids profile's loaded
@@ -184,7 +184,8 @@ another device's place picked up: `pausedMove`) or another book writes a snapsho
   car-seen mark, never lands once a car was seen, and sets no
   `audiosilo.carSnapshotWritten`, so the first car's build replaces it.
 
-Both writes go through one queue (`snapshotWrites`). A paused loaded book's play spec starts
+Both writes go through one queue (`snapshotWrites`), and **Playback resumption** below reads
+what they wrote. A paused loaded book's play spec starts
 where it was paused (`pausedPlaceOf`), not at the device save the pause may not have written
 yet.
 
@@ -341,9 +342,9 @@ within seconds crashes the app (`ForegroundServiceDidNotStartInTimeException`). 
 button start that does go ahead goes foreground at once, with a placeholder notification
 under Media3's notification id. Media3's own notification replaces it when the book plays. If
 nothing resumes within 15 s, the service removes the placeholder and stops
-(`watchResumption`). Every play `playFromCar` leaves pending is watched too, so a car play
-that took the resumption's place and then failed, by its timeout or a load that left nothing
-loaded, ends the start at once.
+(`watchResumption`). Every play `playFromCar` leaves pending is watched too: if a car play
+takes the resumption's place and then fails (it times out, or its load leaves nothing
+loaded), the start ends at once.
 
 **Remote buttons are logged on demand** (`MediaKeyLog`). Run `adb shell setprop
 log.tag.AudiosiloKeys DEBUG`, then `adb logcat -s AudiosiloKeys`. It shows each media key (the

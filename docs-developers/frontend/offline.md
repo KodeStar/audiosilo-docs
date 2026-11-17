@@ -540,10 +540,9 @@ Hydrate runs these steps:
    The engines can't resume a half-written file, so Retry starts that file again and
    skips the rest. Keeping these entries needed no engine or storage format change.
 
-   A kept list can now have gaps, so a file is found by the index its stored name
-   says (`storedIndex`), else by its place in the list. `relocateEntry` and a
-   retry both read it that way, and a retry reuses a kept file only for its own
-   index.
+   A kept list can have gaps, so a file is found by the index its stored name says
+   (`storedIndex`), else by its place in the list. `relocateEntry` and a retry both
+   read it that way.
 
    While an identity move is pending (`identityMovePending`), an entry is kept
    exactly as stored: never trimmed, dropped or deleted. The files may sit under the
@@ -1344,9 +1343,9 @@ The swap keeps what the listener did while it was on its way.
   one that can't be served or never became playable, is never retried.
 - **A stream in `error`.** A dead stream refuses a gapless swap, so a download that
   lands while the book is failed is taken by the next Retry (`retry`). Its reload
-  moves the store onto the download's queue first (`localSwapOf`, `commitLocalSwap`),
-  at the same file and the same place in it, in whatever order the download plays,
-  since nothing is playing for a new order to cut into. It stays a reload, never a
+  first moves the store onto the download's queue (`localSwapOf`, `commitLocalSwap`),
+  at the same file and place, in the download's order (nothing is playing, so a new
+  order cuts into nothing). It stays a reload, never a
   fresh `playBook`: no place is saved or looked up first, and the resume floor, the
   place another tab left and the pick-up check of a long stop all stand.
 - **Casting.** The store hands the route the phone's copy (`rememberLoad`) only when

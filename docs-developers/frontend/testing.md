@@ -643,7 +643,7 @@ CI (`.github/workflows/ci.yml`) gates all of them on every PR and push:
 
 The same job also runs `npm run knip -- --no-exit-code`, a report of unused
 files, exports and dependencies (config `knip.json`) for a reviewer to read.
-It never fails the run, since today's findings are not all cleared.
+It is report-only, so a finding never fails the run.
 
 CI reads the Node version from `.nvmrc` (`24.16.0`) via `node-version-file`, and
 installs with a frozen `npm ci`. Keep `package-lock.json` committed in sync after

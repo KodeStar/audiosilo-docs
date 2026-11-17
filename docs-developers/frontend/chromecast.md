@@ -68,9 +68,8 @@ The receiver's status maps back into the same per-track snapshot (`castTrackInde
 normal LAN buffer a dead stream. A move that nobody here asked for, from the TV remote,
 Google Home or the Cast notification, is reported through `onRemoteMove`. The native
 engines report the lock screen's moves the same way, so the store lowers its resume
-floor and saves. As there, the handler runs before the listeners take the landed place
-(`getSnapshot` already holds it), so the store ends the listening span where the
-receiver was before any save sees the new place. The route passes the local engine's
+floor and saves, in the same order as the native engines (see
+[Native bridge](playback.md#native-bridge-servicenativets)). The route passes the local engine's
 `onLanded` on only while it plays locally.
 
 `startCastSync()` (`src/cast/cast-session.ts`) starts once from the root layout. It
@@ -223,7 +222,7 @@ The button shows only when all of these hold:
 - the playing book's server has `cast`, so an older server or flags not known yet
   mean no button;
 - the device has a network (`online`, from `useDeviceOnline`), since offline no Cast
-  device can be found and the SDK's button drew an empty pill.
+  device can be found (the SDK's button would show an empty pill).
 
 While a session is connected it shows whatever the book and the network, so a cast can
 always be stopped.

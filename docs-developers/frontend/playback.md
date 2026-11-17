@@ -58,10 +58,10 @@ live in shared JS, so all three platforms behave identically.
 - Optional native hooks, none of which the web has:
   - `onRemoteMove(handler)`: the engine has **already** moved for something
     outside the JS API and landed at `(trackIndex, positionInTrack)` (see the
-    [module's events](#the-native-module-modulesaudiosilo-player)). The snapshot's
-    listeners get the landed place right **after** the handler, so a save for the
-    move waits a microtask and never runs inside the handler. The Cast route keeps
-    the same order.
+    [module's events](#the-native-module-modulesaudiosilo-player)). The listeners
+    hear the landed place after the handler (see
+    [Native bridge](#native-bridge-servicenativets)); the Cast route keeps the same
+    order.
   - `onLanded(handler)`: a place the native service held back for a move
     ([Native bridge](#native-bridge-servicenativets)) reached the snapshot with no
     move told, after playing stopped. The store saves again.
@@ -833,10 +833,10 @@ floor.
 
 ### An engine that runs off a short file
 
-An engine can measure a file far short. Media3 took a VBR MP3 with no seek header
-for a fifth of its length (see [Android](#android-media3--exoplayer)), so a resume
-past that guess ran into the next file, and a Retry seeked past the engine's end,
-got `ended` and finished the book. The store therefore never reads an engine's
+An engine can measure a file far short: Media3 can read a VBR MP3 with no seek
+header at a fifth of its length (see [Android](#android-media3--exoplayer)).
+Unguarded, a resume past that guess would run into the next file, and a Retry would
+seek past the engine's end, get `ended` and finish the book. The store therefore never reads an engine's
 move as the listener's place until the engine has played from where the store put
 it.
 
@@ -849,10 +849,10 @@ it.
   refused lapses (`withdrawAsk`), and so does one whose engine has since moved 3 s
   in another file.
 - **While it stands, `engineFault` turns two reports into an `error`** at the asked
-  place. One is a later file while the listener wants playback, when the ask was
-  inside its file (past 0 and short of its server length by more than the tolerance,
-  `shortOfFileEnd`) and the engine had not yet reported that file `PLAYING_PAST`
-  (0.5 s) beyond the ask. The other is an `ended` short of the book's end
+  place. One is a later file while the listener wants playback. That counts only
+  when the ask was inside its file (past 0 and more than the tolerance short of its
+  server length, `shortOfFileEnd`) and the engine had not yet reported that file
+  `PLAYING_PAST` (0.5 s) beyond the ask. The other is an `ended` short of the book's end
   (`endsShortOfBook`). Neither is a report still in the file the store last
   showed, or in the file of an ask this one replaced, since those are from before
   the move landed. An `ended` the store already showed is no new end either.
@@ -862,8 +862,7 @@ it.
   file by index (`skipToTrack`). The fault outlives the download hot-swap's new
   `NowPlaying` (`commitLocalSwap`).
 
-So a Retry or a seek past the engine's end never finishes a book. Once the engine
-has played on from the ask, its moves and its end are the book's: a server length
+Once the engine has played on from the ask, its moves and its end are the book's: a server length
 can overestimate the audio (ffprobe's bitrate estimate for a header-less VBR file),
 and a listener who played to the real end has finished.
 
