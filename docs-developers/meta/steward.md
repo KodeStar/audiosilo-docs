@@ -72,7 +72,13 @@ The gate requires:
 The merge call is pinned to the judged SHA. Immediately before the merge, the
 steward reads the changed-file list again for that head, so a non-data file
 pushed at the last moment is still refused. When a pull request merges, the
-steward closes its linked data issue with a comment.
+steward closes its linked data issue with a comment. The one exception is a
+partial correction batch: the intake workflow applies part of one as "Applies
+part of #N" and labels the issue `data:needs-human`, leaving the rest on it for a
+maintainer. When the merged pull request says it applies only part of a
+`data:needs-human` issue, the issue stays open. For a pull request carried in
+parts, the steward reads the original's body for that line. A `data:needs-human`
+issue that any other merged pull request answers is closed as usual.
 
 A merge is a push to `main`, and on that push the intake sweep rebases every open
 `bot-intake` branch. So in a tick that merged, a fix or rebase on such a pull

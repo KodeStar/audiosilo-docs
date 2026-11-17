@@ -99,7 +99,9 @@ instead, and nothing in it widens these rules.
   expands them again. A reported-ASIN lane pull request has its own,
   tighter cap ([its limits](#its-limits)).
 - **One pull request at a time**, every lane's included. A cycle that finds one
-  still open stops before it touches libex, LibriVox or the intake queue.
+  still open stops before it touches libex, LibriVox or the intake queue. A
+  pull request GitHub opened without the service hearing back is found again
+  (see [A pull request opened without an answer](#a-pull-request-opened-without-an-answer)).
 - **Coming-soon (preorder) titles are included**, imported with their announced
   release date.
 - **Every record it writes carries the typed `libex-import` provenance**, so the
@@ -247,6 +249,29 @@ So a sync pull request stays mergeable while other work lands, at no cost to the
 service. The service rebases only once itself, the moment before it opens a pull
 request, because a cycle is long and main may have moved while it ran.
 
+### A pull request opened without an answer
+
+GitHub can open a pull request and still fail the request that asked for it (a
+5xx, a dropped connection). The service would then not know its one slot is
+taken. So:
+
+- after a `CreatePR` error that is not GitHub refusing, the service lists the
+  open pull requests once and takes the one on the branch it just pushed as the
+  one it opened;
+- when that listing fails too, the next cycle finds it first. Every cycle, after
+  its slot and parked checks and before libex is read, lists the open pull
+  requests and adopts the oldest `sync/` one that its state does not track and
+  no `sync:needs-human` label parks. It labels the pull request as opening it
+  would have.
+
+Only a branch name the service itself gives (`sync/<day>`,
+`sync/librivox-<day>`, either with a `-<n>` suffix), into `main` and not a
+draft, is adopted. A hand-made `sync/` branch is left alone. The lane is read
+from the branch or the title. What the lost cycle knew is gone: its series are
+still queued, its memo rows were never written, and an adopted LibriVox pull
+request moves no cursor when it merges. A listing GitHub does not answer fails
+the cycle, since the service then can't tell that no pull request is open.
+
 ### Every store's copy of a book
 
 A libex series listing belongs to one marketplace. In libex, the copies of one
@@ -314,6 +339,13 @@ list, and treats no answer as libex saying it cannot reach Audible:
 - a chapter list has no Audible fallback, so it gets the longer wait: a slow
   answer from a working libex still arrives. When none comes, the book is
   written without chapters.
+
+Any other failure of a live book record or series listing is treated the same
+way after one request: a 502, a 503, a 504, a 408, a refused connection or a
+reset. Those used to walk the 5xx retries (5, 15, 45 seconds and on), about five
+and a half minutes a lookup, before the Audible fallback was asked. A live
+chapter list, which has no fallback, keeps those retries, and so do the mirror
+and the feeds. A 429 and the other 4xx answers keep their own handling.
 
 When Audible cannot answer either, the series stays queued for a later cycle
 and spends none of its attempts. The mirror, the feeds and the store searches
@@ -453,7 +485,12 @@ these steps:
      not answering either;
    - **held off for 7 days**: any other lookup with no answer.
 
-   Three failures in a row end the lookups for the turn.
+   Three failures in a row end the lookups for the turn. An ASIN that no
+   configured store answers (libex and the fallback both silent) is marked
+   with the time it first went unanswered, and later turns ask it after every
+   other candidate, so three such ASINs can't hold the head of the queue while
+   libex is down. One still unanswered after three days is held off for 7 days
+   like any other lookup with no answer. Any other outcome clears the mark.
 3. **Select and import** with completion's own tools: the same allow-list
    projection, `metaimport libex-select --reported --attach-editions`, the lane's
    own cap, the create import with `--existing-series-only`, `metafmt`,
@@ -496,11 +533,16 @@ days, so one bad row cannot pin the head of the queue.
   two authors.
 
   Each pair is compared a second time with "&" and the German "und" read as
-  "and", so "Daisy Jones and the Six" meets a held "Daisy Jones & The Six".
+  "and", so "Daisy Jones and the Six" meets a held "Daisy Jones & The Six". A
+  held work in a series is also keyed on its whole title with no series name
+  stripped, so a row titled "Rivers and Roads: The Long Way" meets a held
+  "Rivers & Roads: The Long Way" in the series "Rivers & Roads".
 
-  A row whose title states a volume is a duplicate only of a held work whose
-  title states the same volume. So "Circus of the Dead, Book 2" passes a held
-  "Circus of the Dead".
+  A row whose title states a volume is a duplicate only of a held work that
+  states the same volume. The held work states it in its title or, when its
+  title states none, as a position it holds in a series (a single number, not
+  a range). So "Circus of the Dead, Book 2" meets a held "Circus of the Dead"
+  at position 2 and passes one in no series.
 
   The guard is wider than the create path's own guard on purpose. A refused
   report comes back later, while a minted duplicate needs a repair. The price
@@ -509,9 +551,6 @@ days, so one bad row cannot pin the head of the queue.
 
   What the guard still misses mints a work:
   - a title whose key differs in more than a conjunction;
-  - a row whose title carries a held work's series name, since the held work
-    is keyed with its series name stripped ("Rivers and Roads: The Long Way"
-    beside "Rivers & Roads: The Long Way" in the series "Rivers & Roads");
   - two spellings of one new book in the same tranche, since only held works
     are compared.
 
@@ -995,16 +1034,25 @@ instructions.
   use of the subscription can't stall the verdicts. Codex
   reads the ChatGPT login in `~/.codex/auth.json`, mounted into the container.
   No key is read from the environment, composed into argv, or written to disk.
-- **The agent never sees the GitHub token.** The service *removes*
-  `GITHUB_TOKEN` from the child environment rather than merely leaving it
-  unmentioned. The agent has Bash and a network, it is steered by text an
-  automated reviewer wrote, and it has no use for the PAT because the service
-  does the pushing. This is a barrier against accidental pickup, not a sandbox,
-  because the agent shares the service's uid.
+- **The agent never sees the GitHub token.** The agent has Bash and a network,
+  it is steered by text an automated reviewer wrote, and it has no use for the
+  PAT because the service does the pushing. It runs as the service's uid, so
+  the service keeps every token out of what that uid can read:
+  - `metasync` makes itself undumpable before anything else
+    (`PR_SET_DUMPABLE` 0), so a process of the same uid can't read its
+    `/proc/<pid>/environ`;
+  - at startup it removes the PAT (`GITHUB_TOKEN`), the steward's token
+    (`SYNC_STEWARD_OAUTH_TOKEN`) and the intake queue's token
+    (`SYNC_INTAKE_TOKEN`) from its own environment, so no child inherits them.
+    A child is dumpable again once it starts, so a token in its environment
+    would be readable;
+  - the agent's environment also has `GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`,
+    `SYNC_STEWARD_OAUTH_TOKEN` and the intake token cleared.
 
-  The intake queue's token (`SYNC_INTAKE_TOKEN`) goes further. The service
-  removes it from its own environment at startup, so no child process inherits
-  it, and also clears it from the agent's environment.
+  This is a barrier against pickup by accident, not a sandbox. The agent can
+  still write the sync's clone, so a command it planted in `.git/config` would
+  run as a git child and could ask for the PAT. The steward's agent, steered by
+  public text, runs as a user of its own instead (see [the steward](./steward.md)).
 - **The brief is narrow.** In fix mode the agent may edit or remove records
   *this* pull request added. In drop mode it may only remove the ones the
   evidence concerns. In either mode the agent must:
@@ -1110,10 +1158,18 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 | `SYNC_LIBRIVOX_SINCE` | - | `YYYY-MM-DD`, where the lane's first window starts. Read only while the lane has no cursor. Unset, the first window starts the day before the first run, and the census covers everything older. |
 | `LIBRIVOX_BASE` | `https://librivox.org` | LibriVox's address, for a mirror or a test's fake. |
 
-Tokens never reach a log line. The service hands the PAT to `git` as an
-`Authorization` header in the child environment, never in a URL or argv. It
-scrubs every secret, the intake queue's token included, from every log line,
-stored cycle detail and pull request comment.
+Tokens never reach a log line. A `git` child asks the service for the PAT: its
+per-command configuration names a credential helper for the remote's host,
+which reads the token over a socket pair the child inherits as descriptor 3.
+So the PAT is in no child's environment or arguments, in no URL git could
+echo, and not in `.git/config`. Every other configured credential helper is
+dropped, and the long-lived `cat-file --batch` and the merge tool get no
+channel. A socket is used because `/proc/<pid>/fd` can't reopen one, so only a
+descendant of that git child can ask. `metasync sandbox-check` proves inside
+the real image that git authenticates this way, that no git child holds a
+token, and that the service's environment can't be read. The service scrubs
+every secret, the intake queue's token included, from every log line, stored
+cycle detail and pull request comment.
 
 **The cycle log is the artifact.** Every tool invocation, its output and every
 watcher decision go to `<DATA_DIR>/logs/<date>.log` and to stdout.
