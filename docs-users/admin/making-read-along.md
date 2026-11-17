@@ -91,6 +91,10 @@ EPUB, or change the audio files, and the card says **Out of date**. Press **Make
 again**. When only the ebook changed, it takes minutes. Moving or renaming the
 book's folder is fine.
 
+The server spots a changed EPUB by its size, date and name. A replacement that
+keeps all three, such as a copy that preserves the date, isn't noticed until one
+of them changes.
+
 ## Where it is saved
 
 The Bridge saves it in the book's hidden `.audiosilo` folder, as `readalong.json` (or
