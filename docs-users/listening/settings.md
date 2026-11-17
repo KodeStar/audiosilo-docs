@@ -63,6 +63,8 @@ Choose **Light**, **Dark**, or **System** to follow your device. On a tablet or 
 
 Choose English, Español, Français, Deutsch, Português or Italiano, or **System** to follow your device.
 
+Dates and numbers follow your device's region for that language. English on a British phone reads **12 Nov 2026**, and on an American one **Nov 12, 2026**. A language that isn't your device's keeps its own style: German chosen on an English phone shows German dates.
+
 ## Household
 
 **Household** opens the [Household page](household.md): the people on this device, the people you've added, and Listening in the house.
@@ -72,6 +74,7 @@ Choose English, Español, Français, Deutsch, Português or Italiano, or **Syste
 The servers you're signed in to on this device. Tap one to open your [account on that server](account.md).
 
 - **Add a server** connects another. Home and search then combine them. The web player can't do this. See [Connect the app to your server](connecting.md).
+- A server that signed this device out shows **Signed out**, with **Reconnect** beside it. Tap **Reconnect** to sign in again.
 - The bin button removes a server from this device.
 
 :::warning

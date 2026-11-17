@@ -157,8 +157,9 @@ take their title, author, series and series number from:
 Whichever comes second fills in what the first leaves empty. An Audiobookshelf
 `metadata.json` in a book's folder wins over both.
 
-Changing this updates every book at once, without a rescan. Your own edits stay
-on top. On a book's page, values taken from folders are marked **Path** (see
+Changing this updates the books without a rescan. A large library finishes in
+the background, so for a while some books can still show the old details. Your
+own edits stay on top. On a book's page, values taken from folders are marked **Path** (see
 [Editing details](books.md#editing-details)).
 
 ## Library order

@@ -210,6 +210,24 @@ failed one starts again like any other. It starts any other book through
 server is slow or away (see [The end of a book](end-of-book.md#ending-a-book)). A failure is
 logged, and native times the request out.
 
+**A request native gave up on never plays** (Android, `onCarPlayCancel`). Native sends it when
+its 10 s wait for the load runs out, when another play takes the request's place
+(`failPendingPlay`) and from `onDestroy`. By then a media button start's foreground service is
+released, so a start a frozen server held would otherwise play on in the background with no
+notification or controls. JS marks the request called off (`cancelledPlays`, which makes
+`StartHow.wanted` false):
+
+- a start not yet begun never starts;
+- a start already loading loads paused (a pause before the load, so a downloaded book is never
+  heard);
+- a late lookup that finds another start took the player (`replaced`) loads nothing;
+- a podcast episode still fetching for it ends quietly (`requestEpisodeFetch`'s `wanted`).
+
+A new request for the item takes the mark off. A call-off while JS boots never ends a cast.
+Natively, a load of the book the service gave up on never completes another book's pending
+play (`PlayerBridge.completesCarPlay`), and a downloaded book that `playFromCar` starts
+natively ends a car play still waiting for JS.
+
 **Remote bookmarks** arrive on `carNative.onBookmark`, the module's `onRemoteBookmark`, which
 carries the engine's own book.
 
@@ -283,7 +301,7 @@ package.
 |---|---|
 | The book the player already has, ready or buffering | Plays on from where it is (`playingQueue`). Sent to JS, the request would wait for a `load` that never comes. |
 | No JS runtime (`PlayerBridge.sink == null`) and a play spec (downloaded) | Starts at once from the spec, with no auth headers, because every track is local |
-| Anything else | Returns a `SettableFuture`, makes sure JS runs and emits `onCarPlayRequest`. It completes with the queue that the module's next `load` sets, and absorbs the identical re-set Media3 then makes. After 10 s it fails with an error Auto shows (`labels.unavailable`). |
+| Anything else | Returns a `SettableFuture`, makes sure JS runs and emits `onCarPlayRequest`. It completes with the queue that the module's next `load` sets, and absorbs the identical re-set Media3 then makes. After 10 s it fails with an error Auto shows (`labels.unavailable`) and sends `onCarPlayCancel`, so JS never starts the book late. |
 
 "Anything else" includes a downloaded book while a JS runtime exists. JS may hold another
 book as `nowPlaying`, and swapping the engine under it would save one book's place as
@@ -317,8 +335,8 @@ with no JS honours the listener's Settings, as the effects switches do
 ([Smart speed and Voice boost](audio-effects.md#android-one-processor-chain)).
 
 **Playback resumption.** `onPlaybackResumption` runs on a Bluetooth, headset or car play with an empty player. It
-starts the book the snapshot names in `resume` (`CarSnapshot.resumable`), only when that book
-has a play spec, so only a downloaded book resumes. Media3 asks only on a play command, so
+starts the book `CarSnapshot.resumable(live)` picks (below), only when that book has a play
+spec, so only a downloaded book resumes. Media3 asks only on a play command, so
 merely connecting Auto never plays. With `isForPlayback = false` (System UI's resumption card
 after a reboot) it answers from the play spec with no side effect.
 
@@ -334,6 +352,30 @@ It is never just the first Continue listening row, which after a stop is the new
 progress, so a stopped or finished book stays stopped at a headset's play. A snapshot kept
 from before the field has no `resume` key and still answers with its first Continue listening
 book.
+
+**The engine's live place** (`LivePlace.kt`). The service keeps where the engine is in a prefs
+file of its own (`audiosilo.liveplace`): the book, the file by its library-relative path and
+its index, and the seconds in it. `LivePlaceRecorder` saves it every 10 s while a book plays,
+and at once on a play, a pause and a seek, stamped with the device's clock (`savedAt`). The end
+of the book, an emptied player (JS's `reset`: a stop or a finish) and the app's own `load` drop
+it, so a stopped or finished book still never resumes. A resumption (read by
+`ResumptionReceiver`, `onPlaybackResumption` and the placeholder's title) then picks:
+
+- the live place's book, at the live place, when the snapshot lists it with a play spec;
+- else the book `resume` names, at its own place.
+
+The later place wins. Each play spec carries when JS saved its place (`placeSavedAt`, a paused
+book's when first written, else the resume lookup's row by this device's clock), and a spec
+with none counts as older. So a place a dead process left never beats a newer one JS read
+since, such as another device's listen. Across books too: when `resume` names another book
+whose `placeSavedAt` is later than the live place's `savedAt`, that book resumes at its own
+place. With either time missing, the live place's book wins. A `resume` of null (kids mode
+changed, another person's book) resumes nothing, whatever the engine last held. A car tap on
+the live book that `playFromCar` starts natively starts at the live place too when it is newer
+(`CarPlaySpec.at`).
+
+So a crash or kill mid-play, a pause in a cold runtime away from every server (which writes no
+snapshot) and a resumption write still queued behind a build lose at most 10 s.
 
 `ResumptionReceiver` (a `MediaButtonReceiver`) overrides Media3 1.9's
 `shouldStartForegroundService(Context, Intent)`. It refuses to start the foreground service

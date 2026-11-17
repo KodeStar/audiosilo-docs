@@ -236,8 +236,15 @@ debugger. The token is narrow in every way:
   logout, My devices or the console.
 - **Short-lived.** It lasts 24 hours. Each sending device (the token that
   mints them) keeps at most 20, and a person at most 100 over all their
-  devices; a mint past either drops the oldest, so a run of casts on one device
-  never ends the cast another device of the person is playing. Each mint
+  devices. From 2.7.0 a mint past either cap drops the least recently used
+  token (before, the oldest minted). Recent use is the token's `last_seen`,
+  else its mint time (`trimCastTokensSQL`); every cover or stream request the
+  token authenticates moves `last_seen`, at most once a minute. So a run of casts on one device never ends
+  the cast another device of the person is playing, and a sender re-minting
+  drops an idle token before the one its receiver is reading. The token just
+  minted is always kept, even after the clock steps back. One limit stays:
+  `last_seen` moves only when a request starts, so a receiver reading one long
+  file on a single response looks idle to the ranking. Each mint
   deletes every dead cast token: expired, with no grant, or with its parent
   gone, signed out or expired. The daily retention job runs the same prune
   (`auth.PruneCastTokens`). A dead token's row (which holds the receiver's
@@ -264,9 +271,10 @@ differences:
 - it lasts 4 hours (`editorTokenTTL`);
 - a person keeps at most 5 (`maxEditorTokens`).
 
-A mint drops the oldest of its own kind past that kind's cap, so opening the
-editor on many books never drops a token a receiver is playing, and casting never
-drops the editor's. It reads no more than a cast token, so anyone who may mint a
+A mint drops the least recently used of its own kind past that kind's cap (the
+same ranking as above, 5 per device and per person for editor tokens), so opening
+the editor on many books never drops a token a receiver is playing, and casting
+never drops the editor's. It reads no more than a cast token, so anyone who may mint a
 cast token may ask for one.
 
 Other properties:

@@ -49,6 +49,8 @@ Pick a [downloaded](offline-downloads.md) book for a drive through places with n
 
 On Android, the car's play button resumes a downloaded book even after Android has closed the app. See [Lock-screen and headphone controls](playback.md#lock-screen-and-headphone-controls).
 
+On Android Auto, a book that takes too long to start shows as unavailable. It never starts playing later by itself: if it was already loading, it loads paused. Tap it again to play it.
+
 | | Android Auto | CarPlay |
 |---|---|---|
 | Chapters | The car's queue | **Chapters** on Now Playing |

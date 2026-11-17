@@ -241,6 +241,7 @@ older binary, and JS detects it.
 | Event | `onRemoteBookmark { trackIndex, position, relPath?, connectionId?, libraryId?, path? }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action), with the engine's own book when it has one. The car controller listens for it, not the engine |
 | Event | `onCarConnection { connected }` | CarPlay or Android Auto connected or left |
 | Event | `onCarPlayRequest { id }` | The car asked for a book native can't start alone |
+| Event | `onCarPlayCancel { id }` | Android: native gave up on that play request (its 10 s wait ran out, another play took its place, or the service ended), so JS must not start it late ([Native integrations](native-integrations.md#what-the-controller-answers)) |
 | Field | `onProgress.silenceSaved` | Book seconds Smart speed removed since the app's process started, summed over every player the service builds. Monotonic ([Android only](audio-effects.md#why-smart-speed-isnt-on-iphone-yet)) |
 | Function | `setCarSnapshot(json)` | Both platforms: the [car snapshot](native-integrations.md#the-car-snapshot-srccar) |
 | Function | `getLoadedBook()` | Android: the book the service has loaded (`LoadedBook`), else null. Its `files?` are the loaded files' library-relative paths in file-index order. iOS: null |
@@ -863,7 +864,8 @@ it.
   `NowPlaying` (`commitLocalSwap`).
 
 Once the engine has played on from the ask, its moves and its end are the book's: a server length
-can overestimate the audio (ffprobe's bitrate estimate for a header-less VBR file),
+can overestimate the audio (ffprobe's bitrate estimate for a header-less VBR file, which a
+server from 2.7.0 counts instead, except where the count gives up),
 and a listener who played to the real end has finished.
 
 ### Picking up another device's place (`place-reconcile.ts`)

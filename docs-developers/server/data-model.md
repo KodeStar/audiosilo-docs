@@ -389,6 +389,7 @@ dates from 0001. Later migrations added these columns:
 | 0056 | `ebook_path`, `ebook_sig` |
 | 0058 | `ebook_size`, `ebook_sha256`, `ebook_hashed_sig` |
 | 0067 | `tag_asin`, `tag_isbn`, `tag_language`, `hints_checked` |
+| 0082 | `duration_rev`, `duration_rev_indexed_at` |
 
 #### Identity and metadata columns
 
@@ -471,6 +472,14 @@ dates from 0001. Later migrations added these columns:
   the book unchanged then fills it from `book_files` without a re-index. A
   book whose files are in another order is re-indexed, which records it. See
   [the stored order key](scanner.md#book-detection-booksindir).
+- `duration_rev`: the revision of the length reading the book was indexed with
+  (`catalog.durationRev`, 1 from 2.7.0: a header-less VBR MP3's frames are
+  counted). `duration_rev_indexed_at` is the `indexed_at` it was written with.
+  A lower revision, or another index's `indexed_at` after an older server
+  re-indexed the row, reads as stale when the book holds an MP3, and the next
+  scan indexes it once more. An index that left a header-less VBR file
+  uncounted for now writes 0, so a later scan tries again. See
+  [The in-process probe](scanner.md#the-in-process-probe).
 - `ebook_path`: the book's ebook, library-relative, `''` for none. It is the
   one readable `.epub` beside the audio by `library.BookEbook`'s rule.
   `ebook_sig` is the size, mtime and name of the file the rule names, readable
@@ -1491,6 +1500,10 @@ Its keys:
   console, "No preference" included (`catalog.NoteRegionChosen`). With a region
   in `config.yaml` or the environment it counts as chosen anyway. It drives
   `GET /admin/settings`'s `metadata.region_chosen`.
+- `library_resolve_due` (2.7.0): the libraries whose books are due a re-resolve
+  after a metadata source change, as `{"<library id>": <generation>}` (see
+  [A library's metadata source](#a-librarys-metadata-source)). The run that
+  finishes a library deletes its id in its last batch's transaction.
 - `upcoming`: the [upcoming releases](api/reference.md#upcoming-releases) job's
   run status (`catalog.UpcomingRun`). It holds `last_run_at`,
   `last_success_at`, `last_error`, `failures` (failed runs since the last
@@ -2140,10 +2153,28 @@ is a `LeafSeries` leaf, whose parts the layout reads even when the title is the
 whole leaf (an untagged book's).
 
 This is a resolve rule, not a scan rule, and `books.scanned` is the same in
-either mode. When the stored source changes, `UpdateLibrary` re-resolves every
-book of the library (`refreshLibrary`, `refreshEffective` per book) in the
-edit's own transaction. That needs no rescan and no disk access, and takes
-about 1 s per 5,000 books.
+either mode. So a change of source needs no rescan and no disk access. From
+2.7.0 it is a resumable job:
+
+- `UpdateLibrary` marks the library due in the edit's transaction
+  (`markResolve`, the `server_state` key `library_resolve_due`: each due
+  library's id and the generation of its last change).
+- `Catalog.ResolveSources` re-resolves each due library's books
+  (`refreshEffective` per book), 200 a transaction (`resolveBatch`), so the one
+  writer is never held long. A library switched again while it runs starts
+  over. What is due is in the database, so a run a stop cut short goes on at
+  the next start (`API.StartSourceResolves`).
+- Every due library runs even when one fails. A failed run is run again after
+  1 minute, doubling, 6 times (`resolveRetries`), then waits for the next edit
+  or start. A panic counts as a failed run.
+- A book whose stored snapshot can't be read is skipped, so it neither holds
+  its library due nor starts each retry over. It is recorded as an
+  `unreadable` read problem on its first audio file
+  (`recordScannedUnreadable`), which Health lists. The next scan finds that
+  file reads, reads the whole book again and writes a new snapshot, which heals
+  it.
+- The PATCH waits up to 20 seconds (`resolveWait`). Between the switch and the
+  end of the job, a reader can see the new setting with some books' old values.
 
 ### Tag hints
 
@@ -2359,6 +2390,7 @@ The migration history so far:
 | 0079 | `book_matches_work` | The index `idx_book_matches_work` on `book_matches(work_id)`, so a work's recordings ([a book's work key](#a-books-work-key)) are found from the recorded matches as from `upcoming_owned` (already indexed by `idx_upcoming_owned_work`). No data moves |
 | 0080 | `listening_stay` | Listening sync: `progress.stay_version` and `edit_version` (`INTEGER`, nullable, `NULL` on every existing row), so a Stay on another device's offer wins and holds the row ([A Stay](api/reference.md#a-stay)). No data moves |
 | 0081 | `share_grant_mark` | Clears `shares.whole_library_id` on every share that no longer holds that library's whole-library rule (`share_paths` with its `library_id` and path `''`): a mark older versions left after a path edit on a grant, an interrupted grant, or deleting the library of a grant that also held another library's folders. Such a share is an ordinary one again, its folders open to change; `catalog.DeleteLibrary` now clears the mark itself |
+| 0082 | `duration_rev` | `books.duration_rev` (`INTEGER NOT NULL DEFAULT 0`) and `duration_rev_indexed_at` (`TEXT`): the revision of the scan's length reading a book was indexed with, so a book holding an MP3 is read once more after the upgrade and its header-less VBR files' lengths counted ([Header-less VBR MP3 lengths](scanner.md#the-in-process-probe)). A book with no MP3 starts at revision 1. Rebuildable index values, never on the wire |
 
 ## SQLite choices
 

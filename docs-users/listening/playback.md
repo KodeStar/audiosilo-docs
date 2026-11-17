@@ -81,7 +81,7 @@ In the iOS and Android apps, playback carries on in the background:
 
 Previous goes back to the start of the chapter. Within the first 3 seconds of a chapter, it goes to the chapter before.
 
-On Android, pressing play on your headphones, a Bluetooth device or the car works even after Android has closed the app. It resumes the book you were listening to, from your place, if that book is downloaded. A book you finished stays stopped.
+On Android, pressing play on your headphones, a Bluetooth device or the car works even after Android has closed the app. It resumes the downloaded book you listened to last, from your latest place, even when that is a different book from the one the app last had open. If the app crashed or was closed mid-book, it starts within about 10 seconds of where you were. A book you stopped or finished stays stopped.
 
 See [Get the apps](mobile-apps.md) for more on the apps.
 

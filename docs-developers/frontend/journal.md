@@ -75,10 +75,12 @@ with it. `keepFirstPage` trims a released list.
     `/server` again too.
   - A server whose `/server` is held for the network with no answer kept is still
     `loading`, and its source is `waiting`.
-- **Notes wait for their tab.** The Diary shows none, so `useJournalSources({ notes })`
-  holds them back until the Notes tab is first opened. Held back means `enabled: false`:
-  the cache is read and nothing is fetched. Until then the tab's count shows only what
-  an earlier visit left in the cache. The export asks for notes on its own.
+- **Notes wait for the first list.** The Diary shows none, so `useJournalSources({ notes })`
+  holds them back until a Diary or bookmarks list is in (`overallStatus` no longer
+  `loading`: one server's answer is enough, or every server failed or can't list), or
+  at once when the Notes tab opens first. They never hold up the Diary's first list,
+  and the Notes tab still shows its count up front. Held back means `enabled: false`:
+  the cache is read and nothing is fetched. The export asks for notes on its own.
 
 ### Merging (`mergeNewestFirst`)
 

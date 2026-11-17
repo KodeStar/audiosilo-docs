@@ -41,6 +41,8 @@ To open it:
 | **Released Oct 2026** | It came out recently. |
 | **First released 2014** | A missing book, and when it first came out. |
 
+Dates follow your device's region (see [Language](settings.md#language)), so a British phone shows **Out 12 Nov 2026**.
+
 The date is the earliest audiobook release the community database knows of. Your local store may get a new book a little later.
 
 A **New** badge marks a preorder or new release your server first listed in the last seven days.

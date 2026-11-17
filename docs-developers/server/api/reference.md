@@ -1482,7 +1482,8 @@ them, including player-facing admins; following by URL proves access through
 the current or previous normalized URL hash. Unknown times and
 `latest_published` are `null`. A status error is `{code, message}`.
 Artwork is `GET /api/v1/libraries/{id}/cover?path=<show>[&size=160|320|640]` (`96` too from 2.5.1);
-episode covers use the same show artwork.
+episode covers use the same show artwork. Artwork on a share that stopped answering
+is `503 share_not_answering` (from 2.7.0), as for a book's cover.
 `retention` is additive policy data on both show-list routes; older clients
 must tolerate it. The server supplies the default when there is no override.
 
@@ -1716,7 +1717,8 @@ toward the feed's failing run and leaves the scheduled polls' backoff as it was
 | `400 invalid_request` | missing/invalid library, both or neither path and URL, private with path, an invalid unfollow/check show path, or unknown body fields |
 | `400 invalid_feed_url` | malformed, non-HTTP(S), hostless or over-2,048-byte feed URL, or one whose normalized form changes when normalized again |
 | `403 no_library_access` | no accessible library, or URL follow without a whole-library grant |
-| `404 show_not_found` | missing, hidden or invalid show on follow by path, or check without following |
+| `404 show_not_found` | missing, hidden or invalid show on follow by path, or check without following (from 2.7.0 also a check whose show was re-subscribed under a new identity the caller doesn't follow) |
+| `409 identity_changed` | check only, from 2.7.0: the show's identity was replaced (a re-subscribe) while the check was queued, and again when the server checked once more against the show as it is now |
 | `409 not_podcast_library` | a books library |
 | `409 bridge_unavailable` | no online Bridge offering the action's podcast kind |
 | `409 library_not_writable` | Bridge mapping is not writable |
@@ -2334,6 +2336,10 @@ indexed on its behalf. The same holds for `/chapters`, `/cover`, `/meta` and `/n
 | `400` | missing `path` / invalid library id |
 | `403` | `no access to this path`: the path, or the book it resolves to, is outside the caller's share scope |
 | `404` | `no book at that path` (not indexable) |
+| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the read of the book this request was waiting on; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book has not returned in time (its share stopped answering) |
+
+From 2.7.0 `/item`'s look at the book's ebook waits at most 10 seconds. On a
+share that stopped answering it answers with the stored `ebook`.
 
 #### Other recordings
 
@@ -3370,6 +3376,16 @@ An `.mka` holding another codec (AAC, Opus, FLAC) is served as stored,
 `audio/x-matroska`. See
 [Remuxing Matroska](../media.md#remuxing-matroska-medianewremuxer).
 
+**A share that stops answering** (from 2.7.0). A book's file served as stored
+has its open and stat wait at most 45 seconds (`streamOpenTimeout`): long enough
+for a sleeping NAS or USB disk to spin up, and under AVPlayer's own timeout of
+about 60 seconds, since AVPlayer doesn't retry a `503`. Past that the answer is
+the `503` below. Only a regular file is opened (`metadata.OpenRegular`), so a
+FIFO is a `404` at once. An older player treats the `503` as a failed load. Not
+bounded yet: a podcast episode's open (`library.OpenPodcast`), and the source
+file's look before a transcode (`?transcode=1`), a Matroska remux or a watch
+rendition.
+
 | Status | Meaning |
 |---|---|
 | `200` / `206` | file bytes (Range honored for direct serving, a remuxed `.mka` and a watch rendition) |
@@ -3378,7 +3394,7 @@ An `.mka` holding another codec (AAC, Opus, FLAC) is served as stored,
 | `403` | path outside the caller's scope |
 | `404` | file does not exist, or isn't audio; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
 | `422` | `code: "rendition_failed"`: ffmpeg refused this file, its copy came out more than 1 s short of the source, or the encode ran past its 2-hour timeout; remembered for an hour (or until the file changes), then tried again. `Retry-After` is the seconds the remembered refusal has left (1 to 3600) |
-| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full) |
+| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full); from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the file's open has not answered within 45 seconds (a drive or share that stopped answering) |
 
 #### Watch renditions
 
@@ -3525,6 +3541,10 @@ player) keeps to `160` and up.
   thumbnail, never the response.
 - Art reads are bounded across all requests (8 at a time, with decodes bounded
   separately), shared with `POST /admin/covers`.
+- From 2.7.0 every look at the art (the sidecar's stat, its read, the embedded
+  art's read) waits at most 10 seconds (`fileWaitTimeout`) under the mount's
+  cap of stuck reads, then answers `503 share_not_answering`. Art the share
+  doesn't have is still a `404`, without `Cache-Control`.
 
 A client appends `v=<cover_version>` to every cover URL (with or without `size`)
 so a cover replaced since the last fetch is a new URL to its image cache.
@@ -3535,7 +3555,8 @@ so a cover replaced since the last fetch is a new URL to its image cache.
 | `304` | `If-None-Match` matched (thumbnails, and custom covers) |
 | `403` | the path, or the book it resolves to, is outside the caller's share scope |
 | `404` | `no cover`: no art at all, no book at the path, or (with `size`) art that cannot be decoded or is over 40 megapixels |
-| `500` | `could not load cover` - the art could not be read (an unreadable network mount) or a database failure; not cached, so the next request tries again |
+| `500` | `could not load cover` - (with `size`) the art could not be read, or a database failure; not cached, so the next request tries again |
+| `503` | from 2.7.0, `code: "share_not_answering"` with `Retry-After: 30`: the art's drive or share has not answered within 10 seconds, or enough reads there are stuck already that this one wasn't tried. Full art and thumbnails alike, and a show's artwork in a podcast library. No `Cache-Control`, so the client asks again |
 
 ### Cast tokens as media auth
 
@@ -6308,13 +6329,21 @@ fields. Renaming another library to a declared name at another folder is
 A rescan is queued (trigger `change`) **only** when the root or the ignore rules
 change, since those make the index stale. A rename, a new default view or a new
 schedule doesn't rescan. Nor does a new `metadata_source`: every book of the
-library is re-resolved from what the last scan stored, in the edit's own
-transaction, before the response is sent, so no reader sees the new setting
-with the old values. Admin edits and accepted community values stay on top.
+library is re-resolved from what the last scan stored, with no disk access.
+Admin edits and accepted community values stay on top. From 2.7.0 the
+re-resolve is a resumable job that goes on after a restart (see
+[Data model](../data-model.md#a-librarys-metadata-source)). The PATCH waits for
+it up to 20 seconds, so a small library answers with its books re-resolved and a
+large one answers then while the rest goes on in the background. Until the job
+ends, a reader can see the new setting with some books' old values.
 
 Response `200`: the updated library (without the scan settings, as for
 create). When the edit queued a scan it adds `job`, the queued scan, as for
 [`POST …/scan`](#post-apiv1adminlibrariesidscan); otherwise `job` is omitted.
+From 2.7.0 a `metadata_source` edit adds `"resolving": true` (additive, omitted
+otherwise) when the books are still taking the new source as it answers: a large
+library past the 20-second wait, or a failed run waiting to be run again. The
+console's toast then says the switch finishes in the background.
 Errors are `400` (including `invalid_schedule`, `invalid_pattern` and
 `invalid_metadata_source`), `404` and `409`, as for create.
 
@@ -6367,7 +6396,9 @@ Response `200`: `{ "status": "override cleared", "path": "…" }`.
 Downloads the library's book list as a JSON **file**, in the envelope the
 community metadata site ([meta.audiosilo.app](https://meta.audiosilo.app)) imports
 on its Watching page, so a user can mark which entries of a series they own.
-Advertised by the `export` [capability](#get-apiv1server).
+Advertised by the `export` [capability](#get-apiv1server). From 2.7.0 the export
+reads everything on one database snapshot (`store.DB.WithReadTx`), so a scan
+writing meanwhile can't make it skip or repeat a row.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
@@ -8784,6 +8815,7 @@ unreadable files.
 | `200` | the book page, re-read; check `book.scan_error` to see whether the problem is gone |
 | `400` | `invalid library id`; `path is required` |
 | `404` | `library not found`; `code: "not_indexable"` - there is no book at that path any more (gone from disk, not a book, or skipped by the library's ignore rules) |
+| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the re-read, instead of a `500`; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book, held on a share that stopped answering, has not returned in time |
 
 ### `GET /api/v1/admin/jobs`
 
@@ -11727,6 +11759,7 @@ through a hidden (dot) folder is never indexed. The body is at most 8 KiB.
 | `200` | `{ path }` (`full`), or `{ path, attachments }` (`attachments`) |
 | `400` | `library_id and path are required`; `mode must be full or attachments`; `invalid from`; `from is only for a full rescan` |
 | `404` | `library not found`; `code: "not_indexable"` - nothing indexable at that path (gone, not a book, in a hidden folder, outside the library, or skipped by its ignore rules), or for `attachments` no indexed book there |
+| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the read, instead of a `500`; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book has not returned in time |
 
 ## Audible accounts
 

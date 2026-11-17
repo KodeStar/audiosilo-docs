@@ -252,6 +252,11 @@ The Accounts and devices pane is `ConnectionsSection`
 `useConnectionRemoval`: a confirm when the server has downloads on the device, then
 `teardownBeforeTokenRevoke`, a best-effort logout and `removeConnection`.
 `SettingsContent` owns that flow, so its dialog state survives the layout switch.
+A connection with `needsReconnect` shows a **Signed out** badge (`Badge` `warning`) and a
+**Reconnect** button beside the row (`reconnectConnection`, the banner's own flow). The row's
+accessibility label carries the badge, since it stands for the row's text. The account
+page's signed-in devices list shows `SignInAgainState` in place of its Retry when its read
+failed and the connection needs signing in again.
 
 ## Account (`src/components/account/`)
 

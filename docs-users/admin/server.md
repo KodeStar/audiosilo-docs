@@ -321,6 +321,14 @@ update:
 The server never installs an update. You always update it yourself. Before you update,
 see [Before an upgrade](backups.md#before-an-upgrade).
 
+:::note[Updating to 2.7.0]
+The first start after updating to 2.7.0 reads every book with MP3 files once
+more, so the scan at that start takes longer than usual and the scan report
+counts those books as updated. It does this to measure the real length of MP3
+files whose length used to be estimated. A few books may then show a slightly
+different length.
+:::
+
 A console tab left open while the server updates says **AudioSilo was
 updated**. Press **Reload** to open the new console.
 

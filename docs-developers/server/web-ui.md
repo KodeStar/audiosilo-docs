@@ -939,6 +939,9 @@ scan settings:
   lands on its field;
 - "Book details come from" (`metadata_source`). A change refetches the
   library's books and the Health issues, since the server re-resolved them.
+  From 2.7.0 its saved toast says the books now take the new source, or, when
+  the PATCH answers `resolving: true` (a large library), that they switch in
+  the background. The field's hint says so too.
 
 **Other actions on a card:**
 

@@ -571,11 +571,18 @@ several files at a time, and writes the index in one place
   - The scan waits for the reads under way and drops them, because a read cut
     short would record a false [read problem](#read-problems). It also drops a
     finished read that the writer had not yet taken into the batch.
+  - From 2.7.0 it waits for a read still under way (held in a call nothing
+    bounds, on a share that stopped answering) for at most 2 s (`stopGrace`),
+    then leaves it to end on its own, its book's flight with it. The read is
+    counted in `Scanner.readsLeft` and logged, so the scan ends and the next one
+    runs. No later read waits on that flight (`errReadLeft`): a later scan keeps
+    the book as stored with an `unreadable` problem and scans the rest, and an
+    on-demand read (Re-read, a move, a share) answers `503 share_not_answering`.
   - It writes the books already in the batch, whose reads finished before the
     Stop.
   - It reads nothing more, and keeps the backfills read so far.
 - **On-demand indexing** ([`IndexPath`](#on-demand-indexing-indexpath)) reads
-  with one slot, a file at a time, on the request's own goroutine.
+  with one slot, a file at a time, on a goroutine of the book's shared read.
 - **Backfills.** The skipped books' cheap backfills (above) still run one at a
   time on the writing goroutine, outside the slots. The re-read of a recorded
   problem's file (`problemCleared`) runs on that goroutine too, but through a
@@ -1101,7 +1108,10 @@ tags (`metadata.FromPathLayout`):
 
 The server applies that too when the book is resolved, not in the scanner. The
 stored snapshot is therefore the same in either mode, and switching modes
-re-resolves the books without a rescan.
+re-resolves the books without a rescan, as a resumable job (see
+[Data model](data-model.md#a-librarys-metadata-source)). A book whose stored
+snapshot can't be read is recorded `unreadable` on its first file, and the next
+scan reads it again.
 
 The scanner does record:
 
@@ -1313,9 +1323,9 @@ reader is a port of FFmpeg's demuxer:
 Every other format goes to ffprobe.
 
 **Parity is the contract.** Every value equals what the configured ffprobe
-gives, by the rules of its FFmpeg release (`ffRules`). The probe therefore
-changes no stored duration, chapter or tag, and an upgraded server needs no
-re-index. The probe runs for these releases:
+gives, by the rules of its FFmpeg release (`ffRules`), with one departure from
+2.7.0: a header-less VBR MP3's length is counted (below). Otherwise the probe
+changes no stored duration, chapter or tag. The probe runs for these releases:
 
 - **7.1 and 8.1** (`knownRules`). They differ in MP3 gapless durations and in
   empty UTF-16 ID3 strings. The official and LinuxServer.io images are both
@@ -1340,9 +1350,8 @@ only after a restart. The release is the major.minor, so `7.1.1`,
 any shape it does not model exactly. ffprobe then reads that one file, and
 nothing is logged. The shapes are:
 
-- a VBR MP3 with no Xing or VBRI header, and a concatenated MP3. ffprobe
-  estimates the VBR file's duration from the bitrate, and keeping that estimate
-  keeps the stored duration the same;
+- a VBR MP3 with no Xing or VBRI header whose frames can't be counted (below),
+  and a concatenated MP3;
 - a FLAC with a CUESHEET block, or a FLAC or Ogg with an ID3 prefix;
 - a fragmented or compressed MP4, or one with an unknown handler or sample
   entry;
@@ -1373,6 +1382,51 @@ to ffprobe.
   without reading check them every 256 ticks (`blockFile.tick`, a `probeLimit`
   panic that `fastProbe` recovers).
 
+**Header-less VBR MP3 lengths are counted** (2.7.0, server#435). For a VBR MP3
+with no Xing or VBRI header, ffprobe estimates the length from the bitrate of
+the first frames. That was 139.42 s for 150.05 s of decoded audio on a test
+book, and about 7% (some 40 minutes over 10 hours) on real books, so seeks
+landed off. The probe now counts such a file's frames instead:
+
+- A file counts as VBR when its first 64 frames, or the frames at 20-80% of the
+  file, differ in bitrate (`mp3ConstantBitrate`). A file with a header, or a CBR
+  one, is never counted, so the common case costs nothing more.
+- The count runs header to header, from the first frame to the trailing ID3v1
+  or APEv2 tags (`mp3FrameCount`), inside the file's one open, in 1 MiB windows
+  through the bounded reader, under the mount's cap (below). It resyncs past
+  junk and counts a last frame cut off by the end, as ffmpeg decodes it. It
+  matches ffmpeg on ID3v2.4 footers, Xing after junk, MPEG2 and 2.5, and APEv2
+  with ID3v1.
+- **When it falls back.** The count gives up once more than an eighth of the
+  audio was skipped as junk (`mp3MaxJunk`: a sample rate that changes,
+  free-format frames). That file then goes to ffprobe and keeps its estimate.
+  A count cut short (its deadline, the scan stopping, a read error, which ends it
+  at once) also leaves the file to ffprobe for now. With no ffprobe, a count
+  out of time is a `ProbeTimedOut`.
+- With an ffprobe whose release has no rules, an MP3's estimate is replaced by
+  the count the same way after ffprobe answers.
+
+**The one-time re-read after the upgrade.** Migration `0082` adds
+`books.duration_rev` and `duration_rev_indexed_at`. A book with no MP3 starts at
+the current revision (`catalog.durationRev`). A book holding an MP3 starts at
+0, so the next scan (the one at start, after an upgrade) indexes it once more
+though its files are unchanged (`Signature.DurationStale`), and counts it in
+the scan report as updated. That scan takes longer than a normal rescan. A row
+an older server re-indexed since (its `duration_rev_indexed_at` no longer its
+`indexed_at`) reads as stale too, so rolling back and forward again still
+works: the columns are only added.
+
+Every index then writes the current revision with its `indexed_at`, except one
+that left a header-less VBR file uncounted for now (a deadline, the scan
+stopping, a read error: `Metadata.LengthUncounted`). That writes 0, so a later
+scan tries again. A count that gave up is not retried each scan, because it
+would give up the same way. Bump `durationRev` when a change to the length
+reading should re-read the stored books.
+
+A multi-file book whose parts' lengths change moves the parts' offsets in the
+whole-book timeline. Places, bookmarks and notes on it are not remapped, as for
+the natural file order. Only header-less VBR books change.
+
 **Bounded reads on a hung share.** The file's open and its stat, the tag read
 and the narrator walk before the probe are bounded too (`readFile`), by the
 ffprobe run's timeout, the caller's context and the probe's byte budget.
@@ -1388,13 +1442,47 @@ ffprobe run's timeout, the caller's context and the probe's byte budget.
 - A tag read past the byte budget leaves the tags unread, and the probe still
   runs.
 - The file is opened `O_NONBLOCK` and must be a regular file. A FIFO or a
-  device is turned away at once with an `OpenErr`, never waited for and never
-  read as audio.
+  device is turned away at once with an `OpenErr` (`metadata.ErrNotRegular`),
+  never waited for and never read as audio. From 2.7.0 that counts as a known
+  bad file with an unread length, not a read cut short (see
+  [Read problems](#read-problems)).
 - The scan's move fingerprint (`metadata.Fingerprint`) is bounded the same way,
   and is skipped after a read cut short.
 - An ffprobe killed at its timeout that has not ended 5 seconds later
   (`ffprobeKillGrace`, an ffprobe stuck in an NFS read) is left behind and
   counted as an abandoned read.
+
+**Side reads are bounded too** (2.7.0, `metadata.Bounded`). The other looks a
+scan, an on-demand index or a request makes at a library file, listed below, go
+through the same bound: the call runs on a goroutine of its own, is waited for
+while its context lives and at most a timeout, and is counted on its mount when
+given up on. Each call holds one of its mount's 16 slots (below) until it
+returns, so a burst on a share that just stopped answering (a page of covers)
+makes no more calls than the cap. With every slot held, a new call waits for one
+within its own timeout and is given up on unmade when none frees. Once 16 reads
+there are abandoned, a new call is refused at once. The calls are:
+
+- a book's side files in a scan: the Audiobookshelf `metadata.json` read, the
+  `.audiosilo/` attachments' lstats and reads, the ebook check, the cover
+  search's stats and listing, the cover version's look, the added-date stat, and
+  the check of a recorded problem (`problemCleared`);
+- the backfill's embedded cover read;
+- in the API, `/item`'s look at the book's ebook, every cover, thumbnail and
+  show artwork, and the open and stat of a book's file streamed as stored.
+
+The scan gives each the probe's time (`Scanner.probeTimeout`). With a book's
+audio read cut short, none of its side files is looked at, since each would wait
+out its time too. A side file given up on otherwise keeps the book as stored and
+records an `unreadable` problem on that file (`library.givenUp`), over a lasting
+one. The next scan repeats the same kind of call (a folder's listing, a cover
+image's stat, any other file's read of its last bytes, since a stat can answer
+from a cache while reads hang) and clears the problem when it answers, or when
+the file is gone. A backfill's given-up read keeps what is stored and records
+nothing. The API answers a given-up look with `503 share_not_answering`
+([API conventions](api/index.md)). Not bounded yet: the walk's own listings and
+lstats, an on-demand index's first look for the book's ebook (`ebookOnDisk`),
+and a podcast episode's or a transcode's, remux's or rendition's open of its
+source.
 
 **One hung share holds back only itself.** Abandoned reads are counted per
 mount (`stuckByMount`, a `mounts.PerMount`). Once 16 are outstanding on one
@@ -1759,8 +1847,8 @@ slower than reading one file at a time would. Lower `scan.concurrency` there.
 **A read cut short on a hung share.** Any file of an already-indexed book can
 come back with its read cut short, or refused at its mount's abandoned-read cap
 (`Metadata.TagsUnread`, `ReadRefused`; see
-[The in-process probe](#the-in-process-probe)). A FIFO turned away counts the
-same. A file whose length ran out of time even when read alone counts too: an
+[The in-process probe](#the-in-process-probe)). A file whose length ran out of
+time even when read alone counts too: an
 ffprobe time-out, or with no ffprobe the in-process read's `ProbeTimedOut`
 (`library.readCutShort`). The scan then sets `Book.ReadCutShort`, and the
 book's row is not rewritten at all (`catalog.recordReadProblem`). Names,
@@ -1778,12 +1866,14 @@ An ffprobe time-out records `probe_failed` (above) instead. A folder book
 records the problem of the part that was cut short, even over an earlier
 part's lasting problem, so the next scan asks the right file again.
 
-A length out of time can repeat on every scan, for example on a damaged part.
-So when it is the only problem (`Book.LengthOnly`: every file's tags were read,
+A length out of time can repeat on every scan, for example on a damaged part,
+and so can a file that is no regular file (from 2.7.0 a FIFO left in a book's
+folder: an open error with an unread length, `library.lengthUnread`). So when one
+of those is the only problem (`Book.LengthOnly`: every file's tags were read,
 none was cut short or refused), the stored book is kept only while its files
 are the stored ones (`catalog.sameFiles`): the same paths in the same order,
-and the same sizes except for the parts whose length timed out
-(`BookFile.LengthUnread`). With a part added, gone, renamed or changed, the
+and the same sizes except for the parts whose length timed out or that are no
+regular file (`BookFile.LengthUnread`). With a part added, gone, renamed or changed, the
 book is written whole with the part's problem and counted as updated. This
 holds for an on-demand index too. A cut-short or refused read keeps the book
 whatever its files, because rewriting it would store names built from its
@@ -2000,15 +2090,33 @@ background scan has reached it**. The `/fs` listing flags such a folder
 that shipped clients still hold after a join are answered from the index,
 instead of re-walking and re-probing every disc on each request.
 
-Concurrent on-demand indexes of one book share one read (`Scanner.indexShared`,
-keyed by library and book path). A book page asks for `item` and `chapters` at
-once. Only the first request reads and probes the book, while the other waits
-for it and loads what it stored.
+Every read of one book shares one flight (`Scanner.indexShared`, keyed by
+library and book path): on-demand indexes, the scan's own read, `IndexMoved`
+and an admin's Re-read. So no two reads of one book run side by side. A book
+page asks for `item` and `chapters` at once. Only the first request reads and
+probes the book, while the other waits for it and loads what it stored.
 
 - Each request resolves the book and passes its own scope check before it
   joins.
+- From 2.7.0 the read runs on its own goroutine for up to 10 minutes
+  (`indexTimeout`), ended by the server's base context at shutdown, not by the
+  request that began it. A request that ends gets its context error, and the
+  read still finishes and is saved, so its probes aren't thrown away.
 - A waiter whose own request ends stops waiting.
-- A waiter whose leader's request was cancelled reads the book itself.
+- A Re-read waits for a held flight, then reads the book afresh.
+- From 2.7.0 no read waits on another read of the book for longer than one
+  look's time (`probeTimeout`) while that read has not returned, and never on a
+  read a stopped scan left behind (`waitFlight`). A scan's read that has
+  returned is waited on until its batch write. A scan then keeps the book as
+  stored with an `unreadable` problem (`keepLeft`); an on-demand read gives up
+  with `503 share_not_answering`.
+- A request still waiting when the server's shutdown ends the read answers
+  `503 stopping` (`library.ErrStopping`), as do a Re-read and the Bridge's
+  rescan, not a `500`.
+- A waiter whose flight was given up (a scan that stopped, a read past
+  `indexTimeout`) reads the book itself.
+- The read stays inside the per-mount bounds of
+  [the in-process probe](#the-in-process-probe).
 
 A book found **above** the requested path must be in the caller's scope too
 (`Scope.Allows(book.RelPath)`). A share granting only a disc folder or one file
