@@ -67,6 +67,11 @@ package does for a bad flag.
   a new random password on an admin of the server in `--data` and prints it
   once. It is the way back in when the first-run password is lost. A flag after
   the command is a usage error, since the flag package stops at the command.
+- `audiosilo [--data <dir>] healthcheck` (`launcher.Healthcheck`) asks the server
+  running from `--data` whether it is healthy, and is the Docker image's
+  `HEALTHCHECK`. It exits `0` when healthy, `1` when not (the reason on stderr),
+  and `2` for an argument after the command. See
+  [The health check](#the-health-check-audiosilo-healthcheck).
 
 `reset-admin` picks the one named, or the only enabled admin (a disabled
 admin neither counts nor is listed). It exits `2` (a `launcher.UsageError`,
@@ -137,6 +142,48 @@ A bare tool name (no path separator) is resolved **next to the server
 executable first**, then on `$PATH`. An explicit path is used as it is. If a
 tool is enabled but not found locally, the launcher downloads it (see
 [ffmpeg/ffprobe resolution & auto-download](#ffmpegffprobe-resolution--auto-download)).
+
+### The health check (`audiosilo healthcheck`)
+
+`launcher.Healthcheck` reads the bind address and `tls.mode` through
+`config.Load`, as the server reads them at start (`config.yaml`, then the
+`AUDIOSILO_*` variables). It opens nothing else in the data folder and writes
+nothing. A data folder with no `config.yaml` is unhealthy, since a server saves
+one before it listens. When the bind host is unspecified (`0.0.0.0`, `::` or
+empty), the check asks `127.0.0.1`.
+
+- **`tls.mode` `off` or `selfsigned`.** It sends `GET /healthz` over `http` or
+  `https` and wants a `200` (see
+  [`GET /healthz`](api/reference.md#get-healthz--get-apiv1healthz)). It never goes
+  through a proxy from the environment, follows no redirect, and doesn't check a
+  self-signed certificate.
+- **`tls.mode` `autocert`.** It never asks `/healthz`. A request naming one of
+  `tls.hosts` would start a certificate order whenever that host has none, and
+  failed orders count against Let's Encrypt's limits. It connects over TCP and
+  sends a TLS hello naming no host. Autocert refuses such a hello before it reads
+  its cache or starts an order. A refusal (a TLS alert) or a finished handshake is
+  healthy. This shows that the server is listening and answering, not that its
+  database is.
+  Under autocert the server's error log drops the "missing server name"
+  handshake error those hellos cause (`autocertErrorLog`).
+
+The check gives up after 5 seconds (`healthcheckTimeout`). A bind or TLS change
+saved in the console takes effect at the next start, so until then the check
+asks the saved address and fails. A restart fixes it.
+
+The image's `HEALTHCHECK` runs `docker-entrypoint.sh healthcheck` every 30 s with
+a 10 s timeout, 3 retries and a **10 minute start period**, so a first start's or
+an upgrade's migrations on a large library finish before a failed check counts.
+Docker runs each check apart from the container's start, as root unless the
+container is started as another user (`user:`). Root may not read `config.yaml`
+on an NFS share with `root_squash`, so the entrypoint's `healthcheck` mode, when
+it runs as root, drops to `PUID:PGID` with `su-exec` as the start does (see
+[Under Docker](#under-docker)). It then runs
+`audiosilo --data <folder> healthcheck` on the data folder the start resolved
+from its own `--data`. The start records that folder in `/tmp/audiosilo-data-dir`,
+and a check with no record uses `/data`. Docker only marks the container
+`unhealthy`. An orchestrator's liveness probe, or an autoheal sidecar such as
+`willfarrell/autoheal` (the comment in `docker-compose.yml`), restarts it.
 
 ## YAML reference
 
@@ -393,6 +440,17 @@ and the single writer and the tag reads are most of what is left.
 ```yaml
 scan:
   concurrency: 0 # [AUDIOSILO_SCAN_CONCURRENCY]
+```
+
+### First-run setup (`setup.*`)
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `setup.skip` | bool, `false` | Marks the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) finished and dismissed at start, for an install set up by script or by this file (a public demo too). It runs after the config's libraries are synced (and, in a default start, after the first-run admin is created), in one transaction (`catalog.SkipSetup`), and fills the step marks as leaving the last step does (see [State](web-ui.md#state)). A flow already finished is left as it is, so a later start never undoes an admin's reopened card. The [first-run banner](web-ui.md#the-first-run-setup-flow) changes with it. Read once at start, with **no console setting**. `AUDIOSILO_SETUP_SKIP` sets it too |
+
+```yaml
+setup:
+  skip: false # [AUDIOSILO_SETUP_SKIP]
 ```
 
 ### Database (`database.*`)
@@ -1034,6 +1092,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_OIDC_ALLOWED_GROUP` | `auth.oidc.allowed_group` | string; locks the console setting |
 | `AUDIOSILO_OIDC_ADMIN_GROUP` | `auth.oidc.admin_group` | string; locks the console setting |
 | `AUDIOSILO_PODCAST_DISCOVERY_ENABLED` | `podcasts.discovery.enabled` | `strconv.ParseBool` (`false`/`0`/… turns it off); read at start |
+| `AUDIOSILO_SETUP_SKIP` | `setup.skip` | `strconv.ParseBool` (`true`/`1`/…); read at start |
 | `AUDIOSILO_SCAN_CONCURRENCY` | `scan.concurrency` | integer, 0-64 (`0` = one per CPU, up to 8); read at start |
 | `AUDIOSILO_DB_MMAP` | `database.mmap` | `auto`, `on` or `off` (any case); any other value stops the start; read at start |
 | `AUDIOSILO_RATE_LIMIT_ADDRESS_RATE` | `rate_limit.address.rate` | number (requests a second); read at start |
@@ -1116,9 +1175,10 @@ place that says, for each key:
 | `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once. Starts or stops the scheduling of feeds, downloads and retention, and gates writes. Reads and present-pin reuse stay core |
 | `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
 
-`podcasts.discovery.enabled`, `upcoming.window_days`, `scan.concurrency`,
-`database.mmap` and the six `rate_limit.*` values have no setting id. Each is read
-at start from the file or its variable and never offered in the console.
+`podcasts.discovery.enabled`, `upcoming.window_days`, `setup.skip`,
+`scan.concurrency`, `database.mmap` and the six `rate_limit.*` values have no
+setting id. Each is read at start from the file or its variable and never offered
+in the console.
 
 Also not in the console:
 

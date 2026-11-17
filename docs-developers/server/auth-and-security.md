@@ -1670,7 +1670,11 @@ it, `clearKidCredentials` clears these in the same transaction:
   sharing off and opts in again;
 - the collections shared between the kid and anyone but their owner, in both
   directions, so no sharer is left with a kid in a list the server would refuse
-  back.
+  back;
+- the `last_ip` of every token the member still holds. It was recorded while they
+  were a grown-up, whose addresses their owner never sees
+  ([`…/members/{id}/devices`](api/reference.md#get-apiv1mehouseholdmembersiddevices)).
+  The next request records a kid's address again.
 
 The kid's signed-in sessions stay.
 

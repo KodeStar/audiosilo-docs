@@ -48,7 +48,7 @@ Most audio formats cast directly. Formats a Cast device can't play, such as Appl
 - Chapters, skipping and speed all work, and your place keeps saving.
 - Smart speed, Voice boost and auto-rewind don't apply while casting.
 - The sleep timer pauses the Cast device when it runs out.
-- You can also pause and play with the TV's remote or the Google Home app.
+- You can also pause and play with the TV's remote or the Google Home app. Whichever you pressed last, on your phone or on the TV, counts. After a skip or a jump on your phone, the book plays or stays paused as you last left it.
 
 **On an iPhone or iPad**, keep the app open while casting. iOS stops AudioSilo soon after you leave it, so your place only saves up to then. When you come back, it catches up.
 
@@ -61,4 +61,5 @@ Tap the **Cast** button again and choose to stop casting. The book comes back to
 ## Good to know
 
 - **Podcast episodes don't cast.** An episode always plays on your device.
+- **If the Cast device loses its access mid-book.** Your server gives each cast its own access to the book. After many casts from one device, it ends the access used longest ago. When the server then refuses the Cast device, the app sends the book again once with new access, at your place. It does this at most twice a minute for a book.
 - **If casting doesn't start**, the book stays on your device and the player says why. Usually the Cast device couldn't reach your server: check the [address and certificate](#what-you-need). If it couldn't connect to the Cast device, check it's on and on the same network.

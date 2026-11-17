@@ -1991,8 +1991,8 @@ A tick is one field moving and nothing else:
 Every other change is shown at once and whole, the held field with it: a play, a
 pause, the end, the next file, another speed, another book, a load, an error, the
 timer's phase. So a component can still act in the background on what the hook
-gives it. `BookEndedListener` starts the next book, `useShakeToExtend` arms from
-the timer's phase, and a hidden tab's title follows play and pause.
+gives it. `useShakeToExtend` arms from the timer's phase, and a hidden tab's
+title follows play and pause.
 
 `getState()`, `setState()` and `subscribe()` on both stores are live as ever:
 

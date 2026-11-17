@@ -130,6 +130,9 @@ These guards keep a route switch correct:
   persisted, and a removed connection's tokens are dropped (`onConnectionRemoved`). What
   a cast token may read and how long it lives are the server's rules (see
   [Cast tokens](../server/auth-and-security.md#cast-tokens)).
+- When the receiver refuses its token, `prepareCast(..., { freshToken })` mints a
+  new one to replace the cached one (see
+  [A receiver refused its token](#a-receiver-refused-its-token)).
 
 The pure rules are `cast-media.ts`:
 
@@ -161,6 +164,54 @@ The web's route picker is now Safari's AirPlay only. `service.web.ts`'s
 `webkitShowPlaybackTargetPicker` (`hasAirPlayPicker`). The output pill beside the Cast
 button is labelled "Audio output" on every platform. It opens AirPlay on iOS and
 Safari, and the media output panel on Android.
+
+### A receiver refused its token
+
+The server keeps a bounded number of cast tokens per sending device and ends the
+least recently used one, which a receiver may still be playing with (see
+[Cast tokens](../server/auth-and-security.md#cast-tokens)). So
+`CastPlaybackService` treats a refusal as a reason to mint once more:
+
+- **A load the receiver refuses** is sent once more with a new token (`freshToken`).
+  An error while a load of ours is in flight counts as a refusal
+  (`ReceiverRefused`), and the load is sent again at the same place.
+- **A receiver that stops on an error mid-book** is loaded again with a new token,
+  playing on when it was. This happens only as the error arrives; an error already
+  shown is the listener's to retry, since the receiver repeats it on every status
+  read.
+- **The reload goes where the phone meant the receiver to be.** The Default Media
+  Receiver skips a refused queue item and tries the next, so its error names the
+  last file it tried. The service keeps `intended`: the place its own load, seek or
+  file jump asked for, or the next file's start once one ended, until the receiver
+  plays or pauses there. The reload goes there (`refusedPlace`). When the error comes
+  `ASKED_MOVE_MS` (8 s) or more after the move, it goes to where the receiver was
+  last seen in that file, if that is further on. In that case, a receiver that
+  settled on another file meanwhile is followed instead: the reload goes to the
+  error's own file.
+- **Stale statuses are hidden for a bounded time.** While the queue is sent again,
+  the files the receiver skips on to are not the book's place, for at most
+  `ASKED_MOVE_MS` after the error, so a load never answered hides nothing for good.
+  An error of the queue the new one replaces is ignored: one naming a URL with the
+  token from before the mint, or a status read begun before the new queue was sent.
+- **A book load refused to the end still stands**, at the place it asked for until
+  a status says where, because the receiver holds the book and a failed load would
+  hand it back to the phone while the receiver plays on. A seek, file jump or play
+  refused that way fails.
+- **Mints are capped.** Within `REMINT_EVERY_MS` (a minute) of a book's last mint,
+  another comes only when the receiver has played with the last token at the
+  intended place, and never a third. A token that never played gets one more mint
+  a minute after it was minted. The count is kept across loads and resets, and
+  another book may mint at once. So a failure with another cause never mints on
+  every try, since each mint can end another receiver's token. A queue refused
+  while a mint is on its way waits on that mint and is sent again after it.
+
+**Play or pause after a reload** follows `playIntent`, the latest settled word
+from either side: this phone's `play`, or its `pause` or `load` (sent paused), or
+the receiver's own `playing`, `paused` or stop (the TV remote, Google Home) or the
+book's end, read when no load of ours is in flight. A session it did not load
+starts from the play state it was taken over in (`adoptQueue`). A queue sent again
+after a refusal, a seek or a skip plays by it, since the receiver reads `buffering`
+or `loading` while it takes one.
 
 ## The drivers
 
@@ -305,9 +356,11 @@ where the TV got to when it comes back (`refresh`).
 
 ## Known limits
 
-- **Not yet tested on a real Cast device.** Every rule above is unit-tested, but
-  discovery, a session, seeks, the Android notification, the iOS background
-  behaviour and the web sender have not been run against a Cast device.
+- **Tested on one real Cast setup only.** Every rule above is unit-tested. Only an
+  Android phone (a Pixel 6a) casting to a Default Media Receiver has been run
+  against a real Cast device, and that run showed how the receiver skips a refused
+  queue item. The iOS sender, its background behaviour and the web sender have not
+  been run against one.
 - iOS: the sender is suspended in the background (above), and there are no iOS
   lock-screen controls for a cast.
 - The receiver shows no chapter list.

@@ -233,6 +233,13 @@ See [Which books have it](./listening/reading-the-ebook.md#which-books-have-it).
 
 **In the app**, the phone probably ran short of memory. Press **Try again**, and close other apps if it keeps stopping.
 
+### The app says an ebook is too large, or there's not enough space
+
+- **This ebook is too large**: the iOS and Android apps open EPUBs of up to 512 MB. The app says so before it fetches a bigger one. The web player has no such limit, so try reading it there.
+- **Not enough space for the ebook**: the device has no room to save the EPUB. To make room, the app first removes the copies of ebooks it keeps for reading, the oldest first. Your downloads are never touched. If that isn't enough, free up space on the device and tap **Try again**.
+
+Your place in the book is kept either way.
+
 ## Downloads
 
 ### My downloads are gone after reinstalling the app

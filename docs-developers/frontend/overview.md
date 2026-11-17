@@ -96,7 +96,9 @@ src/lib/            storage, secure-store, paths, format, hhmm (wall-clock "HH:M
                     connection-id + identity-migration (connection ids,
                     <server_id>.<user_id>, and their one-time key migration),
                     bootstrap (the launch steps, shared with the car task),
-                    register-sw, and other pure helpers
+                    shared-start (a controller started from both the root layout
+                    and the car's stack runs once), register-sw, and other pure
+                    helpers
 modules/audiosilo-player/  the local Expo module (Swift + Kotlin + TS bridge)
 modules/audiosilo-watch/   the phone's watch link: WatchConnectivity on iOS, the Wear
                            Data Layer on Android
@@ -137,6 +139,22 @@ Two conventions keep this layout healthy:
   servers at once, and two of them can share a library id. So durable and cached
   client state keys on `(connectionId, library_id, path)` (see
   [State & data](state-and-data.md)).
+
+## Controllers a car-only session needs
+
+CarPlay and Android Auto can play a book with no root layout mounted: Android's
+headless task, or a CarPlay-first launch on iOS. So anything a car session needs
+is a framework-free controller, never a hook or a component, and both the root
+layout and the car's stack (`startCarStack` in `src/car/car-task.ts`) start it.
+[Native integrations](native-integrations.md#booting-js-without-an-activity) lists
+them.
+
+Each is a **shared start**. `sharedStart(run)` in `src/lib/shared-start.ts`
+returns a start function, and each call to it returns its own release. The first
+call runs `run`, and the last release runs its teardown. Releasing the same holder
+twice does nothing. Two runs at once would race for the same module state, and
+either teardown would clear it under the other. When calls pass different
+arguments, the first call's are used.
 
 ## Where each topic lives
 

@@ -1,6 +1,6 @@
 ---
 title: The end of a book
-description: "Finishing a book: finishBook, BookEndedListener and the end credits, advanceTo and dropFromQueue, the up-next resolver (the queue, then the server's next book, then the folder), sibling resolution, and the automatic download of the book you start."
+description: "Finishing a book: finishBook, startBookEndWatch and the end credits, advanceTo and dropFromQueue, the up-next resolver (the queue, then the server's next book, then the folder), sibling resolution, and the automatic download of the book you start."
 ---
 
 ## Ending a book
@@ -21,7 +21,7 @@ Five pieces then take over:
 | Piece | Role |
 |---|---|
 | [`finishBook()`](#finishbook) (`store.ts`) | The one "this book is done" action. |
-| [`BookEndedListener`](#bookendedlistener) | Notices the end, finishes the book, and either opens the credits or starts the next book. |
+| [`startBookEndWatch`](#startbookendwatch) | Notices the end, finishes the book, and either opens the credits or starts the next book. |
 | [`end-of-book.ts`](#moving-on-end-of-bookts) | Moving on: `advanceTo`, `dropFromQueue` and `useAutoPlayHold`. |
 | [`/finished`](#the-end-credits-finished) | The end-credits screen, with its countdown and Play now. |
 | [`resolveUpNext`](#what-plays-next-up-next-resolverts) | Decides which book plays next. |
@@ -29,7 +29,7 @@ Five pieces then take over:
 ### Podcast episodes
 
 A podcast episode (`FinishedBook.episode`) never opens the end credits.
-`BookEndedListener`'s `endEpisode` drops it from Up next. Then, with auto-play on
+`startBookEndWatch`'s `endEpisode` drops it from Up next. Then, with auto-play on
 and the sleep timer not running, it starts Up next's head only
 (`resolveUpNext(..., {queueOnly: true})`). Otherwise playback stops, and a full
 player left open on the episode closes once the app is active. See
@@ -52,35 +52,46 @@ Then, best-effort and async, it tears the engine down. **Only if
 `autoDeleteFinished` is on and the book's download `status === 'downloaded'`**,
 it also removes the local files through the downloads store.
 
-### `BookEndedListener`
+### `startBookEndWatch`
 
-`BookEndedListener` (`src/components/player/book-ended-listener.tsx`) is a
-headless component mounted once at the root (`RootListeners`,
-`root-services-impl.tsx`). On the web it mounts once the first screen has
-painted. Because it sits at the root, it covers the phone modal and the desktop
-docked player alike.
+`startBookEndWatch` (`src/components/player/book-ended-listener.tsx`) is a
+framework-free controller, so the end of a book runs with no React tree mounted.
+It is a shared start (`sharedStart`, see
+[Overview](overview.md#controllers-a-car-only-session-needs)): the root layout
+starts it (`root-services-impl.tsx`), and so does the car's stack, so a book
+played only from CarPlay or Android Auto is finished too. The root's
+`BookEndedRoute` renders nothing. It only tells the controller which route is on
+screen and gives it the root layout's router, and clears both when it unmounts.
 
-It watches `selectIsEnded` with **transition-edge detection**: a `wasEnded` ref
-makes it fire once per ended book. On the edge from not ended to ended, it
-records whether a sleep timer was running for the book (`useAutoPlayHold`, see
-[Moving on](#moving-on-end-of-bookts)), then calls `finishBook()`. What it does
-next depends on where the app is:
+The controller subscribes to the player store and acts on the **edge** from not ended
+to ended (`selectIsEnded`), once per ended book and only with `nowPlaying` set.
+It runs the flow a microtask later, after the engine's own `ended` handling has
+read `nowPlaying`. It also takes a book that had already ended before it started.
+On Android the activity, and the root layout with it, can close while the service
+plays the book to its end. The book is then finished when the app opens again.
+
+On the edge it records whether a sleep timer was running for the book
+(`useAutoPlayHold`, see [Moving on](#moving-on-end-of-bookts)), then calls
+`finishBook()`. What it does next depends on the route and the app state:
 
 - **The credits are already open** (`/finished`, opened early from the menu).
-  The listener only drops the finished book from Up next. The credits' own
+  The controller only drops the finished book from Up next. The credits' own
   countdown and Play now take over, in the background too.
-- **In the foreground**, the listener navigates to `finishedHref(…, true)`
-  (`/finished?…&auto=1`). It uses `router.replace` when the app is on `/player`,
-  so the credits take the player's place, and `router.push` otherwise.
-- **In the background, it never navigates.** `/player` and `/finished` are root
-  `fullScreenModal`s, and iOS cannot present one from the background; a book
-  that ended while the phone was locked came back to a black screen. Instead the
-  listener drops the finished book from Up next at once. Then:
+- **In the foreground with a route**, the controller navigates to
+  `finishedHref(…, true)` (`/finished?…&auto=1`). It uses `router.replace` when
+  the app is on `/player`, so the credits take the player's place, and
+  `router.push` otherwise.
+- **In the background, or with no root layout mounted** (a car-only session), it
+  never navigates. `/player` and `/finished` are root `fullScreenModal`s, and iOS
+  cannot present one from the background; a book that ended while the phone was
+  locked came back to a black screen. Instead the controller drops the finished book
+  from Up next at once. Then:
   - with `autoPlayNext` on and no sleep-timer hold, it resolves the next book
     (`resolveUpNext`) and starts it **in place** (`advanceTo`), so the mini
-    player or the dock shows it on return;
+    player, the dock or the car shows it;
   - otherwise the credits open once the app is active (`whenActive`,
-    `src/lib/when-active.ts`), unless another book is loaded by then.
+    `src/lib/when-active.ts`) and a root layout reports its route (`whenRouted`),
+    unless another book is loaded by then.
 
 ### Moving on (`end-of-book.ts`)
 
@@ -176,7 +187,7 @@ Every hook runs against the book's own server (`ConnectionScope`).
 
 `resolveUpNext(sources, finished)` is the **one** answer to "what plays after this
 book". The credits' Play now and countdown use it, and so does the background
-auto-play in `BookEndedListener`.
+auto-play in `startBookEndWatch`.
 
 It is framework-free and must not import the playback store. The server reads are
 injected as `UpNextSources`. `up-next-sources.ts` builds the real ones over the
@@ -237,7 +248,7 @@ books off Up next. It acts only on a server the cache knows has `queue`.
 
 **The finished book always leaves Up next where it is finished**, whether or not
 the next one starts. That is when the credits open with `ended`, on a Play now
-within the end tolerance, and in `BookEndedListener` in the background or with
+within the end tolerance, and in `startBookEndWatch` in the background or with
 the credits already open. The queue entry that plays leaves inside `advanceTo`,
 only once it has started.
 

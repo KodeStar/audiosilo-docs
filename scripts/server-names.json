@@ -1,6 +1,6 @@
 {
   "repo": "KodeStar/audiosilo-server",
-  "ref": "05d7607e78b36b3039ab63736431699274d0bbf2",
+  "ref": "820f49eee5af4f1f8add59d6ff2c1f1965a44c69",
   "capabilities": [
     "addresses",
     "admin_ui",
@@ -354,6 +354,8 @@
     "scan",
     "scan.concurrency",
     "server_id",
+    "setup",
+    "setup.skip",
     "tls",
     "tls.cache_dir",
     "tls.cert_file",
@@ -492,6 +494,7 @@
     "AUDIOSILO_BRIDGE_PUBLIC_URL",
     "AUDIOSILO_BRIDGE_SERVER_URL",
     "AUDIOSILO_CORS_ORIGINS",
+    "AUDIOSILO_COUNT_FILE",
     "AUDIOSILO_DB_MMAP",
     "AUDIOSILO_DEMO_ENABLED",
     "AUDIOSILO_DEMO_IDLE_TTL",
@@ -549,6 +552,7 @@
     "AUDIOSILO_RESCAN_ROOT",
     "AUDIOSILO_SCAN_CONCURRENCY",
     "AUDIOSILO_SESSION_DAYS",
+    "AUDIOSILO_SETUP_SKIP",
     "AUDIOSILO_SQLITE",
     "AUDIOSILO_STARTED_AS_USER",
     "AUDIOSILO_TEST_PODCAST_DISCOVERY_ORIGIN",

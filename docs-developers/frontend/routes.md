@@ -249,9 +249,10 @@ The headless listeners come first, then the framework-free controllers:
 
 | Service | What it does | Details |
 |---|---|---|
-| `BookEndedListener` | Drives the end-of-book flow. | [The end of a book](end-of-book.md#ending-a-book) |
+| `BookEndedRoute` | Tells the end-of-book flow the route on screen, so the credits open over it. | [The end of a book](end-of-book.md#startbookendwatch) |
 | `CompanionRevealListener` | Shows the "New in Who's who" toast. | [Player UI](player-ui.md#the-companion-companion) |
 | `ShakeToExtendListener` | Shake to extend. | [The sleep timer](sleep-timer.md) |
+| `startBookEndWatch()` | A shared start that drives the end-of-book flow; the car's stack starts it too. | [The end of a book](end-of-book.md#startbookendwatch) |
 | `startAutoSleep()` | A framework-free controller that arms the nightly sleep timer. | [The sleep timer](sleep-timer.md#auto-sleep-timer-auto-sleepts--auto-sleep-controllerts) |
 | `startDriftWatch()` | The Fell asleep bookmark and the jump back. | [The sleep timer](sleep-timer.md#fell-asleep-drift-controllerts) |
 | `startJumpUndo()` | Undo a jump. | [Player UI](player-ui.md#undo-a-jump-jump-undots) |

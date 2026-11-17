@@ -874,8 +874,8 @@ A book this device holds loaded resumes from its engine's place on every play,
 without asking the server. A place another device saved meanwhile would therefore
 be skipped, then overwritten, since the server is last-write-wins.
 
-`startPlaceReconcile`, started from the root layout, asks the server for the loaded
-book's progress whenever the book is picked up again:
+`startPlaceReconcile`, started from the root layout and the car's stack, asks the
+server for the loaded book's progress whenever the book is picked up again:
 
 - when the app comes to the foreground, or the book's server comes back, while the
   book is loaded and settled;
@@ -883,6 +883,17 @@ book's progress whenever the book is picked up again:
   The store's `onPickedUpAgain` reports it before that play's first save. A play
   reported while a load holds the store (`loadingBook`) is told once that hold is
   released (`pickUpDue`).
+
+**A Play press in the app waits for the check.** In the foreground, `toggle()`
+tells the check before the engine starts and waits for it up to `PICK_UP_WAIT_MS`
+(1.5 s, `pickUpBeforePlay`), so a move lands before any of the old place sounds.
+The snapshot shows `loading` meanwhile, so the Play control shows its spinner. A
+tap on it then pauses. Any other press joins the same wait, and the latest press
+decides whether the engine starts. A check slower than the wait goes on while the
+book plays. A press from the lock screen, a headset or the car in the background
+doesn't wait: the engine is already playing there, so the move comes as early as
+the answer does. Only one check runs at a time. A press waits for a check already
+running, such as one started when the app came to the front.
 
 While the check is out, the store holds its saves (`holdSaves`, 5 s at most), so the
 stale place is never written.
@@ -900,8 +911,8 @@ move is `seekBook`, so the resume floor and the undo chip see it, and a toast
 the row it moved to counts as seen. On a `listening_sync` server, its version is
 acknowledged (`ackVersion`, see the next section).
 
-This module is the only place that reconciles a loaded book. Never make `toggle()`
-look anything up.
+This module is the only place that reconciles a loaded book. `toggle()` only tells
+it, through `onPickedUpAgain`, and never looks anything up itself.
 
 ### Offering another device's place (Sync v2)
 

@@ -577,7 +577,7 @@ store ([Offline](offline.md#an-episode-not-on-its-server-yet)).
   cover podcasts. An episode started while a book is cast is refused before a token
   is asked (`CastBlockedError` `episode`, toast `cast.blocked.titleEpisode`), and a
   server's `403 not_a_book` reads the same. See [Chromecast](chromecast.md).
-- **Open the end credits.** `BookEndedListener` drops the episode from Up next.
+- **Open the end credits.** `startBookEndWatch` drops the episode from Up next.
   With auto-play on and not under the sleep timer, it starts Up next's head only
   (`resolveUpNext(..., {queueOnly: true})`), never a series or folder next.
   Otherwise playback stops, and a full player left open on it closes once the app is

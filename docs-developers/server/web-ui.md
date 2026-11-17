@@ -1999,6 +1999,10 @@ base URL: `public_url`, else one derived from `tls.mode` and `bind`.
  (API: POST /api/v1/auth/redeem or /api/v1/auth/login.)
 ```
 
+With [`setup.skip`](configuration.md#first-run-setup-setup) the first line reads
+`Admin console:` instead of `Finish setting up:`, since the same start finishes the
+flow (`catalog.SkipSetup`, once the config's libraries are synced).
+
 Until an admin signs in with a password, each later start prints a reminder with
 the `reset-admin` command instead (see
 [Configuration](configuration.md#cli-flags-cmdaudiosilo)). The console's sign-in
@@ -2058,6 +2062,10 @@ server marks every step still without one in the same write (`folder` `done`
 once a books library exists, the rest `skipped`), so the Overview card lists
 what is left and a step another tab recorded keeps its own. Once the flow is finished, a step reopened from the card goes on to the
 next step still skipped (`nextStep`), then back to Overview.
+
+A server started with [`setup.skip`](configuration.md#first-run-setup-setup)
+finishes and dismisses the flow itself, filling the marks the same way, so
+`useSetupRedirect` never opens it.
 
 Every settings write goes through `unlockedPatch`, which leaves out any setting
 that the envelope's `locked` names. The server would refuse such a setting with
