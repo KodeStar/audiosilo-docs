@@ -34,6 +34,11 @@ violation. Skip it only when `admin-ui/` is untouched. Without a build,
 `internal/web/adminui`'s `TestEmbeddedBuild` skips instead of checking the
 embedded console.
 
+The plain `go test ./...` includes the wire golden test (`TestWireGolden`, see
+[The wire goldens](#the-wire-goldens)). A change that alters an envelope the
+player reads fails it until the golden is rewritten with
+`go test ./internal/api -run TestWireGolden -update`.
+
 **audiosilo-frontend**
 
 ```sh
@@ -41,15 +46,34 @@ cd ~/dev/audiosilo/audiosilo-frontend
 npx tsc --noEmit && npm run lint && npm run format && npm test
 # after a dependency change, also:
 npx expo install --check && node scripts/check-native-dupes.mjs
+# after a server change to a wire golden (CI runs it on every PR):
+npm run wire:check
 ```
 
 `npm run format` is `prettier --check .`. It **fails** on unformatted files
 rather than fixing them. Auto-fix locally with `npx prettier --write .` before
 committing.
 
+`npm test` includes the wire parity test (`src/api/wire-parity.test.ts`), which
+checks `types.ts` against the copy of the server's goldens in
+`src/api/__wire__/`. `npm run wire:check` checks that copy still matches the
+server commit it pins: it reads GitHub, or a local checkout with
+`-- --server <dir>`.
+
+**audiosilo-docs**
+
+```sh
+cd ~/dev/audiosilo/audiosilo-docs
+npm run build
+```
+
+The build's `prebuild` runs the admonition check and the stale-name check (see
+[The stale-name check](#the-stale-name-check)), then the build fails on broken
+links, anchors and images.
+
 ## What CI actually runs
 
-The workflows for the server, player and metadata repos, verified against
+The workflows for the server, player, docs and metadata repos, verified against
 `.github/workflows/`:
 
 ### audiosilo-server
@@ -108,8 +132,15 @@ and the in-process probe's live comparison run in both jobs.
 
 | Workflow | Name | Triggers | What it does |
 |---|---|---|---|
-| `ci.yml` | `ci` | every PR; push to `main` | Job **check** runs, in order: Node from `.nvmrc`, `npm ci`, `npx expo install --check` (the Expo SDK pins; `expo.install.exclude` in `package.json` holds the one deliberate drift, AsyncStorage 3.x), `node scripts/check-native-dupes.mjs` (one copy of each native module), `npx tsc --noEmit`, `npm run lint`, `npm run knip -- --no-exit-code` (a report of unused files, exports and dependencies that never fails the run), `npm run format` (prettier `--check`), `npm test -- --ci --coverage`. |
+| `ci.yml` | `ci` | every PR; push to `main` | Job **check** runs, in order: Node from `.nvmrc`, `npm ci`, `npx expo install --check` (the Expo SDK pins; `expo.install.exclude` in `package.json` holds the one deliberate drift, AsyncStorage 3.x), `node scripts/check-native-dupes.mjs` (one copy of each native module), `npx tsc --noEmit`, `npm run lint`, `npm run knip -- --no-exit-code` (a report of unused files, exports and dependencies that never fails the run), `npm run format` (prettier `--check`), `npm run wire:check` (the wire goldens' copy matches the server commit it pins, read from GitHub; see [The wire goldens](#the-wire-goldens)), `npm test -- --ci --coverage`. |
 | `web.yml` | `web image` | push to `main`; `v*` tags; manual dispatch | `npx expo export --platform web` (built with `baseUrl=/web`) and publishes the static export as `ghcr.io/<owner>/audiosilo-web` (`:latest` from `main`, semver from tags). |
+
+### audiosilo-docs
+
+| Workflow | Name | Triggers | What it does |
+|---|---|---|---|
+| `ci.yml` | `ci` | every PR; push to `main` | Job **build**: `npm ci`, `npm run typecheck`, then `npm run build`, whose `prebuild` runs the admonition check, the stale-name check's own tests and the [stale-name check](#the-stale-name-check). |
+| `deploy.yml` | `deploy` | push to `main`; manual dispatch | Builds the site and publishes it to GitHub Pages. |
 
 ### audiosilo-meta
 
@@ -151,11 +182,50 @@ runs the Go-gated jobs. `data/go.mod` is the nested, code-free module that
 keeps this module's zip small (see
 [Package layout](../meta/overview.md#package-layout)).
 
-:::note[CI can't see cross-repo drift]
-Each repo's CI is independent, so a server-side wire change with no matching
-frontend change sails through both pipelines green. The
-[cross-repo checklist](cross-repo-changes.md) is what covers that gap.
-:::
+## The cross-repo checks
+
+Each repo's CI is independent, so a check in one repo can't see another repo's
+code. Two checks cover the seam anyway, by committing a snapshot of the server
+in the repo that depends on it, pinned to a server commit. The
+[cross-repo checklist](cross-repo-changes.md#the-order-for-a-wire-change) gives
+the order to run them in.
+
+### The wire goldens
+
+They catch drift between the server's JSON and the player's `types.ts`:
+
+- **The server's goldens.** `internal/api/wire_golden_test.go` calls 20
+  envelopes the player reads (the server info signed in and anonymous, pairing
+  and exchange, the user, libraries, a folder listing, books, people, series,
+  search, a book, chapters, progress, listening sync, bookmarks, community
+  metadata, upcoming releases and listening in the house) against a seeded
+  library. It compares each answer's shape with
+  `internal/api/testdata/wire/<name>.json`. A shape records each field's name
+  and JSON type, never a value, so ids and times don't churn it. A removed,
+  retyped or added field fails with its path. An empty array, an empty object
+  or a lone `null` fails too, unless the case lists that path as empty, so no
+  field passes unchecked.
+- **The player's parity test.** `src/api/__wire__/` is a byte copy of those
+  goldens, made by `npm run wire:sync`, with `source.json` pinning the server
+  commit. `src/api/wire-parity.test.ts` reads `types.ts` with the TypeScript
+  compiler and fails on a required field the server does not send, a field sent
+  with a JSON type the type does not allow, and a field the server sends that
+  `types.ts` does not know. A field the player deliberately does not read goes
+  in the test's `UNMIRRORED` list with the reason.
+- **`wire:check` in the player's CI.** It compares the copy with the goldens at
+  the pinned commit by git blob id, so a hand-edited golden fails.
+
+The goldens cover the player's envelopes only. The Bridge's `internal/link` and
+the admin console's `admin-ui/src/api/types.ts` are still checked by review.
+
+### The stale-name check
+
+The docs build fails when a page names, in backticks, a server capability flag,
+API route, config key or `AUDIOSILO_` variable the server no longer has. What the
+server has is `scripts/server-names.json`, read by `npm run names:sync` at a
+pinned server commit, so the build needs no network. How it reads a page and
+where a deliberate exception goes:
+[Maintaining these docs](documentation.md).
 
 ## The green-baseline lint policy
 
@@ -306,6 +376,9 @@ catches the drift, so read it before adding code. The digest:
 - **Every** field is mirrored in `types.ts`, even ones the client doesn't read
   yet.
 - Tests on **both** sides.
+- The server's wire golden is rewritten (`-update`), the player's copy synced
+  (`npm run wire:sync`) and the docs' names snapshot re-pinned
+  (`npm run names:sync`), in that order.
 - `CROSS-REPO.md` is updated if the seam changed.
 
 Full walkthrough: [Landing a cross-repo change](cross-repo-changes.md).

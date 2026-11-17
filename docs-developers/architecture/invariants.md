@@ -130,10 +130,11 @@ the wire format (a field rename, a new envelope, changed semantics) is made in
 
 **Why.** Codegen was deliberately rejected. The surface is small, and hand-written
 types stay idiomatic on each side (Go structs on one, TypeScript unions on the
-other). The cost is that nothing *mechanical* catches drift. A renamed Go JSON tag
+other). The cost is that the compilers can't catch drift. A renamed Go JSON tag
 compiles fine in both repos and fails only at runtime, as an `undefined` field. So
-the discipline is procedural: paired changes, paired tests, and the seam catalog in
-the workspace `CROSS-REPO.md`.
+the discipline is paired changes and paired tests, the seam catalog in the
+workspace `CROSS-REPO.md`, and the wire goldens, which check the player's main
+envelopes mechanically.
 
 **What breaks if violated.** The app breaks at runtime, and no build or test
 reports it. TypeScript trusts `types.ts`, `types.ts` no longer matches the wire,
@@ -148,6 +149,10 @@ book that "has no chapters".
 - By tests: `internal/api/*_test.go` on the server and `src/api/client.test.ts` on
   the frontend. A shape change without a matching test update fails the
   corresponding CI.
+- By the wire goldens: the server's `TestWireGolden` records the shape of 20
+  player envelopes, and the player's parity test checks `types.ts` against a
+  pinned copy of them (`npm run wire:check` in its CI). See
+  [The wire goldens](../contributing/gates-and-ci.md#the-wire-goldens).
 
 ## 5. Secure by default
 

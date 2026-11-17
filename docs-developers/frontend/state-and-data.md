@@ -121,8 +121,12 @@ Two other errors cover a request that gets no answer:
 shapes (`ServerInfo`, `User`, `Book`, `Chapter`, `ChaptersResponse`,
 `Progress`, `Favourite`, …). There is **no codegen**. A wire-format change must
 touch the Go handler *and* this file, plus `client.ts`, `hooks.ts` and tests on
-both sides, in one logical change. This rule is the core of the
-[cross-repo contract](../architecture/cross-repo-contract.md), and
+both sides, in one logical change. `src/api/wire-parity.test.ts` checks this
+file against a pinned copy of the server's wire goldens (`src/api/__wire__/`,
+`npm run wire:sync`), so a field the server sends that a type does not know
+fails the tests (see
+[The wire goldens](../contributing/gates-and-ci.md#the-wire-goldens)). This rule
+is the core of the [cross-repo contract](../architecture/cross-repo-contract.md), and
 [making cross-repo changes](../contributing/cross-repo-changes.md) describes the
 workflow.
 
