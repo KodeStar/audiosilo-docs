@@ -64,7 +64,7 @@ The app adds `https://` to the address. Type `http://` yourself for a server tha
 
 If the server can't be reached, check the address for typos and that the server is on. A home address like `192.168.1.20:8080` only works on your home network.
 
-The web player has no scanner. Instead, tap **I have a pairing link** and paste the link.
+The web player has no scanner. Instead, tap **I have a pairing link** and paste the link. It's in the same places as [your QR code](#scanning-the-qr-code-with-your-phone).
 
 An **invite code** looks like `9M4K-P2TQ-WX7V-3RHD`. Many accounts have no password, which is normal. You can [set one](account.md#password) whenever you like.
 
@@ -124,7 +124,7 @@ To listen away from home at all, the server must be reachable from the internet.
 ## Good to know
 
 - On a device in [kids mode](kids-mode.md#links-in-kids-mode), the app doesn't open links or QR codes. It asks for a grown-up.
-- A link to a book, opened while you're signed out, takes you through signing in and then to the book.
+- A link to a book, opened while you're signed out, takes you through signing in and then to the book. That still holds if you sign in by scanning a QR code for the same server.
 - A server behind a sign-in proxy, such as Cloudflare Access, needs the app to send extra headers. Tap **Proxy headers** on the connect screen before you continue. See [Behind a sign-in proxy](../getting-started/remote-access.md#behind-a-sign-in-proxy).
 - Some servers offer a guest demo. The connect screen then shows **Try the demo**. There is also a [public demo](../demo.md).
 - A pairing code made on another device works once, for 10 minutes. A link from an invite works for as many devices as the invite has uses left.
