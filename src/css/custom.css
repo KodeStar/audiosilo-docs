@@ -584,13 +584,9 @@ pre {
   }
 }
 
-/* 13. Reduced motion: with the system's reduce-motion setting on, colour and
-   border changes apply at once and in-page links jump instead of scrolling. */
+/* 13. Reduced motion: with the system's reduce-motion setting on,
+   transitions and animations apply at once. */
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
   *,
   *::before,
   *::after {
