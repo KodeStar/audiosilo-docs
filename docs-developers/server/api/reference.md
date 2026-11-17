@@ -651,7 +651,7 @@ server's addresses. The console signs a non-admin back out at once.
 |---|---|
 | `400` | a body that isn't valid JSON. The cookie stays, so the sign-in can still be finished within its minute |
 | `401` | `code: "oidc_no_sign_in"`: no finished sign-in in this browser (no cookie). Nothing is charged |
-| `401` | `code: "oidc_sign_in_expired"`: the sign-in was used, expired after 60 seconds, or its account is disabled or has become a household member or demo account. Charged to the single sign-on lockout |
+| `401` | `code: "oidc_sign_in_expired"`: the sign-in was used, expired after 60 seconds, or its account is disabled or has become a household member or demo account. Charged to the single sign-on lockout. Also while single sign-on can't run (turned off since the callback): then nothing is charged and the token is left to expire |
 | `429` | the address is locked out (10 failures in 15 minutes, shared with the callback), with `Retry-After`. The cookie stays |
 
 Every answer but a `400` or a `429` clears the cookie, so the finish can't be
@@ -9754,7 +9754,7 @@ effect. Lists are never `null`.
 | `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |
 | `signin.*` | [single sign-on](../configuration.md#single-sign-on-authoidc). The provider fields (`enabled`, `name`, `issuer`, `client_id`, `scopes`, `username_claim`, `groups_claim`, `ca_file`) are read-only restart settings (`400 setting_read_only`). `auto_create`, `allowed_group` and `admin_group` apply at the next sign-in |
 | `signin.client_secret_set` | read-only: whether a client secret is configured. The secret itself is never sent |
-| `signin.scopes_default`, `signin.username_claim_default`, `signin.groups_claim_default` | read-only facts: what an empty provider field stands for |
+| `signin.scopes_default`, `signin.username_claim_default`, `signin.groups_claim_default` | read-only facts: what an empty provider field stands for. `scopes_default` holds `groups` only while `admin_group` is set or `allowed_group` is with `auto_create` on |
 | `modules.<id>` | each [managed module's](../modules.md) toggle, by module id (`false` by default; config key `modules.<id>.enabled`, variable `AUDIOSILO_MODULES_<ID>_ENABLED`). Applies at once, with no restart. [`GET /admin/modules`](#get-apiv1adminmodules) says more about each |
 | `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it (before 2.7.0 also `"launcher"`, a launcher override, which only the archived desktop manager set) |
 | `restart_settings` | the setting ids read only at start (fixed) |

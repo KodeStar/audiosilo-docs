@@ -897,7 +897,7 @@ is `oidc`. The flow, the decisions and the safeguards are in
 | `auth.oidc.client_id` | string, `""` | The client registered at the provider |
 | `auth.oidc.client_secret` | string, `""` | The client's secret. Never in `GET /admin/settings` (only `signin.client_secret_set`), never logged. Empty with no file is a public client, which authenticates with PKCE alone |
 | `auth.oidc.client_secret_file` | path, `""` | A file holding the secret, for Docker secrets. Its trailing line break is dropped. Setting both this and `client_secret` is a problem, as is a file that can't be read, is empty or is over 4 KiB |
-| `auth.oidc.scopes` | list, `[openid, profile, email, groups]` | The scopes asked for. `openid` is always asked, first and once |
+| `auth.oidc.scopes` | list, unset | The scopes asked for, exactly as listed. `openid` is always asked, first and once. Unset, `openid`, `profile` and `email`, plus `groups` only while `admin_group` is set or `allowed_group` is with `auto_create` on (worked out at each sign-in's start) |
 | `auth.oidc.username_claim` | string, `preferred_username` | The claim a new account's username comes from |
 | `auth.oidc.groups_claim` | string, `groups` | The claim that lists the person's groups. A namespaced name such as `https://example.org/groups` is allowed |
 | `auth.oidc.ca_file` | path, `""` | A PEM file of certificates trusted for the provider, beside the system's (a provider on a private CA) |
@@ -1216,7 +1216,7 @@ The normalizers, per setting:
 | `household.max_members` | an integer from 1 to 50 (checked by `Validate`) |
 | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` (`backup.ParseSchedule`), stored in canonical form |
 | `backups.keep` | an integer from 1 to 365 (checked by `Validate`) |
-| `auth.oidc.allowed_group`, `auth.oidc.admin_group` | trimmed; at most 256 characters, no control characters; `""` allowed |
+| `auth.oidc.allowed_group`, `auth.oidc.admin_group` | trimmed; at most 256 characters and 256 bytes, no control characters; `""` allowed |
 
 Every list is trimmed, with empty entries and repeats dropped, and holds at
 most 50 entries.
