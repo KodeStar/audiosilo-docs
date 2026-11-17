@@ -1407,8 +1407,9 @@ the count past 16. Files on every other mount read as usual.
 filesystem call, so it answers at once even for a path on a hung share:
 
 - The table is `/proc/self/mountinfo` on Linux and `getfsstat` with
-  `MNT_NOWAIT` on macOS. It is read again every 10 seconds on a goroutine of its
-  own, and a re-read that fails keeps the last table.
+  `MNT_NOWAIT` on macOS. A lookup once the last read is 10 seconds old (`tableTTL`)
+  reads it again on a goroutine of its own, the lookups keeping to the last read
+  meanwhile, and a re-read that fails keeps the last table.
 - A path belongs to the longest mount point above it, by the path's text.
 - A mount's key is the filesystem it is of (`Mount.Device`: mountinfo's
   `major:minor`, the fsid on macOS), not its mount point. A share unmounted and
@@ -1416,7 +1417,8 @@ filesystem call, so it answers at once even for a path on a hung share:
   of one share (two libraries of one NAS inside a container) share one cap. The
   mount point still names the mount in the log.
 - On another OS, or when the first read of the table fails, every path is on
-  its volume root (`/`), which gives one cap for the whole process.
+  its volume root (`/`, or its drive on Windows), which gives one cap for the
+  whole process (one per drive on Windows).
 
 The scan's root check still catches a mount that is dead before discovery
 (see [The job queue](#the-job-queue)). These bounds cover a share that hangs
