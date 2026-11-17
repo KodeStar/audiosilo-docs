@@ -319,10 +319,19 @@ A failed run marks the entry `error` with
 partial, and a retry writes over it. `kept` is the share of the book's files that
 finished (0..1), so a single-file book keeps nothing.
 
-A retry walks the specs in order and **skips** a file the manifest lists with the
-same `relPath`, saved under that spec's index, that still exists on disk. The on-disk
-name is the file's index, so a file only counts where it was saved. A retry that fails
-again keeps the files saved further on listed.
+A retry first reads the book's item and chapters afresh (`download`, with
+`staleTime: 0`). The caller's lists come from the query cache, kept up to 30
+minutes, or from the failed download's saved copy, and either can still list a file
+the server has since removed. The read is `fetchFailFast`, so offline it fails at
+once and the retry goes on with the lists it was given.
+
+It then plans by path (`retryPlan`). It walks the specs in order and **skips** a
+file the manifest lists with the same `relPath` that still exists on disk, wherever
+the server's list now puts it, under the name it was saved by. So a list that
+gained, lost or reordered a file fetches only the new files. Each file still to
+fetch gets a name no kept file holds: its index when that is free, else the next
+free number past the list (`storedIndex` reads either). A retry that fails again
+keeps listed the kept files of the paths it never reached.
 
 `runOne` lists each finished file in the persisted entry as it lands, so this
 survives a restart too (`reviveEntry` in
@@ -540,9 +549,10 @@ Hydrate runs these steps:
    The engines can't resume a half-written file, so Retry starts that file again and
    skips the rest. Keeping these entries needed no engine or storage format change.
 
-   A kept list can have gaps, so a file is found by the index its stored name says
-   (`storedIndex`), else by its place in the list. `relocateEntry` and a retry both
-   read it that way.
+   A kept list can have gaps, so at launch a file is found by the index its stored
+   name says (`storedIndex`), else by its place in the list (`relocateEntry`). A
+   retry finds a kept file by its path instead (see
+   [Errors keep the finished files](#errors-keep-the-finished-files)).
 
    While an identity move is pending (`identityMovePending`), an entry is kept
    exactly as stored: never trimmed, dropped or deleted. The files may sit under the

@@ -884,6 +884,17 @@ book's progress whenever the book is picked up again:
   reported while a load holds the store (`loadingBook`) is told once that hold is
   released (`pickUpDue`).
 
+**A Play press in the app waits for the check.** In the foreground, `toggle()`
+tells the check before the engine starts and waits for it up to `PICK_UP_WAIT_MS`
+(1.5 s, `pickUpBeforePlay`), so a move lands before any of the old place sounds.
+The snapshot shows `loading` meanwhile, so the Play control shows its spinner. A
+tap on it then pauses, and any other press joins the same wait; the latest press
+starts the engine. A check slower than the wait goes on while the book plays. A
+press from the lock screen, a headset or the car in the background waits for
+nothing: there the engine is already playing, so the move comes as early as the
+answer does. One check is out at a time, and a press waits for the one already
+out, as when the app coming to the front started it.
+
 While the check is out, the store holds its saves (`holdSaves`, 5 s at most), so the
 stale place is never written.
 
@@ -900,8 +911,8 @@ move is `seekBook`, so the resume floor and the undo chip see it, and a toast
 the row it moved to counts as seen. On a `listening_sync` server, its version is
 acknowledged (`ackVersion`, see the next section).
 
-This module is the only place that reconciles a loaded book. Never make `toggle()`
-look anything up.
+This module is the only place that reconciles a loaded book. `toggle()` only tells
+it, through `onPickedUpAgain`, and never looks anything up itself.
 
 ### Offering another device's place (Sync v2)
 

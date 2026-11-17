@@ -465,7 +465,9 @@ On the JS side, `index.ts` (the `package.json` `main`) imports `src/car/register
 `AppRegistry.registerHeadlessTask`, and the task's code loads only when it runs. Elsewhere
 the file is empty.
 
-`runCarTask` (`car-task.ts`) does four things:
+`runCarTask` (`car-task.ts`) does four things. The first three are `startCarStack`, which
+iOS runs too (`startCarWork`) when a car connects, so a CarPlay-first launch gets the same
+controllers:
 
 1. It runs `bootstrapPlayback()`, the root layout's launch steps as one memoised run:
    - storage migration, the connection identity migration included;
@@ -473,9 +475,20 @@ the file is empty.
    - hydrating session, settings, downloads, series orderings, library selection and
      profiles;
    - the listener's language, for the snapshot's labels.
-2. It starts the two app-lifetime controllers that the root layout would. These are address
-   routing, so a server paired at home is reached through its away address from the car, and
-   the place reconcile. Both are shared starts.
+2. It starts the app-lifetime controllers that a car-only session needs and the root layout
+   would start (`startAppControllers`):
+   - address routing, so a server paired at home is reached through its away address from
+     the car;
+   - the place reconcile and the listening sync;
+   - the end-of-book flow (`startBookEndWatch`), so a book that ends with only the car
+     showing is marked finished, leaves Up next and plays on into the next one (see
+     [The end of a book](end-of-book.md#startbookendwatch));
+   - keep-ahead's downloads, the chapter and read-along refreshes of downloaded books,
+     and the iOS widget sync.
+
+   Each is a shared start (`sharedStart`, see
+   [Overview](overview.md#controllers-a-car-only-session-needs)), so the root layout's
+   later starts add nothing.
 3. It starts the car sync.
 4. It resolves once **no car is connected** and the player has been idle for
    `CAR_TASK_IDLE_MS` (30 s), or at once when the car leaves while the player is idle.
