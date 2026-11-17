@@ -1927,10 +1927,12 @@ one library on one server.
 **The car** has no picker and no state to show for a server, so it never waits on
 one (`resolveCarLibrary`). Where `resolveLibrary` would wait (no pick, or a pick
 whose server answered that it shares nothing), the car lists the first server
-whose list is read and has a library. The car remembers nothing, so it goes back
-to the first server once that server answers. Like the Library, the car never
-replaces a pick whose server has not answered, or still has a library, with
-another server's library.
+whose list is read and has a library. The car controller passes the library it
+listed last while connected as `shown` (`carListed`), so the tab stays on it for
+the drive when the first server answers later. It is forgotten when the car
+disconnects or the person listening changes, and the next drive starts afresh.
+Like the Library, the car never replaces a pick whose server has not answered, or
+still has a library, with another server's library.
 
 ### Other device preferences
 
@@ -2041,8 +2043,10 @@ The offline-safe write path for listening progress:
 - **Offline replay queue.** If the server is known to be unreachable, the save is
   queued locally (`audiosilo.progressQueue`, the latest save per
   `(connectionId, libraryId, path)`) without firing a doomed request. A network
-  failure en route also queues. 4xx responses are treated as unrecoverable and
-  dropped, since retrying forever can't help an auth or forbidden error.
+  failure en route also queues. A 4xx is treated as unrecoverable and dropped,
+  since retrying forever can't help an auth or forbidden error. A `408` or a `429`
+  (the server's rate limit) says "not now", so it queues like a failed request
+  (`isRefusedForGood` in `src/api/client.ts`).
   Read-modify-write access to both the queue and the mirror is serialized through
   in-module promise locks, so a flush and a concurrent save can't clobber each
   other.

@@ -351,10 +351,15 @@ listening place. It is separate from listening progress on purpose. It has:
   save's own connection, when the reader mounts and after any save that reaches the
   server. While the connection is marked unreachable, saves go straight to the
   queue.
+- **one lock** (`withQueueLock`) for every send, the queue's replays and the open
+  reader's saves alike, and for every change of the queue. A save that is sent
+  drops a queued save of the same book made before it, so a replay never follows
+  it with an older place.
 - **a durable mirror.** `audiosilo.readingMirror` and `audiosilo.readingQueue` are
   scoped storage keys. They are in `ID_DOCUMENTS` for the identity migration and
   are dropped with their connection.
-- **a 4xx dropped**, because it can never succeed.
+- **a 4xx dropped**, because it can never succeed. A `408` or a `429` is queued
+  like a failed request (`isRefusedForGood`).
 
 The screen saves two seconds after the reader rests on a page (`progress` messages
 are debounced), and at once on close or when the app goes to the background. The
@@ -386,6 +391,15 @@ only when no row was ever seen.
   acknowledgement and the reader's captures run one after another in the order
   asked (`withReaderPlaceLock`), so the save a Jump's move makes is made on the
   acknowledged version.
+- **A save captured on 0** (`saveReaderPlace`, sent once every save before it is
+  answered) is made on the version that an answer to **this device's own** save
+  acknowledged meanwhile. The mirror marks such a version `own`. A version adopted
+  meanwhile (Jump, Stay, the reader already there) is not used, so a page captured
+  before a Jump, sent on the place jumped to, can't move that place back. Sent on 0,
+  it diverges, and the server keeps the further place.
+- **The answer's `seen`** also counts the very version this device acknowledged,
+  since one version is one write. A late answer carrying a row already adopted
+  never offers it again.
 - **The offer** (`jumpOffer`) is judged against the page on screen. When a save's
   answer kept a row this device never saw, whose place differs from the current one,
   a non-blocking card says `On {device} you were at {percent}%. Jump there?` with
@@ -401,6 +415,12 @@ only when no row was ever seen.
 - this device's queued save.
 
 They pick the queued save when the server will keep it (diverged and further on).
+When the reader opens at a local place, a server row this device never saw comes
+back as `unseen`, unless a save of the book is queued (the reader replays it as it
+opens, and that answer says what the server kept). The screen takes `unseen` as the
+first save's answer, so Jump is offered at the open, for example after an offline
+session's queue was replayed from Home while no reader was open. A newer answer heard
+while the place was looked up wins over it.
 With no answer from the server, the lookup falls back to this device's places. With
 none of those either, it fails (the `fetch` notice; Try again looks again). It never
 opens at a guessed start whose save could replace a place read elsewhere. A 401
