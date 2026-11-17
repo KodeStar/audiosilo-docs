@@ -86,7 +86,8 @@ then by title and author. The review lists each skipped book with the reason:
 | Its discs are separate books here | Use **Join into one book** in [Library health](health.md#the-kinds-of-issue) and let the library rescan. |
 
 Then import that person again. A new import replaces the previous one, so
-nothing is counted twice.
+nothing is counted twice. That holds even when it comes from another
+Audiobookshelf account or server.
 
 ## Match your books after an import
 
@@ -120,7 +121,8 @@ want to replace it.
 
 **Past imports** lists every import. **Undo** removes the sessions and
 bookmarks it added and puts the person's progress back. Anything the person
-changed since, such as listening further, is kept.
+changed since, such as listening further, is kept. A device that already
+synced the imported place can send it back the next time it syncs.
 
 Undo also removes the match hints that import brought. Each book keeps the hint
 of the import applied last, so undoing the latest import removes its hints even
