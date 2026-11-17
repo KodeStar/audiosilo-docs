@@ -60,6 +60,10 @@ If a download stops (the connection dropped, say), it stays in **In progress** a
 
 Many audiobooks are made of several files. Files that finished before the download stopped are kept, so **Retry** fetches only the missing ones. This survives closing the app too.
 
+If some files of a downloaded book disappear from your device, the book moves back to **In progress** and says some of its files are no longer on this device. **Retry** fetches only those files. A book that [Keep the next books ready](#keep-the-next-books-ready) downloaded is removed instead, and downloaded again while it's still one of your next books.
+
+If a streamed book stops with **Retry** and its download finishes meanwhile, **Retry** plays it from the download, at the same place.
+
 ## Downloads belong to their server
 
 Each download belongs to the server you downloaded it from, and to the person who downloaded it. If you [share the device](profiles.md), the Downloads page shows only your own.

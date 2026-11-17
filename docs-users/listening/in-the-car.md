@@ -33,7 +33,7 @@ The car shows up to four lists:
 - **Continue listening** - books you're part-way through, on every server.
 - **Up next** - your [Up next](up-next.md) queue.
 - **Downloads** - books and podcast episodes downloaded to the phone.
-- **Library** - the most recently added books in the library your phone's Library tab is on. If you never chose one, the car lists the first of your servers it can reach.
+- **Library** - the most recently added books in the library your phone's Library tab is on. If you never chose one, the car lists the first of your servers it can reach, and keeps that library until the car disconnects.
 
 When several people share the phone ([profiles](profiles.md)), the car shows only the books of the person listening now.
 
@@ -46,6 +46,8 @@ When the person listening is in [kids mode](kids-mode.md), the car shows only th
 Tap a book to play it from your saved place. It uses the same speed and settings as on the phone.
 
 Pick a [downloaded](offline-downloads.md) book for a drive through places with no signal.
+
+On Android, the car's play button resumes a downloaded book even after Android has closed the app. See [Lock-screen and headphone controls](playback.md#lock-screen-and-headphone-controls).
 
 | | Android Auto | CarPlay |
 |---|---|---|
