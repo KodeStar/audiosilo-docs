@@ -195,8 +195,9 @@ Conventions that carry the design:
 ## The page and its API
 
 The Bridge serves its own page and a small JSON API under `/api` on its `listen`
-address (`:8091`). The page's icon is `public/favicon.svg`, also in the placeholder
-page.
+address (`:8091`). `public/favicon.svg` is the logo's one source: the page's icon
+and the wordmark's glyph. The placeholder page's byte copy is pinned to it by
+`internal/web`'s test.
 
 The page follows the system colour scheme, dark by default. Under
 `prefers-color-scheme: light`, `index.css` redefines the brand tokens and the state

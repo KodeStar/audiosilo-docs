@@ -1081,7 +1081,8 @@ The variables are `Author`, `Series`, `Title`, `TitleShort`, `Seq`, `PaddedSeq`,
 
 The server also refuses a template over 500 bytes, a control character, a leading
 `/`, a `..` segment and a hidden, dot-led segment (the scan skips those). The
-Bridge parses the template again when it places, and allows up to 1024 bytes.
+Bridge parses the template again when it places, and takes the server's bound of
+500 bytes in the job's params too.
 
 A rendered last segment ending `.m4b`, `.m4a` or `.mp4` names the file. Anything
 else is a folder, and the title's file name (`<title>.m4b`,
