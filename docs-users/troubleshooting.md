@@ -204,7 +204,7 @@ A book you deleted stays listed until every folder reads again. If one folder or
 
 ### "Couldn't read the files" says the drive or share is not answering
 
-The drive or share holding the book stopped answering. **Read the files again** gives up after about 10 seconds, and nothing changes on disk. A book that is starting to play gives up after 45 seconds with an error. Check that the share is mounted and the disk is awake, then try again.
+The drive or share holding the book stopped answering. **Read the files again** gives up after about 10 seconds and keeps the book as it was. A book that is starting to play gives up after about 45 seconds with "Couldn't start this book" (on the web, also "Its audio didn't load from the server"). A book that was already playing stops with "Playback stopped. Your place is saved". Check that the share is mounted and the disk is awake, then try again.
 
 ### New books I added aren't showing up
 
