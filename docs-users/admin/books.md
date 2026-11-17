@@ -111,8 +111,9 @@ on its book page and in Search's characters, but not offline (see
 
 ### Unlinking a community match
 
-The book's **Community metadata** card shows what it is matched to. To remove
-the match:
+The book's **Community metadata** card shows what it is matched to. It offers
+**Unlink** whenever the book has a match, even with community metadata off. To
+remove the match:
 
 1. Click **Unlink**, beside **Compare fields**.
 2. Read the warning and click **Unlink** again. There is no undo.
@@ -398,6 +399,8 @@ for listeners too, edit its **Series number** on
   [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
   doesn't write it back.
 - **The community database has no genres or tags yet**, so matching never changes them.
+- **A value made only of invisible characters counts as empty.** A title or
+  chapter title like that is refused.
 - **A book using your edited chapters offers no Detect chapters** on the
   [Health](health.md) page. Revert the edit first.
 - **The chapter editor's player plays each file as it is stored.** A file your

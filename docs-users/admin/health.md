@@ -121,7 +121,8 @@ book's (20% when the book's narrator reads it). Weaker matches, and matches to a
 book doesn't seem to be, go to **To review**.
 
 Whatever a run writes is a **Community** value that you can revert on the
-book's page. To undo every community match at once, use
+book's page. A book you match by hand after the run found its match keeps your
+match. The run skips it and says **Matched since this run**. To undo every community match at once, use
 [Clear community matches](server.md#community-metadata). If community
 metadata lookups stop answering, the run stops early but keeps what it found.
 
