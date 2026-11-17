@@ -236,7 +236,8 @@ are on this server.
 
 - **From Audible to here**, every 15 minutes. A place further on than yours moves
   your player on, or it offers the jump. A place from Audible **never moves yours
-  back**.
+  back**. After you choose **Stay** on a jump offer, a place or finish heard in
+  Audible before then doesn't move you either.
 - **From here to Audible**, a few minutes after you stop listening.
 
 Only the place syncs. Listening on Audible adds nothing to your history or stats.
