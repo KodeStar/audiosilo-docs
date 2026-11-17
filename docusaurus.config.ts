@@ -152,6 +152,7 @@ const config: Config = {
           items: [
             {label: 'audiosilo-server', href: 'https://github.com/KodeStar/audiosilo-server'},
             {label: 'audiosilo-frontend', href: 'https://github.com/KodeStar/audiosilo-frontend'},
+            {label: 'audiosilo-bridge', href: 'https://github.com/KodeStar/audiosilo-bridge'},
             {label: 'audiosilo-meta', href: 'https://github.com/KodeStar/audiosilo-meta'},
             {label: 'audiosilo-docs', href: 'https://github.com/KodeStar/audiosilo-docs'},
           ],
