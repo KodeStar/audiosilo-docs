@@ -1716,7 +1716,8 @@ toward the feed's failing run and leaves the scheduled polls' backoff as it was
 | `400 invalid_request` | missing/invalid library, both or neither path and URL, private with path, an invalid unfollow/check show path, or unknown body fields |
 | `400 invalid_feed_url` | malformed, non-HTTP(S), hostless or over-2,048-byte feed URL, or one whose normalized form changes when normalized again |
 | `403 no_library_access` | no accessible library, or URL follow without a whole-library grant |
-| `404 show_not_found` | missing, hidden or invalid show on follow by path, or check without following |
+| `404 show_not_found` | missing, hidden or invalid show on follow by path, or check without following (from 2.7.0 also a check whose show was re-subscribed under a new identity the caller doesn't follow) |
+| `409 identity_changed` | check only, from 2.7.0: the show's identity was replaced (a re-subscribe) while the check was queued, and again when the server checked once more against the show as it is now |
 | `409 not_podcast_library` | a books library |
 | `409 bridge_unavailable` | no online Bridge offering the action's podcast kind |
 | `409 library_not_writable` | Bridge mapping is not writable |
@@ -6308,9 +6309,22 @@ fields. Renaming another library to a declared name at another folder is
 A rescan is queued (trigger `change`) **only** when the root or the ignore rules
 change, since those make the index stale. A rename, a new default view or a new
 schedule doesn't rescan. Nor does a new `metadata_source`: every book of the
-library is re-resolved from what the last scan stored, in the edit's own
-transaction, before the response is sent, so no reader sees the new setting
-with the old values. Admin edits and accepted community values stay on top.
+library is re-resolved from what the last scan stored, with no disk access.
+Admin edits and accepted community values stay on top. From 2.7.0 the
+re-resolve is a resumable job:
+
+- The edit marks the library due and starts the job. The job re-resolves 200
+  books a transaction, starts over if the source changes again meanwhile, and
+  goes on after a restart.
+- The PATCH waits for it up to 20 seconds. A small library therefore answers
+  with its books re-resolved, and a large one answers then while the rest goes
+  on in the background. Until the job ends, a reader can see the new setting
+  with some books' old values.
+- A run that fails is run again after 1 minute, then after twice as long each
+  time, 6 times at most, then waits for the next edit or start.
+- A book whose stored scan can't be read is skipped and recorded as an
+  `unreadable` problem on its first file, so the next scan reads it again
+  (see [Data model](../data-model.md#a-librarys-metadata-source)).
 
 Response `200`: the updated library (without the scan settings, as for
 create). When the edit queued a scan it adds `job`, the queued scan, as for
@@ -6367,7 +6381,9 @@ Response `200`: `{ "status": "override cleared", "path": "…" }`.
 Downloads the library's book list as a JSON **file**, in the envelope the
 community metadata site ([meta.audiosilo.app](https://meta.audiosilo.app)) imports
 on its Watching page, so a user can mark which entries of a series they own.
-Advertised by the `export` [capability](#get-apiv1server).
+Advertised by the `export` [capability](#get-apiv1server). From 2.7.0 the export
+reads everything on one database snapshot (`store.DB.WithReadTx`), so a scan
+writing meanwhile can't make it skip or repeat a row.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|

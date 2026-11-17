@@ -575,7 +575,7 @@ several files at a time, and writes the index in one place
     Stop.
   - It reads nothing more, and keeps the backfills read so far.
 - **On-demand indexing** ([`IndexPath`](#on-demand-indexing-indexpath)) reads
-  with one slot, a file at a time, on the request's own goroutine.
+  with one slot, a file at a time, on a goroutine of the book's shared read.
 - **Backfills.** The skipped books' cheap backfills (above) still run one at a
   time on the writing goroutine, outside the slots. The re-read of a recorded
   problem's file (`problemCleared`) runs on that goroutine too, but through a
@@ -1101,7 +1101,10 @@ tags (`metadata.FromPathLayout`):
 
 The server applies that too when the book is resolved, not in the scanner. The
 stored snapshot is therefore the same in either mode, and switching modes
-re-resolves the books without a rescan.
+re-resolves the books without a rescan, as a resumable job (see
+[Data model](data-model.md#a-librarys-metadata-source)). A book whose stored
+snapshot can't be read is recorded `unreadable` on its first file, and the next
+scan reads it again.
 
 The scanner does record:
 
@@ -2000,15 +2003,24 @@ background scan has reached it**. The `/fs` listing flags such a folder
 that shipped clients still hold after a join are answered from the index,
 instead of re-walking and re-probing every disc on each request.
 
-Concurrent on-demand indexes of one book share one read (`Scanner.indexShared`,
-keyed by library and book path). A book page asks for `item` and `chapters` at
-once. Only the first request reads and probes the book, while the other waits
-for it and loads what it stored.
+Every read of one book shares one flight (`Scanner.indexShared`, keyed by
+library and book path): on-demand indexes, the scan's own read, `IndexMoved`
+and an admin's Re-read. So no two reads of one book run side by side. A book
+page asks for `item` and `chapters` at once. Only the first request reads and
+probes the book, while the other waits for it and loads what it stored.
 
 - Each request resolves the book and passes its own scope check before it
   joins.
+- From 2.7.0 the read runs on its own goroutine for up to 10 minutes
+  (`indexTimeout`), ended by the server's base context at shutdown, not by the
+  request that began it. A request that ends gets its context error, and the
+  read still finishes and is saved, so its probes aren't thrown away.
 - A waiter whose own request ends stops waiting.
-- A waiter whose leader's request was cancelled reads the book itself.
+- A Re-read waits for a held flight, then reads the book afresh.
+- A waiter whose flight was given up (a scan that stopped, a read past
+  `indexTimeout`) reads the book itself.
+- The read stays inside the per-mount bounds of
+  [the in-process probe](#the-in-process-probe).
 
 A book found **above** the requested path must be in the caller's scope too
 (`Scope.Allows(book.RelPath)`). A share granting only a disc folder or one file

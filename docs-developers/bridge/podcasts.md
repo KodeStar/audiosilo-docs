@@ -436,8 +436,9 @@ across users. Removing the candidate from the queue does not cancel shared work.
 Playing it later promotes that same intent to 100.
 
 The On demand policy permits this preparation, without feed-wide scheduled
-downloads. Demo requests start neither a fetch nor a prefetch, but a demo stream
-can still promote an existing shared fetch.
+downloads. Demo requests start neither a fetch nor a prefetch. From 2.7.0 a demo
+stream watches an existing shared fetch but never promotes it, and never cancels
+it.
 
 ### Player {/* #player-phase-2d-1 */}
 

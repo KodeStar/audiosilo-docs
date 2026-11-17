@@ -938,7 +938,8 @@ scan settings:
 - an `invalid_schedule`, `invalid_pattern` or `invalid_metadata_source` error
   lands on its field;
 - "Book details come from" (`metadata_source`). A change refetches the
-  library's books and the Health issues, since the server re-resolved them.
+  library's books and the Health issues, since the server re-resolved them
+  (a large library goes on in the background).
 
 **Other actions on a card:**
 

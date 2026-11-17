@@ -1491,6 +1491,10 @@ Its keys:
   console, "No preference" included (`catalog.NoteRegionChosen`). With a region
   in `config.yaml` or the environment it counts as chosen anyway. It drives
   `GET /admin/settings`'s `metadata.region_chosen`.
+- `library_resolve_due` (2.7.0): the libraries whose books are due a re-resolve
+  after a metadata source change, as `{"<library id>": <generation>}` (see
+  [A library's metadata source](#a-librarys-metadata-source)). The run that
+  finishes a library deletes its id in its last batch's transaction.
 - `upcoming`: the [upcoming releases](api/reference.md#upcoming-releases) job's
   run status (`catalog.UpcomingRun`). It holds `last_run_at`,
   `last_success_at`, `last_error`, `failures` (failed runs since the last
@@ -2140,10 +2144,28 @@ is a `LeafSeries` leaf, whose parts the layout reads even when the title is the
 whole leaf (an untagged book's).
 
 This is a resolve rule, not a scan rule, and `books.scanned` is the same in
-either mode. When the stored source changes, `UpdateLibrary` re-resolves every
-book of the library (`refreshLibrary`, `refreshEffective` per book) in the
-edit's own transaction. That needs no rescan and no disk access, and takes
-about 1 s per 5,000 books.
+either mode. So a change of source needs no rescan and no disk access. From
+2.7.0 it is a resumable job:
+
+- `UpdateLibrary` marks the library due in the edit's transaction
+  (`markResolve`, the `server_state` key `library_resolve_due`: each due
+  library's id and the generation of its last change).
+- `Catalog.ResolveSources` re-resolves each due library's books
+  (`refreshEffective` per book), 200 a transaction (`resolveBatch`), so the one
+  writer is never held long. A library switched again while it runs starts
+  over. What is due is in the database, so a run a stop cut short goes on at
+  the next start (`API.StartSourceResolves`).
+- Every due library runs even when one fails. A failed run is run again after
+  1 minute, doubling, 6 times (`resolveRetries`), then waits for the next edit
+  or start. A panic counts as a failed run.
+- A book whose stored snapshot can't be read is skipped, so it neither holds
+  its library due nor starts each retry over. It is recorded as an
+  `unreadable` read problem on its first audio file
+  (`recordScannedUnreadable`), which Health lists. The next scan finds that
+  file reads, reads the whole book again and writes a new snapshot, which heals
+  it.
+- The PATCH waits up to 20 seconds (`resolveWait`). Between the switch and the
+  end of the job, a reader can see the new setting with some books' old values.
 
 ### Tag hints
 
