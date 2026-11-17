@@ -83,6 +83,8 @@ The watch downloads over Wi-Fi. If it finds no Wi-Fi within 30 seconds, the row 
 
 Wear OS can hold background work back to save battery. If a book stays waiting, open AudioSilo on the watch. If it says **Couldn't download**, tap **Try again** on its Continue listening row, or send it again from your phone.
 
+If the row says *Your server sent something this watch can't read.*, the watch stops retrying on its own.
+
 ## In Downloads on your phone
 
 The [Downloads](offline-downloads.md#the-downloads-page) page on your phone has an **On your watch** section. It lists every book you sent and every book the watch holds.

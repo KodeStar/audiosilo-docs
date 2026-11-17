@@ -73,6 +73,8 @@ Then the watch downloads the files from your server, and the row says how far it
 
 If a book stays waiting, open AudioSilo on the watch. If it says **Couldn't download**, tap **Try again** or send it again.
 
+If the row says *Your server sent something this watch can't read.*, the watch stops retrying on its own. **Try again** asks your server afresh.
+
 After the watch restarts, AudioSilo can't read its sign-in or books until you unlock the watch once. A sign-in or book you send before then waits, and goes ahead once you've unlocked the watch and opened AudioSilo.
 
 ## In Downloads on your iPhone
@@ -150,6 +152,8 @@ If the server is older than 2.6 or has no ffmpeg, the watch says so instead of s
 ## At home and away
 
 The watch uses home and away addresses, like the iOS and Android apps (see [At home and away](connecting.md#at-home-and-away)). **Address** on [Sync](#sync-status) shows which one is in use.
+
+A download that started at home keeps using the home address, with the watch's sign-in, until you next open AudioSilo. This holds even after the watch leaves home. Opening the app moves the download to your away address.
 
 ### A self-signed server
 
