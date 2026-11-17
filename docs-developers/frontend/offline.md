@@ -319,9 +319,10 @@ A failed run marks the entry `error` with
 partial, and a retry writes over it. `kept` is the share of the book's files that
 finished (0..1), so a single-file book keeps nothing.
 
-A retry walks the specs in order and **skips** a file whose manifest slot has the
-same `relPath` and still exists on disk. The on-disk name is the file's index, so a
-file only counts where it was saved.
+A retry walks the specs in order and **skips** a file the manifest lists with the
+same `relPath`, saved under that spec's index, that still exists on disk. The on-disk
+name is the file's index, so a file only counts where it was saved. A retry that fails
+again keeps the files saved further on listed.
 
 `runOne` lists each finished file in the persisted entry as it lands, so this
 survives a restart too (`reviveEntry` in
@@ -342,9 +343,12 @@ messages, a `QuotaExceededError` and the web engine's `Download failed (404)`.
 | `unservable` | the store | saved, but the web worker can't serve it yet |
 | `removed` | the store | the entry's connection is gone |
 | `interrupted` | the store, on hydrate | the app closed mid-download |
+| `missing` | the store, on hydrate | a finished download with some of its files gone from the device |
 | `serverFetch` | the store, when an episode's wait ends | the server couldn't fetch the podcast episode, or can't now. `code` holds the server's code, which `failureText` words through `fetchReasonKey` after `{{server}} couldn't get this episode.` |
 
-The Downloads page words each kind for the listener.
+The Downloads page words each kind for the listener. A kind this build has no words
+for (one a newer build saved, read after a downgrade) reads as `unknown` ("The download stopped.")
+rather than breaking the page.
 
 #### Cancel and remove
 
@@ -509,25 +513,41 @@ Hydrate runs these steps:
    into a connection on hydrate has been re-put under the new scoped prefix, and
    relocation recomputes its URL there so the existence check finds it.
 
-3. **`reviveEntry(entry, allPresent)` decides what survives.** It is pure and
-   tested.
-   - A `downloaded` entry stays as it is, unless it lists no files or one fails
-     `engine.fileExists`. Then hydrate drops it and removes its folder.
-   - Any other entry with finished files comes back as `error` and keeps them. It is
-     dropped too when one of them is gone. `kept`, `progress` and `bytes` are
-     recomputed from the files really on disk. Its `failure` is:
+3. **`reviveEntry(entry, present)` decides what survives.** It is pure and
+   tested. `present` says, for each file the entry lists in order, whether
+   `engine.fileExists` found it.
+   - A `downloaded` entry with every file there stays as it is.
+   - A `downloaded` entry with some of its files gone (the system or the listener
+     deleted them) comes back as `error`, keeping the files still there, with the
+     failure `{ kind: 'missing' }` ("Some of its files are no longer on this
+     device."). Retry then fetches only the gone files. A `keep-ahead` entry like
+     that is dropped with its folder instead, because keep-ahead never retries a
+     failure and plans a dropped book again. A `downloaded` entry with no file left
+     is dropped with its folder.
+   - Any other entry with finished files comes back as `error` and keeps those
+     still on disk. `kept`, `progress` and `bytes` are recomputed from them. Its
+     `failure` is:
      - its classified `failure`, for a failure;
      - `{ kind: 'interrupted' }` ("The app closed before it finished"), for a
        download the app closed mid-way;
      - `unservable`, on web with every file saved and no EPUB to come. Only the
        offline check was left, and the service worker may not control the page.
-   - A failed or cut-short entry with **no** finished file stays too (most books are
+   - A failed or cut-short entry with **no** finished file left stays too (most books are
      one file). It becomes an `error` row with `kept: 0` and Retry, and the caller
      empties its folder. A `keep-ahead` entry like that is dropped instead, because
      keep-ahead plans it again and never retries a failure.
 
    The engines can't resume a half-written file, so Retry starts that file again and
    skips the rest. Keeping these entries needed no engine or storage format change.
+
+   A kept list can now have gaps, so a file is found by the index its stored name
+   says (`storedIndex`), else by its place in the list. `relocateEntry` and a
+   retry both read it that way, and a retry reuses a kept file only for its own
+   index.
+
+   While an identity move is pending (`identityMovePending`), an entry is kept
+   exactly as stored: never trimmed, dropped or deleted. The files may sit under the
+   other id, and the launch that finishes the move finds them.
 
 4. **Seed the cache.** Surviving `downloaded` manifests **seed the React Query
    cache** (`qk.item(connectionId, …)` and `qk.chapters(connectionId, …)`), so the
@@ -1322,6 +1342,13 @@ The swap keeps what the listener did while it was on its way.
   reload, or a one-off move the store makes (the pick-up's place, another tab's).
   The swap never moves the stream itself, so the retries end. A `'refused'` copy,
   one that can't be served or never became playable, is never retried.
+- **A stream in `error`.** A dead stream refuses a gapless swap, so a download that
+  lands while the book is failed is taken by the next Retry (`retry`). Its reload
+  moves the store onto the download's queue first (`localSwapOf`, `commitLocalSwap`),
+  at the same file and the same place in it, in whatever order the download plays,
+  since nothing is playing for a new order to cut into. It stays a reload, never a
+  fresh `playBook`: no place is saved or looked up first, and the resume floor, the
+  place another tab left and the pick-up check of a long stop all stand.
 - **Casting.** The store hands the route the phone's copy (`rememberLoad`) only when
   it holds the receiver's files in the receiver's order. See
   [Chromecast](chromecast.md#casting-is-a-playback-route-not-a-second-player).

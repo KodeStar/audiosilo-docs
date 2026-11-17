@@ -255,13 +255,17 @@ links. Every such route follows one rule, `useRouteConnection(connection)`
 `ContentScope`. The root modals outside any scope use it directly: the player, the end
 credits, the Year in listening story and the connect flow's ready page.
 
-It reads the param through `connectionParam`, where an old id resolves, and returns the
-gate to show instead of the screen:
+It reads the param through `connectionParam`, where an old id resolves. The screen's
+connection (`cid`) is the named one, else the active connection (`useCid`). So a link
+with no `connection=`, a hand-edited or an old one, keys its downloads, places and
+requests by a real connection, never by `''`, and Download works from it. The hook
+also returns `named`, the id the link names (`''` for none), and the gate to show
+instead of the screen:
 
 - A connection of **another person** on this device gets `OtherPersonGate`: "This
   belongs to &lt;name&gt;", with **Switch to &lt;name&gt;** and **Go back**. Their PIN
   rules apply, and after the switch the page opens where it is.
-- An **unknown** connection, one this device isn't signed in to, gets the not-found
+- An **unknown** named connection, one this device isn't signed in to, gets the not-found
   state "Not signed in to that server" with a way back. That covers a stale link to a
   removed server or a removed person's book. It never shows the page and never
   redirects, because a redirect inside a tab stack fired again on every focus of the
