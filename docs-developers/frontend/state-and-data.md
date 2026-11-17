@@ -2029,6 +2029,13 @@ The offline-safe write path for listening progress:
   resume fallback when the server can't be reached. While a book plays, the
   mirror is written every 15 s, even when the save itself runs every 60 s. A span
   that a kill left open brings it forward at the next launch (`mirrorSpanEnd`).
+  A server's row in the mirror is marked `server_clock` (`progressToSave`) and
+  compared on this device's clock, its stamp moved back by the connection's known
+  skew (`localTimeOf`). Without that, a server clock running ahead let a row read
+  back hide this device's own captures for that long. Keep-newest,
+  `mirrorSpanEnd`, a tab's `otherTabsPlace` and an explicit start's read of the
+  book's speed and finish (`knownProgress`) all compare through it. `persist`
+  writes the mirror with no client yet; only the network save waits for one.
   See [The periodic save's pace](playback.md#the-periodic-saves-pace).
 - **Offline replay queue.** If the server is known to be unreachable, the save is
   queued locally (`audiosilo.progressQueue`, the latest save per

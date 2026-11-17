@@ -909,7 +909,11 @@ A span's life:
     both (`finishAfter`): one POST carries `listen` then `finish`, so the server has
     the book's session before its finish.
   - The book page's Mark as finished goes the same way (`recordFinishEvent` in
-    `finish-route.ts`).
+    `finish-route.ts`). When the book is the one loaded, it first stops and
+    unloads it on every route, as its own end does (`leaveFinishedBook`): its
+    place is saved and its span closed ahead of the finish. Left loaded, it went
+    on recording past the finish. The place it saved is the one the Undo goes
+    back to.
   - Either finish is dated after its span's end is stamped (`takeSpan`). The server
     applies a batch in time order, with request order only breaking ties, so a
     finish dated earlier would be applied before the book's last span.
@@ -922,6 +926,9 @@ A span's life:
 - **The open span is stored every 5 s** (`OPEN_SPAN_KEEP_MS`), online or offline,
   with the event id it took when it opened (`OpenSpan.id`), so a span closed twice
   is one event.
+  - A move's span (`jump`, `moved_back`, `restart`, `stay`) is stored as it opens,
+    queued behind the close of the span before it, so a kill right after a seek or
+    a Stay still sends the move.
   - A kill therefore loses at most 5 s. The next launch closes the stored span into
     the outbox (`recoverOpenSpan`) and brings this device's own record of the book
     up to its end ([What a kill leaves behind](#what-a-kill-leaves-behind)).
@@ -1130,7 +1137,12 @@ nothing moves. Another device's record is left to the
   where it is.
 - A seek the engine refuses puts back what `adoptTabPlace` set. The play goes on
   from where the engine is, because a floor left at a place far ahead would refuse
-  its every save and span.
+  its every save and span. A seek that has not settled within 5 s
+  (`TAB_MOVE_MAX_MS`) counts as refused too, so it no longer holds the play's
+  spans and saves. If it lands after all, the tab takes it then
+  (`landTabPlaceLate`): the floor goes to the place and the span opens again
+  there, so it never covers audio nobody heard. Not when the listener moved or
+  another book started meanwhile.
 - A book switch drops a move still out (`switchBook` clears `catchingUp`), so it
   holds none of the next book's saves or spans.
 
