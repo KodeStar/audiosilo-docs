@@ -215,7 +215,7 @@ plain `http` behind TLS). Set `lan_url` to give the apps a home address; a confi
 |---|---|---|
 | `tls.mode` | `off` \| `selfsigned` \| `autocert`, default `selfsigned` | `off` = plain HTTP (use behind a TLS-terminating proxy); `selfsigned` = generate & persist a self-signed cert (LAN default); `autocert` = Let's Encrypt via ACME |
 | `tls.hosts` | []string, `[]` | autocert: hostnames to obtain certificates for. **Required when mode is `autocert`** |
-| `tls.cache_dir` | string, `<data>/certs` | autocert: certificate cache directory (re-defaulted to `<data>/certs` whenever empty) |
+| `tls.cache_dir` | string, `<data>/certs` | autocert: certificate cache directory (re-defaulted to `<data>/certs` whenever empty). From 2.7.0 the default is never written to `config.yaml`, so a data folder moved elsewhere (Docker's `/data` to the LinuxServer.io image's `/config`) takes its certificates with it. A `config.yaml` written before keeps its absolute path until that line is deleted; one an admin set elsewhere is kept |
 | `tls.home_http` | bool, `true` | selfsigned only: the bind port also answers plain HTTP to home-network clients, see [Home HTTP](#home-http-tlshome_http). Ignored in the other modes |
 | `tls.cert_file` / `tls.key_file` | string, `""` | selfsigned: explicit paths for the persisted cert and key. Empty means `<data>/selfsigned-cert.pem` and `<data>/selfsigned-key.pem` |
 
@@ -1423,11 +1423,17 @@ the start with `the data folder isn't usable: ...`, naming the path, the user
 `uid:gid`, the owner and the fix, rather than SQLite's "unable to open database
 file". The fix (`fsaccess.Hint`) is `PUID` and `PGID` set to the owner only in a
 container (`/.dockerenv` or `/run/.containerenv`); outside one it is running the
-server as the owner. It never advises running as root. It warns `backups will fail` at start when
+server as the owner. A container started with `--user` (the entrypoint exports
+`AUDIOSILO_STARTED_AS_USER=1`) gets `user: "<uid:gid>"` instead. A read-only
+mount (`EROFS`, docker's `:ro`) counts as refused, but its fix is to mount it
+read and write, never owner advice. It never advises running as root. It warns
+`backups will fail` at start when
 the backups folder exists and refuses it (`backup.Service.CheckFolder`). A
 refused backup is `permission_denied` (see
-[Backups](backups-and-notifications.md#status)), and a library root the server
-can't list is [unavailable](scanner.md#the-unavailable-root-guard).
+[Backups](backups-and-notifications.md#status)), and from 2.7.0 so is a backups
+folder the server can't list (`GET /admin/backups` answers `500
+permission_denied` with that sentence). A library root the server can't list is
+[unavailable](scanner.md#the-unavailable-root-guard).
 
 ### Under Docker
 
@@ -1437,22 +1443,31 @@ folders, checks them as that user, then drops to it with `su-exec PUID:PGID`
 `su-exec` sets only that group, so access a host user has through another group
 doesn't reach the server.
 
-- **Ownership.** It runs `chown -R` on the data folder (`--data`, `/data` by
-  default). When `AUDIOSILO_BACKUP_DIR` is an absolute path, it gives the user
-  that folder and only AudioSilo's own files in it (`audiosilo-*.db` and
-  `.audiosilo-*`, regular files, `chown -h`), since a backups share may hold other
-  apps' files. A path that is the container's root, however spelled, or that
-  holds a `..`, is skipped. The data folder's `chown -R` crosses into a share
-  mounted under it, so a backups share belongs at a path of its own, never
-  `/data/backups`.
+- **Ownership.** It gives the user the data folder (`--data`, `/data` by
+  default) with `chown -h`, skipping files the user already owns. From 2.7.0 the
+  chown stops at each mount point under the data folder, read from mountinfo
+  (a volume or bind mount from the same disk shares the device number, so
+  `-xdev` alone can't tell): a folder mounted there, a socket or a device node
+  (`/data/docker.sock`) keeps its owner, while a regular file mounted there
+  (`/data/config.yaml`) is chowned as before. When `AUDIOSILO_BACKUP_DIR` is an
+  absolute path, it gives the user that folder and only AudioSilo's own files in
+  it (`audiosilo-*.db` and `.audiosilo-*`, regular files, `chown -h`), since a
+  backups share may hold other apps' files. A path that is the container's root,
+  however spelled, or that holds a `..`, is skipped.
 - **Checks.** As the server's user, it writes a `mktemp` file in the data and
   backups folders and reads one entry of every other mounted folder (the
   audiobooks, by the rule of the setup's mount hints). For a folder that fails
   it prints the folder, the user, the folder's owner and the fix (`PUID` and
-  `PGID` set to the owner, or giving the user access), and carries on. Every
+  `PGID` set to the owner, or giving the user access), and carries on. A data or
+  backups folder on a read-only mount (`:ro`, by mountinfo's options of the
+  mount holding it or of its filesystem) is reported as mounted read-only
+  instead of naming owners. Every
   check and every step on the backups folder is bounded by `timeout 5`. A check
   cut off says the folder didn't answer, with no owner advice.
 - **Under `--user`** (compose `user:`) it skips the chown, runs the same checks,
-  and its fix names `user:` instead of `PUID` and `PGID`.
+  and its fix names `user:` instead of `PUID` and `PGID`. It exports
+  `AUDIOSILO_STARTED_AS_USER=1`, so the server's own hint says
+  `user: "<uid:gid>"` too (the image's `PUID` is in every container's
+  environment, so the server can't tell otherwise).
 
 `scripts/test-entrypoint.sh` tests the entrypoint in Docker. CI doesn't run it.

@@ -10194,6 +10194,12 @@ restore waiting for, or applied at, a start:
 | `restore.pending` | the restore waiting for the next start: `{name, requested_at, requested_by, schema}` (`schema` is the backup's newest migration), or `null` |
 | `restore.last` | how the last restore went, written at start: `{name, applied_at, requested_by, ok, error, safety_copy}`. `error` (when `ok` is false) is `missing`, `unusable`, `newer` or `failed`, and the database was left as it was; `safety_copy` names the before-restore backup (or, if the database couldn't be copied, the file it was renamed to in the data folder). A restore marker that couldn't be read is reported as `error: "failed"` with an empty `name`. `null` when no restore ever ran |
 
+A backups folder the server can't list answers `500` `permission_denied` (from
+2.7.0), its message naming the folder, the server's user and the fix (the
+[folder permissions](../configuration.md#the-servers-own-checks) sentence); the
+console's Backups page shows it. A download, delete or restore the folder
+refuses answers the same.
+
 ### `POST /api/v1/admin/backups`
 
 *Admin.* Starts a manual backup in the background and answers `202` with the
@@ -10218,6 +10224,7 @@ bounded by it). Every download (`GET`; a `HEAD` isn't) is audited
 |---|---|
 | `200` | the file |
 | `404` `backup_not_found` | no such backup |
+| `500` `permission_denied` | the server can't read the backup or the folder (from 2.7.0); the message says why and the fix |
 
 ### `DELETE /api/v1/admin/backups/{name}`
 
@@ -10228,6 +10235,7 @@ cancelled first. Audited (`backup.delete`).
 |---|---|
 | `204` | deleted |
 | `404` `backup_not_found` | no such backup |
+| `500` `permission_denied` | the server can't read the backup or the folder (from 2.7.0); the message says why and the fix |
 
 ### `POST /api/v1/admin/backups/{name}/restore`
 
@@ -10246,6 +10254,7 @@ reports a damaged backup as a refused restore (`restore.last.error`
 | `400` `invalid_backup` | the file can't be read as an AudioSilo database (no schema record or accounts table) |
 | `400` `backup_too_new` | it was made by a newer server (it has a migration this one doesn't ship) |
 | `404` `backup_not_found` | no such backup |
+| `500` `permission_denied` | the server can't read the backup or the folder (from 2.7.0); the message says why and the fix |
 
 ### `DELETE /api/v1/admin/restore`
 
