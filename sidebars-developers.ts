@@ -32,7 +32,12 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'HTTP API',
-          items: ['server/api/index', 'server/api/reference'],
+          items: [
+            'server/api/index',
+            'server/api/reference',
+            'server/api/stability',
+            'server/api/changelog',
+          ],
         },
       ],
     },

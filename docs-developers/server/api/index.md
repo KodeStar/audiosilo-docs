@@ -13,6 +13,9 @@ source is the route table in `internal/api/api.go` and the handlers in
 All JSON API routes live under **`/api/v1`**. The server advertises the version
 in [`GET /api/v1/server`](reference.md#get-apiv1server) as `"api": "v1"`. There
 is no other versioning mechanism: no version headers and no v2.
+[API stability](stability.md) says which routes stay compatible within v1 and
+how a deprecation is announced, and the [API changelog](changelog.md) lists each
+release's additions.
 
 A few routes deliberately live *outside* the prefix:
 
