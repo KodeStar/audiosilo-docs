@@ -890,7 +890,7 @@ re-keys a book's events with their positions shifted onto the new timeline
 `ended_at` for retention.
 
 **Retention** is 120 days (`catalog.SyncRetention`). `PruneListeningEvents`
-runs from `pkg/launcher.retention` at startup and daily, in batches of 5000.
+runs from `internal/launcher.retention` at startup and daily, in batches of 5000.
 The window is longer than the 90 days a sync accepts, so a replay of a pruned
 id can't apply twice.
 

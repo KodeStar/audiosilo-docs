@@ -82,7 +82,7 @@ The default is `daily:03:00`. `backup.ParseSchedule` checks the value (a
 two-digit hour and minute), and the settings normalizer stores the canonical
 form.
 
-`Service.Run`, which `pkg/launcher` starts, wakes every minute. It also wakes at
+`Service.Run`, which `internal/launcher` starts, wakes every minute. It also wakes at
 once when the settings change (`SetSettings`). It counts the next slot from the
 later of these two:
 
@@ -110,7 +110,7 @@ Before-upgrade backups have their own rule, described next.
 
 ### Before an upgrade
 
-`pkg/launcher` calls `backup.BeforeUpgrade` before `store.Open` migrates the
+`internal/launcher` calls `backup.BeforeUpgrade` before `store.Open` migrates the
 database. `store.PendingMigrations` reads the database read-only and lists the
 migrations it lacks. The list is empty for a fresh install (no database, or no
 migration recorded) and for a database that is already up to date.
@@ -182,7 +182,7 @@ A restore never swaps the database under a running server. It takes two steps.
    (`{"name", "requested_at", "requested_by", "schema"}`), replacing any restore
    already waiting. `DELETE /admin/restore` removes the marker. Deleting the
    backup it names removes it too.
-2. **`ApplyPendingRestore`** runs in `pkg/launcher.Run` before `store.Open`.
+2. **`ApplyPendingRestore`** runs in `internal/launcher.Run` before `store.Open`.
    With no marker it does nothing. Otherwise it checks the backup again, in
    full this time (`store.Inspect(…, true)`, with `quick_check`). The check
    fails as `missing` when the file is gone, `unusable` when it is damaged or

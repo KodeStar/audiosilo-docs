@@ -3783,7 +3783,8 @@ revoked share isn't returned.
 
 ### `GET /api/v1/me/progress`
 
-*Session.* All progress rows for the caller (offline-sync seed).
+*Session.* All progress rows for the caller (offline-sync seed). A caller with
+none gets `{"progress": []}`, never `null` (from 2.7.0).
 
 ```json
 {
@@ -4493,7 +4494,8 @@ spans here: the server writes history from its synced listening instead.
 ### `GET /api/v1/me/favourites`
 
 *Session.* The caller's favourites across all accessible libraries, newest
-first, enriched from the index where a book exists at the path:
+first, enriched from the index where a book exists at the path (`[]`, never
+`null`, for none, from 2.7.0):
 
 ```json
 {
@@ -5387,7 +5389,10 @@ listening done since a person last turned sharing on is shown.
   player that saves every 60 s in the background or on a download
   ([data model](../data-model.md#listening-sessions-how-they-are-derived)).
 - `title` - the index's title, else the path's last segment (a book no longer
-  indexed); `author` and `duration` are `null` when unknown (`duration` falls back
+  indexed). From 2.7.0 a path that is no book of its own but sits in one (a
+  session saved on a disc folder, `Book/CD1`, before the discs were joined)
+  takes the holding book's title and author, when the caller's scope grants that
+  book; `author` and `duration` are `null` when unknown (`duration` falls back
   to the session's own).
 - `position` - seconds into the whole book; `chapter` and `chapter_index` (0-based)
   are the chapter at that position, as the admin's live sessions show it: both
@@ -6582,11 +6587,15 @@ filesystem root (`/`, or the working directory's drive on Windows).
 - `parent` is omitted at a filesystem root.
 - At most **1,000** entries; `truncated: true` (otherwise omitted) when there
   were more.
+- From 2.7.0 the listing runs behind a bounded lister (`library.DirLister`: 4
+  listings at once, 5 seconds each), so a folder on a hung mount answers
+  `404 folder_unreadable` at the time-out rather than holding the request. The
+  [setup preview](#post-apiv1adminsetuppreview)'s root check shares it.
 
 | Status | Meaning |
 |---|---|
 | `400` | `path must be absolute` (`code: "path_not_absolute"`) - a relative `path` |
-| `404` | `folder not found or not readable` (`code: "folder_unreadable"`) - missing, not a folder, or unreadable by the server (the OS error is not echoed) |
+| `404` | `folder not found or not readable` (`code: "folder_unreadable"`) - missing, not a folder, unreadable by the server, or not answering within 5 seconds (the OS error is not echoed) |
 | `401` / `403` | anonymous / non-admin |
 
 Bounds rationale: an admin can already point a library at any folder and then
@@ -7075,7 +7084,9 @@ ending with that book's path in parentheses.
 
 The distinct authors (or narrators) with their book counts and total duration,
 plus spellings that look like the same person. `?library_id=` narrows to one
-library (all libraries when absent; a non-positive or non-integer id is `400`).
+library (all libraries when absent; a non-positive or non-integer id is `400`;
+from 2.7.0 a library that doesn't exist is `404 not_found`, not an empty list).
+The console treats a stale `?library=` as all libraries.
 
 ```json
 {
@@ -10704,7 +10715,7 @@ only (never a file's contents) and is not audited.
 | `200` | the preview |
 | `400` | `invalid request` (no body, not JSON, an unknown field), `root is required`, `path_not_absolute` (a relative `root`) or `invalid_pattern` (a skip rule the server refuses) |
 | `401` / `403` | anonymous / non-admin |
-| `404` | `folder_unreadable` - missing, not a folder, or unreadable by the server (the OS error is not echoed) |
+| `404` | `folder_unreadable` - missing, not a folder, unreadable by the server, or (from 2.7.0) not answering within 5 seconds (the OS error is not echoed) |
 | `409` | `root_overlaps` - overlaps a podcast library's folder |
 
 ## The Bridge
@@ -12574,7 +12585,7 @@ Android App Links. Served when `app_links.android_package` **and**
 
 ## First-run setup page
 
-Only active when the launcher enabled it (`--setup` / `pkg/launcher`); a normal
+Only active when the launcher enabled it (`--setup` / `internal/launcher`); a normal
 headless deployment never exposes this surface. The page self-closes the
 moment an admin exists. The one-time setup token rides in the page URL
 **fragment** (`/setup#token=…`) so it never reaches server logs; the POST

@@ -1985,7 +1985,7 @@ still comes from the first-run banner or the
 [`/setup` page](#first-run-setup-page-setup). The flow is console-only and
 admin-only. It has no capability flag, and the player never asks for it.
 
-The headless first-run banner (`writeBanner` in `pkg/launcher`) prints the
+The headless first-run banner (`writeBanner` in `internal/launcher`) prints the
 admin username and password, the auth code and the config file's path. It then
 sends the reader to this flow and to the connect page, using the configured
 base URL: `public_url`, else one derived from `tls.mode` and `bind`.
@@ -2480,7 +2480,7 @@ It is locked down three ways, so it is safe even on an exposed port:
 
 1. **Off unless enabled.** The page responds only when the launcher called
    `API.EnableSetup(token)` with a freshly minted one-time token (18 random
-   bytes, `pkg/launcher`). When it was never enabled, `GET /setup` redirects to
+   bytes, `internal/launcher`). When it was never enabled, `GET /setup` redirects to
    `/admin`, the same answer as a closed page, so a normal deployment exposes no
    setup surface and doesn't say whether it was ever started with `--setup`.
    `POST /setup` there creates nothing.
@@ -2505,7 +2505,7 @@ console's flow. The handler decodes the body strictly. Any other field is
 sent.
 
 The launcher prints the token-carrying URL in a startup banner
-(`setupBanner` in `pkg/launcher`). The banner's last line reads "You'll choose
+(`setupBanner` in `internal/launcher`). The banner's last line reads "You'll choose
 an admin password, then the console walks you through the rest."
 
 ## Well-known app-association files

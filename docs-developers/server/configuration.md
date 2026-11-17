@@ -25,7 +25,7 @@ instead. See
   itself comes from the `--data` flag. There is **no environment variable for
   the data dir**.
 - **First run**: when the file does not exist, `config.Load` returns secure
-  defaults with `firstRun=true`, and `pkg/launcher` persists them via
+  defaults with `firstRun=true`, and `internal/launcher` persists them via
   `Config.Save`. The file is written `0600`,
   the data dir created `0700`.
 - **Annotated template**: `config.example.yaml` in the repo root mirrors this
@@ -146,7 +146,7 @@ tool is enabled but not found locally, the launcher downloads it (see
 |---|---|---|
 | `name` | string, `""` | The server's display name, at most 64 characters with no control characters. It is `GET /server`'s `name`, the pairing payload's `server_name` (the player's sign-in screen shows it), and the name in the admin console's top bar and System and About pages. Empty means `"AudioSilo"` (`Config.DisplayName`). No environment variable |
 | `update_check` | bool, `true` | Let the server ask GitHub Releases once a day whether a newer version exists (`internal/updates`; see [Update check](#update-check)). `false` means no request is ever made |
-| `activity.session_days` | int, `400` | How many days raw listening sessions (device, app, time of day, playback mode) are kept, 30-3650. After that the daily retention job (`pkg/launcher` `retention`, which reads the live setting at each run) sums them into `listening_daily` and drops that detail. The default keeps a year of detail for Activity's longest range. Activity reads the daily totals for days past it |
+| `activity.session_days` | int, `400` | How many days raw listening sessions (device, app, time of day, playback mode) are kept, 30-3650. After that the daily retention job (`internal/launcher` `retention`, which reads the live setting at each run) sums them into `listening_daily` and drops that detail. The default keeps a year of detail for Activity's longest range. Activity reads the daily totals for days past it |
 | `server_id` | string, minted | The stable per-install identity (see [`GET /server`](api/reference.md#get-apiv1server)). Minted on first start and never changed. It is not a setting |
 
 ### Server & network
@@ -1245,7 +1245,7 @@ environment variable's value into the file.
 ## Update check
 
 `internal/updates` asks GitHub Releases whether a newer server exists, for the
-console's Server > About and Health > System. `pkg/launcher` starts one
+console's Server > About and Health > System. `internal/launcher` starts one
 `updates.Checker` (`Run`) with the configured `update_check`:
 
 - While on, it checks a minute after the server starts, then whenever the last
@@ -1285,6 +1285,10 @@ console's Server > About and Health > System. `pkg/launcher` starts one
 - a `rate_limit.*.rate` that is negative, infinite or not a number, or a
   negative `rate_limit.*.burst` (`0` is unset: the default).
 
+From 2.7.0 a bad value an `AUDIOSILO_*` variable set says so: the error names
+the key and ends `(set by <variable>)` (`Config.envFor`), since `config.yaml`
+may not hold that key at all. One from `config.yaml` names no variable.
+
 It never rejects `auth.oidc.*`: a problem there turns single sign-on off and
 the console says why (see [Single sign-on](#single-sign-on-authoidc)).
 
@@ -1299,10 +1303,11 @@ Secure-by-default choices baked into `Default()` and first-run:
 See [Auth & security](auth-and-security.md) for the app-layer hardening these
 feed into.
 
-## `pkg/launcher` is not an embedding API {/* #launcher-options-for-embedders */}
+## `internal/launcher` is not an embedding API {/* #launcher-options-for-embedders */}
 
-`pkg/launcher.Run(ctx, opts)` is the run loop behind the headless `audiosilo`
-command. Its `Options` are only what the command's flags set:
+`internal/launcher.Run(ctx, opts)` is the run loop behind the headless
+`audiosilo` command. It moved from `pkg/launcher` in 2.7.0, so no other module
+can import it. Its `Options` are only what the command's flags set:
 
 - `DataDir` (`--data`);
 - `FFprobePath` and `FFmpegPath` (`--ffprobe` and `--ffmpeg`; `""` turns the
@@ -1324,7 +1329,7 @@ admin PWA.
 ## ffmpeg/ffprobe resolution & auto-download
 
 The binaries are **not bundled**, because they are large and usually already
-present. `pkg/launcher.resolveTools` resolves each enabled tool in order:
+present. `internal/launcher.resolveTools` resolves each enabled tool in order:
 
 1. an **explicit path** from the flag or `Options`;
 2. a copy **next to the server executable** (bare names only; `.exe` appended
@@ -1374,7 +1379,7 @@ tools.
   `.download-*` folder inside the one it fills (never the system temp folder),
   and a start removes one an exit left behind.
 - **The start-up log** says which way the probe went
-  (`pkg/launcher.resolveTools`, `metadata.ProbeRelease`). It logs one of:
+  (`internal/launcher.resolveTools`, `metadata.ProbeRelease`). It logs one of:
   - "in-process probe on", with the rules' release;
   - "in-process probe off: ffprobe is not a release it knows, so ffprobe reads
     every file";
