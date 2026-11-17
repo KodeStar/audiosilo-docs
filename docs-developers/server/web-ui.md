@@ -262,8 +262,8 @@ per build:
   or focus fails quietly, so there is no window-wide `vite:preloadError`
   handler.
 
-A tab left open across an upgrade whose pages still open learns of it too
-(from 2.7.0). The shell's `UpdateNotice` reads `GET /server` again on every
+A tab left open across an upgrade whose pages still open learns of it too.
+The shell's `UpdateNotice` reads `GET /server` again on every
 focus and every 5 minutes (`useServerInfoLive`). Once the version differs from
 the one the tab first saw (`versionWatch`), it shows "AudioSilo was updated"
 with Reload above every page.
@@ -274,7 +274,7 @@ The console runs under the same `script-src 'self'; style-src 'self'` policy
 (no nonce) as the connect page, so it is built to need nothing inline:
 
 - `index.html` loads only files: `/admin/theme-init.js`, which applies the
-  stored light, dark or system theme before first paint and (from 2.7.0) keeps
+  stored light, dark or system theme before first paint and keeps
   following the OS while the page is open, and the Vite bundle. The connect and
   setup pages load their own copy (`internal/web/assets/theme-init.js`, the same
   storage key) and follow the OS the same way.
@@ -773,7 +773,7 @@ The card follows the book's `chapters.detect` job (`useBookGenerateJob` with
 `KIND_DETECT`) and fetches the book again when it ends.
 
 **The chapter editor.** **Edit chapters** in the card's header (any book with
-files in a books library: from 2.7.0 a podcast library offers none, since its
+files in a books library; a podcast library offers none, since its
 episodes take their chapters from their feed) swaps the card's body for `ChaptersEditor` (`chapters-editor.tsx`). Its
 rules are the pure `chapters-edit-model.ts`, and the paste dialog is
 `chapters-paste-dialog.tsx`.
@@ -1247,7 +1247,7 @@ people cards). Playing sessions come first.
 
 A session's app reads as sent, except AudioSilo's own: the player's
 `AudioSilo` and the watch apps' `audiosilo-watch` both read "AudioSilo", the
-platform saying which (`appLabel`, from 2.7.0).
+platform saying which (`appLabel`).
 
 The chapter under each title is `chapterLabel`
 (`features/activity/live-model.ts`, shared with the Overview's cards and the

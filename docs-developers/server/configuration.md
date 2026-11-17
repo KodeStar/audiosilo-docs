@@ -215,7 +215,7 @@ plain `http` behind TLS). Set `lan_url` to give the apps a home address; a confi
 |---|---|---|
 | `tls.mode` | `off` \| `selfsigned` \| `autocert`, default `selfsigned` | `off` = plain HTTP (use behind a TLS-terminating proxy); `selfsigned` = generate & persist a self-signed cert (LAN default); `autocert` = Let's Encrypt via ACME |
 | `tls.hosts` | []string, `[]` | autocert: hostnames to obtain certificates for. **Required when mode is `autocert`** |
-| `tls.cache_dir` | string, `<data>/certs` | autocert: certificate cache directory (re-defaulted to `<data>/certs` whenever empty). From 2.7.0 the default is never written to `config.yaml`, so a data folder moved elsewhere (Docker's `/data` to the LinuxServer.io image's `/config`) takes its certificates with it. A `config.yaml` written before keeps its absolute path until that line is deleted; one an admin set elsewhere is kept |
+| `tls.cache_dir` | string, `<data>/certs` | autocert: certificate cache directory (re-defaulted to `<data>/certs` whenever empty). The default is never written to `config.yaml`, so a data folder moved elsewhere (Docker's `/data` to the LinuxServer.io image's `/config`) takes its certificates with it. A `config.yaml` written before 2.7.0 keeps its absolute path until that line is deleted; one an admin set elsewhere is kept |
 | `tls.home_http` | bool, `true` | selfsigned only: the bind port also answers plain HTTP to home-network clients, see [Home HTTP](#home-http-tlshome_http). Ignored in the other modes |
 | `tls.cert_file` / `tls.key_file` | string, `""` | selfsigned: explicit paths for the persisted cert and key. Empty means `<data>/selfsigned-cert.pem` and `<data>/selfsigned-key.pem` |
 
@@ -599,8 +599,7 @@ path.
 
 While the report is on, Health lists the books whose own ASIN it found unknown
 as the `unknown_asin` kind (see [Issues](scanner.md#issues)). Those books still
-count as matched. A book leaves the list as soon as any lookup finds its ASIN
-(from 2.7.0), not only at the recheck 30 days on. The kind is left out while the report is off, since the
+count as matched. A book leaves the list as soon as any lookup finds its ASIN, not only at the recheck 30 days on. The kind is left out while the report is off, since the
 lookups that find them stop.
 
 #### Mirror mode (`metadata.mode: mirror`)
@@ -1285,7 +1284,7 @@ console's Server > About and Health > System. `internal/launcher` starts one
 - a `rate_limit.*.rate` that is negative, infinite or not a number, or a
   negative `rate_limit.*.burst` (`0` is unset: the default).
 
-From 2.7.0 a bad value an `AUDIOSILO_*` variable set says so: the error names
+A bad value an `AUDIOSILO_*` variable set says so: the error names
 the key and ends `(set by <variable>)` (`Config.envFor`), since `config.yaml`
 may not hold that key at all. One from `config.yaml` names no variable.
 
@@ -1435,7 +1434,7 @@ read and write, never owner advice. It never advises running as root. It warns
 `backups will fail` at start when
 the backups folder exists and refuses it (`backup.Service.CheckFolder`). A
 refused backup is `permission_denied` (see
-[Backups](backups-and-notifications.md#status)), and from 2.7.0 so is a backups
+[Backups](backups-and-notifications.md#status)), and so is a backups
 folder the server can't list (`GET /admin/backups` answers `500
 permission_denied` with that sentence). A library root the server can't list is
 [unavailable](scanner.md#the-unavailable-root-guard).
@@ -1449,7 +1448,7 @@ folders, checks them as that user, then drops to it with `su-exec PUID:PGID`
 doesn't reach the server.
 
 - **Ownership.** It gives the user the data folder (`--data`, `/data` by
-  default) with `chown -h`, skipping files the user already owns. From 2.7.0 the
+  default) with `chown -h`, skipping files the user already owns. The
   chown stops at each mount point under the data folder, read from mountinfo
   (a volume or bind mount from the same disk shares the device number, so
   `-xdev` alone can't tell): a folder mounted there, a socket or a device node

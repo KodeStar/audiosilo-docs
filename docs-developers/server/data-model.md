@@ -1785,7 +1785,7 @@ when its writes move the content generation: [Overview](overview.md#internalstor
   metadata cache's key, so a changed ASIN resolves again. It also has
   `checked_at`. Index on `work_id`. A book with no recorded match takes its
   [work key](#a-books-work-key) from here, while `id_key` is still its
-  identifiers' key. From 2.7.0 the same rule holds when the job asks which
+  identifiers' key. The same rule holds when the job asks which
   works the server owns (`UpcomingOwnedWorks`), so a retagged book holds no
   stale work. This first step of the job runs
   whenever metadata is on, even with the job switched off, and a light run of it
@@ -1840,7 +1840,7 @@ tables at the request.
 - `unknown`: `1` when that answer was "not in the community database". `0`
   means known, and a known ASIN is never sent.
 - `sent_at`: when a report holding it was accepted, `NULL` for never. A later
-  lookup that finds an `unknown` row known clears it. From 2.7.0 so does any
+  lookup that finds an `unknown` row known clears it. So does any
   other lookup that finds the ASIN (a player's `/meta`, the upcoming job's work
   ids, the chapter check: `meta.Service.SetASINFound`, wired to
   `catalog.ClearUnknownASIN`), which marks the row known at once, so a book the

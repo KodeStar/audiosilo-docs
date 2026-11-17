@@ -417,8 +417,8 @@ whose title the admin can change.
 - Health's `detailed_chapters` is settled while an edit exists, applied or
   dormant. An applied edit marks the admin row `edited`.
 - The console offers no **Detect chapters** for a row whose `chapters_source` is
-  `edited` (`rowFix`), and the Community panel offers no source to switch to.
-  From 2.7.0 the server refuses such a `chapters.detect` job too
+  `edited` (`rowFix`), the Community panel offers no source to switch to, and
+  the server refuses such a `chapters.detect` job
   (`409 chapters_edited`, `bridge.ErrChaptersEdited`, checked from the book's
   `chapters_source`; a dormant edit refuses nothing), and Health's Detect
   dialog passes the book over.

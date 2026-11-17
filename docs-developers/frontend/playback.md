@@ -911,8 +911,8 @@ A span's life:
   - The book page's Mark as finished goes the same way (`recordFinishEvent` in
     `finish-route.ts`). When the book is the one loaded, it first stops and
     unloads it on every route, as its own end does (`leaveFinishedBook`): its
-    place is saved and its span closed ahead of the finish. Left loaded, it went
-    on recording past the finish. The place it saved is the one the Undo goes
+    place is saved and its span closed ahead of the finish. Left loaded, it would
+    go on recording past the finish. The place it saved is the one the Undo goes
     back to.
   - Either finish is dated after its span's end is stamped (`takeSpan`). The server
     applies a batch in time order, with request order only breaking ties, so a
@@ -1138,7 +1138,7 @@ nothing moves. Another device's record is left to the
 - A seek the engine refuses puts back what `adoptTabPlace` set. The play goes on
   from where the engine is, because a floor left at a place far ahead would refuse
   its every save and span. A seek that has not settled within 5 s
-  (`TAB_MOVE_MAX_MS`) counts as refused too, so it no longer holds the play's
+  (`TAB_MOVE_MAX_MS`) counts as refused too, so it stops holding the play's
   spans and saves. If it lands after all, the tab takes it then
   (`landTabPlaceLate`): the floor goes to the place and the span opens again
   there, so it never covers audio nobody heard. Not when the listener moved or
@@ -1340,9 +1340,8 @@ span. What waits up to a minute is what the server holds, and so what other
 devices, the console and Listening in the house see.
 
 The server reads a session as `playing` for 150 s after its last save or span
-(`playingWindow`, [how sessions are derived](../server/data-model.md#listening-sessions-how-they-are-derived)).
-That window holds one missed 60 s save plus some delivery delay, so a book played
-in a pocket keeps reading as playing between its saves. The server's
+(`playingWindow`, [how sessions are derived](../server/data-model.md#listening-sessions-how-they-are-derived)),
+so a book played in a pocket keeps reading as playing between its saves. The server's
 `resume_behind` backstop is not touched by the pace.
 
 #### What a kill leaves behind
