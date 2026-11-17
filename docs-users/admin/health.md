@@ -143,8 +143,8 @@ left as it is.
 
 When the best candidate scores under 60%, the community database most likely
 doesn't have the book. It is listed under **Not found**. You can still match it
-by hand. When a run finds nothing to apply, **See the books it didn't find**
-lists them with their best scores. The [match dialog](books.md#matching-with-community-metadata) lists the
+by hand. Once a run has nothing left to review, **See the books it didn't
+find** lists them with their best scores. The [match dialog](books.md#matching-with-community-metadata) lists the
 closest candidates, however low they scored.
 
 The community database has gaps, so some books stay unmatched. They still play

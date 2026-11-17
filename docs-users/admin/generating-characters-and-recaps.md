@@ -175,10 +175,12 @@ list offers **Detect chapters** on each row, and for the books you tick.
 ![Health > Long books without chapters, with Detect chapters on a book](/img/screenshots/admin/health-detect-chapters.png)
 
 1. Press **Detect chapters**. The confirmation shows how long transcription will
-   take.
+   take. When it needs a worker and none is connected, it says the job waits
+   until one connects.
 2. Press **Detect chapters** again to queue it.
 3. Follow it as a **Chapters** job in
-   [Server > Settings > Bridge](bridge.md#jobs).
+   [Server > Settings > Bridge](bridge.md#jobs). A job that pauses also shows
+   on the book's Chapters card, with the reason.
 
 ![The Detect chapters confirmation](/img/screenshots/admin/detect-chapters-dialog.png)
 
