@@ -1500,11 +1500,11 @@ that stopped answering is the request's `503 share_not_answering`, not its
 timeout. The audio's own read keeps the probe's time. A Re-read whose read kept
 the book as stored because a file did not answer (a look given up on, or its
 audio's read cut short) answers that `503` too, since the admin asked for the
-book as it is on disk now. When `/item`'s join of a file it would warm a remux
-for goes unanswered, it looks at neither the ebook nor the read-along map and
-answers with the stored book, rather than spending its whole time on three
-looks at the same share. With a book's
-audio read cut short, none of its side files is looked at, since each would wait
+book as it is on disk now. `/item` stops at its first unanswered look and
+answers with the stored book (see
+[`/item`](api/reference.md#get-apiv1librariesiditem)).
+
+With a book's audio read cut short, none of its side files is looked at, since each would wait
 out its time too. A side file given up on otherwise keeps the book as stored and
 records an `unreadable` problem on that file (`library.givenUp`), over a lasting
 one. The next scan repeats the same kind of call (a folder's listing, a cover
@@ -1565,12 +1565,12 @@ What a cut-short read does to the stored book is in
 Discovery's looks wait at most the probe's time each. A folder whose listing is
 given up on is skipped for the run. So is a folder holding an audio file whose
 lstat is given up on, or fails the way a share fails (`shareFault`). That is any
-error but the file being gone (`ENOENT`, or `ENOTDIR` for a folder above it
-replaced): `EIO` and `ESTALE` from a soft-mounted NFS share, `ENOTCONN` and
+error but the file being gone (`ENOENT`, or `ENOTDIR` when a folder above it
+was replaced): `EIO` and `ESTALE` from a soft-mounted NFS share, `ENOTCONN` and
 `ETIMEDOUT` from a FUSE pool or a network mount that dropped, and a permission
-error from a share that allowed the listing but refuses the look. A file the
-folder listed a moment ago says nothing about whether it is there, so its book
-is kept as stored rather than built without it.
+error from a share that allowed the listing but refuses the look. A file just
+listed that then won't answer may or may not still be there, so its book is
+kept as stored rather than built without it.
 
 A disc folder directly in a skipped folder, or in a folder above one, is
 skipped with it (`dropUnanswered`). So no book is joined from the discs that
@@ -2259,11 +2259,11 @@ Otherwise `from` is ignored and logged. The state is carried before the new
 book is indexed, so its row resolves with the carried edits.
 
 When the server can't tell now, it indexes nothing, carries nothing and answers
-`503 share_not_answering`. That is when the look at `from` is unknown (given up
-on, or failed in a way a retry may get past), or when the new book's
-fingerprint can't be read for such a reason (`metadata.FingerprintErr`). It is
-also the answer when the read kept the new book as stored because a file did
-not answer. The Bridge's retry, once the share answers, carries the state.
+`503 share_not_answering`. It can't tell when the look at `from` is unknown
+(see [Move detection](#move-detection)), when the new book's fingerprint can't
+be read for a reason a retry may get past (`metadata.FingerprintErr`), or when
+the read kept the new book as stored because a file did not answer. The
+Bridge's retry, once the share answers, carries the state.
 
 ### A move found on demand
 
@@ -2280,12 +2280,12 @@ book (`leadIndex`) looks for where it was before:
    `IndexMoved`'s is (progress, bookmarks and the rest), and the old row is
    dropped.
 
-When it can't tell (a candidate's look is unknown, or the fingerprint of the
-book not indexed yet is unread for a reason a retry may get past:
-`fingerprintUnknown`), `IndexPath` and `ReindexPath` index nothing and answer
+When it can't tell, because a candidate's look is unknown or the new book's
+fingerprint went unread for a reason a retry may get past
+(`fingerprintUnknown`), `IndexPath` and `ReindexPath` index nothing and answer
 `503 share_not_answering`, and so does every request waiting on the same read.
 A book indexed without its state would leave that state on the old row for the
-next scan's prune. A request once the share answers carries it.
+next scan's prune. A request made once the share answers carries the state.
 
 ### Reading one book again
 
@@ -2300,10 +2300,9 @@ lifetime, capped at 10 minutes (`rescanBookTimeout`). Probing every part on a
 slow share can outlast the request timeout, and the result is still saved
 then. A path with no book any more is `404` with `code: "not_indexable"`.
 
-Each look the re-read makes at the share waits at most 10 seconds
-(`library.WithLookTimeout`). A share that stopped answering is therefore
-`503 share_not_answering` with `Retry-After: 30` after about 10 seconds, and so
-is a re-read that kept the book as stored because a file did not answer. The
+Each look the re-read makes waits at most 10 seconds, as an on-demand read's
+does (see [the in-process probe](#the-in-process-probe)). A share that stopped
+answering is therefore `503 share_not_answering` after about 10 seconds. The
 console shows "Couldn't read the files". The Bridge's rescan is the same.
 
 ## The unavailable-root guard

@@ -2340,11 +2340,9 @@ indexed on its behalf. The same holds for `/chapters`, `/cover`, `/meta` and `/n
 
 From 2.7.0 `/item`'s looks at an indexed book's files wait at most 10 seconds
 each. On a share that stopped answering it answers with the stored book: the
-stored `ebook` and no `readalong`. For a Matroska book the first look is the
-join of each file the server would warm a remux for. Once that goes unanswered,
-`/item` looks at neither the ebook nor the read-along map, so it answers after
-about 10 seconds rather than spending its whole 30 on three looks at the same
-share.
+stored `ebook` and no `readalong`. It stops at the first look that goes
+unanswered (for a Matroska book, the join of a file it would warm a remux for),
+so it answers after about 10 seconds.
 
 #### Other recordings
 
@@ -3403,7 +3401,7 @@ look answered, and a podcast episode's demand fetch.
 | `403` | path outside the caller's scope |
 | `404` | file does not exist, or isn't audio; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
 | `422` | `code: "rendition_failed"`: ffmpeg refused this file, its copy came out more than 1 s short of the source, or the encode ran past its 2-hour timeout; remembered for an hour (or until the file changes), then tried again. `Retry-After` is the seconds the remembered refusal has left (1 to 3600) |
-| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full); from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the file's looks (its join, open, or a transcode's, remux's, rendition's or podcast episode's look) have not answered within 45 seconds of the request's start (a drive or share that stopped answering) |
+| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full); from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the file's looks have not answered within 45 seconds of the request's start (a drive or share that stopped answering, above) |
 
 #### Watch renditions
 

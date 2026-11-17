@@ -200,7 +200,7 @@ When a folder of a library, or a file in it, doesn't answer during a scan, the s
 
 It usually means a network share or a sleeping disk stopped answering. Check that the share is mounted and the NAS is awake, then scan the library again.
 
-While any folder of a library can't be read, scans remove no books from that library. A book you deleted stays listed until every folder reads again. If one folder or file stays unreadable, such as a file the server isn't allowed to read, fix its [permissions](#permission-denied) or move it out of the library.
+A book you deleted stays listed until every folder reads again. If one folder or file stays unreadable, such as a file the server isn't allowed to read, fix its [permissions](#permission-denied) or move it out of the library.
 
 ### "Couldn't read the files" says the drive or share is not answering
 
