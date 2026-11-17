@@ -77,13 +77,24 @@ constants, checked against Media3 by `:wear`'s PlaybackTest). Wear's own pure pi
 `FileSpanStore` (in `SpanRecorder.kt`) and `Labels` (the screens' words).
 
 **Durable files.** `JsonFile(durable = true)` syncs the bytes before its rename and the folder
-after, so a battery death never leaves an empty file. Only `outbox.json`, `open-span.json` and
-`places.json` are durable, since losing them loses listening. Everything else is rebuilt from the
+after, so a battery death never leaves an empty file. Only `outbox.json`, `open-span.json`,
+`open-span-move.json` and `places.json` are durable, since losing them loses listening. Everything else is rebuilt from the
 server or the phone. While playing, a plain 5 s tick syncs only the open span, and the 15 s cut
 syncs the outbox, then the next span, then the place. `places.json` is synced on a pause, seek,
 stop, rate change, the end, a call's hold, a closed span, the background, a removal and sign-out. On the plain
-tick the place changes in memory only, and at launch `PlaceStore.recover` takes a newer place
-from the span a kill left behind. An outbox with nothing waiting removes its file.
+tick the place changes in memory only.
+
+**After a kill**, `SpanRecorder.recover(carry)` hands the span a kill left to
+`PlaceStore.recover` before it leaves its file. That takes the span's newest end: its own event's
+when the outbox already holds it (a kill between a close's append and the span file's change), else
+its last keep's. It takes only a place heard, one the span moved to by a second or more, or its
+start when a cut or a playing Stay opened it where the closed span ended (`OpenSpan.fromHeard`).
+It never compares by the clock, because a wall clock set back would hide the newer span. The keep
+and a cut end when the audio last moved (the engine's `lastAdvance`), so buffering never stamps the
+place later than it was heard. The book's last span and its `finish` go into the outbox in one
+append (`SpanRecorder.finish`), so a kill inside the last close can't restart the book at 0. A move
+a kill cut short is kept in `open-span-move.json` until a span opens, as on the Apple Watch, and
+sign-out forgets it. An outbox with nothing waiting removes its file.
 
 ## Downloads
 
@@ -97,6 +108,10 @@ network) runs `BookDownload`:
 4. It fetches each file into `books/<folder>/` with `Range` and `If-Range` on the strong ETag.
    A `.part` and an `.etag` sit beside the file, so every run is idempotent. A 416 starts that
    file again from 0.
+
+A success the watch can't decode (another build's format, a proxy's page) fails the book with "Your
+server sent something this watch can't read." (`RenditionPlan.UNREADABLE`, the Apple Watch's
+words). It is no wait on the connection, and Try again asks afresh.
 
 Unlike the Apple Watch, the prepare step runs in the background too. A book sent from the phone
 starts preparing with the watch app closed, and Home shows Preparing, then Downloading, as the
@@ -243,7 +258,14 @@ nearby, else a connected one, else any of them. `watch_id` is its node id. A new
 another watch.
 
 **Pairs expire.** The phone prunes a `pair` past `expires_at` at every snapshot, send and start,
-so a pairing token does not linger on a watch.
+and at an inexact alarm set for the first pending pair's `expires_at` (`PairPruneReceiver`,
+allowed while idle), so a pairing token does not linger on a watch. The alarm moves or goes when
+the watch takes the pair. A reboot or a force stop drops it, and the next start sets it again.
+
+**What the phone refuses to send** is what the watch would refuse to take (`WearRules.slot` in
+the phone's module). A `pair` needs a `server_id` and `pairing_token` that are not blank, a
+`user_id` within 32 bits and a readable `expires_at`. A `book` or `remove` needs a `server_id` and
+`path` that are not blank, and a user and library id within 32 bits.
 
 ## The phone in Downloads
 
