@@ -68,32 +68,37 @@ package does for a bad flag.
   once. It is the way back in when the first-run password is lost. A flag after
   the command is a usage error, since the flag package stops at the command.
 
-`reset-admin` picks the only admin, or the one named. It exits `2` (a
-`launcher.UsageError`, listing the admins) for an unknown name, an account that
-isn't an admin, or several admins with no name. It exits `1` and changes nothing
-when:
+`reset-admin` picks the one named, or the only enabled admin (a disabled
+admin neither counts nor is listed). It exits `2` (a `launcher.UsageError`,
+listing the enabled admins) for an unknown name, an account that isn't an
+admin, or several admins with no name. It exits `1` and changes nothing when,
+checked in this order:
 
+- `--data` names no folder (said as no database), or a folder this user can't
+  reach (reported as the permission error it is);
+- a restore is waiting for the next start (`backup.RestorePending`), which would
+  replace the new password. It is checked before the database, so a damaged
+  database the restore would replace says so;
 - there is no `audiosilo.db` in the data directory;
 - the file isn't an AudioSilo database (`store.Inspect`), which it never
   migrates;
-- a restore is waiting for the next start (`backup.RestorePending`), which would
-  replace the new password;
 - the database has migrations pending (an older release left it: the server
   upgrades it, and backs it up, at its next start);
-- there is no admin yet (with no username given; a name with no admin to match
-  is the usage error above), or the admin is disabled.
+- there is no admin yet, every admin is disabled (with no username given; a
+  name with no admin to match is the usage error above), or the named admin is
+  disabled.
 
-The password is set through `auth.SetPassword`, the console's rule: every
-session, open pairing code and remembered browser of the account ends. It also
-revokes the auth code the first start printed beside the password
-(`auth.RevokeInitialAdminCode`: that admin's unlimited, never-expiring invite
-labelled `auth.InitialAdminCodeLabel`). It ends the start's sign-in hint and,
-for the first-run admin, turns `GET /admin/setup`'s `printed_password` false
-(`auth.NoteOwnPassword`, as for a password the admin chose): the password in
-the log is gone. If the revoke
-fails, the command still prints the new password, since the old one is gone,
-then exits `1` with the error and asks for the code to be revoked in the console
-(People > Invites).
+It first revokes the auth code the first start printed beside the password
+(`auth.RevokeInitialAdminCode`: the one the `first_admin` row names, so a code
+the admin rotated since, never printed, stays; on an install whose row names
+none, from before it did, that admin's unlimited, never-expiring invite
+labelled `auth.InitialAdminCodeLabel`). A failure there refuses the reset with
+nothing changed. Then it sets the password through `auth.SetPassword`, the
+console's rule: every session, open pairing code and remembered browser of the
+account ends. It ends the start's sign-in hint and, for the first-run admin,
+turns `GET /admin/setup`'s `printed_password` false: the password in the log is
+gone. If setting the password fails after the code was revoked, it exits `1`
+saying so, and running it again is the way back in.
 
 It runs beside a running server. That server checks the new password at once,
 since a sign-in reads the database. A session it has already checked can last up
@@ -111,11 +116,22 @@ While that admin has not signed in, every later start prints a framed reminder
 makes a root-owned file in the data folder (a server running as root gets no
 `-u`). The binary is named by its path when
 that name on `$PATH` is not this binary (the LinuxServer.io image's
-`/app/audiosilo/audiosilo`). Words are quoted for the system's shell (single
-quotes, or double quotes on Windows). An admin's password sign-in, an admin
-setting their own password (`POST /auth/password`, or `PATCH /admin/users/{id}`
-on their own account) or `reset-admin` ends it. A server with no row, an
-upgraded or `--setup` one, never prints it.
+`/app/audiosilo/audiosilo`). Words are quoted for the system's shell, in
+single quotes. On Windows a word that isn't plain is quoted for PowerShell
+(nothing expands inside single quotes, so a `$` or `%` in a path stays, and a
+quote inside is doubled), a quoted binary path goes behind the call operator
+`&`, and a word with a comma or an `@` is quoted too. The hint then says
+"(in PowerShell)"; a command of plain words names no shell. An admin's password
+sign-in, or a password set on an admin account, ends it. A server with no row,
+an upgraded or `--setup` one, never prints it.
+
+**The first-run code.** A password set on the first-run admin, whoever sets it
+(the account step's `POST /auth/password`, People's `PATCH /admin/users/{id}`,
+another admin's included, or `reset-admin`), or cleared (an admin with single
+sign-on), also deletes the auth code the `first_admin` row names, since it sat
+in the same log (`auth.UpdateUser`, in its own transaction). The console's
+account step says a new password ends the code. A code rotated in the console
+since was never printed and stays.
 
 A bare tool name (no path separator) is resolved **next to the server
 executable first**, then on `$PATH`. An explicit path is used as it is. If a

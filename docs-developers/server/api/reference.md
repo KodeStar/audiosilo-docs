@@ -461,13 +461,14 @@ connection id is `<server_id>.<user_id>` with the answer's `user`
 | Status | Meaning |
 |---|---|
 | `400` | `pairing_token` missing |
-| `401` | `invite already used on all its devices - ask for a new invite` (the parent invite's use cap is spent) |
-| `401` | `invite has expired - ask for a new invite` (the parent invite expired after the redeem) |
-| `401` | `invalid or expired pairing token` (anything else: bogus/revoked token, single-use token already exchanged, code owner disabled) |
+| `401` | `code: "invite_used"`: the parent invite's use cap is spent (from 2.7.0) |
+| `401` | `code: "invite_expired"`: the parent invite expired after the redeem (from 2.7.0) |
+| `401` | `invalid or expired pairing token`, no `code` (anything else: bogus/revoked token, single-use token already exchanged, code owner disabled) |
 | `429` | redeem lockout tripped, with `Retry-After` |
 
-A refused exchange never burns an invite use. Its `401`s carry no `code` (unlike
-`/auth/redeem`'s): tell them apart only by the English `error`, or not at all.
+A refused exchange never burns an invite use. Its `401`s carry the same codes as
+`/auth/redeem`'s. An older server sends them with no `code`: tell those apart
+only by the English `error`, or not at all.
 
 ### `POST /api/v1/auth/login`
 
@@ -496,7 +497,7 @@ forgets `device_id`s so that the browser's next sign-in is announced again:
   disabled account forgets all of that person's.
 
 A sign-in racing a password change gets no session, only `401 invalid credentials`
-(see [Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
+(see [Password changes and Sign out everywhere end sessions](../auth-and-security.md#password-changes-and-sign-out-everywhere-end-sessions)).
 
 Response `200`: `{ "token": "…", "user": { … }, "server_id": "…" }`, plus `addresses`
 on a server with that capability. It is the same shape as `/auth/exchange`.
@@ -703,20 +704,23 @@ had revokes:
   [`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair) for
   a member;
 - the caller's recovery code (`has_recovery` turns `false`);
-- the caller's household members' sessions made on the caller's other devices, with
-  every member's open pairing code. A member's own paired device stays.
+- the caller's household members' sessions made on the caller's other devices, the
+  API keys and calendar feed links those members made from them, and every
+  member's open pairing code. A member's own paired device stays.
 
-API keys, the [calendar feed token](#the-calendar-feed) and Bridge tokens stay, and
+The caller's own API keys and [calendar feed token](#the-calendar-feed) and the
+Bridge tokens stay, and
 a first password ends nothing (see
-[Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
+[Password changes and Sign out everywhere end sessions](../auth-and-security.md#password-changes-and-sign-out-everywhere-end-sessions)).
 An ended token is refused (`401`) on its very next request, media `?token=` included.
 A shipped app takes its existing 401 path: signed out, pair again. The response
 carries no count. A client that wants to say what happened reads
 [`GET /me/devices`](#get-apiv1medevices) again.
 
-An admin's change also ends the first-run sign-in hint and turns
-[`GET /admin/setup`](#get-apiv1adminsetup)'s `printed_password` false for the
-first-run admin.
+An admin's change also ends the first-run sign-in hint. For the first-run admin it
+turns [`GET /admin/setup`](#get-apiv1adminsetup)'s `printed_password` false and
+deletes the auth code the first start printed beside the password (a code
+rotated in the console since stays).
 
 | Status | Meaning |
 |---|---|
@@ -809,6 +813,10 @@ Response `200`:
 `token` is the bearer secret. Only its SHA-256 hash is stored, so this is the
 one time it appears. `api_key.last_seen` is `null` until the key first
 authenticates a request.
+
+A mint from a session signed out after the request was checked (a password
+change or Sign out everywhere committed in between) answers `401`, as the auth
+middleware does.
 
 | Status | Meaning |
 |---|---|
@@ -5186,7 +5194,8 @@ that wants to show the link again keeps it as it keeps a session token.
 Errors, in order: `401`; `403` `kid_account`; `403` `demo_account` (a demo
 account can't make a credential); `403` for an API key (a key never mints a
 credential, [Personal API keys](#personal-api-keys)); `404` `metadata_off`; `404`
-`upcoming_off`.
+`upcoming_off`. A session signed out after the request was checked is `401`
+too, from inside the write.
 
 #### `DELETE /api/v1/me/upcoming/calendar`
 
@@ -5857,9 +5866,9 @@ always is, or it is `400 admin_needs_password`).
   a password the account had ends their sessions exactly as a
   [self-service change](#post-apiv1authpassword) does, in the same transaction. Only
   the admin's own session survives, when the account is the admin's. A non-empty
-  password an admin sets on their **own** account counts as their own choice
-  (`auth.NoteOwnPassword`), as [`POST /auth/password`](#post-apiv1authpassword)
-  does. One another admin set for them does not.
+  password set on an admin account ends the first-run sign-in hint, and one set
+  on the first-run admin (or cleared), by any admin, also turns `printed_password`
+  false and deletes the auth code the first start printed (`auth.UpdateUser`).
 
 Response `200`: the updated user object (with the fields above).
 
@@ -5885,14 +5894,23 @@ both: every value counts. Each kept member becomes an ordinary account (the thre
 member columns cleared, so only their direct grants remain), as with Make
 independent ([audited](../backups-and-notifications.md#audit-log) on `user.delete`).
 
+With `delete_members` (comma-separated ids or repeated, like `keep_members`;
+present, even empty), only the members it names are deleted and every other
+member is kept as above, so one added after the caller read the list is never
+deleted unseen. The console always sends it, with the members its dialog showed
+and left ticked. An id that isn't one of this person's members, or one
+`keep_members` also names, is `400 invalid_delete_members` and nothing is
+deleted.
+
 The checks answer in this order: an id that isn't a number, then a malformed
-`keep_members` (`400 invalid_keep_members`), then a self-delete (`400
-cannot_delete_self`), then the account (`404`), then, inside the transaction, the
-last-admin rule and the keep list.
+`keep_members` (`400 invalid_keep_members`) or `delete_members` (`400
+invalid_delete_members`), then a self-delete (`400 cannot_delete_self`), then
+the account (`404`), then, inside the transaction, the last-admin rule and the
+keep and delete lists.
 
 | Status | Meaning |
 |---|---|
-| `400` | self-delete refused (disable your own account instead) - `cannot_delete_self`; `code: "invalid_keep_members"` (a `keep_members` entry that isn't a positive id, or isn't one of this person's members: nothing is deleted) |
+| `400` | self-delete refused (disable your own account instead) - `cannot_delete_self`; `code: "invalid_keep_members"` (a `keep_members` entry that isn't a positive id, or isn't one of this person's members: nothing is deleted); `code: "invalid_delete_members"` (a `delete_members` entry that isn't a positive id, isn't one of this person's members, or is also in `keep_members`: nothing is deleted) |
 | `404` | user not found |
 | `409` | last enabled admin - `last_admin` |
 
@@ -10499,10 +10517,10 @@ server and this request:
 - `printed_password` (2.7.0) is true while the caller is the admin the first
   start made and still has the password it printed in the log
   (`auth.PrintedPassword`, the `server_state` key `first_admin`). The console's
-  Your account step then asks for a new password. It is false for an admin who
-  chose theirs, on the `--setup` page or since, after `reset-admin` gave that
-  admin a new password, and when the read fails (the step then asks for
-  nothing).
+  Your account step then asks for a new password, and says the new one ends the
+  printed auth code too. It is false once that admin's password was replaced,
+  on the `--setup` page or since, by them, another admin or `reset-admin`, and
+  when the read fails (the step then asks for nothing).
 
 | Status | Meaning |
 |---|---|

@@ -120,7 +120,7 @@ Sessions have **no expiry**. They end only when something revokes them:
   (`POST /admin/users/{id}/sign-out`);
 - disabling or deleting the account;
 - a password change or reset, which keeps only the caller's session (see
-  [Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
+  [Password changes and Sign out everywhere end sessions](../auth-and-security.md#password-changes-and-sign-out-everywhere-end-sessions)).
 
 Every authenticated request bumps the token's `last_seen`, which is what
 surfaces as a user's "last activity". The request also records its address
@@ -323,6 +323,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 |---|---|---|
 | `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`), or renaming one to it (`PATCH /admin/users/{id}`) |
 | `username_required` | `400` | an empty username on `POST /admin/users` or `PATCH /admin/users/{id}` (from 2.7.0) |
+| `invite_used` / `invite_expired` | `401` | an invite with no uses left, or past its expiry: `POST /auth/redeem` (from 2.5.0) and `POST /auth/exchange` for a token the invite minted (from 2.7.0) |
 | `current_password_incorrect` | `401` | `POST /auth/password` with a wrong `current_password` (from 2.7.0). A client tells this `401` apart from a session that ended, and keeps the session |
 | `name_taken` | `409` | a library or share name already in use (create, rename) |
 | `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: its rules change only by granting or revoking the library |
@@ -383,6 +384,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `self_managed` | `409` | `PATCH /admin/users/{id}` assigning a person to themselves |
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
+| `invalid_delete_members` | `400` | `DELETE /admin/users/{id}?delete_members=` with an entry that isn't one of that person's members, or one `keep_members` also names (from 2.7.0) |
 | `kind_unavailable` | `409` | `POST /admin/bridge/jobs` (or `GET /admin/bridge/estimate`) for a kind the paired Bridge doesn't run, or before any Bridge has reported; `POST /admin/librivox/fetch` with no Bridge paired, or one that doesn't run `librivox.fetch` |
 | `library_not_writable` | `409` | podcast follow/check, `POST /admin/librivox/fetch`, or `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`, `readalong.align`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
 | `cannot_contribute` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge's last heartbeat doesn't say it can contribute (its `setup.can_contribute`, else `estimates.sidecars.can_contribute`) |

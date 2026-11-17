@@ -98,7 +98,7 @@ These revoke one:
 - a member's owner (`DELETE /me/household/members/{id}/devices/{device_id}`);
 - a change or reset of the account's password;
 - an admin, for one device or for
-  [all of them](#password-changes-end-sessions).
+  [all of them](#password-changes-and-sign-out-everywhere-end-sessions).
 
 ### Pairing tokens
 
@@ -148,6 +148,13 @@ mints for headless integrations such as dashboards and cron jobs.
 - Listing (`GET /auth/tokens`) takes `nonDemoAccount` alone (from 2.4.0).
   Opening the Account page therefore never spends the `accountLimiter` budget
   that a household behind one NAT shares.
+- A key records the device its session was made on (`created_on_token_id`,
+  `auth.madeOn`). So a household member's key made from a sign-in on the
+  owner's device ends with that sign-in, by the owner's password change, Sign
+  out everywhere or a device revoke with `also_members` (see
+  [Password changes and Sign out everywhere end sessions](#password-changes-and-sign-out-everywhere-end-sessions)).
+  A key made before v2.7.0 recorded none and stays. A mint from a session
+  signed out since the request's check answers `401`.
 
 **Containment.** An API-key caller is barred (`403`, through `denyAPIKey`) from
 every route that mints a credential:
@@ -227,7 +234,10 @@ debugger. The token is narrow in every way:
   (unknown, revoked, expired, disabled user) and also has a grant and a live
   parent. So **signing out the device that minted it** ends it, whether by
   logout, My devices or the console.
-- **Short-lived.** It lasts 24 hours, and a person keeps at most 20. Each mint
+- **Short-lived.** It lasts 24 hours. Each sending device (the token that
+  mints them) keeps at most 20, and a person at most 100 over all their
+  devices; a mint past either drops the oldest, so a run of casts on one device
+  never ends the cast another device of the person is playing. Each mint
   deletes every dead cast token: expired, with no grant, or with its parent
   gone, signed out or expired. The daily retention job runs the same prune
   (`auth.PruneCastTokens`). A dead token's row (which holds the receiver's
@@ -360,7 +370,8 @@ person's upcoming release list and nothing else:
   The new row copies the `created_on_token_id` of the session it was made from.
   That is the owner's device the sign-in was made on, or none for a sign-in on
   the person's own device. So a member signed in on their owner's device makes
-  the link "on" that device.
+  the link "on" that device. A mint from a session signed out since the
+  request's check answers `401`.
 - **One per user.** A mint deletes the earlier row in the same durable
   transaction. Migration `0060`'s partial unique index `idx_tokens_feed_user`
   (`tokens(user_id) WHERE kind = 'feed' AND revoked = 0`) refuses a second live
@@ -375,12 +386,15 @@ person's upcoming release list and nothing else:
     the admin's assign alike;
   - a move into another owner's household, when the link was made on someone
     else's device (`leaveOwners`, together with the sign-in made there). A link
-    made on the person's own device stays, as that sign-in does.
+    made on the person's own device stays, as that sign-in does;
+  - for a member's link made on the owner's device, the owner's password change,
+    Sign out everywhere, or a revoke of that device with `also_members` (the
+    link is deleted and adds nothing to the count).
 
   Deleting the account cascades. While an account is disabled, `lookupToken`
-  refuses its token. A password change or reset and the admin's Sign out
-  everywhere end sessions but leave the link alone (see
-  [Password changes end sessions](#password-changes-end-sessions)). The feed is
+  refuses its token. The person's own password change or reset and the admin's
+  Sign out everywhere end their sessions but leave their own link alone (see
+  [Password changes and Sign out everywhere end sessions](#password-changes-and-sign-out-everywhere-end-sessions)). The feed is
   the person's to end, and the console has no control for it.
 - **Behind the token, the person's own rules.** The route still applies `notKid`
   (`403` for a leftover token of a person who is now a kid) and the two `404`s.
@@ -478,7 +492,7 @@ mistyped entry still verifies.
 | Defaults | 5 uses, 1-day expiry (`defaultAuthCodeMaxUses` and `defaultAuthCodeTTLDays` in `handlers_admin.go`). An explicit `0` means unlimited uses or no expiry. The console's invite dialog asks for 7 days unless changed. | Unlimited uses, never expires |
 | Cardinality | One *active* invite per user | At most one recovery code per user |
 | Listable | Yes (`ListAuthCodes`, metadata only) | No. It shows only as `User.HasRecovery` |
-| Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin). A password change or reset, or Sign out everywhere, also removes a leaked code (see [Password changes end sessions](#password-changes-end-sessions)). |
+| Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin). A password change or reset, or Sign out everywhere, also removes a leaked code (see [Password changes and Sign out everywhere end sessions](#password-changes-and-sign-out-everywhere-end-sessions)). |
 
 Both kinds redeem through the same path. The full onboarding flow:
 
@@ -862,14 +876,14 @@ or change their own password:
   `PATCH /admin/users/{id}`. The guard that an admin must keep a password still
   applies underneath: `SetPassword` refuses to clear an admin's password.
 - A change ends the caller's other sessions (see
-  [Password changes end sessions](#password-changes-end-sessions)).
-- An admin's change counts as choosing their own password
-  (`auth.NoteOwnPassword`), as does `PATCH /admin/users/{id}` on the admin's own
-  account. For the first-run admin it ends the start's sign-in hint and turns
-  `GET /admin/setup`'s `printed_password` false (see
+  [Password changes and Sign out everywhere end sessions](#password-changes-and-sign-out-everywhere-end-sessions)).
+- A password set on an admin account ends the start's sign-in hint. One set on
+  the first-run admin, by them or another admin (`PATCH /admin/users/{id}`), or
+  cleared, also turns `GET /admin/setup`'s `printed_password` false and deletes
+  the auth code printed beside it (see
   [Configuration](configuration.md#cli-flags-cmdaudiosilo)).
 
-## Password changes end sessions
+## Password changes and Sign out everywhere end sessions
 
 Replacing or clearing a password the account had ends the person's sessions.
 Whoever knew the old password is signed out wherever they used it.
@@ -896,15 +910,18 @@ password, and that the person can neither see nor revoke:
   - a member's session made on any of the person's devices except the kept one
     (`created_on_token_id`, the same rule as the device revoke's
     `also_members`), including a device signed out earlier;
+  - the API keys and the calendar feed link a member made from such a session
+    (the mint records the session's device, below);
   - every member's open pairing code.
 
-  A member's own paired device stays signed in.
+  A member's own paired device stays signed in, with what was made on it.
 
 What stays:
 
-- **API keys**, which are listed and revoked on their own, in the device lists
-  and `/auth/tokens`;
-- the [calendar feed token](#calendar-feed-tokens), which is the person's to end;
+- the person's own **API keys**, which are listed and revoked on their own, in
+  the device lists and `/auth/tokens`;
+- the person's own [calendar feed token](#calendar-feed-tokens), which is theirs
+  to end;
 - [Bridge tokens](#bridge-tokens), which are the Bridge's;
 - invites, which are the admin's, listed and revoked in the console.
 
@@ -926,8 +943,9 @@ hash is still the account's and the account is enabled. Otherwise it answers
 **Sign out everywhere.** The admin's `POST /admin/users/{id}/sign-out`
 (`auth.SignOutEverywhere`) is the console's button on a person's Devices tab.
 
-- It runs the same `endSessions` without a password change. When the account is
-  the admin's own, it keeps the admin's current session.
+- It runs the same `endSessions` without a password change, members' sessions,
+  API keys and calendar links made on the person's devices included. When the
+  account is the admin's own, it keeps the admin's current session.
 - It forgets the person's browsers (`forgetBrowsers`), so each browser's next
   password sign-in is announced as a new device. A new password forgets the
   browsers too, as it always has.
@@ -1695,7 +1713,8 @@ token in `tokens.created_on_token_id`. A token's validity never reads it.
 
 Signing the owner's device out leaves those sessions alone unless the owner asks
 `?also_members=1`. That revokes them in the same transaction, restricted to
-`managed_by = caller`, and audits each member signed out
+`managed_by = caller`, with the API keys and calendar feed links those members
+made from a sign-in there, and audits each member signed out
 (`member.device_revoke`).
 
 #### Moving between households

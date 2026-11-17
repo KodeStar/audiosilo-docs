@@ -1472,17 +1472,21 @@ Its keys:
   merges a change into it in one writer transaction. Migration `0053` writes it
   finished and dismissed on an upgraded server.
 - `first_admin`: the admin a headless first start made with a printed password,
-  `{"user_id":1,"signed_in":false,"chose_password":false}`. Only the start that
-  made the admin writes it (`auth.MarkFirstAdmin`), even one that failed before
-  printing the banner. While
+  `{"user_id":1,"signed_in":false,"chose_password":false,"code_id":7,"code_created_at":"…"}`.
+  Only the start that made the admin writes it (`auth.MarkFirstAdmin`), even one
+  that failed before printing the banner. `code_id` and `code_created_at` (2.7.0)
+  name the auth code printed beside the password: a rotation in the console
+  keeps the code's id but stamps it anew, so a rotated code, never printed, no
+  longer matches. While
   `signed_in` is false, each later start prints the sign-in hint (see
   [Configuration](configuration.md#cli-flags-cmdaudiosilo)). An admin's password
-  sign-in or single sign-on (`auth.NoteAdminSignIn`), `reset-admin`, or the admin's own password
-  change sets it. `chose_password` is set once that admin sets their own
-  password or `reset-admin` gives them a new one (both `auth.NoteOwnPassword`),
-  and drives `GET /admin/setup`'s
-  `printed_password`. No row, on an upgraded server or a `--setup` one, means
-  no hint and no backfill.
+  sign-in or single sign-on (`auth.NoteAdminSignIn`), or a password set on an
+  admin account, sets it. `chose_password` is set once a password is set on
+  that admin, by anyone (the admin, another admin or `reset-admin`), or cleared,
+  and drives `GET /admin/setup`'s `printed_password`. The same write deletes the
+  code the row names (`auth.UpdateUser`, `notePasswordSet`); a row written
+  before it named one finds the code by its label and shape. No row, on an
+  upgraded server or a `--setup` one, means no hint and no backfill.
 - `metadata_region_chosen`: `true` once an admin saved `metadata.region` from the
   console, "No preference" included (`catalog.NoteRegionChosen`). With a region
   in `config.yaml` or the environment it counts as chosen anyway. It drives
