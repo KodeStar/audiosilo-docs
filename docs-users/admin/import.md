@@ -45,7 +45,9 @@ passwords, and books that aren't in your AudioSilo libraries.
   address on your network if Audiobookshelf's `https://` one has a self-signed
   certificate (see [When a fetch fails](#when-a-fetch-fails)).
 - **A finished scan.** The import pairs Audiobookshelf's books with the books
-  AudioSilo has found, so let a new library's first scan finish.
+  AudioSilo has found, so let a new library's first scan finish. In the setup
+  flow, the import waits until you have added a books library and its first
+  scan has finished.
 
 ## Import the history
 
@@ -140,7 +142,9 @@ Activity > Sessions, they show "Imported from Audiobookshelf".
 field. If it says Audiobookshelf's certificate isn't trusted, its `https://`
 address uses a certificate the AudioSilo server doesn't trust, usually a
 self-signed one. Use its plain `http://` address on your network instead, for
-example `http://192.168.1.20:13378`.
+example `http://192.168.1.20:13378`. An `http://` address that only sends the
+server on to the `https://` one fails the same way. Use the address and port
+Audiobookshelf itself answers on over `http://`.
 
 For a fetch that fails later, the import card says why. Check that
 Audiobookshelf is running, that its address works from the AudioSilo server, and
