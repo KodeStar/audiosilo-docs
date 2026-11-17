@@ -262,13 +262,22 @@ per build:
   or focus fails quietly, so there is no window-wide `vite:preloadError`
   handler.
 
+A tab left open across an upgrade whose pages still open learns of it too
+(from 2.7.0). The shell's `UpdateNotice` reads `GET /server` again on every
+focus and every 5 minutes (`useServerInfoLive`). Once the version differs from
+the one the tab first saw (`versionWatch`), it shows "AudioSilo was updated"
+with Reload above every page.
+
 ### The CSP does not change
 
 The console runs under the same `script-src 'self'; style-src 'self'` policy
 (no nonce) as the connect page, so it is built to need nothing inline:
 
 - `index.html` loads only files: `/admin/theme-init.js`, which applies the
-  stored light, dark or system theme before first paint, and the Vite bundle.
+  stored light, dark or system theme before first paint and (from 2.7.0) keeps
+  following the OS while the page is open, and the Vite bundle. The connect and
+  setup pages load their own copy (`internal/web/assets/theme-init.js`, the same
+  storage key) and follow the OS the same way.
   `admin-ui/scripts/check-csp.mjs` (a Vite plugin) fails the build on any inline
   `<script>`, `<style>`, `style=""` or `on*=""` attribute, and the Go test
   applies the same check to the embedded build.

@@ -6257,7 +6257,9 @@ settings are not echoed; read them from
 Invalid `kind` is `400 invalid_kind`. If either library is a podcast library,
 equal, ancestor or descendant roots conflict (`409 root_overlaps`), using
 cleaned absolute paths. This also applies when moving a books root over a
-podcast root. Podcast libraries stay in this admin list regardless of the
+podcast root. Two books libraries may share a folder or nest one inside the
+other (their books are then listed twice, once in each): the server allows it,
+and from 2.7.0 the console's Add library and folder edit ask first. Podcast libraries stay in this admin list regardless of the
 player gate; book detection/export and admin book tools require books libraries
 (`409 not_book_library` where applicable).
 
