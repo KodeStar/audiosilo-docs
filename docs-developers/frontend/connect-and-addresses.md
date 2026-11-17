@@ -124,7 +124,14 @@ The Metro dev server (`npm run web`) is not the server, so it keeps the field.
 
 - **An invite code**: `redeemCode`, then `exchange`. A code handed over by an invite
   link is submitted at once, and a refused one stays in the field with the reason.
-- **A username and password**: `login`.
+- **A username and password**: `login`. Its `device_id` is this install's own random
+  sign-in key for that server address (`getSignInKey`, `src/lib/sign-in-key.ts`,
+  stored under `audiosilo.signInKeys`), so signing in again from it is not announced
+  to the admin as a new device. It is one key per address because the server keeps
+  it as a secret, so no server is sent the key another knows this install by. It is
+  never the progress `device_id`, which goes with every save and comes back in
+  progress answers. A server older than the field answers `400`, so the sign-in is
+  sent once more without it (never after a `401` or a `429`).
 
 The step uses a bare client, because this is not a saved connection yet and a wrong
 password's `401` must never flag a reconnect. The username is sent trimmed. An empty
