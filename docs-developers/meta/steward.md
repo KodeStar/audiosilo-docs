@@ -106,7 +106,12 @@ Nothing is left red or flagged, and nothing is closed unmerged:
    backoff.
 3. A branch the intake sweep could not rebase is rebased mechanically, with the
    same pack merge driver the sweep uses. If the driver refuses, an agent
-   re-applies the change onto `main`.
+   re-applies the change onto `main`. The steward knows the sweep gave up from
+   its notice, read by the sync's rule (see
+   [which comments count](sync-bot.md#which-comments-count)). The steward's
+   own once-only comments (its review, held and superseded-closed notes and
+   the `@dependabot` ask) count by the same trusted-author rule, so a pasted
+   copy of one can't make the steward skip it.
 4. A flag, or a check still red after its re-run, goes to a **FIX** task. The
    agent amends the data with the flag or the failed job's log as evidence, plus
    the source issue's text when the pull request came from intake.

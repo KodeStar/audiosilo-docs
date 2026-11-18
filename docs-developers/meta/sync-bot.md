@@ -975,6 +975,38 @@ state ends in a decision the service makes itself:
   verdict again, so a broken `ai-verify` cannot spin. A lane pull request's
   recycle does not count (see [Sharing the one slot](#sharing-the-one-slot) and
   [the LibriVox lane's pull request](#what-happens-to-its-pull-request)).
+- **`main` moved out from under it.** The service recycles a pull request that
+  is behind `main` once the intake sweep has posted its give-up notice about
+  this head, or once the head hasn't moved for 30 minutes
+  (`BehindStallAfter`). It does the same for a pull request that conflicts with
+  `main` on two ticks in a row (`DirtyTicksBeforeRecycle`), since GitHub
+  answers `unknown` for a moment after every push.
+
+### Which comments count
+
+The service reads two kinds of bot comment on a pull request, as
+audiosilo-meta's workflows post them:
+
+- **The `ai-verify` verdict.** Its first non-empty line is the heading
+  `### AI verification: flagged` or `### AI verification: passed`. A comment
+  that only quotes a verdict further down is not one.
+- **The intake sweep's give-up notice** (`intake.yml`). A line that starts with
+  the hidden marker `<!-- intake-sweep:rebase-failed <sha> <reason> -->`, or a
+  body that opens with "The intake bot could not rebase this branch onto" once
+  any leading HTML comments are set aside (`watcher.IsSweepFailure`). A comment
+  that quotes the sentence or the marker mid-line doesn't count. When the
+  marker names a commit, the notice counts for that head only, whenever it was
+  posted (`SweepFailureHead`). One reason the sweep gives up is that the branch
+  moved while it was rebasing, and that notice arrives after its head is gone,
+  so it can't recycle a head the resolver has just pushed. A notice with no
+  commit counts only when it was posted after the head was first seen.
+
+Either counts only from a trusted author (`ghapi.Comment.Trusted`):
+`github-actions[bot]`, which both workflows comment as and which GitHub reports
+with the association `NONE`, or an `OWNER`, `MEMBER` or `COLLABORATOR`. Anyone
+who can comment could paste the exact text, so a pasted notice can't set off a
+recycle, a pasted flagged verdict can't feed the resolver its text as the
+finding to fix, and a pasted passed verdict can't hide a real flag.
 
 Only **configuration errors** still **park** a pull request. The service labels
 it `sync:needs-human`, comments and stops watching it. The configuration errors
