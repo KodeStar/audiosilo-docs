@@ -1009,9 +1009,10 @@ Two rules in `meta-gating.ts` decide whether `/meta` is asked for:
   because it runs for every download, so a book matched only in the console reads
   as unmatched offline.
 
-`types.ts` also mirrors `Book.generated_parts` (which of `characters`, `recaps` and
-`description` the book has, as `GeneratedPart`, a name a newer server adds passing
-through). No screen reads it yet: `generated` alone decides the requests above.
+`types.ts` also mirrors `Book.generated_parts`, which of `characters`, `recaps`
+and `description` the book has. Each is a `GeneratedPart`, and a name a newer
+server adds passes through. No screen reads it yet, so `generated` alone decides
+the requests above.
 
 The series page's anchor (`metadataAnchor`, an ASIN or ISBN) and Search's
 characters (`characterBooksToLoad`, the started books, identifiers or not) pick

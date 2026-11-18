@@ -117,10 +117,9 @@ tab and renders:
   the Private feed badge, `FollowButton` and
   [`CheckEpisodesButton`](#check-for-new-episodes). It adds "Last check failed"
   when `status.error` is set, with no codes for listeners. When
-  `status.secret_missing` is `true` (the Bridge lost a private feed's address,
-  `feed_secret_missing`, and no check has succeeded since), it says "This feed's
-  private address is missing. Follow it again by its address." in its place
-  (`podcasts.show.secretMissing`).
+  [`status.secret_missing`](../server/api/reference.md#podcast-read-routes) is
+  `true`, it shows "This feed's private address is missing. Follow it again by
+  its address." in place of "Last check failed" (`podcasts.show.secretMissing`).
 - **The order control:** `defaultEpisodeOrder(show)` is `oldest` for a `serial`
   show and `newest` otherwise. The segmented control writes `?order=`. The client
   never re-sorts. The server (from 2.4.0) orders by published date, then season and

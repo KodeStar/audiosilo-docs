@@ -94,13 +94,13 @@ Many tools put the series name in the album tag, so every book in a series has t
 
 In a book split into several files, each file often has its own title tag. When that tag starts with the album and adds more, the extra part usually names the file, not the book. For example, with the album "Frankenstein", the first file may be titled "Frankenstein - Letters 1-4". So for a book of several files, AudioSilo takes the album as the title, except in these cases:
 
-- **The tag is the book's.** The first and last files have the same title tag, or the tag names the book's folder. Then the title tag is the book's title. A title tag "The Expanse Box Set: Leviathan Wakes" in a folder `Leviathan Wakes` stays the title.
+- **The tag is the book's.** The first and last files have the same title tag, or the tag names the book's folder. A title tag "The Expanse Box Set: Leviathan Wakes" in a folder `Leviathan Wakes` stays the title.
 - **The files share a book name after the album.** "The Wheel of Time: The Great Hunt - Chapter 1" through "The Wheel of Time: The Great Hunt - Chapter 40" give "The Great Hunt". A part or volume marker such as "Part 1" or "Book 1" is not a book name, so then the album stays.
 - **The tags differ only in a bracketed part.** With the album "Harry Potter", the tags "Harry Potter and the Philosopher's Stone (Part 1)" and "... (Part 2)" give "Harry Potter and the Philosopher's Stone".
 
 A book of one file keeps its title tag.
 
-After you update the server, the next scan reads the first file of each book of several files once more, and its last file where the title depends on it. Some titles improve. A title you edited in the admin console stays as you set it.
+After you update the server, the next scan reads each book of several files once more. A title that came from its first file's name changes to the book's. A title you edited in the admin console stays as you set it.
 
 ## Audiobookshelf's metadata.json files {/* #coming-from-audiobookshelf */}
 

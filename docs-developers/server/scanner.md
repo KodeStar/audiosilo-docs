@@ -1001,13 +1001,11 @@ runs the probe.
   exceptions:
   - The title tag extends the album with a real subtitle. This is the Audible
     shape, where the album holds the *series* and only the title tag carries
-    the actual book title.
+    the actual book title. In a book of several files that tag is the first
+    file's, and its tail may name that file instead (see
+    [A book of several files' title](#a-book-of-several-files-title)).
   - The album only names the book's series (see
     [An album that is only the series](#an-album-that-is-only-the-series)).
-
-  For a book of several files, a title tag that extends the album may be its
-  first file's own name rather than the book's. See
-  [A book of several files' title](#a-book-of-several-files-title).
 - **Author.** The album-artist wins over the artist.
 - **Narrator.** A narrator tag wins over the composer (see
   [The narrator](#the-narrator)).
@@ -1103,11 +1101,9 @@ with one rule for every row, old or new:
 - `abs`: a value that an Audiobookshelf `metadata.json` gave;
 - `tag`: anything else.
 
-A series position read from the title (`titlePosition`, for a book with a series
-and no position) takes the title's source: `abs` when the `metadata.json` gave
-the title, `path` when the path did, else `tag`.
-
-See [Data model](data-model.md#metadata-overrides-and-effective-values).
+See [Data model](data-model.md#metadata-overrides-and-effective-values), which
+also gives the source of a series position read from the title
+(`titlePosition`).
 
 A library whose `metadata_source` is `path` takes the folder layout over the
 tags (`metadata.FromPathLayout`):
@@ -1283,14 +1279,14 @@ any album (see
 [An album that is only the series](#an-album-that-is-only-the-series)). A book of
 one file keeps the title tag ("Portal to Nova Roma: Paris").
 
-The scanner reads the last file's tags only when the title turns on them (the
+The scanner reads the last file's tags only when the title depends on them (the
 scanner's `partNamed`). A full index has them already, from the book's own read
 for its chapters (`buildMultiFileChapters`), and names the book again with them.
 The backfill and the setup preview read that one file more. A backfill that
 can't read it leaves the names for the next scan rather than storing the album
 on a guess. An admin's title edit still wins over the scanned title.
 
-#### Books already indexed
+### Books already indexed
 
 Books already indexed are put right without a re-index or a migration. Each
 rule raised the snapshot's `@rev` (see
@@ -1298,7 +1294,7 @@ rule raised the snapshot's `@rev` (see
 
 | `@rev` | Rule |
 |---|---|
-| 1 to 2 | this rule |
+| 1 to 2 | [an album that is only the series](#an-album-that-is-only-the-series) |
 | 2 to 3 | [a leaf that states its series](#a-leaf-that-states-its-series) |
 | 3 to 4 | the tag reading of 2.4.0 and 2.5.0: a series tag carrying its position (`metadata.SplitSeriesTag`), a title in any script not generic (`IsGenericTitle`), and the MP4 `\xa9nrt` narrator item and a narrator tag over composer |
 | 4 to 5 | [a book of several files' title](#a-book-of-several-files-title) (`metadata.PartsTitle`) |
@@ -1317,7 +1313,7 @@ The snapshot carries the narrator too, so a backfill rewrites it.
   `book_files` (counted in `Signatures` only for such an older snapshot).
 
 The next scan reads a flagged book's first file once, with the same read as the
-path backfill, and its last file too where the title turns on it (`partNamed`).
+path backfill, and its last file too where the title depends on it (`partNamed`).
 `Catalog.SetPathReading` then rewrites its snapshot, and skips only a snapshot
 already at the current revision.
 
