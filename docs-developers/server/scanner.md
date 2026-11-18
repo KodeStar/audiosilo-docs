@@ -1004,6 +1004,10 @@ runs the probe.
     the actual book title.
   - The album only names the book's series (see
     [An album that is only the series](#an-album-that-is-only-the-series)).
+
+  For a book of several files, a title tag that extends the album may be its
+  first file's own name rather than the book's. See
+  [A book of several files' title](#a-book-of-several-files-title).
 - **Author.** The album-artist wins over the artist.
 - **Narrator.** A narrator tag wins over the composer (see
   [The narrator](#the-narrator)).
@@ -1098,6 +1102,10 @@ with one rule for every row, old or new:
   path, or a title equal to `metadata.PathTitle` (below);
 - `abs`: a value that an Audiobookshelf `metadata.json` gave;
 - `tag`: anything else.
+
+A series position read from the title (`titlePosition`, for a book with a series
+and no position) takes the title's source: `abs` when the `metadata.json` gave
+the title, `path` when the path did, else `tag`.
 
 See [Data model](data-model.md#metadata-overrides-and-effective-values).
 
@@ -1242,6 +1250,46 @@ a disc or part folder, else `DeriveFromPath`'s. It is `""` for a `LeafSeries`
 leaf without a title part. The console's provenance labels it `path` (see
 [Where each value came from](#where-each-value-came-from)).
 
+### A book of several files' title
+
+`bookTitle` prefers a title tag that extends the album with a tail that isn't a
+track marker. For a book of several files that tag is its first file's, and the
+tail often names that file: "Frankenstein; or, The Modern Prometheus - Letters
+1-4", "The Odyssey: Book 01". So for a book of more than one file, `readNames`
+takes `metadata.PartsTitle` instead of the first file's title.
+
+`Metadata.PartNamed` decides whether the title is in question. It holds when
+`bookTitle` took the title tag over an album it extends, and neither the whole
+tag nor what it adds to the album names the book's folder (`PathTitle`). A box
+set's "The Expanse Box Set: Leviathan Wakes" in the folder `Leviathan Wakes` is
+not in question and keeps the tag. Where `PartNamed` holds, `PartsTitle` reads
+the book's last file's tags too, and the title is, in order:
+
+1. the tag, when the last file has the same title tag in any case (the series as
+   the album and "Harry Potter and the Philosopher's Stone" on every file, in a
+   folder `HP1`);
+2. the name the two tags share past the album (`partsName`), unless the folder
+   names the album. Each tag must lead with the album and a separator (a colon,
+   or a spaced dash or bar). The names after it are compared one by one, and the
+   ones the tags share make the name: "The Great Hunt" of "The Wheel of Time: The
+   Great Hunt - The Wheel" and "... - The Dragon". A shared name that is only a
+   track or volume marker ("Part 1", "Book 1") counts as none;
+3. the tag without its bracketed groups, when the two tags differ only in those
+   ("Harry Potter and the Philosopher's Stone (Part 1)" and "(Part 2)");
+4. otherwise the album.
+
+With the last file unread, the album stands. `TitleNotSeries` then applies as for
+any album (see
+[An album that is only the series](#an-album-that-is-only-the-series)). A book of
+one file keeps the title tag ("Portal to Nova Roma: Paris").
+
+The scanner reads the last file's tags only when the title turns on them (the
+scanner's `partNamed`). A full index has them already, from the book's own read
+for its chapters (`buildMultiFileChapters`), and names the book again with them.
+The backfill and the setup preview read that one file more. A backfill that
+can't read it leaves the names for the next scan rather than storing the album
+on a guess. An admin's title edit still wins over the scanned title.
+
 #### Books already indexed
 
 Books already indexed are put right without a re-index or a migration. Each
@@ -1253,6 +1301,7 @@ rule raised the snapshot's `@rev` (see
 | 1 to 2 | this rule |
 | 2 to 3 | [a leaf that states its series](#a-leaf-that-states-its-series) |
 | 3 to 4 | the tag reading of 2.4.0 and 2.5.0: a series tag carrying its position (`metadata.SplitSeriesTag`), a title in any script not generic (`IsGenericTitle`), and the MP4 `\xa9nrt` narrator item and a narrator tag over composer |
+| 4 to 5 | [a book of several files' title](#a-book-of-several-files-title) (`metadata.PartsTitle`) |
 
 The snapshot carries the narrator too, so a backfill rewrites it.
 
@@ -1263,11 +1312,14 @@ The snapshot carries the narrator too, so a backfill rewrites it.
 - a snapshot older than revision 3 whose leaf `metadata.PathLeafSeries` reads;
 - a snapshot older than revision 4 whose tag reading may differ
   (`tagReadingMayDiffer`): an MP4-family book, a narrator, a series that
-  `SplitSeriesTag` splits, or a non-ASCII letter in the title or path.
+  `SplitSeriesTag` splits, or a non-ASCII letter in the title or path;
+- a snapshot older than revision 5 of a folder book with more than one file in
+  `book_files` (counted in `Signatures` only for such an older snapshot).
 
 The next scan reads a flagged book's first file once, with the same read as the
-path backfill. `Catalog.SetPathReading` then rewrites its snapshot, and skips
-only a snapshot already at the current revision.
+path backfill, and its last file too where the title turns on it (`partNamed`).
+`Catalog.SetPathReading` then rewrites its snapshot, and skips only a snapshot
+already at the current revision.
 
 - A book that the snapshot alone could settle for the lone-folder check waits
   for this read too. So an unreadable file never records today's revision with
@@ -1277,7 +1329,7 @@ only a snapshot already at the current revision.
   parallel tag read each.
 - A read that a Stop cuts short is left for the next scan.
 
-**Books not flagged.** That scan stamps a current revision 1 to 3 snapshot
+**Books not flagged.** That scan stamps a current revision 1 to 4 snapshot
 (`Signature.RevStamp`) at today's revision (`Catalog.StampScannedRev` with
 `revOlderOwn`, a compare-and-set that changes only the revision). Later scans
 don't test it again. A snapshot of no revision that isn't flagged is not

@@ -592,7 +592,7 @@ chapters' `scanned_title` from their titles. See
 
 A scan also writes an `@rev` key (`catalog.scannedRevKey`). It is the revision
 of the name-reading rules the snapshot used: the path baseline
-(`metadata.DeriveFromPath`) plus the tags over it. Today it is `4`
+(`metadata.DeriveFromPath`) plus the tags over it. Today it is `5`
 (`catalog.scannedRev`).
 
 | Revision | What changed | What the next scan does with an older snapshot |
@@ -600,6 +600,7 @@ of the name-reading rules the snapshot used: the path baseline
 | 2 (2.6.0) | An album tag that only names the book's series stopped being its title. | Checks a snapshot of revision 1 or none once, as [the scanner](scanner.md#an-album-that-is-only-the-series) describes. |
 | 3 (2.6.0) | A leaf named `Author; Series; Book NN[; Title]` came to state its series and position. | Reads a snapshot older than 3 with such a leaf once, and stamps an unflagged revision 1 or 2 snapshot, as [the scanner](scanner.md#a-leaf-that-states-its-series) describes. |
 | 4 (2.7.0) | The tag reading of 2.4.0 and 2.5.0: a series tag carrying its position, generic titles in every script, the MP4 narrator item, and a narrator tag over composer. | Reads once a snapshot older than 4 that may read otherwise (an MP4, a narrator, a splittable series tag, a non-ASCII letter in its title or path), and stamps the rest, as [the scanner](scanner.md#books-already-indexed) describes. |
+| 5 (2.7.0) | A book of several files stopped taking its first file's title tag over the album that tag extends. | Reads once a folder book of more than one file with a snapshot older than 5 (its last file too where the title turns on it), as [the scanner](scanner.md#a-book-of-several-files-title) describes. |
 
 A snapshot with no revision (any server before revision 1) was read when the
 lone folder above a book (`Charles Dickens/Great Expectations`) was its series
@@ -2076,6 +2077,9 @@ works them out:
   [album rule](scanner.md#an-album-that-is-only-the-series) may take. Any other
   scanned value is `tag`.
 - A value the ABS file gives is `abs`.
+- A series position read from the title (`titlePosition`) takes the title's
+  source: `abs` when the ABS file gave the title, `path` when the path did,
+  else `tag`.
 - An ASIN or ISBN from enrichment is `community`.
 - An override carries its own source (`edited` or `community`).
 - `""` means no value.
