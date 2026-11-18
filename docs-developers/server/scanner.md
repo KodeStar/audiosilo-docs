@@ -1266,9 +1266,10 @@ the book's last file's tags too, and the title is, in order:
    folder `HP1`);
 2. the name the two tags share past the album (`partsName`), unless the folder
    names the album. Each tag must lead with the album and a separator (a colon,
-   or a spaced dash or bar). The names after it are compared one by one, and the
-   ones the tags share make the name: "The Great Hunt" of "The Wheel of Time: The
-   Great Hunt - The Wheel" and "... - The Dragon". A shared name that is only a
+   or a spaced dash or bar). The names after it are compared one by one from the
+   start, and the ones the tags share up to the first that differs make the name:
+   "The Great Hunt" of "The Wheel of Time: The Great Hunt - The Wheel" and
+   "... - The Dragon". A shared name that is only a
    track or volume marker ("Part 1", "Book 1") counts as none;
 3. the tag without its bracketed groups, when the two tags differ only in those
    ("Harry Potter and the Philosopher's Stone (Part 1)" and "(Part 2)");
