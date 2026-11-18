@@ -1,6 +1,6 @@
 {
   "repo": "KodeStar/audiosilo-server",
-  "ref": "714b61e45d41a681e785a7a4adc50959c834f58e",
+  "ref": "3c6ac648aff52cf1aa690a682d4fa98eeb331549",
   "capabilities": [
     "addresses",
     "admin_ui",
@@ -399,6 +399,7 @@
     "metadata.report_unknown",
     "metadata.upcoming",
     "metadata.upcoming_status",
+    "metadata.upcoming_window_days",
     "modules.audible",
     "modules.contributions",
     "modules.podcasts",

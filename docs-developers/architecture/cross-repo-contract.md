@@ -1734,7 +1734,8 @@ The player's first admin-only UI is gated on all of these:
 Its confirmation holds Generate back while the estimate's `open_job` is a
 `chapters.detect` or `sidecars.contribute` job. `Book.generated` makes it ask `/meta`
 for a book with no ASIN or ISBN. Its `types.ts` mirrors the job, the estimate,
-`BookMetaWork.generated` and `BookMetaWork.generated_description` by hand.
+`Book.generated_parts`, `BookMetaWork.generated` and
+`BookMetaWork.generated_description` by hand.
 
 Find on LibriVox is gated the same way with `librivox` in place of `sidecars`, so
 it shows only while the Bridge is online. Its `types.ts` and `client.ts` mirror the

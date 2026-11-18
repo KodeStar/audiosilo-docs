@@ -166,6 +166,10 @@ The other settings on this topic:
   Switched off, the server still looks up which community book each of your
   books is, so the players can keep
   [recordings of the same book](books.md#recordings-of-the-same-book) together.
+- **New release window** - how many days after its release a book still counts
+  as new, 90 by default. You can only read it here. To change it, set
+  `upcoming.window_days` in `config.yaml` or `AUDIOSILO_UPCOMING_WINDOW_DAYS`,
+  then restart the server.
 - **Help complete the community database** - off by default. See
   [Helping complete the community database](#helping-complete-the-community-database).
 - **Audible marketplace** (in **Matching**) - the store you buy from. When a

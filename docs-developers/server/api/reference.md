@@ -1203,6 +1203,7 @@ probed; `added_at` when unknown. Every book response (lists, search, recent,
 | `genres` | string[] | the book's genres: the files' genre tag (split on `;` and NUL, never `,`; placeholders such as `Audiobook`, `Speech`, `Spoken Word` and `Other` dropped), an Audiobookshelf `metadata.json`, or an admin edit. Each label once, compared case-insensitively, the first spelling kept; at most 50, each at most 64 characters. Sent on list and search pages too, so a client can filter a loaded library on the device |
 | `tags` | string[] | freeform tags, as `genres`, from an Audiobookshelf `metadata.json` or an admin edit only (no audio tag carries them) |
 | `generated` | boolean | `true` when the book's `.audiosilo/` folder holds characters, recaps or a description the [Bridge](#the-bridge) generated on this server (read from the book's attachment signature, so a file that failed its checks still counts); omitted otherwise. A client asks [`/meta`](#generated-content) for such a book even when it has no `asin` or `isbn` |
+| `generated_parts` | string[] | which generated parts the book has, of `"characters"`, `"recaps"` and `"description"`, in that order, read from the same signature as `generated`; omitted when it has none. `generated` stays beside it for older players |
 | `work_id` | string | the community work the book is a recording of: its recorded match's work (`book_matches`: a console match, a match run's or an Add from LibriVox), else the work its current ASIN or ISBN resolved to (the [upcoming releases](#upcoming-releases) job's first step, which runs whenever metadata is on). Books with the same `work_id` are recordings of one work (another narrator, an abridgement, a dramatisation). A grouping hint for display only: never an identity for durable state, which stays path-keyed. Omitted when unknown |
 | `ebook` | object | `{"path", "size"}`: the book's ebook (capability `ebooks`), the one readable `.epub` the scan found beside its audio (DRM is not judged) (see [A book's ebook](../scanner.md#a-books-ebook)): its library-relative `path` (for display: the file is fetched by the **book's** path at [`/ebook`](#get-apiv1librariesidebook)) and its `size` in bytes when last scanned. Omitted when the book has none |
 
@@ -1473,7 +1474,8 @@ A **Show**:
   "podcast_guid": "", "episode_count": 1,
   "latest_published": "2026-10-19T21:00:00Z", "cover_version": "9f2c1a",
   "following": true, "retention": {"mode":"keep","keep":3,"days":7},
-  "status": {"last_checked": null, "last_success": null, "next_check": null, "error": null}
+  "status": {"last_checked": null, "last_success": null, "next_check": null, "error": null,
+             "secret_missing": false}
 }
 ```
 
@@ -1481,6 +1483,10 @@ Private shows have `feed_url: null` and `link: ""`. Only their followers see
 them, including player-facing admins; following by URL proves access through
 the current or previous normalized URL hash. Unknown times and
 `latest_published` are `null`. A status error is `{code, message}`.
+`status.secret_missing` is `true` once a check found that the Bridge no longer
+holds a private show's feed address (`feed_secret_missing`), and stays `true`
+until a check succeeds, whatever later checks fail with. Following the show
+again by its address restores it. Older servers leave the field out.
 Artwork is `GET /api/v1/libraries/{id}/cover?path=<show>[&size=160|320|640]` (`96` too from 2.5.1);
 episode covers use the same show artwork. Artwork on a share that stopped answering
 is `503 share_not_answering` (from 2.7.0), as for a book's cover.
@@ -9819,6 +9825,7 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
     "report_unknown": false,
     "available": true,
     "region_chosen": true,
+    "upcoming_window_days": 90,
     "upcoming_status": {
       "last_run_at": "2026-10-30T04:12:00.000Z",
       "last_success_at": "2026-10-30T04:12:00.000Z",
@@ -9892,6 +9899,7 @@ effect. Lists are never `null`.
 | `metadata.region_chosen` | read-only (2.7.0): `false` only while no marketplace was ever chosen: none in `config.yaml` or the environment, and no admin ever saved `metadata.region` here (the `server_state` key `metadata_region_chosen`, written by any save carrying the field, `""` included). A failed read counts as chosen. While it is `false`, the console's setup flow preselects the marketplace nearest the admin's browser (its languages, then its time zone) and Settings offers it. An older server sends no field, and the console offers nothing |
 | `metadata.mode` | `"remote"` (ask `base_url` for each book) or `"mirror"` (keep a local copy and answer from it; see [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)). A restart setting: a saved change is listed in `restart_pending`, and `GET /admin/system`'s `metadata.mode` keeps the running mode until the restart |
 | `metadata.upcoming` | the [upcoming releases](#upcoming-releases) job's switch (config `upcoming.enabled`, default `true`). Applies at once: switched on (with metadata on) it runs soon when no run has succeeded for a day; switched off it stops a run in flight. The live `upcoming` [capability](#get-apiv1server) is `metadata` **and** this |
+| `metadata.upcoming_window_days` | read-only (2.7.0): how many days after its release a book still counts as new, as the server is running with it (config `upcoming.window_days`, default `90`, read at start). Always present. The console's Series cards mark **New** by it. Sending it in a `PATCH` is `400 unknown_setting` |
 | `metadata.upcoming_status` | read-only (2.6.0): how the job's runs went, absent without a metadata service. `last_run_at`, `last_success_at` (both absent before the first run; equal when the last run worked), `last_error` (the last failed run's error, cleared by a success), `next_run_at`, `series` (local series matched to a community series) and `items` (what they lack in all). The console's Settings > Metadata words it |
 | `metadata.report_unknown` | the opt-in [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)'s switch (2.6.0; config `metadata.report_unknown`, default `false`). From 2.7.0 absent, with `report_status`, without a metadata service and on a demo server, so the console shows no switch there. Applies at once: switched on (with metadata on) it runs now unless a run was made in the last 23 hours, the service is in its quiet week after `not_offered`, or (mirror mode) the local copy isn't ready yet; switched off it stops a run in flight |
 | `metadata.report_status` | read-only (2.6.0): the report's last run, absent without a metadata service and on a demo server. `state` is `never` (no run yet), `ok` (the run worked; `last_sent` ASINs were accepted, `0` = nothing new to send), `not_offered` (the `base_url` is plain `http` off this machine, so nothing is sent; or the service took no reports, and it is left alone for 7 days) or `failed` (a lookup failed, or the service failed or refused a report; tried the next day, and ASINs in reports it accepted before that still count in `last_sent`); `last_run_at` (absent before the first run) and `last_sent`. The console's Settings > Metadata words it |
