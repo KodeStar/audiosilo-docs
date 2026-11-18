@@ -225,7 +225,9 @@ held trip early:
 - the server's own connect page, which removes `audiosilo.oidcIntent` when a trip
   ends there with no sign-in;
 - a page restored from the browser's back/forward cache: the connect layout ends
-  the pass on a persisted `pageshow` and holds that as state (`passEnded`).
+  the pass in memory on a persisted `pageshow` and holds that as state
+  (`passEnded`), so kids mode takes the flow back, and the layout drops the held
+  intent as the flow is left.
 
 The layout (`oidcReturnOnLoad`) and the screen (`ConnectStart`) tell a return by
 one rule (`oidcReturnOrigin`) over params shaped alike, so `?oidc=1&token=&token=x`
