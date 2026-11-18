@@ -727,8 +727,8 @@ without anyone signing in at the provider again.
 - **`/start` takes an optional `intent`**, the player's random tag for the
   trip (`validIntent`: 22 to 128 base64url characters; the player sends 64 hex).
   A bad tag is dropped, never a `400`, and the sign-in runs untagged. So is a
-  tag the flow cookie the browser still holds already carries: that trip's
-  start URL sent again from the history gets an untagged flow. The tag is
+  tag already in the flow cookie the browser still holds: that trip's start URL
+  sent again from the history gets an untagged flow. The tag is
   sealed into the flow and kept across the `hop`.
 - **The callback spends the tag** with the first flow the provider completes
   for it, whatever the outcome, in a `Replay` memory of its own
@@ -748,7 +748,7 @@ without anyone signing in at the provider again.
   `#oidc=<reason>`, so an unspent tag can't be completed from the history.
 
 The player's side is in
-[Single sign-on](/developers/frontend/connect-and-addresses#single-sign-on).
+[Single sign-on](../frontend/connect-and-addresses.md#single-sign-on).
 
 ### Who signs in as whom
 

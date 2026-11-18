@@ -213,7 +213,8 @@ someone" and the book back once the profiles are read.
 The intent also holds the trip's **tag** (audiosilo#202). `holdOidcIntent` makes
 32 random bytes in hex per trip and returns them for the start URL's `intent`. The
 server carries the tag through the provider and echoes it, once, on the finish of
-the sign-in that trip completed (`AuthSession.intent`). When the tab can't keep the
+the sign-in that trip completed (`AuthSession.intent`; the server's rules:
+[the trip's tag](../server/auth-and-security.md#the-trips-tag)). When the tab can't keep the
 intent, no tag is sent and any earlier trip's intent is removed. Three things end a
 held trip early:
 
@@ -242,12 +243,9 @@ can't hold kids mode back for a finish that never runs.
   - a session that echoes the trip's own tag gives the pass back before
     `finishConnect`;
   - any refusal leaves kids mode to take the flow back, with the reason as a
-    toast. For `oidc_intent_mismatch` it says "That sign-in wasn't the one started
-    on this device, so it wasn't kept. Sign in again." (`notThisTrip`);
+    toast (the table above: `notThisTrip` for `oidc_intent_mismatch`);
   - a `400` means a server from before the tag, which refuses the unknown field
-    and makes no session. The toast says "This server needs updating before single
-    sign-on can add someone from kids mode, so the sign-in wasn't kept. Update the
-    server, or sign in another way." (`needsUpdate`);
+    and makes no session (`needsUpdate`);
   - a session with no echo all the same is signed out again, with the
     `needsUpdate` toast (`notThisTrip` when the trip left with no tag).
 

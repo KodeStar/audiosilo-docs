@@ -592,7 +592,8 @@ sign-in in an `HttpOnly` cookie, never a token in the address.
 does. The start takes an optional `intent`, the player's tag for its trip, and
 the finish echoes it once as `intent`. A finish whose body names an `intent`
 the sign-in didn't carry is refused with `403 oidc_intent_mismatch` and no
-session ([the trip's tag](../server/auth-and-security.md#the-trips-tag)). A sign-in that ends without a session lands on the server's own
+session ([the trip's tag](../server/auth-and-security.md#the-trips-tag)). A
+sign-in that ends without a session lands on the server's own
 `/connect#oidc=<reason>` instead (see
 [Single sign-on](../server/auth-and-security.md#single-sign-on-openid-connect)).
 

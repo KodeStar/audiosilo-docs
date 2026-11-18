@@ -656,8 +656,7 @@ server's addresses. When the flow carried an `intent` tag, the envelope also has
 `intent`, that tag. The tag is spent at the callback, so only one finish ever
 echoes it. The console signs a non-admin back out at once.
 
-The web player names the tag only while a grown-up adds someone from kids mode.
-It gives that person's pass back only when the answer echoes its own tag.
+Why the web player sends a tag: [the trip's tag](../auth-and-security.md#the-trips-tag).
 
 | Status | Meaning |
 |---|---|
