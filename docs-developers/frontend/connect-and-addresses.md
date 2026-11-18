@@ -174,8 +174,8 @@ The served player signing in to its own server (`onlyOwnServer(servedOrigin(),
 the Metro dev server and a player on another origin never offer it, because the
 server hands the sign-in over in a cookie on its own origin.
 
-The button is a full page load of `client.oidcStartUrl()`
-(`/api/v1/auth/oidc/start?return=web`). The server lands the browser on
+The button is a full page load of `client.oidcStartUrl(tag)`
+(`/api/v1/auth/oidc/start?return=web&intent=<tag>`, the tag described below). The server lands the browser on
 `/web/connect?oidc=1` (`oidcReturnOrigin` tells the route and the screen apart from
 a pairing link, which wins). `ConnectStart` takes `oidc` off the address first, so a
 reload doesn't retry, then `finishOidcSignIn` calls `client.oidcFinish` and
@@ -186,12 +186,16 @@ reload doesn't retry, then `finishOidcSignIn` calls `client.oidcFinish` and
 | `429` or `member_disabled` | as every sign-in words them (`sharedRefusalText`) |
 | `oidc_no_sign_in` | there is no sign-in to finish in this browser |
 | `oidc_sign_in_expired` | the sign-in expired or was already used |
+| `oidc_intent_mismatch` | the sign-in wasn't the one started on this device (`notThisTrip`) |
+| `400` to a finish that named a tag | the server needs updating before single sign-on can add someone from kids mode (`needsUpdate`) |
 | no answer | the server couldn't be reached |
 | a session the device couldn't keep | the sign-in is spent, so sign in again |
 | anything else | signing in didn't finish |
 
-Each ends with "Sign in again": the finish can't be retried, because the server
-cleared its cookie on the first try. A session that answers once the connect screen
+Each but `needsUpdate` ends with "Sign in again": the finish can't be retried,
+because the server cleared its cookie on the first try. `needsUpdate` says to
+update the server or sign in another way, since signing in again would end the
+same way. A session that answers once the connect screen
 has gone is signed out again, never kept.
 
 **What the flow is for survives the trip** (`src/components/connect/oidc-intent.ts`).
@@ -202,18 +206,53 @@ step leaves for the provider, `holdOidcIntent` writes the flow's intent to the t
 connection with the address its sign-in step signed in through. The connect layout
 takes it once as it opens, and only on the return (`takeOidcIntent`, when
 `oidcReturnOnLoad` reads `/connect?oidc=1` and no other route of the flow). The
-stamp lasts 11 minutes (`MAX_AGE_MS`, the server's ten-minute trip limit and a
-minute's slack), and the layout drops the intent as the flow is left.
-`resumeConnectIntent` puts "Add someone" and the book back once the profiles are
-read.
+stamp lasts 10 minutes (`MAX_AGE_MS`, the server's ten-minute trip limit), and the
+layout drops the intent as the flow is left. `resumeConnectIntent` puts "Add
+someone" and the book back once the profiles are read.
+
+The intent also holds the trip's **tag** (audiosilo#202). `holdOidcIntent` makes
+32 random bytes in hex per trip and returns them for the start URL's `intent`. The
+server carries the tag through the provider and echoes it, once, on the finish of
+the sign-in that trip completed (`AuthSession.intent`). When the tab can't keep the
+intent, no tag is sent and any earlier trip's intent is removed. Three things end a
+held trip early:
+
+- every page load that isn't the return, on any route (`endOidcTripOnLoad` in
+  `oidc-return.ts`, run by the root layout's module before anything renders),
+  because the server's start URL sent again from the history would complete the
+  trip while its tag is held;
+- the server's own connect page, which removes `audiosilo.oidcIntent` when a trip
+  ends there with no sign-in;
+- a page restored from the browser's back/forward cache: the connect layout ends
+  the pass on a persisted `pageshow` and holds that as state (`passEnded`).
+
+The layout (`oidcReturnOnLoad`) and the screen (`ConnectStart`) tell a return by
+one rule (`oidcReturnOrigin`) over params shaped alike, so `?oidc=1&token=&token=x`
+can't hold kids mode back for a finish that never runs.
 
 - **The grown-up's pass** is never put back by the address alone, because a
   `/connect?oidc=1` typed after a trip abandoned at the provider would open the
-  flow for a child. The layout holds kids mode back for the return's own screen,
-  which shows a spinner and finishes the sign-in. `finishOidcSignIn` settles the
-  pass (`settleOidcPass`): with the server's session it comes back before
-  `finishConnect`; with none, kids mode takes the flow back and the reason shows
-  as a toast.
+  flow for a child. Nor is it put back by any session: with the provider still
+  signed in, the server's start URL typed in the tab finishes a sign-in too. The
+  layout holds kids mode back for the return's own screen, which shows a spinner
+  and finishes the sign-in. While a pass waits, `client.oidcFinish` sends the tag
+  it expects (`oidcPassTag`, the request's `intent`), so the server refuses any
+  other sign-in with `403 oidc_intent_mismatch` and makes no session.
+  `finishOidcSignIn` then settles the pass (`settleOidcPass`):
+  - a session that echoes the trip's own tag gives the pass back before
+    `finishConnect`;
+  - any refusal leaves kids mode to take the flow back, with the reason as a
+    toast. For `oidc_intent_mismatch` it says "That sign-in wasn't the one started
+    on this device, so it wasn't kept. Sign in again." (`notThisTrip`);
+  - a `400` means a server from before the tag, which refuses the unknown field
+    and makes no session. The toast says "This server needs updating before single
+    sign-on can add someone from kids mode, so the sign-in wasn't kept. Update the
+    server, or sign in another way." (`needsUpdate`);
+  - a session with no echo all the same is signed out again, with the
+    `needsUpdate` toast (`notThisTrip` when the trip left with no tag).
+
+  A sign-in with no pass waiting sends no tag and never reads one, so it works as
+  before on old and new servers.
 - **The reconnect** goes to `finishConnect` only for the origin the return is at
   (`takeOidcResumed`) and only with the server's session. A `?reconnect=` in the
   return's address does nothing.

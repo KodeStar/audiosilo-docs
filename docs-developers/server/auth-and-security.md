@@ -593,9 +593,10 @@ apps don't: they keep pairing by QR code or invite. The config is in
    stands 30 seconds, a failure 5 seconds, `probe`), so one gone down lands on
    `unavailable` and the console's single sign-on status says `error`. Then the
    server makes the flow (`state`, `nonce` and the PKCE verifier, 32 random
-   bytes each, the redirect URI and `return`), seals it into the flow cookie
-   and redirects to the provider's authorization URL. The callback's exchange
-   names the redirect URI the flow carries.
+   bytes each, the redirect URI, `return` and the [trip's tag](#the-trips-tag)
+   when one came), seals it into the flow cookie and redirects to the
+   provider's authorization URL. The callback's exchange names the redirect
+   URI the flow carries.
 2. **`GET /auth/oidc/callback`.** The provider sends the browser back here. The
    handler deletes the flow cookie whatever happens, then refuses, in order:
    - an address locked out by `oidcLimiter` (`rate_limited`);
@@ -617,14 +618,16 @@ apps don't: they keep pairing by QR code or invite. The config is in
 4. **The hand-over.** A sign-in that signs in gets a token of kind `oidc`
    (`auth.KindOIDC`), single use, 60 seconds, minted in the decision's
    transaction, so a Sign out everywhere can't fall between the decision and
-   the token. The token goes in the done cookie,
+   the token. The token goes in the done cookie, joined to the trip's tag when
+   the flow carried one,
    **never in a URL**: a link carrying it would sign whoever opens it in as its
    owner (a login CSRF). The handler then redirects to `/admin/#oidc=done` or
    `/web/connect?oidc=1`.
 5. **`POST /auth/oidc/finish`.** The page the browser lands on calls it. The
    handler clears the done cookie, spends the token once (`auth.ConsumeOIDC`)
-   and answers exactly as [`POST /auth/exchange`](api/reference.md#post-apiv1authexchange)
-   does, with a new session. The console signs a non-admin straight back out.
+   and answers as [`POST /auth/exchange`](api/reference.md#post-apiv1authexchange)
+   does, with a new session, plus the trip's tag as `intent` when there was
+   one. The console signs a non-admin straight back out.
 
 The ID token checks (`Provider.Exchange`):
 
@@ -666,8 +669,8 @@ timeout. An error never carries the provider's response body.
 
 | Cookie | Holds | Lifetime |
 |---|---|---|
-| The flow cookie | `state`, `nonce`, the PKCE verifier, `return` and the time, sealed with AES-GCM under a key made at start (`oidc.Sealer`) | 10 minutes; deleted at the callback |
-| The done cookie | the `oidc` token | 60 seconds; cleared by the finish |
+| The flow cookie | `state`, `nonce`, the PKCE verifier, `return`, the trip's tag (`Flow.Intent`) and the time, sealed with AES-GCM under a key made at start (`oidc.Sealer`) | 10 minutes; deleted at the callback |
+| The done cookie | the `oidc` token, and `.<tag>` after it when the flow carried a tag | 60 seconds; cleared by the finish |
 
 Both are `HttpOnly` and `SameSite=Lax`. Their names and place depend on
 `public_url` (`oidcCookieName`):
@@ -711,6 +714,41 @@ expired ones.
 A page on another site can't make the browser send the done cookie with a
 `POST` (`SameSite=Lax`), nor read the answer. The web player calls the finish
 only from its own origin.
+
+### The trip's tag
+
+The web player ties a single sign-on to the trip it started, so that a child in
+kids mode can't get a grown-up's pass back by starting a sign-in of their own
+(audiosilo#202). Picture a grown-up who opens **Add someone** from kids mode and
+leaves for the provider, then abandons the trip. While the provider session is
+still live, the start URL typed in the same tab completes a sign-in too,
+without anyone signing in at the provider again.
+
+- **`/start` takes an optional `intent`**, the player's random tag for the
+  trip (`validIntent`: 22 to 128 base64url characters; the player sends 64 hex).
+  A bad tag is dropped, never a `400`, and the sign-in runs untagged. So is a
+  tag the flow cookie the browser still holds already carries: that trip's
+  start URL sent again from the history gets an untagged flow. The tag is
+  sealed into the flow and kept across the `hop`.
+- **The callback spends the tag** with the first flow the provider completes
+  for it, whatever the outcome, in a `Replay` memory of its own
+  (`oidcFlow.intents`), so tags never take the places flow states need. A full
+  memory drops the tag. The tag then joins the token in the done cookie
+  (`<token>.<tag>`, `oidcIntentSep`).
+- **The finish echoes it** as `intent`, once, only for the sign-in that flow
+  completed.
+- **The finish can also ask for it.** A body `intent` is the tag the caller
+  expects. Another tag, an empty string, or any tag for an untagged sign-in is
+  `403 oidc_intent_mismatch`, checked before `ConsumeOIDC` (compared in
+  constant time): no session, the token unspent, nothing charged and the cookie
+  cleared, so the sign-in the player disowned can't then be finished without
+  the tag. An absent or `null` `intent` asks nothing, as the console does.
+- **The server's connect page** (`connect.js`) removes the player's held tag
+  (`sessionStorage` `audiosilo.oidcIntent`) whenever a trip ends there on
+  `#oidc=<reason>`, so an unspent tag can't be completed from the history.
+
+The player's side is in
+[Single sign-on](/developers/frontend/connect-and-addresses#single-sign-on).
 
 ### Who signs in as whom
 

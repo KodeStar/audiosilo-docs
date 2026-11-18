@@ -2310,7 +2310,10 @@ The redeem response (`PairingPayload`, built by `buildPairing` in
 A [single sign-on](auth-and-security.md#the-result-page) that ends without a
 session lands here too, on `/connect#oidc=<reason>`. `connect.js` strips the
 fragment with `history.replaceState` and shows the reason's sentence
-(`oidcMessage`, in the page's six languages) as the form's error.
+(`oidcMessage`, in the page's six languages) as the form's error. It also removes
+the web player's held trip (`sessionStorage` `audiosilo.oidcIntent`, the same
+origin), so that trip's unspent tag can't be completed from the history
+([the trip's tag](auth-and-security.md#the-trips-tag)).
 
 ## The web player at `/web`
 
