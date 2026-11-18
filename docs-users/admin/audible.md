@@ -224,8 +224,8 @@ template.
 The Bridge keeps folder and file names safe for a network share (SMB) or a Windows
 disk. It drops `?`, `*`, `<` and `>`, turns `"` into `'` and `|` into `-`. So
 *Who Moved My Cheese?* is backed up as `Who Moved My Cheese`. A book the Bridge
-backed up earlier under its old name, with the `?`, is found there and isn't
-downloaded again.
+backed up earlier into a folder under its old name, with the `?`, is found there
+and isn't downloaded again.
 
 ## Preorders
 

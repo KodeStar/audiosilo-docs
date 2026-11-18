@@ -249,9 +249,10 @@ times in a row, then shows `ReaderStartError`.
   wait for the next `opened`.
 - Once the book has shown, a later `drm` or `unreadable` is reported as `start`,
   because the same file opened before. Try again reopens at the place the reader
-  held (`resumeAt`), never at a page a relayout or the landing showed. In the app
-  the `start` notice's body is `reader.failure.start.bodyNative` (memory, not a
-  browser).
+  held (`resumeAt`), not at a page a relayout or the landing showed. A book with no
+  saved place that the reader hasn't moved in is the exception: it reopens at the
+  page last shown. In the app the `start` notice's body is
+  `reader.failure.start.bodyNative` (memory, not a browser).
 
 ### The EPUB cache
 

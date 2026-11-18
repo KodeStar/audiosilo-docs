@@ -731,11 +731,13 @@ A parked job runs on once the mapping is writable again, and keeps its download.
 
    Then `transfer.OnDisk` spells the path as the disk spells the folders that
    exist. That is the path the server indexes on a case-insensitive disk. Last,
-   `vacant` refuses an occupied destination (`exists`). It also checks each level
+   `vacant` refuses an occupied destination (`exists`). It also checks each folder
    of the path under its former name, the one the Bridge gave before
    `placement.Sanitize` dropped SMB-unsafe characters (`formerDirs`, `formerName`).
    So a title backed up as `Who Moved My Cheese?` is `exists`, and the Bridge
-   doesn't download it again into `Who Moved My Cheese`.
+   doesn't download it again into `Who Moved My Cheese`. The file's own name is
+   not checked under its former name, so a template that puts the file at the
+   library's root (`{Title}.m4b`) finds no earlier copy.
 4. **License** (`Client.License`): the AAXC URL, key, IV and size.
 5. **Download** to `<data>/audible/tmp/<account>-<asin>.aaxc.part`
    ([Resume and temp files](#resume-and-temp-files)).
@@ -1213,9 +1215,11 @@ Each ASIN appears once, `library_id` is above 0, `path` is a clean book path (or
    split on a `400` or `414`, in a new random order every sync. When Audible stops
    partway, `audible.LastPositions` returns the places read before the failed
    batch with the error. The job carries on with those places through the steps
-   below, then fails `audible_error`. When the read gave no place, the job fails at
-   once. The random order lets a large library that meets a rate limit late still
-   have every title read over a few syncs, not only the first ones. A `429`/`503`
+   below, then fails `audible_error`, unless sending them ends it first (a
+   `sync_off` answer ends it done, a refused or failed post fails it with that
+   error). When the read gave no place, the job fails at once. The random order
+   lets a large library that meets a rate limit late still have every title read
+   over a few syncs, not only the first ones. A `429`/`503`
    also waits Audible's `Retry-After`, counted from when it came back and at least
    2 minutes (`sync_retry_at`).
 

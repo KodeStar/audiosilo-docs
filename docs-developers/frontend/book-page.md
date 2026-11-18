@@ -395,7 +395,7 @@ hero and the tabs.
     - the publisher (`bookPublisher`: the server's `publisher`, else the recording's);
     - the release date (`bookReleased`: the recording's `release_date`, else the
       book's `published`, which a match fills with the year the work was first
-      published);
+      published, else the recording's release year);
     - the work's first publication, only when it is not the release date, so one
       date shows as one "Released" row;
     - the server's `language`, a code named through `Intl.DisplayNames` in the app's
