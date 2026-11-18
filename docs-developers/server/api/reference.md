@@ -11058,7 +11058,8 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
 - `requested_by` - the admin who queued it, `null` once that account is deleted.
 - `attempts` - how many times it has been claimed; `lease_until` - when the current
   claim's lease runs out (`null` when no claim holds it); `cancel_requested` - an
-  admin asked the Bridge to stop it.
+  admin, or the server for a reason of its own (written as the job's `error`, such
+  as "its module was turned off"), asked the Bridge to stop it.
 - Times are RFC 3339 UTC, whole seconds.
 
 #### Job states

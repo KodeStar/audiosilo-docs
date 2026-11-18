@@ -478,7 +478,9 @@ it writes the reason as the job's `error`. `IsCancelReason` names the reasons:
   replaced by `Enqueue` through `cancelOpenTx`);
 - `CancelModuleOff` ("its module was turned off", a share-only job the Bridge
   held when the Contributions module was turned off, set by `UpdateHeld`; see
-  [Jobs of a managed module](#jobs-of-a-managed-module)).
+  [Jobs of a managed module](#jobs-of-a-managed-module));
+- an Audible account's job's: `CancelAudibleRemoved`, `CancelAudiblePaused` and
+  `CancelAudibleSyncOff` (see [Audible](audible.md)).
 
 `MoveJobs` cancels the old path's open job at once in any state, with no
 `cancel_requested`. A Bridge still working on it learns at its next report

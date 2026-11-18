@@ -1173,12 +1173,13 @@ place that says, for each key:
 | `signin.allowed_group` | `auth.oidc.allowed_group` | `AUDIOSILO_OIDC_ALLOWED_GROUP` | at the next sign-in |
 | `signin.admin_group` | `auth.oidc.admin_group` | `AUDIOSILO_OIDC_ADMIN_GROUP` | at the next sign-in |
 | `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once. Starts or stops the scheduling of feeds, downloads and retention, and gates writes. Reads and present-pin reuse stay core |
-| `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
+| `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off, and a share or correction the Bridge is working on is asked to stop) |
 
 `podcasts.discovery.enabled`, `upcoming.window_days`, `setup.skip`,
 `scan.concurrency`, `database.mmap` and the six `rate_limit.*` values have no
 setting id. Each is read at start from the file or its variable and never offered
-in the console.
+in the console. The console only shows `upcoming.window_days`, read-only (see
+[Upcoming releases](#upcoming-releases-upcoming)).
 
 Also not in the console:
 
