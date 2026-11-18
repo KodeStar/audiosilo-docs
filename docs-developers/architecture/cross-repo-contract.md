@@ -589,18 +589,26 @@ the native apps don't offer it.
 provider, and the callback lands it on `/web/connect?oidc=1` with the finished
 sign-in in an `HttpOnly` cookie, never a token in the address.
 `POST /auth/oidc/finish` reads that cookie and answers as `POST /auth/exchange`
-does. A sign-in that ends without a session lands on the server's own
+does. The start takes an optional `intent`, the player's tag for its trip, and
+the finish echoes it once as `intent`. A finish whose body names an `intent`
+the sign-in didn't carry is refused with `403 oidc_intent_mismatch` and no
+session ([the trip's tag](../server/auth-and-security.md#the-trips-tag)). A
+sign-in that ends without a session lands on the server's own
 `/connect#oidc=<reason>` instead (see
 [Single sign-on](../server/auth-and-security.md#single-sign-on-openid-connect)).
 
 **Frontend:** the sign-in step offers "Sign in with &lt;name&gt;" only in the web
 player the server serves, and on `/connect?oidc=1` calls `client.oidcFinish` and
-ends in `finishConnect`, as a pairing link does (see
+ends in `finishConnect`, as a pairing link does. While a grown-up's pass through
+kids mode waits, the finish names the trip's tag, and the pass comes back only on
+its exact echo (see
 [Single sign-on](../frontend/connect-and-addresses.md#single-sign-on)).
 
-**A change requires:** `/web/connect?oidc=1`, the `return` values and the finish's
-answer are the contract. The finish's `401` codes `oidc_no_sign_in` and
-`oidc_sign_in_expired` are mirrored in the player's error codes.
+**A change requires:** `/web/connect?oidc=1`, the `return` values, the `intent`
+tag and the finish's answer are the contract. The finish's codes
+`oidc_no_sign_in`, `oidc_sign_in_expired` (`401`) and `oidc_intent_mismatch`
+(`403`) are mirrored in the player's error codes. The tag is optional both ways,
+so an old player sends none and signs in as before.
 
 ## 8. Capability flags: `GET /api/v1/server`
 

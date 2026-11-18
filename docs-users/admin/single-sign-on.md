@@ -94,6 +94,11 @@ signs in from [kids mode](../listening/kids-mode.md). After the provider, the
 player goes back to what you were doing, such as **Add someone** or the book
 you opened.
 
+From kids mode, the player keeps a single sign-on only when it was started from
+that sign-in screen on this device, so a child can't sign in as a grown-up who
+is still signed in at the provider. Any other sign-in is refused, and the player
+stays in kids mode.
+
 ![The web player's sign-in screen with the Sign in with button](/img/screenshots/web-player/connect-oidc.png)
 
 ## Who gets in

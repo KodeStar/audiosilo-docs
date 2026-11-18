@@ -21,7 +21,9 @@ Additions:
   `POST /auth/oidc/finish` ([Single sign-on](reference.md#single-sign-on)),
   for a page on the server's own origin. Capability `oidc`. While it is `true`,
   `auth.methods` on `GET /server` adds `"oidc"` and `auth.oidc.name` names the
-  provider.
+  provider. The start takes an optional `intent` tag, and the finish takes an
+  optional `intent` in its body and echoes the trip's tag as `intent`
+  (see [`GET /auth/oidc/start`](reference.md#get-apiv1authoidcstart)).
 - **A work's other recordings together.** `work_id` on a book,
   `other_recordings` on `/item` ([Other recordings](reference.md#other-recordings))
   and `local_others` on `/meta`. Capability `other_recordings`.
@@ -39,7 +41,8 @@ Additions:
   `POST /auth/password` answers `401 current_password_incorrect` for a wrong
   `current_password`, which a client tells apart from a session that ended.
   `POST /auth/oidc/finish` answers `401` with `oidc_no_sign_in` or
-  `oidc_sign_in_expired`.
+  `oidc_sign_in_expired`, and `403 oidc_intent_mismatch` for a body `intent`
+  that isn't the sign-in's tag.
 
 Changes a client may notice, none of them breaking:
 

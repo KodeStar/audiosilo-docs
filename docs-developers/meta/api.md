@@ -133,6 +133,11 @@ distinguished by `kind`:
   [`series/{id}`](#apiv1seriesidlimitoffset)). It is omitted when the members tie,
   and on an artifact older than `schema_version` 7.
 
+A work is found by its title and subtitle, and also by its names: its authors,
+narrators and series, and from `schema_version` 12 its
+[alternate titles](#apiv1worksid). An alternate title is indexed as a name, not
+as the title, so the result's `title` is always the work's own.
+
 FTS input is escaped defensively (every token quoted, the final token prefixed with
 `*`), so no user input can break the underlying `MATCH`. `q` is also bounded to 256
 bytes and 64 FTS phrases. One phrase is one posting-list walk, and the server, not a
@@ -803,6 +808,11 @@ recaps at 2, the recap summary at 3. An older artifact omits them (see
 
 Use it to place a `reveal` or `through` on a recording whose tracks differ from
 those units.
+
+`alternate_titles[]` lists the other titles the book is published or known under
+(a retitled re-release, a regional title, another spelling), in the record's
+order (`schema_version` 12). It is omitted when the work has none, and on an older
+artifact.
 
 Two more fields carry the work's **translation links** (`schema_version` 7). Both
 are `[{id, title, language}]` in work id order, and both are omitted when empty:

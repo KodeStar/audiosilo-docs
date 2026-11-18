@@ -506,6 +506,8 @@ never as the batch's error. The reasons are `older`, `resume_behind`, `invalid`,
 
 - `oidc_no_sign_in` and `oidc_sign_in_expired` (`401`, from
   `POST /auth/oidc/finish`).
+- `oidc_intent_mismatch` (`403`, from `POST /auth/oidc/finish`): the body's
+  `intent` isn't the sign-in's tag, and no session was made.
 - `invalid_email` (`400`): an account email that isn't one address.
 - `not_linkable`, `user_has_identity` and `identity_linked` (`409`, from
   [linking a waiting sign-in](reference.md#post-apiv1adminoidcpendingidlink)).
