@@ -25,6 +25,12 @@ Additions:
 - **A work's other recordings together.** `work_id` on a book,
   `other_recordings` on `/item` ([Other recordings](reference.md#other-recordings))
   and `local_others` on `/meta`. Capability `other_recordings`.
+- **Which generated parts a book has.** `generated_parts` on a book, beside
+  `generated` ([`GET /libraries/{id}/books`](reference.md#get-apiv1librariesidbooks)).
+- **A private show that lost its address.** `status.secret_missing` on a
+  podcast show ([Podcast read routes](reference.md#podcast-read-routes)).
+  Neither this nor `generated_parts` has a capability flag. A client reads each
+  field when it is there.
 - **A Stay in listening sync.** A listen's `start` on `POST /me/listening/sync`
   can be `stay` ([A Stay](reference.md#a-stay)). Capability `listening_stay`.
   Without it, send `jump`: an older server refuses a `stay` event as `invalid`.

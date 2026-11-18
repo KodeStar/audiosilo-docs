@@ -185,6 +185,12 @@ Jobs already queued wait until the module is on again. Characters and recaps
 generated meanwhile stay on this server, and you can
 [share them later](#share-with-the-community).
 
+A share or a correction the Bridge is already working on stops within about
+half a minute, and its job says "Its module was turned off." Such a job writes
+nothing to your library, so nothing is lost. A generate job that shares at its
+end carries on and still shares, so the characters and recaps it is writing are
+kept.
+
 ## Workers
 
 The **Workers** card lists the [workers](../getting-started/running-a-worker.md)

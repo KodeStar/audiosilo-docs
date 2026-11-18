@@ -90,6 +90,16 @@ With tags first, a series tag in the files still wins. With folder names first, 
 
 Many tools put the series name in the album tag, so every book in a series has the same album. AudioSilo spots this and takes the book's own title from its title tag, file name or folder name instead. A book named after its series, like `Dune`, keeps the album as its title.
 
+### A book made of several files
+
+In a book split into several files, each file often has its own title tag. When that tag starts with the album and adds more, the extra part usually names the file, not the book. For example, with the album "Frankenstein", the first file may be titled "Frankenstein - Letters 1-4". So for a book of several files, AudioSilo takes the album as the title, except in these cases:
+
+- **The tag is the book's.** The first and last files have the same title tag, or the tag names the book's folder. A title tag "The Expanse Box Set: Leviathan Wakes" in a folder `Leviathan Wakes` stays the title.
+- **The files share a book name after the album.** "The Wheel of Time: The Great Hunt - Chapter 1" through "The Wheel of Time: The Great Hunt - Chapter 40" give "The Great Hunt", unless the book's folder has the album's name. A part or volume marker such as "Part 1" or "Book 1" is not a book name, so then the album stays.
+- **The tags differ only in a bracketed part.** With the album "Harry Potter", the tags "Harry Potter and the Philosopher's Stone (Part 1)" and "... (Part 2)" give "Harry Potter and the Philosopher's Stone".
+
+A book of one file keeps its title tag. A title you edited in the admin console stays as you set it.
+
 ## Audiobookshelf's metadata.json files {/* #coming-from-audiobookshelf */}
 
 Audiobookshelf can leave a `metadata.json` file in each book's folder. It does so only with its **Store metadata with item** setting on, which is off by default (see [Move over from Audiobookshelf](coming-from-audiobookshelf.md)). AudioSilo reads the file, so your matches and corrections from Audiobookshelf come across.

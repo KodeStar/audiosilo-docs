@@ -867,7 +867,7 @@ series with the `book_released`
 | Key | Type / default | Meaning |
 |---|---|---|
 | `upcoming.enabled` | bool, `true` | The job's switch. It runs only while `metadata.enabled` is on too, so the default follows the metadata lookup. Switched off with metadata on, the job still runs its first step alone (each book's community work from its ASIN or ISBN, daily and after a scan settles), because a book's [`work_id`](api/reference.md#get-apiv1librariesidbooks) rides on the player's lists; no series, feed, items, announcements or status. Applies live. In the console it is **Server > Settings > Community metadata**, *Check for upcoming releases* (setting id `metadata.upcoming`). `AUDIOSILO_UPCOMING_ENABLED` wins at every start and locks it |
-| `upcoming.window_days` | int, `90` | How many days back a release still counts as new (`released` rather than `missing`), 1-365 (the community feed's limit). Anything else is a config error naming the key. Read at start, from the config file or `AUDIOSILO_UPCOMING_WINDOW_DAYS` only. Never offered in the console |
+| `upcoming.window_days` | int, `90` | How many days back a release still counts as new (`released` rather than `missing`), 1-365 (the community feed's limit). Anything else is a config error naming the key. Read at start, from the config file or `AUDIOSILO_UPCOMING_WINDOW_DAYS` only. The console shows it read-only, as **New release window** in **Server > Settings > Community metadata** (`metadata.upcoming_window_days` on [`GET /admin/settings`](api/reference.md#get-apiv1adminsettings)), and its Series cards mark a release **New** by it |
 
 The job sends what the metadata lookup already sends (a book's ASIN or ISBN, then
 community work and series ids), never who is listening. With metadata off it
@@ -1173,12 +1173,13 @@ place that says, for each key:
 | `signin.allowed_group` | `auth.oidc.allowed_group` | `AUDIOSILO_OIDC_ALLOWED_GROUP` | at the next sign-in |
 | `signin.admin_group` | `auth.oidc.admin_group` | `AUDIOSILO_OIDC_ADMIN_GROUP` | at the next sign-in |
 | `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once. Starts or stops the scheduling of feeds, downloads and retention, and gates writes. Reads and present-pin reuse stay core |
-| `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
+| `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off, and a share or correction the Bridge is working on is asked to stop) |
 
 `podcasts.discovery.enabled`, `upcoming.window_days`, `setup.skip`,
 `scan.concurrency`, `database.mmap` and the six `rate_limit.*` values have no
 setting id. Each is read at start from the file or its variable and never offered
-in the console.
+in the console. The console only shows `upcoming.window_days`, read-only (see
+[Upcoming releases](#upcoming-releases-upcoming)).
 
 Also not in the console:
 
