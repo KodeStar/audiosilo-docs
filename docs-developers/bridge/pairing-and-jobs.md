@@ -620,17 +620,17 @@ The community jobs belong to the `contributions` [module](../server/modules.md).
   estimate's `open_job`, and cancelled;
 - "off" is the toggle alone. With it on, a queued share refuses a generate job
   even while the Bridge can't contribute;
-- a job the Bridge already holds (claimed, running or parked) carries on, except
-  one of the two kinds that only file (`sidecars.contribute`, `meta.correct`,
-  whose own module is `contributions`: `Service.stopsShare`). Such a job writes
-  nothing, so stopping it loses no work. At the Bridge's next report of a claimed
-  or running one, `UpdateHeld` sets `cancel_requested` with the server's reason
+- a `sidecars.contribute` or `meta.correct` job the Bridge already holds
+  (claimed, running or parked) is asked to stop. These kinds only file to the
+  community and write nothing, so stopping one loses no work
+  (`Service.stopsShare`). At the Bridge's next report of a claimed or running
+  one, `UpdateHeld` sets `cancel_requested` with the server's reason
   `CancelModuleOff` (see [Cancelling](#cancelling)). A parked one is asked when
   it reports working again;
-- a claimed `sidecars.generate` job with `contribute: "issue"` is never asked to
-  stop. The Bridge would drop the characters and recaps it is writing, and it
-  files them itself at its end, a step the server has no part in. A podcast or
-  Audible job that a claim handed out also carries on with its module off.
+- a `sidecars.generate` job with `contribute: "issue"` the Bridge already holds
+  carries on and is never asked to stop. The Bridge would drop the characters
+  and recaps it is writing, and it files them itself when it finishes. The
+  server takes no part in that step.
 
 On the Bridge, each kind has a handler and a **lane**, which sets how many jobs
 of that lane run at once:
@@ -648,7 +648,8 @@ to `podcasts` and require a mapped, writable podcast library. Fetch runs in the
 slot for priority 100 work after negotiation; the others run in `light` (2).
 The server creates them from dedicated actions and its scheduler;
 `POST /admin/bridge/jobs` refuses these internal kinds with `400`.
-The module's toggle holds queued jobs while off, as for contributions.
+The module's toggle holds queued jobs while off, as for contributions. A job the
+Bridge already holds carries on.
 Heartbeat replies always include library `kind`; the Bridge treats a missing
 kind as `books`. Private subscribe URLs are injected only into the claim
 response, sealed before local claim recording, and redacted on other reads.
@@ -675,7 +676,8 @@ when empty), with no library or path. It is deduped per account, and it promotes
 an open poll to a person's priority when Check now asks. It runs in the `light`
 lane and writes nothing into a library; an ASIN it backfills goes through the
 server. A refused poll fails with a code in its result. The module's scheduler queues it, and
-queued polls are held while the module is off. See
+queued polls are held while the module is off. One the Bridge already holds
+carries on, as every Audible job does. See
 [Audible](audible.md#the-poll-audiblepoll).
 
 `audible.import` backs up one title into the account's library. It belongs to
