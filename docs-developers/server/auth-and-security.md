@@ -2049,6 +2049,9 @@ writer.
   - same-origin everything;
   - no `unsafe-inline` at all, because all styling and behaviour live in
     external files by construction;
+  - one `style=` attribute allowed by hash (`style-src-attr`), the
+    `text-overflow:inherit` that Safari's engine puts inside a native
+    `<select>` ([details](web-ui.md#the-strict-same-origin-csp));
   - `data:` images, for the connect page's QR PNG and the console's covers;
   - `frame-ancestors 'none'`.
 - **The web player** at `/web` gets a per-document `htmlCSP`:
