@@ -653,8 +653,9 @@ Call it from the page the callback lands on.
 Response `200`: [`POST /auth/exchange`](#post-apiv1authexchange)'s answer, the
 session envelope with `token`, `user`, `server_id` and, with `addresses`, the
 server's addresses. When the flow carried an `intent` tag, the envelope also has
-`intent`, that tag. The tag is spent at the callback, so only one finish ever
-echoes it. The console signs a non-admin back out at once.
+`intent`, that tag. The tag is spent at the callback and remembered there for 11
+minutes (in memory), so within that time only one finish echoes it. The console
+signs a non-admin back out at once.
 
 Why the web player sends a tag: [the trip's tag](../auth-and-security.md#the-trips-tag).
 
@@ -663,7 +664,7 @@ Why the web player sends a tag: [the trip's tag](../auth-and-security.md#the-tri
 | `400` | a body that isn't valid JSON. The cookie stays, so the sign-in can still be finished within its minute |
 | `401` | `code: "oidc_no_sign_in"`: no finished sign-in in this browser (no cookie). Nothing is charged |
 | `401` | `code: "oidc_sign_in_expired"`: the sign-in was used, expired after 60 seconds, or its account is disabled or has become a household member or demo account. Charged to the single sign-on lockout. Also while single sign-on can't run (turned off since the callback): then nothing is charged and the token is left to expire |
-| `403` | `code: "oidc_intent_mismatch"`: the body's `intent` isn't the tag the sign-in's flow carried. That covers another tag, an empty string, and any tag for a flow started without one. The server checks it before the token is tried: no session is made, the token is left unspent to expire, nothing is charged, and the cookie is cleared |
+| `403` | `code: "oidc_intent_mismatch"`: the body's `intent` isn't the tag the sign-in's flow carried. That covers another tag, an empty string, and any tag for a sign-in whose flow carries none (started without one, or its tag dropped at the start or already spent). The server checks it before the token is tried: no session is made, the token is left unspent to expire, nothing is charged, and the cookie is cleared |
 | `429` | the address is locked out (10 failures in 15 minutes, shared with the callback), with `Retry-After`. The cookie stays |
 
 Every answer but a `400` or a `429` clears the cookie, so the finish can't be

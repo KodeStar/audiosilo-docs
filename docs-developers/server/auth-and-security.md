@@ -732,9 +732,11 @@ without anyone signing in at the provider again.
   sealed into the flow and kept across the `hop`.
 - **The callback spends the tag** with the first flow the provider completes
   for it, whatever the outcome, in a `Replay` memory of its own
-  (`oidcFlow.intents`), so tags never take the places flow states need. A full
-  memory drops the tag. The tag then joins the token in the done cookie
-  (`<token>.<tag>`, `oidcIntentSep`).
+  (`oidcFlow.intents`), so tags never take the places flow states need. It
+  remembers a tag for 11 minutes (`FlowMaxAge` and a minute, longer than the
+  player holds one) and forgets it on a restart. A full memory drops the tag.
+  The tag then joins the token in the done cookie (`<token>.<tag>`,
+  `oidcIntentSep`).
 - **The finish echoes it** as `intent`, once, only for the sign-in that flow
   completed.
 - **The finish can also ask for it.** A body `intent` is the tag the caller
