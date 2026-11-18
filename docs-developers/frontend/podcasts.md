@@ -401,8 +401,8 @@ A show the listener already follows in this library reads **Following** with
 (`usePodcastShows`) and matches a followed show's `feed_url` against each result's
 feed address. `feedAddressesOf` gives the address both over `http` and over
 `https`, so a feed that moved from one to the other still matches the address the
-directory lists, and the show's own address wins over its other form. A private
-feed lists no `feed_url`, so it is never matched.
+directory lists. When two shows give the same address, the show whose own address
+it is wins. A private feed lists no `feed_url`, so it is never matched.
 
 An Adding result reads its request live (`useFollowRequests`, `requestEnd` in
 `find-shows-model.ts`):

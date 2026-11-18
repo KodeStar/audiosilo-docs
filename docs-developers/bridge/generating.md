@@ -270,7 +270,7 @@ server stores it opaquely; at most 16 KiB):
 | `eta_seconds` | the engine's whole-book estimate of the time left, when it has one (never while parked or paused) |
 | `cost_usd` | the agent spend so far: the budgets' basis (each run's provider-reported cost, else its complete API-price estimate), rounded to cents |
 | `source` | `audio` or `ebook` |
-| `park` | while parked only: `code`, `hint` (the Bridge's English advice), `retry_at` (RFC 3339) when the park resumes by itself, and `message`, the park's sentence for people without the `<code>: ` it may lead with (`jobs.withParkMessage`). The Bridge's own page shows `message`, and falls back to the job's `error` for a job parked by an older Bridge. The code itself is only for the log |
+| `park` | while parked only: `code`, `hint` (the Bridge's English advice), `retry_at` (RFC 3339) when the park resumes by itself, and `message`, the park's sentence for people: the job's error without the `<code>: ` it may lead with, absent when only the code is left (`jobs.withParkMessage`). The Bridge's own page shows `message`, or the job's `error` without its code for a job parked by an older Bridge. That page never shows the code |
 
 The console and the player word the stages themselves (`bridge.stage.*` in both
 UIs; `describing` is "Writing the description", `chapter_detecting` "Finding the

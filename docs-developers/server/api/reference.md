@@ -10949,10 +10949,8 @@ mapping of it. The console's Settings > Bridge reads this.
   the Bridge's Accounts tab, absent while it files with a token from its
   environment or `gh`; admins only: `GET /server` never carries it). Omitted when
   the Bridge sent none (an older Bridge, or a server it hasn't been told accepts it
-  yet) or the block didn't decode. The console's Setup card reads it, and links
-  a step with `needs_worker` to the Bridge's Workers tab. From a Bridge that sends
-  no `needs_worker`, it reads the `asr` step's detail text ("waiting for an ASR
-  worker") instead.
+  yet) or the block didn't decode. The console's Setup card reads it (see
+  [the checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist)).
 
 ### `POST /api/v1/admin/bridge/pair`
 
@@ -11610,7 +11608,7 @@ result, an error. Every report renews the lease.
 |---|---|
 | `attempt` | **required**: the `attempts` its claim returned. A report from an earlier claim (one whose lease ran out and was claimed again) is refused |
 | `state` | optional: `running`, `done`, `failed`, `needs_attention` or `cancelled` (from `claimed`, `running` or `needs_attention`) |
-| `progress` | optional: a JSON object, at most 16 KiB. A parked job's names its park, `park {code, hint, retry_at?, message?}`. `message` is the park's sentence for people without the `<code>: ` the job's `error` leads with. The server stores it with the rest of the progress, the Bridge's own page reads it, and the console does not. An older Bridge sends no `message` |
+| `progress` | optional: a JSON object, at most 16 KiB. A parked job's progress names its park, `park {code, hint, retry_at?, message?}`, where `message` is the park's sentence without the `<code>: ` the job's `error` may lead with. The server stores it with the rest of the progress. [Progress](../../bridge/generating.md#progress) says who reads it. An older Bridge sends no `message` |
 | `result` | optional: a JSON object, at most 64 KiB |
 | `error` | optional: text, cleaned rather than refused (control characters become spaces, line breaks are kept, cut at 2 KiB) |
 
@@ -11623,7 +11621,7 @@ A field left out keeps its value. A `claimed` or `running` job's lease is renewe
 |---|---|
 | `200` | the job |
 | `400` | `invalid job id`; `invalid update` (not JSON, over 128 KiB, an unknown field); or a check, each message starting `invalid: `: `progress must be a JSON object` (or `result`), `progress too large` (or `result`), or a state it can't report (`state "queued" from "running"`) |
-| `409` | `code: "not_held"` - this claim no longer holds the job: it ended, was cancelled, its lease ran out and it was queued or claimed again, or it no longer exists (gone with its library). The Bridge drops it. The body adds `reason: "cancelled"` when the job ended cancelled and no claim later than this one took it (`bridge.ErrCancelledWhileHeld`): an admin's cancel of a parked or working job, the server's own cancels, a move of its book onto another open job, a lease that ran out after a cancel was asked, or a cancel while it was queued again after this claim's lease lapsed. The Bridge then records the job cancelled, not lost. A report with `attempt` 0, which no claim returned, gets the plain answer. An older Bridge ignores `reason`. This route never answers `finished` (only the console's cancel does) |
+| `409` | `code: "not_held"` - this claim no longer holds the job: it ended, was cancelled, its lease ran out and it was queued or claimed again, or it no longer exists (gone with its library). The Bridge drops it. The body adds `reason: "cancelled"` when the job ended cancelled and no claim later than this one took it (`bridge.ErrCancelledWhileHeld`): an admin's cancel of a parked job, the server's own cancels, a move of its book onto another open job, a lease that ran out after a cancel was asked, or a cancel while it was queued again after this claim's lease lapsed. The Bridge then records the job cancelled, not lost. A report with `attempt` 0, which no claim returned, gets the plain answer. An older Bridge ignores `reason`. This route never answers `finished` (only the console's cancel does) |
 
 ### `GET /api/v1/bridge/libraries/{id}/marker`
 

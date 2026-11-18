@@ -249,8 +249,9 @@ times in a row, then shows `ReaderStartError`.
   wait for the next `opened`.
 - Once the book has shown, a later `drm` or `unreadable` is reported as `start`,
   because the same file opened before. Try again reopens at the place the reader
-  held (`resumeAt`), never at a page a relayout or the landing showed. In the app the `start` notice's body is
-  `reader.failure.start.bodyNative` (memory, not a browser).
+  held (`resumeAt`), never at a page a relayout or the landing showed. In the app
+  the `start` notice's body is `reader.failure.start.bodyNative` (memory, not a
+  browser).
 
 ### The EPUB cache
 
@@ -398,8 +399,9 @@ move saves.
 that finish loading make foliate lay the section out again and put the paginator
 back on the place it held. The page it lands on can start a little before that
 place, so saving it would pull the place back a little with every relayout. The
-reader document marks that `progress` with `relayout: true`. The screen shows the page and saves nothing, and
-the app's host does not take it as the place to reopen at after a process death.
+reader document marks that `progress` with `relayout: true`. The screen shows the
+page and saves nothing, and the app's host never reopens there after a process
+death.
 
 foliate's relocate reason does not tell a relayout apart on its own. It says
 `anchor` for a relayout, for a section it has just loaded, and for two real moves:

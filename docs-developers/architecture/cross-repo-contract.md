@@ -1471,10 +1471,10 @@ Each kind's rules follow.
 - It refuses `409 cannot_contribute` for `contribute: issue` unless the heartbeat
   says the Bridge can.
 - The progress (`step`, `stage`, `eta_seconds`, `cost_usd`, `source`,
-  `park {code, hint, retry_at, message}`) and result shapes are the Bridge's.
-  `park.message` is the park's sentence without its code, which the Bridge's own
-  page reads. The server
-  stores them opaquely, and the console and the player read them by hand.
+  `park {code, hint, retry_at, message}`) and result shapes are the Bridge's. The
+  server stores them opaquely, and the console and the player read them by hand.
+  Only the Bridge's own page reads `park.message` (see
+  [Progress](../bridge/generating.md#progress)).
 - `GET /admin/bridge/estimate` costs a run from the heartbeat's figures.
 - The server announces `bridge_job_finished` and `bridge_job_failed` itself, on
   transitions.
@@ -1669,9 +1669,8 @@ Two new Bridge-token routes act for the account's person:
   stats. Event ids are stable per place, so a resend is a `duplicate`.
 - `GET /bridge/progress?account=&since=&limit=` answers
   `{rows, next, more, server_time}`. It is keyset on `progress.change_seq` and
-  leaves out the account's own rows. `server_time` is the server's clock, and the
-  Bridge counts its baseline's 10-minute window back from it, because `updated_at`
-  is on the server's clock too.
+  leaves out the account's own rows. `server_time` is the server's clock, which the
+  Bridge's push baseline counts back from.
 
 Both answer `403 sync_off`, `403 user_unavailable` and `404 unknown_account`. The
 feed also answers `400 invalid_request`.
@@ -1800,7 +1799,7 @@ Audible position sync:
 - A Bridge with position sync, against an older server, gets no sync queued and a
   `404` from the feed. Its push loop asks again each minute. Deploy the Bridge with the
   server.
-- A server before 2.7.0 sends no `server_time` on the feed, and the Bridge counts
+- An older server sends no `server_time` on the feed, and the Bridge counts
   the baseline window back from its own clock.
 
 ## 17. Podcast shows, feeds and client visibility

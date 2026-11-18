@@ -731,11 +731,11 @@ A parked job runs on once the mapping is writable again, and keeps its download.
 
    Then `transfer.OnDisk` spells the path as the disk spells the folders that
    exist. That is the path the server indexes on a case-insensitive disk. Last,
-   `vacant` refuses an occupied destination (`exists`). It also looks under the
-   names the rule before `placement.Sanitize` dropped SMB-unsafe characters would
-   have given (`formerDirs`, `formerName`), at any level of the path. So a title
-   backed up as `Who Moved My Cheese?` is `exists` there, and isn't downloaded
-   again into `Who Moved My Cheese`.
+   `vacant` refuses an occupied destination (`exists`). It also checks each level
+   of the path under its former name, the one the Bridge gave before
+   `placement.Sanitize` dropped SMB-unsafe characters (`formerDirs`, `formerName`).
+   So a title backed up as `Who Moved My Cheese?` is `exists`, and the Bridge
+   doesn't download it again into `Who Moved My Cheese`.
 4. **License** (`Client.License`): the AAXC URL, key, IV and size.
 5. **Download** to `<data>/audible/tmp/<account>-<asin>.aaxc.part`
    ([Resume and temp files](#resume-and-temp-files)).
@@ -1210,19 +1210,18 @@ Each ASIN appears once, `library_id` is above 0, `path` is a clean book path (or
    (`store.ListAudibleSync`). Then, while the account's `sync_retry_at` is ahead,
    the job ends done with `waiting` without calling Audible.
 3. **Audible's places.** It reads them with `lastpositions`, 25 ASINs a request,
-   split on a `400` or `414`, in a new random order every sync. A read Audible
-   stops partway (`audible.LastPositions` returns the places read before the
-   failed batch beside the error) carries on with those places through the steps
-   below, then fails the job `audible_error` as a read that failed whole does. The
-   random order means a rate limit late in a large library still lets every title
-   be read over a few syncs, not only the first ones. A read that gave no place
-   fails the job at once. A `429`/`503` also waits Audible's `Retry-After`, counted
-   from when it came back and at least 2 minutes (`sync_retry_at`).
+   split on a `400` or `414`, in a new random order every sync. When Audible stops
+   partway, `audible.LastPositions` returns the places read before the failed
+   batch with the error. The job carries on with those places through the steps
+   below, then fails `audible_error`. When the read gave no place, the job fails at
+   once. The random order lets a large library that meets a rate limit late still
+   have every title read over a few syncs, not only the first ones. A `429`/`503`
+   also waits Audible's `Retry-After`, counted from when it came back and at least
+   2 minutes (`sync_retry_at`).
 
-   An ASIN that Audible still refuses with `400` when asked alone is left out, like
-   a title with no place, once Audible has answered another list in the same read.
-   The Bridge logs the ASINs it left out. Until some list is answered, that `400`
-   is the read's error, because Audible refusing everything is no read.
+   Once Audible has answered another list in the same read, an ASIN it still
+   refuses with `400` when asked alone is left out like a title with no place, and
+   the Bridge logs it. Before any list is answered, that `400` is the read's error.
 4. **Skips.** It skips:
    - a place under 1 s;
    - a place past the runtime by more than 5% plus 2 minutes. Audible's runtime is
@@ -1365,8 +1364,8 @@ another server, person or library.
   never pushed. After the baseline, every row read is new. `updated_at` is the
   server's clock, so the 10 minutes count back from the page's `server_time`
   (`baselineCutoff`). A Bridge whose clock is minutes off then still pushes a
-  recent place. A server before 2.7.0 sends no `server_time`, and the Bridge counts
-  back from its own clock.
+  recent place. An older server sends no `server_time`, and the Bridge counts back
+  from its own clock.
 - A row the Bridge fails to record keeps the cursor, so the pass reads it again.
 - A cursor the server refuses with `400` (`link.ErrBadCursor`) goes back to the
   feed's start, instead of stopping that account's push for good.
@@ -1387,12 +1386,11 @@ It checks no length of its own. A book whose length disagrees with the title's
 runtime never reaches it, since the feed leaves that row out (the server's
 `duration_mismatch` rule).
 
-It reads Audible's places once (`Positions`). It drops a place Audible moved on from
-since: over 5 s further on, and neither `last_ms` nor `heard_ms`. Furthest wins,
-and the next sync brings Audible's place in. When Audible refuses that read with a
+It reads Audible's places once (`Positions`). When Audible refuses that read with a
 `4xx` partway, the places it answered before the refusal still count, and the other
-titles are written as if Audible had no place for them. Otherwise it writes the
-place:
+titles count as having no place on Audible. It drops a place Audible moved on from
+since: over 5 s further on, and neither `last_ms` nor `heard_ms`. Furthest wins,
+and the next sync brings Audible's place in. Otherwise it writes the place:
 
 1. `ContentACR` once per ASIN, cached. When a write answers `400`/`404` for a
    cached one, the loop reads it again and tries the write once more.
@@ -1433,7 +1431,7 @@ Both take a *bridge token* in the header only, and act for the account's
 | Route | What |
 |---|---|
 | `POST /bridge/audible/accounts/{account}/listening` | The account's places on Audible, furthest only. The body is `{sent_at, events}`: strict, `sent_at` required, with the Sync v2 event shapes and limits. `200` is the Sync v2 answer |
-| `GET /bridge/progress?account=&since=&limit=` | The person's places on the synced titles' books, one row per title, keyset by `(change_seq, asin)`: `{rows, next, more, server_time}`, with `server_time` the server's clock that the push's baseline counts back from. It leaves out the account's own rows, and a row whose own title's `runtime_s` disagrees with the book's length (per title). `400 invalid_request` for no account, a bad limit or a bad cursor |
+| `GET /bridge/progress?account=&since=&limit=` | The person's places on the synced titles' books, one row per title, keyset by `(change_seq, asin)`: `{rows, next, more, server_time}` (`server_time` for [the baseline](#the-server-to-audible-the-push-loop)). It leaves out the account's own rows, and a row whose own title's `runtime_s` disagrees with the book's length (per title). `400 invalid_request` for no account, a bad limit or a bad cursor |
 
 The feed is keyset on `progress.change_seq` (`0066`), the order the server wrote
 progress rows in. Triggers set it, so no write path can miss it.
