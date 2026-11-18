@@ -726,11 +726,11 @@ Only seven ops may be asserted:
 | `retitle-work` | the work as target, its title as recorded as `from` and the new title as `to`; `field` may be omitted and is read as `title` |
 
 An assertion appears in the class whose detector makes that op (`W-DUP`,
-`SER-DUP`, `W-NOSERIES`, `S-INTEGRITY` or `W-TITLE`; `P-DUP` for
-`merge-people` and `W-DUP` for `merge-recordings`) under the subclass
-`asserted`, and the repair pass applies it like any other proposal. No detector
-proposes `merge-people` or `merge-recordings`, so a decision about either is a
-`reject` or an `assert`, never an `accept`.
+`SER-DUP`, `W-NOSERIES`, `S-INTEGRITY` or `W-TITLE`) under the subclass
+`asserted`, and the repair pass applies it like any other proposal.
+`merge-people` (under `P-DUP`) and `merge-recordings` (under `W-DUP`) have no
+detector, so a decision about either is a `reject` or an `assert`, never an
+`accept`.
 
 A drop naming no home applies only as a reviewed assertion; any other is refused
 as malformed. It judges no language. It checks only that the series still lists
@@ -795,8 +795,8 @@ refuses as `different-production` when the records say two productions: two
 LibriVox projects, or a LibriVox project beside a recording that isn't one; two
 narrator sets; two stated runtimes more than 10% apart; abridged flags that
 disagree (an absent flag reads as unabridged); or two stated languages that
-differ. A reviewer fixes those facts first if they are wrong. Otherwise the
-two merge as a work merge merges colliding recordings: identifiers and
+differ. A reviewer fixes those facts first if they are wrong. Otherwise they merge
+as colliding recordings do in a work merge: identifiers and
 provenance unioned, the keeper's values kept, the mover's filling only gaps. A
 recording id has no tombstone, so `from` is gone afterwards. The work, which a
 client keys on, is unchanged.
@@ -814,9 +814,9 @@ A `reject` of a merge also reaches beyond the audit:
 
 - `metacheck`'s advisory census stops naming the pair it covers.
 - The importer honours a `reject` of `merge-people`. This is how "two people, not
-  one" is recorded (an `assert` records "one person", which the repair pass
-  [folds](#folding-one-persons-two-records-merge-people)) for a courtesy-title pair such as Dr. Alex George and Alex
-  George. The importer's honorific fold, which otherwise resolves a "Dr. X" credit
+  one" is recorded for a courtesy-title pair such as Dr. Alex George and Alex
+  George; an `assert` records "one person", which the repair pass
+  [folds](#folding-one-persons-two-records-merge-people). The importer's honorific fold, which otherwise resolves a "Dr. X" credit
   onto the catalogued bare "X", never folds a pair a rejection names, in either
   direction. Neither does the credential fold ("X PhD" onto "X"). Both judge the
   records the two spellings land on (through the initials merge) as well as the
