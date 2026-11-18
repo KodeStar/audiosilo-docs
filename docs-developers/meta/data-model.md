@@ -98,6 +98,7 @@ edit is a read-modify-write of its work.
 | `id` | yes | slug |
 | `title` | yes | |
 | `subtitle` | no | |
+| `alternate_titles` | no | other titles this one book is published or known under: a retitled re-release, a regional title, another spelling. Each is a title, never a decorated listing, and never the work's own `title` (`metacheck` fails the tree). Search finds the work by them; `title` stays the one it leads with. A [merge of two works](#what-a-work-merge-keeps-of-a-title) fills it, and a retitle onto one of them (a repair's `retitle-work`, or an intake title correction) takes that title off the list |
 | `authors` | yes | array of person slugs, at least one |
 | `language` | yes | BCP-47-ish (`^[a-z]{2,3}(-[a-z0-9]{2,8})*$`) |
 | `first_published` | no | `YYYY` or `YYYY-MM-DD` |
@@ -518,6 +519,18 @@ retitle against a series that is only this one book's own edition ("Let's Split
 Up (German Edition)", holding just this work), which would otherwise leave the
 tagline as the title.
 
+### What a work merge keeps of a title
+
+A `merge-works` keeps the survivor's title and adds each loser's title to the
+survivor's `alternate_titles`, so a search for the title the loser was found by
+still finds the book. It also carries over the loser's own alternate titles. A
+loser's title is not added when it only restates the survivor's title or an
+alternate already listed, that is when one comparison key extends the other at a
+word boundary ("The Prince by Nicolo Machiavelli" beside "The Prince",
+"Hammered: The Druid Tales, Book 3" beside "Hammered"). A search for the
+survivor's title already reaches those. The repair's notes name every alternate
+title it added.
+
 ### When one series is spelled twice
 
 The audit's `SER-DUP` class groups series whose names normalize to the same key
@@ -658,7 +671,7 @@ tombstone table.
 
 There is one exception to that reading. An accepted or asserted decision about one
 work's own record (`drop-membership`, `move-membership`, `restate-position`,
-`retitle-work`, `set-work-language` or `fill-field`) whose work was since retired
+`retitle-work`, `set-work-language`, `fill-field` or `merge-recordings`) whose work was since retired
 is **stale**. It is never moved onto the survivor, even when the survivor sits at
 the very position, carries the very title or lacks the very field the decision
 names. The work it named is gone, and the survivor is another record nobody
@@ -700,19 +713,24 @@ order leaves one catalogue.
 
 `assert` **sources** a proposal no detector makes: an alternate title, a reissue,
 a work stating no series, an omnibus or a dramatisation sitting in a series'
-slots, or a correct retitle the title rules refuse. The entry's fields ARE the
-proposal. Only five ops may be asserted:
+slots, a correct retitle the title rules refuse, one person's two records, or a
+reissue recorded as a recording of its own. The entry's fields ARE the proposal.
+Only seven ops may be asserted:
 
 | Op | Fields |
 |---|---|
-| `merge-works`, `merge-series` | a target and the others folding onto it, nothing else |
+| `merge-works`, `merge-series`, `merge-people` | a target and the others folding onto it, nothing else |
+| `merge-recordings` | the work as target, the recording that folds as `from` and the one it folds into as `to` (two different recording ids), nothing else |
 | `add-series-member` | the work as target, the series, and a canonical position as `to`; `field` may be omitted |
 | `drop-membership` | the work as target, the series, and the canonical position it is listed at as `from`; `field` may be omitted and is read as `position`; no `to` and no `others` |
 | `retitle-work` | the work as target, its title as recorded as `from` and the new title as `to`; `field` may be omitted and is read as `title` |
 
 An assertion appears in the class whose detector makes that op (`W-DUP`,
-`SER-DUP`, `W-NOSERIES`, `S-INTEGRITY` or `W-TITLE`) under the subclass
-`asserted`, and the repair pass applies it like any other proposal.
+`SER-DUP`, `W-NOSERIES`, `S-INTEGRITY` or `W-TITLE`; `P-DUP` for
+`merge-people` and `W-DUP` for `merge-recordings`) under the subclass
+`asserted`, and the repair pass applies it like any other proposal. No detector
+proposes `merge-people` or `merge-recordings`, so a decision about either is a
+`reject` or an `assert`, never an `accept`.
 
 A drop naming no home applies only as a reviewed assertion; any other is refused
 as malformed. It judges no language. It checks only that the series still lists
@@ -748,6 +766,41 @@ its records still exist. Its outcome in `SUMMARY.md` is one of:
   - a loser was already retired onto a different survivor. An assertion never
     widens a merge to fold that survivor too.
 
+### Folding one person's two records: `merge-people`
+
+An asserted `merge-people` folds each of the others onto the target person.
+
+- **The record.** The target's own statements win. A loser fills only what the
+  target doesn't state: `sort_name`, `kind`, `description`, the life years and
+  the xref members. Sources union. A loser's LibriVox id becomes the target's
+  own, or joins its alias list when the target states another, so the next
+  LibriVox import can't mint the loser again. A death year is never written
+  before the birth year.
+- **Every credit moves.** Each place that names a person is re-pointed at the
+  target: a work's authors and credits, a recording's narrators, credits and
+  chapter readers, and a series' authors. Each list keeps the target once, in
+  first-seen order. Chapter readers come off a recording that is left with one
+  narrator.
+- **The slug is retired.** Each loser is deleted and tombstoned in the people
+  namespace, so its old slug still redirects (see [retired slugs](#retired-slugs)).
+
+Every value chosen away is named in the repair's notes.
+
+### Folding a reissue: `merge-recordings`
+
+An asserted `merge-recordings` folds recording `from` of the work into its
+recording `to`: a reissue the importer kept as a recording of its own under a
+second ASIN. The repair still asks the importer's same-production rule, and
+refuses as `different-production` when the records say two productions: two
+LibriVox projects, or a LibriVox project beside a recording that isn't one; two
+narrator sets; two stated runtimes more than 10% apart; abridged flags that
+disagree (an absent flag reads as unabridged); or two stated languages that
+differ. A reviewer fixes those facts first if they are wrong. Otherwise the
+two merge as a work merge merges colliding recordings: identifiers and
+provenance unioned, the keeper's values kept, the mover's filling only gaps. A
+recording id has no tombstone, so `from` is gone afterwards. The work, which a
+client keys on, is unchanged.
+
 ### Matched against the fresh audit
 
 The decisions are matched against the FRESH audit every run. An accept or reject
@@ -761,7 +814,8 @@ A `reject` of a merge also reaches beyond the audit:
 
 - `metacheck`'s advisory census stops naming the pair it covers.
 - The importer honours a `reject` of `merge-people`. This is how "two people, not
-  one" is recorded for a courtesy-title pair such as Dr. Alex George and Alex
+  one" is recorded (an `assert` records "one person", which the repair pass
+  [folds](#folding-one-persons-two-records-merge-people)) for a courtesy-title pair such as Dr. Alex George and Alex
   George. The importer's honorific fold, which otherwise resolves a "Dr. X" credit
   onto the catalogued bare "X", never folds a pair a rejection names, in either
   direction. Neither does the credential fold ("X PhD" onto "X"). Both judge the
@@ -941,11 +995,12 @@ produces an identical file. It stamps a `schema_version` into the artifact's
 | 9 | the LibriVox recording layer: `recordings.librivox_title`, `chapters.section_number`, and the `recording_credits` (`work_id, recording_id, person_id, role, ord`), `chapter_readers` (`work_id, recording_id, chapter_idx, person_id, ord`) and `recording_librivox_genres` (`work_id, recording_id, genre, ord`) tables, which the LibriVox-shaped feed answers its title, section numbers, translators, section readers and genres from, and `recording_sources.added_at` (each recording's own, so `works/latest?source=` orders by the source's recordings straight off its index) |
 | 10 | the `position_scales` table (the ruler a work's sidecars are numbered on) |
 | 11 | the store links: `recordings.link_audiobookguild` and `recordings.link_graphicaudio` (one column per store, not a table), which the API returns in the recording's `links` and as purchase links |
+| 12 | the `work_alternate_titles` table (`work_id, title, ord`), a work's alternate titles, which are also among the work's names in the search index |
 
 `metaserve` returns characters, recaps, genres, the community description and the
 translation links inline on `GET /works/{id}` (`characters` / `recaps` /
 `recap_summary` / `genres` / `community_description` / `position_scale` /
-`translation_of` / `translations`, all `omitempty`). It returns a series'
+`translation_of` / `translations` / `alternate_titles`, all `omitempty`). It returns a series'
 language, ordering and ordering family on `GET /series/{id}` (see
 [the API](api.md#apiv1seriesidlimitoffset)). From version 8 it also serves the
 LibriVox layer ([the API](api.md#the-librivox-layer)).
@@ -967,14 +1022,15 @@ older release. A missing table or column reads as "no data", never a 500:
 | the LibriVox recording layer | 9 |
 | position scales | 10 |
 | the store links | 11 |
+| alternate titles | 12 |
 
-An artifact that *claims* any version from 5 to 11 but lacks what that version
+An artifact that *claims* any version from 5 to 12 but lacks what that version
 adds is refused when it is loaded, naming the claim, because the builder always
 writes the two together. For 7 that is the `translations` table or any of the
 series table's `language`, `ordering` and `ordering_of` columns; for 8, any of its
 columns or the `work_credits` and `recording_sources` tables; for 9, any of its
 columns or tables; for 10, the `position_scales` table; for 11, either store link
-column.
+column; for 12, the `work_alternate_titles` table.
 
 The same versioning drives the [coverage endpoints](api.md#coverage-endpoints).
 They omit a dimension's count, rather than report it as a misleading zero, when
