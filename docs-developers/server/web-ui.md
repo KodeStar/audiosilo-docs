@@ -57,8 +57,9 @@ policy, `contentSecurityPolicy`. It is exported as `web.ContentSecurityPolicy`,
 so the setup page in `internal/api` applies the identical one:
 
 ```
-default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self';
-connect-src 'self'; manifest-src 'self'; worker-src 'self';
+default-src 'self'; img-src 'self' data:; style-src 'self';
+style-src-attr 'unsafe-hashes' 'sha256-3oFxofzq3N//6J8H86e9ul4WT2OkJrtonB66gn/TLJw=';
+script-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self';
 base-uri 'none'; frame-ancestors 'none'
 ```
 
@@ -66,8 +67,14 @@ base-uri 'none'; frame-ancestors 'none'
   pairing PNG (a data URI in the redeem response) and the console's covers
   (`data:` URLs, see [Covers](#covers)).
 - `manifest-src` and `worker-src 'self'` let the admin console install as a PWA.
+- `style-src-attr` allows one `style=` attribute and nothing else: the exact
+  value `text-overflow:inherit`, by its hash. Safari's engine (WebKit) puts that
+  attribute on an element inside a native `<select>`, and a strict policy
+  refused it. The hash is pinned by `TestCSPWebKitSelectStyleHash`, and the
+  directive can go once the Safari releases without the upstream WebKit fix
+  (bugs.webkit.org 327212) are out of use.
 - There is **no** `'unsafe-inline'` anywhere. The pages contain no inline
-  `<style>`, no `style=` attributes and no inline `<script>`. The connect and
+  `<style>`, no `style=` attributes of their own and no inline `<script>`. The connect and
   setup pages keep all styling in `assets/style.css` and all behaviour in
   external JS files that use `addEventListener`. An inline handler added to one
   of them does nothing under this CSP, and nothing reports it. The console's
