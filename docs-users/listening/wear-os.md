@@ -91,7 +91,7 @@ The [Downloads](offline-downloads.md#the-downloads-page) page on your phone has 
 
 ![On your watch in Downloads on an Android phone: a book with its size](pathname:///img/screenshots/wear/phone-downloads-section.png)
 
-Each row says how far the book has got: sent, delivered to your watch, waiting on your watch, preparing on the server, downloading, then on your watch. A row can lag behind the watch's own screen. If your watch hasn't taken a book in 7 days, tap **Send again**.
+Each row says how far the book has got: sent, delivered to your watch, waiting on your watch, preparing on the server, downloading, then on your watch. A row can lag behind the watch's own screen. If your watch hasn't taken a book in 7 days, tap **Send again**. Send again shows only while your server can still make the watch's copy.
 
 ![On your watch in Downloads on an Android phone: one book downloading to the watch, one preparing on the server](pathname:///img/screenshots/wear/phone-downloads-preparing.png)
 

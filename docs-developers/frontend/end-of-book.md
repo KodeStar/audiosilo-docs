@@ -178,7 +178,9 @@ the book in the shell underneath (`pushInShell`).
   note, so rating doesn't clear the note;
 - the `UpNextCard`: Play now, Not now and the countdown ring;
 - `EndOfSeries`: an unplaced community work as a `GhostCover`, never played;
-- the `CreditsDialog`. The community credit is the server's and is never composed
+- the `CreditsDialog`. Its Publisher and Released rows use the book page's rules
+  (`bookPublisher`, `bookReleased`, the date printed by `formatReleaseDate`), so they
+  match the About card. The community credit is the server's and is never composed
   here. `/meta` is fetched only once the dialog opens.
 
 Every hook runs against the book's own server (`ConnectionScope`).

@@ -407,7 +407,9 @@ from before its reply, which would send a delivered one twice and put an older o
 - **The book action** needs the app installed and `watch` in the server's `renditions`. It never
   shows on an episode.
 - **The Downloads section** needs the app installed and an account that can use one
-  (`watchSectionVisible`).
+  (`watchSectionVisible`). A row's Send again needs what the book action needs from the
+  server, `watch` in its `renditions` (`serverServesWatch`). Without it the row offers
+  Remove alone.
 
 The card keeps set-up, signed in as and what waits. The books are in Downloads, and both the card
 and the Send to watch toast link there (`openDownloads`). The link uses `?watch=<connection id>`,

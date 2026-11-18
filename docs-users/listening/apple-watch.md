@@ -91,7 +91,7 @@ A book on its way says where it has got to:
 
 If the watch is waiting for a connection or for your server, a second line says so.
 
-A row can lag behind the watch's own screen. With AudioSilo closed on the watch, the percentage moves only as each file arrives. If a row says it couldn't download or reach the watch, tap **Send again**.
+A row can lag behind the watch's own screen. With AudioSilo closed on the watch, the percentage moves only as each file arrives. If a row says it couldn't download or reach the watch, tap **Send again**. Send again shows only while your server can still make the watch's copy.
 
 To take a book off the watch from your iPhone, tap **Remove** on its row. Your place in the book is kept. If you send the book again afterwards, the watch keeps the new copy.
 

@@ -83,7 +83,9 @@ When no worker is connected (its computer is asleep, say), the Bridge follows
 - **Transcribe on the Bridge** (the default): the Bridge carries on itself, more
   slowly. When the worker comes back, the work moves to it.
 - **Wait for a worker**: the job waits, shown as **Waiting for an ASR worker**,
-  and carries on when a worker connects.
+  and carries on when a worker connects. Until one does, the speech recognition
+  step of the **Get set up** card, on the Bridge and in the admin console, links
+  to the Bridge's **Workers** tab.
 
 If the worker stops in the middle of a piece, only that piece is transcribed again.
 

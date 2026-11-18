@@ -235,7 +235,8 @@ file access flag off, need no server change, and work offline.
 **Process death.** The WebView's content process can die (iOS,
 `onContentProcessDidTerminate`), or its renderer can go (Android,
 `onRenderProcessGone`). The host then ends that WebView's session at once and makes
-a new one that reopens at the last `progress` place. It does this `MAX_RELOADS` (3)
+a new one that reopens at the last `progress` place that was not a relayout (see
+[The reading place](#the-reading-place)). It does this `MAX_RELOADS` (3)
 times in a row, then shows `ReaderStartError`.
 
 - A death `STABLE_MS` (60 s) or more after that WebView's `opened` resets the count.
@@ -247,8 +248,10 @@ times in a row, then shows `ReaderStartError`.
   too when its frame reloads). That clears `opened`, so the edges, toolbar and offer
   wait for the next `opened`.
 - Once the book has shown, a later `drm` or `unreadable` is reported as `start`,
-  because the same file opened before. Try again reopens where the reader was
-  (`resumeAt`). In the app the `start` notice's body is
+  because the same file opened before. Try again reopens at the place the reader
+  held (`resumeAt`), not at a page a relayout or the landing showed. A book with no
+  saved place that the reader hasn't moved in is the exception: it reopens at the
+  page last shown. In the app the `start` notice's body is
   `reader.failure.start.bodyNative` (memory, not a browser).
 
 ### The EPUB cache
@@ -392,6 +395,24 @@ first `progress` after `opened` is where the book landed: the start of the page 
 saved place falls on. The screen does not save it (`landing`), because saving it
 would pull a place read at another page size back to this page's start. The first
 move saves.
+
+**A relayout is shown, never saved.** A resize, a rotation, a new text size or fonts
+that finish loading make foliate lay the section out again and put the paginator
+back on the place it held. The page it lands on can start a little before that
+place, so saving it would pull the place back a little with every relayout. The
+reader document marks that `progress` with `relayout: true`. The screen shows the
+page and saves nothing, and the app's host never reopens there after a process
+death.
+
+foliate's relocate reason does not tell a relayout apart on its own. It says
+`anchor` for a relayout, for a section it has just loaded, and for two real moves:
+focus going to a link on another page, and a keyboard selection crossing a page.
+`watchRelayouts` in `reader/src/render-guard.js` wraps the paginator's
+`dispatchEvent`, because foliate's view passes a relocate on without its reason. A
+relocate is a relayout when its reason is `anchor`, it is in the same section as the
+relocate before it, and the layout changed since then. The layout is the
+paginator's width and height, the section's `viewSize` and its text size. Contents
+jumps, page turns and the two `anchor` moves above still save.
 
 ### `base_version` and the Jump offer
 

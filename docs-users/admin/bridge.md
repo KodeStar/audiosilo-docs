@@ -50,7 +50,9 @@ code.
 
 The **Get set up** card shows the Bridge's setup checklist, the same as on its own
 page. Each step shows a tick when done. A step still to do has **Fix on the
-Bridge**, which opens the right tab of the Bridge's page.
+Bridge**, which opens the right tab of the Bridge's page. When speech recognition
+waits for a [worker](../getting-started/running-a-worker.md) that isn't
+connected, it opens the **Workers** tab.
 
 ![The Setup card on Server > Settings > Bridge](/img/screenshots/admin/bridge-setup.png)
 

@@ -396,6 +396,14 @@ form, the results and, as its footer, the follow requests. The form has a provid
 - **Follow**. It becomes **Adding** on a `202` (a request), or **Following** with
   **Open show** on a `200`.
 
+A show the listener already follows in this library reads **Following** with
+**Open show** from the start. `DirectorySearch` reads the library's shows
+(`usePodcastShows`) and matches a followed show's `feed_url` against each result's
+feed address. `feedAddressesOf` gives the address both over `http` and over
+`https`, so a feed that moved from one to the other still matches the address the
+directory lists. When two shows give the same address, the show whose own address
+it is wins. A private feed lists no `feed_url`, so it is never matched.
+
 An Adding result reads its request live (`useFollowRequests`, `requestEnd` in
 `find-shows-model.ts`):
 
@@ -404,6 +412,9 @@ An Adding result reads its request live (`useFollowRequests`, `requestEnd` in
 - ended otherwise, it shows **Couldn't add** beside Follow again;
 - once a read list no longer holds the request (`requestEnd` answers `unknown`;
   the server lists a week's requests), the result offers Follow again alone.
+
+A Follow that ended `cancelled` or failed never hides a show the library's list
+already holds as followed. That result stays Following with Open show.
 
 The country is `deviceCountry()` (`discovery-country.ts`).
 

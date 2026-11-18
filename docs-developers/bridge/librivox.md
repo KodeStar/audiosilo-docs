@@ -261,8 +261,9 @@ The folder is `<Author>/<Title>/`, from `placement.Suggest` as a standalone book
 - **Taken**: when the title's folder exists, the Bridge tries
   `<Title> (LibriVox <id>)` once, then fails `exists`.
 
-Names lose control characters and runs of spaces, go through `placement.Sanitize`
-(which also drops leading dots) and are cut to 180 bytes on a rune boundary.
+Names go through `placement.Sanitize` ([its rules](audible.md#the-template-grammar):
+safe for an SMB share, no leading dots), then are cut to 180 bytes on a rune
+boundary.
 
 Sections are `NN - <section title>.<ext>`:
 
