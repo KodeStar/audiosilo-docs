@@ -10943,12 +10943,16 @@ mapping of it. The console's Settings > Bridge reads this.
   agent, Paid by, This month and Estimates from rows read them.
 - `setup` - the last heartbeat's [setup checklist](#put-apiv1bridgestatus)
   as the server kept it (`items` in the Bridge's order, each `id`, `done`,
-  `required`, `detail` when there is one and `library_ids` for the libraries
-  still to fix; `can_contribute`; `github_login`, the GitHub account signed in on
+  `required`, `detail` when there is one, `library_ids` for the libraries
+  still to fix and `needs_worker` while the step waits for an ASR worker;
+  `can_contribute`; `github_login`, the GitHub account signed in on
   the Bridge's Accounts tab, absent while it files with a token from its
   environment or `gh`; admins only: `GET /server` never carries it). Omitted when
   the Bridge sent none (an older Bridge, or a server it hasn't been told accepts it
-  yet) or the block didn't decode. The console's Setup card reads it.
+  yet) or the block didn't decode. The console's Setup card reads it, and links
+  a step with `needs_worker` to the Bridge's Workers tab. From a Bridge that sends
+  no `needs_worker`, it reads the `asr` step's detail text ("waiting for an ASR
+  worker") instead.
 
 ### `POST /api/v1/admin/bridge/pair`
 
@@ -11505,7 +11509,7 @@ found. The server keeps the last one only (one row, never a history).
 | `libraries` | its last check of each library it has checked (at most 512, each `library_id` once and above 0): `mount_path` where it looked, `mapped` (a known book's files were there with the server's sizes), `writable` (a probe file could be written and removed there), `checked_path` (the book it compared), `error` (why it isn't mapped or writable, `""` when it is); the three texts at most 1 KiB each |
 | `workers` | the transcription workers connected to it (at most 64; `name`, `version`, `platform`, `last_seen`, at most 128 bytes each; `[]` today) |
 | `ui_url` | its own page on the local network: an absolute `http(s)` URL without credentials, or `""` |
-| `setup` | optional, sent only after a reply listed it in `accepts`: the Bridge's setup checklist, `{ items: [{ id, done, required, detail?, library_ids? }], can_contribute, github_login? }`. Read leniently like `estimates` (an unknown key ignored, a block that doesn't decode dropped, never refused) and bounded: the first 16 items kept (the rest left out); an item whose `id` doesn't match `^[a-z][a-z0-9_]{0,31}$`, or repeats one, is left out (an unknown id is kept); `detail` cleaned to 256 bytes; in `library_ids` a zero, negative or repeated id left out (at most 512 kept); a `github_login` that isn't GitHub's shape dropped. Its `can_contribute` wins over the estimates'. The ids a Bridge sends, their order and meaning: [The setup checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist) |
+| `setup` | optional, sent only after a reply listed it in `accepts`: the Bridge's setup checklist, `{ items: [{ id, done, required, detail?, library_ids?, needs_worker? }], can_contribute, github_login? }`. `needs_worker: true` says the step waits for an ASR worker. Read leniently like `estimates` (an unknown key ignored, a block that doesn't decode dropped, never refused) and bounded: the first 16 items kept (the rest left out); an item whose `id` doesn't match `^[a-z][a-z0-9_]{0,31}$`, or repeats one, is left out (an unknown id is kept); `detail` cleaned to 256 bytes; in `library_ids` a zero, negative or repeated id left out (at most 512 kept); a `github_login` that isn't GitHub's shape dropped. Its `can_contribute` wins over the estimates'. The ids a Bridge sends, their order and meaning: [The setup checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist) |
 | `estimates` | optional: its figures for costing a job before it is queued, one block per job family. `sidecars`: `asr_seconds_per_audio_hour` (ASR wall time per hour of audio, learned or a seed), `agent_usd_per_audio_hour` and `agent_usd_per_ebook` (agent spend from finished books, `null` before any), `samples` (the finished books they come from), `agent_backend` (`""` when none), `agent_ready` (the agent container answers and has a credential), `subscription` (that credential is a subscription login), `can_contribute` (it can file community intake issues), `monthly_budget_usd` (`0` = no cap) and `month_spent_usd`. Read leniently: an unknown key is ignored, and a block that doesn't decode, or holds a number below 0 or past its bound, is **dropped**, never refused (`agent_backend` is cleaned like the other text) |
 
 The structure is checked and refused when wrong: a malformed kind, a repeated
@@ -11606,7 +11610,7 @@ result, an error. Every report renews the lease.
 |---|---|
 | `attempt` | **required**: the `attempts` its claim returned. A report from an earlier claim (one whose lease ran out and was claimed again) is refused |
 | `state` | optional: `running`, `done`, `failed`, `needs_attention` or `cancelled` (from `claimed`, `running` or `needs_attention`) |
-| `progress` | optional: a JSON object, at most 16 KiB |
+| `progress` | optional: a JSON object, at most 16 KiB. A parked job's names its park, `park {code, hint, retry_at?, message?}`. `message` is the park's sentence for people without the `<code>: ` the job's `error` leads with. The server stores it with the rest of the progress, the Bridge's own page reads it, and the console does not. An older Bridge sends no `message` |
 | `result` | optional: a JSON object, at most 64 KiB |
 | `error` | optional: text, cleaned rather than refused (control characters become spaces, line breaks are kept, cut at 2 KiB) |
 
@@ -11619,7 +11623,7 @@ A field left out keeps its value. A `claimed` or `running` job's lease is renewe
 |---|---|
 | `200` | the job |
 | `400` | `invalid job id`; `invalid update` (not JSON, over 128 KiB, an unknown field); or a check, each message starting `invalid: `: `progress must be a JSON object` (or `result`), `progress too large` (or `result`), or a state it can't report (`state "queued" from "running"`) |
-| `409` | `code: "not_held"` - this claim no longer holds the job: it ended, was cancelled, its lease ran out and it was queued or claimed again, or it no longer exists (gone with its library). The Bridge drops it. This route never answers `finished` (only the console's cancel does) |
+| `409` | `code: "not_held"` - this claim no longer holds the job: it ended, was cancelled, its lease ran out and it was queued or claimed again, or it no longer exists (gone with its library). The Bridge drops it. The body adds `reason: "cancelled"` when the job ended cancelled and no claim later than this one took it (`bridge.ErrCancelledWhileHeld`): an admin's cancel of a parked or working job, the server's own cancels, a move of its book onto another open job, a lease that ran out after a cancel was asked, or a cancel while it was queued again after this claim's lease lapsed. The Bridge then records the job cancelled, not lost. A report with `attempt` 0, which no claim returned, gets the plain answer. An older Bridge ignores `reason`. This route never answers `finished` (only the console's cancel does) |
 
 ### `GET /api/v1/bridge/libraries/{id}/marker`
 
@@ -12433,7 +12437,8 @@ the start), `?limit=` (default 200, at most 500). `Cache-Control: no-store`.
     }
   ],
   "next": "eyJxIjo0NCwicyI6IkIwRVhBTVBMRTEifQ",
-  "more": false
+  "more": false,
+  "server_time": "2026-11-03T09:24:02Z"
 }
 ```
 
@@ -12458,11 +12463,15 @@ late finish, a client's clock behind) is still fed. `updated_at` is the row's ow
 
 `next` is the cursor of the last row read, a left-out one included (`since` again
 when there is none). The Bridge keeps it between polls. `more` is `true` for a full
-page read, whose rows may be fewer, so ask again at once.
+page read, whose rows may be fewer, so ask again at once. `server_time` is the
+server's clock when it answered (RFC 3339, UTC). `updated_at` is on the server's
+clock too, so the Bridge counts its baseline's recent window back from
+`server_time`, not from its own clock. A server before 2.7.0 sends no
+`server_time`.
 
 | Status | Meaning |
 |---|---|
-| `200` | `{ rows, next, more }` |
+| `200` | `{ rows, next, more, server_time }` |
 | `400` | `invalid_request` - no `account`, a bad `limit` or cursor |
 | `403` / `404` | [above](#audible-position-sync) |
 

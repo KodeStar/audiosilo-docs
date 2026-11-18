@@ -178,7 +178,7 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
 |---|---|---|---|
 | `paired` | yes | the Bridge is paired | |
 | `libraries` | yes | the Bridge has checked libraries and every one is mapped and writable (a library counts once it has been checked) | "checking the libraries..." (`setup.DetailLibrariesChecking`, from v0.5.0) from pairing until a heartbeat has listed the server's libraries and each has been checked (`Input.LibrariesPending`: no `lastBeat` yet, or `libs.Unchecked()`), never done and no `library_ids` meanwhile; then "1 of 2 libraries writable" (or "the server has no libraries yet"); `library_ids` lists the ones still to fix |
-| `asr` | yes | the engine has started and something can transcribe now, not waiting for a worker | `local`, `worker`, "waiting for an ASR worker", "the engine is starting", or why it isn't available |
+| `asr` | yes | the engine has started and something can transcribe now, not waiting for a worker | `local`, `worker`, "waiting for an ASR worker" (with `needs_worker: true`), "the engine is starting", or why it isn't available |
 | `agent` | no | the agent container is available (with its own or a handed-over credential); only characters, recaps and descriptions need it | the backend, or why it isn't ready in plain words (below) |
 | `budget` | yes | the monthly budget was saved on the page or is set by the environment (`Config.BudgetReviewed`) | "$100 a month" or "no monthly cap" |
 | `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token" |
@@ -223,10 +223,18 @@ Bridge's detail when it sends one, and otherwise its own hint for the id
 holds Generate back while the agent step isn't done, required or not
 (`generateNeed`): a run without the agent would park `agent_unavailable`.
 
-The `asr` item's "waiting for an ASR worker" is a stable string
-(`setup.DetailASRWaiting`): from v0.4.0 the Bridge's Status tab, and the console's
-Setup card from server 2.5.0 (`ASR_WAITING_DETAIL` in `setup-model.ts`), match it to
-link the Bridge's Workers tab, so keep the words when changing the checklist.
+An item that waits for an ASR worker carries `needs_worker: true`. Today that is
+the `asr` item once the engine has started and its transcription waits for a
+worker. The Bridge's Status tab (`setupLinks` in `web/src/lib/setup.ts`) and the
+console's Setup card in **Server > Settings > Bridge** (`setupItemLink` in
+`setup-model.ts`, server 2.7.0) read the flag and link the Bridge's Workers tab
+first, since the usual fix is a worker, not a setting. A server before 2.7.0
+ignores the key, as it reads the block leniently.
+
+A console from server 2.5.0 to 2.6.x matches the detail text instead: the `asr`
+item's "waiting for an ASR worker" (`setup.DetailASRWaiting`, `ASR_WAITING_DETAIL`
+in `setup-model.ts`). The console from 2.7.0 falls back to the same match for a
+Bridge that sends no flag. Keep the words stable when changing the checklist.
 
 The Bridge collapses each detail's whitespace and cuts it to 200 bytes (ending
 "..."). The server reads the block
@@ -402,7 +410,13 @@ one gets through, so a few lost reports never let the lease lapse. After any oth
 
 A report carries the `attempt` its claim returned: a report from an earlier claim is
 `409 not_held`, as is one about a job that ended, was cancelled or no longer exists
-(the route never answers `finished`). Its `error` text is cleaned rather than
+(the route never answers `finished`). When the job ended cancelled and no later
+claim took it, the `409` adds `reason: "cancelled"` (server 2.7.0). The Bridge
+reads that as `link.ErrCancelledHere`, stops the job as it does for
+`cancel_requested`, and its Jobs tab shows **Cancelled**. Any other `not_held`
+ends the job as `lost` (**Lost**, "The server took it back"). A report with
+`attempt` 0, which no claim returned, always gets the plain answer. An older
+server never sends the reason, so its cancelled jobs still read as lost. Its `error` text is cleaned rather than
 refused (control characters become spaces, line breaks stay, cut at 2 KiB), since
 a refused final report would be retried for ever while its job ran again; the
 Bridge also keeps its own reports inside the server's limits (a step of 128 bytes,
@@ -437,7 +451,10 @@ The Bridge's own page can cancel a job it is running too; that is reported to th
 server as `cancelled`, the same as an admin's cancel.
 
 A **parked** job the server cancels at once is still held by the Bridge until its
-next keepalive (up to 30 seconds). So a book job queued for the same book right
+next keepalive (up to 30 seconds). That report is `409 not_held` with
+`reason: "cancelled"`, so the Bridge records the job cancelled, not lost. The
+server's own cancels, a move of the book onto another open job, and a lease that
+ran out after a cancel was asked answer the same way. So a book job queued for the same book right
 after would meet it as an open job and be refused ("cancel it first").
 
 From v0.5.0, a new `sidecars.generate`, `sidecars.describe`, `chapters.detect` or
@@ -499,7 +516,9 @@ they were:
   is still alive the job simply carries on. If it ran out meanwhile, the server
   has queued the job again (or claimed it as a later attempt), so that report gets
   `409`; the Bridge records the row as `lost` and the claim loop takes the job again
-  as the next attempt.
+  as the next attempt. When the job was cancelled meanwhile and no later claim
+  took it, the `409` carries `reason: "cancelled"` and the row is recorded
+  `cancelled` instead.
 - **A job that had finished** but whose final report never reached the server is
   reported again, every 30 seconds, until the server takes it or says it has moved
   on.

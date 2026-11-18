@@ -60,6 +60,8 @@ You need full access to the library to add shows. Kids accounts and the demo can
 1. Type a show's name and tap **Search**.
 2. Tap **Follow** on the show you want.
 
+A show you already follow says **Following** in the results. Tap **Open show** to go to it.
+
 Results come from **Apple Podcasts**, or from **Podcast Index** if your admin set it up. The directory sees only the words you searched and your server's address, not yours.
 
 ![Add shows on a phone: the search results](/img/screenshots/web-player/phone-find-shows.png)

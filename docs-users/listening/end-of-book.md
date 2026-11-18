@@ -17,7 +17,7 @@ The finished book leaves *Continue listening* and Up next. The end credits show:
 - **Up next**: the book that plays next and why, such as *"from your queue"* or the next book in the series. **Play now** starts it.
 - **View details**: the finished book's page.
 
-**Credits** at the top right lists who made the book. The **X** closes the screen.
+**Credits** at the top right lists who made the book, with the same publisher and release date as the book page. The **X** closes the screen.
 
 You can also open the end credits early, from the full player's [three-dot menu](full-player.md#the-three-dot-menu). This is handy for skipping long spoken credits. The book keeps playing until it really ends. If you tap **Play now** there, the book you were in keeps your place and stays unfinished.
 

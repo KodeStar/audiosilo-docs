@@ -392,14 +392,22 @@ hero and the tabs.
        **Improve this**.
     4. `'fallback'`: with none of these, a sentence naming the author and narrator.
   - The detail rows:
-    - the publisher (the server's `publisher`, else the recording's);
-    - the release date (the recording's, else the book's `published`);
+    - the publisher (`bookPublisher`: the server's `publisher`, else the recording's);
+    - the release date (`bookReleased`: the recording's `release_date`, else the
+      book's `published`, which a match fills with the year the work was first
+      published);
     - the work's first publication, only when it is not the release date, so one
       date shows as one "Released" row;
     - the server's `language`, a code named through `Intl.DisplayNames` in the app's
       language where the platform has it (`languageName`), else shown as sent;
     - abridged yes or no (the server's `abridged`, else the recording's). Absent means
       unknown, so there is no row.
+
+    Both dates print in the listener's region format at the precision they were given
+    (`formatReleaseDate`): `2012-06-26` reads "26 Jun 2012" in en-GB and "Jun 26, 2012"
+    in en-US, `2012-06` reads "Jun 2012", and a year stays as it is. A value that is no
+    date shows as it came. The end credits' Publisher and Released rows read the same
+    two functions, so they always match this card.
   - Then `labelGroups`: the book's `genres`, then its `tags`, each once by `labelKey`,
     as chips under their names. A chip calls `openLabelBooks`, which selects the
     book's library in `useLibrarySelection` and opens the Library tab's root

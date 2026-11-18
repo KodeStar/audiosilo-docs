@@ -1360,7 +1360,7 @@ reference.
 |---|---|
 | `PUT /bridge/status` | The heartbeat, every 30 s. The answer lists the libraries and `accepts`. |
 | `GET /bridge/jobs/next?wait=&kind=` | A long-poll claim, at most 25 s, narrowed to the kinds with a free lane. `204` for none. |
-| `PATCH /bridge/jobs/{id}` | Takes `{attempt, state?, progress?, result?, error?}`. The answer's `cancel_requested` asks the Bridge to stop. `409 not_held` when its claim no longer holds the job, a job that no longer exists included. The server cleans free text and never refuses it. |
+| `PATCH /bridge/jobs/{id}` | Takes `{attempt, state?, progress?, result?, error?}`. The answer's `cancel_requested` asks the Bridge to stop. `409 not_held` when its claim no longer holds the job, a job that no longer exists included. That `409` adds `reason: "cancelled"` when the job ended cancelled with no later claim, and the Bridge then records it cancelled, not lost. The server cleans free text and never refuses it. |
 | `GET /bridge/libraries/{id}/book[?path=]` | An indexed book's files with the sizes the server sees now. A single-file book is its own file. With no path, the first whole book among the library's first five by title. `404 no_book`. With a path, an additive `book` of the book's facts: title, credits split, series and position, ASIN, ISBN, duration and the cached `work_id`. |
 | `POST /bridge/rescan {library_id, path, mode?, from?}` | `full` (optionally carrying a Bridge-made move's durable state from `from`), or `attachments` (only the book's `.audiosilo/` files). |
 
@@ -1471,7 +1471,9 @@ Each kind's rules follow.
 - It refuses `409 cannot_contribute` for `contribute: issue` unless the heartbeat
   says the Bridge can.
 - The progress (`step`, `stage`, `eta_seconds`, `cost_usd`, `source`,
-  `park {code, hint, retry_at}`) and result shapes are the Bridge's. The server
+  `park {code, hint, retry_at, message}`) and result shapes are the Bridge's.
+  `park.message` is the park's sentence without its code, which the Bridge's own
+  page reads. The server
   stores them opaquely, and the console and the player read them by hand.
 - `GET /admin/bridge/estimate` costs a run from the heartbeat's figures.
 - The server announces `bridge_job_finished` and `bridge_job_failed` itself, on
@@ -1552,8 +1554,10 @@ server's head checks and the player's reader. See [Read-along](../bridge/readalo
 
 The heartbeat's `setup` block is the Bridge's onboarding checklist: `paired`,
 `libraries`, `asr`, `agent`, `budget`, `github`, plus `can_contribute` and
-`github_login`. `agent` and `github` are optional. It reaches the console only, as
-`setup` on `GET /admin/bridge` (see
+`github_login`. `agent` and `github` are optional. An item may carry
+`needs_worker: true` while it waits for an ASR worker, and the console then links
+it to the Bridge's Workers tab. It reaches the console only, as `setup` on
+`GET /admin/bridge` (see
 [the checklist](../bridge/pairing-and-jobs.md#the-setup-checklist)).
 
 Two kinds belong to the `contributions` module. While the module is off they answer
@@ -1663,8 +1667,11 @@ Two new Bridge-token routes act for the account's person:
   Sync v2 event shapes. The server applies them **furthest only**, under device
   `audible:<account>` named `Audible (<label>)`, with token 0 and no sessions or
   stats. Event ids are stable per place, so a resend is a `duplicate`.
-- `GET /bridge/progress?account=&since=&limit=` answers `{rows, next, more}`. It is
-  keyset on `progress.change_seq` and leaves out the account's own rows.
+- `GET /bridge/progress?account=&since=&limit=` answers
+  `{rows, next, more, server_time}`. It is keyset on `progress.change_seq` and
+  leaves out the account's own rows. `server_time` is the server's clock, and the
+  Bridge counts its baseline's 10-minute window back from it, because `updated_at`
+  is on the server's clock too.
 
 Both answer `403 sync_off`, `403 user_unavailable` and `404 unknown_account`. The
 feed also answers `400 invalid_request`.
@@ -1748,6 +1755,13 @@ Setup and contributions:
 
 - An older server sends no `accepts`, so a newer Bridge sends it no `setup`.
 - An older Bridge doesn't advertise the new kinds.
+- An older Bridge sends no `needs_worker`, and the console matches the `asr` item's
+  detail text ("waiting for an ASR worker") instead. An older server ignores the
+  key.
+- An older Bridge sends no `park.message`, and its page takes the message from the
+  job's `error`. An older server stores the field with the rest of the progress.
+- An older Bridge ignores a `not_held` reason and records the job lost, as before.
+  An older server sends no reason, so a newer Bridge records the job lost.
 - A signed-in player still gets the `bridge` block.
 
 Read-along:
@@ -1786,6 +1800,8 @@ Audible position sync:
 - A Bridge with position sync, against an older server, gets no sync queued and a
   `404` from the feed. Its push loop asks again each minute. Deploy the Bridge with the
   server.
+- A server before 2.7.0 sends no `server_time` on the feed, and the Bridge counts
+  the baseline window back from its own clock.
 
 ## 17. Podcast shows, feeds and client visibility
 
