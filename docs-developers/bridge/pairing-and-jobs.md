@@ -475,7 +475,10 @@ it writes the reason as the job's `error`. `IsCancelReason` names the reasons:
   sharing", "... replaced it; make the read-along again after";
 - `CancelMoved` ("the book moved onto another job of this kind", `MoveJobs`);
 - `CancelReplacedRequest` ("a newer request replaced it", a podcast request
-  replaced by `Enqueue` through `cancelOpenTx`).
+  replaced by `Enqueue` through `cancelOpenTx`);
+- `CancelModuleOff` ("its module was turned off", a share-only job the Bridge
+  held when the Contributions module was turned off, set by `UpdateHeld`; see
+  [Jobs of a managed module](#jobs-of-a-managed-module)).
 
 `MoveJobs` cancels the old path's open job at once in any state, with no
 `cancel_requested`. A Bridge still working on it learns at its next report
@@ -617,7 +620,17 @@ The community jobs belong to the `contributions` [module](../server/modules.md).
   estimate's `open_job`, and cancelled;
 - "off" is the toggle alone. With it on, a queued share refuses a generate job
   even while the Bridge can't contribute;
-- a job the Bridge already holds (claimed, running or parked) carries on.
+- a job the Bridge already holds (claimed, running or parked) carries on, except
+  one of the two kinds that only file (`sidecars.contribute`, `meta.correct`,
+  whose own module is `contributions`: `Service.stopsShare`). Such a job writes
+  nothing, so stopping it loses no work. At the Bridge's next report of a claimed
+  or running one, `UpdateHeld` sets `cancel_requested` with the server's reason
+  `CancelModuleOff` (see [Cancelling](#cancelling)). A parked one is asked when
+  it reports working again;
+- a claimed `sidecars.generate` job with `contribute: "issue"` is never asked to
+  stop. The Bridge would drop the characters and recaps it is writing, and it
+  files them itself at its end, a step the server has no part in. A podcast or
+  Audible job that a claim handed out also carries on with its module off.
 
 On the Bridge, each kind has a handler and a **lane**, which sets how many jobs
 of that lane run at once:

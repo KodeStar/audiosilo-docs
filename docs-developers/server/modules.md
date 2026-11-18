@@ -158,7 +158,15 @@ each with Remove.
 A module's action can be a Bridge job instead of a route. `bridge.kindSpec.module`
 names the module a kind needs, and `bridge.ModuleFor(kind, params)` answers it.
 Such a job gets the same toggle gate (`404 module_off` through `writeModuleOff`),
-and a queued one is held while the toggle is off. See
+and a queued one is held while the toggle is off.
+
+A job the Bridge already holds carries on with its module off, with one
+exception. A claimed or running job of a kind that only files to the community
+(`sidecars.contribute`, `meta.correct`) is asked to stop at the Bridge's next
+report, with the server's reason "its module was turned off"
+(`bridge.CancelModuleOff`), which the console shows as "Its module was turned
+off." Podcast and Audible jobs, and a `sidecars.generate` job that contributes,
+carry on. See
 [Jobs of a managed module](../bridge/pairing-and-jobs.md#jobs-of-a-managed-module).
 
 ## Background work
