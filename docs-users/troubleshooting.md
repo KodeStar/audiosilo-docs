@@ -98,7 +98,7 @@ You signed in at the provider, but the server didn't know which account is yours
 
 If your email matches an account but the sign-in still waits, the provider may not mark your email as verified, or the account is an admin's, which is never linked by email.
 
-### Single sign-on isn't available, or took too long
+### Single sign-on isn't available, took too long, or was refused
 
 - **"Isn't available right now"**: the server can't reach the identity provider, or its settings have a problem. An admin sees why in **Server > Settings > Sign-in**. Sign in with a password or invite meanwhile.
 - **"Took too long, or finished in another browser"**: finish signing in at the provider within ten minutes, in the same browser you started in. Start again from the button.
