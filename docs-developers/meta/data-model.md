@@ -778,9 +778,10 @@ An asserted `merge-people` folds each of the others onto the target person.
   before the birth year.
 - **Every credit moves.** Each place that names a person is re-pointed at the
   target: a work's authors and credits, a recording's narrators, credits and
-  chapter readers, and a series' authors. Each list keeps the target once, in
-  first-seen order. Chapter readers come off a recording that is left with one
-  narrator.
+  chapter readers, and a series' authors. Each list of slugs keeps the target
+  once, in first-seen order; a credit list keeps each person and role once, in
+  its canonical order. When the fold leaves a recording one narrator and every
+  chapter lists readers, the chapter readers come off.
 - **The slug is retired.** Each loser is deleted and tombstoned in the people
   namespace, so its old slug still redirects (see [retired slugs](#retired-slugs)).
 
@@ -797,7 +798,8 @@ narrator sets; two stated runtimes more than 10% apart; abridged flags that
 disagree (an absent flag reads as unabridged); or two stated languages that
 differ. A reviewer fixes those facts first if they are wrong. Otherwise they merge
 as colliding recordings do in a work merge: identifiers and
-provenance unioned, the keeper's values kept, the mover's filling only gaps. A
+provenance unioned, the keeper's values kept, the mover's filling only gaps, and
+the longer chapter list kept from either side. A
 recording id has no tombstone, so `from` is gone afterwards. The work, which a
 client keys on, is unchanged.
 
