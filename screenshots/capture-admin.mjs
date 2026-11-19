@@ -703,8 +703,8 @@ await step('server settings: community metadata', async () => {
     // The upcoming releases switch and its last run: the check capture-web.mjs's upcoming
     // pass ran (Not run yet when that pass didn't run).
     await page.getByText('Check for upcoming releases', {exact: true}).waitFor({timeout: 8000});
-    // The unknown-ASIN report's switch, off as on every new server (2.6.0).
-    await page.getByText('Help complete the community database', {exact: true}).waitFor({timeout: 8000});
+    // No Help complete the community database switch: a demo server, as this one
+    // is, has no unknown-ASIN report, so the console leaves the switch out (server#314).
     await sleep(800); // the status row reads the system status
     await shoot(page, 'admin/settings-metadata.png');
   } finally {
