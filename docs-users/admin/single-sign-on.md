@@ -88,6 +88,9 @@ To sign in with single sign-on, open the console or the web player and select
 **Sign in with** and your provider's name. Sign in at the provider. You come
 back signed in.
 
+In the console, you come back to the page you opened. A link to a console
+page, such as one in a notification, lands on that page once you are signed in.
+
 The web player offers the button only when you open it from your server, at
 the server's own address followed by `/web`. It offers it too while a grown-up
 signs in from [kids mode](../listening/kids-mode.md). After the provider, the
@@ -204,5 +207,10 @@ console. Set a password for them first.
   other apps on the same host name could receive them.
 - **Your home address.** A sign-in started at the server's home address goes
   through the public address, because that is where the provider returns.
+- **Served under a path.** If your reverse proxy serves AudioSilo under a path,
+  such as `https://example.com/audiosilo/`, a sign-in comes back to the root of
+  that host name: `https://example.com/admin/` for the console and
+  `https://example.com/web/` for the web player. The proxy must serve the
+  console and the web player there.
 - **Changing the provider** (issuer, client ID, secret, scopes) needs a
   restart. **Who may sign in** applies at once.

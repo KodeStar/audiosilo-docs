@@ -176,10 +176,14 @@ server hands the sign-in over in a cookie on its own origin.
 
 The button is a full page load of `client.oidcStartUrl(tag)`
 (`/api/v1/auth/oidc/start?return=web&intent=<tag>`, the tag described below). The server lands the browser on
-`/web/connect?oidc=1` (`oidcReturnOrigin` tells the route and the screen apart from
-a pairing link, which wins). `ConnectStart` takes `oidc` off the address first, so a
-reload doesn't retry, then `finishOidcSignIn` calls `client.oidcFinish` and
-`finishConnect`. A refusal shows above the served card (`oidcFinishText`):
+`/web/connect?oidc=1&flow=<key>` (`oidcReturnOrigin` tells the route and the
+screen apart from a pairing link, which wins). The key names this tab's sign-in
+on the server and grants nothing. `ConnectStart` takes `oidc` and `flow` off the
+address first, so a reload doesn't finish again, and keeps the key only in
+memory for **Try again**. Then `finishOidcSignIn` calls
+`client.oidcFinish(deviceName, intent, flow)` and `finishConnect`. The service
+worker never writes a page whose address carries `flow` or `token` into Cache
+Storage (`UNKEPT_PAGE_PARAMS` in `public/sw.js`), since each is one-time. A refusal shows above the served card (`oidcFinishText`):
 
 | Answer | Says |
 |---|---|
@@ -192,10 +196,19 @@ reload doesn't retry, then `finishOidcSignIn` calls `client.oidcFinish` and
 | a session the device couldn't keep | the sign-in is spent, so sign in again |
 | anything else | signing in didn't finish |
 
-Each but `needsUpdate` ends with "Sign in again": the finish can't be retried,
-because the server cleared its cookie on the first try. `needsUpdate` says to
-update the server or sign in another way, since signing in again would end the
-same way. A session that answers once the connect screen
+Some failures leave the sign-in on the server, which keeps its done cookie for
+a minute (`OIDC_DONE_MS`, the server's `oidcDoneTTL`). For those the card offers
+**Try again**, which sends the same finish from memory, with the same `flow`
+(`oidcRetryWait`):
+
+- no answer at all, a `408` or a `5xx`, at once;
+- a `429`, once its `Retry-After` has passed, when that ends inside the minute.
+
+A refusal (a `400`, `401` or `403`) cleared the cookie, so it gets no retry. Once
+the minute is over (`oidcDoneLeft`), a failure the server would have kept the
+sign-in through reads as an expired sign-in. Every failure without a retry ends
+with "Sign in again", except `needsUpdate`, which says to update the server or
+sign in another way, since signing in again would end the same way. A session that answers once the connect screen
 has gone is signed out again, never kept.
 
 **What the flow is for survives the trip** (`src/components/connect/oidc-intent.ts`).

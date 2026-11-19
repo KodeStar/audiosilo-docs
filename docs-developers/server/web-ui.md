@@ -114,7 +114,10 @@ The handler routes on the request path relative to the prefix:
 - **Cache-Control.** Files under `AssetDirs` are fingerprinted and get
   `Cache-Control: public, max-age=31536000, immutable`. HTML and every other
   file (`/admin/theme-init.js`) are `no-cache`, so a browser picks up a new
-  release at once.
+  release at once. An HTML document asked for at an address whose query names
+  a sign-in (`token`, `oidc` or `flow`: a QR pairing token or a single
+  sign-on's landing) is `no-store` instead (`documentCache`), so neither the
+  browser nor a proxy keeps a copy filed under that address.
 - **ETag.** `spa.Files` serves every static response: the console, the web
   player, the connect page, `/assets/`, `sw.js` and the manifest. It sends a
   strong `ETag`, the first 16 bytes of the file's SHA-256 with `-gz` appended
@@ -459,14 +462,21 @@ signed in. The language choice shares the connect page's storage key.
   [thumbnail cache](#the-thumbnail-cache).
 - **Single sign-on.** With the `oidc` capability, the sign-in page adds
   "Sign in with &lt;name&gt;", a link to
-  `/api/v1/auth/oidc/start?return=admin`. The server sends the browser back to
-  `/admin/#oidc=done`. `main.tsx` takes the marker out of the address before
-  the router starts (`takeOIDCReturn`), and `SessionProvider` calls
-  [`POST /auth/oidc/finish`](api/reference.md#post-apiv1authoidcfinish) once. A
-  non-admin is signed straight back out ("This account is not an
-  administrator"). A new admin session replaces the one the browser held. A
-  finish that signs no admin in leaves a stored session alone; with none, the
-  sign-in page says why.
+  `/api/v1/auth/oidc/start?return=admin` (`oidcStartHref`). On any page but the
+  start page, the link adds that page's path and query as `next`, so the
+  sign-in lands back on it (see
+  [The console's deep link](auth-and-security.md#the-consoles-deep-link)). The
+  server sends the browser back to `/admin/#oidc=done&flow=<key>`, or to the
+  deep link with the same marker. `main.tsx` takes the marker out of the
+  address before the router starts (`takeOIDCReturn`), and `SessionProvider`
+  calls [`POST /auth/oidc/finish`](api/reference.md#post-apiv1authoidcfinish)
+  once, naming the flow's key as `flow`, so two tabs that came back at once
+  each finish their own. A `5xx` keeps the sign-in on the server, and the
+  console asks once more after half a second (`finishOIDC`). A non-admin is
+  signed straight back out ("This account is not an administrator"). A new
+  admin session replaces the one the browser held. A finish that signs no
+  admin in leaves a stored session alone; with none, the sign-in page says
+  why.
 
 Every API call also names the console to the server with
 `X-AudioSilo-Client: AudioSilo Admin (web)` (`CLIENT_IDENTITY` in
@@ -1438,14 +1448,16 @@ at the next sign-in.
   linked, and the last sign-in, with **Unlink** behind a confirm. A
   `409 admin_needs_password` reads "Set a password first". The tab's **Email**
   card (`email-card.tsx`, not for a household member) sets the account's email.
-- **Signs in with single sign-on** (`signInProvider` in `pending-model.ts`): an
-  identity from the provider the server runs now (the same issuer as
-  `GET /admin/oidc/status`, while `configured`). The person's header then says
-  "No password (signs in with &lt;name&gt;)" in place of "No password (player
-  only)". Choosing Admin under the Account tab's Role then asks for no password,
-  as the server allows. A
-  household member never counts, nor does anyone while the status can't be
-  read.
+- **Signs in with single sign-on** (`signInProvider` in `pending-model.ts`):
+  the person's `sign_in_provider` from the console's user object, which the
+  server fills with the provider's name when the person holds an identity from
+  the single sign-on it runs now. It is `""` for anyone else, and always for a
+  household member or a demo account, so the console reads no
+  `GET /admin/oidc/status` for it. The person's card on People then says
+  "Signs in with &lt;name&gt;" when they have no password, in place of "Paired
+  devices only". Their header says "No password (signs in with &lt;name&gt;)"
+  in place of "No password (player only)", and choosing Admin under the
+  Account tab's Role asks for no password, as the server allows.
 
 #### Server > Logs
 
@@ -1619,6 +1631,15 @@ A failed Audible job's code reads as a sentence (`audibleJobReason`):
 A sync cancelled by turning sync off shows the server's reason, "sync with
 Audible was turned off for the account" (`SERVER_CANCEL_REASONS`).
 
+**Podcast jobs.** A `podcast.poll` reads "Scheduled by the server" when the
+scheduler queued it: its params carry `scheduled: true`, or, for one queued
+before that mark, it has the scheduler's priority (`serverScheduled`). A
+follower's Check now whose requester was deleted reads "Asked by a deleted
+account" instead. A failed `podcast.fetch` or `podcast.poll` with a code the
+server words reads in the server's sentence (`podcastJobReason`,
+`podcast-reason.ts`), the same words as the feed's notifications. An unknown
+code keeps the Bridge's text, which the job's Details show either way.
+
 **LibriVox jobs.** A `librivox.fetch` reads "Adding from LibriVox", with the
 work's title from its params (`librivoxTitle`), else its project ("Project 192",
 `librivoxProject`). Its failure or park code reads as
@@ -1639,7 +1660,24 @@ in `setup-model.ts`):
 - The optional `audible` step links the Bridge's Accounts tab.
 
 The card then shows the GitHub account, the agent credential and whether the
-Bridge can contribute, with **Open Accounts on the Bridge**.
+Bridge can contribute, with **Open Accounts on the Bridge**. Two of these rows
+read the heartbeat's `setup` fields, which an older Bridge doesn't send:
+
+- **Credential hand-off** shows while the Bridge reports `agent_credential`,
+  how it hands the agent's credential to the agent container
+  (`credentialShare`, `CREDENTIAL_SHARE_KEY`): "Kept to the Bridge's group"
+  (`group`), readable by every user on the staging volume until the agent
+  takes it (`world`), held back because `agent.require_group` is on and the
+  Bridge's group can't be used (`group_required`), or failed (`failed`). Every
+  value but `group` reads as a warning. A reported hand-off counts as a set
+  credential, so the agent credential row reads Set even while the agent step
+  waits on it.
+- **The GitHub account** adds a warning when the Bridge reports `github_state`
+  (`githubSignInState`): `unrefreshed` keeps the login and says "Sign-in
+  couldn't be refreshed: the Bridge keeps trying", and `refused` names no
+  login and says "GitHub refused the sign-in: sign in again on the Bridge".
+
+A value the console doesn't know shows nothing.
 
 ##### The Audible accounts card
 
@@ -2352,7 +2390,10 @@ and `assets`), so it follows the shared rules in
 - Anything else is treated as a **client-routed deep link** and falls back to
   `index.html`, so the SPA boots. This is what makes `/web/connect?token=…`
   work.
-- HTML and other non-asset files are `Cache-Control: no-cache`. The
+- HTML and other non-asset files are `Cache-Control: no-cache`, except a
+  document at a sign-in address such as `/web/connect?token=…` or
+  `/web/connect?oidc=1&flow=…`, which is `no-store` (see
+  [Caching and compression](#caching-and-compression)). The
   content-fingerprinted `_expo/` and `assets/` files are
   `public, max-age=31536000, immutable`.
 - Everything gets `X-Content-Type-Options: nosniff`. Only HTML carries a CSP,
@@ -2449,7 +2490,8 @@ frame-ancestors 'self'
   place of the site-wide `DENY` (`secureHeaders`) for browsers that read only
   the header. Any other site framing it is refused.
 - **Caching.** `Cache-Control: no-cache` with an ETag
-  (`spa.Files.ServeDocument`), like the player's documents, and `nosniff`.
+  (`spa.Files.ServeDocument`), like the player's documents (`no-store` at an
+  address whose query names a sign-in), and `nosniff`.
 
 **Paths.** The `/web/` handler sends every path that would name the file to
 this handler (`web.isReaderPath`: `reader.html` or `reader`, in any case, with

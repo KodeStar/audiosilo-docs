@@ -103,6 +103,7 @@ If your email matches an account but the sign-in still waits, the provider may n
 - **"Isn't available right now"**: the server can't reach the identity provider, or its settings have a problem. An admin sees why in **Server > Settings > Sign-in**. Sign in with a password or invite meanwhile.
 - **"Took too long, or finished in another browser"**: finish signing in at the provider within ten minutes, in the same browser you started in. Start again from the button.
 - **"Didn't finish"**: the provider ended the sign-in, such as when you cancelled, or the server restarted while you were at the provider. Start again from the button.
+- **"Couldn't finish signing you in"** or **"Could not reach the server to finish signing in"**: the server or your connection failed just after the provider sent you back. The web player keeps that sign-in for a minute, so select **Try again**. After the minute it says the sign-in expired. Start again from the button.
 - **"Wasn't the one started on this device"**: in kids mode, the web player keeps only the single sign-on a grown-up started from its sign-in screen. Hold **Grown-ups** and start again from the button on this device.
 - **The button is missing**: single sign-on is off, or you opened the web player from somewhere other than your server's own address. The phone apps don't offer it.
 

@@ -390,9 +390,22 @@ dates from 0001. Later migrations added these columns:
 | 0058 | `ebook_size`, `ebook_sha256`, `ebook_hashed_sig` |
 | 0067 | `tag_asin`, `tag_isbn`, `tag_language`, `hints_checked` |
 | 0082 | `duration_rev`, `duration_rev_indexed_at` |
+| 0083 | `path_key` |
 
 #### Identity and metadata columns
 
+- `path_key`: the book's path in Unicode NFC, the key a path spelled another
+  way is compared by (`catalog.Spelling`). A name with an accent has two
+  spellings, precomposed (NFC) and decomposed (NFD), and a disk or a typed link
+  may carry either. A request in the other spelling finds the book, while
+  `rel_path` stays the disk's spelling in everything stored and answered. `''`
+  means `rel_path` is already NFC, as every ASCII path is; `NULL` means not
+  keyed yet. `catalog.KeyPaths` keys every `NULL` row at start, before the
+  server answers, in committed batches of 2,000 books. It keys every book
+  again when the key's version changes (the `server_state` row `path_keys`),
+  resuming part way through after a stopped start (`path_keys_resume`). A
+  rebuildable value, never on the wire. The partial index `idx_books_path_key`
+  holds only the books whose key isn't `''`.
 - `is_folder`: a folder book or a single-file book.
 - `title`, `author`, `series`, `series_index`, `narrator`: identity metadata.
 - `series_index_end`: the end of a main series position that is a range, `0`
@@ -836,8 +849,12 @@ offer.
 are the clock-corrected end of the span the row's place came from, and the
 row's version at that time. The same device's next span in a later sync post
 compares with them, not with `updated_at`, so the span chain lasts across posts
-(see [How a batch is applied](api/reference.md#how-a-batch-is-applied)). Every
-other writer clears them. With a stale version, the old rule applies.
+(see [How a batch is applied](api/reference.md#how-a-batch-is-applied)). It
+compares with `span_at` less 2 s (`historyJoinOverlap`), because each post is
+dated by its own clock correction, so a move posted just after a span can be
+dated slightly before that span's end. A span applied inside those 2 s leaves
+`span_at` at the chain's later end, so the overlap never adds up across spans.
+Every other writer clears them. With a stale version, the old rule applies.
 
 **Stay columns** *(0080)*. Both are `NULL` for none.
 
@@ -869,9 +886,25 @@ Existing rows are numbered in `updated_at` order. The index
 `idx_progress_user_change` is on `(user_id, change_seq)`. `change_seq` pages
 [`GET /bridge/progress`](api/reference.md#get-apiv1bridgeprogress), so a row
 written late with an earlier `updated_at` is still fed to Audible. It is free in
-the user-state rule, and so is the counter's `seq`. A `device_id` of
-`audible:<account>` is an Audible account's place, written only by the Bridge's
-listening route.
+the user-state rule, and so is the counter's `seq`.
+
+**Audible's own places** *(0085)*. A `device_id` of `audible:<account>` marks a
+row holding the place that Audible account's sync wrote. `GET /bridge/progress`
+leaves an account's own rows out, so a place another writer put under that
+device would never reach Audible. Two triggers make this the one rule for
+every write path:
+
+- `progress_audible_place_insert` clears `device_id` and `device_name` on any
+  inserted row that carries an Audible device.
+- `progress_audible_place_update` does the same on an update that moves the
+  row's `position` or `finished`.
+
+The Audible route (`catalog.SyncListening`) names its device again right after
+writing its place, in a statement that sets only `device_id` and
+`device_name`, so it fires neither trigger. A move carries the device too when
+the carried row still holds the place the account wrote
+(`catalog.carriedAudiblePlace`); a join's rows don't keep it. The triggers'
+own update moves `change_seq`, which offers the place to Audible.
 
 #### `listening_events`
 
@@ -1095,6 +1128,64 @@ No row reads as off. The table names no book, so a book move never touches it,
 and a backup carries it like every table. What it lets others see is read from
 `listening_sessions` (see
 [Auth & security](auth-and-security.md#listening-in-the-house-what-other-people-see)).
+
+### Moving state to the book's path (`path_rekeys`)
+
+Every listener table keys a book's row on the book's own `rel_path`, in the
+index's spelling. Older writes left some rows elsewhere: a player before 2.4.1
+saved a folder book's state under a track's path, a link or an API-key tool can
+carry the path's other Unicode spelling, and a joined book's state can sit
+under a disc folder. `catalog.RekeyPathState` moves such rows to the book's
+path. It runs at start, after `KeyPaths`, and at the end of each scan. A path's
+rows move for one of three reasons:
+
+- `spelling`: another spelling of an indexed book's path. Every row moves,
+  favourites included.
+- `file`: a file of a folder book, in any spelling. Every row but the
+  favourites moves, so a track's heart stays on the track.
+- `folder`: a folder inside a book, such as a joined book's disc folder. Only
+  the rows about the book as a whole move: lists, ratings and the reader's
+  place. The timeline rows keep their own path, because a disc download plays
+  the disc's own timeline.
+
+Each move copies the row whole into **`path_rekeys`** *(0084)* first, in the
+same transaction. With the backup taken before the upgrade, the log is the way
+back. Its columns:
+
+- `id` (`AUTOINCREMENT`) and `at` (fixed-width UTC with milliseconds).
+- `reason`: `spelling`, `file` or `folder` for a row moved, `scope` for rows
+  kept (below).
+- `user_id`: the row's listener, or a collection item's owner (FK
+  `ON DELETE CASCADE`).
+- `library_id` (FK `ON DELETE CASCADE`), `table_name`, `from_path` and
+  `to_path`.
+- `row_json`: the row as it was, every column by name. It holds the listener's
+  own notes, so the table is never on the wire.
+
+Doubtful rows stay where they are:
+
+- **Scope.** A listener who can't reach the book, such as one granted only the
+  track or whose access was removed since, keeps their rows on the old path, so
+  nothing vanishes from their view. The other listeners' rows on that path
+  move. Each kept listener is logged once per table and path with reason
+  `scope`, and nothing moves for them (`RekeyGuardScope`).
+- **Timeline.** A progress row on a track whose length is within 2 seconds of
+  the track's reads as a place in that track, not the book, and stays.
+
+A run that fails part way loses nothing. The start's run goes over every path
+once per `path_keys` version and records that in the `server_state` row
+`path_rekey`. The paths whose move failed are recorded in `path_rekey_failed`,
+and a later start tries only those again. A run with more than 200 failures
+(`maxRekeyFailed`) is the database refusing writes, not a path's trouble: it
+records none, and the next start goes over every path again. A library whose
+folder doesn't answer at the start, such as an unmounted share or a drive
+asleep, is left whole, because the re-key never moves rows from the index
+alone. It is recorded in `path_rekey_unreached`, and a later start goes over it
+once it answers. The server logs what each run moved and what it stopped on.
+
+Migration 0084 also indexes `bookmarks`, `notes`, `listening_history` and
+`favourites` by `(library_id, rel_path)`, since the re-key, a move and a join
+read a path's rows table by table.
 
 ### Listening from before sessions
 
@@ -1434,8 +1525,9 @@ a foreign key, so deleting an account or a library leaves them as they were.
   `last_ok` and `last_error` (a short reason). At most 20 rows.
 - **`server_events`**: the event feed behind the console's bell, and the record
   deliveries are sent from. Columns: `id`, `at`, `kind`, `data` (JSON facts,
-  never a secret or an IP) and `dedup_key` (an update is announced once per
-  version). Indexes `idx_server_events_at`, and `idx_server_events_dedup` on
+  never a secret or an IP) and `dedup_key` (an event with a key is announced
+  once while a row with its kind and key is in the feed, such as an update once
+  per version). Indexes `idx_server_events_at`, and `idx_server_events_dedup` on
   `(kind, dedup_key)`. Rows are kept 90 days.
 
 Backups need no table, because they are files in the backups folder.
@@ -1520,6 +1612,13 @@ Its keys:
   - `quiet_until`: when a `not_offered` service is tried again, a week on.
 
   The console reads it as `metadata.report_status` on `GET /admin/settings`.
+- `path_keys` and `path_keys_resume`: the version the stored `books.path_key`
+  values were computed with (the key's rule and the Unicode tables'
+  version), and while every book is keyed again, the version and the last book
+  id done (see [Identity and metadata columns](#identity-and-metadata-columns)).
+- `path_rekey`, `path_rekey_failed` and `path_rekey_unreached`: the start's
+  re-key of listener rows, its failed paths and the libraries it left whole
+  (see [Moving state to the book's path](#moving-state-to-the-books-path-path_rekeys)).
 
 ### The Bridge
 
@@ -1705,6 +1804,19 @@ how many of those were network-class. `failing_announced` records that
 drives the backoff. A feed already failing at the upgrade counts from its next
 failure. The counting rules are in
 [Podcast events](backups-and-notifications.md#podcast-events).
+
+`podcast_feed_state.failing_code` *(0086, `TEXT NOT NULL DEFAULT ''`)* is the
+code `podcast_feed_failing` was last raised with, `''` while none was. A later
+`gone` or lost secret, each of which stops the feed for good, is announced once
+more when it differs. The migration gives each announced feed the code of its
+last failed check, and marks every feed sitting at `gone` announced with
+`gone`, so a feed that ended before the upgrade is not told again.
+
+`podcast_shows.feed_read_at` *(0086, `TEXT NOT NULL DEFAULT ''`)* is when the
+server began reading the `feed.json` the show's index was folded from, UTC to
+the nanosecond. A scan that read the file before the Bridge's rescan read and
+indexed a newer one doesn't fold its older copy over that index. `''` until the
+show is indexed again.
 
 #### Ownership, cascades and private URLs
 
@@ -2398,6 +2510,10 @@ The migration history so far:
 | 0080 | `listening_stay` | Listening sync: `progress.stay_version` and `edit_version` (`INTEGER`, nullable, `NULL` on every existing row), so a Stay on another device's offer wins and holds the row ([A Stay](api/reference.md#a-stay)). No data moves |
 | 0081 | `share_grant_mark` | Clears `shares.whole_library_id` on every share that no longer holds that library's whole-library rule (`share_paths` with its `library_id` and path `''`): a mark older versions left after a path edit on a grant, an interrupted grant, or deleting the library of a grant that also held another library's folders. Such a share is an ordinary one again, its folders open to change; `catalog.DeleteLibrary` now clears the mark itself |
 | 0082 | `duration_rev` | `books.duration_rev` (`INTEGER NOT NULL DEFAULT 0`) and `duration_rev_indexed_at` (`TEXT`): the revision of the scan's length reading a book was indexed with, so a book holding an MP3 is read once more after the upgrade and its header-less VBR files' lengths counted ([Header-less VBR MP3 lengths](scanner.md#the-in-process-probe)). A book with no MP3 starts at revision 1. Rebuildable index values, never on the wire |
+| 0083 | `path_keys` | `books.path_key` (`TEXT`, `NULL` on every existing row), the book's path in NFC that a path spelled another way is found by, keyed at the next start by `catalog.KeyPaths` (see [Identity and metadata columns](#identity-and-metadata-columns)). The partial indexes `idx_books_path_key` (keys other than `''`) and `idx_books_path_key_unset` (rows not keyed yet). A rebuildable index value, never on the wire |
+| 0084 | `path_rekeys` | The re-key's log `path_rekeys` (`user_id` and `library_id` `ON DELETE CASCADE`, indexes `idx_path_rekeys_user` and `idx_path_rekeys_library`), and path indexes on `bookmarks`, `notes`, `listening_history` and `favourites`. No data moves in the migration; the start that applies it takes a before-upgrade backup, then moves listener rows to their book's path (see [Moving state to the book's path](#moving-state-to-the-books-path-path_rekeys)) |
+| 0085 | `audible_place_guard` | The triggers `progress_audible_place_insert` and `progress_audible_place_update`, which clear an `audible:` device from a `progress` row any other writer inserts or moves (see [Audible's own places](#progress)). No data moves |
+| 0086 | `podcast_notice_followups` | `podcast_feed_state.failing_code` and `podcast_shows.feed_read_at` (`TEXT NOT NULL DEFAULT ''`). The backfill gives each announced feed its last error code and marks every feed at `gone` announced with `gone` (see [Podcasts](#podcasts)) |
 
 ## SQLite choices
 
