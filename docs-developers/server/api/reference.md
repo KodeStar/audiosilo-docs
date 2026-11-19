@@ -699,8 +699,8 @@ Why the web player sends a tag: [the trip's tag](../auth-and-security.md#the-tri
 | `500` | the server failed to make the session. Nothing was spent and nothing is charged, so the cookie stays and the same finish can be sent again within the sign-in's minute |
 
 A finish with no `flow` picks among the done cookies the browser holds: the
-first untagged one when the body has no `intent`, else the one whose tag matches
-it. When the body expects a tag no held sign-in carries, the answer is the `403`
+first untagged one when the body has no `intent` (the first held when none is
+untagged), else the one whose tag matches it. When the body expects a tag no held sign-in carries, the answer is the `403`
 and no cookie is cleared, since which one is this page's can't be told. A
 finish with no `flow` also reads the single done cookie, `audiosilo_oidc_done`,
 that a server from before per-flow cookies set, so a sign-in caught by an

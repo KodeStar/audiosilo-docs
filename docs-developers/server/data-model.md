@@ -850,7 +850,8 @@ are the clock-corrected end of the span the row's place came from, and the
 row's version at that time. The same device's next span in a later sync post
 compares with them, not with `updated_at`, so the span chain lasts across posts
 (see [How a batch is applied](api/reference.md#how-a-batch-is-applied), which
-also explains the 2 s overlap, `historyJoinOverlap`). Every other writer clears them. With a stale version, the old rule applies.
+also explains the 2 s overlap, `historyJoinOverlap`). Every other writer clears
+them. With a stale version, the old rule applies.
 
 **Stay columns** *(0080)*. Both are `NULL` for none.
 
