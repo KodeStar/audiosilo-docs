@@ -465,6 +465,12 @@ connection id is `<server_id>.<user_id>` with the answer's `user`
 | `401` | `code: "invite_expired"`: the parent invite expired after the redeem (from 2.7.0) |
 | `401` | `invalid or expired pairing token`, no `code` (anything else: bogus/revoked token, single-use token already exchanged, code owner disabled) |
 | `429` | redeem lockout tripped, with `Retry-After` |
+| `500` | `could not issue session`: the session couldn't be written. The token stays unspent and an invite keeps its use, so the same exchange can be sent again |
+
+The token's spend and the device's session are one transaction. A sign-out
+everywhere, a password change or a disable that commits first refuses the
+exchange (`401`), and one that commits after it ends the new session with the
+rest.
 
 A refused exchange never burns an invite use. Its `401`s carry the same codes as
 `/auth/redeem`'s. An older server sends them with no `code`: tell those apart
@@ -617,11 +623,19 @@ provider.
 |---|---|
 | `return` | required: `web` (back to the web player) or `admin` (back to the console). Anything else is `400`, so a return address can't be smuggled in |
 | `intent` | optional: the web player's own random tag for this trip, 22 to 128 base64url characters. The server seals it into the flow and echoes it from the [finish](#post-apiv1authoidcfinish) of the sign-in this flow completes, once. A bad value is dropped, never a `400`, and so is the tag of a flow whose cookie the browser still holds (that trip's start URL sent again from the history) |
-| `hop` | set by the server itself on its one redirect to `public_url`'s host (below), which keeps `return` and `intent` |
+| `next` | optional, console only: the console page to land on after the sign-in, a path under `/admin/` of at most 512 bytes with an optional query, no fragment, no backslash, no double quote and no `.` or `..` segment. The server seals it into the flow and checks it again at the callback. A bad value is dropped, never a `400`, and the sign-in lands on the console's start page. Ignored for `return=web` |
+| `hop` | set by the server itself on its one redirect to `public_url`'s host (below), which keeps `return`, `intent` and `next` |
+
+Each sign-in has its own flow cookie, named by its state, so two tabs can sign
+in at once. A browser holds at most 4: a fifth start deletes the oldest. On an
+https `public_url` the cookies are `__Host-` cookies on `Path=/`. On plain http
+they sit at `/api/v1/auth/oidc/`, and also at `<prefix>/api/v1/auth/oidc/` when
+`public_url` has a path of its own, so the cap and the trip's tag hold whichever
+path the start was asked on.
 
 The answer is a redirect:
 
-- `302` to the provider's authorization URL, with the flow cookie set;
+- `302` to the provider's authorization URL, with this flow's cookie set;
 - `302` to the same route on `public_url`, once, when the request came on another
   host, or over plain HTTP straight from a browser while `public_url` is https;
 - `303` to `/connect#oidc=off` while single sign-on is off, or
@@ -631,14 +645,29 @@ The answer is a redirect:
 
 *Public; the provider's redirect.* The redirect URI to register at the provider
 is `<public_url>/api/v1/auth/oidc/callback`. It takes the provider's `code` and
-`state`, or `error`. It always deletes the flow cookie and answers `303`:
+`state`, or `error`. It deletes the flow cookie its `state` names and leaves
+other tabs' flows alone. It answers `303` on `public_url`'s origin, without
+`public_url`'s path, because the console and the web player route only from the
+origin's root:
 
-- to `/admin/#oidc=done` or `/web/connect?oidc=1` (the flow's `return`) when the
-  sign-in signs in, with the done cookie set. No token is ever in the address;
+- when the sign-in signs in, to the flow's `return` page with the flow's key
+  appended: `/web/connect?oidc=1&flow=<key>`, or `/admin/#oidc=done&flow=<key>`
+  (`<next>#oidc=done&flow=<key>` when the start carried a `next`). It sets this
+  flow's own done cookie, `audiosilo_oidc_done_<key>`: a `__Host-` cookie on
+  `Path=/` on https, and on plain http at the origin's `/api/v1/auth/oidc/`
+  only, never under `public_url`'s path, since the pages finish there. A browser
+  holds at most 4 done cookies, the oldest deleted. No token is ever in the
+  address;
 - otherwise to `/connect#oidc=<reason>`: `off`, `unavailable`, `pending`,
   `not_allowed`, `disabled`, `failed`, `expired` or `rate_limited`
   ([what each means](../auth-and-security.md#the-result-page)). A locked-out
-  address also gets `Retry-After`.
+  address also gets `Retry-After`. A `state` that names no flow cookie this
+  browser holds reads as `expired` and is not charged to the lockout. A
+  provider `error` that comes back with no `state` reads as `failed`.
+
+Every redirect here and every answer from the finish is `Cache-Control: no-store`.
+The server also serves any HTML page whose address carries a `token`, `oidc` or
+`flow` query as `no-store`, so the landing page is never cached.
 
 #### `POST /api/v1/auth/oidc/finish`
 
@@ -649,6 +678,7 @@ Call it from the page the callback lands on.
 |---|---|---|---|
 | `device_name` | string | no | as for [`/auth/exchange`](#post-apiv1authexchange). The body may be empty |
 | `intent` | string | no | the tag the caller expects this sign-in to carry, the one it sent to [`/start`](#get-apiv1authoidcstart). Absent or `null` asks nothing |
+| `flow` | string | no | the flow's key the landing page was given (`&flow=<key>`). The finish then reads that flow's done cookie only, so two tabs whose callbacks both landed each finish their own. A value that isn't a flow key is `400` |
 
 Response `200`: [`POST /auth/exchange`](#post-apiv1authexchange)'s answer, the
 session envelope with `token`, `user`, `server_id` and, with `addresses`, the
@@ -661,14 +691,24 @@ Why the web player sends a tag: [the trip's tag](../auth-and-security.md#the-tri
 
 | Status | Meaning |
 |---|---|
-| `400` | a body that isn't valid JSON. The cookie stays, so the sign-in can still be finished within its minute |
+| `400` | a body that isn't valid JSON, or a `flow` that isn't a flow key. The cookie stays, so the sign-in can still be finished within its minute |
 | `401` | `code: "oidc_no_sign_in"`: no finished sign-in in this browser (no cookie). Nothing is charged |
 | `401` | `code: "oidc_sign_in_expired"`: the sign-in was used, expired after 60 seconds, or its account is disabled or has become a household member or demo account. Charged to the single sign-on lockout. Also while single sign-on can't run (turned off since the callback): then nothing is charged and the token is left to expire |
 | `403` | `code: "oidc_intent_mismatch"`: the body's `intent` isn't the tag the sign-in's flow carried. That covers another tag, an empty string, and any tag for a sign-in whose flow carries none (started without one, or its tag dropped at the start or already spent). The server checks it before the token is tried: no session is made, the token is left unspent to expire, nothing is charged, and the cookie is cleared |
 | `429` | the address is locked out (10 failures in 15 minutes, shared with the callback), with `Retry-After`. The cookie stays |
+| `500` | the server failed to make the session. Nothing was spent and nothing is charged, so the cookie stays and the same finish can be sent again within the sign-in's minute |
 
-Every answer but a `400` or a `429` clears the cookie, so the finish can't be
-retried: sign in again.
+A finish with no `flow` picks among the done cookies the browser holds: the
+first untagged one when the body has no `intent`, else the one whose tag matches
+it. When the body expects a tag no held sign-in carries, the answer is the `403`
+and no cookie is cleared, since which one is this page's can't be told. A
+finish with no `flow` also reads the single done cookie, `audiosilo_oidc_done`,
+that a server from before per-flow cookies set, so a sign-in caught by an
+upgrade still finishes. On plain http a done cookie whose tag isn't a valid tag
+counts as not held.
+
+A `200`, a `401` and the `403` clear the cookie the finish used, and only that
+one, never another tab's. That sign-in can't be finished again: sign in again.
 
 ## Self-service account
 
@@ -1143,9 +1183,13 @@ overrides or the index lookups for the page can't be read.
 
 | Status | Meaning |
 |---|---|
-| `400` | invalid library id, or `path` escapes the root |
+| `400` | invalid library id, or `path` escapes the root by its names |
 | `403` | no share grants this library |
-| `404` | directory not found |
+| `404` | directory not found. The same answer, after the same work, for a folder outside the caller's share rules, a path the disk doesn't hold as given (another case on a case-insensitive disk), and a path that leaves the library through a link |
+
+A folder made on disk after its parent was listed, and not yet scanned, can
+answer `404` here and on the other content routes for up to 3 seconds, while
+the server keeps the parent's listing.
 
 ### `GET /api/v1/libraries/{id}/books`
 
@@ -1646,16 +1690,29 @@ the response is `503`, `Retry-After: 2`, `Cache-Control: no-store` and JSON:
 Unavailable uses `code:"podcast_fetch_unavailable"` and
 `error:"The episode cannot be fetched right now."`; terminal failure uses
 `code:"podcast_fetch_failed"` and `error:"The episode could not be fetched."`,
-with the same headers and their Status. The final deadline summary can lag a
-transition (queued while already fetching). Disconnect/timeout never cancels
+with the same headers and their Status. The summary is the job's state: a fetch
+the Bridge holds reads `fetching` even when the two seconds run out before the
+last read, and also while the module is off, since a held fetch carries on. A
+queued fetch is held while the module is off and reads `unavailable`, and a held
+fetch reads `unavailable` once the Bridge has left or can't write.
+
+When the feed gave the episode a new identity after the stream read it, the
+server asks again once for the identity as it is now. While the previous
+identity's fetch is still stopping, the stream answers `503`, `Retry-After: 2`
+and `Cache-Control: no-store` with `code:"identity_changed"`,
+`error:"The podcast identity changed."` and no `fetch` summary. That is the
+body of the `409` older servers sent: a shipped player reads `identity_changed`
+on any status as "drop the cached lists and offer Try again", and asks again
+after a `5xx` while it downloads. Disconnect/timeout never cancels
 household work. There is no publisher pass-through or partial playback.
 
 Every trigger shares one open intent per library/path and current identity.
 Play and Retry use priority 100; the other triggers' priorities are in
 [fetch and retain jobs](../../bridge/podcasts.md#fetch-and-retain-jobs).
 Promotion never demotes or resets requester/attempts/progress.
-A non-admin may create five open fetch intents, counting prefetch and parked
-jobs across libraries. Admins are exempt; joining/promoting existing work
+A non-admin may create five open fetch intents across libraries, counting
+prefetch. A parked fetch (`needs_attention`, waiting on something the listener
+can't change) holds no slot. Admins are exempt; joining/promoting existing work
 does not spend or transfer quota. At the cap, a stream returns unavailable
 with nested `fetch.error.code:"fetch_limit"` and no new id. POST Retry instead
 returns `409 fetch_limit` with the ordinary error envelope.
@@ -1669,7 +1726,7 @@ returns `409 fetch_limit` with the ordinary error envelope.
 | `404 module_off` | POST would create work with the module off |
 | `409 bridge_unavailable` / `library_not_writable` | POST would create work without the needed Bridge/mapping |
 | `409 fetch_limit` | POST would exceed the non-admin creator cap |
-| `409 identity_changed` | identity changed, or replacement work is still held; can also interrupt a stream trigger |
+| `409 identity_changed` | POST only: the episode's previous identity's fetch is still stopping. An identity that changed since the pin was read is asked for again once as it is now, and the stream answers this case as a `503` (above) |
 
 Unexpected faults remain sanitized 500s. GET reports availability/failure in
 Status, not as a scheduling error. Ordinary stream retries honor terminal
@@ -1729,7 +1786,7 @@ toward the feed's failing run and leaves the scheduled polls' backoff as it was
 | Status/code | Meaning |
 |---|---|
 | `400 invalid_request` | missing/invalid library, both or neither path and URL, private with path, an invalid unfollow/check show path, or unknown body fields |
-| `400 invalid_feed_url` | malformed, non-HTTP(S), hostless or over-2,048-byte feed URL, or one whose normalized form changes when normalized again |
+| `400 invalid_feed_url` | malformed, non-HTTP(S), hostless or over-2,048-byte feed URL, a host over 253 characters, or one whose normalized form changes when normalized again. The server refuses it whatever the Bridge's state, and also when the follow would only join a request already open |
 | `403 no_library_access` | no accessible library, or URL follow without a whole-library grant |
 | `404 show_not_found` | missing, hidden or invalid show on follow by path, or check without following (from 2.7.0 also a check whose show was re-subscribed under a new identity the caller doesn't follow) |
 | `409 identity_changed` | check only, from 2.7.0: the show's identity was replaced (a re-subscribe) while the check was queued, and again when the server checked once more against the show as it is now |
@@ -1747,7 +1804,13 @@ redirect loop), `gone` (410), `too_large`,
 `not_a_feed`, `not_a_podcast`, `not_podcast_library`, `library_not_writable`,
 `feed_secret_missing`, `request_expired`, `write_failed`, and server-only
 `bridge_lost`. A private request lost before claim on a server restart is
-`request_expired`; follow again. A private request whose requester's account was
+`request_expired`; follow again. A queued follow request also fails
+`request_expired`, with the message "The Bridge went offline before it took up
+the follow request. Follow the feed again.", once no online Bridge has offered
+`podcast.subscribe` for two minutes. The server counts those minutes from the
+first time it saw the Bridge gone, when the player polls its requests or the
+scheduler sweeps, so a restart, a host waking from sleep or a clock that jumped
+fails no request before the Bridge's next heartbeat. A private request whose requester's account was
 deleted fails `request_expired` before any claim too, its URL dropped. Lost Bridge credentials are
 `feed_secret_missing`; follow the URL again to restore them. No podcast job
 sends a finished/failed notification. See [the Bridge implementation](../../bridge/podcasts.md).
@@ -2065,7 +2128,10 @@ Each row acts as the caller through the same follow-by-URL service as
 - A known show (current or previous URL) is followed at once, even with the Bridge
   offline.
 - Only a new feed or a secret repair needs an online Bridge running
-  `podcast.subscribe` and a writable mapping.
+  `podcast.subscribe` and a writable mapping. When the Bridge goes away during
+  an import, its queued requests fail `request_expired` (see
+  [Podcast actions](#podcast-actions)), and the next upload answers the
+  remaining rows `unavailable`.
 
 Each row commits on its own, so a later failure never undoes an earlier row.
 
@@ -2182,7 +2248,8 @@ and do not wait for disk changes. There is no retention UI yet.
 
 Keep downloads the newest N currently listed episodes (the
 [episode order](#podcast-read-routes) descending, undated last); Archive
-downloads all currently listed episodes oldest first and never deletes. On demand schedules no feed-wide downloads;
+downloads all currently listed episodes in that order, oldest first and undated
+episodes first as the list shows them, and never deletes. On demand schedules no feed-wide downloads;
 play, one-ahead queue preparation and admin fetch work.
 No followers means no policy-scheduled downloads/deletions; authorized
 play/Retry and queue preparation still work. Removed feed entries are not
@@ -3358,7 +3425,7 @@ path.
 | `download` | `1` | - | sets `Content-Disposition: attachment` so browsers save the file (a remuxed `.mka` is named `<stem>.mp3`) |
 | `transcode` | `1` | - | re-encode to MP3 via ffmpeg for codecs browsers can't decode |
 | `original` | `1` | - | an `.mka`: serve the stored Matroska bytes, never the remux (for API tools and backups) |
-| `t` | float | `0` | with `transcode=1`: start the transcode this many seconds in |
+| `t` | float | `0` | with `transcode=1`: start the transcode this many seconds in. A value that is no positive number (negative, `NaN`) starts at `0` |
 | `rendition` | `watch` | - | serve the file's [watch rendition](#watch-renditions) instead, whatever else the query says (capability `renditions`); with `download=1` it is named `<stem>.m4a` |
 | `token` | string | - | session token (media-auth fallback), or a [cast token](#cast-tokens-as-media-auth) for this file's book |
 
@@ -3366,7 +3433,34 @@ Direct serving (default) supports HTTP **Range** (`206 Partial Content`) and
 sets the audio `Content-Type` from the file. Transcoded output is MP3 and **not
 byte-seekable**: no Range and no `Content-Length`. A client seeks by re-requesting
 with a new `t`. The ffmpeg process is bound to the request, so disconnecting
-kills it. A `HEAD` with `transcode=1` gets the headers without running ffmpeg.
+kills it.
+
+**Transcode slots.** The server runs at most 4 transcodes at once. Each holds a
+slot keyed by its ask: the request's token, the file, the `t` start and whether
+it is a download.
+
+- A repeat ask (the same token asking for the same thing again) takes over the
+  slot its earlier request holds instead of needing a second one. The earlier
+  request's ffmpeg ends and its response is cut off as a broken stream, never one
+  that looks complete. Safari and WebKit ask for one stream two or three times
+  and play only the last, so a transcode plays in Safari with only one slot free.
+- A token holds at most 2 slots. Its third ask takes over its own oldest ask's
+  slot the same way, so one client seeking fast can't hold all 4. Another
+  token's slots are never taken.
+- With no slot free for the ask (all 4 busy, none of them its own to take over)
+  the answer is `503` with `Retry-After: 5`.
+- A taken-over response gets a 1 s write deadline, so a client that stopped
+  reading can't keep its connection open.
+
+A `HEAD` with `transcode=1` takes no slot and runs no ffmpeg. It answers as a
+`GET` would now: the transcode's headers when a slot would be free for the ask,
+else the same `503` with `Retry-After: 5`. While the same ask's `GET` runs, the
+`HEAD` also carries `X-AudioSilo-Transcode-Sent`, the bytes that `GET` has
+written so far. A client whose stream stalls reads it twice: a count that grows
+is a slow transcode to wait for, since asking again would take over its slot and
+end it. The header is only ever the caller's own token's ask, and CORS exposes
+it. A `HEAD` of an `.mka` holding MP3 starts no remux either: it gets the cached
+copy's headers, else the transcode's.
 
 **Matroska holding MP3.** While ffmpeg is configured, a request for an `.mka`
 file without `transcode=1` or `original=1` is answered with a cached lossless copy
@@ -3416,7 +3510,7 @@ look answered, and a podcast episode's demand fetch.
 | `403` | path outside the caller's scope |
 | `404` | file does not exist, or isn't audio; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
 | `422` | `code: "rendition_failed"`: ffmpeg refused this file, its copy came out more than 1 s short of the source, or the encode ran past its 2-hour timeout; remembered for an hour (or until the file changes), then tried again. `Retry-After` is the seconds the remembered refusal has left (1 to 3600) |
-| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full); from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the file's looks have not answered within 45 seconds of the request's start (a drive or share that stopped answering, above) |
+| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or no transcode slot is free for the ask (`server busy transcoding; try again shortly`, with `Retry-After: 5`, for a `GET` or a `HEAD`, above; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full); from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the file's looks have not answered within 45 seconds of the request's start (a drive or share that stopped answering, above) |
 
 #### Watch renditions
 
@@ -3960,6 +4054,10 @@ behaves exactly as before. Three things are added:
   save's `updated_at`, never past the server's clock), so an older sync `finish`
   or `unfinish` can't undo it.
 
+The server stores a save's `updated_at` as fixed-width UTC milliseconds
+(`2026-10-25T07:33:30.000Z`) whatever RFC 3339 form was sent, an offset
+included, and the response echoes it in that form.
+
 A `device_name` or `other_place` in the body (a client echoing a row back) is
 accepted and ignored. A `device_id` starting `audible:` (an Audible account's row
 echoed back) is saved as none, so the place still reaches Audible through
@@ -4113,7 +4211,7 @@ fixed-width UTC milliseconds.
 | `applied` | the place moved to the event's end, or a finish/unfinish set the state |
 | `duplicate` | the id is already stored for this user, or an earlier copy in the same batch passed the checks: nothing was done again (a copy that was `rejected` doesn't count, so the next copy is checked on its own) |
 | `diverged` | the event was made without seeing the stored row (below); `kept` is `event` or `stored`, and `other_place` is the place **not** kept |
-| `not_applied` | stored, but the place didn't move; `reason` is `older` (an older write under last-write-wins, or a finish/unfinish not newer than the row's last finish-state change) or `resume_behind` (a `resume`/`continue` span behind the stored place, below; `other_place` is the event's place); `behind` only on the Bridge's [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) (furthest only) |
+| `not_applied` | stored, but the place didn't move; `reason` is `older` (an older write under last-write-wins, or a finish/unfinish not newer than the row's last finish-state change) `resume_behind` (a `resume`/`continue` span behind the stored place, below; `other_place` is the event's place) or `behind` (a `finish` made at or before another device's [Stay](#a-stay) that holds the row; on the Bridge's [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) also a furthest-only place behind the stored one) |
 | `rejected` | not stored and changed nothing; `reason` is `invalid` (a field check failed, the event couldn't be decoded, or its path cleans to nothing or is over 4096 bytes, checked before its library is looked up), `unknown_kind`, `too_old` (it ended more than 90 days ago, after the clock correction), `duration_mismatch` (the device's `duration` is more than 10 s from the indexed book's), `no_access` (the path is outside the caller's access, a library they hold no grant on, or a podcast library their client doesn't see: what `PUT` answers with a `403`) or `not_found` (an unknown library to an admin, or a hidden path); on the [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) also `not_synced` (not a synced title's book), and `duration_mismatch` there means Audible's length disagrees |
 
 Every status but `rejected` is final for the sender: the event is stored and a
@@ -4183,8 +4281,11 @@ opens one):
 - **The span chain across posts** (migration `0062`). The row keeps the end of the
   span its place came from (`span_at`) at its version. While no other writer has
   touched the row, the same device's next span in a **later** post compares with
-  that end too. So a backlog split across posts (a `413` halving, a long outbox)
-  isn't answered `older`. Across posts, a span with no base (`base_version` `0`)
+  that end, less 2 seconds. So a backlog split across posts (a `413` halving, a
+  long outbox) isn't answered `older`, and nor is a move posted just after a span
+  that its own post's clock shift dates up to 2 s before that span's end. A span
+  applied inside those 2 s leaves the chain's end where it was, so the overlap
+  never adds up across spans. Across posts, a span with no base (`base_version` `0`)
   joins the chain only when it starts within 60 s after the chain's end or within
   5 s of its place. Otherwise it is judged on its own, and may diverge. **Send a
   `base_version` on every span.** Any other writer (a `PUT`, an edit, an import, a
@@ -4204,6 +4305,18 @@ opens one):
   finish-state change, whoever made it: a `PUT`, an edit, an import or an earlier
   sync event. Otherwise they are `not_applied` `older`. When they apply, both bump
   the version.
+  - A `finish` made without seeing the row's last explicit write (its
+    `base_version` below the row's `edit_version`, or none) is compared at its
+    corrected time minus the batch's `sent_at` shift, 0 to 30 s. The shift is
+    the request's time on the way plus clock skew, so a finish sent just before
+    an Undo on another device, and landing after it, is `older` and doesn't
+    finish the book again. The server never dates a finish back past the same
+    token's own applied finish or unfinish, nor one after a finish-state change
+    in the same batch, and never dates back an `unfinish`.
+  - A `finish` made at or before the Stay that holds the row is `not_applied`
+    `behind`: the Stay is the listener's later choice, so an offline finish
+    arriving after it doesn't end the hold. The Stay's own device's finish is
+    exempt, because its events arrive in the order it made them.
   - `finish` marks the book finished (`finished_at` its date to the second, kept
     when already finished). It moves the place to the end when the length is known
     and drops the offered place.
@@ -4214,8 +4327,12 @@ opens one):
 - **Sessions.** A stored listen is folded into the token's session on the book at
   its corrected times (`recordSpan`, the rules in
   [the data model](../data-model.md#listening-sessions-how-they-are-derived)).
-  A `finish` marks the token's session on the book finished when its last span
-  ended within 10 minutes before the finish; it opens none. `unfinish` records
+  A `finish` (applied, `older` or `behind`) marks the token's session on the book
+  finished when its last span ended within 10 minutes before the finish; it opens
+  none. A span that arrives after the token's applied finish closes its session
+  finished when it ended at most 10 minutes before the finish or up to 30 s after
+  it, so a very short book whose player posted the finish before its only span
+  still has a finished session. Each finish marks one session. `unfinish` records
   nothing.
 - **History.** A listen with at least 1 s listened extends the newest history row
   on the book when that row ended up to 60 s before the listen began (2 s of
@@ -4252,6 +4369,12 @@ reader's [conflict rule](#the-conflict-rule-sync-v2) is unchanged.
   move or join, a sync `finish`, or an `unfinish` of a finished row). A `PUT` is an
   old app's listening, not an edit, so a `PUT` since the offer does not stop a Stay.
   Only its time counts;
+- no import's undo deleted the row since that base. An undo that deletes the row
+  it made logs a `reset` event at the row's version (a server-only kind, never a
+  client's), and a Stay that ended at or before the reset, or whose base is at
+  most that version, is a plain `jump`. A row written again after the undo (a
+  sync, a `PUT`, a `PATCH` or an import) starts at least one version above the
+  reset, so a base acknowledged before the undo never names the new row;
 - the row's `updated_at` is no more than 2 minutes (`staySlack`) after the Stay's
   corrected end. Listening that went on longer after it, or a Stay made offline long
   ago, is not beaten. The rule reads `updated_at`, never `span_at`, because an old
@@ -5771,7 +5894,8 @@ All accounts, wrapped as `{ "users": [ … ] }`:
       "can_add_members": true,
       "members_count": 2,
       "display_name": "",
-      "email": "sam@example.org"
+      "email": "sam@example.org",
+      "sign_in_provider": "Authentik"
     },
     {
       "id": 12,
@@ -5801,6 +5925,7 @@ Each user is the [`/me`](#get-apiv1me) object plus the household member fields
 | `members_count` | how many members this person has |
 | `display_name` | the name the owner typed for a member, always present (`""` for everyone else; kept when the member is made independent, though `/me` then leaves it off) |
 | `email` | the account's email, `""` for none. Only the admin sees it, never `/me` or the audit log. A [single sign-on](#single-sign-on) with a verified email links to the one ordinary account that has it. Not unique |
+| `sign_in_provider` | the name of the [single sign-on](#single-sign-on) this person signs in with now (`auth.oidc.name`), `""` for none. Set when single sign-on runs and the account holds an identity from the configured provider. Always `""` for a household member or a demo account, which single sign-on never signs in. Always present. The console treats it like a password: a way into the account |
 
 The same fields are on `GET /admin/users/{id}`'s `user`, on the `PATCH` answer and on
 the create's.
@@ -5862,7 +5987,8 @@ One account plus everything the console needs to manage it:
       "link_method": "admin",
       "linked_by": { "id": 1, "username": "admin" },
       "linked_at": "2026-11-15T10:00:00.000Z",
-      "last_sign_in_at": "2026-11-15T10:02:11.000Z"
+      "last_sign_in_at": "2026-11-15T10:02:11.000Z",
+      "provider": "Authentik"
     }
   ]
 }
@@ -5870,7 +5996,9 @@ One account plus everything the console needs to manage it:
 
 - `identities` - the account's [single sign-on](#single-sign-on) identities,
   oldest first (`[]` for none). `email` and `username` are the provider's as last
-  seen. `link_method` is `auto_email` (its verified email matched this account),
+  seen. `provider` is the configured provider's name when the identity is from
+  the single sign-on the server runs now, and `""` for an identity from another
+  issuer (the console then names it by the issuer's host). `link_method` is `auto_email` (its verified email matched this account),
   `admin` (an admin linked it) or `created` (the account was made for it).
   `linked_by` is the admin who linked it, `null` when the server did it on its own
   or that admin's account is gone. `last_sign_in_at` is `null` before its first
@@ -9049,8 +9177,8 @@ The session object, shared by both session routes:
   and newest save; `duration` and `speed` are the newest save's.
 - `listened` is **wall-clock seconds** of playback in the session, not book time.
 - `codec` is the book's indexed codec when the session started (`""` unknown);
-  `transcoded` is true when the same device streamed a file of this book with
-  `?transcode=1` during the session.
+  `transcoded` is true when a transcode of a file of this book ran for the same
+  device during the session (a `HEAD`, which runs no transcode, doesn't count).
 - `backfilled` is true for a session made at the upgrade to migration 0021 from
   the players' own listening spans, from before the server recorded sessions:
   `device_id` is `0`, `device_name` `""`, `client` `null` and `codec` `""`. It
@@ -10929,7 +11057,8 @@ mapping of it. The console's Settings > Bridge reads this.
       { "id": "github", "done": true, "required": false, "detail": "octocat" }
     ],
     "can_contribute": true,
-    "github_login": "octocat"
+    "github_login": "octocat",
+    "agent_credential": "group"
   }
 }
 ```
@@ -10963,7 +11092,16 @@ mapping of it. The console's Settings > Bridge reads this.
   still to fix and `needs_worker` while the step waits for an ASR worker;
   `can_contribute`; `github_login`, the GitHub account signed in on
   the Bridge's Accounts tab, absent while it files with a token from its
-  environment or `gh`; admins only: `GET /server` never carries it). Omitted when
+  environment or `gh`; admins only: `GET /server` never carries it).
+  `github_state`, absent while the sign-in can be used, says why it can't:
+  `unrefreshed` (GitHub couldn't refresh it, the Bridge is still signed in and
+  keeps trying) or `refused` (sign in again). `agent_credential`, absent with no
+  hand-off in play, says how the Bridge hands its agent credential to the agent
+  container: `group` (readable by the Bridge's group alone), `world` (readable by
+  every user on the staging volume until the agent takes it), `group_required`
+  (the Bridge's `agent.require_group` can't be met, so the agent waits) or
+  `failed` (the Bridge couldn't hand it over). An older Bridge sends neither, and
+  the console words only the values it knows. Omitted when
   the Bridge sent none (an older Bridge, or a server it hasn't been told accepts it
   yet) or the block didn't decode. The console's Setup card reads it (see
   [the checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist)).
@@ -11048,9 +11186,18 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
   - `sidecars.generate` stores every field with its default;
   - `sidecars.describe`, `chapters.detect` and `readalong.align` store `{}`;
   - `sidecars.contribute` stores its `dimensions` in order;
-  - `meta.correct` stores the checked changes with the server's `source`.
+  - `meta.correct` stores the checked changes with the server's `source`;
+  - `audible.sync` stores only `{account}`, and a claim answers it with the
+    account's titles (see [The `audible.sync` job](#the-audiblesync-job)).
+
+  `null` when the stored params are damaged (not JSON). The job then also has
+  `params_unreadable: true`, a field present only when it is true. The Bridge
+  never gets such a job: its first claim ends it as `failed` and hands out the
+  job behind it (see [`GET /bridge/jobs/next`](#get-apiv1bridgejobsnext)).
+  When a request queues the same job again with good params, a queued job of a
+  kind that promotes takes them and loses the flag.
 - `progress` and `result` - JSON objects the Bridge reported, `{}` until it does.
-  The server stores them as they are. Their shapes are documented per kind:
+  The server stores them as they are, and answers `null` for one that is damaged. Their shapes are documented per kind:
   - `sidecars.generate`'s in [Characters and recaps](../../bridge/generating.md#progress);
   - `sidecars.describe`'s in
     [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe);
@@ -11524,7 +11671,7 @@ found. The server keeps the last one only (one row, never a history).
 | `libraries` | its last check of each library it has checked (at most 512, each `library_id` once and above 0): `mount_path` where it looked, `mapped` (a known book's files were there with the server's sizes), `writable` (a probe file could be written and removed there), `checked_path` (the book it compared), `error` (why it isn't mapped or writable, `""` when it is); the three texts at most 1 KiB each |
 | `workers` | the transcription workers connected to it (at most 64; `name`, `version`, `platform`, `last_seen`, at most 128 bytes each; `[]` today) |
 | `ui_url` | its own page on the local network: an absolute `http(s)` URL without credentials, or `""` |
-| `setup` | optional, sent only after a reply listed it in `accepts`: the Bridge's setup checklist, `{ items: [{ id, done, required, detail?, library_ids?, needs_worker? }], can_contribute, github_login? }`. `needs_worker: true` says the step waits for an ASR worker. Read leniently like `estimates` (an unknown key ignored, a block that doesn't decode dropped, never refused) and bounded: the first 16 items kept (the rest left out); an item whose `id` doesn't match `^[a-z][a-z0-9_]{0,31}$`, or repeats one, is left out (an unknown id is kept); `detail` cleaned to 256 bytes; in `library_ids` a zero, negative or repeated id left out (at most 512 kept); a `github_login` that isn't GitHub's shape dropped. Its `can_contribute` wins over the estimates'. The ids a Bridge sends, their order and meaning: [The setup checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist) |
+| `setup` | optional, sent only after a reply listed it in `accepts`: the Bridge's setup checklist, `{ items: [{ id, done, required, detail?, library_ids?, needs_worker? }], can_contribute, github_login?, github_state?, agent_credential? }`. `needs_worker: true` says the step waits for an ASR worker. `github_state` and `agent_credential` are below the admin's [`GET /admin/bridge`](#get-apiv1adminbridge). Read leniently like `estimates` (an unknown key ignored, a block that doesn't decode dropped, never refused) and bounded: the first 16 items kept (the rest left out); an item whose `id` doesn't match `^[a-z][a-z0-9_]{0,31}$`, or repeats one, is left out (an unknown id is kept); `detail` cleaned to 256 bytes; in `library_ids` a zero, negative or repeated id left out (at most 512 kept); a `github_login` that isn't GitHub's shape dropped; a `github_state` or `agent_credential` that doesn't match the item id pattern dropped (a value the server doesn't know is kept). Its `can_contribute` wins over the estimates'. The ids a Bridge sends, their order and meaning: [The setup checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist) |
 | `estimates` | optional: its figures for costing a job before it is queued, one block per job family. `sidecars`: `asr_seconds_per_audio_hour` (ASR wall time per hour of audio, learned or a seed), `agent_usd_per_audio_hour` and `agent_usd_per_ebook` (agent spend from finished books, `null` before any), `samples` (the finished books they come from), `agent_backend` (`""` when none), `agent_ready` (the agent container answers and has a credential), `subscription` (that credential is a subscription login), `can_contribute` (it can file community intake issues), `monthly_budget_usd` (`0` = no cap) and `month_spent_usd`. Read leniently: an unknown key is ignored, and a block that doesn't decode, or holds a number below 0 or past its bound, is **dropped**, never refused (`agent_backend` is cleaned like the other text) |
 
 The structure is checked and refused when wrong: a malformed kind, a repeated
@@ -11584,6 +11731,13 @@ priority, then oldest, queued job of those kinds, leased for 2 minutes and with
 - When no kind is left after the narrowing, it answers `204` at once.
 - When the server is stopping, it ends the wait with `204`.
 
+A queued job whose stored params the server can't read (a damaged row) is never
+handed out. Its first claim ends it as `failed` with the error "The server could
+not read this job's options.", logs one warning with its kind, and goes on to the
+job behind it in the same claim. A `podcast.subscribe` ends with "The server could
+not read which feed this subscription is for." and an `audible.sync` with "The
+server could not read which Audible account this sync is for."
+
 The token is checked again with every claim, so a Bridge that a pairing or an unpair
 replaced during its long poll gets `401`, never a job. A claim with nothing to
 do (no job to hand out, no lease run out, no private follow request whose feed
@@ -11604,6 +11758,7 @@ changes.
 | `200` | the job, now `claimed` |
 | `204` | no job |
 | `400` | `code: "invalid_request"` for invalid `min_priority` |
+| `405` | a `HEAD` request, with `Allow: GET`. The server answers it before anything runs, so it never leases a job |
 | `409` | `code: "no_heartbeat"` - send a heartbeat first |
 | `401` | no bridge token or a refused one (also when it was revoked during the wait) |
 | `503` | the token couldn't be checked, or the request deadline expired |
@@ -11880,7 +12035,7 @@ one, an id that doesn't match is `404 unknown_account`.
 | `policy_since` | when its automatic policy began to act: a policy backs up only titles first seen after it. Set at the account's creation, when an automatic policy is turned on, and moved to the account's first complete poll |
 | `titles` | `GET /admin/audible/accounts` only: the titles counted by state, and how many are matched to a book here (`matched` leaves out a match marked "Not this book") |
 | `last_sync_at` | when its last `audible.sync` finished having read Audible's places, `null` before the first (and after a mapping to another person) |
-| `refused_at` | when a sync or (from 2.7.0) a poll failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set, and the console's accounts card asks for a sign-in on the Bridge instead of showing it checked. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it. A refused sync the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again |
+| `refused_at` | when a sync or (from 2.7.0) a poll failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set, and the console's accounts card asks for a sign-in on the Bridge instead of showing it checked. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it. A refused sync or poll the Bridge claimed in an earlier second than that clearing (it ran before the fresh sign-in, but reported after) doesn't set it again, and nor does one claimed in the same second, which can't be ordered against the sign-in: the next job marks a refusal that stands |
 | `backup_estimate` | `GET /admin/audible/accounts` only: what [Back up everything](#post-apiv1adminaudibleaccountsaccountbackup-all) would queue now, `count` titles and about `bytes` (each title's `runtime_s` x 8000, 64 kbps AAXC: approximate) |
 
 ### `GET /api/v1/bridge/users`
@@ -11910,7 +12065,10 @@ it after the person and the store). `sync` is read and ignored. A new account is
 created with sync off, and a PUT never turns it on. A PUT mapping
 the account to **another person** turns its sync off, forgets its `last_sync_at`
 and cancels its open `audible.sync` ("sync with Audible was turned off for the
-account"); every PUT clears `refused_at`.
+account"). A PUT for the same person cancels no sync, a running one included:
+the server can't tell a fresh sign-in from an edit of the label, and the sync's
+places are the account's either way. Every PUT clears
+[`refused_at`](#the-account-object).
 
 | Status | Meaning |
 |---|---|
@@ -12355,9 +12513,17 @@ Both routes are *bridge token*, header only, and share these refusals:
 ### The `audible.sync` job
 
 Internal (refused by `POST /admin/bridge/jobs`), quiet, owned by the `audible`
-module (held while it is off), deduped per account (a queued one `promotes`: a
-newer queue gives it the newest titles), only the newest ended one of each account
-kept, with server-built strict params `{account, titles}`. The scheduler queues
+module (held while it is off), deduped per account, only the newest ended one of
+each account kept. The queued job's server-built strict params are `{account}`
+alone. When the Bridge claims it, the server reads the account's synced titles as
+they are then and answers the claim with params `{account, titles}`, so the queue
+never stores the title list. The server leaves out, and logs, a title it can't
+name (a bad ASIN or path, or an ASIN a second time), and the last titles of a list
+over 1 MiB. When the titles can't be read, the first three claims in a row put the
+job back unspent. Later claims spend its attempts, and the claim on its last
+attempt ends it as `failed` with "The server could not read this account's
+titles." A job queued by an older server, with its
+titles stored, gets the titles as they are at the claim too. The scheduler queues
 one every 15 minutes for each account that syncs; turning sync on, and a title's
 `rejected` or `no_sync` change, queue it at once. Done having read Audible's places
 sets the account's `last_sync_at`; failed `audible_refused` sets `refused_at`, and
@@ -12371,7 +12537,14 @@ queueing, steps, result and failure codes are in
 
 *Bridge token.* The account's places on Audible, for its person. Strict JSON,
 `sent_at` required (RFC 3339, the Bridge's clock), `events` in the
-[Sync v2](#post-apiv1melisteningsync) shapes and limits (at most 500 a batch, 1 MiB):
+[Sync v2](#post-apiv1melisteningsync) shapes and limits (at most 500 a batch, 1 MiB).
+The server dates the places as sent: their times are Audible's own
+`last_updated`, not the Bridge's clock, so a Bridge's clock skew never moves a
+place across a restart or a Stay. The one exception is a place Audible gave no
+`last_updated` for, which the Bridge stamps with its own clock. The server finds
+those by their event id (the hash of the place with an empty `last_updated`
+under one of the book's synced titles), and only they, with a finish at such a
+place in the same batch, take `sent_at`'s shift. A batch:
 
 ```json
 {
