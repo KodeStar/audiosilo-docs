@@ -16,7 +16,7 @@
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
-import {sleep, shoot, wanted, fitted, fitViewportTo, DESKTOP_CONTEXT} from './lib.mjs';
+import {sleep, shoot, step as runStep, wanted, fitted, fitViewportTo, DESKTOP_CONTEXT} from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BASE = (process.env.META_BASE || 'http://127.0.0.1:8795').replace(/\/$/, '');
@@ -48,17 +48,13 @@ const goto = (route) => page.goto(`${BASE}${route}`, {waitUntil: 'domcontentload
 // the covered one and its click never lands.
 const heroSearch = (pg) => pg.locator('input[role="combobox"][placeholder^="Search by title"]').first();
 
-// Keep watchlist setup when its dependent shot is selected. Unlike the shared
-// best-effort wrapper, a failed requested meta capture makes this script fail.
-async function step(name, fn) {
-  if (!wanted(`meta/${name}.png`) && !(name === 'series-watching' && wanted('meta/watching.png'))) return;
-  try {
-    await fn();
-  } catch (error) {
-    process.exitCode = 1;
-    console.error(`  ✗ ${name}: ${error.message}`);
-  }
-}
+// lib's step, run only when a shot the step takes or sets up is wanted
+// (SHOTS_ONLY): by default the step's own `meta/<name>.png`.
+const step = (name, fn, shots = [`meta/${name}.png`]) => (wanted(...shots) ? runStep(name, fn) : undefined);
+
+// Scrolls `loc` to just under the site's sticky header.
+const scrollUnderHeader = (loc, gap = 90) =>
+  loc.evaluate((el, g) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - g), gap);
 
 // ── Home: search hero + stats band + latest additions ───────────────────────
 await step('home', async () => {
@@ -111,39 +107,23 @@ await step('work', async () => {
   await shoot(page, 'meta/work.png');
 });
 
-await step('browse', async () => {
-  await goto('/browse/series?letter=M');
-  await page.getByRole('heading', {name: 'Series', exact: true}).waitFor();
-  await page.getByRole('searchbox', {name: 'Search this directory'}).waitFor();
-  await page.locator('main a.directory-card[href^="/series/"]').first().waitFor();
-  await page.getByRole('link', {name: 'M', exact: true}).waitFor();
-  // Keep the filters, navigation and first two rows of series in one frame.
-  await fitted(page,
-    () => fitViewportTo(page, page.locator('main a.directory-card').nth(3), {max: 1250}),
-    () => shoot(page, 'meta/browse.png'));
-});
-
+// ── Work comparison: the recordings side by side ────────────────────────────
+// Continues on the work page the previous step loaded. It runs before the
+// characters step, whose tab hides the general panel the table sits in.
 await step('work-comparison', async () => {
-  await goto(`/works/${WORK_ID}`);
+  if (new URL(page.url()).pathname !== `/works/${WORK_ID}`) await goto(`/works/${WORK_ID}`);
   const comparison = page.locator('#recording-comparison');
   await comparison.waitFor({state: 'visible', timeout: 20000});
   await comparison.locator('tbody tr').first().waitFor();
+  await scrollUnderHeader(comparison);
   await sleep(1000);
-  await comparison.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 90));
   await shoot(page, 'meta/work-comparison.png');
 });
 
-await step('chapters', async () => {
-  await goto(`/works/${WORK_ID}/recordings/stephen-fry-2015/chapters`);
-  await page.getByRole('columnheader', {name: 'Duration', exact: true}).waitFor();
-  await page.locator('tbody tr').first().waitFor();
-  await shoot(page, 'meta/chapters.png');
-});
-
 // ── Characters: the community layer with one card opened ─────────────────────
-// Continues on the work page the previous step loaded (same book by design);
-// re-navigates only if that step failed partway, so one transient failure
-// cannot cost both shots.
+// Continues on the work page the previous steps loaded (same book by design);
+// re-navigates only if they failed partway, so one transient failure cannot
+// cost every shot of the book.
 await step('characters', async () => {
   if (new URL(page.url()).pathname !== `/works/${WORK_ID}`) {
     await goto(`/works/${WORK_ID}`);
@@ -165,6 +145,25 @@ await step('characters', async () => {
   await shoot(page, 'meta/characters.png');
 });
 
+await step('chapters', async () => {
+  await goto(`/works/${WORK_ID}/recordings/stephen-fry-2015/chapters`);
+  await page.getByRole('columnheader', {name: 'Duration', exact: true}).waitFor();
+  await page.locator('tbody tr').first().waitFor();
+  await shoot(page, 'meta/chapters.png');
+});
+
+await step('browse', async () => {
+  await goto('/browse/series?letter=M');
+  await page.getByRole('heading', {name: 'Series', exact: true}).waitFor();
+  await page.getByRole('searchbox', {name: 'Search this directory'}).waitFor();
+  await page.locator('main a.directory-card[href^="/series/"]').first().waitFor();
+  await page.getByRole('link', {name: 'M', exact: true}).waitFor();
+  // Keep the filters, navigation and first two rows of series in one frame.
+  await fitted(page,
+    () => fitViewportTo(page, page.locator('main a.directory-card').nth(3), {max: 1250}),
+    () => shoot(page, 'meta/browse.png'));
+});
+
 // ── Series: the ordered list of volumes ──────────────────────────────────────
 await step('series', async () => {
   await goto(`/series/${SERIES_ID}`);
@@ -175,19 +174,22 @@ await step('series', async () => {
   await shoot(page, 'meta/series.png');
 });
 
+// Continues on the series page the previous step loaded; the choices live in
+// React state only, so nothing carries over to the watchlist steps below.
 await step('series-listening-guide', async () => {
-  await goto(`/series/${SERIES_ID}`);
+  if (new URL(page.url()).pathname !== `/series/${SERIES_ID}`) await goto(`/series/${SERIES_ID}`);
   const guide = page.locator('#listening-guide');
   const choices = guide.locator('select');
   await choices.first().waitFor({state: 'visible', timeout: 20000});
-  for (let i = 0; i < Math.min(2, await choices.count()); i += 1) {
+  const chosen = Math.min(2, await choices.count());
+  for (let i = 0; i < chosen; i += 1) {
     await choices.nth(i).selectOption({index: 1});
   }
-  await guide.getByText('Chosen-list subtotal', {exact: false}).waitFor();
-  await sleep(800);
+  await guide.getByText(`${chosen} recording${chosen === 1 ? '' : 's'} chosen on this page`).waitFor();
   // Full-cast credits can make continuity long. Frame the first work's actual
   // alternatives and choice controls instead of the middle of that section.
-  await guide.locator('ol').first().locator(':scope > li').first().evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 90));
+  await scrollUnderHeader(guide.locator('ol').first().locator(':scope > li').first());
+  await sleep(800); // the covers scrolled into view settle (bounded)
   await shoot(page, 'meta/series-listening-guide.png');
 });
 
@@ -220,7 +222,7 @@ await step('series-watching', async () => {
   for (let i = 0; i < Math.min(2, count); i += 1) await owns.nth(i).check();
   await sleep(1200); // thumbnail covers settle (bounded)
   await shoot(page, 'meta/series-watching.png');
-});
+}, ['meta/series-watching.png', 'meta/watching.png']);
 
 // ── Watching: what is new across the watched series ──────────────────────────
 // Continues from the step above (same context, same localStorage). A Preorder
@@ -328,9 +330,7 @@ await step('language-search', async () => {
   // says so.
   const all = dePage.getByRole('button', {name: /search all languages/i}).first();
   await all.waitFor({timeout: 10000});
-  await box.evaluate((el) => {
-    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 80);
-  });
+  await scrollUnderHeader(box, 80);
   await sleep(1200); // covers in the option rows settle
   await shoot(dePage, 'meta/language-search.png');
 });

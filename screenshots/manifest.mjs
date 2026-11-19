@@ -222,7 +222,7 @@ export const SHOTS = [
   {file: 'meta/search.png', capture: 'meta', title: 'Meta - Search', hint: 'search dropdown with grouped work/person/series results'},
   {file: 'meta/work.png', capture: 'meta', title: 'Meta - Work detail', hint: 'a work page with its cover, metadata and multiple recordings'},
   {file: 'meta/browse.png', capture: 'meta', title: 'Meta - Browse series', hint: 'the server-rendered /browse/series?letter=M directory with search, All/A-Z/0-9/Other filters, matching counts and numbered page navigation'},
-  {file: 'meta/work-comparison.png', capture: 'meta', title: 'Meta - Compare recordings', hint: 'the work page comparison table with recording anchors and truthful unknown labels'},
+  {file: 'meta/work-comparison.png', capture: 'meta', title: 'Meta - Compare recordings', hint: 'the work page comparison table with recording anchors and Unknown labels'},
   {file: 'meta/chapters.png', capture: 'meta', title: 'Meta - Recording chapters', hint: 'a recording chapter directory with titles, starts and durations'},
   {file: 'meta/characters.png', capture: 'meta', title: 'Meta - Characters', hint: 'the community characters section, one card opened'},
   {file: 'meta/series.png', capture: 'meta', title: 'Meta - Series', hint: 'a series page listing its ordered volumes'},
