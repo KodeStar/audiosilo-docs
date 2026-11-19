@@ -406,10 +406,8 @@ finish.
 - An identity change between the pin read and the queueing is retried once with
   the current pin (`podcast.EnsureFetch`, shared by the stream, the player's POST
   and the admin's fetch). While the previous identity's fetch is still stopping,
-  the stream answers a retryable `503` with `Retry-After: 2`, the code
-  `identity_changed` and no `fetch` summary (`writePodcastIdentityBusy`), and the
-  POST answers `409 identity_changed`. Shipped players read `identity_changed` on
-  any status as "drop the cached lists and offer Try again", so the code stays.
+  the answer is `identity_changed` (`writePodcastIdentityBusy`; the statuses are
+  in [the reference](../server/api/reference.md#podcast-fetch-status-and-retry)).
 
 ### The per-person cap
 

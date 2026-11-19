@@ -39,8 +39,8 @@ A separate container holds on stock Docker seccomp:
   `no-new-privileges`, a read-only root, a tmpfs `/tmp`, and **its own network**.
   That is a plain Docker bridge network: it can't reach the Bridge or the server
   by name, and it reaches the internet and the LAN through the host like any
-  container. There is no egress filter, which an OpenAI-compatible endpoint on the
-  LAN needs;
+  container. There is no egress filter, so the agent can reach an OpenAI-compatible
+  endpoint on the LAN;
 - every job sees only what the Bridge staged for it, and every output is
   untrusted.
 

@@ -4211,7 +4211,7 @@ fixed-width UTC milliseconds.
 | `applied` | the place moved to the event's end, or a finish/unfinish set the state |
 | `duplicate` | the id is already stored for this user, or an earlier copy in the same batch passed the checks: nothing was done again (a copy that was `rejected` doesn't count, so the next copy is checked on its own) |
 | `diverged` | the event was made without seeing the stored row (below); `kept` is `event` or `stored`, and `other_place` is the place **not** kept |
-| `not_applied` | stored, but the place didn't move; `reason` is `older` (an older write under last-write-wins, or a finish/unfinish not newer than the row's last finish-state change) `resume_behind` (a `resume`/`continue` span behind the stored place, below; `other_place` is the event's place) or `behind` (a `finish` made at or before another device's [Stay](#a-stay) that holds the row; on the Bridge's [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) also a furthest-only place behind the stored one) |
+| `not_applied` | stored, but the place didn't move; `reason` is `older` (an older write under last-write-wins, or a finish/unfinish not newer than the row's last finish-state change), `resume_behind` (a `resume`/`continue` span behind the stored place, below; `other_place` is the event's place) or `behind` (a `finish` made at or before another device's [Stay](#a-stay) that holds the row; on the Bridge's [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) also a furthest-only place behind the stored one) |
 | `rejected` | not stored and changed nothing; `reason` is `invalid` (a field check failed, the event couldn't be decoded, or its path cleans to nothing or is over 4096 bytes, checked before its library is looked up), `unknown_kind`, `too_old` (it ended more than 90 days ago, after the clock correction), `duration_mismatch` (the device's `duration` is more than 10 s from the indexed book's), `no_access` (the path is outside the caller's access, a library they hold no grant on, or a podcast library their client doesn't see: what `PUT` answers with a `403`) or `not_found` (an unknown library to an admin, or a hidden path); on the [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) also `not_synced` (not a synced title's book), and `duration_mismatch` there means Audible's length disagrees |
 
 Every status but `rejected` is final for the sender: the event is stored and a
@@ -12517,13 +12517,11 @@ module (held while it is off), deduped per account, only the newest ended one of
 each account kept. The queued job's server-built strict params are `{account}`
 alone. When the Bridge claims it, the server reads the account's synced titles as
 they are then and answers the claim with params `{account, titles}`, so the queue
-never stores the title list. The server leaves out, and logs, a title it can't
-name (a bad ASIN or path, or an ASIN a second time), and the last titles of a list
-over 1 MiB. When the titles can't be read, the first three claims in a row put the
-job back unspent. Later claims spend its attempts, and the claim on its last
-attempt ends it as `failed` with "The server could not read this account's
-titles." A job queued by an older server, with its
-titles stored, gets the titles as they are at the claim too. The scheduler queues
+never stores the title list. A job whose titles can't be read ends as `failed`
+with "The server could not read this account's titles." What the claim leaves out
+and when it gives up are in
+[the titles are read at the claim](../../bridge/audible.md#audible-to-the-server-audiblesync).
+The scheduler queues
 one every 15 minutes for each account that syncs; turning sync on, and a title's
 `rejected` or `no_sync` change, queue it at once. Done having read Audible's places
 sets the account's `last_sync_at`; failed `audible_refused` sets `refused_at`, and

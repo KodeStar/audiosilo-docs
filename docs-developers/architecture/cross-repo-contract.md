@@ -2021,10 +2021,9 @@ Rules for new work:
   a present pin.
 - An identity the feed changed after the pin was read is asked for once more as it
   is now (the stream, the player's `POST` and the admin's fetch alike). While the
-  previous identity's fetch is still stopping, the stream answers `503`,
-  `Retry-After: 2`, `code:"identity_changed"` with no `fetch` summary, and the
-  `POST` answers `409 identity_changed`. A shipped player reads `identity_changed`
-  on any status as "drop the cached lists and offer Try again".
+  previous identity's fetch is still stopping, both answer `identity_changed`,
+  which a shipped player reads on any status as "drop the cached lists and offer
+  Try again" ([statuses](../server/api/reference.md#podcast-fetch-status-and-retry)).
 - The summary is the job's state: a fetch the Bridge holds stays `fetching` with the
   module off. A queued one is held then, and reads `unavailable`.
 

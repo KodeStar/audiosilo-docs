@@ -638,7 +638,7 @@ apps don't: they keep pairing by QR code or invite. The config is in
    tag when the flow carried one,
    **never in a URL**: a link carrying it would sign whoever opens it in as its
    owner (a login CSRF). The handler then redirects to the landing page with
-   the flow's key, the first 16 characters of its `state` (`flowKey`):
+   the flow's key (`flowKey`, see [The cookies](#the-cookies)):
    `/admin/#oidc=done&flow=<key>` (or the console's deep link with the same
    marker), or `/web/connect?oidc=1&flow=<key>`, on `public_url`'s origin
    (see [Behind a path prefix](#behind-a-path-prefix)). The key names a cookie

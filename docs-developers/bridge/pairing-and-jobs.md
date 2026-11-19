@@ -702,17 +702,14 @@ A failed podcast job's result carries a `code` that says whose failure it was:
   of reach at a lease check mid-job.
 
 The server reads a failed job with no code as `bridge_lost` (a lease that ran out
-on every attempt). Its failing-feed notice counts only the feed's own codes
-(`bridge.FeedFailure`: not `request_expired`, `bridge_lost`,
-`library_not_writable`, `not_podcast_library`, `write_failed`,
-`feed_secret_missing` or `identity_changed`), and only from the polls its
-scheduler queued. Those carry `"scheduled": true` in their params, which the
-Bridge reads leniently and otherwise ignores, and which the console shows as
-**Scheduled by the server**. A network-class code (`dns`, `network`, `timeout`,
-`tls`) counts only while the Bridge's other feeds say it was online. See
-[Podcast events](../server/backups-and-notifications.md#podcast-events). Triggers share one fetch intent per episode;
-params, dedupe, priorities and promotion are in
-[fetch and retain jobs](podcasts.md#fetch-and-retain-jobs).
+on every attempt). Its scheduler's polls carry `"scheduled": true` in their
+params, which the Bridge reads leniently and otherwise ignores, and which the
+console shows as **Scheduled by the server**. Which codes count toward the
+failing-feed notice is in
+[Podcast events](../server/backups-and-notifications.md#podcast-events).
+
+Triggers share one fetch intent per episode; params, dedupe, priorities and
+promotion are in [fetch and retain jobs](podcasts.md#fetch-and-retain-jobs).
 
 [Podcasts](podcasts.md) describes job params/results, scheduling, privacy and
 file ownership; the [reference](../server/api/reference.md#podcasts) lists the
@@ -751,16 +748,10 @@ download survives a restart. See
 
 `audible.sync` brings an account's places on Audible to the server. It belongs to
 the `audible` module. It is internal and quiet, with no library or book path. The
-queued job stores only `{account}`. The server reads the titles when the Bridge
-claims it, so the claim's params are `{account, titles: [{asin, library_id, path,
-runtime_s}]}` as they are then (at most 1 MiB; a title the Bridge would refuse
-the whole list for is left out and logged, and so are the last ones past the
-limit). A job queued by an older server with its titles in the params is refilled
-at the claim the same way. When the titles can't be read, the claim puts the job
-back unspent, at most 3 claims in a row (`maxUnspentSyncFills`). After that the
-job's lease runs out and spends its attempts while later claims hand out the jobs
-behind it. A job whose stored params can't be read ends at its first claim with
-its own reason. It is deduped per account, and only the newest ended one is kept. The scheduler queues it every 15 minutes for each account
+queued job stores only `{account}`; the server fills in the titles when the
+Bridge claims it (see
+[Audible to the server](audible.md#audible-to-the-server-audiblesync)). It is
+deduped per account, and only the newest ended one is kept. The scheduler queues it every 15 minutes for each account
 whose sync is on, at priority `-10`, and the console queues it at once when sync is
 turned on or a title's sync changes. It runs in the `light` lane and writes nothing
 into a library. Its failure codes are `audible_refused` (the server stops queueing

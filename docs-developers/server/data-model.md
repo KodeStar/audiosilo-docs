@@ -849,12 +849,8 @@ offer.
 are the clock-corrected end of the span the row's place came from, and the
 row's version at that time. The same device's next span in a later sync post
 compares with them, not with `updated_at`, so the span chain lasts across posts
-(see [How a batch is applied](api/reference.md#how-a-batch-is-applied)). It
-compares with `span_at` less 2 s (`historyJoinOverlap`), because each post is
-dated by its own clock correction, so a move posted just after a span can be
-dated slightly before that span's end. A span applied inside those 2 s leaves
-`span_at` at the chain's later end, so the overlap never adds up across spans.
-Every other writer clears them. With a stale version, the old rule applies.
+(see [How a batch is applied](api/reference.md#how-a-batch-is-applied), which
+also explains the 2 s overlap, `historyJoinOverlap`). Every other writer clears them. With a stale version, the old rule applies.
 
 **Stay columns** *(0080)*. Both are `NULL` for none.
 
