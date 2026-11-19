@@ -180,14 +180,15 @@ The `agent` object:
 
 | Field | Meaning |
 |---|---|
-| `backend` | the CLI the agent container runs (claude or codex) |
-| `kinds` | the kinds that backend takes, in the order it uses them: `claude_oauth_token`, `anthropic_api_key` for claude; `openai_api_key` for codex |
+| `backend` | the agent backend: claude, codex or openai-compatible |
+| `kinds` | the kinds that backend takes, in the order it uses them: `claude_oauth_token`, `anthropic_api_key` for claude; `openai_api_key` for codex; `endpoint_api_key` for an OpenAI-compatible endpoint |
 | `set` | kind to boolean |
 | `set_at` | when the set last changed: a save, or a removal that left others |
 | `set_at_by_kind` | additive: each held kind's own save time; a kind saved before per-kind rows existed is left out |
 | `available`, `detail` | the agent container's state |
 | `handoff` | the runs get the Bridge's credential |
 | `container_credential` | the kind the container has of its own, which wins; `""` for none |
+| `warning` | what the page says beside an agent that is otherwise as described, `""` for nothing; today only that the handed credential is readable by every user on the staging volume, because something else there spoiled the group probe ([The group probe](agent-container.md#the-group-probe)) |
 
 A value must be one printable line without spaces, at most 2048 bytes. Anything
 else is `ErrInvalidCredential`, said without the value. Changing a credential

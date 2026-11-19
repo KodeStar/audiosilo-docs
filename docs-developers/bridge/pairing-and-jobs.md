@@ -179,9 +179,9 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
 | `paired` | yes | the Bridge is paired | |
 | `libraries` | yes | the Bridge has checked libraries and every one is mapped and writable (a library counts once it has been checked) | "checking the libraries..." (`setup.DetailLibrariesChecking`, from v0.5.0) from pairing until a heartbeat has listed the server's libraries and each has been checked (`Input.LibrariesPending`: no `lastBeat` yet, or `libs.Unchecked()`), never done and no `library_ids` meanwhile; then "1 of 2 libraries writable" (or "the server has no libraries yet"); `library_ids` lists the ones still to fix |
 | `asr` | yes | the engine has started and something can transcribe now, not waiting for a worker | `local`, `worker`, "waiting for an ASR worker" (with `needs_worker: true`), "the engine is starting", or why it isn't available |
-| `agent` | no | the agent container is available (with its own or a handed-over credential); only characters, recaps and descriptions need it | the backend, or why it isn't ready in plain words (below) |
+| `agent` | no | the agent container is available (with its own or a handed-over credential); only characters, recaps and descriptions need it | the backend, or why it isn't ready in plain words (below). A ready agent whose handed credential goes to every uid because another uid spoiled the [group probe](agent-container.md#fallbacks) adds ", but its credential is shared with every user on the agent's volume, because something else there interfered with the Bridge's check: the Accounts tab says more" (`setup.DetailAgentShared`) |
 | `budget` | yes | the monthly budget was saved on the page or is set by the environment (`Config.BudgetReviewed`) | "$100 a month" or "no monthly cap" |
-| `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token" |
+| `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token". While a sign-in's refresh fails: "signed in as octocat, but the sign-in couldn't be refreshed: GitHub couldn't be reached; the Bridge tries again every minute". While GitHub refuses it: "GitHub refused the sign-in: sign in again on the Accounts tab" (`setup.DetailGitHubRefused`) |
 | `audible` | no | at least one Audible account signed in, none refused and none on an older device profile (an additive id: older servers and pages leave it out) | "1 account signed in", "1 account needs signing in again", or "... signing in again to keep backups working" when any is on an older profile, or "1 account is mapped on another server: map one on this server on the Accounts tab" when every account is mapped elsewhere; it adds "; places don't sync until then" while one is refused, and "; places not syncing for 1 account: " and the reason when an account's last position sync failed (that alone never makes it not done) |
 
 ```json
@@ -213,6 +213,11 @@ recaps and descriptions"), but the backend mismatch, which names both CLIs:
 | `other_backend` | "codex is signed in, but this Bridge runs claude: set agent.backend: codex and restart the Bridge, or set claude's sign-in on the Accounts tab" (`agentOtherBackend`) |
 | `no_credential` | `DetailAgentNoCredential`: "set the agent's sign-in on the Accounts tab; ..." |
 | `group_required` (`agent.require_group` is on and the handed credential can't be kept to the Bridge's group) | `DetailAgentGroupRequired`: "agent.require_group is on, and the agent's credential can't be kept to the Bridge's group: the Accounts tab says why" (no "what the agent is for" ending) |
+| `handoff_failed` (giving the handed credential to the Bridge's group failed with an error that is not a refusal) | `DetailAgentHandoffFailed`: "the Bridge couldn't hand the agent its credential: the Accounts tab says why; ..." |
+| `no_endpoint` (the `openai-compatible` backend with no endpoint address) | `DetailAgentNoEndpoint`: "set the OpenAI-compatible endpoint's address in Settings > Agent; ..." |
+| `endpoint_service` (the `openai-compatible` backend with no agent service of its own: no `agent.endpoint_staging_dir`, a folder shared with the agent container's, or a runner there that isn't `--endpoint-only` or runs as the agent container's user) | `DetailAgentEndpointService`: "an OpenAI-compatible endpoint needs an agent service of its own, apart from the agent container (agent-runner --endpoint-only, its own user, no /agent): the Accounts tab says what to change" (no ending) |
+| `own_credentials` (the endpoint's agent service holds a credential or reaches `/agent`) | `DetailAgentOwnCredentials`: "the endpoint's agent service holds a credential or can reach /agent, which an OpenAI-compatible endpoint's run could read: give it neither, or choose claude or codex in Settings > Agent" (no ending) |
+| `endpoint_only` (the `claude` or `codex` backend whose staging folder holds the endpoint's agent service) | `DetailAgentEndpointOnly`: "for claude or codex the Bridge reaches the OpenAI-compatible endpoint's agent service, not the agent container: the Accounts tab says what to change" (no ending) |
 | a refused credential (`Refused`) | the container's own detail, saying where to replace it (else `DetailAgentNoCredential`) |
 
 The item is optional (`required: false`, an owner decision reversing FIRST-RUN
@@ -244,6 +249,27 @@ dropped, never the heartbeat), within the bounds in the
 knows and shows the rest with a capital first letter, `_`, `.` and `-` read as
 spaces (`ebook_reader` is "Ebook reader"). [`GET /admin/bridge`](../server/api/reference.md#get-apiv1adminbridge)
 carries it (with the login, admins only); `GET /server` never does.
+
+Beside `items`, the block carries four optional fields, all additive (an older
+Bridge sends none, and the server drops a value of the wrong shape):
+
+- `can_contribute`, below;
+- `github_login`, the signed-in GitHub user;
+- `github_state`, why the GitHub sign-in can't be used now: `unrefreshed` (still
+  signed in, `github_login` kept, waiting for GitHub to answer a refresh) or
+  `refused` (sign in again). Omitted otherwise;
+- `agent_credential`, how the Accounts tab's agent credential reaches the agent
+  container ([The credential hand-off](agent-container.md#the-credential-hand-off)):
+  `group` (the Bridge's group alone), `world` (every uid on the staging volume
+  until the runner takes it), `group_required` (`agent.require_group` can't be
+  met, so nothing is handed over) or `failed` (the Bridge couldn't give it to the
+  runner). Omitted while no hand-off is in play: the container's own credential,
+  or no live runner.
+
+The console's Setup card shows `agent_credential` as its **Credential hand-off**
+row, and counts the agent credential as set whenever a hand-off is reported, even
+while the `agent` step waits on it. It shows `github_state` on the GitHub account
+row. It shows nothing for a value it doesn't know.
 
 `can_contribute` here **wins** over `estimates.sidecars.can_contribute`
 (`Status.CanContribute()`: the setup block's when one was sent and kept, else the
@@ -660,8 +686,31 @@ fetch and retain jobs are listed.
 The OPML import queues the same `podcast.subscribe` jobs as a single
 follow, so the Bridge sees no new kind or params; directory search runs on
 the server ([Discovery and OPML](podcasts.md#discovery-and-opml-transfer)).
-All podcast kinds are quiet and send no notifications. Fetch/retain outcomes
-never update feed polling state. Triggers share one fetch intent per episode;
+All podcast kinds are quiet and send no job notifications. Fetch/retain outcomes
+never update feed polling state.
+
+A failed podcast job's result carries a `code` that says whose failure it was:
+
+- **the feed's or the episode host's**: the HTTP guard's code as given (`dns`,
+  `network` for a refused connection, `timeout`, `tls`, `redirect_loop` past 10
+  redirects, `http_<status>`, and `gone` for an HTTP 410 from a feed or an
+  episode host), or what the answer was (`not_a_feed`, say). An episode download
+  that runs past its ceiling is `timeout` wherever it stops;
+- **the Bridge's own**: `write_failed` for a local fault (the show path, an
+  unreadable `feed.json`, bad params, its own partial download), and
+  `bridge_lost` for its own deadline or stop outside the fetch, or the server out
+  of reach at a lease check mid-job.
+
+The server reads a failed job with no code as `bridge_lost` (a lease that ran out
+on every attempt). Its failing-feed notice counts only the feed's own codes
+(`bridge.FeedFailure`: not `request_expired`, `bridge_lost`,
+`library_not_writable`, `not_podcast_library`, `write_failed`,
+`feed_secret_missing` or `identity_changed`), and only from the polls its
+scheduler queued. Those carry `"scheduled": true` in their params, which the
+Bridge reads leniently and otherwise ignores, and which the console shows as
+**Scheduled by the server**. A network-class code (`dns`, `network`, `timeout`,
+`tls`) counts only while the Bridge's other feeds say it was online. See
+[Podcast events](../server/backups-and-notifications.md#podcast-events). Triggers share one fetch intent per episode;
 params, dedupe, priorities and promotion are in
 [fetch and retain jobs](podcasts.md#fetch-and-retain-jobs).
 
@@ -701,10 +750,17 @@ download survives a restart. See
 [Backing up a title](audible.md#backing-up-a-title-audibleimport).
 
 `audible.sync` brings an account's places on Audible to the server. It belongs to
-the `audible` module. It is internal and quiet, with no library or book path. Its
-params, `{account, titles: [{asin, library_id, path, runtime_s}]}`, are built by
-the server (at most 1 MiB). It is deduped per account (a queued one takes the
-newest titles), and only the newest ended one is kept. The scheduler queues it every 15 minutes for each account
+the `audible` module. It is internal and quiet, with no library or book path. The
+queued job stores only `{account}`. The server reads the titles when the Bridge
+claims it, so the claim's params are `{account, titles: [{asin, library_id, path,
+runtime_s}]}` as they are then (at most 1 MiB; a title the Bridge would refuse
+the whole list for is left out and logged, and so are the last ones past the
+limit). A job queued by an older server with its titles in the params is refilled
+at the claim the same way. When the titles can't be read, the claim puts the job
+back unspent, at most 3 claims in a row (`maxUnspentSyncFills`). After that the
+job's lease runs out and spends its attempts while later claims hand out the jobs
+behind it. A job whose stored params can't be read ends at its first claim with
+its own reason. It is deduped per account, and only the newest ended one is kept. The scheduler queues it every 15 minutes for each account
 whose sync is on, at priority `-10`, and the console queues it at once when sync is
 turned on or a title's sync changes. It runs in the `light` lane and writes nothing
 into a library. Its failure codes are `audible_refused` (the server stops queueing

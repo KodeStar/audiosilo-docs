@@ -263,7 +263,9 @@ credential. New repair subscribes also carry an optional expected `show_id`.
 
 **Poll**'s `path` is one clean, non-hidden show segment. Its params are an
 optional `show_id`, `etag` and `last_modified`, the validators each at most 512
-bytes. New work binds the expected show id, and the Bridge checks it before
+bytes, and `scheduled: true` on a poll the server's scheduler queued (only those
+count toward the failing-feed notice; the Bridge reads it leniently and ignores
+it). New work binds the expected show id, and the Bridge checks it before
 writing. The Bridge drops URL-bearing or overlong validator values before
 returning them to the server.
 
@@ -346,6 +348,12 @@ bodies, URLs, headers or probe stderr. Besides the guard codes, the failures are
 - `write_failed`: a disk failure, or an unverified file at the assigned path, or an
   invalid saved Fetch that needs administrator repair.
 
+The guard's codes include `gone`: an episode host's HTTP 410 is reported as the
+feed's would be, never as a bare `http_410`. The server then says the episode is
+no longer available, and leaves the show's feed state alone. Which codes are the
+Bridge's own and which the host's is in
+[Podcast jobs](pairing-and-jobs.md#podcast-jobs).
+
 `podcast.retain` requires the show `path` and `{"show_id":"<16 lowercase hex>"}`.
 It has priority `-20` and no requester, and is deduped by kind, library and path.
 Progress is `{step:"retaining",message:"Checking retained episodes"}`. Success is
@@ -395,14 +403,20 @@ finish.
   to 24 hours. Observing the status never queues.
 - An explicit Retry by a listener or an admin bypasses the cooldown, and still
   shares any open intent.
-- An identity replacement can return `409 identity_changed` rather than a
-  retryable media 503.
+- An identity change between the pin read and the queueing is retried once with
+  the current pin (`podcast.EnsureFetch`, shared by the stream, the player's POST
+  and the admin's fetch). While the previous identity's fetch is still stopping,
+  the stream answers a retryable `503` with `Retry-After: 2`, the code
+  `identity_changed` and no `fetch` summary (`writePodcastIdentityBusy`), and the
+  POST answers `409 identity_changed`. Shipped players read `identity_changed` on
+  any status as "drop the cached lists and offer Try again", so the code stays.
 
 ### The per-person cap
 
 Each non-admin creator has a cap of **five open `podcast.fetch` intents** across
-libraries, including prefetch and parked work. Admins and server-scheduled work
-are exempt. The insert transaction checks the cap after dedupe. So joining or
+libraries, including prefetch. A parked fetch (`needs_attention`) holds no slot,
+since the Bridge waits on something the listener can't change. Admins and
+server-scheduled work are exempt. The insert transaction checks the cap after dedupe. So joining or
 promoting existing work succeeds at the cap, and does not transfer its requester or
 quota ownership.
 
@@ -910,7 +924,7 @@ data. A replacement show at the same path starts with the default.
 | Mode | Downloads | Deletes |
 |---|---|---|
 | Keep | the newest N currently listed entries in the [episode order](#files-on-disk-feedjson-v1) (publication, season, episode number, path, descending), undated last | only outside this window |
-| Archive | every currently listed entry, oldest first (the same key ascending), undated last | never |
+| Archive | every currently listed entry, oldest first (the same key ascending), so undated entries come first, as the player's **Oldest first** lists them | never |
 | On demand | on play, and it permits one-ahead queue preparation. There are no feed-wide scheduled downloads. Individual admin fetches work too | with no Keep window |
 
 Removed feed entries are never fetched automatically. Their saved bytes remain
@@ -1043,6 +1057,16 @@ symlinked show, audio, attachment or journal path fails.
 - Recovery verifies the owned staged or installed bytes, and completes the
   chapters and the Fetch without incrementing the generation again. Missing or
   corrupt candidates require repair.
+- A failed install keeps the staged audio it downloaded: no checkpoint clear
+  removes a partial that a pending install journal stages (`journalStages`). The
+  next poll or fetch recovers the show and installs the episode.
+- An install journal whose staged audio and episode audio are both gone, whose
+  feed doesn't pin this fetch and whose chapters aren't written is aborted
+  (`podcast.AbortInstall`): the journal goes, the feed keeps its earlier pin, and
+  the episode is fetched again. The Bridge logs a warning naming the show and the
+  episode. An older Bridge's failed install left a show in that state, refusing
+  every write, so the next poll or fetch recovers it. A journal that fails any of
+  these checks keeps refusing writes until it is repaired.
 - A new generation without CHAP removes its old CHAP file.
 - A failed rescan after the disk commit gives `index_failed`. A retry repairs the
   indexing with `reused:true` and no publisher GET.
@@ -1220,11 +1244,26 @@ encoding, and exactly T bytes at the end.
 - Last-Modified, the URL and the size prove nothing on their own.
 - A fresh, unsolicited 206 is rejected.
 
+A partial the Bridge can't open or read back when it resumes is its own fault, not
+the host's. The episode starts again from zero once in that job, before any ranged
+GET is sent, and only a second such partial fails the job `write_failed`.
+
 **Cleanup.** Only a resumable stop with a proven partial may keep it. A terminal
 cancellation, a lost identity, pairing or mapping, a cap or probe failure, or
-exhausted work cleans the owned partials and validators when that is safe.
+exhausted work cleans the owned partials and validators when that is safe. A
+partial the Bridge can't remove keeps its checkpoint record and validator, so a
+later clear tries it again. A new download's checkpoint never overwrites a record
+while that partial stays, so it is never orphaned.
+
 Recovery cleans only owned records older than 24 hours with no live job, under
-mapping checks and locks.
+mapping checks and locks. Then it sweeps partials nothing records
+(`sweepPartials`), at most once an hour (`sweepEvery`) and after a mapping check. It
+removes a regular file directly in a show folder (one holding a `feed.json`) named
+`.audiosilo-tmp-<24 hex>` that is older than 24 hours, past the longest download,
+and that no checkpoint record holds. It skips a show with a running job or a
+pending `*.publish.json` journal, never follows a link, and removes nothing while
+the pairing's token can't be read. Partials an earlier pairing left are swept
+too.
 
 ## Private URLs and recovery
 
@@ -1255,6 +1294,17 @@ held for its jobs at once (`Service.PruneSecrets`, from server 2.4.0). The store
 params have `feed_url: ""`, and the URL is injected only into the claim answer. A
 restart before the claim fails the job as `request_expired`, and the listener must
 follow again.
+
+Any queued follow request, private or not, also fails `request_expired` ("The
+Bridge went offline before it took up the follow request. Follow the feed
+again.") once no online Bridge runs `podcast.subscribe`: its heartbeat lapsed, it
+was unpaired, or it stopped offering the kind (`expireOfflineSubscribes`). The
+silence must last `bridge.OnlineWindow` (2 minutes) on the server's own clock from
+the first sweep that saw it, so a server restart, a host waking from sleep or a
+clock that jumped fails none before the Bridge's next beat. The player's poll of
+its requests and the scheduler's sweep both run it, so an
+[OPML import's](#the-import-waves) next wave answers its rows `unavailable` rather
+than waiting on a Bridge that left.
 
 The Bridge seals the URL **before** recording its local claim, under
 `podcast_job_<id>_<attempt>`. Then it keeps the show's URL as

@@ -71,6 +71,23 @@ whether it is ready to contribute. You sign in to these on the Bridge's own page
 **Open Accounts on the Bridge** takes you there (see
 [Sign the Bridge in to your accounts](../getting-started/bridge-accounts.md)).
 
+When GitHub can't be reached, the GitHub account says the sign-in couldn't be
+refreshed and that the Bridge keeps trying. You don't need to sign in again. If
+GitHub refused the sign-in, it says to sign in again on the Bridge.
+
+When you set the agent's credential on the Bridge, **Credential hand-off** says
+how the Bridge passes it to the agent:
+
+| Hand-off | Means |
+|---|---|
+| **Kept to the Bridge's group** | only the Bridge and the agent can read it |
+| **Readable by every user...** | other containers using the agent's work folder could read it for a moment. Add the Bridge's group to the agent, or see the Bridge's log |
+| **Held back** | the Bridge is set to [keep the credential to its group](../getting-started/bridge-accounts.md#the-agents-credential) and can't, so the agent waits. The Bridge's **Accounts** tab says why |
+| **Failed** | the Bridge couldn't give the agent its credential. The agent step says why |
+
+Once you fix the cause, the Bridge notices within about 5 minutes, with no
+restart.
+
 ## Libraries
 
 The **Libraries** card lists every library with what the Bridge found:

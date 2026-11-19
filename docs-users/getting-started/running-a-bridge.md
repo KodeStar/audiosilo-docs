@@ -267,6 +267,68 @@ tab, or `OPENAI_API_KEY` in the agent's environment.
 Within about 15 seconds, the **Characters and recaps** card on the Bridge's
 **Status** tab says the agent is **Ready**. If not, the line under it says why.
 
+### Use an OpenAI-compatible endpoint
+
+The agent can also use any OpenAI-compatible service instead of a subscription:
+the OpenAI API, a router, or Ollama or LM Studio on your network. The service
+must offer the Responses API, and its model must call tools and take a long
+context (32k tokens or more).
+
+These runs go to a third container, `agent-endpoint`, kept apart from the agent
+and its sign-ins. To set it up:
+
+1. Add this to your compose file, next to what you added in step 1:
+
+   ```yaml
+   services:
+     bridge:
+       environment:
+         AUDIOSILO_BRIDGE_AGENT_ENDPOINT_STAGING_DIR: /endpoint-staging
+       volumes:
+         - endpoint-staging:/endpoint-staging
+
+     agent-endpoint:
+       image: ghcr.io/kodestar/audiosilo-bridge:latest-agent
+       profiles: [endpoint]
+       restart: unless-stopped
+       user: "10003:10003"
+       group_add: [*bridge_pgid]
+       entrypoint: ["audiosilo-bridge"]
+       command: ["agent-runner", "--endpoint-only", "--staging", "/staging"]
+       volumes:
+         - endpoint-staging:/staging
+       networks: [agent-endpoint]
+       cap_drop: [ALL]
+       security_opt: ["no-new-privileges:true"]
+       read_only: true
+       tmpfs: ["/tmp"]
+       stop_grace_period: 20s
+
+   networks:
+     agent-endpoint: {}
+
+   volumes:
+     endpoint-staging: {}
+   ```
+
+2. Start it with `docker compose --profile endpoint up -d`.
+3. On the Bridge's **Settings** tab, in the **Agent** card, set **The agent runs**
+   to **An OpenAI-compatible endpoint**.
+4. Enter the **Endpoint address** (up to `/v1`, like
+   `http://192.168.1.20:11434/v1`) and the **Model**, then press **Save agent
+   settings**.
+5. If the service needs a key, enter it as the **Endpoint API key** under the
+   address and save it.
+6. Press **Test connection** to check the address, then run
+   `docker compose restart bridge`.
+
+Within about 15 seconds, the **Status** tab says the agent is **Ready**.
+
+Don't add volumes or credentials to `agent-endpoint`. The Bridge refuses its runs
+while it can reach a sign-in, and the **Status** tab says why. The key belongs to the
+address you entered it for: saving another address removes it, so enter the new
+one's.
+
 ## 8. Review the monthly budget
 
 The Bridge stops the agent from spending more than **$100** a month unless you
@@ -295,7 +357,7 @@ where it applies at once.
 | `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | The most the agent may cost in a calendar month (UTC). `0` means no cap. |
 | `agent.book_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_BOOK_BUDGET_USD` | `75` | The most one book may cost. |
 | `transcripts.retention_days` | `AUDIOSILO_BRIDGE_TRANSCRIPTS_RETENTION_DAYS` | `30` | Days a book's transcripts are kept after its job ends. `0` deletes them at once. |
-| `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` | Which tool the agent runs: `claude` or `codex`. |
+| `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` | Which tool the agent runs: `claude`, `codex` or `openai-compatible`. You can also set it on the **Settings** tab. |
 
 With a subscription, the Bridge counts what the same use would cost on an API
 key, so the limits still apply. The **Status** tab shows this month's spend.

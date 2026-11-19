@@ -41,7 +41,8 @@ repositories. Your password never reaches the Bridge.
 
 If the card says **Sign in again**, GitHub stopped accepting the sign-in. Sign in
 again. If GitHub can't be reached for a while, the Bridge can't share until it
-can, and recovers by itself.
+can. It tries again every minute, and paused jobs carry on by themselves once
+GitHub answers.
 
 **Sign out** revokes the sign-in on GitHub. You can also revoke **AudioSilo
 Contributions** yourself on GitHub, under **Settings > Applications > Authorized
@@ -49,13 +50,14 @@ GitHub Apps**.
 
 ## The agent's credential
 
-The **Agent** card shows which tool the agent runs (`claude` or `codex`), whether
-it is **Ready**, and a field for each kind of credential:
+The **Agent** card shows which tool the agent runs, whether it is **Ready**, and
+a field for each kind of credential:
 
 | Tool | Fields |
 |---|---|
 | `claude` (the default) | **Claude subscription token** (from `claude setup-token`), **Anthropic API key** (billed per use) |
 | `codex` | **OpenAI API key** (billed per use) |
+| `openai-compatible` | **Endpoint API key**, also under the address in **Settings > Agent**. A local server such as Ollama takes none. See [Use an OpenAI-compatible endpoint](running-a-bridge.md#use-an-openai-compatible-endpoint) |
 
 Paste the credential and press **Save**. With both Claude fields set, the agent
 uses the subscription token. For a ChatGPT subscription, you sign the agent
@@ -68,7 +70,12 @@ If the Bridge can't keep the credential to its own group (the agent isn't in the
 group, the work folder's drive refuses the change, or the two containers see
 different user ids on it), any user of the work folder
 can read it until the agent picks it up, and the Bridge's log says how to fix
-that. To have the agent wait instead, set
+that. Once you fix it, the Bridge notices within about 5 minutes and keeps the
+credential to its group again, with no restart. The console's **Server >
+Settings > Bridge** shows which way the credential is handed over (see
+[The setup card](../admin/bridge.md#the-setup-card)).
+
+To have the agent wait instead, set
 `AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP: "true"` on the Bridge. The **Accounts** tab
 then says why the agent isn't ready.
 

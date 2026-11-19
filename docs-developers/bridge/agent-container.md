@@ -1,6 +1,6 @@
 ---
 title: The agent container
-description: "Why the AI agents run in a separate container, its image and hardening, and the staging protocol between it and the Bridge: runner.json, the job dir and its files, claim, heartbeat, cancel and done, the environment allow-list and the credentials, the harvest's limits, the credential hand-off from the Bridge's Accounts tab, and the failure modes."
+description: "Why the AI agents run in a separate container, its image and hardening, and the staging protocol between it and the Bridge: runner.json, the job dir and its files, claim, heartbeat, cancel and done, the environment allow-list and the credentials, the harvest's limits, the credential hand-off from the Bridge's Accounts tab, the group probe, an OpenAI-compatible endpoint's own agent service, and the failure modes."
 ---
 
 The Bridge never runs an AI agent CLI itself. Every agent invocation of the
@@ -36,8 +36,11 @@ A separate container holds on stock Docker seccomp:
   [The credential hand-off](#the-credential-hand-off));
 - it runs as a fixed uid (`10002:10002`), with the Bridge's `PGID` added
   (`group_add`, so a handed credential can be kept to that group), `cap_drop: [ALL]`,
-  `no-new-privileges`, a read-only root, a tmpfs `/tmp`, and **its own network**
-  (the internet only: it can't reach the Bridge or the server);
+  `no-new-privileges`, a read-only root, a tmpfs `/tmp`, and **its own network**.
+  That is a plain Docker bridge network: it can't reach the Bridge or the server
+  by name, and it reaches the internet and the LAN through the host like any
+  container. There is no egress filter, which an OpenAI-compatible endpoint on the
+  LAN needs;
 - every job sees only what the Bridge staged for it, and every output is
   untrusted.
 
@@ -341,8 +344,8 @@ with the monthly budget on.
 
 The admin can set the agent's credential on the Bridge page's **Accounts** tab
 instead of in the container. The Bridge seals it in its vault
-(`claude_oauth_token`, `anthropic_api_key` or `openai_api_key`;
-`internal/accounts`). It hands the credential to **each run, for that run only**,
+(`claude_oauth_token`, `anthropic_api_key`, `openai_api_key` or
+`endpoint_api_key`; `internal/accounts`). It hands the credential to **each run, for that run only**,
 and runs at the same time each get their own copy. The container's own credential
 always wins: its environment and secrets files stay the headless override.
 
@@ -351,6 +354,9 @@ always wins: its environment and secrets files stay the headless override.
   `accounts.Agent.Credential` picks the credential:
   - claude takes the subscription token, else the Anthropic API key;
   - codex takes an OpenAI API key;
+  - `openai-compatible` takes the endpoint's API key (`endpoint_api_key`), and
+    only for the address it was entered for (see
+    [An OpenAI-compatible endpoint](#an-openai-compatible-endpoint));
   - a ChatGPT login stays a container sign-in.
 
   The status then counts the agent available, billed as that kind. The
@@ -392,7 +398,9 @@ always wins: its environment and secrets files stay the headless override.
   and `agent_unavailable` ([Parks](generating.md#parks)).
 - **The problem as a kind.** Beside its `Detail`, `agentbox.Status` carries
   `Problem`: `not_running`, `outdated`, `no_cli`, `other_backend`,
-  `no_credential` or `group_required`, and empty when available or refused. For `other_backend` it also
+  `no_credential`, `group_required`, `handoff_failed`, or one of the endpoint's
+  (`no_endpoint`, `endpoint_service`, `own_credentials`, `endpoint_only`), and
+  empty when available or refused. For `other_backend` it also
   carries `Other`, the CLI that is signed in. A container too old to take the
   Accounts tab's credential is `outdated`, like another protocol. The Status tab's
   agent line keeps the full `Detail`. The setup checklist words the kind for a
@@ -430,16 +438,58 @@ that names the fix, and none fails a run:
   warning says to add the group with `group_add` and the Bridge's `PGID`, on an
   agent image as new as the Bridge, and to recreate the container.
 - **The volume refuses the chown or the ACL change**, as NFS and CIFS staging
-  volumes can. That run is staged in the open modes. The warning says to use a
-  staging volume that allows chown.
+  volumes can. Only a refusal counts: `EPERM`, `ENOTSUP` or `ENOSYS`
+  (`groupRefused`). That run is staged in the open modes, and the next run tries
+  the group again. The warning says to use a staging volume that allows chown.
 - **The runner is denied the group's file.** The two containers map ids on the
   volume differently, for example under rootless Podman's user namespaces. The
   runner refuses the job before the CLI starts and writes `credential_denied` in
   `exit.json`. The Bridge stages that job once more in the open modes, so nothing
-  runs twice, and stays on the open modes until it restarts (`groupDenied`).
+  runs twice, and stays on the open modes (`groupDenied`) until a
+  [group probe](#the-group-probe) finds the runner takes the group's file.
 
-Only the log shows which modes are in use; the Bridge's page and the console
-don't.
+Any other error from the chown or the ACL change, an I/O error say, is a failed
+hand-off (`groupFailedError`), never a fallback. The job is never opened to the
+runner in either mode, and the agent is unavailable with `Problem`
+`handoff_failed` (`groupFailed`) until a group probe gets the group's file
+through.
+
+The heartbeat's setup block reports the mode in use as `agent_credential`
+(`group`, `world`, `group_required` or `failed`; see
+[The setup checklist](pairing-and-jobs.md#the-setup-checklist)), and the
+console's Setup card shows it as its **Credential hand-off** row.
+
+### The group probe
+
+A fallback the Bridge learned from a run (`groupDenied`, the `agent.require_group`
+block in `groupBlocked`, or `groupFailed`) holds for the process. The Bridge looks
+again with a **group probe** (`agentbox/probe.go`), so the operator's fix (the
+same id mapping for both containers, a staging volume that allows chown) takes
+effect with no restart:
+
+- **When.** At a heartbeat, 5 minutes after the fallback began and every 5
+  minutes after the last probe (`probeEvery`), while a live runner takes hand-offs
+  and lists the Bridge's group. One probe runs at a time.
+- **What.** A job with a `credential.json` in the group's modes that holds a probe
+  object no CLI takes as a credential (`agentproto.CredentialGroupProbe`), and no
+  `prompt.txt`. The runner deletes the file before it decodes it, then refuses the
+  job, so no CLI ever starts. On the `openai-compatible` backend the probe goes as
+  an endpoint request, because the endpoint's runner takes a handed file whatever
+  else it holds.
+- **The answer.** The runner taking the file, shown by its own refusal naming the
+  probe's kind with the file gone, ends the fallback: the next handed credential
+  goes to the group alone, and the Bridge logs it. A denial, a volume that still
+  refuses, or no claim in time leaves the fallback as it is.
+
+The staging dir is open to every uid on the volume, so another uid could claim the
+probe, answer it or take its file. Only the runner's take ends a fallback. Any
+other uid's hand in the probe's dir **spoils** it: the Bridge warns once for each
+uid in a row, naming it, and the agent's status carries a warning (`Status.Warning`,
+`SpoiledWarning`) that the Accounts tab shows. The checklist's `agent` item adds
+that the credential is shared, and with `agent.require_group` the block's reason
+adds it instead. A later probe the runner answers clears it. Ending a fallback
+only ever moves the credential onto the group, so a spoiled probe can delay that
+but never widen who reads the credential.
 
 ### Which files are trusted
 
@@ -490,17 +540,103 @@ a `Detail` that names the fix:
 - the runner was denied the group's file (give both containers the same id
   mapping).
 
-The last two are learned only from a run, so they are kept until the Bridge
-restarts (`groupBlocked`). The Status tab's agent line shows the full reason, and the
+The last two are learned only from a run, so they are kept (`groupBlocked`) until
+a [group probe](#the-group-probe) finds the fix in place. The Status tab's agent line shows the full reason, and the
 heartbeat carries it to the server. The setup checklist's agent step words it for
 a person (see [The setup checklist](pairing-and-jobs.md#the-setup-checklist)). A
 book waiting for the agent parks `agent_unavailable` with the full reason.
 
 Turn it on when other containers or users can reach the staging volume and a
 credential readable by all of them for a few seconds is not acceptable. With it
-on, a forged file can only make the agent unavailable until the Bridge restarts,
-never hand the credential to every uid. Leave it off where the hand-off must keep
+on, a forged file can only make the agent unavailable, never hand the credential
+to every uid. Leave it off where the hand-off must keep
 working on any volume.
+
+## An OpenAI-compatible endpoint
+
+`agent.backend: openai-compatible` runs codex against an OpenAI-compatible API
+instead of a subscription: the OpenAI API, a router, or Ollama or LM Studio on
+the LAN. The admin sets the address, the models and the API key in the Bridge
+page's **Settings > Agent** ([Configuration](configuration.md#characters-and-recaps)).
+
+- **The run.** codex gets a provider of its own on the command line
+  (`-c model_provider="audiosilo_endpoint"`, its `base_url` and
+  `wire_api="responses"`), so the endpoint must offer the Responses API. Web
+  search is off, as it is a tool OpenAI hosts. The run has a fresh, empty
+  `CODEX_HOME` under its own tmp dir and the key only in a variable of its own
+  (`agent.EndpointKeyEnv`, which codex's `env_key` names), never `OPENAI_API_KEY`
+  or the shared `CODEX_HOME`. Without a key it runs keyless, as a local server needs no key.
+- **The key.** The Bridge seals it as `endpoint_api_key` and keeps it for the
+  address it was entered for. Saving another address, on the page, in
+  `config.yaml` or in the environment, removes it, and the page asks for the new
+  address's key. A run reads the address once and hands that address's own key, so
+  a run in flight keeps the key it started with. **Test connection** runs from the
+  Bridge: `GET <base>/models`, then `POST <base>/responses` with an empty body to
+  learn whether the Responses API is there. It sends the key only to the saved
+  address it belongs to.
+- **The models.** An endpoint has no default model, so every stage needs one:
+  `agent.openai_compatible.model`, or a stage's own in
+  `agent.openai_compatible.models`. The address and the models apply at once.
+  A backend change applies at the next start.
+
+### The endpoint's own agent service
+
+The endpoint's model is whoever answers at that address, and codex runs its
+commands as the runner's uid with its sandbox off. In the agent container such a
+run could read the subscriptions' credentials, plant a `/agent/codex/config.toml`
+for a later subscription run, or leave a process behind. So endpoint runs never go
+to the agent container. They go to a service of their own, the compose example's
+`agent-endpoint` (profile `endpoint`: `docker compose --profile endpoint up -d`):
+
+- the same agent image, run as `audiosilo-bridge agent-runner --endpoint-only
+  --staging /staging`, as uid `10003`, with the Bridge's `PGID` added like the
+  agent container's;
+- its own staging volume, the Bridge's `agent.endpoint_staging_dir`
+  (`/endpoint-staging` in compose), apart from `agent.staging_dir`;
+- no `/agent` volume, no credential in its environment, its own network, and the
+  agent container's hardening (`cap_drop: [ALL]`, `no-new-privileges`, a
+  read-only root, a tmpfs `/tmp`);
+- the runner as the container's first process (`entrypoint: ["audiosilo-bridge"]`,
+  no tini), a child subreaper that no run can read or trace. Every CLI runs in a
+  session of its own, and the runner kills whatever a run leaves behind, before
+  each CLI starts and after it ends;
+- one run at a time: `--slots` over 1 is refused, and the Bridge caps the
+  backend at one slot whatever `runner.json` says.
+
+`runner.json` says `endpoint_only: true` from this service. It runs only requests
+that name an endpoint, and the agent container refuses those, both before any CLI
+starts. It takes only an `endpoint_api_key` credential, and never runs a job dir
+or `request.json` its own uid made, since a run could leave one behind.
+
+The service refuses every run, and says so in `runner.json`'s `own_credentials`,
+while it holds a credential or can reach the subscriptions' home. It checks this
+when it starts: one of the four credential variables in its environment, a home
+it can list, write or enter, or a mount (read from `/proc/self/mountinfo`) that is
+the agent volume, is mounted under a credential file's name, or holds a
+credential file or the agent home's marker `.audiosilo-agent-home`. The agent
+container's runner writes that marker into `/agent` at its start. The service's
+log names what it found, never a value.
+
+The Bridge's side (`agentbox/service.go`) checks the pair before it stages
+anything. The backend's `Status` is:
+
+- `no_endpoint` with no address;
+- `endpoint_service` with no `agent.endpoint_staging_dir`, one that is or holds
+  the agent container's (by path or `os.SameFile`), a `runner.json` there without
+  `endpoint_only`, or one owned by the uid of the agent container's live runner;
+- `own_credentials` while the service reports `own_credentials`, or a CLI there
+  with a credential;
+- `outdated` for a runner too old to take an endpoint.
+
+The `claude` and `codex` backends report `endpoint_only` when their staging dir
+holds the endpoint's service. The setup checklist words each of these (see
+[The setup checklist](pairing-and-jobs.md#the-setup-checklist)).
+
+One limit is known and accepted. A run still going shares the service's uid, so
+it can write its own job's `done` and `exit.json`. The Bridge then stages the next
+job beside it, and that run can read the next job's key. With one slot, the
+sweeps, and the key bound to its address, that key is another endpoint's only if
+the admin changed the address meanwhile.
 
 ## Testing it locally
 

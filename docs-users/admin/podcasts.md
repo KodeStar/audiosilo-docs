@@ -48,7 +48,7 @@ deleted **seven days after every follower has finished it**.
 |---|---|---|
 | **Keep N** | The newest N episodes in the feed | Older ones, after everyone finishes and the grace period ends |
 | **On demand** | An episode when someone plays it, plus the next one in their queue | After everyone finishes and the grace period ends |
-| **Archive** | Every episode in the feed | Never |
+| **Archive** | Every episode in the feed, oldest first. Episodes with no date go first, as **Oldest first** lists them | Never |
 
 Retention can't be set in the console or the apps yet. For the API, see the
 [developer reference](/developers/server/api/reference#podcast-storage-admin).
@@ -87,7 +87,9 @@ AUDIOSILO_BRIDGE_PODCASTS_MAX_EPISODE_MB: "2048"
 Listeners follow a show from its page, or add a new one by search, feed address or
 OPML file in the player. A show already in the library is followed at once; a new
 feed waits for the Bridge to check it. Each person can have five follow requests
-waiting at once. Kids accounts and the demo account can't follow shows.
+waiting at once. If the Bridge stays offline for a few minutes, the waiting
+requests end, and the listener follows the feed again once it is back. Kids
+accounts and the demo account can't follow shows.
 
 The server has the Bridge check each followed show's feed for new episodes. It
 checks recently active shows more often than quiet ones. The console's Bridge job list

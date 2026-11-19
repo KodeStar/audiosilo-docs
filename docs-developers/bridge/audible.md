@@ -1,6 +1,6 @@
 ---
 title: Audible
-description: "Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, preorders from the orders and the catalog (remembered, Bridge 0012), the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the current device profile (Bridge 0010), redacted account ids, contests settled by series number and planned destinations; position sync both ways (audible.sync, the push loop, furthest only, the two Bridge routes, server 0066 and Bridge 0011)."
+description: "Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, preorders from the orders and the catalog (remembered, Bridge 0012), the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the current device profile (Bridge 0010), redacted account ids, contests settled by series number and planned destinations; position sync both ways (audible.sync, the push loop, furthest only, the two Bridge routes, server 0066 and 0085, and Bridge 0011)."
 ---
 
 The Bridge does three things with Audible accounts:
@@ -1106,7 +1106,7 @@ server's scan by a leading dot. `Paper "Kingdoms" <Who* Rules> | Why?` is placed
 
 Position sync keeps an account's listening places in step with Audible, both ways.
 The code is `internal/audiblesync` on the Bridge, and `catalog/audible_sync.go`,
-`api/handlers_audible_sync.go` and `0066` on the server.
+`api/handlers_audible_sync.go`, `0066` and `0085` on the server.
 
 - **Furthest wins** in both directions. Audible's place never moves the server's
   back, and the Bridge never writes over a place Audible moved on from.
@@ -1173,20 +1173,38 @@ Some console changes queue the account's sync at once (`audible.SyncNow`):
 - turning sync on.
 
 `catalog.AudibleSyncQueueable` applies the same rule without the 15 minutes, and
-needs an online Bridge that offers the kind. A title change queues even an empty
-title list, so the Bridge drops a left-out title now.
+needs an online Bridge that offers the kind. A title change queues the sync even
+when no title is left to sync, so the Bridge drops a left-out title now.
 
 **The kind:**
 
 - is internal and quiet;
 - is owned by the `audible` module, and held while the module is off;
-- is deduped per account and `promotes`: a queued one takes the newest titles, and
-  one the Bridge already runs keeps its own;
+- is deduped per account, and one the Bridge already runs keeps the titles its
+  claim gave it;
 - keeps only the newest ended job of each account (`pruneAudibleEnded`).
 
-Its params are server-built and strict on both sides (`audibleSyncParams`,
-`link.AudibleSyncParams`), at most 1 MiB. `AudibleSync` drops the last titles past
-that size.
+**The titles are read at the claim.** The queued job stores only
+`{"account": "<id>"}` (`AudibleSyncQueued`, checked strictly by
+`audibleSyncParams`), so the queue never holds thousands of titles every 15
+minutes. When the Bridge claims it, `Service.ClaimAudibleSync` reads the account's
+synced titles as they are then and answers them in the params
+(`AudibleSyncClaim`), at most 1 MiB:
+
+- a title the Bridge's strict `link.AudibleSyncParams` would refuse the whole list
+  for (a bad ASIN, library, path or runtime, or an ASIN a second time) is left out
+  and logged, so one odd stored title never fails the account's sync;
+- the last titles past the size limit are left out too;
+- a job an older server queued with its titles in the params is refilled the same
+  way.
+
+When the titles can't be read, the claim puts the job back unspent and hands out
+the jobs behind it, at most 3 claims in a row (`maxUnspentSyncFills`). After that
+the job stays claimed and undelivered until its lease spends the attempt, and the
+last attempt's failing claim ends it with its own reason. A job whose stored params
+can't be read can never be filled, so its first claim ends it. The console shows
+each of these endings in its own words, and the claim never answers `500` for
+them.
 
 ```json
 {
@@ -1336,18 +1354,28 @@ A device's diverged span then offers Audible's place by name (the row's
 [API reference](../server/api/reference.md#post-apiv1bridgeaudibleaccountsaccountlistening).
 
 **The device id `audible:<account>`** (`catalog.AudibleDevicePrefix`) belongs to
-the listening route alone.
+the listening route alone. A progress row carries it only while it holds the place
+that account's own sync wrote. The feed leaves an account's own rows out, so a
+place another writer left under that device would never reach Audible, and
+Audible's next place could undo it unseen.
 
 - `POST /me/listening/sync` refuses a batch naming one (`400 device_id is
   reserved`).
-- A `PUT .../progress` naming one (a row echoed back) saves under no device id.
-- An edit of the row (`EditProgress`, the listener's or an admin's) clears the
-  device id. So the edit reaches the feed, and Audible's next place can't undo it
-  unseen.
-- A listening import (Audiobookshelf) that moves on such a row clears its device id
-  and name the same way (`importer.mergeProgress`). Its undo restores the earlier
-  place under no device either (`progressPrior.restored`), never as Audible's, so
-  the feed carries the undo to Audible too.
+- Two triggers on `progress` (`0085_audible_place_guard`) are the one rule for
+  every other write. Any insert, and any update that moves a row's position or its
+  finish, leaves the row with no device and no device name when it carried an
+  Audible one. That covers the player (a `PUT .../progress` naming one saves under
+  no device id), an edit (`EditProgress`, the listener's or an admin's), a
+  listening import (Audiobookshelf) and its undo, and a join. So each of those
+  places reaches the feed and is offered to Audible.
+- The listening route writes Audible's place, then names its device again in a
+  statement of its own that sets only `device_id` and `device_name`
+  (`ownAudiblePlace`), which fires neither trigger.
+- Moving or renaming a synced book's folder (a path re-key) keeps the row as the
+  account's when it holds the place the account wrote, unchanged
+  (`carriedAudiblePlace`). Offered back, that stale place could be pushed over a
+  rewind made in the Audible app since. A join's rows are not kept so, because a
+  part's place is on a longer book.
 
 ### The server to Audible: the push loop
 
@@ -1414,7 +1442,7 @@ below are in memory, for this loop only.
 | the server's `sync_off` | leaves the account for 5 minutes |
 | the server's `user_unavailable` or `unknown_account` | leaves the account for 15 minutes |
 | the server's `429`/`503` | waits its `Retry-After`, at least 2 minutes |
-| the server's `404` for a missing route (code `not_found` or none: a server before 2.6.0, `link.ErrNoAudibleSync`) | leaves the account for an hour, its `sync_error` saying to update the server. A `404` with another code is that answer |
+| the server's `404` for a missing route (code `not_found` or none: a server before 2.6.0, `link.ErrNoAudibleSync`) | the first asks again 2 minutes later with nothing recorded, since a proxy in front of a restarting server answers a bare `404` too. The second in a row (`oldServerStrikes`) leaves the account for an hour, its `sync_error` saying to update the server. A `404` with another code is that answer |
 
 Health (`sync_at`, `sync_error`, and `sync_retry_at`, which no later call shortens)
 feeds only the `audible` setup item's detail ("places not syncing for N accounts:

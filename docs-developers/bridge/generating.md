@@ -206,8 +206,9 @@ or parked. One run:
    sign in on the Bridge's Accounts tab, or generate the book with contribute set
    to local"), or signed in but the sign-in couldn't be refreshed
    (`contrib.ErrSignInUnrefreshed`: "...but the Bridge's GitHub sign-in couldn't
-   be refreshed because GitHub couldn't be reached: generate the book again once
-   it can, or with contribute set to local"). A resumed job is checked only when
+   be refreshed (GitHub couldn't be reached, or didn't answer with a new token):
+   generate the book again once GitHub answers, or with contribute set to
+   local"). A resumed job is checked only when
    it has to start a new engine book after all, because that is a new spend. That
    happens when its id maps to another book's run, as in step 2, or its engine book
    is gone (deleted, or swept since it was cancelled).
@@ -336,7 +337,7 @@ names an authentication, rate or usage limit, credits or backend failure
 | `asr_worker_waiting` | no [ASR worker](workers.md) is connected and the fallback is `wait` (or the Bridge has no speech recognition of its own) | yes, as soon as a worker connects (or the fallback is `local` with a usable backend) |
 | `manifest_changed` | the book's audio changed since it was transcribed | no: cancel and generate again |
 | `ebook_unreadable`, `ebook_no_chapters` | the ebook can't be used | no: cancel and generate from the audio |
-| `contrib_unavailable` | contributing has no GitHub token it can use: none resolves, GitHub refused it, or a signed-in token needed a refresh and GitHub couldn't be reached (same code, its own reason: `pipeline.ContribUnrefreshedMsg`) | yes, on a sign-in on the Accounts tab (every book with this code, whatever its reason); the unrefreshed one not by itself, since the Bridge stays signed in and a refresh that later succeeds re-admits nothing: **Retry** once GitHub can be reached |
+| `contrib_unavailable` | contributing has no GitHub token it can use: none resolves, GitHub refused it, or a signed-in token needed a refresh and GitHub couldn't be reached or didn't answer with a new token (same code, its own reason: `pipeline.ContribUnrefreshedMsg`) | yes, on a sign-in on the Accounts tab (every book with this code, whatever its reason). The unrefreshed one also resumes at once when a refresh works, which the Bridge tries once a minute, and looks again by itself every 10 minutes (`contrib.UnrefreshedRetry`) |
 | `core_needed` | contributing needs a community core record the book doesn't have | no (the local files are already written) |
 | `core_pending` | the book's core record waits for the next data release | yes |
 | `book_not_writable` | the Bridge can't write in the book's folder or its `.audiosilo/` (before the run, or when writing the results; the results wait in the engine's work folder) | it checks again every minute |
@@ -631,9 +632,19 @@ change.
 
 A sign-in on the Accounts tab re-admits every book parked `contrib_unavailable`,
 whatever its reason. A book parked because a signed-in token couldn't be refreshed
-gets no sign-in, because the page still shows the Bridge signed in. A refresh that
-later succeeds re-admits nothing, so the book waits for **Retry** once GitHub can
-be reached ([Parks](#parks)). Signing out and in again re-admits it too.
+needs no sign-in, because the Bridge is still signed in. The Bridge tries the
+refresh again at most once a minute (`accounts.refreshRetry`; the heartbeat and
+the page ask for the token), and the first refresh that works re-admits the books
+parked on it at once. The park also carries a `retry_at` 10 minutes out
+(`contrib.UnrefreshedRetry`), so a token that resolves another way meanwhile (the
+environment's, `gh`'s) is picked up too ([Parks](#parks)).
+
+`accounts.ErrUnrefreshed` covers GitHub not being reached (`ghauth.Unreachable`:
+no answer, or one cut short) and GitHub answering with something other than a
+token (a server error, a rate limit, a page that isn't JSON); its reason, and the
+checklist's `github` detail, say which. GitHub answering that the refresh token
+is spent or revoked (`ghauth.ErrBadRefresh`) refuses the sign-in instead
+(`accounts.ErrRefused`), which only a new sign-in ends.
 
 `can_contribute` in the heartbeat means "a token resolves and isn't refused". With
 the Contributions module on, that is all the server checks of the Bridge's GitHub

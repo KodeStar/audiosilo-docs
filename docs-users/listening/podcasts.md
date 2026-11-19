@@ -88,6 +88,8 @@ Every podcast has a feed address, usually ending in `.xml` or `/rss`. Find it on
 
 Your server adds five new shows at a time, so a long list goes in batches. The player sends each batch by itself. If you leave the page, choose the same file again to carry on. Shows already added are skipped.
 
+If your server can't add shows for now, the rest of the list says **Can't be added right now**. Tap **Try again** later to carry on.
+
 An import can't mark a feed private. Follow that one by its address with **Private feed** on.
 
 ## Exporting your shows
@@ -115,7 +117,7 @@ An episode that **Plays on demand** isn't on your server yet. The server downloa
 
 **Cancel** stops waiting. The server keeps downloading, so the episode is ready next time.
 
-If the server can't get the episode, the player says why and offers **Try again**. Each person can have five episodes downloading at once. If it says the server can't fetch episodes now, ask your admin.
+If the server can't get the episode, the player says why and offers **Try again**. Each person can have five episodes downloading at once. One that is waiting for your admin to fix something doesn't count. If it says the server can't fetch episodes now, ask your admin.
 
 ### When an episode ends
 

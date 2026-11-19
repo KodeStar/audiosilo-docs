@@ -112,8 +112,12 @@ The settings [`sidecars.generate`](generating.md) adds, or that matter most to i
 
 | Setting | Environment | Default | What it is |
 |---|---|---|---|
-| `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` (empty is claude) | the CLI the [agent container](agent-container.md) runs for this Bridge: `claude` or `codex` |
+| `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` (empty is claude) | what the [agent container](agent-container.md) runs for this Bridge: `claude`, `codex`, or `openai-compatible` (codex against an [OpenAI-compatible endpoint](agent-container.md#an-openai-compatible-endpoint), which must offer the Responses API). The page's **Settings > Agent** edits it, and the variable locks it there. A change applies at the next start |
+| `agent.openai_compatible.base_url` | `AUDIOSILO_BRIDGE_AGENT_OPENAI_COMPATIBLE_BASE_URL` | | the endpoint's address up to `/v1` (`https://api.openai.com/v1`, `http://192.168.1.20:11434/v1`): http or https, with no user name, password or query. Required by `openai-compatible`. Its API key is set on the page, never here, and is kept for the address it was entered for: another address, set anywhere, removes it. Applies at once |
+| `agent.openai_compatible.model` | `AUDIOSILO_BRIDGE_AGENT_OPENAI_COMPATIBLE_MODEL` | | the model every agent stage uses on the endpoint. It must call tools and take a long context. An endpoint has no default model, so `openai-compatible` needs this or a model for every stage. Applies at once |
+| `agent.openai_compatible.models` | | | a map from an agent stage to its own endpoint model, replacing `model` for that stage (config or the page). A key that isn't an agent stage stops the start |
 | `agent.staging_dir` | `AUDIOSILO_BRIDGE_AGENT_STAGING_DIR` | `<data>/staging` | the folder shared with the agent container (absolute). The compose example mounts a volume at `/staging`, outside `/bridge-data`, because the first start's ownership fix of `/bridge-data` would otherwise reach it |
+| `agent.endpoint_staging_dir` | `AUDIOSILO_BRIDGE_AGENT_ENDPOINT_STAGING_DIR` | | the folder shared with the endpoint's [own agent service](agent-container.md#the-endpoints-own-agent-service) (`agent-runner --endpoint-only`), where `openai-compatible` runs go: an absolute path on another volume than `agent.staging_dir` (compose uses `/endpoint-staging`). Unset, endpoint runs don't run (Problem `endpoint_service`). Applies at the next start |
 | `agent.require_group` | `AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP` | `false` | never hand the Accounts tab's credential to every uid on the staging volume: where the Bridge would fall back to that, the agent is unavailable instead (Problem `group_required`). A value that isn't a boolean stops the start. See [`agent.require_group`](agent-container.md#agentrequire_group) |
 | `agent.claim_timeout_seconds` | `AUDIOSILO_BRIDGE_AGENT_CLAIM_TIMEOUT_SECONDS` | `120` | how long an agent job waits for the container to claim it before the book parks `agent_unavailable` (10 to 3600) |
 | `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | the monthly agent spend cap across every book, for the calendar month in UTC. `0` = no cap. The page's **Settings** tab edits it, and it is locked when the environment sets it. It applies **live**: the engine reads it per run (`pipeline.Config.MonthlyBudget` is a func). A save that changes it resumes the books and description jobs parked `budget_exceeded` ([Parks](generating.md#parks)). One still over the new cap parks again until the next month |
@@ -250,7 +254,8 @@ The Bridge's secrets are **never in `config.yaml`**. They are:
   both expiries are sealed as **one** value, so a refresh replaces the pair in one
   write;
 - the agent credentials set on the Accounts tab: `claude_oauth_token`,
-  `anthropic_api_key` and `openai_api_key`;
+  `anthropic_api_key` and `openai_api_key`, and the OpenAI-compatible endpoint's
+  key, `endpoint_api_key`, kept for the address it was entered for;
 - each Audible account's sign-in, `audible_<id>`: its tokens and device key, with
   full Amazon account access.
 
@@ -416,8 +421,16 @@ services:
       # The folder shared with the agent container (below). Kept outside
       # /bridge-data, whose first-start ownership fix would otherwise reach it.
       AUDIOSILO_BRIDGE_AGENT_STAGING_DIR: /staging
-      # The CLI the agent container runs: claude (the default) or codex.
+      # The folder shared with agent-endpoint, where an OpenAI-compatible
+      # endpoint's runs go (another volume than the one above).
+      AUDIOSILO_BRIDGE_AGENT_ENDPOINT_STAGING_DIR: /endpoint-staging
+      # The CLI the agent container runs: claude (the default), codex, or
+      # openai-compatible (codex against the endpoint below, which needs the
+      # Responses API; set its key in Settings > Agent). These lock the
+      # page's Settings > Agent fields; leave them out to set them there.
       # AUDIOSILO_BRIDGE_AGENT_BACKEND: codex
+      # AUDIOSILO_BRIDGE_AGENT_OPENAI_COMPATIBLE_BASE_URL: http://192.168.1.20:11434/v1
+      # AUDIOSILO_BRIDGE_AGENT_OPENAI_COMPATIBLE_MODEL: qwen3:32b
       # Never hand the agent credential to every user on the staging volume
       # (the agent waits instead, saying why, when it can't be kept to the
       # group_add group below):
@@ -429,12 +442,18 @@ services:
       # AUDIOSILO_BRIDGE_GITHUB_TOKEN: ${AUDIOSILO_BRIDGE_GITHUB_TOKEN}
     ports:
       - "8091:8091"
+    # An OpenAI-compatible server on this same host (the agent's line below):
+    # Settings > Agent's Test connection runs from the Bridge, so it needs the
+    # name too.
+    # extra_hosts: ["host.docker.internal:host-gateway"]
     volumes:
       - ./bridge-data:/bridge-data
       - /path/to/audiobooks:/audiobooks:rw
       # Shared with the agent container, at the Bridge's agent.staging_dir.
       # The only volume both mount.
       - staging:/staging
+      # Shared with agent-endpoint, at agent.endpoint_staging_dir.
+      - endpoint-staging:/endpoint-staging
 
   agent:
     image: ghcr.io/kodestar/audiosilo-bridge:latest-agent
@@ -459,13 +478,46 @@ services:
     # A stop cancels the runs in progress: SIGTERM, then SIGKILL 10 s later.
     stop_grace_period: 20s
 
+  # An OpenAI-compatible endpoint's own agent service: started only with
+  # --profile endpoint. Keep it apart from the agent container: its own user
+  # (never the agent's 10002), its own staging volume, no /agent volume (nor
+  # agent-config, or a CLI's login, at any other path) and no credential in its
+  # environment. The runner refuses its runs otherwise.
+  agent-endpoint:
+    image: ghcr.io/kodestar/audiosilo-bridge:latest-agent
+    profiles: [endpoint]
+    restart: unless-stopped
+    user: "10003:10003"
+    # The bridge's PGID, as for the agent container: the endpoint's key is
+    # handed to this group alone.
+    group_add: [*bridge_pgid]
+    # The runner is the container's first process, with no tini before it: a
+    # run's commands share its user, and could read or trace any other.
+    entrypoint: ["audiosilo-bridge"]
+    command: ["agent-runner", "--endpoint-only", "--staging", "/staging"]
+    volumes:
+      - endpoint-staging:/staging
+    networks: [agent-endpoint]
+    # An OpenAI-compatible server on this same host (Ollama listening on
+    # 0.0.0.0): reach it as http://host.docker.internal:11434/v1.
+    # extra_hosts: ["host.docker.internal:host-gateway"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp"]
+    stop_grace_period: 20s
+
 networks:
-  # The agent's own network: internet access, and nothing else of this stack.
+  # The agent's own network: nothing else of this stack. It reaches out
+  # through the host like any container (the internet and your LAN).
   agent: {}
+  # agent-endpoint's, apart from the agent container's too.
+  agent-endpoint: {}
 
 volumes:
   staging: {}
   agent-config: {}
+  endpoint-staging: {}
 ```
 
 The points that matter:
@@ -483,13 +535,22 @@ The points that matter:
 - **The `staging` volume is the only one the Bridge and the agent share**, at the
   Bridge's `agent.staging_dir`. The agent mounts no library and no Bridge data. It
   runs as `10002:10002` with every capability dropped, `no-new-privileges`, a
-  read-only root and a tmpfs `/tmp`, on a network of its own (the internet only).
+  read-only root and a tmpfs `/tmp`, on a network of its own. That network keeps
+  it from the stack's other services, and it reaches the internet and the LAN
+  through the host like any container.
   `group_add` adds the Bridge's `PGID` through the YAML alias `*bridge_pgid`, so
   a credential the Bridge hands over is readable by that group alone (see
   [Keeping it to the Bridge's group](agent-container.md#keeping-it-to-the-bridges-group)).
   Change the `PGID` on the Bridge only, and the agent follows it.
   Its credentials come in by name from the shell or a `.env` file, and are never
   written into the compose file. See [The agent container](agent-container.md).
+- **`agent-endpoint`** starts only with `docker compose --profile endpoint up -d`,
+  for the `openai-compatible` backend. It runs as `10003:10003` with its own
+  staging volume (`endpoint-staging`, at the Bridge's `agent.endpoint_staging_dir`),
+  no `/agent` volume and no credential, so an endpoint's run can't reach the
+  subscriptions' credentials. Keep it that way: the runner refuses every run while
+  it holds a credential or reaches the agent volume. See
+  [The endpoint's own agent service](agent-container.md#the-endpoints-own-agent-service).
 - **`stop_grace_period: 20s`** gives the runner time to stop the runs in progress
   (`SIGTERM`, then `SIGKILL` 10 seconds later) and mark them done, so the Bridge
   hears about it at once.
