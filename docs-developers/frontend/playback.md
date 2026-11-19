@@ -241,7 +241,8 @@ older binary, and JS detects it.
 | Event | `onRemoteBookmark { trackIndex, position, relPath?, connectionId?, libraryId?, path? }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action), with the engine's own book when it has one. The car controller listens for it, not the engine |
 | Event | `onCarConnection { connected }` | CarPlay or Android Auto connected or left |
 | Event | `onCarPlayRequest { id }` | The car asked for a book native can't start alone |
-| Event | `onCarPlayCancel { id }` | Android: native gave up on that play request (its 10 s wait ran out, another play took its place, or the service ended), so JS must not start it late ([Native integrations](native-integrations.md#what-the-controller-answers)) |
+| Event | `onCarPlayCancel { id, replaced? }` | Android: native gave up on that play request (its 10 s wait ran out, another play took its place, or the service ended), so JS must not start it late. `replaced` is true when another play took its place ([Native integrations](native-integrations.md#what-the-controller-answers)) |
+| Field | `book` on `onState`, `onProgress`, `onTrackChange`, `onRemoteMove`, `onRateChange` | The book the report is about (`BookReport`), so JS can tell a report of another book from its own ([Native integrations](native-integrations.md)) |
 | Field | `onProgress.silenceSaved` | Book seconds Smart speed removed since the app's process started, summed over every player the service builds. Monotonic ([Android only](audio-effects.md#why-smart-speed-isnt-on-iphone-yet)) |
 | Function | `setCarSnapshot(json)` | Both platforms: the [car snapshot](native-integrations.md#the-car-snapshot-srccar) |
 | Function | `getLoadedBook()` | Android: the book the service has loaded (`LoadedBook`), else null. Its `files?` are the loaded files' library-relative paths in file-index order. iOS: null |
@@ -1017,9 +1018,12 @@ A span's life:
     been.
   - A deliberate move that nothing was heard after (`spanIsBareMove`: a pause or a
     cut under a second behind a seek) gives the next span its reason too, as a
-    paused move does. Sent apart from the span before it, the move's own event can
-    come back `not_applied` `older`. A reason asked for (Stay's `stay` or `jump`)
-    still wins.
+    paused move does. Sent in a later post than the span before it, the move's own
+    event is dated by that post's clock correction and can fall just before that
+    span's end. The server applies a span up to 2 s before the end of its device's
+    chain ([`span_at`](../server/data-model.md#progress)); a server without that
+    allowance answers it `not_applied` `older`, and the reason carried on keeps the
+    move. A reason asked for (Stay's `stay` or `jump`) still wins.
   - A move to where the place already is, in the same file (`movesNowhere`:
     Previous at the book's start), is no move. The span goes on and no event says
     it. A book with unknown file lengths starts every file at 0, so the file has to
@@ -1028,18 +1032,24 @@ A span's life:
     to compare (a paused lock-screen move, `from: null`).
   - The Apple Watch and Wear OS share both rules (`Spans.isBareMove`,
     `Spans.movesNowhere`).
-  - The end of the book then sends `finish` once. The finish goes into the outbox
-    only after the last span's close has landed there, including a close already
-    on its way. (The web reports `paused` just before `ended`; `closesInFlight`
-    holds that close, and the finish takes over its send.) One send then follows
-    both (`finishAfter`): one POST carries `listen` then `finish`, so the server has
-    the book's session before its finish.
+  - The end of the book then sends `finish` once (`finishAfter`). The outbox
+    appends the finish in its turn (`appendInTurn`), behind the last span's close
+    and every other close queued before it, such as the web's `paused` just before
+    `ended`. One POST then carries `listen` then `finish`, so the server has the
+    book's session before its finish. While the finish waits its turn it is held in
+    memory (`queued`), where the web's page-hide send carries it, so a page that
+    closes during the wait still sends it. The store holds nothing back meanwhile.
+    A paused move's still span (`sendStill`) is appended the same way, behind the
+    close of the span before it.
   - The book page's Mark as finished goes the same way (`recordFinishEvent` in
     `finish-route.ts`). When the book is the one loaded, it first stops and
     unloads it on every route, as its own end does (`leaveFinishedBook`): its
     place is saved and its span closed ahead of the finish. Left loaded, it would
     go on recording past the finish. The place it saved is the one the Undo goes
-    back to.
+    back to. A finish that then fails loads the book again, paused where it was
+    (`reloadLeftBook`), so a failure leaves the player as it found it. How the
+    Undo and Mark as not finished take a finish back is in
+    [Taking a finish back](offline.md#taking-a-finish-back).
   - Either finish is dated after its span's end is stamped (`takeSpan`). The server
     applies a batch in time order, with request order only breaking ties, so a
     finish dated earlier would be applied before the book's last span.

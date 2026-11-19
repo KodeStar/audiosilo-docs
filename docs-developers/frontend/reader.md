@@ -379,10 +379,14 @@ listening place. It is separate from listening progress on purpose. It has:
   save's own connection, when the reader mounts and after any save that reaches the
   server. While the connection is marked unreachable, saves go straight to the
   queue.
-- **one lock** (`withQueueLock`) for every send, the queue's replays and the open
-  reader's saves alike, and for every change of the queue. A save that is sent
-  drops a queued save of the same book made before it, so a replay never follows
-  it with an older place.
+- **one send turn per tab** (`withSendTurn`) for every send, the queue's replays
+  and the open reader's saves alike. A save that is sent drops a queued save of
+  the same book made before it, so a replay never follows it with an older place.
+- **cross-tab locks on storage.** The web player's tabs share one queue and one
+  mirror, so each change of either runs under a `tabLock` (`withStoredQueue`,
+  `withMirrorLock`). A replay claims what it sends under the queue's lock and
+  sends with the lock released (`replayQueue`), so two tabs never send the same
+  save.
 - **a durable mirror.** `audiosilo.readingMirror` and `audiosilo.readingQueue` are
   scoped storage keys. They are in `ID_DOCUMENTS` for the identity migration and
   are dropped with their connection.

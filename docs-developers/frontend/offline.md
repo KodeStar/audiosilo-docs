@@ -581,9 +581,63 @@ Servers, or sign-out), the handler:
 - deletes its books' files (`engine.removeBook`);
 - drops their entries.
 
-Re-adding the server mints a **new** id, so those records would otherwise be
-unreachable forever. The connection-remove and sign-out UI warn the user first when
-the server has downloads on the device.
+The connection-remove and sign-out UI warn the user first when the server has
+downloads on the device. On the web, other tabs' downloads of the connection go too
+([Across browser tabs](#across-browser-tabs)).
+
+### Across browser tabs
+
+The web player's tabs share one stored registry, but each tab runs its own downloads.
+
+**Each tab writes only its own changes.** `persist` writes the entries this tab
+changed since it last wrote or read them (`known`, compared by object), into the
+stored registry read again under `tabLock`. A tab that wrote all its entries would
+lose every download another tab made meanwhile. Native has one runtime, so it reads
+the registry once and then merges into the copy it last wrote (`storedCopy`).
+
+- A save that storage refuses keeps its changes and is tried again with backoff, from
+  1 s doubling to 30 s, until one lands (`saveFailed`). Meanwhile the store's
+  `saveFailing` shows a warning on the Downloads page: "Downloads list not saved".
+- When the page goes (`pagehide`, or hidden), the tab writes its changes at once,
+  synchronously into `localStorage` (`saveRegistryOnPageHide`), because a save
+  waiting on the lock never finishes in a closed tab.
+- A tab follows the others' finished downloads and removals through the `storage`
+  event, and once after its launch's read (`followStoredRegistry`). It never follows
+  an entry for a book it is running or has changed since.
+
+**A download on its way belongs to its tab** (`src/downloads/tab-owner.ts`). The tab
+running it holds the Web Lock `audiosilo-download:<key>` from queued until its end is
+saved, and keeps it while storage refuses that save. The browser frees the lock when
+the tab closes or crashes.
+
+- A tab that finds the lock held by another, at its launch's read or on a `storage`
+  event, keeps the entry as stored and lists it in `elsewhere`. The Downloads page
+  and the book's download control show it as "In another tab", with the progress
+  that tab saves. It is never revived
+  as interrupted, its folder is never emptied and this tab never saves it.
+- **Cancel** and **Remove** there ask the running tab on a tab channel
+  (`askOwnerToStop`).
+- A held lock wins over the stored state. An entry stored as failed whose lock
+  another tab holds is a retry starting there, so it shows queued (`runningElsewhere`,
+  `heldAs`), never with a Retry here. A lock let go with nothing saved shows the
+  stored failure again.
+- The tab waits on the lock (`watchOwner`). Let go with the entry still on its way, the
+  owner closed, and this tab revives the entry as a launch does (`ownerLeft`): an
+  `interrupted` failure that keeps the finished files, with Retry.
+- A launch reads the registry again after looking at the locks
+  (`readStoredWithOwners`). An entry counts as nobody's only when it reads the same on
+  both sides of a look that found no holder.
+
+**Removing a connection** takes the other tabs' finished downloads of it from the
+stored registry too, then their files. A download another tab is running stays that
+tab's, and its folder is never touched from here. That tab is asked on the tab channel
+to remove the connection's downloads it runs (`connectionRemoved`). Once it let each
+go (removed, ended first, or the tab closed), whatever the registry still holds of it
+goes, files too (`purgeWhenLeft`). A download that shows it started again since, after
+signing in again or a retry, is left alone.
+
+Without Web Locks (plain http, where downloads are off anyway) a tab can't tell whose
+a download is. A download on its way then reads as cut short on reload.
 
 ## The read-along map in downloads
 
@@ -783,7 +837,8 @@ Each answer is handled like this:
 
 **When a web page goes.** On `pagehide` the web sends what waits with `keepalive`,
 oldest first, up to about 60 KB (`fitKeepalive`). That includes the span closes still
-queued behind a lock, because a lease's timer never fires on a page that is going.
+queued behind a lock and the events waiting their turn behind them (`queued`, such as
+a finish), because a lease's timer never fires on a page that is going.
 
 - An answer that still arrives is applied. Anything unanswered stays, and a resend is
   a `duplicate`.
@@ -814,6 +869,15 @@ ask the listener to confirm: "3 listens haven't synced to Home. Sign out anyway?
 count here is every waiting event, a finish too. Signing out purges them. It is a
 confirm, not a block.
 
+A sign-out sends the outbox only once the close of its stop has had its turn
+(`teardownBeforeTokenRevoke`), so the last span goes before the token is revoked
+rather than with the purge. A close or event made for a connection and appended after
+an await is dropped once that connection was removed meanwhile
+(`connectionGeneration`, bumped first thing in the outbox's removal purge). The same
+account signing in again gets the same connection id, so an orphan appended after the
+purge would otherwise be sent for it. The mirror writes of a finish and its Undo check
+the same number.
+
 **Resume by file.** The mirror's records carry the playing file and the seconds into
 it (`file`, `file_pos`). A resume of this device's own place (`loadInitialProgress`)
 plays that file from that place when the queue holds it. That holds even when the
@@ -832,40 +896,74 @@ resumes at a stale file.
 Mark as finished on a `listening_sync` server is a `finish` event, but its Undo is a
 progress edit. A finish still waiting would reach the server after the edit and
 finish the book again. So `undoFinish` (`finish-route.ts`) first calls
-`withdrawFinish(connectionId, libraryId, path)`, which returns `{ unsent, restore }`:
+`withdrawFinish(connectionId, libraryId, path)`, which returns a `Withdrawal`
+(`unsent`, `unreachable`, `restore`):
 
 - the book's waiting `finish` events leave the outbox;
 - one whose request is out is waited for, from this tab or, on the web, from
-  another ([Across tabs](#across-tabs));
+  another ([Across tabs](#across-tabs)). The web's page-hide request counts too
+  (`sendingNow`), since a page that was only hidden comes back from the
+  back-forward cache with it still out;
 - a chunk read before the withdrawal drops the withdrawn events.
 
-Then one of two things happens.
+A withdrawal that storage would not keep (`writeOutbox` says so) takes nothing back
+and fails the Undo with no edit, since the finish would still be sent after a
+restart. Otherwise one of three things happens.
 
-- **The server cannot have the finish, or cannot be asked** (`unsent`). One was taken
-  back, none it waited for was answered, and none of them may be on the server
-  (`serverMayHold`, below). That is a finish that:
+- **The server cannot have the finish** (`unsent`). One was taken back, none it
+  waited for was answered, and no request carried it with no answer (`carried`,
+  below). That is a finish that:
   - was never sent, or was sent only while its server was marked down or the browser
     offline (an offline Mark as finished);
   - the server refused with its own HTTP error, such as a 503 or any 4xx (a refused
-    batch stores nothing);
-  - got no answer, with the server looking down when Undo is pressed. No edit can be
-    made, and the likeliest reading is a request that never left.
+    batch stores nothing).
 
-  The Undo is done on the device, with no edit. `unrecordFinish` (below) puts the
-  mirror back. Offline Undo works.
-- **The server has it, or may have it.** The player sends the progress edit. An edit
-  that fails puts the taken events back and flushes (`restore`), so both sides end
-  finished. Sent again, a finish the server already had is a `duplicate`. There are
-  two cases:
+  The Undo is done on the device, with no edit. The mirror goes back to the record
+  the finish replaced (`restorePlaceBefore`), which is the place the server still
+  holds. So an offline Undo works. That needs the mirror's finished record to carry
+  that place (`ProgressSave.before`, below). When it does not, as after the server's
+  row was read back over it, the Undo goes to its own place with no edit
+  (`unrecordFinish`).
+- **The server may hold it, and looks down** (`unreachable`). A request carried the
+  finish with no answer, and the server looks down now, so no edit can reach it.
+  Nothing is taken back, and the Undo fails. The book page shows "Can't undo while
+  the server can't be reached. Try again once it's back." with **Retry**, which runs
+  the Undo again. Done on this device alone, the Undo would lose to the finish the
+  server did hold once it came back.
+- **The server has it, or may have it, and looks reachable.** The player sends the
+  progress edit. It unfinishes the book whether a request that got no answer
+  arrived or not. There are two cases:
   - a finish it waited for was answered;
-  - a request carried the finish while its server looked reachable and got no answer
-    (`gotNoAnswer`), and the server looks reachable now. The request may have arrived
-    and only its answer been lost, so the edit goes. It unfinishes the book either
-    way.
+  - a request carried the finish while its server looked reachable and got no
+    answer (`gotNoAnswer`), and the server looks reachable now.
 
-  After an edit that went through, `unrecordFinish` puts the mirror back here too. The
-  edit's answer only reaches the query caches, and the finished record would start the
-  book again at 0 on the next offline Play.
+  An edit that fails puts the taken events back (`restore`) and flushes, so both
+  sides end finished. A finish the server already had is then a `duplicate`. Each
+  goes back where it was in the outbox, ahead of the events appended after it, such
+  as a later unfinish and restart. Put back at the end, it would finish the book
+  again over them. An edit that found the server away (`isServerAwayError`: no
+  answer, a timeout, or a proxy's 502, 504 or Cloudflare's 520 to 524) resolves
+  `unreachable` too, with the same toast and **Retry**. The server's own 503 is an
+  answer, so the edit fails and its toast says the server is busy (`failureTitle`,
+  `isServerBusyError`).
+
+  After an edit that went through, `unrecordFinish` puts the mirror back here too.
+  The edit's answer only reaches the query caches, and the finished record would
+  start the book again at 0 on the next offline Play.
+
+**Mark as not finished** takes the same route at its own place (`unfinish` in
+`book-actions.tsx`, through `undoFinish` with `atPosition`). A finish still waiting is
+taken back before its edit, and with the server down the toast reads "Can't mark as
+not finished while the server can't be reached." Taken back unsent, it is undone as
+an Undo is, back to the record before the finish, because the server never got the
+finish and keeps that place. Where the mirror no longer carries that record, it takes
+the edit at its own place. On a server without `listening_sync` nothing waits to be
+taken back, and both take the edit. A **Retry** of Mark as not finished takes its
+place from the progress read since the failed tap, since another device may have
+moved the book. The Undo of Mark as not finished first leaves a book started since,
+then finishes the book again by the route Mark as finished takes. On a
+`listening_sync` server that is never a progress edit, since an edit sent beside the
+outbox reaches the server before the span the book was left with.
 
 **No answer** (`gotNoAnswer`) is a timeout, a dropped connection, a gateway that lost
 the server (`GATEWAY_LOST`: 502, 504, Cloudflare's 520 and 524) or a 2xx whose body
@@ -876,11 +974,20 @@ leaves, because the page is going and its answer may never be seen.
 Such finishes are noted in `maybeReached` for this launch, only when the request left
 while the server looked reachable (`looksReachable`: not marked down, and the browser
 not offline). On the web the stored entry is marked too, for an Undo in another tab
-([Across tabs](#across-tabs)).
+([Across tabs](#across-tabs)). A finish counts as `carried` when it has that mark or
+an `out` mark that ran out.
 
-**The mirror going back** (`unrecordFinish`, `store.ts`). This device's record from
-before the finish (kept by `recordFinish` in `beforeFinish`) replaces the finished
-one.
+**The record before the finish.** The finished record the finish writes carries the
+record it replaced (`ProgressSave.before`, `writeFinishedMirror`), only when that was
+a place. A finish written again over its own finished record keeps the place it
+carried, so the Undo of a book marked finished twice never goes back to a place from
+before the first. The tab that marked it also keeps that place in memory
+(`placeBefore`), for when the server's row read back since has replaced the record.
+
+**The mirror going back** (`unrecordFinish`, `store.ts`). Under the mirror's lock
+(`updateMirror`), the record before the finish replaces the finished one, else the
+finished record is rewritten unfinished at the Undo's place. Mark as not finished
+always takes its own place.
 
 - It is stamped one millisecond after the record it replaces. For a downloaded book
   that may be the server's row for the finish, newer than the finish's own time. The
@@ -889,11 +996,23 @@ one.
   stamped as the finish, would make the record finished again; one millisecond later,
   it loses.
 - The mirror's own `ack_version` and `answered` are kept.
-- With no earlier unfinished record, the finished record is rewritten unfinished at
-  the place before.
 - A place saved since the finish (the record is no longer finished) is left as it is.
 
-A withdrawal that fails still lets the edit through, with nothing taken back.
+**The hold after an Undo** (`noteUndoneFinish`, `progress-sync.ts`). For 60 s
+(`UNDONE_FINISH_HOLD_MS`, past a read's 15 s timeout) the mirror takes no finished
+record of the book stamped before the Undo. A read of the server's row that was on its
+way as the Undo was made lands after it, stamped later than the record the Undo
+replaced, and by the newest-wins rule alone it would finish the book again. A finish
+made after the Undo is stamped after it, so it still lands. On the web the hold is
+stored for every tab (`audiosilo.undoneFinishes`, under its own `tabLock`), because
+the tabs write one mirror. The undoing tab then tells the others on a tab channel
+(`tellUndoneElsewhere`), and their pages read the book again.
+
+**A finish that fails.** A `finish` event that could not be queued puts the mirror
+back to its record before the finish, or removes the finish's own record when the book
+had none. The book the finish left is then loaded again
+([Playback](playback.md#listening-spans-sync-v2)). While a slow finish waits on its
+server, the book page shows a "Marking as finished..." toast.
 
 ### Across tabs
 

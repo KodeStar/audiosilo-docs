@@ -101,7 +101,7 @@ The menu holds:
 - **Add to collection...**
 - **Download for offline**, or **Remove download**.
 - **Send to watch**, in the iPhone app with a paired [Apple Watch](apple-watch.md#from-your-iphone-send-to-watch), or the Android app with a paired [Wear OS watch](wear-os.md#from-your-phone-send-to-watch).
-- **Mark as finished** or **Mark as not finished**, with **Undo**.
+- **Mark as finished** or **Mark as not finished**, with **Undo** ([Mark a book finished yourself](end-of-book.md#mark-a-book-finished-yourself)).
 - **More in this series**.
 
 ### Authors and narrators

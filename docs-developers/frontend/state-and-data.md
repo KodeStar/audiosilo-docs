@@ -2057,12 +2057,24 @@ The offline-safe write path for listening progress:
   since retrying forever can't help an auth or forbidden error. A `408` or a `429`
   (the server's rate limit) says "not now", so it queues like a failed request
   (`isRefusedForGood` in `src/api/client.ts`).
-  Read-modify-write access to both the queue and the mirror is serialized through
-  in-module promise locks, so a flush and a concurrent save can't clobber each
-  other.
+  The read-modify-writes of the queue and the mirror take `tabLock`, which on the
+  web is shared by every tab, so a flush and a concurrent save, in this tab or
+  another, can't clobber each other. The writes asked while one waits for the
+  mirror's lock join it (`waitingWrites`).
+- **One replay of each save across tabs** (`replayQueue`,
+  `src/lib/queue-claims.ts`). A replay holds no lock over the network, because on
+  plain http the lock is a lease that runs out in 5 s. Under the lock it claims the
+  entries it sends, then sends them with the lock released, and stamps its claims
+  again every 30 s while it does. Another tab's replay leaves a live claim alone. A
+  claim not stamped for 60 s ran out, its tab gone, and its entries go again. Storage
+  that refuses the claim's write sends nothing. Entries sent whose removal storage
+  refused are remembered in the tab (`ReplayQueue.sent`) and never sent again from
+  it. The reader's queue replays the same way.
 - **Flush routes per connection.** `flushQueue` runs on reconnect (registered
   through `onReconnect` at module load), after any successful direct save, and
-  when a book starts playing.
+  when a book starts playing. `startQueueReplays` (among the root's services) also
+  replays the progress and reading queues when the app comes to the foreground and,
+  on the web, when the window gets focus or the browser comes back online.
   - It groups the queue **by connection** and replays each save through **its
     own** connection's client (`resolveClient`, keyed on the save's
     `connectionId`), never against whichever server happens to be active.

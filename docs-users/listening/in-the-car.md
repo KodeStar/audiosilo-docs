@@ -49,7 +49,7 @@ Pick a [downloaded](offline-downloads.md) book for a drive through places with n
 
 On Android, the car's play button resumes a downloaded book even after Android has closed the app. See [Lock-screen and headphone controls](playback.md#lock-screen-and-headphone-controls).
 
-On Android Auto, a book that takes too long to start shows as unavailable. It never starts playing later by itself: if it was already loading, it loads paused. Tap it again to play it.
+On Android Auto, a book that takes too long to start shows as unavailable. It never starts playing later by itself. If it was already loading, it loads paused. Tap it again to play it. If you tap another book while one is still starting, the last book you tapped plays.
 
 | | Android Auto | CarPlay |
 |---|---|---|
@@ -70,6 +70,8 @@ The car's Now Playing screen shows the chapter you're in, with a scrubber for th
 
 Every move you make in the car saves your new place.
 
+If a streamed book stops because the server stops answering, Android Auto shows *Playback stopped. Your place is saved.* The play button stays on the screen. Nothing starts again by itself when the server comes back, so press play when you're ready.
+
 ## When a book ends in the car
 
 This works even if you never opened the app on your phone:
@@ -83,7 +85,9 @@ This works even if you never opened the app on your phone:
 ## Good to know
 
 - If the car says to connect a server, open AudioSilo on your phone and [sign in](connecting.md).
-- If a book can't play, its server may be out of reach. Play a downloaded book instead.
+- If a book can't play, its server may be out of reach. Play a downloaded book instead. It waits a few seconds for your latest place, then starts from the place saved on the phone. If the server answers later with a newer place from another device, the player moves there with **Undo**, or asks which place to keep. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
+- On Android, when you start a book in the car while the phone has another one open, the phone switches to the car's book without a pause. The other book keeps the place where you last heard it.
 - The car has no search and doesn't browse folders.
-- The first drive may show a few books without covers for a moment.
+- The first drive may show a few books without covers for a moment. A book with no cover shows the AudioSilo tile.
+- After the phone restarts, Android Auto can offer the downloaded book you listened to last. Its play button starts that book at your saved place. A streamed book isn't offered.
 - The [automatic sleep timer at night](sleep-timer.md#starting-a-timer-automatically-at-night) doesn't start while a car is connected.

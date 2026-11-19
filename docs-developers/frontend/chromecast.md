@@ -187,7 +187,13 @@ least recently used one, which a receiver may still be playing with (see
     still name the media it replaces, and the native SDK's status carries no
     session id to tell them apart;
   - one on the file the receiver was on when the move was asked, at or past its
-    place then (`Intent.from`), since that is the replaced media playing on.
+    place then (`Intent.from`), since that is the replaced media playing on. On a
+    cast started or recast, that place is unknown (`from` is null), and the
+    receiver's earlier media can be on any file. Then any status counts as that
+    media until the receiver says it is gone (`replacedGone`): an idle that is not
+    a file's end, or a status naming the asked file. So a recast with a valid
+    token mints nothing, also onto an earlier file than the one the receiver
+    plays.
 - **The asked place is held.** A queue sent puts the snapshot at the place it
   asks for at once, as a local engine's file load does. While the queue's load
   is in flight, until the receiver plays or pauses there (`landInFlight`) and
@@ -198,6 +204,32 @@ least recently used one, which a receiver may still be playing with (see
   the store would save that place, end the listening span the move began there,
   raise its resume floor past the asked place so that every save below it is
   refused, or read a later file as the engine running off the asked one.
+- **The replaced media is not followed once the queue answered.** Until the
+  asked place lands, a stop of the media a queue replaced (`replacedStop`: an
+  `interrupted` one, or one on another file) is neither a place nor a stop the
+  next play must reload. Its `finished` on another file (`replacedEnd`) is not
+  followed as the book moving on, and its playing or paused status
+  (`replacedMedia`) says nothing about the play intent. So a recast of another
+  book leaves the old book's statuses out until the new one lands.
+- **An idle receiver is not a place.** The Android SDK answers a queue load
+  before the receiver has tried its file. A receiver refused that file then
+  reports idle with no reason on a later file, at 0. While the asked place has
+  not landed on another file, such a status (`betweenItems`) and the ticks before
+  the landing are not the place. Read as one, the store would see the engine run
+  off the asked file, fault and pause the book (`engineFault`), and the reload
+  with a new token would land paused. An idle receiver's 0 on the file the
+  snapshot holds is never the place either (`idleAtZero`), so a reload after its
+  error starts where the book was, not at the file's start.
+- **A skip on from a stalled file is held back** (`stalledPlace`). The Default
+  Media Receiver retries a refused range for about half a minute, then goes on to
+  the next file. So a later file reported within `ASKED_MOVE_MS` of leaving a
+  file the receiver was buffering, at most `STALL_MS` (60 s) after it began, is
+  not the place, and its ticks are dropped (`skippingStalled`). An error then is
+  the stalled file's, and that file is reloaded where it was. With no error, the
+  move is followed after `ASKED_MOVE_MS`: the next tick reads the receiver's
+  status (`refresh`), since a tick can't say which file plays. A queue sent from
+  this phone clears the hold. A seek during it sends the queue again at the shown
+  place, because a seek would move the later file.
 - **A receiver that stops on an error mid-book** is loaded again with a new token,
   playing on when it was. This happens only as the error arrives; an error already
   shown is the listener's to retry, since the receiver repeats it on every status
@@ -362,6 +394,19 @@ that order, over the SDK 58 AppDelegate fixture.
   activity is declared here, not exported, because the Cast notification opens it. The
   plugin declares it only with `expandedController`, which would also turn on iOS's
   automatic expanded controls.
+- **Stop casting stops the receiver's app**, with the book, on both platforms. Left
+  alone, the Cast dialog's Stop casting only leaves the session, so the TV plays on
+  while the book comes back to the phone paused. A network drop never stops it.
+  - iOS sets `stopReceiverApplicationWhenEndingSession` in the plugin's options
+    block (`addStopReceiverOnEnd`). A Wi-Fi drop suspends an iOS session rather than
+    ending it, so the option does not apply there.
+  - Android can't use that option, because the SDK also applies it to the end it
+    makes itself when the phone's Wi-Fi drops. Instead
+    `patches/react-native-google-cast+4.9.1.patch` (patch-package) adds
+    `RNGCStopCastingDialogFactory`, whose Stop casting ends the session with the
+    receiver stopped, as the notification's stop already did. The expanded
+    controller stops it the same way. Dependabot ignores `react-native-google-cast`,
+    so the patch stays pinned to its version.
 
 ### The Android notification
 
