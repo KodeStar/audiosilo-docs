@@ -210,7 +210,10 @@ console. Set a password for them first.
 - **Served under a path.** If your reverse proxy serves AudioSilo under a path,
   such as `https://example.com/audiosilo/`, a sign-in comes back to the root of
   that host name: `https://example.com/admin/` for the console and
-  `https://example.com/web/` for the web player. The proxy must serve the
-  console and the web player there.
+  `https://example.com/web/` for the web player, or
+  `https://example.com/connect` when it fails. Those pages finish the sign-in
+  through the server's API at the root too, so the proxy must also serve
+  AudioSilo at the root of that host name: `/admin/`, `/web/`, `/connect`,
+  `/assets/` and `/api/`.
 - **Changing the provider** (issuer, client ID, secret, scopes) needs a
   restart. **Who may sign in** applies at once.
