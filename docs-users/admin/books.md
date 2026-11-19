@@ -274,9 +274,9 @@ chapters, the ones found in the narration, or the files' own.
 Your list belongs to the book's files as they were. If a file is replaced,
 re-encoded, renamed, added or removed, the card says **Your edited chapters are
 set aside** and listeners get the book's other chapters. Put the files back to
-use your list again, or revert it. Moving the book's folder keeps your edit,
-and so does renaming a book that is one audio file loose in the library, not in
-a folder of its own.
+use your list again, or revert it. Moving the book's folder keeps your edit.
+So does renaming the file of a book that is one audio file, in its own folder or
+loose in the library.
 
 #### Community chapters
 
@@ -406,5 +406,11 @@ for listeners too, edit its **Series number** on
   chapter title like that is refused.
 - **A book using your edited chapters gets no chapter detection.** See
   [Books that get no detection](chapter-detection.md#books-that-get-no-detection).
-- **The chapter editor's player plays each file as it is stored.** A file your
-  browser can't play doesn't load there, but you can still type the times.
+- **The chapter editor's player plays every file** when the server has ffmpeg.
+  A file your browser can't play as stored, such as Opus, FLAC or MP3 in an
+  `.mka`, plays through the server's conversion, and you can still seek. A file
+  that still doesn't load can't be played, but you can type the times.
+- **The editor is light on the server.** When the server is busy it says
+  **The server is busy. Trying again in a moment.** and tries again. Paused or
+  left open, it frees the server's conversion. Listeners in the players are not
+  affected.

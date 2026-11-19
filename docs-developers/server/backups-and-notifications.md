@@ -339,7 +339,7 @@ subscribed to its kind. A nil `*Service` does nothing, so callers don't check.
 | `library_unavailable` | a scan job ending `unavailable`, only when the library's previous scan that reached an answer wasn't unavailable. `catalog.PreviousRunStatus` passes over cancelled, interrupted and running scans, so a restart in between doesn't announce it again. | `library`, `library_id` |
 | `new_device` | every pairing exchange (`POST /auth/exchange`); a password sign-in (`POST /auth/login`) unless an earlier session of the same person already carried its `device_id` (`auth.IssueSession`), where a sign-in without a `device_id` always counts; and a household member signed in on their owner's device (`sign_in_here` on `POST /me/household/members`, or `POST /me/household/members/{id}/session`), always. Never for demo accounts. | `user`, `device` (the name the client sent, one plain line of at most 100 characters), `app` (from `X-AudioSilo-Client`, may be empty) |
 | `invite_redeemed` | a pairing exchange whose token came from an invite code | `user` (whose invite), `device` |
-| `update_available` | `updates.Checker.OnAvailable` after a check that finds a newer release. Announced **once per version** (`dedup_key` is the version). | `version`, `name`, `url` (the release page) |
+| `update_available` | `updates.Checker.OnAvailable` after a check that finds a newer release. Announced **once per version** (`dedup_key` is the version; see [Announced once](#announced-once)). | `version`, `name`, `url` (the release page) |
 | `backup_failed` | `backup.Service.OnFailure` (scheduled or manual) | `trigger`, `error` (`disk_full`, `permission_denied`, `failed`), and for `permission_denied` a `detail` sentence (the folder, the server's user, its owner and the fix) that the notification's text uses |
 | `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title`, plus per-kind fields. See [Bridge event data](#bridge-event-data). |
 | `bridge_job_failed` | the same hook, for a job that moved **into** `failed` or into a notable `needs_attention`. See [Bridge event data](#bridge-event-data). | as `bridge_job_finished`, plus `code` and `detail` |
@@ -347,10 +347,18 @@ subscribed to its kind. A nil `*Service` does nothing, so callers don't check.
 | `podcast_episodes_new` | `catalog.IndexPodcastShow`, once per show per index that found episodes new to it. See [Podcast events](#podcast-events). | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead), `count`, `titles` (the first five, newest first) |
 | `podcast_feed_failing` | `catalog.FoldPodcastJob` for a `podcast.poll` that makes the feed's run of failures due, or ends `gone` or `feed_secret_missing`. Once per run. | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead), `code`, `failures` |
 | `podcast_feed_recovered` | `catalog.FoldPodcastJob` for the first successful `podcast.poll` after `podcast_feed_failing` | `library`, `library_id`, `show_id`, `show`, `show_path` (a private show: `private` instead) |
-| `oidc_pending` | the single sign-on callback, when `auth.OIDCSignIn` records a [waiting sign-in](auth-and-security.md#who-signs-in-as-whom), never for one refused outright (disabled, a household member, rate limited). Announced **once per waiting row** (`dedup_key` `pending:<id>`, kept across the person's attempts; a dismissed row recorded again is a new one, as is a row unseen for 30 days that the person's next attempt records again). Announcements are capped per client address and in all (see the link). | `provider` (the button's name), `person` (the name, else the username, left out when it holds an `@`, as providers often make the email the username), `reason` (the `Decide` reason). Never the email, the subject, the groups or a token |
+| `oidc_pending` | the single sign-on callback, when `auth.OIDCSignIn` records a [waiting sign-in](auth-and-security.md#who-signs-in-as-whom), never for one refused outright (disabled, a household member, rate limited). Announced **once per waiting row** (`dedup_key` `pending:<id>`, kept across the person's attempts; see [Announced once](#announced-once); a dismissed row recorded again is a new one, as is a row unseen for 30 days that the person's next attempt records again). Announcements are capped per client address and in all (see the link). | `provider` (the button's name), `person` (the name, else the username, left out when it holds an `@`, as providers often make the email the username), `reason` (the `Decide` reason). Never the email, the subject, the groups or a token |
 
 `notify.Kinds` lists the kinds in this order, which is the order the console
 shows.
+
+#### Announced once
+
+An event with a `dedup_key` (`Event.Dedup`) is announced once while an event of
+its kind and key is in the feed. `Emit` drops a second one, and once the first
+has left the feed after its 90 days, the same key is announced again. The check
+and the record are one step under `Service.dedupMu`, so two emits at the same
+moment, such as two callbacks for one waiting sign-in, announce it once.
 
 #### Bridge event data
 
@@ -408,25 +416,41 @@ holds, and the server must hold no copy of it anywhere.
 #### Podcast events
 
 The three podcast kinds go to the admins only. The catalog raises them through
-`catalog.SetPodcastNotice` after the write that found them commits, and
-`notify.Service.PodcastNotice` turns each `catalog.PodcastNotice` into an
-event.
+the listener `catalog.SetPodcastNotice` installs (`notify.PodcastListener`).
+`notify.PodcastEvent` turns each `catalog.PodcastNotice` into an event, which
+the catalog records, its dedup key checked, in the same transaction as the
+write that found the news. `notify.Service.Deliver` sends it to the
+destinations after the commit. A crash therefore can't lose the feed's record
+of a notice whose flag committed. A crash between the commit and the delivery
+sends the destinations nothing, as there is no record per delivery.
 
 `podcast_episodes_new` comes from `catalog.IndexPodcastShow`. An episode is new
 when all of these hold:
 
 - the show was indexed before under the same `show_id`;
-- the episode's path wasn't indexed;
-- it isn't removed from the feed, and it was published after the show's
-  previous `latest_published`. When that date is ahead of the clock (a
-  mistyped date in the feed), the newest indexed episode not dated in the
-  future is used instead.
+- neither the episode's path, nor its GUID, nor its episode id was indexed;
+- it isn't removed from the feed, and it isn't dated before the show's previous
+  `latest_published`. The same date, a date-only twin or no date at all
+  counts as new. When that latest date is ahead of the clock (a mistyped date
+  in the feed), the newest indexed episode not dated in the future is used
+  instead;
+- the Bridge first saw it (its `first_seen`, else its publication date) within
+  `catalog.NewEpisodeWindow`, 72 hours.
 
 So nothing is announced for a show's first index, a forced rescan of a feed
-already indexed, a rebuilt index or missing rows indexed again. The Bridge's rescan
-after a poll that grew the feed does announce. `dedup_key` is the library id,
-the show id and a digest of the new episode ids (`notify.SetDigest`), so the
-scheduled scan and the Bridge's rescan can't both announce the same episodes.
+already indexed, a rebuilt index, missing rows indexed again, or an index
+restored from an older backup or written after a long outage. The Bridge's
+rescan after a poll that grew the feed does announce. `dedup_key` is the
+library id, the show id and a digest of the new episode ids
+(`notify.SetDigest`), so the scheduled scan and the Bridge's rescan can't both
+announce the same episodes.
+
+The folds of one show are ordered by when this server read its `feed.json`
+(`podcast_shows.feed_read_at`), never by the Bridge's whole-second
+`updated_at`. A scan that read the file before the Bridge's rescan read and
+indexed a newer one therefore doesn't fold its older copy over that index. A
+later read is always folded, so a `feed.json` restored from a backup is
+indexed.
 
 `podcast_feed_failing` and `podcast_feed_recovered` come from
 `catalog.FoldPodcastJob`, for `podcast.poll` jobs only. A `podcast.subscribe`
@@ -441,18 +465,31 @@ the backoff on its own. `catalog.feedRun.next` decides:
   one to `feed_failures`.
 - Network-class codes (`bridge.NetworkFailure`: `dns`, `network`, `timeout`,
   `tls`) also add one to `feed_network_failures`. Every show fails with these
-  at once while the Bridge's own internet is down.
+  at once while the Bridge's own internet is down, so they count only when
+  the Bridge reached another feed since this show's previous check (a success,
+  or an answer such as an HTTP error), or failed to reach none
+  (`bridgeReachedFeeds`). An outage therefore counts at most one failure per
+  show. A lone show, or one whose fellow feeds weren't checked meanwhile,
+  counts each failure, and the six below cover it.
 - The run is due (`feedRun.due`) at three of the feed's other failures
   (`catalog.FeedFailingAfter`) or six network failures
   (`catalog.NetworkFailingAfter`). A mixed run is due once other/3 plus
   network/6 reaches 1, such as two HTTP errors and two timeouts.
 - `gone` is announced at once. `feed_secret_missing` is announced at once
-  without counting, with `failures` 0.
-- Any other failure, such as `bridge_lost` or an unwritable library, neither
-  counts nor resets the run. An offline Bridge claims no polls, so it adds
-  nothing either.
-- The run announces once (`failing_announced`). The next successful poll
-  resets it and, after an announcement, raises `podcast_feed_recovered` once.
+  without counting, with `failures` 0. A feed at `gone` stays there whatever a
+  later check fails with, and only a success brings it back.
+- Only the scheduler's polls count (`bridge.PollParams.Scheduled`, set by
+  `podcast.SchedulerTick`). A follower's Check now counts nothing toward the
+  run and leaves the scheduled polls' backoff as it was, except that its
+  `gone` and lost secret are announced at once, since polling stops on them.
+- Any other failure, such as `bridge_lost`, `write_failed` or an unwritable
+  library, neither counts nor resets the run. An offline Bridge claims no
+  polls, so it adds nothing either.
+- The run announces once (`failing_announced`), and records the code it was
+  told with (`failing_code`). After that, only a `gone` or a lost secret that
+  differs from that code is announced again, since each stops the feed for
+  good. The next successful poll resets the run and, after an announcement,
+  raises `podcast_feed_recovered` once.
 - A job for a replaced show (another `show_id` at the path) changes nothing.
 
 The data carry codes and names only, never the feed's address, its host or an
@@ -462,8 +499,9 @@ error's text, which can hold a private feed's credentials:
   at most 200 characters. `titles` are cut the same way.
 - `code` is one the messages have wording for (`gone`, `feed_secret_missing`, `dns`,
   `network`, `timeout`, `tls`, `not_a_feed`, `not_a_podcast`, `too_large`,
-  `blocked_address`, `invalid_feed_url`) or an `http_NNN` status, else
-  `failed`.
+  `blocked_address`, `invalid_feed_url`, `redirect_loop`) or an `http_NNN`
+  status, else `failed`. An older Bridge reports a redirect loop as
+  `http_310`, which the messages word the same way.
 - `failures` is the feed's failures in a row, 0 for a lost secret.
 
 A private show is hidden from admins who don't follow it. Its events carry

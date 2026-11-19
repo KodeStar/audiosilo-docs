@@ -478,6 +478,11 @@ Design points worth knowing before touching it:
 - The response is `Content-Type: audio/mpeg`, `Accept-Ranges: none`,
   `Cache-Control: no-store`, and has **no `Content-Length`**, because the output
   is produced on the fly. A `HEAD` gets these headers without an ffmpeg run.
+- **Slots are per ask** (`takeTranscodeSlot`, `internal/api/transcode_slots.go`).
+  A slot is keyed by its ask (the token, the file, the `t` start and whether it
+  is a download), so a browser that opens the same stream several times needs
+  one slot. The limits, the `503` and what a `HEAD` reports are under Transcode
+  slots in [`GET /stream`](api/reference.md#get-apiv1librariesidstream).
 - **Why it isn't byte-seekable.** The total encoded size is unknown while
   encoding, and a byte offset into the MP3 output has no computable mapping
   back to a source timestamp. So the handler refuses Range requests, and a

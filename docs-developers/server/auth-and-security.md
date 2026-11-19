@@ -234,17 +234,23 @@ debugger. The token is narrow in every way:
   (unknown, revoked, expired, disabled user) and also has a grant and a live
   parent. So **signing out the device that minted it** ends it, whether by
   logout, My devices or the console.
-- **Short-lived.** It lasts 24 hours. Each sending device (the token that
-  mints them) keeps at most 20, and a person at most 100 over all their
-  devices. From 2.7.0 a mint past either cap drops the least recently used
-  token (before, the oldest minted). Recent use is the token's `last_seen`,
-  else its mint time (`trimCastTokensSQL`); every cover or stream request the
-  token authenticates moves `last_seen`, at most once a minute. So a run of casts on one device never ends
-  the cast another device of the person is playing, and a sender re-minting
-  drops an idle token before the one its receiver is reading. The token just
-  minted is always kept, even after the clock steps back. One limit stays:
-  `last_seen` moves only when a request starts, so a receiver reading one long
-  file on a single response looks idle to the ranking. Each mint
+- **Short-lived once idle.** A cast token works for 24 hours after its last use
+  (`castTokenTTL`), and never past 72 hours after its mint (`castTokenMaxLife`,
+  `auth.castExpiry`). Every cover or stream request it authenticates moves its
+  `last_seen` and its expiry, at most once every 10 seconds
+  (`CastTouchInterval`). A response that runs longer keeps them current too:
+  the api calls `KeepCastToken` every 10 seconds while it runs and once as it
+  ends. So a receiver reading one long file on a single response stays in use,
+  and its token outlives the first 24 hours while the book plays. The stamps
+  are in milliseconds. A touch never shortens an expiry, nor moves one already
+  past.
+- **Capped.** Each sending device (the token that mints them) keeps at most 20,
+  and a person at most 100 over all their devices. A mint past either cap drops
+  the least recently used token (`trimCastTokensSQL`). Recent use is the
+  token's `last_seen`, else its mint time. So a run of casts on one device never
+  ends the cast another device of the person is playing, and a sender
+  re-minting drops an idle token before the one its receiver is reading. The
+  token just minted is always kept, even after the clock steps back. Each mint
   deletes every dead cast token: expired, with no grant, or with its parent
   gone, signed out or expired. The daily retention job runs the same prune
   (`auth.PruneCastTokens`). A dead token's row (which holds the receiver's
@@ -254,9 +260,11 @@ debugger. The token is narrow in every way:
   account's other tokens. Disabling the account (`UpdateUser`'s `disabled`)
   revokes nothing; it only **suspends** this token, as it does every token,
   because `lookupToken` checks the user on every request. The cast token is
-  refused while the account is disabled, and works again if the account is
-  enabled before the token expires. Signing out the device that minted it is
-  what ends it for good.
+  refused from the next request while the account is disabled, and a response
+  already running no longer keeps it alive (`castGrantOf` refuses a disabled
+  account), so its expiry stays where the suspension found it. It works again
+  if the account is enabled before that expiry. Signing out the device that
+  minted it is what ends it for good.
 - **Checked against current access.** The media handlers check the person's
   **current** share scope. A revoked share is a `403`, and a restored one works
   again.
@@ -268,7 +276,8 @@ session token. An editor token is a cast token in every rule above, with three
 differences:
 
 - its grant has `cast_grants.editor = 1` (migration `0078`);
-- it lasts 4 hours (`editorTokenTTL`);
+- it lasts a fixed 4 hours from its mint (`editorTokenTTL`), which use never
+  extends;
 - a person keeps at most 5 (`maxEditorTokens`).
 
 A mint drops the least recently used of its own kind past that kind's cap (the
@@ -593,14 +602,21 @@ apps don't: they keep pairing by QR code or invite. The config is in
    stands 30 seconds, a failure 5 seconds, `probe`), so one gone down lands on
    `unavailable` and the console's single sign-on status says `error`. Then the
    server makes the flow (`state`, `nonce` and the PKCE verifier, 32 random
-   bytes each, the redirect URI, `return` and the [trip's tag](#the-trips-tag)
-   when one came), seals it into the flow cookie and redirects to the
-   provider's authorization URL. The callback's exchange names the redirect
-   URI the flow carries.
+   bytes each, the redirect URI, `return`, the [trip's tag](#the-trips-tag)
+   when one came and the console's [deep link](#the-consoles-deep-link) when
+   one came), seals it into a flow cookie of its own and redirects to the
+   provider's authorization URL. The flows other tabs started stay, so two tabs
+   can sign in at once (see [The cookies](#the-cookies)). The callback's
+   exchange names the redirect URI the flow carries.
 2. **`GET /auth/oidc/callback`.** The provider sends the browser back here. The
-   handler deletes the flow cookie whatever happens, then refuses, in order:
+   handler finds the flow's cookie by the `state` it is sent and deletes that
+   cookie whatever happens. Other tabs' flow cookies stay for their own
+   returns. It then refuses, in order:
    - an address locked out by `oidcLimiter` (`rate_limited`);
-   - a request with no flow cookie (`expired`, nothing charged);
+   - a request with no flow cookie for its `state` (`expired`, nothing
+     charged). When the provider sent `?error=` with no `state`, as some do,
+     it is `failed` instead, also not charged. Whose flow that was can't be
+     told, so its cookie waits out its ten minutes;
    - a cookie that doesn't open (`failed`) or is past its ten minutes
      (`expired`);
    - a `state` that isn't the cookie's (compared in constant time);
@@ -618,16 +634,22 @@ apps don't: they keep pairing by QR code or invite. The config is in
 4. **The hand-over.** A sign-in that signs in gets a token of kind `oidc`
    (`auth.KindOIDC`), single use, 60 seconds, minted in the decision's
    transaction, so a Sign out everywhere can't fall between the decision and
-   the token. The token goes in the done cookie, joined to the trip's tag when
-   the flow carried one,
+   the token. The token goes in the flow's own done cookie, joined to the trip's
+   tag when the flow carried one,
    **never in a URL**: a link carrying it would sign whoever opens it in as its
-   owner (a login CSRF). The handler then redirects to `/admin/#oidc=done` or
-   `/web/connect?oidc=1`.
-5. **`POST /auth/oidc/finish`.** The page the browser lands on calls it. The
-   handler clears the done cookie, spends the token once (`auth.ConsumeOIDC`)
-   and answers as [`POST /auth/exchange`](api/reference.md#post-apiv1authexchange)
-   does, with a new session, plus the trip's tag as `intent` when there was
-   one. The console signs a non-admin straight back out.
+   owner (a login CSRF). The handler then redirects to the landing page with
+   the flow's key (`flowKey`, see [The cookies](#the-cookies)):
+   `/admin/#oidc=done&flow=<key>` (or the console's deep link with the same
+   marker), or `/web/connect?oidc=1&flow=<key>`, on `public_url`'s origin
+   (see [Behind a path prefix](#behind-a-path-prefix)). The key names a cookie
+   and is no credential.
+5. **`POST /auth/oidc/finish`.** The page the browser lands on calls it with
+   the key as `flow`. The handler takes that flow's done cookie, spends the
+   token once (`auth.ConsumeOIDC`) and answers as
+   [`POST /auth/exchange`](api/reference.md#post-apiv1authexchange) does, with
+   a new session, plus the trip's tag as `intent` when there was one. The
+   console signs a non-admin straight back out. See [The finish](#the-finish)
+   for which answers keep the cookie.
 
 The ID token checks (`Provider.Exchange`):
 
@@ -667,22 +689,32 @@ timeout. An error never carries the provider's response body.
 
 ### The cookies
 
+Each sign-in has two cookies of its own, named by its flow's key (`flowKey`,
+the first 16 characters of the `state`):
+
 | Cookie | Holds | Lifetime |
 |---|---|---|
-| The flow cookie | `state`, `nonce`, the PKCE verifier, `return`, the trip's tag (`Flow.Intent`) and the time, sealed with AES-GCM under a key made at start (`oidc.Sealer`) | 10 minutes; deleted at the callback |
-| The done cookie | the `oidc` token, and `.<tag>` after it when the flow carried a tag | 60 seconds; cleared by the finish |
+| The flow cookie, `audiosilo_oidc_flow_<key>` | `state`, `nonce`, the PKCE verifier, the redirect URI, `return`, the trip's tag (`Flow.Intent`), the deep link (`Flow.Next`) and the time, sealed with AES-GCM under a key made at start (`oidc.Sealer`) | 10 minutes; deleted at its callback |
+| The done cookie, `audiosilo_oidc_done_<key>` | the `oidc` token, and `.<tag>` after it when the flow carried a tag | 60 seconds; cleared by the finish that spends or refuses it |
 
-Both are `HttpOnly` and `SameSite=Lax`. Their names and place depend on
+A second tab's sign-in therefore never replaces the first's, and two tabs whose
+callbacks both land before either finishes each finish their own. A browser
+holds at most four of each (`oidcMaxFlows`): `/start` deletes the oldest flow
+cookies beyond that, and the callback the oldest done cookies. Every cookie
+rides on each request to its path, so the cap keeps the `Cookie` header under
+a proxy's usual 8 KB limit.
+
+All of them are `HttpOnly` and `SameSite=Lax`. Their names and place depend on
 `public_url` (`oidcCookieName`):
 
-- **On an https `public_url`:** `__Host-audiosilo_oidc` and
-  `__Host-audiosilo_oidc_done`, `Secure`, Path `/`, no `Domain`. The prefix
-  makes the browser refuse one planted by a sibling subdomain or by a plain
-  HTTP answer.
-- **On a plain http `public_url`:** `audiosilo_oidc` and
-  `audiosilo_oidc_done`, Path `/api/v1/auth/oidc/`, not `Secure`. A cookie
-  without `Secure` can't take the prefix, so someone on the network path can
-  plant one.
+- **On an https `public_url`:** the names take the `__Host-` prefix
+  (`__Host-audiosilo_oidc_flow_<key>`), `Secure`, Path `/`, no `Domain`. The
+  prefix makes the browser refuse one planted by a sibling subdomain or by a
+  plain HTTP answer.
+- **On a plain http `public_url`:** the bare names, Path `/api/v1/auth/oidc/`,
+  not `Secure`. A cookie without `Secure` can't take the prefix, so someone on
+  the network path can plant one. A finish therefore passes over a done cookie
+  whose tail is no valid tag: it is no cookie the callback set.
 
 A browser sends a Path `/` cookie to every page of that host name, whatever the
 port or path. So another app served under the same host name receives the
@@ -691,6 +723,53 @@ port or path. So another app served under the same host name receives the
 Because the sealing key lives in memory, a restart ends every flow in flight:
 its callback reads as `failed`. `Replay` remembers a `state` only once its
 exchange succeeded, so states sent back bare can't fill it.
+
+A server from before the per-flow names set one done cookie,
+`audiosilo_oidc_done`. A finish that names no `flow` still reads it, so a
+sign-in caught across the upgrade finishes in its minute.
+
+### Behind a path prefix
+
+A proxy may serve the server under a path of its own, with `public_url` such as
+`https://example.com/audiosilo/`. The provider's redirect URI and the hop to
+`/start` keep that path, because they reach API routes, and the proxy strips
+it. The console and the web player route only from the origin's root
+(`/admin/`, `/web/`, `/assets/`), so every page a sign-in lands on is built
+from `public_url`'s origin alone (`oidcPageBase`): the done pages, the
+[result page](#the-result-page) and the console's deep link. The finish those
+pages call is on the origin's own `/api/v1` too.
+
+On an https `public_url` every cookie has Path `/`, so the path changes
+nothing. On plain http the cookies need two places:
+
+- The console and the web player ask `/start` on the origin's own
+  `/api/v1/auth/oidc/`, while the provider sends the callback to
+  `<prefix>/api/v1/auth/oidc/callback`. So each flow cookie is set at both
+  paths, one copy each, and `/start` sees the flows the browser holds wherever
+  it is asked. The cap and the [trip's tag](#the-trips-tag) check hold in
+  both layouts.
+- The done cookies sit at the origin's `/api/v1/auth/oidc/` only, where the
+  finish is called.
+
+### The console's deep link
+
+A signed-out console shows its sign-in page at whatever address was asked for.
+Its single sign-on link carries that page as `?next=` (`oidcStartHref`), so the
+sign-in lands back on it rather than on the console's start page.
+
+`/start` keeps `next` only for `return=admin`, and only when `validNext` takes
+it:
+
+- a path under `/admin/`, with an optional query and no fragment;
+- at most 512 bytes (`oidcNextMax`), printable ASCII, with no backslash and no
+  raw double quote;
+- no empty, `.` or `..` segment, `%2e` included, since a browser reads it as a
+  dot.
+
+Anything else is dropped, never an error, and the sign-in lands on the start
+page. The link is sealed into the flow and checked again at the callback, then
+appended to `public_url`'s origin. So the redirect only ever goes to a console
+page on that origin, and `next=//evil.example` lands on `/admin/`.
 
 ### The finish
 
@@ -701,6 +780,30 @@ kind reads as `401 oidc_sign_in_expired`, like a spent or expired one. So
 does any token while single sign-on can't run (turned off since the callback;
 a token outlives a restart): nothing is charged and the token is left to
 expire, unspent.
+
+**Which sign-in.** A body `flow` (a malformed one is `400`) names the done
+cookie to take, and the finish reads no other (`heldDone`). A finish with no
+`flow` comes from a page built before the key. It takes the first held sign-in
+with no tag when it expects none, else the first held. When it expects a tag,
+it takes the one that carries that tag, and when none does it answers
+`403 oidc_intent_mismatch` and clears nothing, since which held sign-in is its
+own can't be told.
+
+**Which answers keep the cookie.** The done cookie stays while its token is
+untried or unspent: a `429`, a `400` and a `500`. A finish that fails inside the
+server answers `500`, is not charged and spends nothing, because the token and
+the session share one transaction (see
+[the mint race](#password-changes-and-sign-out-everywhere-end-sessions)). The
+page can then ask again for the rest of the token's minute. The console asks
+once more after half a second; the web player offers **Try again**. The cookie
+is cleared once the token is spent or refused, and on the `401`s and the
+`403`. A finish clears only the cookie it would have used, never another
+tab's.
+
+The landing addresses carry the flow's key, and `/web/connect?token=` carries a
+pairing token. So an HTML document asked for with a `token`, `oidc` or `flow`
+query parameter goes out `Cache-Control: no-store`, and neither the browser nor
+a proxy files a copy under that address (`spa.documentCache`).
 
 `ConsumeOIDC` takes only `KindOIDC`. A pairing token planted in the cookie (an
 invite's QR, or a person's own `POST /auth/pair`) would sign the browser in as
@@ -727,24 +830,24 @@ without anyone signing in at the provider again.
 - **`/start` takes an optional `intent`**, the player's random tag for the
   trip (`validIntent`: 22 to 128 base64url characters; the player sends 64 hex).
   A bad tag is dropped, never a `400`, and the sign-in runs untagged. So is a
-  tag already in the flow cookie the browser still holds: that trip's start URL
-  sent again from the history gets an untagged flow. The tag is
+  tag that a flow cookie the browser still holds already carries: that trip's
+  start URL sent again from the history gets an untagged flow. The tag is
   sealed into the flow and kept across the `hop`.
 - **The callback spends the tag** with the first flow the provider completes
   for it, whatever the outcome, in a `Replay` memory of its own
   (`oidcFlow.intents`), so tags never take the places flow states need. It
   remembers a tag for 11 minutes (`FlowMaxAge` and a minute, longer than the
   player holds one) and forgets it on a restart. A full memory drops the tag.
-  The tag then joins the token in the done cookie (`<token>.<tag>`,
+  The tag then joins the token in the flow's done cookie (`<token>.<tag>`,
   `oidcIntentSep`).
 - **The finish echoes it** as `intent`, once, only for the sign-in that flow
   completed.
 - **The finish can also ask for it.** A body `intent` is the tag the caller
   expects. Another tag, an empty string, or any tag for an untagged sign-in is
   `403 oidc_intent_mismatch`, checked before `ConsumeOIDC` (compared in
-  constant time): no session, the token unspent, nothing charged and the cookie
-  cleared, so the sign-in the player disowned can't then be finished without
-  the tag. An absent or `null` `intent` asks nothing, as the console does.
+  constant time): no session, the token unspent, nothing charged and that
+  flow's cookie cleared, so the sign-in the player disowned can't then be
+  finished without the tag. An absent or `null` `intent` asks nothing, as the console does.
 - **The server's connect page** (`connect.js`) removes the player's held tag
   (`sessionStorage` `audiosilo.oidcIntent`) whenever a trip ends there on
   `#oidc=<reason>`, so an unspent tag can't be completed from the history.
@@ -839,8 +942,8 @@ console, or use Sign out everywhere.
 ### The result page
 
 A sign-in that ends without a session lands on the server's own connect page at
-`/connect#oidc=<reason>`, which words each reason in the console's six
-languages:
+`/connect#oidc=<reason>`, on `public_url`'s origin, which words each reason in
+the console's six languages:
 
 | Reason | When |
 |---|---|
@@ -849,8 +952,8 @@ languages:
 | `pending` | the sign-in waits for an admin |
 | `not_allowed` | the person isn't in `allowed_group`, or their account is a household member or demo account now |
 | `disabled` | their account is disabled |
-| `failed` | the flow was refused, or the provider ended it |
-| `expired` | the flow took more than ten minutes, or finished in another browser |
+| `failed` | the flow was refused, or the provider ended it (with or without a `state`) |
+| `expired` | the flow took more than ten minutes, or its cookie is gone: finished in another browser, or pushed out by four newer sign-ins |
 | `rate_limited` | the address is locked out |
 
 ### An admin's way in
@@ -987,6 +1090,27 @@ change commits, and then make a session the change never saw. To prevent this,
 (unexported). In its writer transaction it writes the session only while that
 hash is still the account's and the account is enabled. Otherwise it answers
 `ErrInvalidCreds` (`401`).
+
+**The mint race.** The middleware checks a request's session before the
+handler runs, so a sign-out, a Sign out everywhere, a password change or a
+disable could commit in between and pass over the credential the handler then
+mints. That credential would outlive the change that should have refused it.
+So every credential a session asks for is minted behind one read of that
+session inside the mint's own transaction (`auth.madeOn`, or `auth.signedIn`
+for a mint that records no device). The session must still be the caller's,
+not revoked, and its account enabled. Otherwise the mint writes nothing and
+the handler answers `401`, as the middleware would (`writeSessionEnded`). The
+rule covers a pairing token from `/auth/pair`, a household member's pairing
+code and session (`sign_in_here` included), an API key, a calendar feed token,
+a cast or editor token and a recovery code.
+
+Pairing and single sign-on run the other way round: they spend a single-use
+token to make a session. `exchangeSession` spends the token and mints the
+device's session in one durable transaction, and reads the account there. A
+change that commits first makes the spend refuse the token. One that commits
+after ends the new session with the rest. A session that can't be written
+answers `500` and spends nothing, so an invite keeps its use and a single
+sign-on can be finished again.
 
 **Sign out everywhere.** The admin's `POST /admin/users/{id}/sign-out`
 (`auth.SignOutEverywhere`) is the console's button on a person's Devices tab.
@@ -1148,6 +1272,9 @@ requested path isn't enough then.
   `403 no access to this path` as a path outside the share, so the answer reveals
   nothing about the book. The files it does grant still stream, because `stream`
   is scoped on the file path.
+- `/fs` answers `404` for a folder outside the share rules, the same answer
+  after the same work as for a folder that does not exist. A `200` with an empty
+  list would tell the person the folder is there.
 
 A non-admin without a library grant gets `403` from `libraryScope` before any
 content is touched. A granted podcast library whose scope becomes empty through
@@ -1762,6 +1889,14 @@ member.
 A member session made through `sign_in_here` or `…/session` records the owner's
 token in `tokens.created_on_token_id`. A token's validity never reads it.
 
+Creating a member with `sign_in_here`, `…/session` and `…/pair` read the
+owner's token inside their own transaction (`signedIn`, see
+[the mint race](#password-changes-and-sign-out-everywhere-end-sessions)). When
+that device was signed out since the request's check (a sign-out, Sign out
+everywhere or a password change), or the owner was disabled since, the route
+answers `401` and writes nothing: no session, no pairing code and, for a
+create, no member.
+
 Signing the owner's device out leaves those sessions alone unless the owner asks
 `?also_members=1`. That revokes them in the same transaction, restricted to
 `managed_by = caller`, with the API keys and calendar feed links those members
@@ -1808,7 +1943,18 @@ How the second layer resolves paths:
   share or a FUSE pool (Unraid's `/mnt/user`) each `Lstat` is a round trip, on
   every cover and stream request.
 
-`BrowseFS` and the stream and cover handlers call `SafeJoin`. `Scanner.IndexPath`
+The stream, `/fs` and a book read on demand join through
+`library.SafeJoinListed` instead. It looks for each name in its folder's listing
+before it `Lstat`s it, so a path spelled in another case or Unicode form than the
+disk and a missing path do the same work and take the same time. The listings
+come from `metadata.DirNames`, which keeps each one for 3 seconds, bounded in
+size, with one read per folder at a time. A folder created after its parent was
+listed, and not yet scanned, can therefore answer not found for up to
+3 seconds. A path that leaves the library through a link is refused, also when
+another link would bring it back in, and only the first link out is ever
+looked at. `/fs` answers `404` for such a path, whatever lies on the other side.
+
+`BrowseFS` and the cover handler call `SafeJoin`. `Scanner.IndexPath`
 uses it as the security gate too. It derives the working path from the
 unresolved join, so `rel_path` keys stay consistent (see
 [Scanner](scanner.md#on-demand-indexing-indexpath)).
@@ -2088,7 +2234,8 @@ survive Universal Link and App Link routing.
 
 - An invite-derived token lives as long as the invite it came from, so it is in
   the same trust class as the invite link itself. That is acceptable because the
-  server keeps no access log, sends `Referrer-Policy: no-referrer`, and ends the
+  server keeps no access log, sends `Referrer-Policy: no-referrer`, serves the
+  page at that address `Cache-Control: no-store`, and ends the
   token with the invite (revoke, rotate, supersede, expiry, use cap). The
   exposure is the same as for the media `?token=` fallback.
 - Recovery-derived and `/auth/pair` tokens stay bounded to 10 minutes, and Listen
@@ -2099,7 +2246,8 @@ Follow the fragment convention for any new durable secret.
 **Single sign-on puts no secret in a URL.** Its token rides in the
 `HttpOnly` done cookie and is traded by `POST /auth/oidc/finish`, because a
 link holding it would sign anyone who opens it in (see [The finish](#the-finish)).
-The redirects carry only `#oidc=done`, `?oidc=1` or a result reason.
+The redirects carry only `#oidc=done`, `?oidc=1`, the flow's key (which names
+a cookie and grants nothing without it) or a result reason.
 
 ## The allowed + denied test rule
 

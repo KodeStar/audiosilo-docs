@@ -1915,7 +1915,8 @@ and never a demo account.
 ### Podcast retention
 
 - **Keep** downloads the newest N listed episodes.
-- **Archive** downloads all listed episodes, oldest first, and never deletes.
+- **Archive** downloads all listed episodes, oldest first in the player's order
+  (undated episodes first), and never deletes.
 - **On demand** fetches on play, prepares one ahead in the queue, and runs no
   feed-wide scheduled downloads.
 
@@ -2018,7 +2019,13 @@ Rules for new work:
 - Existing intents may still promote.
 - Ordinary streams honor the failure cooldown. `POST` bypasses it, but never dedupe or
   a present pin.
-- Identity races remain `409 identity_changed`.
+- An identity the feed changed after the pin was read is asked for once more as it
+  is now (the stream, the player's `POST` and the admin's fetch alike). While the
+  previous identity's fetch is still stopping, both answer `identity_changed`,
+  which a shipped player reads on any status as "drop the cached lists and offer
+  Try again" ([statuses](../server/api/reference.md#podcast-fetch-status-and-retry)).
+- The summary is the job's state: a fetch the Bridge holds stays `fetching` with the
+  module off. A queued one is held then, and reads `unavailable`.
 
 ### The fetch status on episode lists
 
@@ -2030,7 +2037,8 @@ shared `wire-2b.json` fix the protocol.
 
 ### The listener's fetch cap
 
-A non-admin creator may have five open fetch intents. A refused stream creation is
+A non-admin creator may have five open fetch intents. A parked fetch
+(`needs_attention`) holds no slot. A refused stream creation is
 `503 podcast_fetch_unavailable` with `fetch.error.code:"fetch_limit"`. A `POST` Retry
 is `409 fetch_limit`. See the
 [rules](../server/api/reference.md#podcast-fetch-status-and-retry).
@@ -2052,7 +2060,7 @@ Once the [claim floor](#16-the-bridge) is negotiated, the Bridge's reserved
 interactive slot claims `kind=podcast.fetch&min_priority=100&wait=25` and never takes
 background work. The ordinary download lane drops to 1, which keeps two enclosure
 downloads in total. An older server gets two ordinary download slots and no reserved
-claim.
+claim. A `HEAD` of `/bridge/jobs/next` is `405` and never leases a job.
 
 ### Podcast player views
 
@@ -2131,6 +2139,11 @@ Feed URLs stay out of private files, persisted job params, listings and logs.
 
 - The server holds the pending credential in memory and injects it into the claim
   only. A restart before the claim is `request_expired`.
+- A queued follow request, private or public, also fails `request_expired` once no
+  online Bridge has offered `podcast.subscribe` for two minutes, so an OPML import's
+  next wave answers its rows `unavailable` rather than waiting on a Bridge that left.
+- A feed host over 253 characters is `invalid_feed_url` on the server, whatever the
+  Bridge's state, also for a request that would only join an open one.
 - The Bridge seals it before local claim storage, and keeps the show credential in
   its vault.
 - `feed_secret_missing` is repaired by following the URL again.

@@ -85,3 +85,7 @@ Replacing or re-encoding the file stops found chapters being used.
   recaps, description or read-along job runs, Detect chapters is refused. Queue
   it once that job has finished. Generating characters and recaps replaces an
   open Chapters job.
+
+Saving an edit, or choosing a chapter source, cancels a Chapters job for that
+book that is still waiting or paused, and the job says why. A job already
+running finishes. Its chapters are saved, but your edit or choice still wins.

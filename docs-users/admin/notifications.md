@@ -69,7 +69,7 @@ Tick a box to send that event there. It saves as you tick.
 | **New podcast episodes** | A followed show's feed brought new episodes. One message per show, with a few titles. See [Podcasts](#podcasts). |
 | **A podcast feed is failing** | A followed show's feed failed several checks in a row, is gone, or the Bridge lost its private address. |
 | **A podcast feed is back** | A feed reported as failing answered again. |
-| **Someone is waiting to sign in** | Someone signed in with [single sign-on](single-sign-on.md) and no account took them. Once per waiting row on People. A dismissed row, or one unseen for 30 days, comes back as a new row with a new message if they try again. The message never carries their email. |
+| **Someone is waiting to sign in** | Someone signed in with [single sign-on](single-sign-on.md) and no account took them. Once per waiting row on People, and again every 90 days while they keep trying. A row you dismissed, or one unseen for 30 days, comes back as a new row with a new message when they next try. The message never carries their email. |
 
 Every event shows in the bell whether you send it anywhere or not. When a server
 update adds a new event, it starts unticked on the destinations you already have.
@@ -79,15 +79,18 @@ update adds a new event, it starts unticked on the destinations you already have
 The podcast events need a [podcast library](podcasts.md). The server sends them
 like this:
 
-- **New podcast episodes** comes when a show's feed brings episodes newer than
-  the ones the server had. A show's first check sends nothing.
+- **New podcast episodes** comes when a show's feed brings episodes the server
+  didn't have. A show's first check sends nothing, and neither does restoring
+  an older backup.
 - **A podcast feed is failing** comes after three failed checks in a row. When
   the feed couldn't be reached at all, such as no answer in time, it waits for
-  six. That way a short outage of the Bridge's own internet sends nothing.
+  six. Such a failure counts only while the Bridge reaches other feeds, so an
+  outage of the Bridge's own internet sends nothing.
 - A feed that reports it is gone, and a private feed whose address the Bridge
-  lost, are reported at once.
-- An offline Bridge, or a library the Bridge can't write to, never counts as
-  the feed failing.
+  lost, are reported at once, even if the feed was already reported as failing.
+- Only the server's own scheduled checks count toward the three or six, never
+  a follower's **Check now**. An offline Bridge, or a library the Bridge can't
+  write to, never counts as the feed failing.
 - Each problem is reported once. When the feed answers again, you get
   **A podcast feed is back**, also once.
 

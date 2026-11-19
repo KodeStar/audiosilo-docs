@@ -81,7 +81,9 @@ CarPlay launch before the session could be read.
 resumption starts, or null for none (see [A `MediaLibraryService`](#a-medialibraryservice)).
 The labels come from `carLabels(t)`, which reads the `car.*`
 keys: `continue`, `chapters`, `bookmark`, `bookmarkSaved`, `empty`, `signedOut` and
-`unavailable`. Each tab carries its own localized `title`.
+`unavailable`. One more label, `playbackError`, reads the player's own `player.full.errorLine`
+("Playback stopped. Your place is saved."), which Android shows when the engine fails (see
+[A `MediaLibraryService`](#a-medialibraryservice)). Each tab carries its own localized `title`.
 
 | Tab | What it holds | Limit |
 |---|---|---|
@@ -207,12 +209,18 @@ from arming in a car.
 `handleCarPlayRequest` lets the loaded book play on and never restarts it, though an ended or
 failed one starts again like any other. It starts any other book through
 `startBookInPlace`, from its saved place. A downloaded book starts from its download when its
-server is slow or away (see [The end of a book](end-of-book.md#ending-a-book)). A failure is
+server is slow or away (see [The end of a book](end-of-book.md#ending-a-book)). Its place
+lookup asks no server when none can be reached, and otherwise waits for the server's place for
+3 s at most (`DOWNLOADED_PLACE_WAIT_MS`) before it starts from this device's records, well
+inside the car's 10 s wait. Without the cap, a frozen server would hold a car's start for the
+whole request timeout. The read goes on, and a place that arrives after the wait gets the place reconcile's
+rule once the book is loaded (`onLatePlace`): a move to another device's newer place with
+Undo, or an offer on a `listening_sync` server. A seek the listener made meanwhile wins. A failure is
 logged, and native times the request out.
 
 **A request native gave up on never plays** (Android, `onCarPlayCancel`). Native sends it when
-its 10 s wait for the load runs out, when another play takes the request's place
-(`failPendingPlay`) and from `onDestroy`. By then a media button start's foreground service is
+its 10 s wait for the load runs out (`failPendingPlay`), when another play takes the
+request's place (`giveWayTo`, with `replaced: true`) and from `onDestroy`. By then a media button start's foreground service is
 released, so a start a frozen server held would otherwise play on in the background with no
 notification or controls. JS marks the request called off (`cancelledPlays`, which makes
 `StartHow.wanted` false):
@@ -221,6 +229,9 @@ notification or controls. JS marks the request called off (`cancelledPlays`, whi
 - a start already loading loads paused (a pause before the load, so a downloaded book is never
   heard);
 - a late lookup that finds another start took the player (`replaced`) loads nothing;
+- a start called off because another play took its place is `superseded`. When it had
+  already switched the store to its book, the controller then adopts the engine's book
+  (`checkLoadedBook` with `gaveWay`), because the switch let the store's own book go;
 - a podcast episode still fetching for it ends quietly (`requestEpisodeFetch`'s `wanted`).
 
 A new request for the item takes the mark off. A call-off while JS boots never ends a cast.
@@ -290,10 +301,32 @@ playable, titled with the snapshot's label. A browse before the first snapshot b
 write one.
 
 **Covers** go through `ArtworkProvider` (`${applicationId}.audiosilo.artwork`, not
-exported). A URI names an opaque key, a hash of the file's path. The provider serves only a
-file that the current snapshot names and that lies inside the app's own data directory: the
-car artwork folder, or a download's own cover. It grants read access per URI to the browsing
-package.
+exported). A URI (`content://<authority>/art/<key>`) names an opaque key, a hash of the file's
+path, and the provider serves nothing but `art/<key>`. It serves only a file inside the app's
+own data directory (the car artwork folder, or a download's own cover) that the current
+snapshot or the loaded queue's items name. The service grants read access per URI to whoever
+reads it:
+
+- **Browse rows** carry their cover's URI, granted to the browsing package.
+- **A downloaded book's loaded items** carry their cover as the provider's URI
+  (`ArtworkProvider.itemArtwork`, `LocalArtwork` keeps the last 8 in memory), under the key
+  the snapshot would give the same file. It is granted to each connected car and to System UI
+  (`grantPlayingArtwork`), and to whoever asks for the resumption card. Those apps load the
+  item's artwork URI themselves and could not read a `file://` URI.
+- **A book with no cover**, or whose cover file is gone (`browseArtworkKey`), shows the bundled
+  `audiosilo_car_cover` tile in the browse lists. The provider serves it too, as
+  `art/placeholder` (`PLACEHOLDER_KEY`), from a copy of the drawable in the cache, granted per
+  reader like a cover. With no artwork, or with a URI it could not open, Android Auto drew a
+  warning triangle.
+
+**A streamed book's cover never leaves the process as a URL.** The cover URL carries the media
+token, and Android's System UI logs the artwork URIs it loads. So a loaded item names a
+streamed cover as `audiosilo-artwork://remote/<key>`, a SHA-256 of the URL (`RemoteArtwork`,
+which keeps the last 8 in memory). Only the service's own bitmap loader turns it back into the
+URL. The scheme is the app's own, which no other process can open, and the provider does not
+serve it, so the car and the lock screen show the bitmap the session sends with the metadata.
+`MediaItems.artworkUriOf` drops any server URL an item would carry as its artwork, whoever
+built the item.
 
 **Playing from the car.** `onSetMediaItems` with an id-only item calls `playFromCar`:
 
@@ -306,6 +339,21 @@ package.
 "Anything else" includes a downloaded book while a JS runtime exists. JS may hold another
 book as `nowPlaying`, and swapping the engine under it would save one book's place as
 another's.
+
+**The last car tap wins** (`giveWayTo`). Every play the service makes, or starts waiting for,
+ends the car play still waiting for JS, and JS loads nothing for it (`onCarPlayCancel` with
+`replaced: true`). It also calls off a play whose 10 s wait already ran out while JS may still
+be starting it (`lateLoad`), so that play never loads, paused, over the newer one. A second
+tap on the same row is never called off: its request joins the start already under way in JS,
+and only the earlier wait ends.
+
+**A failed engine reads as stopped, never as a fatal error** (`onEngineFailed`). In Android's
+error state Android Auto drops its controls. So the service clears `playWhenReady` as the
+engine fails, and `AudiobookPlayer`'s getters read ready with no error, which the platform
+session shows as paused with play available. The car shows `labels.playbackError` as a
+non-fatal session error, in the listener's language. The app hears of the failure through
+`PlayerEventSink.playerFailed`, and a play from the car or a headset prepares the engine again
+first (`prepareIfFailed`).
 
 **Voice.** For "Hey Google, play AudioSilo" or "play The Hound of the Baskervilles on
 AudioSilo", Media3 hands an item with no id and the query to `onSetMediaItems`.
@@ -337,8 +385,21 @@ with no JS honours the listener's Settings, as the effects switches do
 **Playback resumption.** `onPlaybackResumption` runs on a Bluetooth, headset or car play with an empty player. It
 starts the book `CarSnapshot.resumable(live)` picks (below), only when that book has a play
 spec, so only a downloaded book resumes. Media3 asks only on a play command, so
-merely connecting Auto never plays. With `isForPlayback = false` (System UI's resumption card
-after a reboot) it answers from the play spec with no side effect.
+merely connecting Auto never plays.
+
+**The resumption card after a reboot.** System UI asks for recent media, Media3 answers that
+root itself, and then calls `onPlaybackResumption` with `isForPlayback = false` for its child.
+The service answers with the resumable book's browse item (`recentItems`,
+`CarBrowseTree.recentChildren`): title, author and cover, flagged playable, with no side
+effect. System UI shows a card only for a child flagged playable, and a play spec's own items
+carry no such flag. The card's Play button then plays through `onPlaybackResumption` as above.
+A streamed book has no play spec, so it gets no card.
+
+**The recent root.** Any other browser that asks for recent media (`LibraryParams.isRecent`,
+such as Android Auto) gets `RECENT_ROOT` (`audiosilo.recent`), whose one child is the same
+item. With nothing resumable there is no such root at all (`RESULT_ERROR_NOT_SUPPORTED`), so
+the browser offers no resumption. Reading it boots no JS. A browser subscribed to it is told
+when a snapshot makes the resumable book another (`recentChanged`).
 
 JS picks the book (`resumableBook`):
 
@@ -520,7 +581,29 @@ service's book, at these moments:
 - when a car connects;
 - on returning to the foreground;
 - when the engine moves to another file or starts playing on its own (never for the store's
-  own switch or load).
+  own switch or load);
+- when an engine report names another book than the store's (`onOtherBookReported`).
+
+**Engine reports name their book.** The transport reports (`onState`, `onProgress`,
+`onTrackChange`, `onRemoteMove`, `onRateChange`) carry `book`, the module's `BookReport`. On
+Android it is the current item's book. A remote move, a speed change and a failure take the
+service's own item (through `PlayerBridge`), because the module's controller hears of an item
+change a message late. On iOS it is the book `load` was given. The JS service keeps the last
+one (`reportedBook`), and the store drops a report of a book it does not hold
+(`reportedOtherBook`): one the car or a resumption started, or the one its own load replaces.
+A report that names no book (an older binary, the web, a Cast receiver) is taken as before.
+
+So a car that starts another book never moves, saves or fails the store's book, and the car
+sync adopts the car's book without pausing it. From the first report of the other book:
+
+- the store's book ends its listening span and history where it was last heard, saves its
+  place once and stops its save loop (`otherBookReported`);
+- the store shows none of the other book's reports, opens no span and saves nothing until the
+  adoption lands, and the adopted book then starts its own from the engine's place and state;
+- a speed change or a seek made at the switch lands on the car's book;
+- if the car's book is not adopted within `OTHER_BOOK_ADOPT_MS` (6 s), the store's book shows
+  paused at its last place, nothing saved and the other book left playing
+  (`otherBookNotAdopted`). A play press then reloads the store's book there, as Retry does.
 
 Adopting builds the queue as `playBook` would, from `bookSourceOf`
 (`src/playback/book-source.ts`). That is the download manifest when the book is downloaded,

@@ -1,6 +1,6 @@
 ---
 title: Finish a book
-description: "What happens when a book ends: the end credits, which book plays next, and playing on automatically."
+description: "What happens when a book ends: the end credits, which book plays next, playing on automatically, and marking a book finished yourself."
 ---
 
 When a book reaches its end, AudioSilo marks it finished and shows the **end credits**. From there you can rate the book and start the next one. The next book comes from your [Up next](up-next.md) queue, or else the series.
@@ -47,3 +47,18 @@ Turn on **Automatically play next book** in [Settings](settings.md#up-next-and-d
 - If the app is in the background when a book ends, there's no countdown. With auto-play on, the next book starts straight away.
 
 Two related settings are **Automatic downloads** and **Remove a download when you finish the book**, in [Settings](settings.md#up-next-and-downloads).
+
+## Mark a book finished yourself
+
+To finish a book without listening to the end, open its **...** menu, on its cover in a list or on its page, and select **Mark as finished**. If the book is playing, it stops first and keeps your place.
+
+A message says **Marked as finished**, with **Undo**. **Undo** puts the book back at the place you were at.
+
+To take a finish back later, select **Mark as not finished** in the same menu. Its message has **Undo** too.
+
+### Good to know
+
+- **Offline**, Mark as finished waits on your device and reaches your server once it's back. While it waits, **Undo** and **Mark as not finished** work offline too.
+- **Once the finish has been sent to your server**, taking it back needs the server. If it can't be reached, the book stays finished and the message says so. Press **Retry** once the server is back.
+- **A slow server** shows **Marking as finished...** until it answers. If marking fails, the book loads again where you left it, paused.
+- **Undo** needs a recent server. On an older one the message has no Undo.

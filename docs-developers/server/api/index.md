@@ -1016,6 +1016,10 @@ The two lists are the consts `corsAllowHeaders` and `corsExposeHeaders`
 - `Retry-After` is exposed because every `429` sends it, and so do some `503`s:
   a busy transcode, or an episode on its way. The request timeout sends none.
 - The OPML export's counts are exposed too.
+- `X-AudioSilo-Transcode-Sent` is exposed so a cross-origin player can read a
+  transcode `HEAD`'s count of the bytes the same ask's running `GET` has sent,
+  and wait on a slow transcode instead of asking again and taking over its
+  slot.
 
 A cross-origin web player therefore reads these headers as the `/web` player
 and native apps always could. An older server exposes nothing, so the player

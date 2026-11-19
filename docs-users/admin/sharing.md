@@ -54,6 +54,8 @@ every play, cover and download against it.
   visible so they can find it, but show nothing else.
 - Search and book lists only show books they can see.
 - If their folders are all in one library, they see only that library.
+- A folder outside their shares, or a symbolic link that leads out of the
+  library, looks the same to them as a folder that doesn't exist.
 
 ## Examples
 
@@ -81,3 +83,5 @@ them. The folders will change; the purpose won't.
   holding only one disc folder, or one file of a multi-file book, doesn't give
   access to the book (see
   [Books split into disc folders](libraries.md#books-split-into-disc-folders)).
+- A folder you've only just created on disk, and not yet scanned, can take up
+  to 3 seconds to show up. Until then its books don't open.

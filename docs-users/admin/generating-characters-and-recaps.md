@@ -120,7 +120,7 @@ it on once you've fixed the cause.
 | The agent's credential was refused | Replace it (see [Add a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)). |
 | The job reached its spending limit | Raise the cap (see [Costs](#costs-and-the-monthly-cap)), or wait for next month. |
 | The Bridge can't write to this book's folder | Give the Bridge's user write access. It checks again every minute. |
-| The Bridge can't share with the community | Sign the Bridge in to GitHub (see [Bridge accounts](../getting-started/bridge-accounts.md#github)). |
+| The Bridge can't share with the community | Sign the Bridge in to GitHub (see [Bridge accounts](../getting-started/bridge-accounts.md#github)). If it is signed in and GitHub couldn't be reached, do nothing: the job carries on once GitHub answers. |
 | The community database has no entry for this book yet | Cancel and generate again kept local. Your copy is already saved. |
 | The ebook couldn't be read | Cancel, then generate again. It then reads the audio. |
 | The chapters couldn't be found in the narration | See [When no chapters are found](chapter-detection.md#when-no-chapters-are-found). |

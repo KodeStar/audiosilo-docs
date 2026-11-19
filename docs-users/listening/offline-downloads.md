@@ -110,6 +110,8 @@ The web player can download books too, no app needed. Downloads are kept in the 
 - A browser can clear stored data when the disk runs very low. Installing the web player as an app (below) makes the browser protect it more. For long trips, the [iOS or Android app](mobile-apps.md) is the safest choice.
 - On an **iPhone or iPad**, Safari stops playback in the background. Use the iOS app to listen with the screen off.
 - A book the browser [can't play directly](playback.md#books-a-browser-cant-play-directly) can't be downloaded in the browser.
+- **With more than one tab open**, a download runs in the tab that started it. Other tabs show it as **In another tab**, with its progress, and can cancel or remove it. If you close the tab running it, the other tabs show it as stopped, and **Retry** fetches only the missing files.
+- If the browser's storage is full, the Downloads page says **Downloads list not saved** and keeps trying.
 
 If a browser can't keep audio offline at all, the Downloads page says why.
 

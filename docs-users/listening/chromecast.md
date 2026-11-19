@@ -56,10 +56,11 @@ Most audio formats cast directly. Formats a Cast device can't play, such as Appl
 
 ## Stopping
 
-Tap the **Cast** button again and choose to stop casting. The book comes back to your device, paused where the Cast device got to. Press play to carry on.
+Tap the **Cast** button again and choose to stop casting. The book comes back to your device, paused where the Cast device got to. Press play to carry on. In the iOS and Android apps, stopping also stops the book on the Cast device.
 
 ## Good to know
 
 - **Podcast episodes don't cast.** An episode always plays on your device.
-- **If the Cast device loses its access mid-book.** Your server gives each cast its own access to the book. After many casts from one device, it ends the access used longest ago. When the server then refuses the Cast device, the app sends the book again once with new access, at your place. It does this at most twice a minute for a book.
+- **If the Cast device loses its access mid-book.** Your server gives each cast its own access to the book. After many casts from one device, it ends the access used longest ago. When the server then refuses the Cast device, the app sends the book again once with new access, at your place, and it plays on, or stays paused if you'd paused it. It does this at most twice a minute for a book.
+- **If your phone drops off the Wi-Fi**, the Cast device keeps playing.
 - **If casting doesn't start**, the book stays on your device and the player says why. Usually the Cast device couldn't reach your server: check the [address and certificate](#what-you-need). If it couldn't connect to the Cast device, check it's on and on the same network.
