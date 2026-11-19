@@ -647,7 +647,8 @@ needs no other services (the /import fixture is vendored in `fixtures/`).
 It skips the steps whose shots `SHOTS_ONLY` leaves out. `SHOTS_ONLY` matches by
 prefix, so name whole files to take just the catalogue views
 (`meta/browse.png,meta/work.png,meta/work-comparison.png,meta/chapters.png,meta/characters.png,meta/series.png,meta/series-listening-guide.png,meta/person-recordings.png`):
-`meta/series` alone also runs the watchlist pair below.
+`meta/series` alone also runs the first of the watchlist pair below (it ticks
+ownership marks), but not `meta/watching.png`.
 
 The two watchlist shots (`meta/series-watching.png`, `meta/watching.png`) need a
 site build that has the `/watching` page in it, and they run as a **pair**: the
