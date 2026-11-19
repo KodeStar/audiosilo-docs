@@ -998,7 +998,7 @@ produces an identical file. It stamps a `schema_version` into the artifact's
 | 10 | the `position_scales` table (the ruler a work's sidecars are numbered on) |
 | 11 | the store links: `recordings.link_audiobookguild` and `recordings.link_graphicaudio` (one column per store, not a table), which the API returns in the recording's `links` and as purchase links |
 | 12 | the `work_alternate_titles` table (`work_id, title, ord`), a work's alternate titles, which are also among the work's names in the search index |
-| 13 | the nullable `recordings.abridgement` column, which keeps whether the source stated the abridged flag (so a stated `false` reads as unabridged rather than unknown), and the indexes behind the bounded catalogue and chapter reads |
+| 13 | the nullable `recordings.abridgement` column, and the indexes behind the bounded catalogue and chapter reads |
 
 `metaserve` returns characters, recaps, genres, the community description and the
 translation links inline on `GET /works/{id}` (`characters` / `recaps` /
@@ -1037,9 +1037,12 @@ columns or tables; for 10, the `position_scales` table; for 11, either store lin
 column; for 12, the `work_alternate_titles` table; for 13, the
 `recordings.abridgement` column.
 
-Below schema 13, only legacy `abridged: true` establishes abridgement; false
-remains unknown. Schema 13 retains explicit false as `unabridged` while an absent
-source flag remains unknown (see [recording fields](api.md#apiv1worksid)).
+`recordings.abridgement` keeps whether the source stated the abridged flag:
+`model.Recording` carries a stated `false` apart from an absent flag through JSON
+round trips (`AbridgedKnown`), so from 13 a stated `false` reads as `unabridged`
+and an absent flag stays unknown. Below 13, only a legacy `abridged: true` proves
+abridgement and `false` is unknown (the API's
+[recording fields](api.md#apiv1worksid)).
 
 The same versioning drives the [coverage endpoints](api.md#coverage-endpoints).
 They omit a dimension's count, rather than report it as a misleading zero, when

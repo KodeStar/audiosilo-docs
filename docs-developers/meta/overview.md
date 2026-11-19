@@ -142,6 +142,11 @@ in-process.
   and concurrency. The zero value suits an in-process consumer.
 - `MaxSchemaVersion` is the newest artifact schema the code understands. A test
   pins it to the builder's `SchemaVersion`.
+- `SeriesListeningGuide` and `PersonRecordings` read bounded member and credit
+  pages, batching the page's recording summaries and narrator credits rather than
+  building a `WorkDetail` per row. `BrowseFiltered` reads a directory page and
+  `RecordingChapters` a validated recording's chapter window. Their HTTP contracts
+  are in [the API reference](api.md).
 
 ### `pkg/query/querytest`
 
@@ -185,20 +190,6 @@ Because they are public, these packages follow the
 [cross-repo contract](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam)'s
 rules. The handler's responses change additively, and so does the artifact
 schema ([how its versions are gated](data-model.md#the-compiled-artifact-and-schema-versioning)).
-
-The catalogue query surface also includes `SeriesListeningGuide` and
-`PersonRecordings`: bounded member/credit pages with batched recording summaries
-and narrator credits, without constructing a `WorkDetail` per member. `Browse`
-reads directory pages and `RecordingChapters` reads a validated recording's
-chapter window. Their HTTP contracts are in [the API reference](api.md).
-
-Artifact **schema 13** adds the nullable `recordings.abridgement` column and
-indexes for catalogue reads. It retains an explicitly stated `abridged: false`
-as `unabridged`, while an absent flag stays unknown. `model.Recording` preserves
-that distinction through JSON round trips using `AbridgedKnown`; the legacy
-`Abridged` field remains compatible. On older artifacts only legacy true proves
-`abridged`; false does not prove `unabridged`. The API's optional `abridgement`
-and recording `language` fields are additive.
 
 ## The CLI tool set at a glance
 
@@ -372,33 +363,17 @@ one language's matches first. See
 
 ## The HTML catalogue
 
-`internal/serve` injects entity facts and embedded payloads into the Astro shells;
-React islands reuse that payload instead of showing a loading screen first.
-Work comparisons link to stable recording anchors and paginated chapter pages.
-The `/browse` directories provide normal links to works, series, people and
-existing community guides. Series guides and person recording credits use
-50-row pages; recording chapter pages use 100 rows. See
-[HTML routes and sitemaps](api.md#html-routes-and-sitemaps) for canonical URLs
-and error responses.
+With `--site`, `internal/serve` injects each entity's facts and payload into the
+Astro shells, so the React islands reuse that payload instead of showing a loading
+screen first. Routes, paging, canonical URLs, error responses, validators and
+sitemaps are in [HTML routes and sitemaps](api.md#html-routes-and-sitemaps).
 
-Character aliases/descriptions and recap bodies remain in the rendered DOM
-inside closed native `details`/`summary` disclosures, with `data-nosnippet` on
-spoiler bodies. Work tab panels stay mounted with `hidden` semantics. These
-changes expose existing community prose; they do not generate missing content.
-
-Series recording choices and runtime subtotals apply only to the current page.
-The guide shows at most five alternatives per work, with the true recording
-count and a link to all alternatives. Narrator continuity and person credit
-groups describe that page's rows, not a complete series. A complete listening
-plan requires explicit choices, known runtimes and non-overlapping positions
-for every catalogued entry; a partial subtotal never sums alternatives. Neither
-recording presence nor retailer links establish availability or production format.
-
-The artifact has creation/import dates, not trustworthy entity revision dates.
-Entity sitemap URLs therefore omit `lastmod`; the sitemap index can still date
-the generated shards by artifact build time. Per-entity revision tracking,
-source-verified enrichment and measured Search Console experiments remain
-follow-up work, not evidence supplied by this change.
+The series listening guide's recording choices, runtime subtotal and narrator
+continuity, and the person page's credit groups, describe only the current page's
+rows, never a complete series. A plan is complete only with an explicit choice, a
+known runtime and no overlapping position for every catalogued entry, and a
+subtotal never sums alternatives. Neither a catalogued recording nor a retailer
+link establishes availability or production format.
 
 ## The site's watchlist is client-side only
 

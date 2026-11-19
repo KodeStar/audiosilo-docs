@@ -22,70 +22,65 @@ The search box on the home page finds **books, people and series** at once.
 Paste an ASIN or ISBN to jump straight to that recording. You don't need exact
 punctuation: "enders game" finds *Ender's Game*.
 
-**Browse** in the header, home page and footer opens directories of audiobooks,
-series, authors and narrators, character guides and recap guides. Each directory
-has its own **Search this directory** box and **All**, **A-Z**, **0-9** and
-**Other** links. Search and letter filters work together; **Clear filters**
-returns to the full directory. Entries are sorted by their displayed title or
-name as written. A-Z groups English initials, 0-9 groups
-numeric initials, and Other includes punctuation and other scripts.
+![Search results for a series query](/img/screenshots/meta/search.png)
+
+**Browse** in the header (also linked from the home page and the footer) opens
+directories of audiobooks, series, authors and narrators, character guides and
+recap guides. Each directory has its own **Search this directory** box and
+**All**, **A-Z**, **0-9** and **Other** links, and the two work together; **Clear
+filters** returns to the full directory. Entries are sorted by title or name as
+written. A-Z groups English letters, 0-9 groups numbers, and Other holds
+punctuation and other scripts.
 
 Pages hold up to 50 entries. Use the numbered links, **First** and **Last**, or
-enter a number in **Go to page** to jump directly through a large directory.
-Page links and jumps keep your search and letter filter; changing either filter
-starts again at page one. These controls and the catalogue links work with
-JavaScript disabled.
+enter a number in **Go to page**. Page links keep your search and letter;
+changing either starts again at page one.
 
 ![The series directory filtered to M, with search, letter filters and page navigation](/img/screenshots/meta/browse.png)
-
-![Search results for a series query](/img/screenshots/meta/search.png)
 
 - A **book page** lists every recording of the book, with narrators, length,
   release date, publisher, ASINs and ISBNs, and chapters.
 - A **series page** lists the books in reading order.
 - A **person page** lists everything an author or narrator is credited on.
 
-**Compare recordings** on a book page puts narrator, language,
-abridgement, runtime, release date, publisher and chapter count side by side.
-Follow a recording link to its detailed card. **Unknown** means the catalogue
-does not state that fact; a missing abridgement flag does not prove a recording
-is unabridged. **None catalogued** means no chapters are recorded in the catalogue,
-not that the recording has no chapters. Store links let you check a retailer,
-without claiming current availability or inferring a production format from a
-narrator or publisher.
-
-![Comparing the catalogued recordings of a book](/img/screenshots/meta/work-comparison.png)
-
-For a recording with chapters, **Browse chapter titles, starts and durations**
-opens its chapter directory, with up to 100 chapters per page. It also links
-back to the recording's card.
-
-![A recording's chapter titles, start times and durations](/img/screenshots/meta/chapters.png)
-
 ![A book page with its recordings](/img/screenshots/meta/work.png)
 
 ![A series page in reading order](/img/screenshots/meta/series.png)
 
+**Compare recordings** on a book page sets narrator, language, abridgement,
+runtime, release date, publisher and chapter count side by side, and each
+recording links to its detailed card. **Unknown** means the catalogue doesn't say,
+so a recording without an abridgement isn't necessarily unabridged. **None
+catalogued** means nobody has added its chapters yet, not that it has none. Store
+links are a place to check; they don't mean the recording is on sale there.
+
+![Comparing the catalogued recordings of a book](/img/screenshots/meta/work-comparison.png)
+
+For a recording with chapters, **Browse chapter titles, starts and durations**
+opens its chapter list, up to 100 chapters a page, with a link back to the
+recording's card.
+
+![A recording's chapter titles, start times and durations](/img/screenshots/meta/chapters.png)
+
 ## Planning a series and following a narrator
 
-A series page's **Listening guide** follows its stated reading order, including
-decimal and range positions. It shows up to five catalogued recordings per work;
-when there are more, **Compare every recording** opens the book page. **No
-recording catalogued** describes a gap in this catalogue.
+A series page's **Listening guide** follows its reading order and shows up to
+five catalogued recordings per book; when there are more, **Compare every
+recording** opens the book page. **No recording catalogued** means the catalogue
+holds no recording of that book yet.
 
-Choose one recording per work to use the **Listening time planner**. Its subtotal
-adds only known runtimes for your explicit choices on the current page. Unchosen
-works, unknown runtimes, overlapping positions and entries on other pages keep a
-plan partial. Choices last while that page is open and do not carry between
-pages. Narrator continuity also counts only the displayed alternatives on this
-page; it does not promise the same narrator across the whole series.
+Pick a recording for each book and the **Listening time planner** adds up their
+runtimes. The subtotal covers only the current page, and the plan stays partial
+until every book on it has a pick with a known runtime and no omnibus overlaps
+another pick. Picks are forgotten when you leave the page. Narrator continuity
+also looks only at this page, so it doesn't promise one narrator for the whole
+series.
 
 ![A series listening guide with recording choices](/img/screenshots/meta/series-listening-guide.png)
 
-On a person page, **Narrated recordings** keeps separate versions of the same
-book as separate credits. The page groups its current 50-credit window by series
-and recording language, with links to the precise recording. Use the page links
-to see more credits; a group on one page is not a complete series discography.
+On a person page, **Narrated recordings** lists each recording they narrated, so
+two readings of one book are two entries, each linking to that recording. A page
+shows 50, grouped by series and language; a group covers only that page.
 
 ![A narrator's recording credits grouped by series and language](/img/screenshots/meta/person-recordings.png)
 
