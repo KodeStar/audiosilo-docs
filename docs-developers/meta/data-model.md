@@ -998,7 +998,7 @@ produces an identical file. It stamps a `schema_version` into the artifact's
 | 10 | the `position_scales` table (the ruler a work's sidecars are numbered on) |
 | 11 | the store links: `recordings.link_audiobookguild` and `recordings.link_graphicaudio` (one column per store, not a table), which the API returns in the recording's `links` and as purchase links |
 | 12 | the `work_alternate_titles` table (`work_id, title, ord`), a work's alternate titles, which are also among the work's names in the search index |
-| 13 | the nullable `recordings.abridgement` column, and the indexes behind the bounded catalogue and chapter reads |
+| 13 | the nullable `recordings.abridgement` column. The display-order and narrator indexes behind the bounded catalogue reads shipped beside it, but an index never moves the version: an artifact without them serves the same rows, more slowly |
 
 `metaserve` returns characters, recaps, genres, the community description and the
 translation links inline on `GET /works/{id}` (`characters` / `recaps` /

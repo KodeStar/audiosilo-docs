@@ -1542,7 +1542,9 @@ so check its access log for this route.
 ## HTML routes and sitemaps
 
 With `--site`, metaserve serves these HTML pages. Each carries its catalogue facts
-and the entity payload, so the React islands hydrate without fetching them:
+in Go-rendered HTML. The entity and guide pages also carry the entity payload, so
+their React islands hydrate without fetching it; the `/browse` directories and the
+chapter pages are Go-rendered only, with no payload:
 
 | Route | Content |
 |---|---|
@@ -1585,13 +1587,23 @@ recording.
 
 **Errors.** No artifact, or a failed page composition, is **503** with
 `Retry-After` and `Cache-Control: no-store`. A missing or broken site shell is
-**500** with `no-store`, never a successful blank entity page.
+**500** with `no-store`, never a successful blank entity page. A **400** (an
+invalid page or filter) is also `no-store`; a **404** is the site's `404.html` with
+no `Cache-Control`.
 
-**Validators.** An HTML page's ETag (`pageIdentity`) covers its shell name and
+**Caching.** A page answers `Cache-Control: public, max-age=300` with its ETag, a
+canonical or retired-slug redirect `public, max-age=3600`, and a sitemap
+`public, max-age=3600`.
+
+**Validators.** An HTML page's ETag is the artifact's identity (the release tag, or
+the build time of a local `--db`), the page identity and the page's own key (the
+slug, plus the page number and recording where they apply, or a directory's
+canonical location). The page identity (`pageIdentity`) covers the shell name and
 bytes, the site URL, the build's VCS revision when there is one (the Docker image
 has none) and `htmlRendererVersion`, which is bumped whenever Go-rendered HTML
 changes. A sitemap's ETag covers the artifact identity, the renderer version, the
-site URL and the build revision. These are cache keys, not content-change dates;
+site URL, the document (which shard, or the index and whether it lists the static
+sitemap) and the build revision. These are cache keys, not content-change dates;
 build stamping and per-entity revision tracking are
 [follow-up work](https://github.com/KodeStar/audiosilo-meta/issues/2927).
 
@@ -1750,11 +1762,13 @@ A route that states its own keeps it:
 - a `works/match` answer that asked for [`expand=work`](#expandwork) and went out
   without it, at `no-store`.
 
-Every other status gets no default (`internal/serve/cache.go`). A catalogue read
-error carries no `Cache-Control`, and a no-artifact 503 and a 429 carry `no-store`.
-Only the answers whose handler states one keep it: a retired slug's 301 and a watch
-feed's 304, both `max-age=3600`, and every intake queue answer, `no-store`.
-The HTML pages' and sitemaps' error answers state `no-store` themselves (see
+Every other status gets no default (`internal/serve/cache.go`), so it carries a
+`Cache-Control` only when its handler states one: a no-artifact 503 and a 429,
+`no-store`; a retired slug's 301 and a watch feed's 304, both `max-age=3600`; and
+every intake queue answer, `no-store`. A catalogue read error, a 400 and a
+`works/match` that ran out of time (503, `Retry-After: 1`) carry none.
+The HTML pages' 400, 500 and 503 answers and the sitemaps' 503 state `no-store`
+themselves; their 404s carry none (see
 [HTML routes and sitemaps](#html-routes-and-sitemaps)).
 
 ## Deadlines, security headers, and reverse proxies
