@@ -80,11 +80,9 @@ the console at. A notice under **Share** says when that limits who can open it:
 **People > People** shows everyone as a card. It shows whether they are
 listening now or when they were last active, the book they are in the middle
 of, and their devices. It also says how they sign in: **Password and paired
-devices**, **Paired devices only**, or **Signs in with** and your provider's
-name for someone with no password who uses
-[single sign-on](single-sign-on.md). A
-household is grouped into one block. Click a card to open
-that person's page.
+devices**, **Paired devices only**, or, for someone with no password who uses
+[single sign-on](single-sign-on.md), **Signs in with** and your provider's name.
+A household is grouped into one block. Click a card to open that person's page.
 
 ## A person's page
 

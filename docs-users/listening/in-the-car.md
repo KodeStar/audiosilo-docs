@@ -70,8 +70,6 @@ The car's Now Playing screen shows the chapter you're in, with a scrubber for th
 
 Every move you make in the car saves your new place.
 
-If a streamed book stops because the server stops answering, Android Auto shows *Playback stopped. Your place is saved.* The play button stays on the screen. Nothing starts again by itself when the server comes back, so press play when you're ready.
-
 ## When a book ends in the car
 
 This works even if you never opened the app on your phone:
@@ -85,7 +83,8 @@ This works even if you never opened the app on your phone:
 ## Good to know
 
 - If the car says to connect a server, open AudioSilo on your phone and [sign in](connecting.md).
-- If a book can't play, its server may be out of reach. Play a downloaded book instead. It waits a few seconds for your latest place, then starts from the place saved on the phone. If the server answers later with a newer place from another device, the player moves there with **Undo**, or asks which place to keep. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
+- If a book can't play, its server may be out of reach. Play a downloaded book instead; it starts from the place saved on the phone (see [Listening on more than one device](playback.md#listening-on-more-than-one-device)).
+- If a streamed book stops with *Playback stopped. Your place is saved.*, nothing starts again by itself when the server comes back. Press play when you're ready.
 - On Android, when you start a book in the car while the phone has another one open, the phone switches to the car's book without a pause. The other book keeps the place where you last heard it.
 - The car has no search and doesn't browse folders.
 - The first drive may show a few books without covers for a moment. A book with no cover shows the AudioSilo tile.

@@ -407,15 +407,10 @@ for listeners too, edit its **Series number** on
 - **A book using your edited chapters gets no chapter detection.** See
   [Books that get no detection](chapter-detection.md#books-that-get-no-detection).
 - **The chapter editor's player plays every file** when the server has ffmpeg.
-  A file your browser can't play as stored, such as Opus or FLAC in an `.mka`,
-  plays through the server's conversion, and you can still seek. For an MP3 in
-  an `.mka`, opening the editor starts the server's playable copy. Until the copy
-  is made, the player converts the file as it plays, then switches to the copy.
-  A file that still doesn't load can't be played, but you can type the times.
-- **The editor waits when the server is busy.** If every conversion slot is in
-  use, it says **The server is busy. Trying again in a moment.** and tries again.
-- **The editor never holds a conversion for long.** Paused, its player lets go
-  of the stream after a few seconds, and **Play** asks for it again from the
-  playhead. The server also ends any conversion the editor started once nothing
-  has been read from it for 10 minutes, so it frees its slot. Listeners in the
-  players are not affected.
+  A file your browser can't play as stored, such as Opus, FLAC or MP3 in an
+  `.mka`, plays through the server's conversion, and you can still seek. A file
+  that still doesn't load can't be played, but you can type the times.
+- **The editor is light on the server.** When the server is busy it says
+  **The server is busy. Trying again in a moment.** and tries again. Paused or
+  left open, it frees the server's conversion. Listeners in the players are not
+  affected.

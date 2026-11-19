@@ -325,9 +325,8 @@ and its sign-ins. To set it up:
 Within about 15 seconds, the **Status** tab says the agent is **Ready**.
 
 Don't add volumes or credentials to `agent-endpoint`. The Bridge refuses its runs
-while it can reach a sign-in, and the **Status** tab says why. The key belongs to the
-address you entered it for: saving another address removes it, so enter the new
-one's.
+while it can reach a sign-in, and the **Status** tab says why. Changing the address
+deletes the saved key, so enter the key again for the new address.
 
 ## 8. Review the monthly budget
 

@@ -54,10 +54,8 @@ every play, cover and download against it.
   visible so they can find it, but show nothing else.
 - Search and book lists only show books they can see.
 - If their folders are all in one library, they see only that library.
-- A folder outside their shares looks the same to them as a folder that doesn't
-  exist. The server gives the same answer, in the same time, so they can't tell
-  whether it's there. A symbolic link that leads out of the library looks
-  missing too.
+- A folder outside their shares, or a symbolic link that leads out of the
+  library, looks the same to them as a folder that doesn't exist.
 
 ## Examples
 

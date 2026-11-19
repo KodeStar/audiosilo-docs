@@ -59,6 +59,6 @@ To take a finish back later, select **Mark as not finished** in the same menu. I
 ### Good to know
 
 - **Offline**, Mark as finished waits on your device and reaches your server once it's back. While it waits, **Undo** and **Mark as not finished** work offline too.
-- **Once the finish may have reached your server**, taking it back needs the server. If it can't be reached, the book stays finished and the message says so. Press **Retry** once the server is back.
+- **Once the finish has been sent to your server**, taking it back needs the server. If it can't be reached, the book stays finished and the message says so. Press **Retry** once the server is back.
 - **A slow server** shows **Marking as finished...** until it answers. If marking fails, the book loads again where you left it, paused.
 - **Undo** needs a recent server. On an older one the message has no Undo.
