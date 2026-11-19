@@ -31,7 +31,9 @@ the admin captures, ports and the rest).
 `SHOTS_ONLY=<prefix>` writes only the screenshots whose path starts with it
 (e.g. `SHOTS_ONLY=admin/`), so adding a few shots doesn't re-encode every
 other committed PNG. It takes a comma-separated list too
-(`SHOTS_ONLY=admin/activity,admin/people.png`).
+(`SHOTS_ONLY=admin/activity,admin/people.png`). A failed step is logged and
+skipped, and the run backfills a placeholder; `SHOTS_STRICT=1` on a capture
+script makes a failed step exit non-zero instead (`run.sh` leaves it unset).
 
 `run.sh` builds the server's admin console (`admin-ui`) first, because its
 output is embedded in the binary, never committed. `capture-admin.mjs` signs in
@@ -642,6 +644,11 @@ covers, so missing cover art never fails a shot.
 `capture-meta.mjs` is standalone: point `META_BASE` at any `metaserve` (or the
 live site) and run `META_BASE=http://127.0.0.1:8795 node capture-meta.mjs` - it
 needs no other services (the /import fixture is vendored in `fixtures/`).
+It skips the steps whose shots `SHOTS_ONLY` leaves out. `SHOTS_ONLY` matches by
+prefix, so name whole files to take just the catalogue views
+(`meta/browse.png,meta/work.png,meta/work-comparison.png,meta/chapters.png,meta/characters.png,meta/series.png,meta/series-listening-guide.png,meta/person-recordings.png`):
+`meta/series` alone also runs the first of the watchlist pair below (it ticks
+ownership marks), but not `meta/watching.png`.
 
 The two watchlist shots (`meta/series-watching.png`, `meta/watching.png`) need a
 site build that has the `/watching` page in it, and they run as a **pair**: the

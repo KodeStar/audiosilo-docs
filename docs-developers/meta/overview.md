@@ -142,6 +142,11 @@ in-process.
   and concurrency. The zero value suits an in-process consumer.
 - `MaxSchemaVersion` is the newest artifact schema the code understands. A test
   pins it to the builder's `SchemaVersion`.
+- `SeriesListeningGuide` and `PersonRecordings` read bounded member and credit
+  pages, batching the page's recording summaries and narrator credits rather than
+  building a `WorkDetail` per row. `BrowseFiltered` reads a directory page and
+  `RecordingChapters` a validated recording's chapter window. Their HTTP contracts
+  are in [the API reference](api.md).
 
 ### `pkg/query/querytest`
 
@@ -355,6 +360,20 @@ requests.
 competitor's users: `GET /abs/search`, plus `GET /abs/{lang}/search`, which ranks
 one language's matches first. See
 [the HTTP API](api.md#get-abssearch-audiobookshelf-provider).
+
+## The HTML catalogue
+
+With `--site`, `internal/serve` injects each entity's facts and payload into the
+Astro shells, so the React islands reuse that payload instead of showing a loading
+screen first. Routes, paging, canonical URLs, error responses, validators and
+sitemaps are in [HTML routes and sitemaps](api.md#html-routes-and-sitemaps).
+
+The series listening guide's recording choices, runtime subtotal and narrator
+continuity, and the person page's credit groups, describe only the current page's
+rows, never a complete series. A plan is complete only with an explicit choice, a
+known runtime and no overlapping position for every catalogued entry, and a
+subtotal never sums alternatives. Neither a catalogued recording nor a retailer
+link establishes availability or production format.
 
 ## The site's watchlist is client-side only
 

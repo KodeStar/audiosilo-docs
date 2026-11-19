@@ -501,6 +501,7 @@ works in the named languages: `lang=de`, or `lang=de,en` for two. It applies to:
 | `/api/v1/works/latest` | a work's language. The two-per-series cap is then taken over what is left. |
 | `/api/v1/coverage/works` | a work's language |
 | `/api/v1/people/search` | **accepted and ignored**, since a person has no language, but still validated |
+| `/api/v1/people/{id}/recordings` | the **recording's** stated language; a recording that states none never matches ([below](#apiv1peopleidrecordingslimitoffsetserieslang)) |
 
 Everything that names a record outright is **never** filtered: `works/{id}`,
 `series/{id}`, `people/{id}`, `lookup`, the HTML entity pages, the sitemaps and
@@ -787,6 +788,13 @@ The full work document, or 404 `work not found`. It carries the work's identifie
 its `authors[]` and `series[]`, and every `recordings[]` entry (with narrators,
 ASINs, ISBNs, and a `chapter_count`).
 
+Each recording also carries its `language` and, only when the source states it,
+`abridgement` (`abridged` or `unabridged`); an absent `abridgement` means unknown.
+Both are optional on the wire. From `schema_version` 13 a stated `abridged: false` reads as
+`unabridged`; on an older artifact only the legacy `abridged: true` yields
+`abridgement: "abridged"`. The older optional `abridged` boolean is still sent,
+but its absence never means unabridged.
+
 When the loaded artifact is new enough and the work has them, it also carries the
 inline expressive layer:
 
@@ -952,11 +960,68 @@ omitted on an older artifact.
   omitted when the series has no variant ordering.
 
 `works` is sorted by the numeric start of each `position` string, so `"1-3.5"` sorts
-by 1. Paging here is **opt-in**. With no `?limit=`, the whole member list is
+by 1, then by the raw position string and work id to break ties deterministically.
+Paging here is **opt-in**. With no `?limit=`, the whole member list is
 returned and the echoed `limit` is `0`, because the player's series rail depends on
 getting the complete list. To window it, pass `?limit=` (clamped to a maximum of
 **500**) with an optional `?offset=`. `works_total` is always the unpaged member
 count, so it is the reliable "how long is this series" number either way.
+
+## `/api/v1/series/{id}/listening-guide?limit=&offset=`
+
+A bounded series page with recording alternatives, or **404** `series not found`:
+
+```json
+{ "id": "the-saga", "name": "The Saga", "authors": [],
+  "entries": [{ "position": "2.5", "work": { "id": "a-work", "title": "A work" },
+    "recordings_total": 7, "recordings_limit": 5,
+    "recordings": [{ "id": "a-reading", "narrators": [{ "id": "a-reader", "name": "A reader" }],
+      "language": "en", "abridgement": "unabridged", "runtime_min": 480,
+      "release_date": "2026", "publisher": "A publisher", "chapter_count": 20 }] }],
+  "works_total": 1, "limit": 50, "offset": 0 }
+```
+
+`work` is the workCard described above (abbreviated in these examples). The
+response also carries the series' optional `language`, `ordering`, `ordering_of`,
+`orderings`, `translation_of` and `translations`, as on `series/{id}`. Members sort
+as on `series/{id}`, and `works_total` is the unpaged member count.
+
+Each `RecordingSummary` has `id` and `narrators[]`; `language`, `abridgement`,
+`runtime_min`, `release_date`, `publisher` and `chapter_count` are omitted when
+unstated or zero. Summaries contain no identifiers or chapter bodies. A work
+gets at most **five** alternatives, deterministically by recording id;
+`recordings_total` counts all its recordings and `recordings_limit` is `5`.
+An empty array means no recording is catalogued, not that none exists.
+
+## `/api/v1/people/{id}/recordings?limit=&offset=&series=&lang=`
+
+Narration credits, retaining separate recordings of a work and deduplicating a
+repeated credit on the same recording:
+
+```json
+{ "recordings": [{ "work": { "id": "a-work", "title": "A work" },
+    "recording": { "id": "a-reading", "narrators": [] },
+    "series": [{ "id": "the-saga", "name": "The Saga", "position": "2.5" }] }],
+  "total": 1, "limit": 50, "offset": 0 }
+```
+
+`work` is a workCard and `recording` is the RecordingSummary above. `series[]`
+contains the work's memberships, primary orders before variants, and is empty
+for a standalone work. Rows sort by work title, work id and recording id.
+`total` counts matching recording credits before paging. A known person with
+no matching credits gets an empty array; an unknown person gets **404**
+`person not found`. Authorship and translation credits are on `people/{id}`.
+
+`series` optionally matches one exact series slug (invalid syntax is **400**).
+`lang` goes through the [shared parser](#the-lang-filter) and matches the primary
+subtag of the **recording's** stated language, so a recording that states none
+never matches. An invalid value is **400**. Both filters apply before counting and
+paging, on every artifact version.
+
+Both endpoints default `limit` to **50**, cap it at **100**, and default `offset`
+to **0**. An invalid or non-positive limit uses the default; an invalid or
+negative offset uses zero. A window beyond the end returns an empty array with the
+true total.
 
 ## `/api/v1/lookup?asin=|isbn=|librivox_id=`
 
@@ -1474,6 +1539,83 @@ and `secure_delete=ON` zeroes a freed row's content.
 That covers metaserve alone. A reverse proxy in front logs what it is set to log,
 so check its access log for this route.
 
+## HTML routes and sitemaps
+
+With `--site`, metaserve serves these HTML pages. Each carries its catalogue facts
+in Go-rendered HTML. The entity and guide pages also carry the entity payload, so
+their React islands hydrate without fetching it; the `/browse` directories and the
+chapter pages are Go-rendered only, with no payload:
+
+| Route | Content |
+|---|---|
+| `/browse` | Directory links to works, series, people and existing guides |
+| `/browse/works`, `/browse/series`, `/browse/people`, `/browse/characters`, `/browse/recaps` | Up to 50 entries per page, sorted by displayed title/name (`COLLATE NOCASE`), then id |
+| `/works/{id}` | Every recording, comparison links to `#recording-{rid}`, and detailed cards |
+| `/works/{id}/characters`, `/works/{id}/recap` | Existing community guides. Spoiler bodies and aliases stay in the DOM inside closed native `details`, marked `data-nosnippet`; work tab panels stay mounted with `hidden` semantics |
+| `/series/{id}` | Up to 50 ordered works and their bounded listening-guide alternatives |
+| `/people/{id}` | Authorship/translation lists and 50 narrated recording credits per page |
+| `/works/{id}/recordings/{rid}/chapters` | Up to 100 chapter titles, starts and durations for a validated recording |
+
+**Directory filters.** The five browse directories accept `q` (search within that
+directory), `letter` (`A`-`Z`, `0-9` or `Other`; omitted means All) and `page`,
+and the filters compose. A-Z groups ASCII initials without regard to case, 0-9
+groups numeric initials, and Other holds punctuation and non-ASCII initials. A
+guide directory searches only the works with that guide. Search uses the same
+escaped, bounded FTS expression as public search. `BrowseFiltered` in
+`pkg/query/discovery.go` implements these reads; `internal/serve/catalogue.go`
+handles the controls and URLs, whose page links and jump form keep `q` and
+`letter`.
+
+`q` must be valid UTF-8 and at most 256 bytes before whitespace is trimmed and
+collapsed; an empty normalized search is dropped. Letter values normalize case
+(`m` becomes `M`, `other` becomes `Other`), and empty or `all` means no letter
+filter. Repeated `q`/`letter`, an invalid letter, malformed query encoding or a
+raw query string over 8,192 bytes is **400**. Each filtered page has its own
+canonical and ETag; a nonempty `q` adds `noindex,follow`, while letter-only pages
+stay indexable.
+
+**Paging and canonical URLs.** Paged routes use `?page=N`, omitted on page one. A
+malformed, empty, repeated, non-positive or above-1,000,000 page value is
+**400**; an out-of-range page or a missing entity or recording is **404**. An empty
+directory, or a recording with no chapters, still answers page one. A valid but
+non-canonical URL (another spelling, another parameter order, an extra parameter)
+redirects to the canonical one, whose directory query order is `letter`, `page`,
+`q`. Legacy `/work?id=`, `/person?id=` and `/series?id=` links redirect to their
+canonical paths, and a retired slug keeps its page and guide or recording suffix.
+The JSON chapter endpoint keeps its own empty-list answer for an unknown
+recording.
+
+**Errors.** No artifact, or a failed page composition, is **503** with
+`Retry-After` and `Cache-Control: no-store`. A missing or broken site shell is
+**500** with `no-store`, never a successful blank entity page. A **400** (an
+invalid page or filter) is also `no-store`; a **404** is the site's `404.html` with
+no `Cache-Control`.
+
+**Caching.** A page answers `Cache-Control: public, max-age=300` with its ETag, a
+canonical or retired-slug redirect `public, max-age=3600`, and a sitemap
+`public, max-age=3600`.
+
+**Validators.** An HTML page's ETag is the artifact's identity (the release tag, or
+the build time of a local `--db`), the page identity and the page's own key (the
+slug, plus the page number and recording where they apply, or a directory's
+canonical location). The page identity (`pageIdentity`) covers the shell name and
+bytes, the site URL, the build's VCS revision when there is one (the Docker image
+has none) and `htmlRendererVersion`, which is bumped whenever Go-rendered HTML
+changes. A sitemap's ETag covers the artifact identity, the renderer version, the
+site URL, the document (which shard, or the index and whether it lists the static
+sitemap) and the build revision. These are cache keys, not content-change dates;
+build stamping and per-entity revision tracking are
+[follow-up work](https://github.com/KodeStar/audiosilo-meta/issues/2927).
+
+**Sitemaps.** `/sitemap-index.xml` lists the static sitemap, when present, and the
+generated `/sitemaps/{family}-{shard}.xml` shards (up to 50,000 URLs each, in
+family and id order). Entity URLs carry no `lastmod`, because `added_at`, import
+dates and build times say when a record arrived, not when its page changed; the
+index dates each generated shard by the artifact's build time. Neither `priority`
+nor `changefreq` is emitted. With no artifact, or when a shard fails to compose, a
+shard is **503** with `Retry-After` and `no-store`. With no artifact the index
+serves the site's static index with `no-store`, or **503** when there is none.
+
 ## Flags
 
 `cmd/metaserve` is flag wiring only. Every knob maps onto `internal/serve.Config`:
@@ -1620,10 +1762,14 @@ A route that states its own keeps it:
 - a `works/match` answer that asked for [`expand=work`](#expandwork) and went out
   without it, at `no-store`.
 
-Every other status gets no default (`internal/serve/cache.go`). A catalogue error or
-503 carries no `Cache-Control`, and a 429 carries `no-store`. Only the answers whose
-handler states one keep it: a retired slug's 301 and a watch feed's 304, both
-`max-age=3600`, and every intake queue answer, `no-store`.
+Every other status gets no default (`internal/serve/cache.go`), so it carries a
+`Cache-Control` only when its handler states one: a no-artifact 503 and a 429,
+`no-store`; a retired slug's 301 and a watch feed's 304, both `max-age=3600`; and
+every intake queue answer, `no-store`. A catalogue read error, a 400 and a
+`works/match` that ran out of time (503, `Retry-After: 1`) carry none.
+The HTML pages' 400, 500 and 503 answers and the sitemaps' 503 state `no-store`
+themselves; their 404s carry none (see
+[HTML routes and sitemaps](#html-routes-and-sitemaps)).
 
 ## Deadlines, security headers, and reverse proxies
 

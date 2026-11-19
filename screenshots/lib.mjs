@@ -328,11 +328,15 @@ export async function shoot(page, relFile, opts = {}) {
 }
 
 // Best-effort step wrapper: a single failed capture shouldn't kill the run -
-// placeholders.mjs backfills anything missing afterwards.
+// placeholders.mjs backfills anything missing afterwards. SHOTS_STRICT=1 makes a
+// failed step fail the script instead (exit code 1), for a targeted run that
+// must not fall back to an old image silently. run.sh leaves it unset, so its
+// placeholder backfill still runs.
 export async function step(name, fn) {
   try {
     await fn();
   } catch (e) {
+    if (process.env.SHOTS_STRICT === '1') process.exitCode = 1;
     console.log(`  ✗ ${name}: ${String(e && e.message ? e.message : e).split('\n')[0]}`);
   }
 }

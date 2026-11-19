@@ -24,6 +24,20 @@ punctuation: "enders game" finds *Ender's Game*.
 
 ![Search results for a series query](/img/screenshots/meta/search.png)
 
+**Browse** in the header (also linked from the home page and the footer) opens
+directories of audiobooks, series, authors and narrators, character guides and
+recap guides. Each directory has its own **Search this directory** box and
+**All**, **A-Z**, **0-9** and **Other** links, and the two work together; **Clear
+filters** returns to the full directory. Entries are sorted by title or name as
+written. A-Z groups English letters, 0-9 groups numbers, and Other holds
+punctuation and other scripts.
+
+Pages hold up to 50 entries. Use the numbered links, **First** and **Last**, or
+enter a number in **Go to page**. Page links keep your search and letter;
+changing either starts again at page one.
+
+![The series directory filtered to M, with search, letter filters and page navigation](/img/screenshots/meta/browse.png)
+
 - A **book page** lists every recording of the book, with narrators, length,
   release date, publisher, ASINs and ISBNs, and chapters.
 - A **series page** lists the books in reading order.
@@ -32,6 +46,44 @@ punctuation: "enders game" finds *Ender's Game*.
 ![A book page with its recordings](/img/screenshots/meta/work.png)
 
 ![A series page in reading order](/img/screenshots/meta/series.png)
+
+**Compare recordings** on a book page sets narrator, language, abridgement,
+runtime, release date, publisher and chapter count side by side, and each
+recording links to its detailed card. **Unknown** means the catalogue doesn't say,
+so a recording without an abridgement isn't necessarily unabridged. **None
+catalogued** means nobody has added its chapters yet, not that it has none. Store
+links are a place to check; they don't mean the recording is on sale there.
+
+![Comparing the catalogued recordings of a book](/img/screenshots/meta/work-comparison.png)
+
+For a recording with chapters, **Browse chapter titles, starts and durations**
+opens its chapter list, up to 100 chapters a page, with a link back to the
+recording's card.
+
+![A recording's chapter titles, start times and durations](/img/screenshots/meta/chapters.png)
+
+## Planning a series and following a narrator
+
+A series page's **Listening guide** follows its reading order and shows up to
+five catalogued recordings per book; when there are more, **Compare every
+recording** opens the book page. **No recording catalogued** means the catalogue
+holds no recording of that book yet.
+
+Pick a recording for each book and the **Listening time planner** adds up their
+runtimes. The subtotal covers only the current page. The plan stays partial
+unless the whole series fits on that one page and every book on it has a pick
+with a known runtime, a position the planner can read, and no omnibus that
+overlaps another pick. Picks are forgotten when you leave the page. Narrator continuity
+also looks only at this page, so it doesn't promise one narrator for the whole
+series.
+
+![A series listening guide with recording choices](/img/screenshots/meta/series-listening-guide.png)
+
+On a person page, **Narrated recordings** lists each recording they narrated, so
+two readings of one book are two entries, each linking to that recording. A page
+shows 50, grouped by series and language; a group covers only that page.
+
+![A narrator's recording credits grouped by series and language](/img/screenshots/meta/person-recordings.png)
 
 ## Choosing languages
 
@@ -59,7 +111,8 @@ More detail is on the site's [languages page](https://meta.audiosilo.app/docs/la
 Where the community has written them, a book page has two extra tabs, the same
 ones the player shows (see [Recaps and characters in the player](../listening/recaps-and-characters.md)):
 
-- **Characters** - a card for each character. The description stays hidden
+- **Characters** - a card for each character. Its name, role and
+  first-appearance chapter are visible; the description and aliases stay hidden
   until you open the card.
 - **Story so far** - recaps, each labelled with the chapter it is safe to read
   after. Each stays closed until you open it, so nothing ahead is spoiled.
@@ -83,8 +136,9 @@ identifiers (ASINs and ISBNs), and author names for books that don't match.
 Follow a series to see its new and upcoming books:
 
 1. Open the series page and press **Watch this series**.
-2. Tick **I have this** on each book you own. **Mark all as owned** ticks them
-   all.
+2. Tick **I have this** on each book you own. **Mark this page as owned** ticks
+   the books on the current page; **Clear ownership for this series** clears the
+   series' marks on every page.
 3. Open the [Watching page](https://meta.audiosilo.app/watching) (**Watching**
    in the header).
 
