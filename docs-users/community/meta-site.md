@@ -70,9 +70,10 @@ recording** opens the book page. **No recording catalogued** means the catalogue
 holds no recording of that book yet.
 
 Pick a recording for each book and the **Listening time planner** adds up their
-runtimes. The subtotal covers only the current page, and the plan stays partial
-until every book on it has a pick with a known runtime and no omnibus overlaps
-another pick. Picks are forgotten when you leave the page. Narrator continuity
+runtimes. The subtotal covers only the current page. The plan stays partial
+unless the whole series fits on that one page and every book on it has a pick
+with a known runtime, a position the planner can read, and no omnibus that
+overlaps another pick. Picks are forgotten when you leave the page. Narrator continuity
 also looks only at this page, so it doesn't promise one narrator for the whole
 series.
 
