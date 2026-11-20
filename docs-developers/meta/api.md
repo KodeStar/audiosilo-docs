@@ -1624,13 +1624,19 @@ canonical or retired-slug redirect `public, max-age=3600`, and a sitemap
 the build time of a local `--db`), the page identity and the page's own key (the
 slug, plus the page number and recording where they apply, or a directory's
 canonical location). The page identity (`pageIdentity`) covers the shell name and
-bytes, the site URL, the build's VCS revision when there is one (the Docker image
-has none) and `htmlRendererVersion`, which is bumped whenever Go-rendered HTML
-changes. A sitemap's ETag covers the artifact identity, the renderer version, the
-site URL, the document (which shard, or the index and whether it lists the static
-sitemap) and the build revision. These are cache keys, not content-change dates;
-build stamping and per-entity revision tracking are
-[follow-up work](https://github.com/KodeStar/audiosilo-meta/issues/2927).
+bytes, the site URL, the binary's revision and `htmlRendererVersion`, which is
+bumped whenever Go-rendered HTML changes. A sitemap's ETag covers the artifact
+identity, `sitemapRendererVersion`, the site URL, the document (which shard, or
+the index and whether it lists the static sitemap) and the binary's revision.
+
+The binary's revision (`buildRevision`) is the commit a released image was built
+from, linked in at build time (`stampedRevision`, see
+[the published image](overview.md#the-published-image)), else the toolchain's
+VCS revision, else none: a `go run`, a test binary, or a Docker build given no
+`REVISION`. The renderer versions stay explicit for those builds. These are cache
+keys, not content-change dates. A page's content-change date is its
+[revision date](#revision-dates), which is never a validator.
+
 `TestRendererVersionsTrackTheGoldens` guards both bumps: it pins each of
 `htmlRendererVersion` and `sitemapRendererVersion`, with a digest of its goldens
 (`internal/serve/testdata/golden/`), so a golden change fails until its pin is
@@ -1639,12 +1645,50 @@ fixture alone updates the digest and keeps the version.
 
 **Sitemaps.** `/sitemap-index.xml` lists the static sitemap, when present, and the
 generated `/sitemaps/{family}-{shard}.xml` shards (up to 50,000 URLs each, in
-family and id order). Entity URLs carry no `lastmod`, because `added_at`, import
-dates and build times say when a record arrived, not when its page changed; the
-index dates each generated shard by the artifact's build time. Neither `priority`
-nor `changefreq` is emitted. With no artifact, or when a shard fails to compose, a
+family and id order). An entity URL's `<lastmod>` is its page's
+[revision date](#revision-dates), and a URL whose page has none carries no
+`<lastmod>`. `added_at`, import dates and build times are never used for it,
+because they say when a record arrived, not when its page changed. The index
+dates each generated shard by the artifact's build time. Neither `priority` nor
+`changefreq` is emitted. With no artifact, or when a shard fails to compose, a
 shard is **503** with `Retry-After` and `no-store`. With no artifact the index
 serves the site's static index with `no-store`, or **503** when there is none.
+
+### Revision dates
+
+A page's revision date is when its content last changed in a way a reader would
+notice. The release build computes it by comparing each page with the same page
+in the previous data release, and stores it in the artifact's `page_revisions`
+table ([how a date is computed](overview.md#page-revision-dates)). metaserve reads
+one row per page (`query.DB.PageRevision` for a page, `PageEntry.RevisedAt` for a
+sitemap shard) and states the same date in three places:
+
+| Surface | Where |
+|---|---|
+| sitemap `<lastmod>` | every URL of the works, people, series, recap and character shards whose page has a date |
+| JSON-LD `dateModified` | the `Book` node of a work page, the `Article` of a recap or character guide, and the `BookSeries` of a series page. Never on a `Person` node, and not on a chapters page's `WebPage` |
+| `Last-Modified` header | every **200** of a dated work, person, series, guide or chapters page, as an HTTP-date. Each `?page=N` of a person or series page carries the page's one date |
+
+A work's chapters pages (`/works/{id}/recordings/{rid}/chapters`) have no row of
+their own and carry their work's date, since their content counts toward the work
+page's. The `/browse` directories carry no date.
+
+**`If-Modified-Since` never yields a 304.** `Last-Modified` is information only.
+The date covers the page's content, while the HTML also changes with the site
+build, the origin and the renderer under an unchanged date, so a 304 granted on
+the date could renew a stale page. The ETag covers all of them and is the one
+validator a conditional request is answered by. A 304 carries no
+`Last-Modified`.
+
+**Unknown dates are omitted everywhere**, never replaced by another date. A page
+has no date when:
+
+- it has not changed since the release chain started dating pages;
+- the artifact predates `schema_version` 14 (13 and older state none);
+- the artifact was built without a previous release, so its `page_revisions` is
+  empty (a local `metabuild`, or a release cut with `reset_revisions`).
+
+The JSON API (`/api/v1/*`) returns no revision date.
 
 ## Flags
 
@@ -1666,8 +1710,9 @@ serves the site's static index with `no-store`, or **503** when there is none.
 | `--rate-limit` or `METASERVE_RATE_LIMIT` | `100` | per-client requests a second on the API. `0` turns the limit off (see [Rate limit and caching](#rate-limit-and-caching)). |
 | `--rate-burst` or `METASERVE_RATE_BURST` | `400` | the per-client burst. At least 1 while the limit is on. |
 | `--trusted-proxy` or `METASERVE_TRUSTED_PROXIES` | (none) | comma-separated proxy addresses and CIDR prefixes whose `X-Forwarded-For` names the client |
+| `-version` | `false` | print the commit the binary was built from (an empty line when it carries none) and exit. The image build checks it against the `REVISION` it stamped ([the published image](overview.md#the-published-image)). |
 
-At least one of `--db` and `--poll` is required. Otherwise `New` refuses with
+Apart from `-version`, at least one of `--db` and `--poll` is required. Otherwise `New` refuses with
 "nothing to serve".
 
 - With `--poll` and no `--db` (the production shape), metaserve fetches its
