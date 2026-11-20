@@ -106,6 +106,7 @@ pkg/release/releasetest  PUBLIC test support: one fake of GitHub's releases API 
 internal/importer   OpenAudible / Libation / libex export -> canonical records (ASIN dedup); the LibriVox snapshot fetcher, adapter (librivox_id dedup) and work-matching rules
 internal/issueform  issue-form body -> canonical records + an ok/duplicate/needs-human/invalid verdict
 internal/build      the deterministic SQLite builder (FTS5, ASIN/ISBN indexes, added_at)
+internal/revision   the page revision dates: each page's content digest, dated against the previous release
 internal/serve      metaserve: serves pkg/query's handler (behind CORS + gzip + a per-client rate limit + default Cache-Control), the hot swap,
                     the GitHub-release poller (over pkg/release), webhook, OpenAPI, HTML pages, sitemaps
 internal/httpx      the response helpers pkg/query and internal/serve share
@@ -147,6 +148,17 @@ in-process.
   building a `WorkDetail` per row. `BrowseFiltered` reads a directory page and
   `RecordingChapters` a validated recording's chapter window. Their HTTP contracts
   are in [the API reference](api.md).
+- The revision reads, from `schema_version` 14: `PageEntry.RevisedAt` on a
+  sitemap shard's rows, `PageRevision(family, id)` for one page, and
+  `PageRevisions` and `RevisionsAt` for the
+  [release-time revision pass](#page-revision-dates). An artifact that knows no
+  date answers nil, `""` or the zero time. `SetMaxIdleConns` keeps one idle
+  connection per reader for a caller reading from many goroutines at once, as
+  that pass does.
+- `HasRecapGuide`, `HasCharacterGuide`, `HasChapteredRecaps`, `PositionUnit` and
+  `FirstCover` are the one definition of which guide pages a work has and what
+  they show, shared by metaserve's pages and the revision pass. `Chapters` is a
+  recording's whole chapter list.
 
 ### `pkg/query/querytest`
 
@@ -200,7 +212,7 @@ run ./cmd/<name>`.
 |---|---|
 | `metacheck` | Validates the whole `data/` tree: schema, pack placement and caps, referential integrity, uniqueness, chapter ordering, series positions. Prints one line per problem and exits 1 if any are found. |
 | `metafmt` | Enforces canonical JSON for `data/**/*.json` (sorted keys, 2-space indent, single trailing LF) and the pack-storage invariants. `--write` also relocates misplaced entries, performs due pack splits, and rebinds, so placement self-heals and nobody computes it by hand. `--check` reports and exits 1. |
-| `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data. Deterministic: identical data produces an identical artifact. Each record is dated by its own `added_at`, falling back to its newest `sources[].imported_at`. |
+| `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data. Deterministic: identical data produces an identical artifact. Each record is dated by its own `added_at`, falling back to its newest `sources[].imported_at`. With `--previous` and `--revised-at` it also dates every page against the previous release (see [page revision dates](#page-revision-dates)). |
 | `metaserve` | Serves the compiled artifact read-only over HTTP (and optionally the static site at `/`), hot-swapping newer GitHub releases. See [the HTTP API](api.md). |
 | `metascan` | Scans a local audiobook folder into an import JSON. See [Scanning local files: metascan](contributing-data.md#scanning-local-files-metascan). |
 | `metaimport` | Ingests external sources into `data/`: OpenAudible/Libation library exports, libex rows, a maintainer's store listings (`metaimport store`) and the LibriVox mirror (`metaimport librivox fetch` and `import`). See [Bulk importers: metaimport](contributing-data.md#bulk-importers-metaimport), [store listings](contributing-data.md#store-listings-audiobook-guild-and-graphicaudio) and [the LibriVox mirror](contributing-data.md#librivox-the-public-domain-mirror). |
@@ -247,9 +259,10 @@ release** when one of these changes lands:
 
 - data or schema;
 - the builder itself (`internal/build/**`, `cmd/metabuild/**`);
-- the cross-repo compose code (`pkg/check/**`, `pkg/pack/**`).
+- the cross-repo compose code (`pkg/check/**`, `pkg/pack/**`);
+- the page revision dating (`internal/revision/**`).
 
-The last two make sure that a change which shapes the artifact, such as a new
+The last three make sure that a change which shapes the artifact, such as a new
 index, actually reaches a published artifact.
 
 The release is tagged `data-vYYYY.MM.DD-<core7>-<community7>`, the short SHAs of
@@ -290,6 +303,140 @@ GitHub's release list order is not publish-chronological, and its "latest" can b
 either kind. The [`metaserve` refresh loop](api.md#serving-and-refresh) and
 mirror-mode AudioSilo servers apply the same rule, through `pkg/release`.
 
+## Page revision dates
+
+Every page metaserve serves can state when its content last changed: the
+sitemap's `<lastmod>`, the JSON-LD `dateModified` and the `Last-Modified` header
+([what each surface states](api.md#revision-dates)). The release build computes
+the date over the composed core and community data. It walks no git history and
+does not stamp every page with the build time. It
+lives in the artifact's `page_revisions` table
+([the data model](data-model.md#page-revision-dates)).
+
+### How a page's date is computed
+
+`internal/revision` compares two artifacts, not two data trees. `Digests` reduces
+every page (works, people, series, and the recap and character guides, about
+500,000 on today's catalogue) to a 128-bit digest of the content the page
+shows, read through `pkg/query`'s exported reads:
+
+| Page | Digested from |
+|---|---|
+| work | its whole work detail, sidecars included (its embedded payload is that document, and its JSON-LD description is the community description), the guide facts its Guides section shows, and every recording's chapter list, since its chapters pages carry its date |
+| recap or character guide | the work's title, byline, first cover and first series, the position unit, whether the sibling guide exists, and the page's own sidecar. Not its embedded payload: that is the whole work detail, which the work page's date already stands for, so an edit only that payload carries (a narrator, a recording, the description) leaves a guide's date alone |
+| person | the credit window the page shows and every page of the person's recording credits (each credit row names the recording's narrators) |
+| series | every page of its listening guide |
+
+Every field of every document those reads return is marked hashed or excluded.
+Excluded are provenance (a work card's `added_at`), a chapter's `audio_url` (no
+page renders it) and the paging echoes. The digest refuses a field it has no
+decision for, and a test fails until a new field is decided.
+
+`Stamp` then digests the new artifact **and** the previous release's artifact with
+the same code, so a change to the digest or to `pkg/query`'s reads cannot move a
+date by itself. A builder change that writes different data, or a schema bump
+whose new table the previous artifact lacks (it reads as no data there), does
+move the dates of the pages whose content it changes. Each page of the new
+artifact gets:
+
+- the previous release's date, when its digest is unchanged, or no date when the
+  previous release knew none;
+- the release's stamp (`--revised-at`, recorded as `meta(revisions_at)`), when
+  its digest changed or the page is new.
+
+Because the digest is of what a page shows, an edit moves the pages that show
+it and no others:
+
+| Edit | Pages whose date moves |
+|---|---|
+| a recap, recap summary or character change | its guide page and the work page, never the sibling guide. A guide that appears or disappears (a work's first character added, or its last recap removed) also moves the sibling guide, which links it |
+| a community description | the work page |
+| a position scale's length | the work page |
+| a position scale's unit | the work page and both guide pages |
+| a chapter title | that work's page (and so its chapters pages) |
+| a renamed narrator | their own page, every work crediting them, every series page whose listening guide lists one of their recordings, and the pages of the people narrating those recordings beside them |
+| a renamed author | their own page, every work they wrote, those works' guide pages (the byline) and series pages, and the page of each person whose credit list shows one of those works (its card names the author) |
+| a series membership | the work, the series page and the pages of the work's narrators (a recording credit lists every series of its work), and, when it changes the work's first series, its guide pages and every other page showing its card: the people whose credit lists show the work and the other series listing it (the guides and the card name only the first series) |
+| a translation link | the pages at both ends |
+| a new work | its page and the pages that list it, such as its author's |
+| provenance only (`sources`, `added_at`) | none |
+| a revert | the reverted pages again: the date is the latest content change, not a history |
+
+The stamp is truncated to the second. When it is not after the previous release's
+`meta(revisions_at)`, it becomes one second past it, so a changed page's date
+always moves forward. Rows are inserted in (`kind`, `id`) order, so the result
+depends only on the data, the previous artifact and the stamp.
+
+When the previous release predates `schema_version` 14 (the cold start), it holds
+no dates, so the rules above leave every unchanged page undated. A previous artifact that cannot be read is an error, and nothing is
+written. An artifact is stamped once: stamping one that already carries dates is
+refused.
+
+### metabuild's flags
+
+| Flag | Purpose |
+|---|---|
+| `--previous <artifact>` | the previous data release's `meta.sqlite`, which every page is dated against |
+| `--revised-at <RFC3339>` | the stamp a changed or new page gets |
+| `--previous-tag <tag>` | the previous release's tag, recorded as `meta(revisions_base)` so the chain can be audited. Requires `--previous`. |
+
+`--previous` and `--revised-at` go together. Without them, `page_revisions` stays empty and the artifact is what the data
+alone builds. `metabuild` refuses a `--previous` that names its own output file,
+since the build deletes that file first and the comparison would then see no
+change anywhere. It opens the previous artifact **before** building, so an
+unreadable one fails at once. The pass runs on at most four workers: more is slower, since
+the reads contend inside the pure-Go SQLite driver. It ends with one log line
+counting the changed, carried and unknown pages.
+
+Measured on the real catalogue (about 500,700 pages), a whole pass, both digests
+plus the write, takes about 4 minutes on a 20-core Mac and 7m25s on the GitHub
+Actions runner (the first stamped release, `data-v2026.11.20-a86e45a-aa8c249`).
+`page_revisions` adds about 30 MB to the raw artifact once most pages carry a
+date.
+
+### How the release workflow dates a release
+
+`release.yml` downloads the previous data release **before** `metabuild`:
+
+1. It selects the newest data release by [the rule every consumer
+   uses](#release-artifacts), reading every page of the release listing so a run
+   of code releases cannot hide it.
+2. It downloads `meta.sqlite.gz` and `meta.sqlite.gz.sha256` and checks one
+   against the other (`sha256sum --strict -c`). That checksum is the guard
+   against a truncated or corrupt predecessor. There is no size or page-count
+   threshold.
+3. It decompresses the artifact and passes it to `metabuild` as `--previous`, with
+   its tag as `--previous-tag`, and deletes it after the build to free the runner's
+   disk.
+
+The fetch **fails closed**. Building without the previous release would silently
+restart every page's date as unknown, so a listing that cannot be read, or an
+asset that cannot be downloaded, verified or decompressed, fails the run. A
+listing in which no release qualifies fails too: the step cannot tell "no data
+release exists" from an anomalous listing (a page that came back empty, or an
+asset list the API left out), and building on the second would reset every date.
+
+To step past a previous release that is genuinely broken, or to cut the first data
+release of a fresh repository, run `workflow_dispatch` with the `reset_revisions`
+input set. That run builds without `--previous`, so its
+release states no dates (an empty `page_revisions` and no `revisions_at`). The
+next release dates against it as a cold start.
+
+`--revised-at` is the newer of the two composed checkouts' commit times (the core
+`HEAD` and the community `HEAD`), in UTC, capped at the wall clock so a commit
+time in the future cannot hold every later release to just past it. A re-run over
+the same pair of commits against the same previous release therefore stamps the
+same instant, and its revision rows come out the same, though the artifact's
+`meta(built_at)` is still the wall clock.
+
+The job's timeout is 60 minutes, up from 30, to cover the extra download and the
+two whole-catalogue digests. The first stamped release ran in 20 minutes end to
+end.
+
+The first stamped release dated no page: the release before it was schema 13, so
+every page started as unknown, and a page gains a date from the first release
+that changes what it shows.
+
 ## The published image
 
 `ghcr.io/kodestar/audiosilo-meta` is **the site build plus the `metaserve` binary,
@@ -314,6 +461,14 @@ The practical consequences for a deployment:
   its own. An orchestrator restarts a container it judges "unhealthy", which
   would turn the degraded boot above into the crash loop it exists to avoid. Wire
   `/healthz` as readiness or startup in the orchestrator instead.
+- **The binary is stamped with its commit.** The build context excludes `.git`,
+  so the toolchain's own VCS stamp is empty in the image. `image.yml` passes
+  `github.sha` as the `REVISION` build argument, the Dockerfile links it into
+  `internal/serve.stampedRevision`, and the build fails unless
+  `metaserve -version` reports that commit. The pages' and sitemaps' ETags carry
+  it (the Validators paragraph of
+  [HTML routes and sitemaps](api.md#html-routes-and-sitemaps)), so a deploy that
+  changes only the renderer still moves them.
 - **Name the reverse proxy.** The API is rate limited per client. Behind a
   proxy, set `METASERVE_TRUSTED_PROXIES` to the proxy's own address or network,
   never a whole private range, or every visitor shares the proxy's one bucket. The

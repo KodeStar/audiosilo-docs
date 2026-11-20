@@ -999,6 +999,7 @@ produces an identical file. It stamps a `schema_version` into the artifact's
 | 11 | the store links: `recordings.link_audiobookguild` and `recordings.link_graphicaudio` (one column per store, not a table), which the API returns in the recording's `links` and as purchase links |
 | 12 | the `work_alternate_titles` table (`work_id, title, ord`), a work's alternate titles, which are also among the work's names in the search index |
 | 13 | the nullable `recordings.abridgement` column. The display-order and narrator indexes behind the bounded catalogue reads shipped beside it, but an index never moves the version: an artifact without them serves the same rows, more slowly |
+| 14 | the revision layer: the `page_revisions` table (`kind, id, revised_at`, `WITHOUT ROWID`, the primary key doubling as the lookup index), one row per page whose last meaningful content change is known, and the `meta` rows `revisions_at` (the stamp this release dated its changed pages with) and `revisions_base` (the previous release's tag) |
 
 `metaserve` returns characters, recaps, genres, the community description and the
 translation links inline on `GET /works/{id}` (`characters` / `recaps` /
@@ -1007,6 +1008,24 @@ translation links inline on `GET /works/{id}` (`characters` / `recaps` /
 language, ordering and ordering family on `GET /series/{id}` (see
 [the API](api.md#apiv1seriesidlimitoffset)). From version 8 it also serves the
 LibriVox layer ([the API](api.md#the-librivox-layer)).
+
+### Page revision dates
+
+`page_revisions` dates each **page** metaserve serves, not each record. `kind` is
+the page family as the sitemaps spell it (`works`, `people`, `series`, `recaps`,
+`characters`), `id` the record id the page is addressed by, and `revised_at` an
+RFC 3339 UTC timestamp. A page with no row has no known date.
+
+The builder (`internal/build`) creates the table **empty**, so an artifact built
+from the data alone holds no dates. Given `--previous`, `metabuild` then fills
+it through `internal/revision`, by comparing every page with the same page in the
+previous data release ([how a date is computed](overview.md#how-a-pages-date-is-computed)).
+The rows depend only on the data, the previous artifact and the release's stamp,
+but the artifact as a whole still differs between two runs by its
+`meta(built_at)`, which is the wall clock unless `--built-at` names one.
+
+The dates reach the HTML catalogue only, never the JSON API
+([revision dates](api.md#revision-dates)).
 
 ### Reading an older artifact
 
@@ -1027,15 +1046,20 @@ older release. A missing table or column reads as "no data", never a 500:
 | the store links | 11 |
 | alternate titles | 12 |
 | the recordings' abridgement | 13 |
+| page revision dates | 14 |
 
-An artifact that *claims* any version from 5 to 13 but lacks what that version
+An artifact that *claims* any version from 5 to 14 but lacks what that version
 adds is refused when it is loaded, naming the claim, because the builder always
 writes the two together. For 7 that is the `translations` table or any of the
 series table's `language`, `ordering` and `ordering_of` columns; for 8, any of its
 columns or the `work_credits` and `recording_sources` tables; for 9, any of its
 columns or tables; for 10, the `position_scales` table; for 11, either store link
 column; for 12, the `work_alternate_titles` table; for 13, the
-`recordings.abridgement` column.
+`recordings.abridgement` column; for 14, the `page_revisions` table with its
+`kind`, `id` and `revised_at` columns.
+
+Below 14, or when `page_revisions` is empty (an artifact built without a previous
+release), no page states a revision date ([revision dates](api.md#revision-dates)).
 
 `recordings.abridgement` keeps whether the source stated the abridged flag:
 `model.Recording` carries a stated `false` apart from an absent flag through JSON
