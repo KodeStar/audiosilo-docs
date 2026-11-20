@@ -388,9 +388,11 @@ unreadable one fails at once. The pass runs on at most four workers: more is slo
 the reads contend inside the pure-Go SQLite driver. It ends with one log line
 counting the changed, carried and unknown pages.
 
-Measured on the real catalogue (500,709 pages, a 20-core Mac), one artifact's
-digests take about 2 minutes and a whole pass, both digests plus the write,
-about 4 minutes. `page_revisions` adds about 30 MB to the raw artifact.
+Measured on the real catalogue (about 500,700 pages), a whole pass, both digests
+plus the write, takes about 4 minutes on a 20-core Mac and 7m25s on the GitHub
+Actions runner (the first stamped release, `data-v2026.11.20-a86e45a-aa8c249`).
+`page_revisions` adds about 30 MB to the raw artifact once most pages carry a
+date.
 
 ### How the release workflow dates a release
 
@@ -421,14 +423,19 @@ release states no dates (an empty `page_revisions` and no `revisions_at`). The
 next release dates against it as a cold start.
 
 `--revised-at` is the newer of the two composed checkouts' commit times (the core
-`HEAD` and the community `HEAD`), in UTC. A re-run over the same pair of commits
-against the same previous release therefore stamps the same instant, and its
-revision rows come out the same, though
-the artifact's `meta(built_at)` is still the wall clock.
+`HEAD` and the community `HEAD`), in UTC, capped at the wall clock so a commit
+time in the future cannot hold every later release to just past it. A re-run over
+the same pair of commits against the same previous release therefore stamps the
+same instant, and its revision rows come out the same, though the artifact's
+`meta(built_at)` is still the wall clock.
 
 The job's timeout is 60 minutes, up from 30, to cover the extra download and the
-two whole-catalogue digests. That is an estimate from the Mac timings, to be
-re-sized from the first stamped release's log.
+two whole-catalogue digests. The first stamped release ran in 20 minutes end to
+end.
+
+The first stamped release dated no page: the release before it was schema 13, so
+every page started as unknown, and a page gains a date from the first release
+that changes what it shows.
 
 ## The published image
 
