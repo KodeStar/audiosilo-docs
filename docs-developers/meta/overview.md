@@ -173,7 +173,7 @@ Downstream tests run against true metaserve behaviour.
   `meta.sqlite.gz.sha256`, fsyncs it and renames it into place. The download is
   bounded, stall-guarded and only from allowlisted GitHub hosts.
 
-metaserve's poller uses it too, and adds its delta and cache paths on top.
+metaserve's poller uses it too, and adds its cache path on top.
 
 ### `pkg/release/releasetest`
 
@@ -273,10 +273,15 @@ The asset contract:
 
 - `meta.sqlite.gz` + `meta.sqlite.gz.sha256` - the universal anchor every
   consumer verifies against.
-- `meta.sqlite.sha256` - the raw-file digest, used to verify a patched artifact.
-- `meta.sqlite.patch.from-<PREV_TAG>.zst` - a **best-effort** zstd `--patch-from`
-  binary delta against the previous data release (`--long=31`; a stock zstd CLI
-  consumer must also pass `--long=31` at decompression time).
+- `meta.sqlite.sha256` - the raw-file digest, used to verify an artifact already
+  on disk (metaserve's cache volume).
+
+Releases up to `data-v2026.11.19-706bdbc-aa8c249` also carried a zstd
+`--patch-from` delta, `meta.sqlite.patch.from-<PREV_TAG>.zst`. Later that day the
+artifact passed 2 GB, which the zstd CLI refuses as a patch base (metaserve
+declined any base over 1 GiB anyway), so releases stopped carrying it and the
+workflow no longer builds it. Nothing reads it now, and a release that still
+carries one is adopted through its `meta.sqlite.gz`.
 
 The repo also cuts code and image `v*` releases with no data assets. Consumers
 therefore select the newest **data** release by asset presence: the non-draft,
@@ -374,6 +379,10 @@ rows, never a complete series. A plan is complete only with an explicit choice, 
 known runtime and no overlapping position for every catalogued entry, and a
 subtotal never sums alternatives. Neither a catalogued recording nor a retailer
 link establishes availability or production format.
+
+Which five recordings the guide offers per work is the API's choice, and that
+choice counts narrator continuity over the whole series (see
+[the listening guide](api.md#apiv1seriesidlistening-guidelimitoffset)).
 
 ## The site's watchlist is client-side only
 
