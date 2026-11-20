@@ -720,11 +720,12 @@ character value) is skipped rather than guessed at. So is a dateless work with n
 Items are sorted by `updated` **descending**: the release date, or the added-at date
 for a dateless work. Ties are broken deterministically by series name, the series
 slug, the numeric start of the position string, the position string, and finally
-the item id. The slug keeps two watched series that share a name apart, each
-listed whole and in order, rather than interleaving their members by position.
-The list is capped at **200** items (`maxWatchFeedItems`). The site's Watching
-page breaks the same tie the same way (`byNameThenPosition` in
-`site/src/lib/watch-flat.ts`).
+the item id. The slug keeps the tied items of two watched series that share a
+name apart, each series' together and in order, rather than interleaving their
+members by position. The list is capped at **200** items (`maxWatchFeedItems`).
+The site's Watching page orders its own same-date ties on the same keys in the
+same place: series name, series slug, then position (`byNameThenPosition` in
+`site/src/lib/watch-flat.ts`, which compares names in locale order).
 
 ### Item identity
 
@@ -1630,10 +1631,11 @@ site URL, the document (which shard, or the index and whether it lists the stati
 sitemap) and the build revision. These are cache keys, not content-change dates;
 build stamping and per-entity revision tracking are
 [follow-up work](https://github.com/KodeStar/audiosilo-meta/issues/2927).
-`TestRendererVersionsTrackTheGoldens` enforces both bumps: it pins
-`htmlRendererVersion` and `sitemapRendererVersion` to a digest of their goldens
-(`internal/serve/testdata/golden/`), so a golden change without a version bump
-fails and names the constant.
+`TestRendererVersionsTrackTheGoldens` guards both bumps: it pins each of
+`htmlRendererVersion` and `sitemapRendererVersion`, with a digest of its goldens
+(`internal/serve/testdata/golden/`), so a golden change fails until its pin is
+updated, and the failure names the constant to bump. A change to the test
+fixture alone updates the digest and keeps the version.
 
 **Sitemaps.** `/sitemap-index.xml` lists the static sitemap, when present, and the
 generated `/sitemaps/{family}-{shard}.xml` shards (up to 50,000 URLs each, in

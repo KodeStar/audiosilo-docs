@@ -276,11 +276,12 @@ The asset contract:
 - `meta.sqlite.sha256` - the raw-file digest, used to verify an artifact already
   on disk (metaserve's cache volume).
 
-Releases up to 2026-11-19 also carried a zstd `--patch-from` delta,
-`meta.sqlite.patch.from-<PREV_TAG>.zst`. It was dropped once the artifact passed
-2 GB: the zstd CLI refuses a patch base that large, and metaserve declined any
-base over 1 GiB anyway. Nothing reads it now, and a release that still carries
-one is adopted through its `meta.sqlite.gz`.
+Releases up to `data-v2026.11.19-706bdbc-aa8c249` also carried a zstd
+`--patch-from` delta, `meta.sqlite.patch.from-<PREV_TAG>.zst`. Later that day the
+artifact passed 2 GB, which the zstd CLI refuses as a patch base (metaserve
+declined any base over 1 GiB anyway), so releases stopped carrying it and the
+workflow no longer builds it. Nothing reads it now, and a release that still
+carries one is adopted through its `meta.sqlite.gz`.
 
 The repo also cuts code and image `v*` releases with no data assets. Consumers
 therefore select the newest **data** release by asset presence: the non-draft,
