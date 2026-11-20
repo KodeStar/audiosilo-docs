@@ -1629,11 +1629,11 @@ bumped whenever Go-rendered HTML changes. A sitemap's ETag covers the artifact
 identity, `sitemapRendererVersion`, the site URL, the document (which shard, or
 the index and whether it lists the static sitemap) and the binary's revision.
 
-The binary's revision (`buildRevision`) is the commit a released image was built
-from, linked in at build time (`stampedRevision`, see
-[the published image](overview.md#the-published-image)), else the toolchain's
-VCS revision, else none: a `go run`, a test binary, or a Docker build given no
-`REVISION`. The renderer versions stay explicit for those builds. These are cache
+The binary's revision (`buildRevision`) is the commit linked in when the image is
+built (`stampedRevision`, see [the published image](overview.md#the-published-image)).
+Without that, it is the toolchain's VCS revision. A `go run`, a test binary and a
+Docker build given no `REVISION` carry none, and rely on the explicit renderer
+versions. These are cache
 keys, not content-change dates. A page's content-change date is its
 [revision date](#revision-dates), which is never a validator.
 
@@ -1659,7 +1659,7 @@ serves the site's static index with `no-store`, or **503** when there is none.
 A page's revision date is when its content last changed in a way a reader would
 notice. The release build computes it by comparing each page with the same page
 in the previous data release, and stores it in the artifact's `page_revisions`
-table ([how a date is computed](overview.md#page-revision-dates)). metaserve reads
+table ([how a date is computed](overview.md#how-a-pages-date-is-computed)). metaserve reads
 one row per page (`query.DB.PageRevision` for a page, `PageEntry.RevisedAt` for a
 sitemap shard) and states the same date in three places:
 
@@ -1674,17 +1674,17 @@ their own and carry their work's date, since their content counts toward the wor
 page's. The `/browse` directories carry no date.
 
 **`If-Modified-Since` never yields a 304.** `Last-Modified` is information only.
-The date covers the page's content, while the HTML also changes with the site
-build, the origin and the renderer under an unchanged date, so a 304 granted on
-the date could renew a stale page. The ETag covers all of them and is the one
-validator a conditional request is answered by. A 304 carries no
+The date covers only the page's content. The HTML can also change with the site
+build, the origin or the renderer while the date stays the same, so a 304 granted
+on the date could renew a stale page. The ETag covers all of these and is the only
+validator. A 304 carries no
 `Last-Modified`.
 
 **Unknown dates are omitted everywhere**, never replaced by another date. A page
 has no date when:
 
 - it has not changed since the release chain started dating pages;
-- the artifact predates `schema_version` 14 (13 and older state none);
+- the artifact predates `schema_version` 14;
 - the artifact was built without a previous release, so its `page_revisions` is
   empty (a local `metabuild`, or a release cut with `reset_revisions`).
 

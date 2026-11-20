@@ -305,9 +305,9 @@ mirror-mode AudioSilo servers apply the same rule, through `pkg/release`.
 
 Every page metaserve serves can state when its content last changed: the
 sitemap's `<lastmod>`, the JSON-LD `dateModified` and the `Last-Modified` header
-([what each surface states](api.md#revision-dates)). The date is computed at
-release time, across the composed core and community releases, without walking
-git history and without stamping the whole catalogue with every build time. It
+([what each surface states](api.md#revision-dates)). The release build computes
+the date over the composed core and community data. It walks no git history and
+does not stamp every page with the build time. It
 lives in the artifact's `page_revisions` table
 ([the data model](data-model.md#page-revision-dates)).
 
@@ -328,8 +328,7 @@ renders, read through `pkg/query`'s exported reads:
 Every field of every document those reads return is marked hashed or excluded.
 Excluded are provenance (a work card's `added_at`), a chapter's `audio_url` (no
 page renders it) and the paging echoes. The digest refuses a field it has no
-decision for, and `TestEveryDocumentFieldIsDecided` fails until a new field is
-decided.
+decision for, and a test fails until a new field is decided.
 
 `Stamp` then digests the new artifact **and** the previous release's artifact with
 the same code, so a code change cannot move a date by itself. Each page of the new
@@ -337,7 +336,8 @@ artifact gets:
 
 - the previous release's date, when its digest is unchanged, or no date when the
   previous release knew none;
-- the release's stamp, when its digest changed or the page is new.
+- the release's stamp (`--revised-at`, recorded as `meta(revisions_at)`), when
+  its digest changed or the page is new.
 
 Because the digest is of what a page renders, an edit moves the pages that show
 it and no others:
@@ -361,9 +361,8 @@ The stamp is truncated to the second. When it is not after the previous release'
 always moves forward. Rows are inserted in (`kind`, `id`) order, so the result
 depends only on the data, the previous artifact and the stamp.
 
-When the previous release predates `schema_version` 14 (the cold start), its pages
-have no dates. Unchanged pages then stay unknown, and changed or new pages get the
-stamp. A previous artifact that cannot be read is an error, and nothing is
+When the previous release predates `schema_version` 14 (the cold start), it holds
+no dates, so the rules above leave every unchanged page undated. A previous artifact that cannot be read is an error, and nothing is
 written. An artifact is stamped once: stamping one that already carries dates is
 refused.
 
@@ -371,11 +370,11 @@ refused.
 
 | Flag | Purpose |
 |---|---|
-| `--previous <artifact>` | the previous data release's `meta.sqlite`, which every page is dated against. Requires `--revised-at`. |
-| `--revised-at <RFC3339>` | the stamp a changed or new page gets. Requires `--previous`. |
-| `--previous-tag <tag>` | the previous release's tag, recorded as `meta(revisions_base)` so the chain can be audited. Needs `--previous`. |
+| `--previous <artifact>` | the previous data release's `meta.sqlite`, which every page is dated against |
+| `--revised-at <RFC3339>` | the stamp a changed or new page gets |
+| `--previous-tag <tag>` | the previous release's tag, recorded as `meta(revisions_base)` so the chain can be audited. Requires `--previous`. |
 
-Without them, `page_revisions` stays empty and the artifact is what the data
+`--previous` and `--revised-at` go together. Without them, `page_revisions` stays empty and the artifact is what the data
 alone builds. `metabuild` refuses a `--previous` that names its own output file,
 since the build deletes that file first and the comparison would then see no
 change anywhere. It opens the previous artifact **before** building, so an
@@ -391,17 +390,16 @@ about 4 minutes. `page_revisions` adds about 30 MB to the raw artifact.
 
 `release.yml` downloads the previous data release **before** `metabuild`:
 
-1. It selects the release by the same rule every consumer uses (the non-draft,
-   non-prerelease release carrying `meta.sqlite.gz` with the maximum
-   `published_at`), reading every page of the release listing so a run of code
-   releases cannot hide it.
+1. It selects the newest data release by [the rule every consumer
+   uses](#release-artifacts), reading every page of the release listing so a run
+   of code releases cannot hide it.
 2. It downloads `meta.sqlite.gz` and `meta.sqlite.gz.sha256` and checks one
    against the other (`sha256sum --strict -c`). That checksum is the guard
    against a truncated or corrupt predecessor. There is no size or page-count
    threshold.
 3. It decompresses the artifact and passes it to `metabuild` as `--previous`, with
-   its tag as `--previous-tag`, then deletes it once `metabuild` is done to free the
-   runner's disk.
+   its tag as `--previous-tag`, and deletes it after the build to free the runner's
+   disk.
 
 The fetch **fails closed**. Building without the previous release would silently
 restart every page's date as unknown, so a listing that cannot be read, or an
@@ -409,17 +407,15 @@ asset that cannot be downloaded, verified or decompressed, fails the run. The on
 empty answer it accepts is "no data release exists at all", which builds without
 one and is annotated as a warning on the run.
 
-A previous release that is genuinely broken is stepped past by hand: a
-`workflow_dispatch` run with the `reset_revisions` input set builds without
-`--previous`. That release states no dates (its `page_revisions` is empty and it
-records no `revisions_at`), and the release after it starts the chain again from
-it as from a cold start.
+To step past a previous release that is genuinely broken, run `workflow_dispatch`
+with the `reset_revisions` input set. That run builds without `--previous`, so its
+release states no dates (an empty `page_revisions` and no `revisions_at`). The
+next release dates against it as a cold start.
 
 `--revised-at` is the newer of the two composed checkouts' commit times (the core
 `HEAD` and the community `HEAD`), in UTC. A re-run over the same pair of commits
 therefore stamps the same instant, and its revision rows come out the same, though
-the artifact's `meta(built_at)` is still the wall clock. A stamp at or before the
-previous release's moves to one second past it, as above.
+the artifact's `meta(built_at)` is still the wall clock.
 
 The job's timeout is 60 minutes, up from 30, to cover the extra download and the
 two whole-catalogue digests. That is an estimate from the Mac timings, to be
@@ -454,9 +450,9 @@ The practical consequences for a deployment:
   `github.sha` as the `REVISION` build argument, the Dockerfile links it into
   `internal/serve.stampedRevision`, and the build fails unless
   `metaserve -version` reports that commit. The pages' and sitemaps' ETags carry
-  it ([validators](api.md#html-routes-and-sitemaps)), so a deploy that changes only
-  the renderer still moves them. A local build without the argument carries no
-  revision and relies on the explicit renderer versions.
+  it (the Validators paragraph of
+  [HTML routes and sitemaps](api.md#html-routes-and-sitemaps)), so a deploy that
+  changes only the renderer still moves them.
 - **Name the reverse proxy.** The API is rate limited per client. Behind a
   proxy, set `METASERVE_TRUSTED_PROXIES` to the proxy's own address or network,
   never a whole private range, or every visitor shares the proxy's one bucket. The

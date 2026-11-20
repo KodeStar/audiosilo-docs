@@ -1019,15 +1019,13 @@ RFC 3339 UTC timestamp. A page with no row has no known date.
 The builder (`internal/build`) creates the table **empty**, so an artifact built
 from the data alone holds no dates. Given `--previous`, `metabuild` then fills
 it through `internal/revision`, by comparing every page with the same page in the
-previous data release (see [page revision dates](overview.md#page-revision-dates)). The
-rows depend only on the data, the previous artifact and the release's stamp, and
-are inserted in (`kind`, `id`) order, so a re-run over the same inputs writes the
-same rows. The artifact as a whole still differs between two runs by its
+previous data release ([how a date is computed](overview.md#how-a-pages-date-is-computed)).
+The rows depend only on the data, the previous artifact and the release's stamp,
+but the artifact as a whole still differs between two runs by its
 `meta(built_at)`, which is the wall clock unless `--built-at` names one.
 
-The JSON API does not return these dates. They reach the HTML catalogue only:
-the sitemap's `<lastmod>`, the pages' JSON-LD `dateModified` and their
-`Last-Modified` header ([revision dates](api.md#revision-dates)).
+The dates reach the HTML catalogue only, never the JSON API
+([revision dates](api.md#revision-dates)).
 
 ### Reading an older artifact
 
@@ -1060,10 +1058,8 @@ column; for 12, the `work_alternate_titles` table; for 13, the
 `recordings.abridgement` column; for 14, the `page_revisions` table with its
 `kind`, `id` and `revised_at` columns.
 
-Below 14, and in a version 14 artifact whose `page_revisions` is empty (one built
-without a previous release), no page states a revision date: the sitemap carries
-no per-URL `<lastmod>`, the JSON-LD no `dateModified` and the page no
-`Last-Modified`.
+Below 14, or when `page_revisions` is empty (an artifact built without a previous
+release), no page states a revision date ([revision dates](api.md#revision-dates)).
 
 `recordings.abridgement` keeps whether the source stated the abridged flag:
 `model.Recording` carries a stated `false` apart from an absent flag through JSON
