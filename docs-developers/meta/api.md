@@ -1675,7 +1675,8 @@ page's. The `/browse` directories carry no date.
 
 **`If-Modified-Since` never yields a 304.** `Last-Modified` is information only.
 The date covers only the page's content. The HTML can also change with the site
-build, the origin or the renderer while the date stays the same, so a 304 granted
+build, the origin or the renderer while the date stays the same (and a guide or
+person page's embedded payload carries more than its date covers), so a 304 granted
 on the date could renew a stale page. The ETag covers all of these and is the only
 validator. A 304 carries no
 `Last-Modified`.
