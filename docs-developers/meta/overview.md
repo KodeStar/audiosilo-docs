@@ -409,15 +409,14 @@ about 4 minutes. `page_revisions` adds about 30 MB to the raw artifact.
 
 The fetch **fails closed**. Building without the previous release would silently
 restart every page's date as unknown, so a listing that cannot be read, or an
-asset that cannot be downloaded, verified or decompressed, fails the run. The one
-empty answer it accepts is a listing in which no release qualifies, meant for "no
-data release exists at all": it builds without one and is annotated as a warning
-on the run. The step cannot tell that case from an anomalous listing (a page that
-came back empty, or an asset list the API left out), so the warning is the signal
-to check.
+asset that cannot be downloaded, verified or decompressed, fails the run. A
+listing in which no release qualifies fails too: the step cannot tell "no data
+release exists" from an anomalous listing (a page that came back empty, or an
+asset list the API left out), and building on the second would reset every date.
 
-To step past a previous release that is genuinely broken, run `workflow_dispatch`
-with the `reset_revisions` input set. That run builds without `--previous`, so its
+To step past a previous release that is genuinely broken, or to cut the first data
+release of a fresh repository, run `workflow_dispatch` with the `reset_revisions`
+input set. That run builds without `--previous`, so its
 release states no dates (an empty `page_revisions` and no `revisions_at`). The
 next release dates against it as a cold start.
 
