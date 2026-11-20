@@ -41,7 +41,8 @@ changing either starts again at page one.
 - A **book page** lists every recording of the book, with narrators, length,
   release date, publisher, ASINs and ISBNs, and chapters.
 - A **series page** lists the books in reading order.
-- A **person page** lists everything an author or narrator is credited on.
+- A **person page** lists everything an author or narrator is credited on, in
+  title order (capital letters don't change the order).
 
 ![A book page with its recordings](/img/screenshots/meta/work.png)
 
@@ -69,19 +70,27 @@ five catalogued recordings per book; when there are more, **Compare every
 recording** opens the book page. **No recording catalogued** means the catalogue
 holds no recording of that book yet.
 
+The guide picks and orders those recordings by narrator first. A recording whose
+narrator reads the most other books in the series comes first, so a voice that
+carries on through the series leads. Next come the earliest released, and a
+recording with no release date comes last.
+
 Pick a recording for each book and the **Listening time planner** adds up their
 runtimes. The subtotal covers only the current page. The plan stays partial
 unless the whole series fits on that one page and every book on it has a pick
 with a known runtime, a position the planner can read, and no omnibus that
-overlaps another pick. Picks are forgotten when you leave the page. Narrator continuity
-also looks only at this page, so it doesn't promise one narrator for the whole
-series.
+overlaps another pick. Picks are forgotten when you leave the page. The
+**Narrator continuity** section also looks only at this page, so it doesn't promise
+one narrator for the whole series.
 
 ![A series listening guide with recording choices](/img/screenshots/meta/series-listening-guide.png)
 
 On a person page, **Narrated recordings** lists each recording they narrated, so
 two readings of one book are two entries, each linking to that recording. A page
 shows 50, grouped by series and language; a group covers only that page.
+
+Later pages show only these recordings. The books the person wrote or translated
+stay on the first page, and a later page links back to it.
 
 ![A narrator's recording credits grouped by series and language](/img/screenshots/meta/person-recordings.png)
 
@@ -145,7 +154,14 @@ Follow a series to see its new and upcoming books:
 The Watching page lists, for each series, the books you don't have yet:
 **Available** ones, and **Preorder** ones with a future release date. A **New**
 badge marks what you haven't seen before. **Hide** takes a series off the page
-but keeps it; **Unwatch** forgets it.
+but keeps it; **Unwatch** forgets it. Books out on the same day are listed series
+by series, in reading order, even when two of your series share a name.
+
+Beside **I have this**, **Not interested** is for a book you don't plan to read.
+On the Watching page it moves the book into a folded **skipped** list at the
+foot of its series, without marking it owned, and **Show again** brings it back. The book still
+appears in your [feed](#getting-notified). On a phone, both buttons sit on their
+own line under the book's title.
 
 ![A series page with the watch toggle and ownership marks](/img/screenshots/meta/series-watching.png)
 
@@ -219,7 +235,11 @@ Bridge can file characters, recaps and corrections for you. See
 
 The [contribute page](https://meta.audiosilo.app/contribute) shows where help is
 most needed. Its **guided builder** walks you through writing characters and
-recaps for a book you know well.
+recaps for a book you know well. When the previous book in the series already
+has characters, the builder offers **Start from that cast**: each character is
+copied with its description cleared, ready to check for this book. An omnibus
+that includes this book doesn't count as the previous book, because its
+characters describe later books.
 
 ![The contribute coverage browser](/img/screenshots/meta/contribute.png)
 

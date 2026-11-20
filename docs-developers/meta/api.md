@@ -718,8 +718,12 @@ character value) is skipped rather than guessed at. So is a dateless work with n
 `added_at`.
 
 Items are sorted by `updated` **descending**: the release date, or the added-at date
-for a dateless work. Ties are broken deterministically by series name, the numeric
-start of the position string, the position string, and finally the item id. The
+for a dateless work. Ties are broken deterministically by series name, the series
+slug, the numeric start of the position string, the position string, and finally
+the item id. The slug keeps two watched series that share a name apart, each
+listed whole and in order, rather than interleaving their members by position.
+The site's Watching page breaks the same tie the same way (`byNameThenPosition`
+in `site/src/lib/watch-flat.ts`). The
 list is capped at **200** items (`maxWatchFeedItems`).
 
 ### Item identity
@@ -914,7 +918,10 @@ non-negative row offset. An unparseable or non-positive value falls back to the
 default rather than erroring.
 
 The window applies to `authored` and `narrated` **independently**. `authored_total`
-and `narrated_total` are the unpaged counts of each. A client must page against
+and `narrated_total` are the unpaged counts of each. Every list is ordered by work
+title without regard to case (`COLLATE NOCASE`, the browse directories'
+collation), then by work id, and for a recording list then by recording id. So
+"apple" and "Banana" read alphabetically rather than capitals first. A client must page against
 those totals rather than assume the arrays are complete, since a prolific narrator
 will exceed one page.
 
@@ -961,6 +968,12 @@ omitted on an older artifact.
 
 `works` is sorted by the numeric start of each `position` string, so `"1-3.5"` sorts
 by 1, then by the raw position string and work id to break ties deterministically.
+This is the one series member order (`seriesMemberOrderSQL` in
+`pkg/query/queries.go`, whose first key is `seriesPositionStartSQL`, SQLite's
+`CAST(position AS REAL)`). The listening guide and this route page through one
+read of it (`seriesMemberPage`), so a window is cut in SQL. The coverage gap
+list's `present` positions come back in it, and the watch feed's cross-series
+sort keys on the same position start.
 Paging here is **opt-in**. With no `?limit=`, the whole member list is
 returned and the echoed `limit` is `0`, because the player's series rail depends on
 getting the complete list. To window it, pass `?limit=` (clamped to a maximum of
@@ -989,9 +1002,21 @@ as on `series/{id}`, and `works_total` is the unpaged member count.
 Each `RecordingSummary` has `id` and `narrators[]`; `language`, `abridgement`,
 `runtime_min`, `release_date`, `publisher` and `chapter_count` are omitted when
 unstated or zero. Summaries contain no identifiers or chapter bodies. A work
-gets at most **five** alternatives, deterministically by recording id;
-`recordings_total` counts all its recordings and `recordings_limit` is `5`.
-An empty array means no recording is catalogued, not that none exists.
+gets at most **five** alternatives; `recordings_total` counts all its recordings
+and `recordings_limit` is `5`. An empty array means no recording is catalogued,
+not that none exists.
+
+The five are chosen, and listed, in one deterministic order
+(`listeningCandidatesSQL` in `pkg/query/catalogue.go`, also stated in
+`openapi.json`):
+
+1. **Narrator continuity**, most first: the most *other* volumes of this series
+   that any one of the recording's narrators also narrates, counted over the
+   whole series rather than the visible page. A narrator's credits outside the
+   series, and a second recording of the same work, do not count.
+2. **Release date**, earliest first. A recording that states none comes after
+   every dated one.
+3. **Recording id**, which makes the order total.
 
 ## `/api/v1/people/{id}/recordings?limit=&offset=&series=&lang=`
 
@@ -1007,7 +1032,8 @@ repeated credit on the same recording:
 
 `work` is a workCard and `recording` is the RecordingSummary above. `series[]`
 contains the work's memberships, primary orders before variants, and is empty
-for a standalone work. Rows sort by work title, work id and recording id.
+for a standalone work. Rows sort by work title without regard to case
+(`COLLATE NOCASE`), then work id and recording id.
 `total` counts matching recording credits before paging. A known person with
 no matching credits gets an empty array; an unknown person gets **404**
 `person not found`. Authorship and translation credits are on `people/{id}`.
@@ -1553,7 +1579,7 @@ chapter pages are Go-rendered only, with no payload:
 | `/works/{id}` | Every recording, comparison links to `#recording-{rid}`, and detailed cards |
 | `/works/{id}/characters`, `/works/{id}/recap` | Existing community guides. Spoiler bodies and aliases stay in the DOM inside closed native `details`, marked `data-nosnippet`; work tab panels stay mounted with `hidden` semantics |
 | `/series/{id}` | Up to 50 ordered works and their bounded listening-guide alternatives |
-| `/people/{id}` | Authorship/translation lists and 50 narrated recording credits per page |
+| `/people/{id}` | Page one: the written, narrated and translated lists and the first 50 narrated recording credits. A later page (`?page=N`): the next 50 recording credits only, with a link back to page one for those lists; it reads only their totals |
 | `/works/{id}/recordings/{rid}/chapters` | Up to 100 chapter titles, starts and durations for a validated recording |
 
 **Directory filters.** The five browse directories accept `q` (search within that
@@ -1601,7 +1627,11 @@ slug, plus the page number and recording where they apply, or a directory's
 canonical location). The page identity (`pageIdentity`) covers the shell name and
 bytes, the site URL, the build's VCS revision when there is one (the Docker image
 has none) and `htmlRendererVersion`, which is bumped whenever Go-rendered HTML
-changes. A sitemap's ETag covers the artifact identity, the renderer version, the
+changes. `TestRendererVersionsTrackTheGoldens` enforces the bump: it pins
+`htmlRendererVersion` and `sitemapRendererVersion` to a digest of their goldens
+(`internal/serve/testdata/golden/`, the sitemap's included), so a golden change
+without a version bump fails and names the constant. A sitemap's ETag covers the
+artifact identity, the renderer version, the
 site URL, the document (which shard, or the index and whether it lists the static
 sitemap) and the build revision. These are cache keys, not content-change dates;
 build stamping and per-entity revision tracking are
@@ -1850,15 +1880,15 @@ webhook keep it current:
   [the overview](overview.md#release-artifacts)). It fetches conditionally
   (`If-None-Match` and 304) through `pkg/release`, the fetcher that mirror-mode
   AudioSilo servers use too.
-- **On a new release it first tries a `--patch-from` binary delta** against the
-  currently loaded artifact (zstd, `--long=31` window). It verifies the
-  reconstructed file byte for byte against `meta.sqlite.sha256` before installing
-  it. Whenever a patch is unavailable or fails, it falls back unconditionally to a
-  full `meta.sqlite.gz` download, verified against `meta.sqlite.gz.sha256`. The
-  first refresh after boot is always full.
+- **On a new release it first looks in the `--cache` directory.** When the cache
+  already holds that release's artifact, verified against `meta.sqlite.sha256`,
+  it adopts it without downloading. Otherwise it downloads `meta.sqlite.gz` in
+  full and verifies it against `meta.sqlite.gz.sha256`. It never fetches the zstd
+  delta that older releases carried (see
+  [the overview](overview.md#release-artifacts)).
 - **Either way it hot-swaps the pointer.** In-flight requests finish on the old
-  handle, which is closed after a grace delay. A rejected patch never swaps. A poll
-  failure only logs and retries, and never crashes the process.
+  handle, which is closed after a grace delay. A rejected download never swaps. A
+  poll failure only logs and retries, and never crashes the process.
 
 The startup refresh means a recreated production container reaches the newest
 release within seconds, rather than at the first `--interval` tick. Superseded
