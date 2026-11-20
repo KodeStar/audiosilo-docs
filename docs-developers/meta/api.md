@@ -722,9 +722,9 @@ for a dateless work. Ties are broken deterministically by series name, the serie
 slug, the numeric start of the position string, the position string, and finally
 the item id. The slug keeps two watched series that share a name apart, each
 listed whole and in order, rather than interleaving their members by position.
-The site's Watching page breaks the same tie the same way (`byNameThenPosition`
-in `site/src/lib/watch-flat.ts`). The
-list is capped at **200** items (`maxWatchFeedItems`).
+The list is capped at **200** items (`maxWatchFeedItems`). The site's Watching
+page breaks the same tie the same way (`byNameThenPosition` in
+`site/src/lib/watch-flat.ts`).
 
 ### Item identity
 
@@ -918,12 +918,11 @@ non-negative row offset. An unparseable or non-positive value falls back to the
 default rather than erroring.
 
 The window applies to `authored` and `narrated` **independently**. `authored_total`
-and `narrated_total` are the unpaged counts of each. Every list is ordered by work
-title without regard to case (`COLLATE NOCASE`, the browse directories'
-collation), then by work id, and for a recording list then by recording id. So
-"apple" and "Banana" read alphabetically rather than capitals first. A client must page against
+and `narrated_total` are the unpaged counts of each. A client must page against
 those totals rather than assume the arrays are complete, since a prolific narrator
-will exceed one page.
+will exceed one page. Every list is ordered by work title without regard to case
+(`COLLATE NOCASE`, so "apple" sorts before "Banana"), then by work id, and a
+recording list then by recording id.
 
 `translated` and `translated_total` (artifact `schema_version` 9) list the
 recordings that credit the person as their own **translator**. That is a LibriVox
@@ -969,11 +968,10 @@ omitted on an older artifact.
 `works` is sorted by the numeric start of each `position` string, so `"1-3.5"` sorts
 by 1, then by the raw position string and work id to break ties deterministically.
 This is the one series member order (`seriesMemberOrderSQL` in
-`pkg/query/queries.go`, whose first key is `seriesPositionStartSQL`, SQLite's
-`CAST(position AS REAL)`). The listening guide and this route page through one
-read of it (`seriesMemberPage`), so a window is cut in SQL. The coverage gap
+`pkg/query/queries.go`): the listening guide pages through it, the coverage gap
 list's `present` positions come back in it, and the watch feed's cross-series
 sort keys on the same position start.
+
 Paging here is **opt-in**. With no `?limit=`, the whole member list is
 returned and the echoed `limit` is `0`, because the player's series rail depends on
 getting the complete list. To window it, pass `?limit=` (clamped to a maximum of
@@ -1579,7 +1577,7 @@ chapter pages are Go-rendered only, with no payload:
 | `/works/{id}` | Every recording, comparison links to `#recording-{rid}`, and detailed cards |
 | `/works/{id}/characters`, `/works/{id}/recap` | Existing community guides. Spoiler bodies and aliases stay in the DOM inside closed native `details`, marked `data-nosnippet`; work tab panels stay mounted with `hidden` semantics |
 | `/series/{id}` | Up to 50 ordered works and their bounded listening-guide alternatives |
-| `/people/{id}` | Page one: the written, narrated and translated lists and the first 50 narrated recording credits. A later page (`?page=N`): the next 50 recording credits only, with a link back to page one for those lists; it reads only their totals |
+| `/people/{id}` | Page one: the written, narrated and translated lists and the first 50 narrated recording credits. A later page (`?page=N`): the next 50 recording credits only, with a link back to page one for those lists |
 | `/works/{id}/recordings/{rid}/chapters` | Up to 100 chapter titles, starts and durations for a validated recording |
 
 **Directory filters.** The five browse directories accept `q` (search within that
@@ -1627,15 +1625,15 @@ slug, plus the page number and recording where they apply, or a directory's
 canonical location). The page identity (`pageIdentity`) covers the shell name and
 bytes, the site URL, the build's VCS revision when there is one (the Docker image
 has none) and `htmlRendererVersion`, which is bumped whenever Go-rendered HTML
-changes. `TestRendererVersionsTrackTheGoldens` enforces the bump: it pins
-`htmlRendererVersion` and `sitemapRendererVersion` to a digest of their goldens
-(`internal/serve/testdata/golden/`, the sitemap's included), so a golden change
-without a version bump fails and names the constant. A sitemap's ETag covers the
-artifact identity, the renderer version, the
+changes. A sitemap's ETag covers the artifact identity, the renderer version, the
 site URL, the document (which shard, or the index and whether it lists the static
 sitemap) and the build revision. These are cache keys, not content-change dates;
 build stamping and per-entity revision tracking are
 [follow-up work](https://github.com/KodeStar/audiosilo-meta/issues/2927).
+`TestRendererVersionsTrackTheGoldens` enforces both bumps: it pins
+`htmlRendererVersion` and `sitemapRendererVersion` to a digest of their goldens
+(`internal/serve/testdata/golden/`), so a golden change without a version bump
+fails and names the constant.
 
 **Sitemaps.** `/sitemap-index.xml` lists the static sitemap, when present, and the
 generated `/sitemaps/{family}-{shard}.xml` shards (up to 50,000 URLs each, in
@@ -1880,10 +1878,10 @@ webhook keep it current:
   [the overview](overview.md#release-artifacts)). It fetches conditionally
   (`If-None-Match` and 304) through `pkg/release`, the fetcher that mirror-mode
   AudioSilo servers use too.
-- **On a new release it first looks in the `--cache` directory.** When the cache
-  already holds that release's artifact, verified against `meta.sqlite.sha256`,
-  it adopts it without downloading. Otherwise it downloads `meta.sqlite.gz` in
-  full and verifies it against `meta.sqlite.gz.sha256`. It never fetches the zstd
+- **On a new release it first looks in the `--cache` directory**, adopting a
+  cached copy by the same digest rule as at [boot](#boot-and-degraded-start).
+  Otherwise it downloads `meta.sqlite.gz` in full and verifies it against
+  `meta.sqlite.gz.sha256`. It never fetches the zstd
   delta that older releases carried (see
   [the overview](overview.md#release-artifacts)).
 - **Either way it hot-swaps the pointer.** In-flight requests finish on the old

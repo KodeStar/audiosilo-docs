@@ -42,7 +42,7 @@ changing either starts again at page one.
   release date, publisher, ASINs and ISBNs, and chapters.
 - A **series page** lists the books in reading order.
 - A **person page** lists everything an author or narrator is credited on, in
-  title order (capital letters don't change the order).
+  alphabetical order by title.
 
 ![A book page with its recordings](/img/screenshots/meta/work.png)
 
@@ -70,18 +70,17 @@ five catalogued recordings per book; when there are more, **Compare every
 recording** opens the book page. **No recording catalogued** means the catalogue
 holds no recording of that book yet.
 
-The guide picks and orders those recordings by narrator first. A recording whose
-narrator reads the most other books in the series comes first, so a voice that
-carries on through the series leads. Next come the earliest released, and a
-recording with no release date comes last.
+The guide picks and orders those recordings by narrator first: a recording whose
+narrator reads the most other books across the whole series comes first, then the
+earliest released. A recording with no release date comes last.
 
 Pick a recording for each book and the **Listening time planner** adds up their
 runtimes. The subtotal covers only the current page. The plan stays partial
 unless the whole series fits on that one page and every book on it has a pick
 with a known runtime, a position the planner can read, and no omnibus that
 overlaps another pick. Picks are forgotten when you leave the page. The
-**Narrator continuity** section also looks only at this page, so it doesn't promise
-one narrator for the whole series.
+**Narrator continuity** section also looks only at this page, so it doesn't
+promise one narrator for the whole series.
 
 ![A series listening guide with recording choices](/img/screenshots/meta/series-listening-guide.png)
 
@@ -145,9 +144,10 @@ identifiers (ASINs and ISBNs), and author names for books that don't match.
 Follow a series to see its new and upcoming books:
 
 1. Open the series page and press **Watch this series**.
-2. Tick **I have this** on each book you own. **Mark this page as owned** ticks
-   the books on the current page; **Clear ownership for this series** clears the
-   series' marks on every page.
+2. Tick **I have this** on each book you own, or press **Not interested** on a
+   book you don't plan to read. **Mark this page as owned** ticks the books on
+   the current page; **Clear ownership for this series** clears the series'
+   marks on every page.
 3. Open the [Watching page](https://meta.audiosilo.app/watching) (**Watching**
    in the header).
 
@@ -157,11 +157,10 @@ badge marks what you haven't seen before. **Hide** takes a series off the page
 but keeps it; **Unwatch** forgets it. Books out on the same day are listed series
 by series, in reading order, even when two of your series share a name.
 
-Beside **I have this**, **Not interested** is for a book you don't plan to read.
-On the Watching page it moves the book into a folded **skipped** list at the
-foot of its series, without marking it owned, and **Show again** brings it back. The book still
-appears in your [feed](#getting-notified). On a phone, both buttons sit on their
-own line under the book's title.
+A book marked **Not interested** isn't counted as owned. The Watching page folds
+it into a **skipped** list at the foot of its series, and **Show again** brings
+it back. It still appears in your [feed](#getting-notified). On a phone, both
+buttons sit on their own line under the book's title.
 
 ![A series page with the watch toggle and ownership marks](/img/screenshots/meta/series-watching.png)
 

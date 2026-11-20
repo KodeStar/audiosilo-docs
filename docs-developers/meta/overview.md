@@ -374,13 +374,14 @@ sitemaps are in [HTML routes and sitemaps](api.md#html-routes-and-sitemaps).
 
 The series listening guide's recording choices, runtime subtotal and narrator
 continuity, and the person page's credit groups, describe only the current page's
-rows, never a complete series. (Which five recordings the guide offers per work is
-the API's choice, and its narrator continuity key counts the whole series: see
-[the listening guide](api.md#apiv1seriesidlistening-guidelimitoffset).) A plan is
-complete only with an explicit choice, a
+rows, never a complete series. A plan is complete only with an explicit choice, a
 known runtime and no overlapping position for every catalogued entry, and a
 subtotal never sums alternatives. Neither a catalogued recording nor a retailer
 link establishes availability or production format.
+
+Which five recordings the guide offers per work is the API's choice, and that
+choice counts narrator continuity over the whole series (see
+[the listening guide](api.md#apiv1seriesidlistening-guidelimitoffset)).
 
 ## The site's watchlist is client-side only
 

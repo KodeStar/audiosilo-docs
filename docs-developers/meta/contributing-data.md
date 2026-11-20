@@ -1701,11 +1701,11 @@ User Guide's [community metadata site page](/users/community/meta-site).
 - **[`/build`](https://meta.audiosilo.app/build)** is a guided builder that walks a
   contributor through writing the characters or recaps sidecar for a work already
   in the catalogue. For a characters sidecar it offers to seed the cast from the
-  previous book of the work's first series, when that book has one. The previous
-  book is the nearest earlier member in the order `series/{id}` returns
-  (`castSeedSource` in `site/src/lib/worknav.ts`, over the same list the work
-  page's previous link reads), skipping an omnibus whose span reaches this book
-  ("1-3" before "2"), since its cast describes later books. Each seeded character
+  previous book of the work's first series, when that book has a characters
+  sidecar. The previous book is the nearest earlier member in the order
+  `series/{id}` returns (`castSeedSource` in `site/src/lib/worknav.ts`), skipping
+  an omnibus whose span reaches this book ("1-3" before "2"), since its cast
+  describes later books. Each seeded character
   keeps its id, name, aliases, role and Wikidata link, with its description cleared
   and its reveal reset to 0.
 
