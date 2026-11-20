@@ -17,6 +17,14 @@ link here when it has one.
 
 Additions:
 
+- **Retrying a bookmark.** With capability `bookmark_client_id`, a client can supply a UUID on a
+  bookmark create. A fresh save returns 201, a replay for the same book returns the stored row
+  with 200, and reuse for another book returns 409 `client_id_conflict`. A malformed UUID returns
+  400 `invalid_request`.
+- **Recognizing the server’s 401.** With capability `unauthorized_mark`, every 401 from the server
+  carries the CORS-exposed header `X-AudioSilo-Unauthorized`. Its value is the body’s code or
+  `unauthorized`. A session token that cannot be checked because the database is unavailable gets
+  503.
 - **Single sign-on.** `GET /auth/oidc/start`, `GET /auth/oidc/callback` and
   `POST /auth/oidc/finish` ([Single sign-on](reference.md#single-sign-on)),
   for a page on the server's own origin. Capability `oidc`. While it is `true`,
@@ -32,6 +40,11 @@ Additions:
 - **A work's other recordings together.** `work_id` on a book,
   `other_recordings` on `/item` ([Other recordings](reference.md#other-recordings))
   and `local_others` on `/meta`. Capability `other_recordings`.
+- **LibriVox links.** A `/meta` recording can carry `librivox` with the project ID and links. A
+  console-matched book can receive this metadata without an identifier.
+- **Edited chapters.** A book using the chapter list saved in the editor reports
+  `chapters_source: "edited"`. A cast token minted with `editor: true` lasts four hours and has a
+  separate limit of five per person.
 - **Which generated parts a book has.** `generated_parts` on a book, beside
   `generated` ([`GET /libraries/{id}/books`](reference.md#get-apiv1librariesidbooks)).
 - **A private show that lost its address.** `status.secret_missing` on a
@@ -59,8 +72,26 @@ Additions:
   finish answer `500` when the session can't be written, with the token left
   unspent for a retry.
 
-Changes a client may notice, none of them breaking:
+Changes to existing routes:
 
+- `POST /auth/password` returns 200 with `signed_out`, the number of the caller’s other sessions
+  ended. Clients supporting older servers must also accept their empty 204.
+- While the server starts, both health routes return 503 `server_starting`, `starting_for_seconds` and `Retry-After: 5`. Health probes bypass rate limiting.
+- A podcast fetch status or retry returns 409 `show_unreadable` when the server cannot read the
+  show folder. Streaming that episode returns 404 `episode_not_found` without scheduling a
+  download. A temporary share fault on a file open or folder listing returns 503
+  `share_not_answering` with `Retry-After: 30`.
+- A show lookup accepts the other Unicode spelling of a uniquely visible indexed show. A hand rename preserves follows and episode places.
+- An OPML import that cannot acquire a slot returns 503 `opml_busy` with `Retry-After: 1` and
+  refunds its request allowance. An invalid document that followed nothing also refunds the
+  allowance.
+- The player’s series rails, Upcoming and the local recordings in `/meta` follow a recorded
+  community work match even when the book has no ASIN or ISBN. If the work no longer lists the
+  recording selected for the match, the match does not substitute another edition’s details.
+- A path query over 4,096 bytes returns 400 before credentials are checked. Oversized request
+  lists are refused during decoding. Queue replacements allow 500 entries, collection replacements
+  1,000 and listening batches 500 events. Oversized replacements return 400 `too many items`, and
+  an oversized listening batch returns 400 `too_many_events`.
 - `GET /me/progress` and `GET /me/favourites` answer `[]` for a caller with
   none, never `null`.
 - A path in the other Unicode spelling (NFC or NFD) of an indexed path reaches
@@ -79,9 +110,11 @@ Changes a client may notice, none of them breaking:
   own last span is not answered `older`.
 - Transcode slots are held per ask: a repeat ask for the same stream takes over
   its earlier request's slot, and a token holds at most 2 of the 4, its third
-  ask taking over its oldest. A `HEAD` with `transcode=1` starts no ffmpeg and
+  ask taking its earliest stream for the same file, then its oldest stream. Only an identical
+  download can take over a download. With two downloads held, a different ask gets 503. A
+  transcoded download is named `<stem>.mp3`. A `HEAD` with `transcode=1` starts no ffmpeg and
   answers `503` with `Retry-After: 5` when a `GET` would. A `t` that is no
-  positive number starts at `0`. A transcode for a chapter editor token ends
+  positive number starts at `0`. A download or a transcode for a chapter editor token ends
   after 10 minutes in which its client read nothing.
 - A missing podcast episode's stream answers `503`, `Retry-After: 2`, with
   `code: "identity_changed"` and no `fetch` summary while the episode's previous
@@ -91,6 +124,12 @@ Changes a client may notice, none of them breaking:
   host over 253 characters. A queued follow request fails `request_expired`
   once no online Bridge has offered to follow feeds for two minutes. A parked
   fetch no longer counts toward a listener's five open fetches.
+- A grown-up household member’s device has an empty `last_ip` when the owner lists it. Ending the
+  owner’s sessions also ends the corresponding member credentials.
+- Household listening activity reports `playing` for 150 seconds after the latest save.
+- Cached MP3 remuxes and watch renditions send a strong ETag and omit `Last-Modified`. At the
+  cast-token limits (20 per sending device, 100 per person), the least recently used token goes
+  first.
 - Every credential a session mints (a pairing token, an API key, a feed or cast
   token, a recovery code, a member's pairing) is minted against that session in
   one transaction: a session signed out, disabled or with its password changed

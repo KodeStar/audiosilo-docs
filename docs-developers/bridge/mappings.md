@@ -90,7 +90,7 @@ What a failed check means:
 |---|---|
 | `no_marker`, or a nonce mismatch | "this folder isn't the library the server sees" |
 | `library_not_found` | "the library was removed from the server" |
-| network errors, timeouts, 401 and unexpected responses | "could not verify this folder with the server", with both `mapped` and `writable` false and no raw server error |
+| a failed marker check | A definite refusal clears the mapping. A temporary error can keep a recent check while the same marker is still present. |
 
 A pre-existing marker survives a transient failure. Cleanup removes only
 artifacts created by that failed check. The normal mapping recheck interval
@@ -160,6 +160,11 @@ One asked for while another runs is done right after it, with the newest server
 link, so a mapping changed mid-check is never missed. When a check finishes, the Bridge
 sends a heartbeat at once so the console sees the results. Every heartbeat in
 between carries the last results.
+
+A temporary refusal (429, server unavailable or timeout) keeps the last mapping result and its
+check time for up to three check intervals. The Bridge verifies that the sample file or podcast
+marker still proves the same folder. The Libraries tab shows **Last check**. Without current
+proof, writes wait for the next check. A slow mount shows **Waiting for the folder**.
 
 ## `bridge.verify` is the same check, on demand
 

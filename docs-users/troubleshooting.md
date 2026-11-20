@@ -176,6 +176,8 @@ No podcasts at all? Update the app, and ask your admin whether you can see the p
 
 ### An episode download says the server couldn't get it
 
+If the server cannot read the show folder, check its permissions before retrying. If the Bridge logs that an old folder still holds a download, check both folders for a copy of the same show before moving or deleting any files.
+
 An episode that isn't on your server yet has to be fetched there before it can download. The message under the download says why your server couldn't fetch it. Tap **Retry download** on the episode's page, or **Retry** on the Downloads page, to ask again. If it says your server can't fetch episodes now, ask your admin.
 
 ### My book restarted from the beginning
@@ -209,6 +211,8 @@ A book you deleted stays listed until every folder reads again. If one folder or
 The drive or share holding the book stopped answering. **Read the files again** gives up after about 10 seconds and keeps the book as it was. A book that is starting to play gives up after about 45 seconds with "Couldn't start this book" (on the web, also "Its audio didn't load from the server"). A book that was already playing stops with "Playback stopped. Your place is saved". Check that the share is mounted and the disk is awake, then try again.
 
 ### New books I added aren't showing up
+
+If a network drive reports a creation date in 1970, the server uses a usable modification date instead. An upgrade corrects old implausible addition dates.
 
 The folder view shows new files at once. Search and lists need a scan. Press **Rescan** on the library, or [scan on a schedule](./admin/libraries.md#scanning-on-a-schedule). A waiting scan shows in [Health > Jobs](./admin/health.md#jobs).
 

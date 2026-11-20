@@ -178,6 +178,8 @@ through `useJumpTo`.
 
 ## Bookmarks and Notes
 
+The Journal reads saved rows from the server. Pending one-tap and sleep bookmarks appear on the book until the outbox receives the saved row.
+
 `AnnotationsTab` reads only the active list. It merges the servers' lists by
 `created_at` (`mergeNewestFirst`), then filters:
 

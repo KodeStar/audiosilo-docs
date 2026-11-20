@@ -122,6 +122,8 @@ added them. Anything you give them here comes on top.
 
 ### Devices
 
+This tab shows whether the person has a calendar link. **End API keys and calendar link** stops all their keys and their calendar link at once. They can keep listening on their signed-in devices.
+
 Their signed-in devices, each with **Sign out**, and their personal API keys,
 each with **Revoke**.
 

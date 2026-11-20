@@ -403,7 +403,8 @@ when a snapshot makes the resumable book another (`recentChanged`).
 
 JS picks the book (`resumableBook`):
 
-- the loaded book while it is neither stopped nor finished;
+- the book actually playing in the car when the app has not yet adopted it, until that book ends. Starting or ending it refreshes the snapshot;
+- otherwise the loaded book while it is neither stopped nor finished;
 - until a book is loaded in this runtime, the book offered last (`audiosilo.carResumable`),
   while it is still the person listening's and kids mode is as it was then, so opening the
   app after a kill without playing keeps it;
@@ -413,6 +414,10 @@ It is never just the first Continue listening row, which after a stop is the new
 progress, so a stopped or finished book stays stopped at a headset's play. A snapshot kept
 from before the field has no `resume` key and still answers with its first Continue listening
 book.
+
+The initial place read has one three-second wait. A later answer with no `device_id` can move
+playback when newer than the known places. It never raises a place offer. A download finishing for
+a different book leaves the car’s audio playing.
 
 **The engine's live place** (`LivePlace.kt`). The service keeps where the engine is in a prefs
 file of its own (`audiosilo.liveplace`): the book, the file by its library-relative path and

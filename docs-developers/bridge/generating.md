@@ -103,9 +103,9 @@ the server refuses:
 
 Both checks come after the dedupe, so an open job of the book is returned (`200`)
 whatever they would say. A `contribute: "issue"` job also needs the
-`contributions` module. It gets `404 module_off` while the module is off, and is
-held in the queue meanwhile (see
-[Jobs of a managed module](pairing-and-jobs.md#jobs-of-a-managed-module)).
+`contributions` module. New requests get `404 module_off` while the module is off. A Bridge
+claiming with `share_off=1` can finish an existing job locally. See
+[Jobs of a managed module](pairing-and-jobs.md#jobs-of-a-managed-module).
 
 A generate job is refused `409 contribute_open` while a `sidecars.contribute` job
 is queued or working for the book. It cancels a parked one, or a queued one held
@@ -291,6 +291,12 @@ would follow it any more.
 
 ### Parks
 
+A generate job retries a temporary book lookup with backoff. A successful HTTP answer it cannot
+use, such as a proxy HTML sign-in page, fails the job after two minutes of unusable responses and
+identifies the address to check.
+
+The result’s `share_skipped` distinguishes `contributions_off` from `no_share_job` (no authorized job was following the book). Local files remain available.
+
 The engine's own park codes (its `state.ParkCode`) plus two of the Bridge's
 (`book_not_writable`, `library_not_writable`). Each has a `hint` in the progress;
 "Retry" there is the **Retry** on the job on the Bridge's own page
@@ -338,6 +344,7 @@ names an authentication, rate or usage limit, credits or backend failure
 | `manifest_changed` | the book's audio changed since it was transcribed | no: cancel and generate again |
 | `ebook_unreadable`, `ebook_no_chapters` | the ebook can't be used | no: cancel and generate from the audio |
 | `contrib_unavailable` | contributing has no GitHub token it can use: none resolves, GitHub refused it, or a signed-in token needed a refresh and GitHub couldn't be reached or didn't answer with a new token (same code, its own reason: `pipeline.ContribUnrefreshedMsg`) | yes, on a sign-in on the Accounts tab (every book with this code, whatever its reason). The unrefreshed one also resumes by itself once a refresh works (see [Parks](#parks)) |
+| `share_unconfirmed` | The Bridge cannot confirm permission to share with the server. It waits before community lookups or filing. | It checks again in one minute. |
 | `core_needed` | contributing needs a community core record the book doesn't have | no (the local files are already written) |
 | `core_pending` | the book's core record waits for the next data release | yes |
 | `book_not_writable` | the Bridge can't write in the book's folder or its `.audiosilo/` (before the run, or when writing the results; the results wait in the engine's work folder) | it checks again every minute |
@@ -395,11 +402,9 @@ last attempt, which fails the job), and `notify.BridgeJobEnded` records it:
   failed job's title names its kind (`Characters and recaps failed: <title>`,
   `Description failed: <title>`, `Chapters failed: <title>`).
 
-A report that leaves the state as it was (a keepalive, a parked job's progress)
-announces nothing. One known exception, a follow-up: a job that resumes parked
-after a Bridge restart first reports without its `park`, which the server reads
-as the park changing its code, so the job is announced again, once with no code
-and once more when its park comes back, unless that park is transient. See
+A repeated park on the same claim is announced again only after six hours, a changed park code, or
+a change between a timed wait and a wait for a person. A new claim can announce the park again.
+The server never announces `share_unconfirmed`. See
 [Notifications](../server/backups-and-notifications.md#events).
 
 ## The description step

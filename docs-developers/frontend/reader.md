@@ -390,6 +390,8 @@ listening place. It is separate from listening progress on purpose. It has:
 - **a durable mirror.** `audiosilo.readingMirror` and `audiosilo.readingQueue` are
   scoped storage keys. They are in `ID_DOCUMENTS` for the identity migration and
   are dropped with their connection.
+- A rate-limited save holds subsequent sends for the server’s wait. During that wait newer local reading positions replace older pending ones.
+
 - **a 4xx dropped**, because it can never succeed. A `408` or a `429` is queued
   like a failed request (`isRefusedForGood`).
 
@@ -451,7 +453,7 @@ only when no row was ever seen.
   since one version is one write. A late answer carrying a row already adopted
   never offers it again.
 - **The offer** (`jumpOffer`) is judged against the page on screen. When a save's
-  answer kept a row this device never saw, whose place differs from the current one,
+  answer kept a row this device never saw, whose place is further than the one on screen,
   a non-blocking card says `On {device} you were at {percent}%. Jump there?` with
   Jump (`goto {cfi}`) and Stay. `device_name` is the server's; when it is empty the
   card says "On another device". The reader does not read `other_place`.

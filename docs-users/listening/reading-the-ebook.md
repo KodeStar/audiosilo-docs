@@ -81,7 +81,7 @@ If another device read further, a message offers that place, such as *"On Pixel 
 - Once a book is open, you can keep reading if the connection drops, downloaded or not.
 - Your place is saved on the device and sent to the server once you're back online.
 
-The first time you open a downloaded book offline on a device, the reader opens at the start. Once your server can be reached again, it offers the place you'd reached elsewhere.
+The first time you open a downloaded book offline on a device, the reader opens at the start. When the server answers again, **Jump** appears if you read further elsewhere. If the server asks the app to wait, your saved place stays on this device until it can be sent.
 
 ## When an ebook won't open
 

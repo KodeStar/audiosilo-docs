@@ -25,6 +25,8 @@ for the chapters alone.
 
 ## Detect chapters for a book
 
+You can also start detection from the **Chapters** card on the book’s page. Both the card and the Health row show the job’s progress.
+
 The [Health](health.md#the-kinds-of-issue) page lists books over two hours with
 no chapters under **Long books without chapters**. It offers **Detect chapters**
 on each row, and for the books you tick.

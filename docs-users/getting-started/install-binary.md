@@ -80,6 +80,8 @@ AudioSilo uses ffprobe to read lengths and chapters, and ffmpeg to convert audio
 
 ## Good to know
 
+On Windows, a junction inside your library can point to another folder in the same library. A junction that points outside the library is refused.
+
 ### Building from source
 
 With Go 1.26 or newer and Node 24:

@@ -145,27 +145,26 @@ tool is enabled but not found locally, the launcher downloads it (see
 
 ### The health check (`audiosilo healthcheck`)
 
+The launcher listens while migrations run. The probe accepts a 503 startup answer for less than 30
+minutes. At 30 minutes it reports a stuck start. API clients can use
+[the health response](api/reference.md#get-healthz--get-apiv1healthz) to distinguish startup from
+a database failure.
+
 `launcher.Healthcheck` reads the bind address and `tls.mode` through
 `config.Load`, as the server reads them at start (`config.yaml`, then the
-`AUDIOSILO_*` variables). It opens nothing else in the data folder and writes
-nothing. A data folder with no `config.yaml` is unhealthy, since a server saves
+`AUDIOSILO_*` variables). It writes nothing. A data folder with no `config.yaml` is unhealthy, since a server saves
 one before it listens. When the bind host is unspecified (`0.0.0.0`, `::` or
 empty), the check asks `127.0.0.1`.
 
 - **`tls.mode` `off` or `selfsigned`.** It sends `GET /healthz` over `http` or
-  `https` and wants a `200` (see
+  `https` and accepts 200 or the temporary startup response (see
   [`GET /healthz`](api/reference.md#get-healthz--get-apiv1healthz)). It never goes
   through a proxy from the environment, follows no redirect, and doesn't check a
   self-signed certificate.
-- **`tls.mode` `autocert`.** It never asks `/healthz`. A request naming one of
-  `tls.hosts` would start a certificate order whenever that host has none, and
-  failed orders count against Let's Encrypt's limits. It connects over TCP and
-  sends a TLS hello naming no host. Autocert refuses such a hello before it reads
-  its cache or starts an order. A refusal (a TLS alert) or a finished handshake is
-  healthy. This shows that the server is listening and answering, not that its
-  database is.
-  Under autocert the server's error log drops the "missing server name"
-  handshake error those hellos cause (`autocertErrorLog`).
+- **`tls.mode` `autocert`.** With a cached certificate that is valid and not yet due for renewal,
+  it asks the named host for the same health response. Otherwise it checks the TLS listener
+  without naming a host and reads the startup marker for the 30-minute limit. This avoids starting
+  a certificate order.
 
 The check gives up after 5 seconds (`healthcheckTimeout`). A bind or TLS change
 saved in the console takes effect at the next start, so until then the check
@@ -662,6 +661,8 @@ lookups that find them stop.
 
 #### Mirror mode (`metadata.mode: mirror`)
 
+Upcoming waits until the local metadata copy is ready before resolving ownership. Changing or unlinking a recorded work is reflected on a later resolution pass.
+
 In mirror mode the server keeps a local copy of the metadata service's own
 database and answers its metadata questions in-process, so no book is looked up
 over the internet. The copy is audiosilo-meta's data release artifact: the
@@ -902,7 +903,7 @@ background work, when it has any, and gates the module's routes and Bridge jobs.
 | Key | Type / default | Meaning |
 |---|---|---|
 | `modules.podcasts.enabled` | bool, `false` | The follow, unfollow and check actions, new episode fetches, retention writes, and the scheduling of feeds, downloads and retention. The capability flag also needs an online Bridge offering `podcast`. Reads and valid present-pin reuse stay core. The toggle applies at once, starts or stops the scheduler, and holds queued podcast jobs while off. See [Podcasts](../bridge/podcasts.md) |
-| `modules.contributions.enabled` | bool, `false` | The Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Its flag needs the Bridge's `contribute` feature too. It has no routes or background work of its own. While it is off, the Bridge jobs it owns (`sidecars.contribute`, `meta.correct`, and a `sidecars.generate` with `contribute: "issue"`) are refused `404 module_off`, and queued ones are held (see [Managed modules](modules.md)) |
+| `modules.contributions.enabled` | bool, `false` | The Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Its flag needs the Bridge's `contribute` feature too. It has no routes or background work of its own. While it is off, the Bridge jobs it owns (`sidecars.contribute`, `meta.correct`, and a `sidecars.generate` with `contribute: "issue"`) are refused `404 module_off`, and queued share-only jobs are held. A Bridge using `share_off=1` can claim a generate-and-share job and keep the files local (see [Managed modules](modules.md)) |
 | `modules.audible.enabled` | bool, `false` | The Audible module. It covers the console's Audible routes and pages, and the scheduler that queues each account's `audible.poll` every `poll_hours` (6, or hourly while a released preorder is awaited). It also covers the `audible.import` backups and the policy pass after each poll. Its flag needs the Bridge's `audible` feature too. While it is off, the console's Audible routes answer `404 module_off` (all but `DELETE /admin/audible/accounts/{account}`), and queued polls and backups are held. The Bridge's own Audible routes work either way. Variable: `AUDIOSILO_MODULES_AUDIBLE_ENABLED`. See [Audible](../bridge/audible.md) |
 
 A module's own settings, when it has any, go under its key
@@ -1470,6 +1471,7 @@ tools.
 | `<data>/meta-mirror/` | [Mirror mode](#mirror-mode-metadatamode-mirror)'s local copy of the community metadata (what it holds: **The copy** there) |
 | `<data>/backups/` | Database backups (`audiosilo-<UTC time>-<kind>.db`), unless `backups.dir` puts them elsewhere |
 | `<data>/restore.json` | A restore waiting for the next start (removed when it is applied or refused) |
+| `<data>/progress-feed.json` | Last observed end of the Audible progress feed. Keep it when [restoring the database by hand](backups-and-notifications.md#restore-at-the-next-start). |
 | `<data>/restore-result.json` | How the last restore went |
 | `<data>/audiosilo.db.before-restore-<time>` | Only when a restore couldn't copy the database it replaced: that database's files, renamed aside |
 

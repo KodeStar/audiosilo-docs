@@ -158,12 +158,12 @@ each with Remove.
 A module's action can be a Bridge job instead of a route. `bridge.kindSpec.module`
 names the module a kind needs, and `bridge.ModuleFor(kind, params)` answers it.
 Such a job gets the same toggle gate (`404 module_off` through
-`writeModuleOff`). Turning the module off holds its queued jobs. It also asks
+`writeModuleOff`). Turning the module off holds queued share-only jobs. A Bridge that sends
+`share_off=1` can still claim a queued generate-and-share job. It also asks
 the held ones that only file to the community (`sidecars.contribute`,
 `meta.correct`) to stop (`bridge.CancelModuleOff`): a claimed or running one at
 the Bridge's next report, a parked one once it reports working again. Every
-other job the Bridge holds carries on, a `sidecars.generate` job that
-contributes included. See
+other job the Bridge holds carries on. A generate-and-share job finishes its files locally. See
 [Jobs of a managed module](../bridge/pairing-and-jobs.md#jobs-of-a-managed-module).
 
 ## Background work

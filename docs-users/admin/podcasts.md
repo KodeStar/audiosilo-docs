@@ -28,8 +28,7 @@ Podcasts need an admin to set them up, a Bridge, and the **Podcasts** module.
 A podcast library's folder can't be inside or around another library's folder. You
 can't turn a books library into a podcast library later.
 
-The Bridge creates one folder per show. Don't rename those folders by hand, because
-saved episode paths include them.
+You can rename a show’s folder. Keep its contents together. At the next scan, followers, settings and saved places follow the show. Downloaded episodes appear then. The others return after the next feed check. If you keep both folders, the original keeps the show.
 
 A feed on your own network is blocked until you
 [allow its address range](../getting-started/running-a-bridge.md#feeds-on-your-local-network)

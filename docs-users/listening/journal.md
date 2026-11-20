@@ -37,6 +37,8 @@ On the device you were listening on, it offers **Jump back** for a day and a hal
 
 ## Bookmarks and notes
 
+While an offline bookmark is waiting to sync, you can find it on the book’s **Bookmarks** tab. It appears in the Journal once it reaches the server.
+
 ![The Journal's Bookmarks tab: the search box, the label chips and bookmarks from several books](/img/screenshots/web-player/journal-bookmarks.png)
 
 The **Bookmarks** and **Notes** tabs gather every one you've made, newest first.

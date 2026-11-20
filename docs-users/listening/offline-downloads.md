@@ -11,6 +11,8 @@ A downloaded book plays entirely from your device, with no connection to your se
 2. Tap **Download for offline** (just **Download** on a phone). You can also choose it from any book's [menu](browsing.md#the-book-menu).
 3. Wait for the button to read **Downloaded**. It shows the progress meanwhile, and you can tap it to cancel.
 
+If the app reports **Not enough space for the ebook**, free up storage and try again. See [ebook size and storage errors](../troubleshooting.md#the-app-says-an-ebook-is-too-large-or-theres-not-enough-space).
+
 The cover comes too, and so does the book's ebook, when it has one. To free the space later, tap **Downloaded**, then **Remove download**.
 
 You can download [podcast episodes](podcasts.md#download-an-episode) the same way.
@@ -25,7 +27,7 @@ The **Downloads** tab shows everything stored on the device you're using.
 
 ![The Downloads page: storage by server, the automatic download rules, and the books ready offline](/img/screenshots/web-player/downloads.png)
 
-- **Storage**: how much room your downloads take, by server, and how much is still free. The figure grows while a download runs.
+- **Storage**: how much room your downloads take, by server, and how much is still free. The figure grows while a download runs. A finished download shows the space its files actually use.
 - **Automatic downloads**: the rules for downloads you don't start yourself (below).
 - **In progress**: downloads running now, waiting, or stopped.
 - **On your Apple Watch** in the iPhone app, or **On your watch** in the Android app, with a paired watch: the books on your watch and the ones on their way to it. See [Apple Watch](apple-watch.md#in-downloads-on-your-iphone) or [Wear OS](wear-os.md#in-downloads-on-your-phone).
@@ -93,13 +95,13 @@ When your device has no network, downloaded books play and everything else waits
 
 - **Home, the Library, Folders** and any other page or list show **You're offline** in place of what they haven't loaded yet. Anything already loaded stays on screen. When the network comes back, they load by themselves.
 - **Wi-Fi with no internet isn't offline.** The apps still reach a server on the same network. If a server doesn't answer, the page says so and offers **Retry**. With more than one server, Home names the one that didn't answer, and **Retry** asks only that one.
-- **Bookmarks, notes and ratings** aren't kept for later in the iOS and Android apps. One you make with no connection fails straight away with a message, so add it again once you're online. Only a bookmark made [from the car's screen](in-the-car.md#while-it-plays) is kept and sent later.
-- **In the web player**, a bookmark, note or rating made offline waits until the browser is back online, then saves. Closing the tab before then loses it.
+- A [one-tap bookmark](bookmarks-and-notes.md) or a **Fell asleep** bookmark stays on this device until it syncs, even if you close the app.
+- Notes and ratings need a connection in the phone apps. In the web player they can wait while the tab stays open.
 - **The player's [Text tab](companion.md#text)** is hidden for a book that isn't downloaded.
 
 ## Community notes offline
 
-When your server has [community metadata](book-page.md#about-this-book) switched on, a downloaded book keeps its description, [recaps and characters](recaps-and-characters.md) and Series tab. They still [hide what you haven't reached](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). They're refreshed when the copy is over a week old and the app can reach your server. A book with no ASIN or ISBN, matched only by an admin in the console, doesn't keep them.
+When your server has [community metadata](book-page.md#about-this-book) switched on, a downloaded book keeps its description, [recaps and characters](recaps-and-characters.md) and Series tab. They still [hide what you haven't reached](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). They're refreshed when the copy is over a week old and the app can reach your server. A book your admin matched by hand can keep them too.
 
 ## Downloads in a web browser
 

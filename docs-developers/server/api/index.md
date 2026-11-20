@@ -586,8 +586,9 @@ chapter `file_path` fields.
 
 Two server-side guarantees apply to every `?path=`, plus a length cap.
 
-**Length cap.** The cap is 4096 bytes as sent (`relpath.MaxBytes`, which
-`catalog.MaxPathBytes` names). These routes answer a longer path with 400
+**Length cap.** A decoded `?path=` value longer than 4,096 bytes is refused before authentication
+(`catalog.MaxPathBytes`, also named `relpath.MaxBytes`). These routes answer a longer path with
+400
 `path is too long`:
 
 - the content routes (`item`, `chapters`, `cover`, `stream`, progress,
@@ -613,9 +614,10 @@ also runs before the path is cleaned or stored. Elsewhere:
 - A podcast show or episode folder name over the cap in a Bridge's feed is
   invalid.
 
-**Traversal safety.** The server resolves the path through `library.SafeJoin`,
-which rejects `..` escapes, absolute-path injection and symlinks pointing
-outside the library root (400 `invalid path`).
+**Traversal safety.** A path whose components climb out of the library returns 400. The folder
+route treats a leading slash as relative to the library root. A link leading outside the library
+returns 404 on the stream, folder and item routes. A temporary share fault returns 503
+`share_not_answering`. A lasting refusal, such as permission denied, is treated as a missing file.
 
 **Scope authorization.** The server checks the path against the caller's share
 scope (`authorizedPath`). A path outside any granting share is 403, even if it
@@ -750,6 +752,8 @@ has them. For the others, each row says when the flag is `true`.
 | `metadata` | whether [community metadata lookup](reference.md#get-apiv1librariesidmeta) is configured. It gates the standalone [work lookup](reference.md#get-apiv1metawork) too, and the enriched-book material is drawn only when it is true |
 | `export` | whether the admin [library export](reference.md#get-apiv1adminlibrariesidexport) exists |
 | `upload`, `websocket` | roadmap phases. They will flip on when they land |
+| `bookmark_client_id` | The bookmark POST accepts a device-generated UUID and returns the stored bookmark on replay. |
+| `unauthorized_mark` | Every server-generated 401 carries `X-AudioSilo-Unauthorized`. |
 | `oidc` | whether [single sign-on](reference.md#single-sign-on) can run (the conditions are there); sent `false` otherwise. While it is `true`, `auth.methods` adds `"oidc"` and `auth.oidc.name` names the provider for the button. Only a page on the server's own origin can use it |
 
 ### Catalog and browsing
@@ -989,7 +993,7 @@ CORS is a strict allow-list driven by `cors_origins` in the server config:
   - the request headers `Authorization, Content-Type, X-AudioSilo-Client, Range`
     (`Access-Control-Allow-Headers`);
   - the exposed response headers
-    `Retry-After, X-OPML-Exported, X-OPML-Omitted-Private, X-OPML-Omitted-Unavailable`
+    `Retry-After, X-OPML-Exported, X-OPML-Omitted-Private, X-OPML-Omitted-Unavailable, X-AudioSilo-Transcode-Sent, X-AudioSilo-Unauthorized`
     (`Access-Control-Expose-Headers`), on every allowed response, not only
     preflights;
   - a 600 s preflight cache.
@@ -1016,6 +1020,9 @@ The two lists are the consts `corsAllowHeaders` and `corsExposeHeaders`
 - `Retry-After` is exposed because every `429` sends it, and so do some `503`s:
   a busy transcode, or an episode on its way. The request timeout sends none.
 - The OPML export's counts are exposed too.
+- CORS exposes `X-AudioSilo-Unauthorized`. On every 401 from AudioSilo its value is the error
+  body’s `code`, or `unauthorized` for a body without one. A token lookup that fails because the
+  database is unavailable returns 503.
 - `X-AudioSilo-Transcode-Sent` is exposed so a cross-origin player can read a
   transcode `HEAD`'s count of the bytes the same ask's running `GET` has sent,
   and wait on a slow transcode instead of asking again and taking over its

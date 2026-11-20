@@ -136,7 +136,7 @@ The reason under the title says what to do. Press **Back up** again to retry.
 | **This account doesn't have the right to download it.** | The title left the account, or Audible doesn't allow it. |
 | **Audible refused the download.** | [Sign in again](#sign-in-again-after-updating-the-bridge) on the Bridge. |
 | **The Bridge can't write to this library.** | Check the library is **Ready** in [Server > Settings > Bridge](bridge.md#libraries), and that the destination is a normal path. |
-| **A different file is already where it would go.** | [Choose another destination](#choosing-a-destination), or move that file. |
+| **A different file is already where it would go.** The reason can also name an existing book or audio in the destination folder. | [Choose another destination](#choosing-a-destination), or move that file. |
 | **There isn't enough free space.** | The Bridge needs about twice the book's size in its data folder, and the book's size in the library. |
 | **The download link ran out twice.** | Back it up again. |
 | **The Bridge no longer has this account.** | Sign in again on the Bridge. |
@@ -163,6 +163,8 @@ everything** and **Back up by itself** skip it. **Back up** still works for it.
 
 ### Choosing a destination
 
+A title with an invalid saved destination appears in **Needs a look**. The audit log names the account for backup actions.
+
 **Destination...** sets where one title's backup goes, instead of the usual place.
 Type a path inside the library:
 
@@ -176,6 +178,8 @@ server, because the backup would join that book.
 ![The Destination dialog for one title](/img/screenshots/admin/audible-destination.png)
 
 ## Back up everything
+
+If a saved destination is no longer valid, the confirmation after queuing tells you how many titles were skipped. Change their destinations and try again. An invalid account template needs fixing before the batch can start.
 
 **Back up everything...**, on each account, backs up all the account's
 **Available** titles that aren't on this server yet. It first shows how many books
@@ -203,6 +207,8 @@ each check, without being asked:
 account already had, use [Back up everything](#back-up-everything).
 
 ## Where backups go
+
+When a poll finds several titles in a new series, the Bridge plans them together. It adds an underscore to Windows device names. A standalone title with nothing usable in its name gets its Audible identifier as the folder name.
 
 By default, a backup goes **beside the series' other books**, named like the books
 already there. A book of a new series goes in `Author/Series/`, and a book in no

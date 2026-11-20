@@ -90,6 +90,8 @@ restart.
 
 ## Libraries
 
+On the Bridge’s **Libraries** tab, **Last check** shows when the folder was last verified. If the server is busy, the Bridge can keep a recent check while it can still verify the same folder.
+
 The **Libraries** card lists every library with what the Bridge found:
 
 | Status | Means |
@@ -130,6 +132,8 @@ file. **Nothing is changed.** Use it to check that a Bridge is set up
 properly.
 
 ## Jobs
+
+A job that fails or pauses while it is being cancelled shows **Cancelled**. An Audible sync that waited for Audible or found sync switched off says so in its details.
 
 The **Jobs** card lists what the Bridge was asked to do, newest first: characters
 and recaps, descriptions, chapters, read-alongs, community shares, corrections,
@@ -198,15 +202,10 @@ makes sure the same submission isn't filed twice.
 
 Sharing and corrections belong to the [Contributions module](server.md#modules),
 which starts off. While it is off, the console offers no sharing or corrections.
-Jobs already queued wait until the module is on again. Characters and recaps
-generated meanwhile stay on this server, and you can
-[share them later](#share-with-the-community).
+Queued shares and corrections wait until you turn the module on again. A job that generates characters and recaps can still finish and keep them on this server. You can [share them later](#share-with-the-community).
 
 A share or a correction the Bridge is already working on stops within about
-half a minute, and its job says "Its module was turned off." Such a job writes
-nothing to your library, so nothing is lost. A generate job that shares at its
-end carries on and still shares, so the characters and recaps it is writing are
-kept.
+half a minute, and its job says "Its module was turned off." The job list shows **Not shared** for a generation job that kept its results local.
 
 ## Workers
 
@@ -219,5 +218,4 @@ last heard from. You add and remove workers on the Bridge's own page.
 **Unpair...**, at the foot of the page, disconnects the Bridge. It stops at its
 next call. Its jobs stay, and queued ones wait for the next Bridge you pair.
 
-Unpair here, in the console. Unpairing on the Bridge's own page only makes the
-Bridge forget the server.
+Unpair here, in the console. Unpairing on the Bridge's own page makes it forget the server and stop work from that pairing. Pairing again starts a new connection.

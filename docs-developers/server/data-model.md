@@ -2511,6 +2511,14 @@ The migration history so far:
 | 0084 | `path_rekeys` | The re-key's log `path_rekeys` (`user_id` and `library_id` `ON DELETE CASCADE`, indexes `idx_path_rekeys_user` and `idx_path_rekeys_library`), and path indexes on `bookmarks`, `notes`, `listening_history` and `favourites`. No data moves in the migration; the start that applies it takes a before-upgrade backup, then moves listener rows to their book's path (see [Moving state to the book's path](#moving-state-to-the-books-path-path_rekeys)) |
 | 0085 | `audible_place_guard` | The triggers `progress_audible_place_insert` and `progress_audible_place_update`, which clear an `audible:` device from a `progress` row any other writer inserts or moves (see [Audible's own places](#progress)). No data moves |
 | 0086 | `podcast_notice_followups` | `podcast_feed_state.failing_code` and `podcast_shows.feed_read_at` (`TEXT NOT NULL DEFAULT ''`). The backfill gives each announced feed its last error code and marks every feed at `gone` announced with `gone` (see [Podcasts](#podcasts)) |
+| 0087 | `added_at_epoch` | Repairs implausible pre-1980 addition dates using the book’s modification time when usable. |
+| 0088 | `bookmark_client_id` | Optional UUID, unique per user among bookmarks with an ID. Deleting the bookmark frees it. |
+| 0089 | `notify_outbox` | Records pending notification deliveries and attempts for each event and destination. |
+| 0090 | `chapter_basis_match` | Includes the recorded work and recording in the basis for a community chapter check. |
+
+`server_state.progress_feed` identifies the Audible progress feed. A restore renews this ID before
+clients can page it. The separate data-folder mark detects a database restored behind the last
+known counter.
 
 ## SQLite choices
 

@@ -22,6 +22,8 @@ something you haven't seen. Click an event to go where you can deal with it.
 
 ## Adding a destination
 
+If the server restarts, it resumes pending deliveries in order for each destination. It tries a temporary failure up to three times in total. A destination can receive a message twice if the server stops just after sending it.
+
 ![Server > Settings > Notifications](/img/screenshots/admin/settings-notifications.png)
 
 1. Open **Server > Settings > Notifications**.

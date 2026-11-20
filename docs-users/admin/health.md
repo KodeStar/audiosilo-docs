@@ -53,6 +53,8 @@ other libraries scan as usual.
 
 ### Working through a list
 
+Under **Long books without chapters**, each book shows its chapter detection job while it is queued, running or waiting for attention. Open the book’s **Chapters** card for the job details.
+
 - **Ignore** hides a book from this list, even through rescans. **Show
   ignored** lists them, each with **Show again**.
 - Tick several rows (or **Select all**) to act on them together from the bar at
@@ -131,6 +133,8 @@ match. The run skips it and says **Matched since this run**. To undo every commu
 metadata lookups stop answering, the run stops early but keeps what it found.
 
 ### Books with an ASIN the community doesn't know
+
+The card appears once the server has a report result or has recorded its first successful check. Books with an ISBN can still appear if their ASIN is unknown. Turning the report off clears the list from view. A match run waits out a busy community service.
 
 **ASIN not in the community database** has a **Find matches by title** card
 above its list. It works like **Match automatically**, but looks each book up

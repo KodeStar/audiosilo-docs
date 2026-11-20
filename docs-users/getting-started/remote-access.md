@@ -79,13 +79,17 @@ To connect an app through the proxy:
 
 The app stores the headers as securely as your sign-in. To change them, use the **Proxy headers** card on the [account page](../listening/account.md#proxy-headers).
 
+If the proxy refuses a request, the app keeps you signed in and shows a banner. Open it to check the headers. For a sign-in refusal, **Sign in again** opens the password step if you have a password, or the pairing code otherwise. On a small screen the action fits below the message. A child is prompted to ask a grown-up. Kids and demo accounts can see the reason but cannot edit the headers.
+
+AudioSilo marks its own sign-in refusals so the player can recognize an expired session behind a proxy. With an older server the player also checks the error body. A standard AudioSilo sign-in error still opens sign-in. An ambiguous reply behind saved proxy headers, or a proxy that removes the mark from a newer server’s reply, shows the proxy banner.
+
 Good to know:
 
 - **One `https://` address.** The app sends a set of headers only to the `https://` address you entered them for. A home address that is `https://` can be that address. Requests to the server's other addresses get none, and a plain-HTTP address never does.
 - **Redirects:** when the proxy or the server redirects a request to another address, the Android app sends the headers on to that address (checked on Android; not yet on iOS). Only let the proxy redirect to addresses you'd trust with them.
 - **What can't send them:** Chromecast, the Apple Watch and Wear OS apps, and calendar apps. They reach the server by themselves, so they can't get past the proxy. In a browser, covers, audio and requests to another server don't carry them. Those rely on your sign-in to the proxy in that browser.
 - **Some names are the app's own**, such as `Authorization`, `Cookie`, `Host`, `Range` and `Content-Type`, and it refuses them. So a proxy that asks for basic auth (an `Authorization` header) can't sit in front of AudioSilo.
-- **Another person on the same server** who signs in on this device uses the same headers.
+- **Everyone using that address on this device** shares its headers. Signing out keeps them. To remove an unused set, open **Proxy headers** on the connect screen or forget the last remembered server that uses it.
 
 ## Tell the server its public address
 
@@ -142,6 +146,8 @@ The protections are always on; there's nothing to enable:
 - **Rate limits and lockouts.** Repeated wrong passwords or invite codes lock the sender out for a while.
 - **Secrets are stored scrambled**, and every sign-in can be revoked.
 - **Streaming stays inside your libraries.** The server streams nothing outside your library folders.
+
+If you serve AudioSilo under a path prefix and use single sign-on, the sign-in return also needs routes at the public origin’s root. See [Single sign-on](../admin/single-sign-on.md#good-to-know) for the paths your proxy needs to serve.
 
 ### Settings you can leave alone
 

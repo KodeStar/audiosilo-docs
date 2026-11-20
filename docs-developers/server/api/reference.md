@@ -272,12 +272,20 @@ container healthchecks).
 | Status | Meaning |
 |---|---|
 | `200` | database reachable for reads |
-| `503` | `{"error":"database unavailable"}` |
+| `503` | `{"error":"database unavailable"}` once startup has completed |
+| `503` | During startup the JSON includes `status: "starting"`, `code: "server_starting"` and `starting_for_seconds`. Retry after 5 seconds. |
+
+The health routes are exempt from rate limiting. During startup, a browser requesting HTML gets a page that reloads itself.
 
 ## Authentication & pairing
 
 See [API conventions: Authentication](index.md#authentication) for the flow
 overview and [Auth & security](../auth-and-security.md) for the trust model.
+
+Every server-generated 401 carries `X-AudioSilo-Unauthorized`, including media requests. Its value
+is the error’s `code`, or `unauthorized` if there is none. CORS exposes the header. With
+capability `unauthorized_mark`, a client can recognize a proxy’s own 401 even if its body looks
+like AudioSilo’s. A database failure while checking a session token returns 503.
 
 ### `POST /api/v1/auth/redeem`
 
@@ -745,7 +753,8 @@ below). Where the refusal happens:
 | `password` | string | yes | the new password; empty is rejected (clearing a password is admin-only) |
 | `current_password` | string | conditional | required only when the account already has a password |
 
-Response: `204 No Content`.
+Response `200 { "signed_out": 2 }`. The count includes only the caller's other sessions that this
+request ended. Setting a first password returns zero. Older servers return 204 with an empty body.
 
 **Changing a password ends the other sessions.** Replacing a password the account
 had revokes:
@@ -765,9 +774,7 @@ Bridge tokens stay, and
 a first password ends nothing (see
 [Password changes and Sign out everywhere end sessions](../auth-and-security.md#password-changes-and-sign-out-everywhere-end-sessions)).
 An ended token is refused (`401`) on its very next request, media `?token=` included.
-A shipped app takes its existing 401 path: signed out, pair again. The response
-carries no count. A client that wants to say what happened reads
-[`GET /me/devices`](#get-apiv1medevices) again.
+A shipped app takes its existing 401 path: signed out, pair again. The player uses the count when present.
 
 An admin's change also ends the first-run sign-in hint. For the first-run admin it
 turns [`GET /admin/setup`](#get-apiv1adminsetup)'s `printed_password` false and
@@ -1091,6 +1098,9 @@ For podcast libraries this is an index view instead: show folders at the root,
 episode titles inside, serial shows oldest first and episodic shows newest
 first. Episodes appear even without files; feed/artwork files never appear.
 The podcast branch caps a page at 2,000 entries and applies private scope.
+
+A transient fault while opening or listing a folder returns 503 `share_not_answering` with
+`Retry-After: 30`. A link outside the library is treated as missing (404).
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
@@ -1726,6 +1736,8 @@ returns `409 fetch_limit` with the ordinary error envelope.
 | `404 module_off` | POST would create work with the module off |
 | `409 bridge_unavailable` / `library_not_writable` | POST would create work without the needed Bridge/mapping |
 | `409 fetch_limit` | POST would exceed the non-admin creator cap |
+| `409 show_unreadable` | GET or POST found a lasting refusal on the show folder. The admin fetch returns the same code. Check permissions before retrying. The stream returns 404 `episode_not_found` and queues nothing. |
+| `503 share_not_answering` | A temporary storage fault stopped the presence check. Retry after 30 seconds. |
 | `409 identity_changed` | POST only: the episode's previous identity's fetch is still stopping. An identity that changed since the pin was read is asked for again once as it is now, and the stream answers this case as a `503` (above) |
 
 Unexpected faults remain sanitized 500s. GET reports availability/failure in
@@ -2237,7 +2249,7 @@ Non-admin callers get 403. Request JSON is strict and capped at 4 KiB.
 | `GET /api/v1/admin/libraries/{id}/podcasts/retention` | `?path=<show>` | `200 {retention:Policy}` |
 | `PUT /api/v1/admin/libraries/{id}/podcasts/retention` | `?path=<show>`, body Policy | `200 {retention:Policy}` after durable save |
 | `DELETE /api/v1/admin/libraries/{id}/podcasts/retention` | `?path=<show>` | `204`, resets to default |
-| `POST /api/v1/admin/libraries/{id}/podcasts/fetch` | `{"path":"<show>/<episode.mp3>"}` | `202 {request:{id:81,state:"queued"}}`, or `200 {downloaded:true}` for a valid present pin |
+| `POST /api/v1/admin/libraries/{id}/podcasts/fetch` | `{"path":"<show>/<episode.mp3>"}` | `202 {request:{id:81,state:"queued"}}`, `200 {downloaded:true}` for a valid present pin, or `409 show_unreadable` for a lasting refusal on the show folder |
 
 Policy is `{"mode":"keep","keep":3,"days":7}` by default. All three fields
 are required on PUT and returned, including unused values: mode
@@ -2693,12 +2705,11 @@ one work rule (from 2.7.0):
    is its `book_matches` row, shown as
    [`community_match`](#get-apiv1adminlibrariesidbook) on the console's book page:
    the `work_id` and `recording_id` an admin accepted or a match run applied. The
-   server fetches that work (`works/{id}`, `meta.Service.EnrichMatch`) and uses
-   the match's recording as the envelope's recording, as a lookup would. When
-   the match names no recording, or one the work no longer has, that is the
-   work's first. A book with no match row is unmatched. In an outage the
-   match's stored answer serves (`200`, not `502`). A recorded work the upstream
-   lacks or can't answer leaves the identifiers' answer standing.
+   server fetches that work through `meta.Service.EnrichMatch`. Without a recording ID the work’s
+   first recording is eligible. An explicit recording ID missing from the work leaves the match
+   envelope without a recording. When the identifiers already found the matched work, a different
+   recorded recording wins only if the work still lists it. Otherwise the identifiers’ answer
+   stands. Cached answers can serve during an outage.
 
 Either way the server folds the matched recording plus up to three
 series rails into one envelope, one rail per reading-order family (see
@@ -3016,6 +3027,10 @@ each `previous[]` work and [`/meta/work`](#get-apiv1metawork). With
 `attribution` too.
 
 #### Owned entries (`local`)
+
+The server resolves ownership by the book’s recorded community work first. This includes console
+matches without an identifier. The selected local recording and `local_others` still respect the
+caller’s grants.
 
 Every rail entry the **caller** owns carries `local`, `{ "library_id": …, "path":
 … }`: the book to open for that entry. It appears in the main view
@@ -3444,11 +3459,13 @@ it is a download.
   request's ffmpeg ends and its response is cut off as a broken stream, never one
   that looks complete. Safari and WebKit ask for one stream two or three times
   and play only the last, so a transcode plays in Safari with only one slot free.
-- A token holds at most 2 slots. Its third ask takes over its own oldest ask's
-  slot the same way, so one client seeking fast can't hold all 4. Another
-  token's slots are never taken.
-- With no slot free for the ask (all 4 busy, none of them its own to take over)
-  the answer is `503` with `Retry-After: 5`.
+- A token holds at most two slots. At that limit a different ask takes its earliest stream for the
+  same file, then its oldest stream for another file. Only an identical download request can take
+  over a download.
+- With both token slots held by downloads, or all four slots unavailable, a new ask returns `503` with `Retry-After: 5`.
+- A transcoded download saves as `<stem>.mp3`, including an episode. Non-ASCII names use UTF-8
+  `filename*` with an ASCII fallback. A download or chapter editor transcode ends after ten
+  minutes without a read.
 - A taken-over response gets a 1 s write deadline, so a client that stopped
   reading can't keep its connection open.
 
@@ -3498,9 +3515,8 @@ spin up, and under AVPlayer's own timeout of about 60 seconds, since AVPlayer
 doesn't retry a `503`. Past it the answer is the `503` below. A stream that
 waited on a remux, which is no look at the file, gives its next look at least
 10 seconds. Only a regular file is opened (`metadata.OpenRegular`), so a FIFO
-is a `404` at once. An older player treats the `503` as a failed load. Still
-not bounded: a file cache's background open of its source once the request's
-look answered, and a podcast episode's demand fetch.
+is a `404` at once. An older player treats the `503` as a failed load. A transient fault opening
+the file itself also returns 503 `share_not_answering` with `Retry-After: 30`.
 
 | Status | Meaning |
 |---|---|
@@ -3508,7 +3524,7 @@ look answered, and a podcast episode's demand fetch.
 | `400` | missing `path` / path escapes the root / `path is too long` (over 4096 bytes); `code: "bad_rendition"` for a `rendition` other than `watch`, or any rendition in a podcast library (the watch has no podcasts) |
 | `401` | missing/invalid token |
 | `403` | path outside the caller's scope |
-| `404` | file does not exist, or isn't audio; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
+| `404` | file does not exist, leads outside the library or isn't audio. A lasting refusal on an episode’s show returns `episode_not_found`. `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
 | `422` | `code: "rendition_failed"`: ffmpeg refused this file, its copy came out more than 1 s short of the source, or the encode ran past its 2-hour timeout; remembered for an hour (or until the file changes), then tried again. `Retry-After` is the seconds the remembered refusal has left (1 to 3600) |
 | `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or no transcode slot is free for the ask (`server busy transcoding; try again shortly`, with `Retry-After: 5`, for a `GET` or a `HEAD`, above; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full); from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the file's looks have not answered within 45 seconds of the request's start (a drive or share that stopped answering, above) |
 
@@ -3768,7 +3784,8 @@ bucket ([rate limiting](index.md#rate-limiting)).
 | `401` | no `Authorization` header, or a bad token (a `?token=` alone is a `401`) |
 | `403` | the book is outside the caller's share scope |
 | `404` | `this book has no ebook`: the book has none (no `.epub`, several, an unreadable one), the file is gone or no longer a regular file inside the library, the path is inside the book but not its own (a track, the `.epub` in its folder), or the library is a podcast library; `no book at this path` when there is no book there; `not found` for a hidden or `.audiosilo/` path |
-| `500` | `could not load the ebook`: the file is there but can't be read right now (a permission, a flaky mount; logged) |
+| `503` | `share_not_answering` with `Retry-After: 30` for a transient storage fault. A lasting refusal or an out-of-root file returns 404. |
+| `500` | An unexpected local read error such as running out of open files. |
 | `503` | `request timed out`: the book lookup ran past the request timeout |
 
 ### `GET /api/v1/libraries/{id}/readalong`
@@ -4427,6 +4444,13 @@ POST body: `{ "position": 4211.5, "note": "great line", "label": "quote" }`
   "created_at": "2026-06-30T21:04:11.000Z"
 }
 ```
+
+With capability `bookmark_client_id`, the POST also accepts `client_id`, a hyphenated UUID chosen
+by the client. Omit it on older servers. A new bookmark returns 201. Replaying its ID for the same
+user and book returns 200 with the original stored row, including any edits. Reusing it for a
+different book returns 409 `client_id_conflict`. A malformed ID returns 400 `invalid_request`.
+Null and the empty string mean no ID. Bookmark responses include the ID when set. Deleting the
+bookmark frees it for reuse.
 
 `label` (capability `annotations`) is a client-defined **machine key**, never
 display text: `""` (none) or a lowercase key matching `^[a-z][a-z0-9_]{0,31}$`
@@ -5291,6 +5315,8 @@ like any other member.
 *Session.* Requires the `upcoming` capability; a kid's account gets `403`
 `code: "kid_account"`. A demo account reads it like anyone else.
 
+A console-matched book counts as owned by its recorded work. Changing or unlinking the match updates ownership on the next resolution run.
+
 ```json
 {
   "status": "ok",
@@ -5950,6 +5976,8 @@ with a specific message on a validation failure: `username_required` (an empty
 
 ### `GET /api/v1/admin/users/{id}`
 
+The top-level `calendar_link` gives `active` and the creation time `created_at` when there is a link.
+
 One account plus everything the console needs to manage it:
 
 ```json
@@ -6183,6 +6211,12 @@ were none; household members' sessions it also ended aren't counted):
 
 Audited as `user.sign_out_everywhere` with `signed_out` in the details
 ([Audit log](../backups-and-notifications.md#audit-log)).
+
+### `POST /api/v1/admin/users/{id}/end-keys`
+
+*Admin.* Ends this person’s active API keys and calendar link together. Their signed-in devices
+keep working. The response is `200 { "api_keys": 2, "calendar_link": true }`. The audit entry
+`user.end_keys` records the same count and boolean. An unknown user returns 404.
 
 ### `DELETE /api/v1/admin/users/{id}/recovery`
 
@@ -6842,6 +6876,12 @@ a grant without it among the named shares.
 Creates a share, optionally with initial path rules (inserted atomically; a
 bad rule rolls the whole thing back).
 
+A name can contain up to 200 characters. A share description can use up to 1 MiB. A longer name
+returns 400 `invalid_name`. A path selection accepts up to 1,000 paths of at most 4,096 bytes
+each. An oversized body (over 4,225,536 bytes) or selection returns 400 `too_large`. A single
+overlong path returns 400 `path is too long`. The server shortens a whole-library grant’s
+generated name on a character boundary.
+
 | Body field | Type | Required | Notes |
 |---|---|---|---|
 | `name` | string | yes | unique |
@@ -6990,6 +7030,8 @@ match the folder name reads as `path`.
 A page of books across every library, filtered, searched and sorted,
 keyset-paginated over the chosen ordering (never OFFSET, so a deep page costs
 what the first does).
+
+With `issue=no_chapters`, eligible book rows can carry `detect_job` so Health can show the state of chapter detection.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
@@ -7205,6 +7247,10 @@ Applies the same field edit to many books in one transaction: **every book is
 edited or none is**. Merging two spellings of an author is a bulk `set` of
 `author` over their books.
 
+Select up to 1,000 books. Each path is at most 4,096 bytes. The edit itself can use up to 1 MiB.
+The whole body can use 5,274,112 bytes. An oversized list, edit or request returns 400
+`too_large`. A single overlong path returns 400 `path is too long`.
+
 | Body field | Type | Required | Notes |
 |---|---|---|---|
 | `books` | array | yes | `[ { "library_id": 1, "path": "Andy Weir/Artemis" } ]`, at most 1000 |
@@ -7350,6 +7396,8 @@ place an owned book on a community series rail by identity, whatever its
 of the work it belongs to, the same ids as a rail's `series[].works[].id` from
 [`GET /libraries/{id}/meta`](#get-apiv1librariesidmeta). Requires the `metadata`
 [capability](#get-apiv1server). Display only: no book is changed.
+
+The request body is capped at 1 MiB. A lookup accepts up to 100 book references.
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|
@@ -8947,6 +8995,10 @@ the books of the other spellings, as an author merge is; ignoring a series is a
 console's Undo and "Show again"). For duplicates, ignore every copy of a group
 ("They're different books").
 
+Each request takes up to 1,000 selections with paths of at most 4,096 bytes. An oversized body
+(over 4,225,536 bytes) or list returns 400 `too_large`. A single overlong path returns 400
+`path is too long`.
+
 ```json
 { "kind": "no_cover", "books": [ { "library_id": 1, "path": "Sun Tzu/The Art of War" } ] }
 ```
@@ -10038,7 +10090,7 @@ effect. Lists are never `null`.
 | `metadata.upcoming_window_days` | read-only (2.7.0): how many days after its release a book still counts as new, the value the running server read at start (config `upcoming.window_days`, default `90`). Always present. The console's Series cards mark **New** by it. Sending it in a `PATCH` is `400 unknown_setting` |
 | `metadata.upcoming_status` | read-only (2.6.0): how the job's runs went, absent without a metadata service. `last_run_at`, `last_success_at` (both absent before the first run; equal when the last run worked), `last_error` (the last failed run's error, cleared by a success), `next_run_at`, `series` (local series matched to a community series) and `items` (what they lack in all). The console's Settings > Metadata words it |
 | `metadata.report_unknown` | the opt-in [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)'s switch (2.6.0; config `metadata.report_unknown`, default `false`). From 2.7.0 absent, with `report_status`, without a metadata service and on a demo server, so the console shows no switch there. Applies at once: switched on (with metadata on) it runs now unless a run was made in the last 23 hours, the service is in its quiet week after `not_offered`, or (mirror mode) the local copy isn't ready yet; switched off it stops a run in flight |
-| `metadata.report_status` | read-only (2.6.0): the report's last run, absent without a metadata service and on a demo server. `state` is `never` (no run yet), `ok` (the run worked; `last_sent` ASINs were accepted, `0` = nothing new to send), `not_offered` (the `base_url` is plain `http` off this machine, so nothing is sent; or the service took no reports, and it is left alone for 7 days) or `failed` (a lookup failed, or the service failed or refused a report; tried the next day, and ASINs in reports it accepted before that still count in `last_sent`); `last_run_at` (absent before the first run) and `last_sent`. The console's Settings > Metadata words it |
+| `metadata.report_status` | read-only (2.6.0): the report’s last run and its next scheduled check in `next_run_at` when set. Switching the report on schedules it immediately. The status is absent without a metadata service and on a demo server. `state` is `never` (no run yet), `ok` (the run worked; `last_sent` ASINs were accepted, `0` = nothing new to send), `not_offered` (the `base_url` is plain `http` off this machine, so nothing is sent; or the service took no reports, and it is left alone for 7 days) or `failed` (a lookup failed, or the service failed or refused a report; tried the next day, and ASINs in reports it accepted before that still count in `last_sent`); `last_run_at` (absent before the first run) and `last_sent`. The console's Settings > Metadata words it |
 | `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |
 | `demo.max_users` | `null` = the default cap (`max_users_default`); `0` = no limit |
 | `demo.idle_ttl` | `""` = 24h |
@@ -11441,9 +11493,8 @@ writing). Which open kind refuses, or gives way to, which is one table:
 
 The Bridge may be offline: the job waits for it. Response `201` with the new job,
 or `200` with the open job already there for that kind, library and path (no
-second job is made). That open job may be one still stopping after a cancel
-(`cancel_requested: true`): nothing new can be queued for it until it ends, and
-the console says so. A new job is audited as `bridge.job`.
+second job is made). If the matching job is already stopping, the server ends it as cancelled and
+queues the new request (201). A new job is audited as `bridge.job`.
 
 | Status | Meaning |
 |---|---|
@@ -11637,6 +11688,9 @@ as "this server is too old for a Bridge".
 *Bridge token.* The heartbeat, every 30 seconds: what the Bridge is and what it
 found. The server keeps the last one only (one row, never a history).
 
+The body limit is 2 MiB. A body over the limit returns 400 `too_large`. The server retains up to
+4,096 library IDs and 4,096 mappings and filters them to the server’s own libraries.
+
 ```json
 {
   "version": "0.1.0",
@@ -11668,20 +11722,20 @@ found. The server keeps the last one only (one row, never a history).
 |---|---|
 | `version` | the Bridge's version (at most 128 bytes) |
 | `kinds` | the job kinds it runs, each `family.name` in lower case, listed once (at most 64) |
-| `libraries` | its last check of each library it has checked (at most 512, each `library_id` once and above 0): `mount_path` where it looked, `mapped` (a known book's files were there with the server's sizes), `writable` (a probe file could be written and removed there), `checked_path` (the book it compared), `error` (why it isn't mapped or writable, `""` when it is); the three texts at most 1 KiB each |
+| `libraries` | its last check of each library it has checked (up to 4,096 kept, each `library_id` once and above 0): `mount_path` where it looked, `mapped` (a known book's files were there with the server's sizes), `writable` (a probe file could be written and removed there), `checked_path` (the book it compared), `error` (why it isn't mapped or writable, `""` when it is); the three texts at most 1 KiB each |
 | `workers` | the transcription workers connected to it (at most 64; `name`, `version`, `platform`, `last_seen`, at most 128 bytes each; `[]` today) |
 | `ui_url` | its own page on the local network: an absolute `http(s)` URL without credentials, or `""` |
-| `setup` | optional, sent only after a reply listed it in `accepts`: the Bridge's setup checklist, `{ items: [{ id, done, required, detail?, library_ids?, needs_worker? }], can_contribute, github_login?, github_state?, agent_credential? }`. `needs_worker: true` says the step waits for an ASR worker. `github_state` and `agent_credential` are below the admin's [`GET /admin/bridge`](#get-apiv1adminbridge). Read leniently like `estimates` (an unknown key ignored, a block that doesn't decode dropped, never refused) and bounded: the first 16 items kept (the rest left out); an item whose `id` doesn't match `^[a-z][a-z0-9_]{0,31}$`, or repeats one, is left out (an unknown id is kept); `detail` cleaned to 256 bytes; in `library_ids` a zero, negative or repeated id left out (at most 512 kept); a `github_login` that isn't GitHub's shape dropped; a `github_state` or `agent_credential` that doesn't match the item id pattern dropped (a value the server doesn't know is kept). Its `can_contribute` wins over the estimates'. The ids a Bridge sends, their order and meaning: [The setup checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist) |
+| `setup` | optional, sent only after a reply listed it in `accepts`: the Bridge's setup checklist, `{ items: [{ id, done, required, detail?, library_ids?, needs_worker? }], can_contribute, github_login?, github_state?, agent_credential? }`. `needs_worker: true` says the step waits for an ASR worker. `github_state` and `agent_credential` are below the admin's [`GET /admin/bridge`](#get-apiv1adminbridge). Read leniently like `estimates` (an unknown key ignored, a block that doesn't decode dropped, never refused) and bounded: the first 16 items kept (the rest left out); an item whose `id` doesn't match `^[a-z][a-z0-9_]{0,31}$`, or repeats one, is left out (an unknown id is kept); `detail` cleaned to 256 bytes; in `library_ids` a zero, negative or repeated id left out (at most 4,096 kept); a `github_login` that isn't GitHub's shape dropped; a `github_state` or `agent_credential` that doesn't match the item id pattern dropped (a value the server doesn't know is kept). Its `can_contribute` wins over the estimates'. The ids a Bridge sends, their order and meaning: [The setup checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist) |
 | `estimates` | optional: its figures for costing a job before it is queued, one block per job family. `sidecars`: `asr_seconds_per_audio_hour` (ASR wall time per hour of audio, learned or a seed), `agent_usd_per_audio_hour` and `agent_usd_per_ebook` (agent spend from finished books, `null` before any), `samples` (the finished books they come from), `agent_backend` (`""` when none), `agent_ready` (the agent container answers and has a credential), `subscription` (that credential is a subscription login), `can_contribute` (it can file community intake issues), `monthly_budget_usd` (`0` = no cap) and `month_spent_usd`. Read leniently: an unknown key is ignored, and a block that doesn't decode, or holds a number below 0 or past its bound, is **dropped**, never refused (`agent_backend` is cleaned like the other text) |
 
 The structure is checked and refused when wrong: a malformed kind, a repeated
-kind, a library id that is repeated or not above 0, too many entries, or a `ui_url`
+kind, a library id that is repeated or not above 0, too many kinds or workers, or a `ui_url`
 that isn't an absolute `http(s)` URL (the console renders it as a link). The **free
 text** (the version, each mapping's paths and error, the workers' fields) is
 **cleaned instead of refused**: broken UTF-8 becomes U+FFFD, each control character
 a space, and the text is cut to its limit. Much of it comes from the outside world
 (a file's name, an OS error), and a refused heartbeat would leave the Bridge
-offline. The body is at most 64 KiB. The answer lists the server's libraries, so
+offline. The answer lists the server's libraries, so
 the Bridge can map the ones it hasn't checked yet, and `accepts`, the
 optional protocol features this server accepts:
 
@@ -11720,6 +11774,11 @@ resends once on a `400` (an older server answers no `accepts`). See
 | `wait` | seconds to wait for a job when none is queued, 0 to 25 (more is 25; default 0) |
 | `kind` | repeatable: only these kinds (the ones the Bridge has a free lane for) |
 | `min_priority` | optional single signed base-10 int32 floor; only send after heartbeat `accepts` lists `claim_min_priority`. Invalid/empty/repeated/out-of-range is `400 invalid_request`; omitted means no floor |
+
+A Bridge claiming with `share_off=1` can take a queued generate-and-share job while Contributions
+is off. The claim or subsequent report response includes `share_off: true` while the switch is
+off. The Bridge keeps the generated files local. A claim without the parameter leaves that job
+queued.
 
 The server picks from the kinds the last heartbeat named **and** the server knows,
 narrowed to the `kind` values when there are any. It hands out the highest
@@ -11859,6 +11918,10 @@ check's: the first **whole** book (every file present on the server's disk) amon
 the library's first five by title, so one book deleted before a scan notices
 doesn't make the whole library look unmapped; the first of them when none is
 whole.
+
+The book’s `work_id` uses its recorded match before a cached identifier lookup. The generate
+estimate uses the recorded work for community coverage too. A file with no usable modification
+time reports `mod_time` zero.
 
 ```json
 {
@@ -12238,7 +12301,7 @@ don't (see [the Bridge's matching rules](../../bridge/audible.md#matching-rules)
 | Status | Meaning |
 |---|---|
 | `200` | `{ books, next }` |
-| `400` | `invalid_request` - a bad `limit` or cursor; `not_books` - a podcast library |
+| `400` | `invalid_cursor` for a bad cursor, `invalid_request` for a bad `limit`, or `not_books` - a podcast library |
 | `404` | `unknown_library` |
 
 ### `PUT /api/v1/bridge/libraries/{id}/enrichment`
@@ -12268,6 +12331,10 @@ for none.
 
 *Admin, module on.* The titles, sorted by title (any case), then account and ASIN,
 keyset-paged.
+
+A title with `dest_invalid: true` has a stored destination that no longer validates. It cannot be
+queued until the destination is corrected. A failed backup with `code: "exists"` can carry
+`conflict` naming a file, book or audio in the destination.
 
 | Param | Meaning |
 |---|---|
@@ -12327,7 +12394,7 @@ keyset-paged.
 | Status | Meaning |
 |---|---|
 | `200` | `{ titles, next }` |
-| `400` | `invalid_request` - a `state` or `matched` value not listed above, a `limit` that isn't a positive number, a `q` over 200 bytes, or a bad cursor |
+| `400` | `invalid_request` - a `state` or `matched` value not listed above, a `limit` that isn't a positive number, a `q` over 200 bytes. A bad cursor returns `invalid_cursor` |
 | `404` | `module_off` |
 
 ### `POST /api/v1/admin/audible/accounts/{account}/poll`
@@ -12388,13 +12455,14 @@ backup never holds back new episodes; the jobs are the admin's. No body.
 
 | Status | Meaning |
 |---|---|
-| `200` | `{ "queued": N }` (`0` with nothing to back up) |
+| `200` | `{ "queued": N, "skipped": M }`. Titles with an invalid destination are skipped. |
+| `400` | `invalid_template` with reason `account` for an invalid account template. Nothing was queued. |
 | `404` | `unknown_account`; `module_off` |
 | `409` | `account_paused`; `kind_unavailable`; `library_not_writable` - nothing was queued: the Bridge can't take them |
 
 It stops at the first refusal of the queue; when some were queued before it, the
 answer is still `200` with their count (the rest is logged). Audited as
-`bridge.audible.backup_all` (with `account`, `queued`) when it queued any. The
+`bridge.audible.backup_all` (with the account, `queued` and `skipped`) when it queued any. The
 count and size it would queue are the account's `backup_estimate`.
 
 ### `PATCH /api/v1/admin/audible/titles/{account}/{asin}`
@@ -12640,6 +12708,10 @@ are two rows. Two kinds of row are left out:
   and two unknown lengths agree. With two titles on one book, only the agreeing
   one is offered.
 
+A Bridge that can restart paging sends `refuse_stale=1`. The cursor identifies the feed. After a
+restore, or if the cursor points past the current end, the Bridge clears the refused cursor and
+reads from the beginning. Without the flag, legacy Bridges can continue paging after the restore.
+
 The rows are ordered by `progress.change_seq`, then ASIN, after the opaque cursor
 `since`. `change_seq` is the order this server wrote progress rows in: a
 server-wide counter that only goes up. It is also bumped when a title is newly
@@ -12658,7 +12730,7 @@ clock too, so the Bridge counts its baseline's recent window back from
 | Status | Meaning |
 |---|---|
 | `200` | `{ rows, next, more, server_time }` |
-| `400` | `invalid_request` - no `account`, a bad `limit` or cursor |
+| `400` | `invalid_request` for a missing account or bad limit. `invalid_cursor` for an unreadable cursor, or with `refuse_stale=1` for another feed’s cursor or one past the end. |
 | `403` / `404` | [above](#audible-position-sync) |
 
 ### `DELETE /api/v1/admin/audible/accounts/{account}`
