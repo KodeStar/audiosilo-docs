@@ -41,8 +41,8 @@ changing either starts again at page one.
 - A **book page** lists every recording of the book, with narrators, length,
   release date, publisher, ASINs and ISBNs, and chapters.
 - A **series page** lists the books in reading order.
-- A **person page** lists everything an author or narrator is credited on, in
-  alphabetical order by title.
+- A **person page** lists everything an author or narrator is credited on. Each
+  list, and each group of narrated recordings, is in alphabetical order by title.
 
 ![A book page with its recordings](/img/screenshots/meta/work.png)
 
@@ -71,8 +71,9 @@ recording** opens the book page. **No recording catalogued** means the catalogue
 holds no recording of that book yet.
 
 The guide picks and orders those recordings by narrator first: a recording whose
-narrator reads the most other books across the whole series comes first, then the
-earliest released. A recording with no release date comes last.
+narrator reads the most other books across the whole series comes first. Among
+recordings level on that, the earliest released comes first, and one with no
+release date comes after the dated ones.
 
 Pick a recording for each book and the **Listening time planner** adds up their
 runtimes. The subtotal covers only the current page. The plan stays partial
@@ -236,9 +237,9 @@ The [contribute page](https://meta.audiosilo.app/contribute) shows where help is
 most needed. Its **guided builder** walks you through writing characters and
 recaps for a book you know well. When the previous book in the series already
 has characters, the builder offers **Start from that cast**: each character is
-copied with its description cleared, ready to check for this book. An omnibus
-that includes this book doesn't count as the previous book, because its
-characters describe later books.
+copied with its description cleared and its reveal reset, ready to check for
+this book. An omnibus that includes this book doesn't count as the previous book,
+because its characters describe later books.
 
 ![The contribute coverage browser](/img/screenshots/meta/contribute.png)
 
