@@ -30,7 +30,6 @@
 // with role/label selectors that use the exact English labels from
 // audiosilo-server/admin-ui/src/i18n/locales/en.json - if a label changes there,
 // change it here too.
-import {spawnSync} from 'node:child_process';
 import {createHash, createHmac, timingSafeEqual} from 'node:crypto';
 import {constants as fsc} from 'node:fs';
 import http from 'node:http';
@@ -49,12 +48,14 @@ import {
   apiClient,
   around,
   fitViewportToPage,
+  fitted,
   isoAgo,
   pathQuery,
   showDockerPaths,
   silence,
   sleep,
   shoot,
+  sqliteAt,
   stamp,
   step,
   submitSignIn,
@@ -96,11 +97,7 @@ if (!PASSWORD) {
 const api = apiClient(ORIGIN);
 
 const DB = path.join(CACHE, 'data', 'audiosilo.db');
-const sqlite = (sql) => {
-  const r = spawnSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
-  if (r.status !== 0) throw new Error(`sqlite3: ${(r.stderr || r.error?.message || '').trim()}`);
-  return r.stdout;
-};
+const sqlite = sqliteAt(DB);
 
 let inviteCode = '';
 let samId = null;
@@ -1300,10 +1297,11 @@ await step('settings: bridge', async () => {
           await setupCard.getByText('2 of 4 required steps done').waitFor({timeout: 15000});
           await setupCard.getByText(/Sign-in couldn't be refreshed: the Bridge keeps trying/).waitFor();
           await setupCard.getByText("Kept to the Bridge's group").waitFor();
-          await fitViewportToPage(page, 900, 1600, 300);
-          await setupCard.scrollIntoViewIfNeeded();
-          await sleep(800);
-          await shoot(page, 'admin/bridge-setup.png', {clip: around([await setupCard.boundingBox()])});
+          await fitted(page, () => fitViewportToPage(page, 900, 1600, 300), async () => {
+            await setupCard.scrollIntoViewIfNeeded();
+            await sleep(800);
+            await shoot(page, 'admin/bridge-setup.png', {clip: around([await setupCard.boundingBox()])});
+          });
         });
       }
       // Budget reviewed and signed in to GitHub on the Bridge's page.
@@ -1512,15 +1510,12 @@ await step('bridge: detect chapters', async () => {
       message: 'Finding the chapters in the narration', done: 0, total: 1},
   }, BRIDGE_CLIENT);
   if (wanted('admin/health-detect-chapters.png')) {
-    try {
-      await open(page, '/health/issues?issue=no_chapters');
-      await list.getByText('Finding the chapters in the narration', {exact: false}).first().waitFor();
-      await fitViewportToPage(page, 1040, 1800);
+    await open(page, '/health/issues?issue=no_chapters');
+    await list.getByText('Finding the chapters in the narration', {exact: false}).first().waitFor();
+    await fitted(page, () => fitViewportToPage(page, 1040, 1800), async () => {
       await page.evaluate(() => window.scrollTo(0, 0));
       await shoot(page, 'admin/health-detect-chapters.png');
-    } finally {
-      await page.setViewportSize(DESKTOP_CONTEXT.viewport);
-    }
+    });
   }
   if (wanted('admin/book-chapters-working.png')) {
     await open(page, bookRoute(lecture), (p) => p.getByRole('heading', {name: 'Details', exact: true}));

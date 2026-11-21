@@ -22,7 +22,6 @@
 //
 // The console is driven with the exact English labels from
 // audiosilo-server/admin-ui/src/i18n/locales/en.json, the player with its test ids.
-import {spawnSync} from 'node:child_process';
 import http from 'node:http';
 import {chromium} from 'playwright';
 import {
@@ -34,6 +33,7 @@ import {
   shoot,
   showDockerPaths,
   sleep,
+  sqliteAt,
   stamp,
   step,
   submitSignIn,
@@ -86,11 +86,7 @@ const discoveryServer = http.createServer((req, res) => {
 });
 await new Promise((resolve) => discoveryServer.listen(Number(idp.port), idp.hostname, resolve));
 
-const sqlite = (sql) => {
-  const r = spawnSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
-  if (r.status !== 0) throw new Error(`sqlite3: ${(r.stderr || r.error?.message || '').trim()}`);
-  return r.stdout;
-};
+const sqlite = sqliteAt(DB);
 const q = (s) => `'${String(s).replaceAll("'", "''")}'`;
 
 // ── State ────────────────────────────────────────────────────────────────

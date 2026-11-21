@@ -21,9 +21,8 @@
 // (the Audible fake, for the Audible shots).
 import {chromium} from 'playwright';
 import path from 'node:path';
-import {execFileSync} from 'node:child_process';
 import {mkdir, rm} from 'node:fs/promises';
-import {CACHE, DESKTOP_CONTEXT, apiClient, around, fitViewportToPage, fitted, pathQuery, shoot, silence, sleep, step, submitSignIn, waitForScans, wanted} from './lib.mjs';
+import {CACHE, DESKTOP_CONTEXT, apiClient, around, fitViewportToPage, fitted, pathQuery, shoot, silence, sleep, sqliteAt, step, submitSignIn, waitForScans, wanted} from './lib.mjs';
 
 const BASE = (process.env.BRIDGE_BASE || '').replace(/\/?$/, '/');
 const PASSWORD = process.env.BRIDGE_PASSWORD || '';
@@ -61,6 +60,7 @@ const bridgeApi = apiClient(BASE.replace(/\/$/, ''), '/api');
 // Settles, moves the pointer away and shoots the page as tall as its content.
 // `settle` waits before fitting, `fitSettle` after the viewport is resized.
 const tallShoot = async (page, file, {settle = 800, max = 1600, fitSettle = 400} = {}) => {
+  if (!wanted(file)) return;
   await sleep(settle);
   await page.mouse.move(0, 0);
   await fitted(page, () => fitViewportToPage(page, 900, max, fitSettle), () => shoot(page, file));
@@ -216,10 +216,9 @@ async function audibleShots() {
     // The current PATCH rejects this old destination on entry. Seed it in the
     // disposable DB as in the server's TestAudibleBackupAllSkipsInvalidDestination.
     if (!audible.account || !/^[a-zA-Z0-9_-]+$/.test(audible.account)) throw new Error('no fixture Audible account');
-    const changes = execFileSync('sqlite3', [path.join(CACHE, 'data', 'audiosilo.db')], {
-      input: `.timeout 15000\nUPDATE audible_titles SET dest_path = '.backups/A Small Hour in Varrow.m4b'
-        WHERE asin = 'B0FAKE0007' AND account = '${audible.account}'; SELECT changes();\n`, encoding: 'utf8',
-    });
+    const changes = sqliteAt(path.join(CACHE, 'data', 'audiosilo.db'))(
+      `UPDATE audible_titles SET dest_path = '.backups/A Small Hour in Varrow.m4b'
+        WHERE asin = 'B0FAKE0007' AND account = '${audible.account}'; SELECT changes();`);
     if (changes.trim() !== '1') throw new Error('the old destination fixture needs one indexed Audible title');
   }
 
@@ -399,10 +398,8 @@ try {
         lib.slow_at = checked;
         lib.unanswered_at = null;
         lib.unknown = true;
-        const podcast = lib.library.kind === 'podcasts';
-        lib.status = {library_id: lib.library.id, mount_path: lib.mount_path,
-          checked_path: podcast ? '.audiosilo/library.json' : '', mapped: false, writable: false,
-          error: (podcast ? 'the library folder' : `the folder ${lib.mount_path}`) + ' is not answering (no answer within 5s)'};
+        lib.status = {library_id: lib.library.id, mount_path: lib.mount_path, checked_path: '', mapped: false,
+          writable: false, error: `the folder ${lib.mount_path} is not answering (no answer within 5s)`};
         await route.fulfill({response, body: shown(JSON.stringify(data))});
       });
       try {

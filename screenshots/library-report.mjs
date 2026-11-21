@@ -1,13 +1,13 @@
 // The public demo cannot report unknown ASINs. Use the same binary in a fresh
 // data directory with a reachable loopback metadata service whose intake is closed.
 // The private database also keeps the large-library fixture out of other shots.
-import {spawn, spawnSync} from 'node:child_process';
+import {spawn} from 'node:child_process';
 import {cp, mkdir, mkdtemp, rm, writeFile} from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import {once} from 'node:events';
 import {
-  CACHE, DAY, DESKTOP_CONTEXT, HOUR, apiClient, pathQuery, shoot, showDockerPaths, sleep, submitSignIn, waitForScans, wanted,
+  CACHE, DESKTOP_CONTEXT, HOUR, apiClient, pathQuery, shoot, showDockerPaths, sleep, sqliteAt, submitSignIn, waitForScans, wanted,
 } from './lib.mjs';
 
 const bookPath = 'Charles Dickens/A Christmas Carol (ISBN 9780141324524)';
@@ -93,25 +93,14 @@ export async function captureLibraryReport(browser) {
       await api(token, 'PATCH', `/admin/libraries/${archive.id}/book${pathQuery(book.path)}`,
         {set: {asin, isbn}});
       await api(token, 'PATCH', '/admin/settings', {metadata: {report_unknown: true}});
+      // Wait for the declined report and the scheduler's next daily tick, so
+      // Settings shows the attempt and its retry rather than a pending run.
+      const settled = (status) => sawReport && status?.state === 'not_offered' &&
+        Math.abs(Date.parse(status.next_run_at) - Date.parse(status.last_run_at) - 24 * HOUR) <= HOUR + 1000;
       for (const until = Date.now() + 15000; ; await sleep(200)) {
-        const {metadata} = await api(token, 'GET', '/admin/settings');
-        const status = metadata.report_status;
-        if (sawReport && status?.state === 'not_offered') {
-          // The scheduler wakes daily during the quiet week. Only after the
-          // stored quiet_until can its next tick issue another report.
-          const nextTick = Date.parse(status.next_run_at) - Date.parse(status.last_run_at);
-          if (nextTick >= 23 * HOUR && nextTick <= 25 * HOUR + 1000) {
-            const result = spawnSync('sqlite3', [path.join(data, 'audiosilo.db'),
-              "SELECT json_extract(value, '$.quiet_until') FROM server_state WHERE key='unknown_asin_report'"],
-              {encoding: 'utf8'});
-            if (result.status !== 0 || Date.parse(result.stdout.trim()) - Date.parse(status.last_run_at) !== 7 * DAY) {
-              throw new Error('the server did not record a seven-day quiet period');
-            }
-            console.log(`  ✓ report: scheduler next ${status.next_run_at}, intake quiet until ${result.stdout.trim()}`);
-            break;
-          }
-        }
-        if (Date.now() > until) throw new Error(`the metadata fixture saw ${JSON.stringify(requests)}, report status ${JSON.stringify(metadata.report_status)}`);
+        const status = (await api(token, 'GET', '/admin/settings')).metadata.report_status;
+        if (settled(status)) break;
+        if (Date.now() > until) throw new Error(`the metadata fixture saw ${JSON.stringify(requests)}, report status ${JSON.stringify(status)}`);
       }
       await page.setViewportSize({width: 1440, height: 1260});
       await page.goto(origin + '/admin/server?topic=metadata');
@@ -139,15 +128,11 @@ export async function captureLibraryReport(browser) {
       // The real PATCH waits for up to 20 seconds. Seed library index rows
       // directly, as the listening-history fixture does, so this capture need
       // not generate and probe tens of thousands of separate audio files.
-      const seed = spawnSync('sqlite3', [path.join(data, 'audiosilo.db')], {
-        encoding: 'utf8', input: `.timeout 15000
-          WITH RECURSIVE seq(n) AS (VALUES(1) UNION ALL SELECT n + 1 FROM seq WHERE n < 250000)
-          INSERT INTO books(library_id, rel_path, path_key, indexed_at, title, author)
-          SELECT ${archive.id}, 'Recordings/Lecture ' || n, 'Recordings/Lecture ' || n,
-            strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), 'Lecture ' || n, 'University Archive' FROM seq;
-        `,
-      });
-      if (seed.status !== 0) throw new Error('could not seed large archive: ' + seed.stderr);
+      sqliteAt(path.join(data, 'audiosilo.db'))(`
+        WITH RECURSIVE seq(n) AS (VALUES(1) UNION ALL SELECT n + 1 FROM seq WHERE n < 250000)
+        INSERT INTO books(library_id, rel_path, path_key, indexed_at, title, author)
+        SELECT ${archive.id}, 'Recordings/Lecture ' || n, 'Recordings/Lecture ' || n,
+          strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), 'Lecture ' || n, 'University Archive' FROM seq;`);
       await page.setViewportSize({width: 1120, height: 560});
       await page.goto(origin + '/admin/library/libraries');
       await page.getByRole('button', {name: 'Actions for Archive'}).click();

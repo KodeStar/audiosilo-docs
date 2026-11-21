@@ -54,6 +54,7 @@ import {
   signInWithPassword,
   sleep,
   slug,
+  sqliteAt,
   stamp,
   step,
   tid,
@@ -62,6 +63,9 @@ import {
 } from './lib.mjs';
 
 const BASE = process.env.AS_BASE || 'http://127.0.0.1:8790/web/';
+// A book or episode page in the player, as its router addresses it.
+const bookUrl = (libraryId, cid, relPath) =>
+  `${BASE}book/${libraryId}?connection=${encodeURIComponent(cid)}&path=${encodeURIComponent(relPath)}`;
 const api = apiClient(new URL(BASE).origin);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const AUTH = path.join(CACHE, 'auth.json');
@@ -223,7 +227,7 @@ const YEAR_BOOKS = [
 
 function sqlite(sql) {
   if (!existsSync(DB)) throw new Error(`no capture database at ${DB}`);
-  return execFileSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
+  return sqliteAt(DB)(sql);
 }
 
 function seedListeningYear(userId, libraryId, books) {
@@ -630,12 +634,12 @@ async function captureWide(name, viewport, shots) {
       await tid(page, 'player-menu').click({timeout: 8000});
       await firstVisible(page.getByRole('menuitem', {name: 'View book details'})).click({timeout: 8000});
       await tid(page, 'player-menu').waitFor({state: 'hidden', timeout: 8000});
-      await tid(page, 'book-tab-bookmarks').click({timeout: 8000});
-      await firstVisible(page.getByTestId('bookmark-quote')).waitFor({timeout: 8000});
-      await sleep(SETTLE_MS);
-      await scrollToTop(tid(page, 'book-tab-bookmarks'));
-      await page.mouse.move(0, 0);
       if (wanted(shots.bookmarkEditor)) {
+        await tid(page, 'book-tab-bookmarks').click({timeout: 8000});
+        await firstVisible(page.getByTestId('bookmark-quote')).waitFor({timeout: 8000});
+        await sleep(SETTLE_MS);
+        await scrollToTop(tid(page, 'book-tab-bookmarks'));
+        await page.mouse.move(0, 0);
         const quote = firstVisible(page.locator('[data-testid^="bookmark-row-"]').filter({has: page.getByTestId('bookmark-quote')}));
         await quote.getByTestId('bookmark-edit').click({timeout: 8000});
         const dialog = firstVisible(page.getByRole('dialog'));
@@ -775,7 +779,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (wanted(shots.bookBookmarks, shots.bookmarkEditor, shots.bookDetails, shots.bookFinished, shots.journal, shots.journalBookmarks)) {
+  if (wanted(shots.bookmarkEditor, shots.bookDetails, shots.bookFinished, shots.journal, shots.journalBookmarks)) {
     // Back to Home, where the pause left a partial run, so the palette and profile
     // menu are shot over Home on every run.
     await step('back home', async () => {
@@ -1128,8 +1132,7 @@ if (wanted(BOOKMARK_SHOT, BOOKMARK_PIN)) {
         url.searchParams.get('path') === book.rel_path,
       (route) => route.request().method() === 'POST' ? route.abort('connectionrefused') : route.continue());
       await page.evaluate((bookmark) => localStorage.setItem('audiosilo.annotationOutbox', JSON.stringify([bookmark])), entry);
-      const url = `${BASE}book/${lib.id}?connection=${encodeURIComponent(cid)}&path=${encodeURIComponent(book.rel_path)}`;
-      await page.goto(url, {waitUntil: 'networkidle'});
+      await page.goto(bookUrl(lib.id, cid, book.rel_path), {waitUntil: 'networkidle'});
       await tid(page, 'book-tab-bookmarks').click();
       const row = tid(page, `bookmark-queued-${entry.id}`);
       await row.getByText('Waiting to sync', {exact: false}).waitFor();
@@ -1241,7 +1244,7 @@ async function openReadalongBook(page) {
   const {lib, find} = await seededBooks(token);
   const book = find('Call of the Wild');
   if (!book) throw new Error('no Call of the Wild in the seeded library');
-  await page.goto(`${BASE}book/${lib.id}?connection=${encodeURIComponent(cid)}&path=${encodeURIComponent(book.rel_path)}`, {waitUntil: 'networkidle', timeout: 45000});
+  await page.goto(bookUrl(lib.id, cid, book.rel_path), {waitUntil: 'networkidle', timeout: 45000});
   await tid(page, 'book-page').waitFor({timeout: 15000});
   await tid(page, 'read-action').waitFor({timeout: 15000});
   await sleep(SETTLE_MS);
@@ -1556,10 +1559,8 @@ async function capturePodcasts(pod) {
       await step('podcasts: completed, waiting and stopped downloads', async () => {
         const {lib, find} = await seededBooks(session);
         const book = find('Art of War');
-        const bookPage = (id, relPath) =>
-          `${BASE}book/${id}?connection=${encodeURIComponent(cid)}&path=${encodeURIComponent(relPath)}`;
         const download = firstVisible(page.getByRole('button', {name: /^download( for offline)?$/i}));
-        await page.goto(bookPage(lib.id, book.rel_path), {waitUntil: 'networkidle'});
+        await page.goto(bookUrl(lib.id, cid, book.rel_path), {waitUntil: 'networkidle'});
         await download.click();
         await firstVisible(page.getByRole('button', {name: /^downloaded$/i})).waitFor({timeout: 120000});
         const other = pod.shows.find((s) => s.folder === PODCAST_SHOW).feed.episodes.find((e) => !e.fetch);
@@ -1567,7 +1568,7 @@ async function capturePodcasts(pod) {
         const stopped = await routeEpisodeFetch(page, pod.library.id, other.path, 82);
         try {
           for (const episode of [fetchEpisode, other]) {
-            await page.goto(bookPage(pod.library.id, episode.path), {waitUntil: 'networkidle'});
+            await page.goto(bookUrl(pod.library.id, cid, episode.path), {waitUntil: 'networkidle'});
             await tid(page, 'episode-page').waitFor();
             await download.click();
             await firstVisible(page.getByText(/Getting it on your server/i)).waitFor({timeout: 20000});
@@ -1586,7 +1587,6 @@ async function capturePodcasts(pod) {
         }
       });
     }
-
   } finally {
     // Sign this player session out again, whatever happened above.
     if (session) await api(session, 'POST', '/auth/logout').catch(() => {});
@@ -2516,7 +2516,6 @@ async function captureCast() {
     });
   });
 }
-
 
 if (wanted(...Object.values(HOUSE_SHOTS))) {
   console.log('== household ==');

@@ -366,8 +366,7 @@ After warming, it gives the demo user an **Up next** queue of three books and a
 **"Victorian evenings"** collection through the API, using the token the web
 player keeps in `localStorage`. Every desktop capture context starts with the Up
 next drawer closed (an init script writes `audiosilo.upNext`), so only
-`web-player/up-next.png` shows it; `web-player/downloads.png` downloads one
-short book first. The series, Up next and collection shots need a server with
+`web-player/up-next.png` shows it. The series, Up next and collection shots need a server with
 the `browse_people`, `queue` and `collections` capabilities.
 
 The book page and Journal shots need the listener's own records. Each entry of

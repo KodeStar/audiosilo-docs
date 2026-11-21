@@ -206,6 +206,14 @@ export const submitSignIn = async (p, password) => {
 
 // Fixture audio: ffmpeg(args) is true when ffmpeg ran and succeeded, and
 // silence() writes silent mono audio, cheap to encode even when it is hours long.
+// A sqlite3 CLI runner for one database: waits out a busy writer, throws with
+// sqlite3's own message, and returns its output.
+export const sqliteAt = (db) => (sql) => {
+  const r = spawnSync('sqlite3', [db], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
+  if (r.status !== 0) throw new Error(`sqlite3 ${db}: ${(r.stderr || r.error?.message || '').trim()}`);
+  return r.stdout;
+};
+
 export const ffmpeg = (args) =>
   spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], {stdio: 'ignore'}).status === 0;
 export const silence = (file, seconds, meta = {}, codec = ['-c:a', 'libmp3lame', '-b:a', '8k']) =>
