@@ -1399,9 +1399,10 @@ lists `setup`, because an older server refuses an unknown heartbeat field.
 - A malformed value is `400 invalid_request`.
 - Omitting it keeps the ordinary behavior.
 
-A change in the Bridge's eligible kinds, pairing or capacity cancels its outstanding
-claim and reissues it at once. The server releases a lease whose reply was never
-delivered without spending an attempt. See
+When a lane omitted from a long poll gains a free slot, the Bridge keeps the
+poll open and sends a second claim with `wait=0` for the newly available kinds.
+Both requests use the same Bridge token. The server releases a lease whose
+reply was never delivered without spending an attempt. See
 [claims and leases](../bridge/pairing-and-jobs.md#claims-and-leases).
 
 ### The `bridge` capability

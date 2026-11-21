@@ -414,11 +414,25 @@ lists (`Runner.Lanes`, in `GET /api/status`) leave out a lane with no capacity
 and nothing running, so that folded `interactive` lane no longer shows as
 "0 of 0" (v0.3.0).
 
-A change to eligible kinds, pairing, negotiated reserve or capacities cancels
-and joins the outstanding claim, then reissues immediately without cancellation
-backoff. Unchanged heartbeats/progress do not restart the long poll. Admission
-is kept until that call returns, so a job racing cancellation is still owned
-and handled. Jobs recovered after restart on the same pairing resume through ordinary admission. Re-pairing ends work from the old link.
+Each dispatcher sends one long poll with `wait=25` for the kinds whose lanes
+have room. It keeps a slot in each requested lane until the poll returns. When
+a lane the poll left out gains a free slot, the dispatcher keeps the poll open
+and sends a second claim with `wait=0`. This claim asks only for kinds in
+omitted lanes that now have room. The server accepts both claims on the same
+Bridge token. It selects and leases each queued job in one transaction, so only
+one claim can receive that job while the lease holds.
+
+If the second claim returns `204` and the lanes still have room, the dispatcher
+checks them again after 4 seconds. It makes at most three timed rechecks in
+total during that long poll. This lets it pick up work queued after the empty
+reply. Each dispatcher sends only one `wait=0` claim at a time.
+
+Unpairing, pairing again, stopping the Bridge or changing lane capacities
+(including the negotiated reserve) cancels both requests. The dispatcher waits
+for both calls to return before its next long poll. Every job belongs to the
+pairing that handed it out, even if its reply arrives during cancellation. The
+Bridge drops a reply from a pairing that has ended. If a job arrives as the
+Bridge stops on the same pairing, it records the job for the next start.
 
 If the claim committed a lease but the reply was not delivered (including
 write/flush failure or Bridge disconnect), the server releases that untouched

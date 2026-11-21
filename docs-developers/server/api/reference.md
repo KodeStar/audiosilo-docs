@@ -11823,10 +11823,13 @@ mutation, alongside kinds, module and token checks. The reserved Bridge
 dispatcher requests `kind=podcast.fetch&min_priority=100&wait=25`; ordinary
 claims omit the floor. An undelivered untouched claim is released without
 spending an attempt on write/flush failure or Bridge disconnect. A delivered
-reply is retained across subsequent shutdown/deadline. See
-[claims and leases](../../bridge/pairing-and-jobs.md#claims-and-leases) for
-admission, capacity fallback and immediate cancel/join/reissue on eligibility
-changes.
+reply is retained across subsequent shutdown/deadline.
+
+When a lane the long poll omitted gains a free slot, the Bridge keeps the poll
+open and sends a second request on the same token with `wait=0`. Its `kind`
+values cover only omitted lanes that now have room. For the retry schedule and
+lane reservations, see
+[claims and leases](../../bridge/pairing-and-jobs.md#claims-and-leases).
 
 | Status | Meaning |
 |---|---|
