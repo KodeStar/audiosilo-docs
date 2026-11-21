@@ -126,7 +126,7 @@ it on once you've fixed the cause.
 | The ebook couldn't be read | Cancel, then generate again. It then reads the audio. |
 | The chapters couldn't be found in the narration | See [When no chapters are found](chapter-detection.md#when-no-chapters-are-found). |
 
-![A paused sharing job with the reason and the time the Bridge will try again](/img/screenshots/admin/generate-waiting-sharing.png)
+![A paused sharing job with the reason and when the Bridge tries again](/img/screenshots/admin/generate-waiting-sharing.png)
 
 The Bridge keeps the files it generated while it waits for the server to confirm sharing.
 

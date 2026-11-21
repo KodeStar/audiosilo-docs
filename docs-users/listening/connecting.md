@@ -60,13 +60,13 @@ You can sign in here or use **Get the AudioSilo app** to install the player on y
 3. Choose **Invite code** or **Username and password**.
 4. Enter your code, or your username and password, and tap **Sign in**.
 
-![A typed HTTPS server address with Proxy headers expanded, showing the saved header set for that address](/img/screenshots/web-player/connect-headers.png)
-
-When you enter a server address, **Proxy headers** shows any headers this device has kept for that address.
-
 If you run the server, your admin username and password work here too. The sign-in step also has **No password? Scan a QR code instead**, which opens the scanner.
 
 The app adds `https://` to the address. Type `http://` yourself for a server that only answers plain HTTP. Do the same at home for a server on its default self-signed certificate (see [Plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect)).
+
+![A typed HTTPS server address with Proxy headers expanded, showing the saved header set for that address](/img/screenshots/web-player/connect-headers.png)
+
+When you enter a server address, **Proxy headers** shows any headers this device has kept for that address.
 
 If the server can't be reached, check the address for typos and that the server is on. A home address like `192.168.1.20:8080` only works on your home network.
 
