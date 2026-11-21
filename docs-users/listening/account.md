@@ -53,7 +53,7 @@ For a server behind a sign-in proxy, the **Proxy headers** card holds the header
 
 The card then lists each header's name and the address it's sent with requests to. It never shows a saved value again. When you change the headers, a saved value's field says **Kept as it is**, and the value stays unless you type a new one. **Remove headers** stops this device sending them.
 
-The card needs an `https://` address. If this device reaches the server only over plain HTTP, the card says so and offers no **Add headers**. Kids and demo accounts have no header editor. Everyone using the same HTTPS address on this device shares the saved set. Signing out keeps it.
+The card needs an `https://` address. If this device reaches the server only over plain HTTP, the card says so and offers no **Add headers**. A kid's or demo account gets the card only while no full account on this device uses that address, and a demo account only once it has headers. Everyone using the same HTTPS address on this device shares the saved set. Signing out keeps it.
 
 ## Signed-in devices
 
