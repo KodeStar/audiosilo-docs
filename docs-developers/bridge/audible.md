@@ -320,7 +320,11 @@ The result is counts only, never a title or a credential: `account`, `poll_id`,
 `enriched`, `enrich_failed`, `enrich_deferred` and `overlong` (both omitted when 0), `books`.
 `matched` counts the titles that kept a match.
 A poll that finished records `last_poll_at`, the counts and clears a refusal on the
-Bridge's row; one stopped, cancelled or lost records nothing.
+Bridge's row; one stopped, cancelled or lost records nothing. A failed poll records
+its reason as the account's `last_error` (`Manager.Failed`), except a server `429`
+that outlasts the [retry budget](pairing-and-jobs.md#when-the-server-returns-429)
+while reading the library's books or reporting the titles (`serverFailure`): that
+fails the job and leaves the account's row as it was.
 
 ### Matching rules
 
@@ -584,13 +588,10 @@ Bridge paces the PUTs instead (`audiblejob.enrich`), at most one per 200 ms
 (`enrichGap`).
 
 On a `429` the Bridge waits, then retries the same book and doubles the gap, up to
-2 s. The wait is:
-
-- the `Retry-After`, in seconds or as an HTTP date. The link reads it into
-  `link.APIError.RetryAfter`, and `RetryAfterSet` records whether it was provided.
-- none for an explicit `Retry-After: 0`, including an HTTP date in the past. The
-  Bridge retries immediately, within the same attempt cap.
-- with no header, 2 s, doubling with each `429` in a row.
+2 s. It waits the `Retry-After` as the link reads it
+([When the server returns 429](pairing-and-jobs.md#when-the-server-returns-429)),
+or with no valid header a jittered 1 to 2 s on the first retry, a range that
+doubles with each `429` in a row (`enrichLimit`).
 
 The poll leaves the rest of the backfill to the next poll after:
 
@@ -747,8 +748,10 @@ A parked job runs on once the mapping is writable again, and keeps its download.
 7. **Place** (`transfer.Local.Place`,
    [The hardened transfer](#the-hardened-transfer-internaltransfer)), after the
    mapping check again.
-8. **Rescan** (`POST /bridge/rescan` with the placed file, 3 tries). The server
-   answers the book path. A failure here says the book is placed.
+8. **Rescan** (`POST /bridge/rescan` with the placed file). The link handles
+   a 429 within the [job's retry budget](pairing-and-jobs.md#when-the-server-returns-429).
+   The importer makes up to three attempts for other errors. The server answers
+   with the book path. A failure here says the book is placed.
 9. **Enrich** (`PUT /bridge/libraries/{id}/enrichment` with the title's ASIN; see
    [Enrichment after placing](#enrichment-after-placing)).
 
@@ -867,7 +870,7 @@ and it isn't `importjob.SpanMismatch` (the poll's rule).
   and a pack placed as a pack.
 
 The placement marker keeps the verdicts. The one PUT waits out `429`s as the poll's
-enrichment does (`limitWait`), then gives up with `enriched: false`. `asin_set` and
+enrichment does (`enrichLimit.Do`), then gives up with `enriched: false`. `asin_set` and
 a moved book are `enriched: false` too, with no failure.
 
 ### Secrets
@@ -1281,7 +1284,10 @@ Each ASIN appears once, `library_id` is above 0, `path` is a clean book path (or
    the title, resets it. A `duplicate` answer re-arms nothing.
 
 **Server answers.** `sync_off` from the server ends the job quietly (done,
-`sync_off`). `user_unavailable` fails it with that code.
+`sync_off`). `user_unavailable` fails it with that code. A `429` that outlasts the
+[retry budget](pairing-and-jobs.md#when-the-server-returns-429) fails the job, so the
+server can schedule another, and leaves the account's `sync_at`, `sync_error` and
+`sync_retry_at` as they were.
 
 **The event id** is `aud-` and the first 32 hex characters of
 `sha256(account|asin|position_ms|last_updated|kind|library_id|path)` (`EventID`).
@@ -1302,7 +1308,8 @@ again to another book is a new event.
   sent once a job and never retried in it;
 - `waiting` with `wait_until`, or `sync_off`.
 
-A failure's result is `{code, message}`.
+A failure's result carries the counts reached once Audible gave places, and
+`{code, message}` when the failure has a code (a server `429` has none).
 
 **The server's fold** (`OnEnded`, `catalog.FoldAudibleSync`):
 

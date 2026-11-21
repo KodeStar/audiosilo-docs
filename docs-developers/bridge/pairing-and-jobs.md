@@ -54,6 +54,7 @@ words a failed pairing:
 |---|---|
 | a wrong, used or expired code (`401`) | the code is wrong, used or expired: make a new one in the console |
 | `404` or `405` | the server doesn't know about a Bridge: update it |
+| `429` with a valid `Retry-After` | the server is limiting pairing requests and the page says when to try again, for example "Try again in 15 minutes." |
 | another refusal (a `4xx`) | the server refused the pairing, with the server's message |
 | the server's certificate can't be verified (a self-signed one) | pair with the server's `http://` address on the local network (the server also answers plain HTTP on the same port there) |
 | an address that isn't an absolute `http(s)` URL | a `400` on the page's own API |
@@ -68,7 +69,9 @@ in time. For those, the message also gives the address to use instead: the
 server's as this computer reaches it, like `http://192.168.1.10:8080`. A compose
 service name given to a Bridge outside that compose project is the usual cause.
 
-`pairError` (`internal/app/backend.go`) does the wording, from v0.4.0. Once the
+Pairing waits out only a short `429` and answers a longer one at once (the page's
+budget in [When the server returns 429](#when-the-server-returns-429)).
+`pairError` (`internal/app/backend.go`) has worded pairing failures since v0.4.0. Once the
 server has accepted the code, `Conn.Pair` saves without the caller's cancellation
 (`context.WithoutCancel`), so a page closed mid-pairing doesn't lose a spent code.
 
@@ -441,18 +444,21 @@ a reported/renewed claim is left alone. A successfully flushed reply is not
 released merely because shutdown or a deadline follows it. Lost replies that
 cannot be released still use normal lease recovery.
 
-Every report (`PATCH /bridge/jobs/{id}`) renews the lease. A job's handler only
-records its progress; a reporting loop beside it sends each new step at once, other
-changes at most every 2 seconds, and a keepalive at least every **30 seconds** even
-with nothing new (`jobs.DefaultKeepalive`), so a lease only runs out when the
-Bridge stops; four keepalives fit in the 2-minute lease. A report that only
+Each accepted running report (`PATCH /bridge/jobs/{id}`) renews the lease.
+The handler records progress. A reporting loop sends each new step at once,
+other changes at most every 2 seconds, and an idle keepalive after **30 seconds**
+(`jobs.DefaultKeepalive`). A report that only
 renews the lease or carries progress is a user-state write on the server, which
 leaves the caches keyed on the content generation warm. A new
 state, result or error, or a report that expires another job's lease, is a
-content write. After a report that didn't reach the server (no answer, a 5xx, a
-408 or a 429) the next goes after **10 seconds** (`jobs.DefaultReportRetry`) until
-one gets through, so a few lost reports never let the lease lapse. After any other
-4xx, which would be refused again however soon, it waits for the keepalive.
+content write.
+
+Progress reports and keepalives make one HTTP attempt (`link.SingleAttempt`) and
+hold the report send lock only for that attempt. After no answer, a 5xx or a 408,
+the loop schedules the next idle report after **10 seconds** (`jobs.DefaultReportRetry`).
+After a 429, it waits those 10 seconds or a longer `Retry-After`, up to one minute.
+Progress within the same step waits too. A new step, a park or the final report
+can go through during that wait. Other 4xx responses use the normal keepalive interval.
 
 A report carries the `attempt` its claim returned: a report from an earlier claim is
 `409 not_held`, as is one about a job that ended, was cancelled or no longer exists
@@ -484,13 +490,52 @@ The server checks leases whenever a job is claimed, reported on, cancelled or re
 by the console, so a Bridge that died mid-job leaves the job queued again (or
 ended) by the time anyone looks.
 
+### When the server returns 429
+
+The server answers a 429 before the request has any effect: its
+[rate limiter](../server/auth-and-security.md#rate-limiting) before the route
+runs, and pairing's wrong-code lockout before the code is read. So the Bridge
+can send it again.
+`link.Backoff.Do` waits the `Retry-After`, read as seconds or an HTTP date
+(`link.APIError.RetryAfter`; `RetryAfterSet` says the header was valid). A
+`Retry-After: 0`, or a date in the past, asks again at once and still counts as
+an attempt. With a missing or invalid header it backs off exponentially with
+jitter, the first wait between 0.5 and 1 second by default.
+
+The budget depends on the call:
+
+- **A required call in a running job.** `link.WithRetryDeadline` supplies the
+  lease expiry from the claim or latest successful report, minus a 10-second
+  margin (`jobs.leaseMargin`). The call takes that deadline at its first 429.
+  If the requested wait would put the next attempt past it, the call returns the
+  429 immediately.
+- **Any other call** (no known lease, or a deadline already passed at the first
+  refusal): three attempts, each wait capped at one minute.
+- **A call a person waits for on the Bridge's page** (`link.Client.Prompt`:
+  pairing, and the Accounts tab's list of people): three attempts, and a wait
+  over 10 seconds returns the 429 at once.
+- **Progress reports and keepalives** make one attempt and leave the wait to the
+  reporting loop ([above](#claims-and-leases)).
+- **A call with its own `link.Backoff`** gives up sooner and leaves the work to a
+  later run: Audible's [enrichment PUTs](audible.md#enrichment-pacing), and the
+  podcast episode and poll [rescans](podcasts.md#polling-and-outcomes). A
+  subscribe's show rescan keeps the job's budget.
+
+If a required call still fails with a 429, the runner checks
+`jobs.ServerQueuedHandler`. The podcast, Audible and LibriVox handlers return
+`true` from `ServerQueued()`. The runner reports these jobs as `failed` with
+the handler's usual error, so the server can schedule another run. For an
+admin-started kind such as `bridge.verify`, the runner reports `needs_attention`
+and asks the admin to cancel and queue the job again when the server is ready.
+
 ### Cancelling
 
 `POST /admin/bridge/jobs/{id}/cancel` ends a `queued` or `needs_attention` job at
 once (nobody is working on it). For a `claimed` or `running` job it sets
 `cancel_requested`: the Bridge reads it in the answer to its next report (within
 about 32 seconds at a job with nothing new to report: the keepalive plus one
-2-second reporter tick), stops the job and reports it `cancelled`. The console
+2-second reporter tick, or up to a minute after a report the server answered
+`429`), stops the job and reports it `cancelled`. The console
 shows the job as cancelling meanwhile. If the Bridge never reports again, the
 lease runs out and the job is cancelled then. Cancelling an ended job is
 `409 finished`. When the same request arrives while the old job is stopping, the server records
@@ -736,7 +781,8 @@ listener routes.
 
 ### Audible jobs
 
-A failed `audible.sync` carries the counts reached before the failure beside its code and message.
+A failed `audible.sync` carries the counts reached once Audible gave places, and
+`{code, message}` when the failure has a code ([its result](audible.md#audible-to-the-server-audiblesync)).
 A backup reporting `exists` can name the conflict as `file`, `book` or `audio`. The console alone
 controls the account’s sync switch.
 
@@ -835,9 +881,10 @@ What the Bridge does:
 
 1. Finds the library among the ones the server listed and where it sees it (its
    mapping, else the server's root path).
-2. Asks the server for the book’s files (`GET /bridge/libraries/{id}/book`). An unavailable
-   server, refused token, 408, 429 or 5xx gets another try for up to two minutes. Other 4xx
-   responses end the check at once.
+2. Asks the server for the book's files (`GET /bridge/libraries/{id}/book`).
+   The link handles a 429 within the [job's retry budget](#when-the-server-returns-429).
+   Verify retries an unavailable server, a refused token, a 408 or a 5xx for up
+   to two minutes. Other 4xx responses end the check at once.
 3. Stats each file through its mount and compares the size with the server's.
 4. When they all match, probes whether it can write in **the book's own folder**
    (a probe file created and removed; a folder can refuse writes where the

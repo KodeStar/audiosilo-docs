@@ -992,7 +992,9 @@ Deletion journals and renames only owned audio and CHAP files into
 `.audiosilo-trash/podcasts/<episode_id>-g<generation>-<nonce>/`. Then it saves
 `Fetch.deleted_at` without losing the other Fetch fields, removes the barrier,
 rescans the show, and unlinks the trash. Entries, artwork and listener state
-remain.
+remain. A rescan the server still rate limits (`askRescan`, [Polling](#polling-and-outcomes))
+leaves the indexing to the show's next poll, and the run's later deletions skip
+their rescans.
 
 - When Windows refuses to rename an open file, the Bridge skips that candidate.
 - Recovery aborts a delete journal whose audio never moved. Once the audio moved,
@@ -1027,6 +1029,10 @@ The short show mutation lock is shared by subscribe, poll, fetch and retain, and
 never spans an audio GET. Before committing, a writer recovers journals, confirms
 its lease, checks the mapping and identities, and rereads the latest feed. That
 keeps metadata changes from a concurrent poll.
+
+If the server returns a 429 when a fetch calls `jobs.Reporter.ConfirmLease`, the
+Bridge retries within the [job's retry budget](pairing-and-jobs.md#when-the-server-returns-429).
+The fetch publishes the episode only after the server confirms the claim.
 
 ### Publication order
 
@@ -1074,8 +1080,10 @@ symlinked show, audio, attachment or journal path fails.
   every write, so the next poll or fetch recovers it. A journal that fails any of
   these checks keeps refusing writes until it is repaired.
 - A new generation without CHAP removes its old CHAP file.
-- A failed rescan after the disk commit gives `index_failed`. A retry repairs the
-  indexing with `reused:true` and no publisher GET.
+- A rescan the server still rate limits after the disk commit leaves the episode
+  saved and its indexing to the show's next poll ([Polling](#polling-and-outcomes)).
+  Other rescan failures give `index_failed`. A retry repairs the indexing
+  with `reused:true` and no publisher GET.
 
 The shared `publish-v1.json` fixture fixes the exact shape.
 
@@ -1125,8 +1133,11 @@ successful interval to **15 minutes through 24 hours**.
 
 Validators live in `podcast_feed_state`, not in a disk file updated on every poll.
 A `304` keeps the saved validators, updates the check and success times, and
-leaves unchanged feed files alone. A poll also repairs indexing owed by an earlier
-failed rescan.
+leaves unchanged feed files alone. Even on a `304`, a poll requests a show rescan
+if indexing is still due. For both an episode rescan and a poll's show rescan,
+`askRescan` makes up to three attempts on a 429. If all three return 429, the
+job finishes and leaves indexing to the next poll. A `Retry-After` over 30
+seconds defers indexing immediately.
 
 **Failures** update the status. They back off exponentially from 30 minutes to 24
 hours, or use `retry_after_seconds` clamped to 60 seconds through 24 hours.
@@ -1203,9 +1214,9 @@ names.
 
 ### Episode downloads and proven resume
 
-A fetch waiting on a slow mount reports **Waiting for the folder**. A busy mapping check keeps the
-last proven result within its age limit. A committed download awaiting a rate-limited rescan waits
-out the 429. A successful resume rehashes the saved partial before publication.
+A fetch waiting on a slow mount reports **Waiting for the folder**. A busy
+mapping check keeps the last proven result within its age limit. A successful
+resume rehashes the saved partial before publication.
 
 The audio download uses a plain GET, never HEAD, with
 `Accept-Encoding: identity`, no environment proxy, and the same DNS, dial and
