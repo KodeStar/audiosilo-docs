@@ -54,6 +54,7 @@ import {
   signInWithPassword,
   sleep,
   slug,
+  sqliteAt,
   stamp,
   step,
   tid,
@@ -62,6 +63,9 @@ import {
 } from './lib.mjs';
 
 const BASE = process.env.AS_BASE || 'http://127.0.0.1:8790/web/';
+// A book or episode page in the player, as its router addresses it.
+const bookUrl = (libraryId, cid, relPath) =>
+  `${BASE}book/${libraryId}?connection=${encodeURIComponent(cid)}&path=${encodeURIComponent(relPath)}`;
 const api = apiClient(new URL(BASE).origin);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const AUTH = path.join(CACHE, 'auth.json');
@@ -223,7 +227,7 @@ const YEAR_BOOKS = [
 
 function sqlite(sql) {
   if (!existsSync(DB)) throw new Error(`no capture database at ${DB}`);
-  return execFileSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
+  return sqliteAt(DB)(sql);
 }
 
 function seedListeningYear(userId, libraryId, books) {
@@ -495,15 +499,12 @@ async function openFirstBook(page, shot) {
 // loading, with a spinner, before it starts by itself) and Retry after a failure.
 const PLAYING_OR_FAILED = /^(pause|retry)$/i;
 
-// Press the book page's primary button (Resume, Start listening...) and wait until the
-// book plays (or failed); returns when the button was pressed. `scope` narrows the
-// transport to one bar (the Cast shot's docked player); with `ifShown` a page without
-// the button (its book already started by itself) is fine.
-async function startPlayback(page, {scope = page, ifShown = false} = {}) {
+// Start the book from its page and wait for playback. Return the time of the press.
+async function startPlayback(page) {
   const primary = firstVisible(page.getByRole('button', {name: PRIMARY_PLAY}));
-  if (!ifShown || (await primary.count())) await primary.click({timeout: 8000});
+  await primary.click({timeout: 8000});
   const at = Date.now();
-  await firstVisible(scope.getByRole('button', {name: PLAYING_OR_FAILED})).waitFor({timeout: 20000});
+  await firstVisible(page.getByRole('button', {name: PLAYING_OR_FAILED})).waitFor({timeout: 20000});
   return at;
 }
 
@@ -539,9 +540,9 @@ async function pausePlayback(page, scope = page) {
 }
 
 // Start the open book and stage it paused (startPlayback, then pausePlayback).
-async function playThenPause(page, opts = {}) {
-  const at = await startPlayback(page, opts);
-  await pausePlayback(page, opts.scope);
+async function playThenPause(page) {
+  const at = await startPlayback(page);
+  await pausePlayback(page);
   return at;
 }
 
@@ -620,7 +621,7 @@ async function captureWide(name, viewport, shots) {
   });
   await step('pause', () => pausePlayback(page));
 
-  if (wanted(shots.bookBookmarks, shots.bookmarkEditor, shots.bookDetails)) {
+  if (wanted(shots.bookmarkEditor, shots.bookDetails)) {
     // The playing book's page again (the full player's View book details, so the book
     // stays loaded and paused): its Bookmarks tab, the bookmark editor on the Quote
     // (Edit opens it as a dialog on a desktop; Cancel leaves it unchanged), and, once
@@ -630,13 +631,12 @@ async function captureWide(name, viewport, shots) {
       await tid(page, 'player-menu').click({timeout: 8000});
       await firstVisible(page.getByRole('menuitem', {name: 'View book details'})).click({timeout: 8000});
       await tid(page, 'player-menu').waitFor({state: 'hidden', timeout: 8000});
-      await tid(page, 'book-tab-bookmarks').click({timeout: 8000});
-      await firstVisible(page.getByTestId('bookmark-quote')).waitFor({timeout: 8000});
-      await sleep(SETTLE_MS);
-      await scrollToTop(tid(page, 'book-tab-bookmarks'));
-      await page.mouse.move(0, 0);
-      await shoot(page, shots.bookBookmarks);
       if (wanted(shots.bookmarkEditor)) {
+        await tid(page, 'book-tab-bookmarks').click({timeout: 8000});
+        await firstVisible(page.getByTestId('bookmark-quote')).waitFor({timeout: 8000});
+        await sleep(SETTLE_MS);
+        await scrollToTop(tid(page, 'book-tab-bookmarks'));
+        await page.mouse.move(0, 0);
         const quote = firstVisible(page.locator('[data-testid^="bookmark-row-"]').filter({has: page.getByTestId('bookmark-quote')}));
         await quote.getByTestId('bookmark-edit').click({timeout: 8000});
         const dialog = firstVisible(page.getByRole('dialog'));
@@ -776,20 +776,15 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (wanted(shots.bookBookmarks, shots.bookmarkEditor, shots.bookDetails, shots.bookFinished, shots.journal, shots.journalBookmarks)) {
+  if (wanted(shots.bookmarkEditor, shots.bookDetails, shots.bookFinished, shots.journal, shots.journalBookmarks)) {
     // Back to Home, where the pause left a partial run, so the palette and profile
     // menu are shot over Home on every run.
     await step('back home', async () => {
       await tid(page, 'top-bar-(home)').click({timeout: 8000});
-      // The Home tab still has the playing book's page pushed (View book details):
-      // back out of it to Home's root.
-      for (let i = 0; i < 3; i++) {
-        const back = firstVisible(page.getByRole('button', {name: /^back$/i}));
-        if (!(await back.count())) break;
-        await back.click({timeout: 8000});
-        await sleep(SETTLE_MS);
-      }
-      await sleep(3000);
+      // Switching tabs restores Home's last page. Pressing the selected tab
+      // returns to its root while keeping the paused book in the dock.
+      await page.getByRole('tab', {name: 'Home', exact: true, selected: true}).click({timeout: 8000});
+      await tid(page, 'home-column').waitFor({timeout: 8000});
     });
   }
 
@@ -947,17 +942,6 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (wanted(shots.downloads)) {
-    // Download one short book first, so the Downloads page has a book ready offline.
-    await step('download a book', async () => {
-      await librarySection(page, 'Books');
-      await openNamed(page, 'The Art of War');
-      await firstVisible(page.getByRole('button', {name: /^download( for offline)?$/i})).click({timeout: 8000});
-      // Done once the book page's control says Downloaded (its menu holds Remove).
-      await firstVisible(page.getByRole('button', {name: /^downloaded$/i})).waitFor({timeout: 120000});
-    });
-  }
-
   if (wanted(shots.youStats, shots.year)) {
     // You in the top bar: Your listening (Stats), then Year in listening. The context
     // reduces motion, so the story stays on its first card (a still frame).
@@ -983,20 +967,16 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  for (const [key, testId] of [
-    ['settings', 'top-bar-settings'],
-    ['downloads', 'top-bar-(offline)'],
-  ]) {
-    if (!wanted(shots[key])) continue;
-    await step(key, async () => {
-      await tid(page, testId).click({timeout: 8000});
+  if (wanted(shots.settings)) {
+    await step('settings', async () => {
+      await tid(page, 'top-bar-settings').click({timeout: 8000});
       await sleep(2500);
-      await shoot(page, shots[key]);
+      await shoot(page, shots.settings);
     });
   }
 
   if (wanted(shots.settingsAppearance)) {
-    // Settings at ?section=appearance (a fresh load: the downloads shot has left Settings):
+    // Settings at ?section=appearance:
     // Light / Dark / System and High contrast at its default, Off.
     await step('settings appearance', async () => {
       await page.goto(BASE + 'settings?section=appearance', {waitUntil: 'networkidle', timeout: 45000});
@@ -1079,7 +1059,6 @@ async function capturePhone(name, viewport, shots) {
 await captureWide('desktop', {width: 1440, height: 900}, {
   home: 'web-player/home.png',
   book: 'web-player/book-detail.png',
-  bookBookmarks: 'web-player/book-bookmarks.png',
   bookmarkEditor: 'web-player/bookmark-editor.png',
   bookDetails: 'web-player/book-details.png',
   bookFinished: 'web-player/book-finished.png',
@@ -1107,7 +1086,6 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   year: 'web-player/year.png',
   settings: 'web-player/settings.png',
   settingsAppearance: 'web-player/settings-appearance.png',
-  downloads: 'web-player/downloads.png',
 });
 
 await captureWide('tablet', {width: 834, height: 1112}, {
@@ -1124,6 +1102,51 @@ await capturePhone('phone', PHONE, {
   youStats: 'web-player/phone-you-stats.png',
   settings: 'web-player/phone-settings.png',
 });
+
+// Seed the sleep timer's outbox entry as the player stores it. Only its bookmark POST
+// is unavailable, so both tabs can still read the book and its other annotations.
+const BOOKMARK_SHOT = 'web-player/book-bookmarks.png';
+const BOOKMARK_PIN = 'web-player/book-bookmarks-pin.png';
+if (wanted(BOOKMARK_SHOT, BOOKMARK_PIN)) {
+  await step('waiting bookmark and timeline pin', async () => {
+    const ctx = await newCaptureContext({storageState: AUTH});
+    try {
+      const page = await ctx.newPage();
+      await page.goto(BASE, {waitUntil: 'networkidle'});
+      const {cid, token} = await playerSession(page);
+      const {lib, find} = await seededBooks(token);
+      const book = find('Looking-Glass');
+      const position = Math.round(book.duration * 0.12);
+      const entry = {id: randomUUID(), connectionId: cid, libraryId: lib.id, path: book.rel_path,
+        position, note: FELL_ASLEEP_NOTE, label: 'fell_asleep', updated_at: new Date().toISOString(),
+        client_id: randomUUID(), fresh: true};
+      await page.route((url) => url.pathname === `/api/v1/libraries/${lib.id}/bookmarks` &&
+        url.searchParams.get('path') === book.rel_path,
+      (route) => route.request().method() === 'POST' ? route.abort('connectionrefused') : route.continue());
+      await page.evaluate((bookmark) => localStorage.setItem('audiosilo.annotationOutbox', JSON.stringify([bookmark])), entry);
+      await page.goto(bookUrl(lib.id, cid, book.rel_path), {waitUntil: 'networkidle'});
+      await tid(page, 'book-tab-bookmarks').click();
+      const row = tid(page, `bookmark-queued-${entry.id}`);
+      await row.getByText('Waiting to sync', {exact: false}).waitFor();
+      await row.getByTestId('bookmark-queued-delete').waitFor();
+      await scrollToTop(tid(page, 'book-tab-bookmarks'));
+      await settleShoot(page, BOOKMARK_SHOT);
+      if (wanted(BOOKMARK_PIN)) {
+        await tid(page, 'book-tab-chapters').click();
+        const timeline = tid(page, 'book-whole-timeline');
+        const pin = timeline.getByTestId('timeline-bookmark');
+        await pin.first().waitFor();
+        const expected = position / book.duration * 100;
+        await page.waitForFunction(({id, expected}) => Array.from(
+          document.querySelectorAll(`[data-testid="${id}"] [data-testid="timeline-bookmark"]`),
+        ).some((el) => Math.abs(parseFloat(el.style.left) - expected) < 0.05), {id: 'book-whole-timeline', expected});
+        await shootElement(page, timeline, BOOKMARK_PIN);
+      }
+    } finally {
+      await ctx.close();
+    }
+  });
+}
 
 // ── Listening sync (Track W1): another device's place on the book page ──────
 // The demo listener's Looking-Glass row is this browser's (the warm-up played it). A
@@ -1213,7 +1236,7 @@ async function openReadalongBook(page) {
   const {lib, find} = await seededBooks(token);
   const book = find('Call of the Wild');
   if (!book) throw new Error('no Call of the Wild in the seeded library');
-  await page.goto(`${BASE}book/${lib.id}?connection=${encodeURIComponent(cid)}&path=${encodeURIComponent(book.rel_path)}`, {waitUntil: 'networkidle', timeout: 45000});
+  await page.goto(bookUrl(lib.id, cid, book.rel_path), {waitUntil: 'networkidle', timeout: 45000});
   await tid(page, 'book-page').waitFor({timeout: 15000});
   await tid(page, 'read-action').waitFor({timeout: 15000});
   await sleep(SETTLE_MS);
@@ -1306,6 +1329,8 @@ const PODCAST_SHOTS = {
   show: 'web-player/podcast-show.png',
   home: 'web-player/home-new-episodes.png',
   fetching: 'web-player/episode-fetching.png',
+  retry: 'web-player/episode-fetch-retry.png',
+  downloads: 'web-player/downloads.png',
   phoneShow: 'web-player/phone-podcast-show.png',
 };
 const PODCASTS_DIR = path.resolve(process.env.PODCASTS_DIR || path.join(CACHE, 'podcasts'));
@@ -1379,37 +1404,46 @@ async function unprovisionPodcasts(pod) {
 
 // The fetching shot's answers for `relPath` (the server's own 503 and status shapes,
 // internal/podcast/testdata/phase2c2/wire-2b.json, with a real-looking size): the stream
-// probe gets the 503 the server sends while a Bridge fetches, and every status read a
-// fetch a little further on, never finished, so the panel stays on its way. Routed on this
-// page only, and only for that episode; undone by the returned function.
-async function routeEpisodeFetch(page, libraryId, relPath) {
+// probe gets a 503 while the Bridge fetches. Each status read reports more bytes,
+// until fail() switches to the size-limit refusal. close() removes both routes.
+async function routeEpisodeFetch(page, libraryId, relPath, requestId = 81) {
+  let failed = false;
   const total = 41_873_408;
   let received = 13_107_200;
   const status = () => {
+    if (failed) return {state: 'failed', request_id: requestId, bytes_received: 0, bytes_total: null,
+      retry_after_seconds: 0, error: {code: 'too_large', message: 'The episode exceeds the size limit.'}};
     received = Math.min(Math.round(total * 0.72), received + 1_572_864);
-    return {state: 'fetching', request_id: 81, bytes_received: received, bytes_total: total, retry_after_seconds: 2, error: null};
+    return {state: 'fetching', request_id: requestId, bytes_received: received, bytes_total: total, retry_after_seconds: 2, error: null};
   };
   const forEpisode = (route) => new URL(route.request().url()).searchParams.get('path') === relPath;
   const stream = new RegExp(`/api/v1/libraries/${libraryId}/stream\\?`);
   const fetchStatus = new RegExp(`/api/v1/libraries/${libraryId}/podcasts/fetch\\?`);
   const onStream = (route) => {
-    if (!forEpisode(route)) return route.continue();
+    if (!forEpisode(route)) return route.fallback();
     return route.fulfill({
       status: 503,
       headers: {'retry-after': '2', 'cache-control': 'no-store'},
       contentType: 'application/json',
-      body: JSON.stringify({error: 'Episode is being fetched.', code: 'podcast_fetching', fetch: status()}),
+      body: JSON.stringify({
+        error: failed ? 'The episode could not be fetched.' : 'Episode is being fetched.',
+        code: failed ? 'podcast_fetch_failed' : 'podcast_fetching',
+        fetch: status(),
+      }),
     });
   };
   const onStatus = (route) => {
-    if (!forEpisode(route) || route.request().method() !== 'GET') return route.continue();
+    if (!forEpisode(route) || route.request().method() !== 'GET') return route.fallback();
     return route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({fetch: status()})});
   };
   await page.route(stream, onStream);
   await page.route(fetchStatus, onStatus);
-  return async () => {
-    await page.unroute(stream, onStream);
-    await page.unroute(fetchStatus, onStatus);
+  return {
+    fail() { failed = true; },
+    async close() {
+      await page.unroute(stream, onStream);
+      await page.unroute(fetchStatus, onStatus);
+    },
   };
 }
 
@@ -1466,8 +1500,8 @@ async function capturePodcasts(pod) {
       });
     }
 
-    // The phone shots, on this browser's storage (the same signed-in player).
-    if (wanted(PODCAST_SHOTS.phoneShow, PODCAST_SHOTS.fetching)) {
+    // The phone shots use this browser's signed-in storage.
+    if (wanted(PODCAST_SHOTS.phoneShow, PODCAST_SHOTS.fetching, PODCAST_SHOTS.retry)) {
       const phone = await sameDevice(ctx, {viewport: PHONE});
       try {
         const p = await phone.newPage();
@@ -1481,9 +1515,9 @@ async function capturePodcasts(pod) {
             await settleShoot(p, PODCAST_SHOTS.phoneShow);
           });
         }
-        if (wanted(PODCAST_SHOTS.fetching)) {
+        if (wanted(PODCAST_SHOTS.fetching, PODCAST_SHOTS.retry)) {
           await step('podcasts: episode fetching', async () => {
-            const unroute = await routeEpisodeFetch(p, pod.library.id, fetchEpisode.path);
+            const fetch = await routeEpisodeFetch(p, pod.library.id, fetchEpisode.path);
             try {
               await p.goto(showUrl(PODCAST_FETCH_SHOW), {waitUntil: 'networkidle', timeout: 45000});
               await firstVisible(p.getByRole('button', {name: new RegExp(`^${escapeRe(fetchEpisode.title)}`)})).click({timeout: 15000});
@@ -1493,9 +1527,14 @@ async function capturePodcasts(pod) {
               await tid(p, 'episode-fetch-panel').waitFor({timeout: 15000});
               await firstVisible(p.getByTestId('episode-fetch-line').getByText(/ of /)).waitFor({timeout: 15000});
               await settleShoot(p, PODCAST_SHOTS.fetching, 2500); // a status read or two, and the cover
+              if (wanted(PODCAST_SHOTS.retry)) {
+                fetch.fail();
+                await tid(p, 'episode-fetch-retry').waitFor({timeout: 15000});
+                await settleShoot(p, PODCAST_SHOTS.retry, SETTLE_MS);
+              }
               await tid(p, 'episode-fetch-cancel').click({timeout: 8000}).catch(() => {});
             } finally {
-              await unroute();
+              await fetch.close();
             }
           });
         }
@@ -1506,6 +1545,40 @@ async function capturePodcasts(pod) {
 
     // Find shows, on contexts of their own (the stand-in answers stay there).
     if (wanted(...Object.values(FIND_SHOTS))) await captureFindShows(ctx, pod, cid);
+
+    // A new context restores unfinished downloads. Stage these after the phone and Find shows captures.
+    if (wanted(PODCAST_SHOTS.downloads)) {
+      await step('podcasts: completed, waiting and stopped downloads', async () => {
+        const {lib, find} = await seededBooks(session);
+        const book = find('Art of War');
+        const download = firstVisible(page.getByRole('button', {name: /^download( for offline)?$/i}));
+        await page.goto(bookUrl(lib.id, cid, book.rel_path), {waitUntil: 'networkidle'});
+        await download.click();
+        await firstVisible(page.getByRole('button', {name: /^downloaded$/i})).waitFor({timeout: 120000});
+        const other = pod.shows.find((s) => s.folder === PODCAST_SHOW).feed.episodes.find((e) => !e.fetch);
+        const waiting = await routeEpisodeFetch(page, pod.library.id, fetchEpisode.path);
+        const stopped = await routeEpisodeFetch(page, pod.library.id, other.path, 82);
+        try {
+          for (const episode of [fetchEpisode, other]) {
+            await page.goto(bookUrl(pod.library.id, cid, episode.path), {waitUntil: 'networkidle'});
+            await tid(page, 'episode-page').waitFor();
+            await download.click();
+            await firstVisible(page.getByText(/Getting it on your server/i)).waitFor({timeout: 20000});
+          }
+          stopped.fail();
+          await tid(page, 'top-bar-(offline)').click();
+          await firstVisible(page.getByRole('button', {name: new RegExp(`Retry.*${escapeRe(other.title)}`, 'i')})).waitFor({timeout: 20000});
+          await firstVisible(page.getByText(/Getting it on your server/i)).waitFor();
+          const ready = firstVisible(page.getByText(book.title, {exact: true}));
+          await ready.waitFor();
+          await fitted(page, () => fitViewportTo(page, ready, {pad: 120}),
+            () => settleShoot(page, PODCAST_SHOTS.downloads));
+        } finally {
+          await stopped.close();
+          await waiting.close();
+        }
+      });
+    }
   } finally {
     // Sign this player session out again, whatever happened above.
     if (session) await api(session, 'POST', '/auth/logout').catch(() => {});
@@ -2346,8 +2419,8 @@ function freshFile(file) {
   }
 }
 
-async function captureCast() {
-  const dir = path.join(CACHE, 'cast-tls');
+async function withHttpsPlayer(host, visit) {
+  const dir = path.join(CACHE, `tls-${host}`);
   await mkdir(dir, {recursive: true});
   const key = path.join(dir, 'key.pem');
   const cert = path.join(dir, 'cert.pem');
@@ -2355,13 +2428,19 @@ async function captureCast() {
   if (!(freshFile(cert) && existsSync(key))) {
     execFileSync('openssl', [
       'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2',
-      '-keyout', key, '-out', cert, '-subj', `/CN=${CAST_HOST}`, '-addext', `subjectAltName=DNS:${CAST_HOST}`,
+      '-keyout', key, '-out', cert, '-subj', `/CN=${host}`, '-addext', `subjectAltName=DNS:${host}`,
     ], {stdio: 'ignore'});
   }
   const upstream = new URL(BASE);
   // Plain requests only. A websocket upgrade is deliberately not proxied (no 'upgrade'
   // listener, so Node drops it): the shot needs none of the server's live updates.
+  const gate = {denied: false};
   const proxy = https.createServer({key: readFileSync(key), cert: readFileSync(cert)}, (req, res) => {
+    if (gate.denied && req.url.startsWith('/api/') && req.headers.authorization) {
+      res.writeHead(401, {'content-type': 'text/html', 'cache-control': 'no-store'});
+      res.end('Sign in to the proxy.');
+      return;
+    }
     const up = http.request(
       {host: upstream.hostname, port: upstream.port, method: req.method, path: req.url, headers: req.headers},
       (r) => {
@@ -2372,29 +2451,35 @@ async function captureCast() {
     up.on('error', () => res.destroy());
     req.pipe(up);
   });
-  let castBrowser = null;
+  let proxyBrowser = null;
   try {
     await new Promise((resolve, reject) => {
       proxy.once('error', reject);
       proxy.listen(0, '127.0.0.1', resolve);
     });
-    const origin = `https://${CAST_HOST}:${proxy.address().port}`;
-    castBrowser = await chromium.launch({args: [`--host-resolver-rules=MAP ${CAST_HOST} 127.0.0.1`]});
-    const ctx = await newCaptureContext({ignoreHTTPSErrors: true, timezoneId: eveningZone()}, castBrowser);
+    const origin = `https://${host}`;
+    proxyBrowser = await chromium.launch({args: [
+      '--no-proxy-server', `--host-resolver-rules=MAP ${host} 127.0.0.1:${proxy.address().port}`,
+    ]});
+    await visit(proxyBrowser, origin, gate);
+  } finally {
+    await proxyBrowser?.close();
+    // close() alone waits for the browser's kept-alive connections to time out.
+    proxy.closeAllConnections();
+    proxy.close();
+  }
+}
+async function captureCast() {
+  await withHttpsPlayer(CAST_HOST, async (proxyBrowser, origin) => {
+    const ctx = await newCaptureContext({ignoreHTTPSErrors: true, timezoneId: eveningZone()}, proxyBrowser);
     const page = await ctx.newPage();
     await page.goto(`${origin}/web/connect`, {waitUntil: 'networkidle', timeout: 45000});
     await probeServer(page, origin);
     await signInWithPassword(page, HOUSE_VIEWER.username, HOUSE_PASSWORD);
-    await tid(page, 'ready-screen').waitFor({timeout: 15000});
+    // Start listening resumes the book once the Ready screen has loaded Ellen's place.
+    await tid(page, 'ready-screen').getByText(/Your place in .+ came with you/).waitFor({timeout: 15000});
     await firstVisible(page.getByRole('button', {name: 'Start listening'})).click({timeout: 8000});
-    // Ellen's book on the go, from Home's first cover (the Now card's, which may start it
-    // at once).
-    const card = page.locator('[role="button"]:has(img)').first();
-    await card.waitFor({state: 'visible', timeout: 20000});
-    await card.click({timeout: 12000});
-    await tid(page, 'book-page').waitFor({timeout: 15000});
-    await sleep(SETTLE_MS);
-    await playThenPause(page, {scope: tid(page, 'shell-docked-player'), ifShown: true});
+    await pausePlayback(page, tid(page, 'shell-docked-player'));
     await expandPlayer(page);
     await tid(page, 'companion-tab-chapters').click({timeout: 8000});
     // The transport and the action row, centred on the play button.
@@ -2415,12 +2500,7 @@ async function captureCast() {
     await shoot(page, HOUSE_SHOTS.cast, {
       clip: {x: cx - 420, y: top, width: 840, height: castBox.y + castBox.height + 28 - top},
     });
-  } finally {
-    await castBrowser?.close();
-    // close() alone waits for the browser's kept-alive connections to time out.
-    proxy.closeAllConnections();
-    proxy.close();
-  }
+  });
 }
 
 if (wanted(...Object.values(HOUSE_SHOTS))) {
@@ -2573,7 +2653,7 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
 // The player offers Find on LibriVox only while `/server` names an online Bridge whose
 // features list `librivox`, and the demo server has no Bridge. As Find shows does, the
 // shot stands in for that part of `/server` with a Playwright route on its own context;
-// the search and the work are the server's real answers (live community metadata).
+// the work and its two job reads use the published recording details and the server's wire shapes.
 // Nothing is added, so no job is queued.
 const LIBRIVOX_SHOT = 'web-player/find-librivox.png';
 if (wanted(LIBRIVOX_SHOT)) {
@@ -2585,6 +2665,25 @@ if (wanted(LIBRIVOX_SHOT)) {
       info.capabilities = {...info.capabilities, bridge: true};
       info.bridge = {version: '0.7.0', features: [...(info.bridge?.features ?? []), 'librivox']};
     });
+    // Reopening the real work reads its open job ids independently of anything this
+    // browser queued. One reports section progress; the other has since refused the
+    // read. All recording details and the search results come from the server.
+    await ctx.route('**/api/v1/admin/librivox/work?*', async (route) => {
+      const response = await route.fetch();
+      if (!response.ok()) return route.fulfill({response});
+      const work = await response.json();
+      for (const [i, recording] of work.recordings.slice(0, 2).entries()) {
+        recording.job = {id: 101 + i, state: 'running'};
+      }
+      return route.fulfill({response, json: work});
+    });
+    await ctx.route('**/api/v1/admin/bridge/jobs/101', (route) => route.fulfill({json: {
+      id: 101, kind: 'librivox.fetch', state: 'running', progress: {step: 'download', done: 4, total: 12},
+      cancel_requested: false,
+    }}));
+    await ctx.route('**/api/v1/admin/bridge/jobs/102', (route) => route.fulfill({
+      status: 403, json: {error: 'Forbidden'},
+    }));
     let session = null;
     try {
       const page = await ctx.newPage();
@@ -2600,9 +2699,11 @@ if (wanted(LIBRIVOX_SHOT)) {
       await tid(page, 'books-find-librivox').click({timeout: 8000});
       await tid(page, 'librivox-search-input').fill(LIBRIVOX_QUERY);
       await tid(page, 'librivox-search-submit').click();
-      await tid(page, 'librivox-hit').click({timeout: 30000});
+      await firstVisible(page.getByTestId('librivox-hit').filter({hasText: LIBRIVOX_QUERY})).click({timeout: 30000});
       await tid(page, 'librivox-recording').waitFor({timeout: 30000});
-      await tid(page, 'librivox-add').waitFor({timeout: 15000});
+      const rows = page.getByTestId('librivox-recording').filter({visible: true});
+      await rows.nth(0).getByTestId('librivox-cancel').waitFor({timeout: 15000});
+      await rows.nth(1).getByTestId('librivox-add').waitFor({timeout: 15000});
       await settleShoot(page, LIBRIVOX_SHOT, SETTLE_MS);
     } finally {
       if (session) await api(session, 'POST', '/auth/logout').catch(() => {});
@@ -2728,6 +2829,129 @@ if (wanted(...Object.values(RECORDINGS_SHOTS))) {
   await step('other recordings', captureRecordings);
 }
 
+const PROXY_SHOTS = {
+  account: 'web-player/account.png',
+  password: 'web-player/account-password.png',
+  grownup: 'web-player/proxy-sign-in.png',
+  child: 'web-player/proxy-child.png',
+};
+const HEADERS_SHOT = 'web-player/connect-headers.png';
+const PROXY_HOST = 'books.example.test';
+const PROXY_HEADER = 'CF-Access-Client-Id';
+
+// The player served by an ordinary static host has no API at its own origin. Its
+// connect form recovers the kept set only once the matching address is typed.
+if (wanted(HEADERS_SHOT)) {
+  await step('connect: saved header set for a typed address', async () => {
+    const ctx = await newCaptureContext();
+    try {
+      const origin = `https://${PROXY_HOST}`;
+      await ctx.route('**/api/**', (route) => route.fulfill({status: 404, body: 'Not found'}));
+      const page = await ctx.newPage();
+      await page.goto(BASE + 'connect', {waitUntil: 'networkidle'});
+      // Let the fresh install finish migrating storage before adding a signed-out
+      // device's stored set. The player reads it along with its sessions on launch.
+      await page.getByRole('textbox', {name: 'Server address'}).waitFor();
+      await page.evaluate(({origin, name}) => {
+        localStorage.setItem('audiosilo.proxySets', 'true');
+        localStorage.setItem('audiosilo.proxy-sets', JSON.stringify({[origin]: {headers: [{name, value: 'sample-client-id'}]}}));
+      }, {origin, name: PROXY_HEADER});
+      await page.reload({waitUntil: 'networkidle'});
+      await page.getByRole('textbox', {name: 'Server address'}).fill(origin);
+      await tid(page, 'proxy-headers-toggle').click();
+      await tid(page, 'proxy-headers-kept').waitFor();
+      await fitted(page, () => fitViewportTo(page, tid(page, 'connect-get-app')),
+        () => settleShoot(page, HEADERS_SHOT));
+    } finally {
+      await ctx.close();
+    }
+  });
+}
+
+if (wanted(...Object.values(PROXY_SHOTS))) {
+  await step('account and sign-in proxy', () => asAdmin(async (admin) => {
+    const marks = feedMarks();
+    const user = await api(admin, 'POST', '/admin/users', {username: 'nora', password: HOUSE_PASSWORD, role: 'user'});
+    try {
+      const [library] = (await api(admin, 'GET', '/admin/libraries')).libraries;
+      await api(admin, 'POST', '/admin/library-access', {user_id: user.id, library_id: library.id});
+      await withHttpsPlayer(PROXY_HOST, async (proxyBrowser, origin, gate) => {
+        const ctx = await newCaptureContext({ignoreHTTPSErrors: true}, proxyBrowser);
+        const page = await ctx.newPage();
+        await page.goto(`${origin}/web/connect`, {waitUntil: 'networkidle'});
+        await probeServer(page, origin);
+        await signInWithPassword(page, user.username, HOUSE_PASSWORD);
+        await tid(page, 'ready-screen').waitFor();
+        const {cid, token} = await playerSession(page);
+        const account = `${origin}/web/account?connection=${encodeURIComponent(cid)}`;
+        await page.goto(account, {waitUntil: 'networkidle'});
+        const card = tid(page, 'proxy-headers-card');
+        await card.getByTestId('proxy-headers-start').click();
+        await tid(page, 'proxy-headers-editor-name').fill(PROXY_HEADER);
+        await tid(page, 'proxy-headers-editor-value').fill('sample-client-id');
+        await tid(page, 'proxy-headers-save').click();
+        await card.getByTestId('proxy-headers-shared').waitFor();
+        if (wanted(PROXY_SHOTS.account)) {
+          await fitted(page, () => fitViewportTo(page, card, {min: 1050, pad: 100}),
+            () => settleShoot(page, PROXY_SHOTS.account));
+        }
+        if (wanted(PROXY_SHOTS.password)) {
+          await step('account: password sign-out count', async () => {
+            await api(null, 'POST', '/auth/login', {
+              username: user.username, password: HOUSE_PASSWORD, device_name: 'Living room tablet',
+            });
+            await firstVisible(page.getByRole('button', {name: 'Change password', exact: true})).click();
+            await page.getByLabel('Current password', {exact: true}).fill(HOUSE_PASSWORD);
+            await page.getByLabel('New password', {exact: true}).fill('nora-changed-password');
+            await page.getByRole('button', {name: 'Save', exact: true}).click();
+            const message = firstVisible(page.getByText(/^Signed out of 1 other device/));
+            await message.waitFor();
+            const toast = message.locator('xpath=ancestor::div[.//*[@aria-label="Dismiss"]][1]');
+            await shootElement(page, toast, PROXY_SHOTS.password);
+          });
+        }
+        if (wanted(PROXY_SHOTS.grownup)) {
+          await step('proxy: narrow banner and sign-in action', async () => {
+            await page.setViewportSize(PHONE);
+            try {
+              gate.denied = true;
+              await page.goto(`${origin}/web/`, {waitUntil: 'domcontentloaded'});
+              const strip = tid(page, 'proxy-refused-strip');
+              await strip.getByRole('button', {name: /Sign in again/i}).waitFor();
+              await shootElement(page, strip, PROXY_SHOTS.grownup, 0);
+            } finally {
+              gate.denied = false;
+              await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+            }
+          });
+        }
+        if (wanted(PROXY_SHOTS.child)) {
+          await step('proxy: ask a grown-up', async () => {
+            const {members: [kid]} = await addHousehold(api, token, library.id, {
+              members: [{name: 'Leo', kind: 'kid', access: 'all'}],
+            });
+            await page.goto(`${origin}/web/household`, {waitUntil: 'networkidle'});
+            await tid(page, `member-here-${kid.id}`).click();
+            await personCard(page, kid.name).waitFor();
+            await page.setViewportSize(PHONE);
+            await page.goto(`${origin}/web/`, {waitUntil: 'networkidle'});
+            const choose = firstVisible(page.getByRole('button', {name: new RegExp(`^${kid.name},`)}));
+            await choose.waitFor();
+            gate.denied = true;
+            await choose.click();
+            const notice = tid(page, 'kids-proxy-refused');
+            await notice.waitFor();
+            await shootElement(page, notice, PROXY_SHOTS.child, 0);
+          });
+        }
+      });
+    } finally {
+      await api(admin, 'DELETE', `/admin/users/${user.id}`);
+      dropFeedRows(marks);
+    }
+  }));
+}
+
 // ── Unauthenticated screens ─────────────────────────────────────────────────
 console.log('== public screens ==');
 // The connect flow on a fresh browser: the start screen with the probe card (the served
@@ -2744,8 +2968,9 @@ await step('connect', async () => {
     await probeServer(page, new URL(BASE).origin);
     await sleep(SETTLE_MS);
     await page.mouse.move(0, 0);
-    await shoot(page, 'web-player/connect.png');
-    if (!wanted('web-player/connect-ready.png', 'web-player/account.png')) return;
+    await tid(page, 'connect-get-app').waitFor();
+    await fitted(page, () => fitViewportTo(page, tid(page, 'connect-get-app')), () => shoot(page, 'web-player/connect.png'));
+    if (!wanted('web-player/connect-ready.png', 'web-player/account-listening-sync.png')) return;
     if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no first connection to show');
 
     await signInWithPassword(page, 'admin', ADMIN_PASSWORD);
@@ -2754,17 +2979,11 @@ await step('connect', async () => {
     await sleep(3000); // the library sentence and the shelf
     await shoot(page, 'web-player/connect-ready.png');
 
-    if (wanted('web-player/account.png')) {
+    if (wanted('web-player/account-listening-sync.png')) {
       await firstVisible(page.getByRole('button', {name: 'Start listening'})).click({timeout: 8000});
       await tid(page, 'top-bar-profile').click({timeout: 15000});
       await firstVisible(page.getByRole('menuitem', {name: /^Account on /})).click({timeout: 8000});
       await firstVisible(page.getByText('Signed-in devices')).waitFor({timeout: 15000});
-      await sleep(SETTLE_MS);
-      await page.mouse.move(0, 0);
-      await shoot(page, 'web-player/account.png');
-    }
-
-    if (wanted('web-player/account-listening-sync.png')) {
       // The Listening sync card with a Couldn't sync row (Track W1): a listen of The Art
       // of War whose book length is two minutes off the server's (another edition), put in
       // this browser's outbox as the player keeps it and sent by a reload. The server

@@ -124,6 +124,10 @@ added them. Anything you give them here comes on top.
 
 This tab shows whether the person has a calendar link. **End API keys and calendar link** stops all their keys and their calendar link at once. They can keep listening on their signed-in devices.
 
+![Theo's Devices tab with his API key, active calendar link and the button to end both](/img/screenshots/admin/person-devices.png)
+
+Under **Calendar link**, you can see when the person made the link.
+
 Their signed-in devices, each with **Sign out**, and their personal API keys,
 each with **Revoke**.
 

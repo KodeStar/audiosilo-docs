@@ -55,6 +55,10 @@ other libraries scan as usual.
 
 Under **Long books without chapters**, each book shows its chapter detection job while it is queued, running or waiting for attention. Open the book’s **Chapters** card for the job details.
 
+![A Long Lecture with its chapter detection job in the Health list](/img/screenshots/admin/health-detect-chapters.png)
+
+The Bridge is looking for chapters in the narration of **A Long Lecture**.
+
 - **Ignore** hides a book from this list, even through rescans. **Show
   ignored** lists them, each with **Show again**.
 - Tick several rows (or **Select all**) to act on them together from the bar at
@@ -145,6 +149,10 @@ left as it is.
 The list appears once the server has its first result for the report. A book
 with an ISBN can still be listed if its ASIN is unknown. Turning the report off
 hides the list.
+
+![The unknown-ASIN issue lists A Christmas Carol with its ISBN in the folder name](/img/screenshots/admin/health-unknown-asin.png)
+
+**A Christmas Carol** has an ISBN, but its ASIN is missing from the community database.
 
 ### Weak matches
 

@@ -39,7 +39,9 @@ A note is pinned to a place in the book, like a bookmark, but it holds more.
 
 ## Finding them again
 
-![A book's Bookmarks tab with a Quote, a Re-listen and a Question bookmark](/img/screenshots/web-player/book-bookmarks.png)
+![The Bookmarks tab with a Fell asleep bookmark marked Waiting to sync and its Delete button](/img/screenshots/web-player/book-bookmarks.png)
+
+**Waiting to sync** means the bookmark is still on this device. Tap its bin to delete it before it syncs.
 
 A book's **Bookmarks** and **Notes** tabs list them in book order:
 
@@ -47,7 +49,9 @@ A book's **Bookmarks** and **Notes** tabs list them in book order:
 - **Edit** (the pencil) changes it.
 - **Delete** (the bin) removes it, with **Undo** in case you didn't mean to.
 
-They also show as pins on the whole-book timeline, in the full player and on the book's page.
+![The whole-book timeline with a bookmark pin just before the current listening position](/img/screenshots/web-player/book-bookmarks-pin.png)
+
+The waiting bookmark already has a pin. Open **Chapters** on the book’s page, or look below the seek bar in the full player.
 
 **See all in your journal** opens the [Journal](journal.md). It gathers every bookmark and note from every book, with a search and a label filter.
 

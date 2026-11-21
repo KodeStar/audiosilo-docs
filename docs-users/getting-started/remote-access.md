@@ -81,6 +81,14 @@ The app stores the headers as securely as your sign-in. To change them, use the 
 
 If the proxy refuses a request, the app keeps you signed in and shows a banner. Open it to check the headers. For a sign-in refusal, **Sign in again** opens the password step if you have a password, or the pairing code otherwise. A child is prompted to ask a grown-up. While a full account on this device uses the same address, kids and demo accounts can see the reason but cannot edit the headers.
 
+![A phone’s proxy banner offering to check headers or sign in again](/img/screenshots/web-player/proxy-sign-in.png)
+
+Tap the banner to check your headers, or **Sign in again** to reconnect your account.
+
+![The prompt in kids mode asking a grown-up to update the proxy headers or pair the device again](/img/screenshots/web-player/proxy-child.png)
+
+In kids mode, a grown-up handles the headers or pairs the device again.
+
 The app tells the two apart: when your AudioSilo sign-in itself has expired, it takes you to sign in as usual. When it can't be sure which one refused, it shows the proxy banner.
 
 Good to know:

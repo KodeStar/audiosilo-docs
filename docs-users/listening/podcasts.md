@@ -113,11 +113,15 @@ Tap **Play**. An episode **Ready on your server** starts at once, and the player
 
 An episode that **Plays on demand** isn't on your server yet. The server downloads it first, and the player shows how far it has got. It starts by itself when it's ready. Whatever you were listening to keeps playing until then.
 
-![The full player while the server gets an episode, with the download's progress](/img/screenshots/web-player/episode-fetching.png)
+![The full player showing how much of The wren on the gatepost the server has fetched](/img/screenshots/web-player/episode-fetching.png)
 
-**Cancel** stops waiting. The server keeps downloading, so the episode is ready next time.
+**Getting this episode** shows how much the server has downloaded. **Cancel** stops waiting. The server keeps downloading, so the episode is ready next time.
 
 If the server can't get the episode, the player says why and offers **Try again**. Each person can have five episodes downloading at once. One that is waiting for your admin to fix something doesn't count. If it says the server can't fetch episodes now, ask your admin.
+
+![The player explaining that the episode is too large for the server, with Try again and Cancel](/img/screenshots/web-player/episode-fetch-retry.png)
+
+**Try again** asks the server to fetch the episode again.
 
 ### When an episode ends
 

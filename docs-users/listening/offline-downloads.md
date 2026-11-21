@@ -25,7 +25,9 @@ Audiobooks are big, often hundreds of megabytes each. Download on Wi-Fi when you
 
 The **Downloads** tab shows everything stored on the device you're using.
 
-![The Downloads page: storage by server, the automatic download rules, and the books ready offline](/img/screenshots/web-player/downloads.png)
+![Downloads showing an episode being fetched on the server, Retry beside a stopped episode, and a book ready offline](/img/screenshots/web-player/downloads.png)
+
+Here the server is getting one episode, and **Retry** starts the stopped one again. **Ready offline** shows how much space the downloaded book uses.
 
 - **Storage**: how much room your downloads take, by server, and how much is still free. The figure grows while a download runs. A finished download shows the space its files actually use.
 - **Automatic downloads**: the rules for downloads you don't start yourself (below).

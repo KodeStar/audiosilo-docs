@@ -30,13 +30,13 @@
 // with role/label selectors that use the exact English labels from
 // audiosilo-server/admin-ui/src/i18n/locales/en.json - if a label changes there,
 // change it here too.
-import {spawnSync} from 'node:child_process';
 import {createHash, createHmac, timingSafeEqual} from 'node:crypto';
 import {constants as fsc} from 'node:fs';
 import http from 'node:http';
 import {cp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
+import {captureLibraryReport} from './library-report.mjs';
 import {
   CACHE,
   DAY,
@@ -48,12 +48,14 @@ import {
   apiClient,
   around,
   fitViewportToPage,
+  fitted,
   isoAgo,
   pathQuery,
   showDockerPaths,
   silence,
   sleep,
   shoot,
+  sqliteAt,
   stamp,
   step,
   submitSignIn,
@@ -93,6 +95,9 @@ if (!PASSWORD) {
 
 // ── Provision demo state via the API ────────────────────────────────────────
 const api = apiClient(ORIGIN);
+
+const DB = path.join(CACHE, 'data', 'audiosilo.db');
+const sqlite = sqliteAt(DB);
 
 let inviteCode = '';
 let samId = null;
@@ -644,6 +649,21 @@ await step('a person (Access tab)', async () => {
   await shoot(page, 'admin/person.png');
 });
 
+await step("a person's devices and calendar link", async () => {
+  if (!wanted('admin/person-devices.png')) return;
+  const theo = LISTENERS.find((listener) => listener.username === 'theo');
+  if (!theo?.token) throw new Error('Theo was not provisioned');
+  await api(theo.token, 'POST', '/me/upcoming/calendar', {});
+  // Use the same backdating as the listening history: the console labels a
+  // link by its relative age, so show when an established link was made.
+  sqlite(`UPDATE tokens SET created_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-3 days')
+    WHERE kind = 'feed' AND user_id = ${Number(theo.id)} AND revoked = 0;`);
+  await open(page, `/people/user/${theo.id}?tab=devices`);
+  await page.getByText(/a link made 3 days ago/).waitFor();
+  await page.getByRole('button', {name: 'End API keys and calendar link'}).waitFor();
+  await shoot(page, 'admin/person-devices.png');
+});
+
 await step("a household member's page (Access tab)", async () => {
   if (!wanted('admin/person-member.png')) return;
   if (!memberId) throw new Error('no household member was provisioned');
@@ -694,23 +714,7 @@ await step('server settings: network & https', async () => {
   }
 });
 
-await step('server settings: community metadata', async () => {
-  // Taller, so the switches, Source, Matching and Service cards fit.
-  await page.setViewportSize({width: 1440, height: 1540});
-  try {
-    await open(page, '/server?topic=metadata');
-    await page.getByText('Keep a local copy', {exact: true}).waitFor({timeout: 8000});
-    // The upcoming releases switch and its last run: the check capture-web.mjs's upcoming
-    // pass ran (Not run yet when that pass didn't run).
-    await page.getByText('Check for upcoming releases', {exact: true}).waitFor({timeout: 8000});
-    // No Help complete the community database switch: a demo server, as this one
-    // is, has no unknown-ASIN report, so the console leaves the switch out (server#314).
-    await sleep(800); // the status row reads the system status
-    await shoot(page, 'admin/settings-metadata.png');
-  } finally {
-    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
-  }
-});
+await step('library source and metadata report', () => captureLibraryReport(browser));
 
 await step('overview on a phone', async () => {
   const phone = await browser.newContext({
@@ -842,16 +846,20 @@ await step('health jobs', async () => {
 });
 
 await step('edit library (scan settings)', async () => {
+  if (!wanted('admin/library-edit.png')) return;
   const name = inbox?.name || library?.name || 'Books';
   await open(page, '/library/libraries');
   await page.getByRole('button', {name: `Actions for ${name}`}).click({timeout: 8000});
   await page.getByRole('menuitem', {name: 'Edit library...'}).click({timeout: 8000});
   const dialog = page.getByRole('dialog', {name: `Edit ${name}`});
-  await dialog.getByLabel('Skip these files and folders', {exact: true}).waitFor({timeout: 8000});
-  await sleep(800);
-  await shoot(page, 'admin/library-edit.png');
-  await page.keyboard.press('Escape');
-  await sleep(600);
+  try {
+    await page.setViewportSize({width: 1280, height: 1180});
+    await dialog.getByText(/The title, author, series and number/).scrollIntoViewIfNeeded();
+    await shoot(page, 'admin/library-edit.png', {clip: around([await dialog.boundingBox()])});
+  } finally {
+    await page.keyboard.press('Escape');
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
 });
 
 // ── Server ops: System, About and Logs ─────────────────────────────────────
@@ -1049,31 +1057,52 @@ await step('book: generated description', async () => {
 });
 
 // ── Edit chapter times ──────────────────────────────────────────────────────
-// Alice's Adventures in Wonderland (one chapter a seeded file) opens the Chapters
-// card's editor: a chapter is added after chapter 1 and titled, which chooses it,
-// so the editor's player loads its file at its start (an editor token). Never
-// saved: Cancel and Discard changes leave the book as it was, and the page with no
-// leave guard for the next step.
+// Folk Tales is Apple Lossless, so the browser asks the server to convert the
+// preview. Hold four real streams on the long lecture with separate credentials
+// until the editor shows its busy response. All the streams end after the shot.
 await step('book: edit chapters', async () => {
   if (!wanted('admin/book-chapters-edit.png')) return;
-  // Any author: the provisioning may have reversed this book's ("Carroll, Lewis").
-  const book = await bookBy(null, "Alice's Adventures");
-  if (!book) throw new Error("no seeded Alice's Adventures in Wonderland");
-  await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+  if (!inbox) throw new Error('the Inbox library was not provisioned');
+  const books = (await api(token, 'GET', `/admin/books?library_id=${inbox.id}&limit=100`)).books;
+  const folk = books.find((b) => b.path.startsWith('Folk Tales'));
+  const lecture = books.find((b) => b.path.endsWith('A Long Lecture'));
+  if (!folk || !lecture) throw new Error('the editor needs Folk Tales and A Long Lecture');
+  const detail = await api(token, 'GET', `/admin/libraries/${inbox.id}/book${pathQuery(lecture.path)}`);
+  await open(page, bookRoute(folk), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
   const card = page.locator('section[aria-labelledby="chapters-title"]');
-  await card.getByRole('button', {name: 'Edit chapters'}).click();
-  await card.getByRole('button', {name: 'Add a chapter after chapter 1'}).click();
-  await card.getByRole('textbox', {name: 'Title of chapter 2'}).fill('The little door');
-  // The player has the new row's file once its metadata is in.
-  await page.waitForFunction(() => (document.querySelector('audio')?.readyState ?? 0) >= 1, null,
-    {timeout: 15000});
-  await page.mouse.move(0, 0);
-  await card.scrollIntoViewIfNeeded();
-  await sleep(800);
-  await shoot(page, 'admin/book-chapters-edit.png', {clip: around([await card.boundingBox()])});
-  await card.getByRole('button', {name: 'Cancel'}).click();
-  await page.getByRole('button', {name: 'Discard changes'}).click();
-  await card.getByRole('button', {name: 'Edit chapters'}).waitFor({timeout: 5000});
+  const holds = new AbortController();
+  const listener = await api(null, 'POST', '/auth/login', {
+    username: 'admin', password: PASSWORD, device_name: 'Reading room',
+  });
+  try {
+    await card.getByRole('button', {name: 'Edit chapters'}).click();
+    await card.getByRole('button', {name: 'Add a chapter after chapter 1'}).click();
+    await card.getByRole('textbox', {name: 'Title of chapter 2'}).fill('The woodcutter');
+    for (let i = 0; i < 4; i++) {
+      // Each session has two slots. Distinct start times keep both streams
+      // alive on that token instead of replacing its earlier identical ask.
+      const streamToken = i < 2 ? token : listener.token;
+      const start = i % 2 === 0 ? 0 : 300;
+      const stream = await fetch(`${ORIGIN}/api/v1/libraries/${inbox.id}/stream${pathQuery(detail.files[0].path)}&transcode=1&t=${start}`, {
+        headers: {authorization: `Bearer ${streamToken}`}, signal: holds.signal,
+      });
+      if (!stream.ok) throw new Error(`could not open listener stream ${i + 1}: HTTP ${stream.status}`);
+      await stream.body.getReader().read();
+    }
+    await card.getByRole('button', {name: 'Play 5 s'}).click();
+    const stop = card.getByRole('button', {name: 'Stop trying again'});
+    await stop.waitFor({timeout: 12000});
+    await card.getByText('The server is busy. Trying again in a moment.').waitFor();
+    await stop.focus();
+    await card.scrollIntoViewIfNeeded();
+    await shoot(page, 'admin/book-chapters-edit.png', {clip: around([await card.boundingBox()])});
+    await stop.click();
+  } finally {
+    holds.abort();
+    await api(listener.token, 'POST', '/auth/logout');
+    await card.getByRole('button', {name: 'Cancel', exact: true}).click();
+    await page.getByRole('button', {name: 'Discard changes'}).click();
+  }
 });
 
 // ── A recorded community match ──────────────────────────────────────────────
@@ -1122,7 +1151,7 @@ await step('book: recorded community match', async () => {
 //
 // Phase 2b: it also offers sidecars.contribute and meta.correct, and once the
 // server's reply accepts a setup block it sends its setup checklist, as a Bridge
-// does: first with the budget not yet reviewed and no GitHub sign-in (the Setup
+// does: first with the budget not yet reviewed and a GitHub refresh pending (the Setup
 // card's shot), then with both done, so it can contribute. The other library is
 // read-only for it, so the libraries step stays undone, as a real Bridge would
 // report it. Then the Contributions module is turned on (after the modules shot,
@@ -1148,22 +1177,26 @@ const standInSetup = (libraries, {budget, github}) => {
       {id: 'asr', done: true, required: true, detail: 'worker'},
       {id: 'agent', done: true, required: false, detail: 'claude'},
       {id: 'budget', done: budget, required: true, detail: '$100 a month'},
-      {id: 'github', done: github, required: false, ...(github ? {detail: BRIDGE_GITHUB_LOGIN} : {})},
+      {id: 'github', done: github, required: false, detail: github ? BRIDGE_GITHUB_LOGIN
+        : `signed in as ${BRIDGE_GITHUB_LOGIN}, but the sign-in couldn't be refreshed; the Bridge tries again every minute`},
+      {id: 'audible', done: false, required: false},
     ],
     can_contribute: github,
-    ...(github ? {github_login: BRIDGE_GITHUB_LOGIN} : {}),
+    github_login: BRIDGE_GITHUB_LOGIN,
+    ...(!github && {github_state: 'unrefreshed'}),
+    agent_credential: 'group',
   };
 };
-const STORY_SHOTS = ['admin/book-story.png', 'admin/book-story-recaps.png'];
+const STORY_SHOTS = ['admin/book-story.png', 'admin/book-story-recaps.png', 'admin/generate-waiting-sharing.png'];
 const DETECT_SHOTS = ['admin/health-detect-chapters.png', 'admin/detect-chapters-dialog.png',
-  'admin/book-chapters-generated.png'];
+  'admin/book-detect-chapters.png', 'admin/book-chapters-working.png', 'admin/book-chapters-generated.png'];
 const READALONG_SHOTS = ['admin/readalong-dialog.png', 'admin/book-readalong.png'];
 const LIBRIVOX_SHOTS = ['admin/librivox.png'];
 // The stand-in's heartbeat. The server keeps a heartbeat it just saved as the
 // current one, so the next GET /server sees it at once.
 const standInHeartbeat = (status) => api(bridgeToken, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
 await step('settings: bridge', async () => {
-  if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/bridge-setup.png',
+  if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/bridge-setup.png', 'admin/bridge-jobs-cancelled.png',
     'admin/settings-bridge-paired.png', ...GENERATE_SHOTS, ...STORY_SHOTS, ...DETECT_SHOTS,
     ...READALONG_SHOTS, ...LIBRIVOX_SHOTS)) return;
   const info = await api(null, 'GET', '/server');
@@ -1262,9 +1295,13 @@ await step('settings: bridge', async () => {
           await open(page, '/server?topic=bridge');
           const setupCard = page.locator('[aria-labelledby="bridge-setup-title"]');
           await setupCard.getByText('2 of 4 required steps done').waitFor({timeout: 15000});
-          await setupCard.scrollIntoViewIfNeeded();
-          await sleep(800);
-          await shoot(page, 'admin/bridge-setup.png', {clip: around([await setupCard.boundingBox()])});
+          await setupCard.getByText(/Sign-in couldn't be refreshed: the Bridge keeps trying/).waitFor();
+          await setupCard.getByText("Kept to the Bridge's group").waitFor();
+          await fitted(page, () => fitViewportToPage(page, 900, 1600, 300), async () => {
+            await setupCard.scrollIntoViewIfNeeded();
+            await sleep(800);
+            await shoot(page, 'admin/bridge-setup.png', {clip: around([await setupCard.boundingBox()])});
+          });
         });
       }
       // Budget reviewed and signed in to GitHub on the Bridge's page.
@@ -1278,6 +1315,27 @@ await step('settings: bridge', async () => {
       await fitViewportToPage(page, 900, 2400, 1000);
       await shoot(page, 'admin/settings-bridge-paired.png');
     });
+
+    if (wanted('admin/bridge-jobs-cancelled.png')) {
+      await tryShot(async () => {
+        await api(token, 'POST', '/admin/bridge/jobs', {kind: 'bridge.verify', library_id: seeded.id});
+        const claim = await api(bridge, 'GET', '/bridge/jobs/next?wait=5&kind=bridge.verify', undefined, BRIDGE_CLIENT);
+        if (!claim) throw new Error('the second Verify job was not handed out');
+        const route = `/bridge/jobs/${claim.id}`;
+        await api(bridge, 'PATCH', route, {attempt: claim.attempts, state: 'running',
+          progress: {step: 'stat', message: 'Comparing the files', total: sample.files.length}}, BRIDGE_CLIENT);
+        await api(token, 'POST', `/admin${route}/cancel`);
+        // The server records a late failure of a cancelled claim as Cancelled.
+        await api(bridge, 'PATCH', route, {attempt: claim.attempts, state: 'failed'}, BRIDGE_CLIENT);
+        await open(page, '/server?topic=bridge');
+        const card = page.locator('[aria-labelledby="bridge-jobs-title"]');
+        await card.getByLabel('Show jobs').selectOption('cancelled');
+        await card.getByText(/Last step: Comparing the files/).waitFor({timeout: 15000});
+        await card.scrollIntoViewIfNeeded();
+        await page.mouse.move(0, 0);
+        await shoot(page, 'admin/bridge-jobs-cancelled.png', {clip: around([await card.boundingBox()])});
+      });
+    }
 
     // The Contributions module on, now that the Bridge can contribute.
     await api(token, 'PATCH', '/admin/settings', {modules: {contributions: true}});
@@ -1337,7 +1395,24 @@ await step('book: characters and recaps', async () => {
   });
   const job = await api(bridgeToken, 'GET', '/bridge/jobs/next?wait=5&kind=sidecars.generate', undefined, BRIDGE_CLIENT);
   if (!job || job.path !== book.path) throw new Error('the generate job was not handed out');
-  // A claimed job may report done straight away; no shot shows it running.
+  if (wanted('admin/generate-waiting-sharing.png')) {
+    const message = "the server couldn't be asked whether this book is still to be shared - the book tries again by itself in a minute";
+    await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
+      attempt: job.attempts, state: 'needs_attention', error: message,
+      progress: {step: 'contributing', stage: 'contributing', source: 'audio',
+        park: {code: 'share_unconfirmed', message, retry_at: stamp(Date.now() + MIN)}},
+    }, BRIDGE_CLIENT);
+    await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+    const section = page.locator('section[aria-labelledby="generate-title"]');
+    await section.getByText(/^Waiting to confirm this book/).waitFor();
+    const community = section.locator('xpath=..');
+    await community.getByText(/^Generated on this server/).first().waitFor();
+    await community.scrollIntoViewIfNeeded();
+    await shoot(page, 'admin/generate-waiting-sharing.png', {clip: around([await community.boundingBox()])});
+    await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
+      attempt: job.attempts, state: 'running', progress: {step: 'contributing', stage: 'contributing'},
+    }, BRIDGE_CLIENT);
+  }
   await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
     attempt: job.attempts,
     state: 'done',
@@ -1401,15 +1476,19 @@ await step('bridge: detect chapters', async () => {
   const lecture = (await api(token, 'GET', `/admin/books?library_id=${inbox.id}&issue=no_chapters&limit=50`))
     ?.books?.find((b) => b.path.endsWith('A Long Lecture'));
   if (!lecture) throw new Error('no A Long Lecture under Long books without chapters');
+  const chaptersCard = page.locator('section[aria-labelledby="chapters-title"]');
+  if (wanted('admin/book-detect-chapters.png')) {
+    await open(page, bookRoute(lecture), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+    await chaptersCard.getByRole('button', {name: 'Detect chapters'}).waitFor();
+    await chaptersCard.scrollIntoViewIfNeeded();
+    await shoot(page, 'admin/book-detect-chapters.png', {clip: around([await chaptersCard.boundingBox()])});
+  }
   await open(page, '/health/issues?issue=no_chapters');
   const list = page.getByRole('list', {name: 'Long books without chapters'});
   // The lecture's own row, so the job queued is the one the stand-in writes for.
   const detect = list.getByRole('listitem').filter({hasText: lecture.title || 'A Long Lecture'})
     .getByRole('button', {name: 'Detect chapters'});
   await detect.waitFor({timeout: 15000});
-  await sleep(800);
-  await shoot(page, 'admin/health-detect-chapters.png');
-
   await detect.click();
   const dialog = page.getByRole('dialog', {name: 'Detect chapters'});
   await dialog.getByText('None: no agent is used').waitFor({timeout: 8000});
@@ -1430,6 +1509,20 @@ await step('bridge: detect chapters', async () => {
     progress: {step: 'chapter_detecting', stage: 'chapter_detecting', source: 'audio',
       message: 'Finding the chapters in the narration', done: 0, total: 1},
   }, BRIDGE_CLIENT);
+  if (wanted('admin/health-detect-chapters.png')) {
+    await open(page, '/health/issues?issue=no_chapters');
+    await list.getByText('Finding the chapters in the narration', {exact: false}).first().waitFor();
+    await fitted(page, () => fitViewportToPage(page, 1040, 1800), async () => {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await shoot(page, 'admin/health-detect-chapters.png');
+    });
+  }
+  if (wanted('admin/book-chapters-working.png')) {
+    await open(page, bookRoute(lecture), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+    await chaptersCard.getByText('Finding the chapters in the narration', {exact: false}).first().waitFor();
+    await chaptersCard.scrollIntoViewIfNeeded();
+    await shoot(page, 'admin/book-chapters-working.png', {clip: around([await chaptersCard.boundingBox()])});
+  }
   const detail = await api(token, 'GET',
     `/admin/libraries/${inbox.id}/book?path=${encodeURIComponent(lecture.path)}`);
   const file = detail?.files?.[0];
@@ -1674,13 +1767,6 @@ await step("a person's Listening tab", async () => {
 // accounts in the capture database (run.sh's .cache/data, a throwaway copy, as
 // capture-web's year of listening is) and runs after every other console shot,
 // so none of them shows the card. Needs the sqlite3 CLI on PATH.
-const DB = path.join(CACHE, 'data', 'audiosilo.db');
-const sqlite = (sql) => {
-  const r = spawnSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
-  if (r.status !== 0) throw new Error(`sqlite3: ${(r.stderr || r.error?.message || '').trim()}`);
-  return r.stdout;
-};
-
 await step('support card', async () => {
   sqlite(`UPDATE users SET created_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-40 days') WHERE is_demo = 0;`);
   if (!(await api(token, 'GET', '/admin/support'))?.show) throw new Error('the server says the card is not due');

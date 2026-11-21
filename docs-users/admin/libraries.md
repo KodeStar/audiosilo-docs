@@ -66,7 +66,13 @@ To rename a library, point it at another folder or change how it's scanned:
 2. Change what you need.
 3. Click **Save changes**.
 
-![Editing a library: the folder, the scan settings and where book details come from](/img/screenshots/admin/library-edit.png)
+![Edit library with the metadata source and its explanation below the scan settings](/img/screenshots/admin/library-edit.png)
+
+**Book details come from** lets you give file tags or folder names first choice.
+
+![The Archive library and the confirmation that its books are switching metadata sources](/img/screenshots/admin/library-source-background.png)
+
+For a large library, the server confirms the change and keeps updating the books in the background.
 
 Changing the folder or the skipped files rescans the library. When you change
 the folder, listening progress follows the books found at the same place

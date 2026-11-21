@@ -68,7 +68,9 @@ Bridge's [Accounts tab](../getting-started/bridge-accounts.md#the-accounts-state
 
 ## The titles page
 
-![Server > Settings > Audible: the titles and whether each is on this server](/img/screenshots/admin/audible-titles.png)
+![Audible titles with their backup states and a warning for the saved destination of A Small Hour in Varrow](/img/screenshots/admin/audible-titles.png)
+
+Choose **Destination...** on *A Small Hour in Varrow* to set a new place for its backup.
 
 **Server > Settings > Audible** lists every title your accounts own or have
 preordered. Each row says whether the title is **On this server** (with a link to
@@ -178,20 +180,27 @@ is no longer valid appears in **Needs a look**.
 
 ## Back up everything
 
-**Back up everything...**, on each account, backs up all the account's
-**Available** titles that aren't on this server yet. It first shows how many books
-and about how much space, such as **"212 books, ~96 GB"**. Press **Back up N
-books** to queue them.
+Choose **Back up everything...** on an account to back up **Available** titles
+that aren't on this server yet. Check the book count and estimated size, then
+press **Back up N books** to queue them.
 
 ![Back up everything's confirmation](/img/screenshots/admin/audible-backup-all.png)
+
+The confirmation offers to back up 16 books, using about 5.3 GB. It leaves out
+the title whose saved destination is no longer valid.
 
 It skips titles marked **Not this book**, contested titles, preorders and titles
 already backed up. It retries failed and cancelled backups. A big library can take
 days.
 
-If a saved destination is no longer valid, the confirmation after queuing tells
-you how many titles were skipped. Change their destinations and try again. An
-invalid account template needs fixing before the batch can start.
+If a saved destination is no longer valid, the notice after queuing tells you
+how many titles were skipped. An invalid account template needs fixing before
+the batch can start.
+
+![Backup confirmation showing one title skipped because its destination is no longer valid](/img/screenshots/admin/audible-backup-all-skipped.png)
+
+The server queued all 16 backups and skipped one other title. Use
+**Destination...** to choose where to save that title, then try again.
 
 ## Backing up by itself
 

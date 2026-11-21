@@ -5,7 +5,9 @@ description: "Set a password, pair another device, sign out a lost phone, check 
 
 Each server you use has its own **account page**. There you set your password, pair another device, see your signed-in devices, and sign out.
 
-![A server's account page on a computer: Password, Pair another device, Proxy headers, signed-in devices, Listening sync and API keys](/img/screenshots/web-player/account.png)
+![Account showing a saved proxy header, its HTTPS address, Change headers and Remove headers](/img/screenshots/web-player/account.png)
+
+The **Proxy headers** card lists the headers everyone on this device uses for that address.
 
 ## Opening it
 
@@ -20,6 +22,8 @@ Accounts made by invite often have no password. That's fine day to day, but a pa
 1. On the **Password** card, tap **Set a password** (or **Change password**).
 2. Enter a password of at least 8 characters. To change one, enter your current password first.
 3. Save.
+
+![Password changed confirmation reporting that one other device was signed out](/img/screenshots/web-player/account-password.png)
 
 The confirmation tells you how many of your other devices were signed out. Setting a first password signs nothing out.
 

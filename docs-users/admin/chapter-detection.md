@@ -31,7 +31,9 @@ The [Health](health.md#the-kinds-of-issue) page lists books over two hours with
 no chapters under **Long books without chapters**. It offers **Detect chapters**
 on each row, and for the books you tick.
 
-![Health > Long books without chapters, with Detect chapters on a book](/img/screenshots/admin/health-detect-chapters.png)
+![A Long Lecture under Long books without chapters, with its active chapter detection job](/img/screenshots/admin/health-detect-chapters.png)
+
+The book's row shows what the Bridge is doing.
 
 To find a book's chapters:
 

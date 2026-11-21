@@ -22,7 +22,6 @@
 //
 // The console is driven with the exact English labels from
 // audiosilo-server/admin-ui/src/i18n/locales/en.json, the player with its test ids.
-import {spawnSync} from 'node:child_process';
 import http from 'node:http';
 import {chromium} from 'playwright';
 import {
@@ -30,10 +29,13 @@ import {
   HOUR,
   MIN,
   apiClient,
+  fitViewportToPage,
+  fitted,
   probeServer,
   shoot,
   showDockerPaths,
   sleep,
+  sqliteAt,
   stamp,
   step,
   submitSignIn,
@@ -86,11 +88,7 @@ const discoveryServer = http.createServer((req, res) => {
 });
 await new Promise((resolve) => discoveryServer.listen(Number(idp.port), idp.hostname, resolve));
 
-const sqlite = (sql) => {
-  const r = spawnSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
-  if (r.status !== 0) throw new Error(`sqlite3: ${(r.stderr || r.error?.message || '').trim()}`);
-  return r.stdout;
-};
+const sqlite = sqliteAt(DB);
 const q = (s) => `'${String(s).replaceAll("'", "''")}'`;
 
 // ── State ────────────────────────────────────────────────────────────────
@@ -127,12 +125,14 @@ const ctx = await browser.newContext(DESKTOP_CONTEXT);
 await showDockerPaths(ctx, [], SHOWN);
 const page = await ctx.newPage();
 // Opens a console page, waits for `text` and lets it settle, then shoots `file`.
-const capture = async (route, text, file) => {
+const capture = async (route, text, file, fit) => {
   if (!wanted(file)) return;
   await page.goto(`${ORIGIN}/admin${route}`, {waitUntil: 'networkidle', timeout: 45000});
   await page.getByText(text).first().waitFor({timeout: 15000});
   await sleep(600);
-  await shoot(page, file);
+  const save = () => shoot(page, file);
+  if (fit) await fitted(page, fit, save);
+  else await save();
 };
 
 await step('sign-in page with single sign-on', async () => {
@@ -150,7 +150,8 @@ if (wanted('admin/settings-signin.png', 'admin/people-waiting-signins.png', 'adm
     await page.locator('h1.display').first().waitFor({timeout: 15000});
   });
   await step('Settings > Sign-in', () =>
-    capture('/server?topic=signin', 'Connected to the provider', 'admin/settings-signin.png'),
+    capture('/server?topic=signin', 'Connected to the provider', 'admin/settings-signin.png',
+      () => fitViewportToPage(page, 900, 2400)),
   );
   await step('Waiting sign-ins', () => capture('/people', 'Waiting sign-ins', 'admin/people-waiting-signins.png'));
   await step("sam's single sign-on", () =>
