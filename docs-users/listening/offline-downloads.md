@@ -27,7 +27,7 @@ The **Downloads** tab shows everything stored on the device you're using.
 
 ![Downloads showing an episode being fetched on the server, Retry beside a stopped episode, and a book ready offline](/img/screenshots/web-player/downloads.png)
 
-While the server gets one episode, **Retry** starts the stopped episode again. **Ready offline** shows how much space the downloaded book uses.
+Here the server is getting one episode, and **Retry** starts the stopped one again. **Ready offline** shows how much space the downloaded book uses.
 
 - **Storage**: how much room your downloads take, by server, and how much is still free. The figure grows while a download runs. A finished download shows the space its files actually use.
 - **Automatic downloads**: the rules for downloads you don't start yourself (below).

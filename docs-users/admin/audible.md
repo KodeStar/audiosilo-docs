@@ -70,7 +70,7 @@ Bridge's [Accounts tab](../getting-started/bridge-accounts.md#the-accounts-state
 
 ![Audible titles with their backup states and a warning for the saved destination of A Small Hour in Varrow](/img/screenshots/admin/audible-titles.png)
 
-Choose **Destination...** on *A Small Hour in Varrow* to replace its invalid backup folder.
+Choose **Destination...** on *A Small Hour in Varrow* to set a new place for its backup.
 
 **Server > Settings > Audible** lists every title your accounts own or have
 preordered. Each row says whether the title is **On this server** (with a link to

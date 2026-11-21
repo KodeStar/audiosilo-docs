@@ -225,7 +225,7 @@ chapter runs from one file into the next.
 
 ![The chapter editor waiting to play Folk Tales, with the pause button and a new chapter named The woodcutter](/img/screenshots/admin/book-chapters-edit.png)
 
-While the editor waits for the server to convert the audio, the pause button offers **Stop trying again**.
+While the editor waits for the server to convert the audio, it keeps trying. The pause button (**Stop trying again**) ends the retries.
 
 To edit the chapters:
 

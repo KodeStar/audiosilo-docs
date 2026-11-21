@@ -58,7 +58,7 @@ connected, it opens the **Workers** tab.
 
 ![The Setup card shows a GitHub sign-in waiting to refresh and the credential hand-off kept to the Bridge's group](/img/screenshots/admin/bridge-setup.png)
 
-The Bridge keeps the agent credential in its group while it retries the GitHub sign-in.
+Here two required steps are still to do. GitHub couldn't refresh the sign-in, so the Bridge keeps trying, and only the Bridge and the agent can read the agent's credential.
 
 | Step | Done when |
 |---|---|
