@@ -144,9 +144,23 @@ builds a small **Inbox** library under `.cache/inbox` (`INBOX_DIR` overrides)
 with one of each issue - two copies of a seeded book, an empty file, a damaged
 m4b, a folder of two hour-long books, a long book without chapters and an ALAC
 file (the generated audio is silence, made with **ffmpeg**) - and adds it
-through the API with a daily schedule and skip rules, which
-`admin/library-edit.png` then shows. It runs last so the Books screens keep
-showing only the seeded library; the seeded files are only read.
+through the API with a daily schedule and skip rules. The taller
+`admin/library-edit.png` includes the explanation under **Book details come from**.
+The Inbox is added after the main Books screens so they keep showing only the seeded library.
+
+`library-report.mjs` starts the same `SERVER_BIN` with a private data directory
+for the metadata and large-library shots. Its loopback metadata service answers
+the lookup for the archive's copy of **A Christmas Carol** with 404 and
+also returns 404 when the server reports that ASIN. The book has an ISBN set
+through the admin API. The fixture checks the server's seven-day quiet period
+and its next daily scheduler tick. `admin/settings-metadata.png` shows the
+service responding and the notice that the server tries the report again in about a week.
+
+`admin/health-unknown-asin.png` shows its entry under **ASIN not in the community
+database**. For `admin/library-source-background.png` the script seeds a large
+library index with SQLite, changes its metadata source in the console and waits
+for the real background update confirmation. The private server and its files
+are removed after the captures.
 
 The Backups and Notifications shots (`admin/settings-backups.png`,
 `admin/backup-restore.png`, `admin/settings-notifications.png`,
@@ -202,11 +216,11 @@ shoots the card; it then turns the link off and signs that session out again, so
 neither outlives the shot (nor shows in the admin Devices shot). The items are real: the
 Sherlock Holmes books the seed lacks, from the live catalogue (so it needs the
 network), all "Missing from your series" with the "New" badge; the seeded
-series have no preorder or recent release. The job's stored items and last run
-stay, so `admin/settings-metadata.png` shows that check.
+series have no preorder or recent release. For `admin/person-devices.png`, Theo
+has his own calendar link, a named phone and a Home Assistant API key.
 
 The Bridge shots (`admin/settings-bridge.png`, `admin/bridge-pair.png`,
-`admin/bridge-setup.png`, `admin/settings-bridge-paired.png`) need a server built
+`admin/bridge-setup.png`, `admin/settings-bridge-paired.png`, `admin/bridge-jobs-cancelled.png`) need a server built
 with the Bridge (its
 `GET /server` lists a `bridge` capability; an older build fails the step and the
 shots keep their previous images). The Bridge itself is a separate program, so a
@@ -223,10 +237,14 @@ signed in on a subscription and can contribute; the admin queues a `bridge.verif
 the seeded library through the API, and the stand-in claims it and reports it
 `done` with the sizes the server gave for the sample book. When the server's first
 reply `accepts` a `setup` block (Bridge Phase 2b), the heartbeat also carries a
-setup checklist built as a Bridge builds it: first with the budget not reviewed and
-no GitHub sign-in, when the Setup card is shot clipped (`admin/bridge-setup.png`,
-"3 of 5 required steps done"), then with both done, so the stand-in can
-contribute. The paired page is shot as tall as it is, and then the Contributions
+setup checklist. The clipped Setup card shows two of four required steps done,
+the agent credential kept to the Bridge's group, and a GitHub sign-in waiting
+to refresh. The paired page shows the same hand-off after the budget has been
+reviewed and GitHub has refreshed the sign-in. For the Jobs detail, the stand-in
+claims a second Verify and reports its progress. The admin requests a cancellation,
+then the stand-in reports a failure. The server records the job as Cancelled and
+keeps the last step. The script filters Jobs to Cancelled before capturing the card.
+Then the Contributions
 module is turned on (`PATCH /admin/settings`; the modules shot before shows it
 off), which the generate dialog's contribute switch and the story step's
 contributing job need. A shot that fails here still lets the module be turned on.
@@ -249,25 +267,34 @@ Wild**, whose `.audiosilo/` folder `run.sh` seeds with characters and recaps
 (below), so its Characters and recaps card shows them as **Generated on this
 server**. First the admin queues a `sidecars.generate` job for the book that
 contributes (the stand-in can, and the Contributions module is on), and the
-stand-in claims it and reports it `done`
+stand-in claims it. For `admin/generate-waiting-sharing.png` it first reports
+a `share_unconfirmed` pause with a retry time, while the seeded files remain in
+the book folder. It resumes the job and reports it `done`
 with a result naming a community issue for each part, as a Bridge that filed them
 would, so the card also shows **Contributed, waiting for review**. Nothing is
 written into the library: the files are `run.sh`'s. The card is shot clipped on
 the Characters tab (12 characters, so **Show all** shows), then on the Recaps tab
 with **Through chapter 1** opened, each in a viewport as tall as the page.
 
-The Detect chapters shots (`admin/health-detect-chapters.png`,
-`admin/detect-chapters-dialog.png`, `admin/book-chapters-generated.png`, Bridge
-Phase 1d) are the last Bridge step. The stand-in's heartbeat is sent again with
-`chapters.detect` among its kinds and the Inbox mapped and writable; Health >
-Issues `?issue=no_chapters` is shot with **Detect chapters** on the Inbox's **A
-Long Lecture** (so they need ffmpeg for that fixture), then its confirmation, which
-is submitted. The stand-in claims the `chapters.detect` job and runs it as a Bridge
-would: since the fixture's audio is silence, it writes a fixed six-chapter
+The chapter detection shots use the Inbox's **A Long Lecture**. The stand-in's
+heartbeat offers `chapters.detect` with the Inbox mapped and writable.
+`admin/book-detect-chapters.png` shows the action before the job is queued.
+The script confirms it from Health (`admin/detect-chapters-dialog.png`), then
+the stand-in claims the job and reports it running. The Health row
+(`admin/health-detect-chapters.png`) and the book's Chapters card
+(`admin/book-chapters-working.png`) show the same job. Since the fixture's
+audio is silence, the stand-in writes a fixed six-chapter
 `chapters.json` (and the `bridge.json` beside it) into the book's `.audiosilo/`
 folder under the Inbox (`.cache/inbox`, rebuilt every run), asks for the attachments
 rescan and reports the job done. The book's Chapters card is then shot clipped,
-with the found chapters in use. Nothing is written into the seeded library.
+with the found chapters in use (`admin/book-chapters-generated.png`).
+
+The chapter editor shot (`admin/book-chapters-edit.png`) opens the Inbox's
+Apple Lossless **Folk Tales**. Four real streams of the long lecture occupy
+the server's transcode slots. **Play 5 s** in the editor then receives the
+busy response. The shot shows the waiting preview and its pause control.
+Two ordinary sessions each hold two streams at different start times. The script
+closes the streams, signs out the extra session and discards the chapter edit.
 
 The console's LibriVox shot (`admin/librivox.png`) comes after the read-along
 step, from the same stand-in, its heartbeat sent again with `librivox.fetch` among
@@ -275,14 +302,12 @@ its kinds so the Bridge's features list `librivox`. It searches the live communi
 metadata (the demo server's default lookup, so it needs the network) for The Wind
 in the Willows and opens its recordings in Library > LibriVox.
 
-The player's shot (`web-player/find-librivox.png`) is `capture-web.mjs`'s, so a
-`SKIP_ADMIN=1` run takes it too. The demo server has no Bridge, so, as for Find
-shows, a Playwright route on the shot's own context adds an online Bridge offering
-`librivox` to `/server`'s answer. The admin signs in (Browse the library, so
-nothing plays), opens Find on LibriVox from the Books mode's **...** menu and runs
-the same search, against the server's real search and work answers. Nothing is
-added in either shot, so no job is queued and no seeded book gains a match; the
-player's session is signed out again.
+The player's shot (`web-player/find-librivox.png`) uses an isolated browser
+context. The admin searches the live catalogue for The Wind in the Willows.
+Playwright adds the Bridge capability to the server response and an existing job
+to each of the work’s first two recordings. The first job reports four of
+twelve sections downloaded. The second job read answers 403, so the player offers
+**Add** again. The capture waits for both actions on their respective rows.
 
 The invite on a phone (`server/phone-connect-invite.png`) opens the connect page
 shot's invite link again in an iPhone context (the page decides by the user agent).
@@ -356,10 +381,15 @@ so the drift-off span ends just before the run. The captures open those books by
 title (the finished one) or as the most recent Continue listening card (the last
 entry, the one with the place).
 
-`web-player/book-bookmarks.png`, `bookmark-editor.png` and `book-details.png` are
-taken on the playing book's page (reached through the full player's View book
-details, so the book stays loaded); the editor is closed with Cancel, so nothing
-changes. Before the Details shot the book is downloaded here unless it already is,
+`web-player/book-bookmarks.png` and `book-bookmarks-pin.png` use an isolated
+copy of the warmed session. The capture seeds a **Fell asleep** entry in the
+player's bookmark outbox and holds its POST offline. The Bookmarks tab shows the
+waiting entry and Delete. On the Chapters tab the capture checks the pin's
+position against the bookmark before capturing the timeline.
+
+`bookmark-editor.png` and `book-details.png` use View book details in the full
+player to keep the book loaded. The editor closes with Cancel.
+Before the Details shot the book is downloaded here unless it already is,
 so the tab says Plays from this device.
 
 The You shots (`web-player/you-stats.png`, `year.png`, `phone-you-stats.png`,
@@ -424,21 +454,20 @@ provisioning: the owners (their members go with them) and any member whose owner
 one of them. A run that only wants `player-cast.png` (`SHOTS_ONLY`) provisions Ellen
 alone.
 
-**The self-service rate limit.** Adding a household member, a member's session and
-pairing code, and API keys (making one, and listing them, as an Account page does)
-share the server's self-service limit: 10 per address, reset after 15 minutes with no
-spend. A full run spends 8 of them (the web run 5: Leo, Leo's session here, Ruth,
-Ruth's code and the admin's Account page for `account.png`; the admin run 3: ivy, dan
-and theo's API key), and each `run.sh` starts a fresh server, so the budget starts full. Only a hand-run
-`node capture-web.mjs` against a server that is still running needs 15 quiet minutes
-first.
+**The self-service rate limit.** The server allows ten account mutations from
+one address, and its counter resets after fifteen quiet minutes. A full capture
+uses ten. Ellen’s household uses four for Leo, his session, Ruth and her pairing
+code. The proxy and password shots use three for Nora’s password change, her child
+and that child’s session. The admin shots use three for Maya’s two household members and
+Theo’s API key. Reading the Account page, signing in another device and making a
+calendar link use none of this counter. Each `run.sh` starts a fresh server.
 
 The Cast button only shows on an https page in a Chromium browser, and for a server
 reached at a loopback address it is only dimmed and explains why it can't cast (its
 name is then "Cast, not available for this book"); the capture server is plain http on
 `127.0.0.1`. For `web-player/player-cast.png` the script starts a local https proxy in
 front of it with a throwaway self-signed certificate (**openssl**, into
-`.cache/cast-tls`, reused while under a day old), on a free port, and opens it as `audiosilo.shots.test` in a separate
+`.cache/tls-audiosilo.shots.test`, reused while under a day old), on a free port, and opens it as `audiosilo.shots.test` in a separate
 Chromium that resolves that name to `127.0.0.1` and accepts the certificate. Ellen
 signs in there, her book is loaded and paused, and the shot is clipped to the full
 player's transport and action row. Nothing leaves the machine except the Cast sender
@@ -464,16 +493,18 @@ players never see a podcast library). The admin then signs in to a fresh browser
 password: Home scrolled to New episodes, Library > Shows chosen in the library picker,
 The Lantern Archive's page (a read-only Following badge: the Follow button needs an
 online Bridge), the same page at phone width, and, at phone width, Play on the daily
-show's newest episode. Its fetch is the one thing stood in for: that page's requests for
-that episode only are routed (Playwright), the stream probe answering the server's own
-503 `podcast_fetching` and every status read a fetch a little further on, never finished,
-so the full player shows Getting this episode with its progress. Cancel ends it. Then the
+show's newest episode. The page receives a 503 `podcast_fetching` for the stream
+probe and a fetching status with bytes received. After the progress shot, the next
+status read reports the server's `too_large` failure, so the player offers **Try again**.
+For `downloads.png` the browser downloads The Art of War, then starts offline
+downloads for two absent episodes. One server fetch stays active and the other
+fails, so **Retry** and the completed book’s on-device size appear together. The
 library is deleted, the module turned off, the player session signed out and this pass's
 audit log and event feed rows deleted (sqlite3), so neither the connect shots nor the
 admin console's show any of it.
 
 The Add shows shots (`web-player/find-shows-search.png`, `find-shows-address.png`,
-`find-shows-import.png`, `phone-find-shows.png`) run in the same pass, last, each in a
+`find-shows-import.png`, `phone-find-shows.png`) run before the Downloads shot, each in a
 browser context of its own (the same signed-in storage). Every way in ends in a follow,
 which needs an online Bridge, and a search would reach Apple, so those contexts stand in
 for the server with Playwright routes (`routeFindShows` in `capture-web.mjs`): `/server`
@@ -492,15 +523,19 @@ show shots grow the viewport to the end of the list (`fitViewportTo` in `lib.mjs
 the search shots wait for the directory artwork to load (`imagesLoaded`). Nothing is
 followed on the server and no request leaves the machine.
 
-The connect shots run last, in a fresh browser with nothing stored:
-`web-player/connect.png` types the server's own address and presses Continue (the probe
-card), then the run signs in as the **admin** with a username and password (a real
-account, so the account page has its Password card and API keys; `ADMIN_PASSWORD` is
-required) for `connect-ready.png` ("Your library is ready.", the first connection) and
-`account.png` (Account on, from the profile menu). That player session is signed out
-through the API at the end, so it never shows in the admin Devices shot. The capture
-server is reached at `127.0.0.1`, a loopback address, so it has no home address and the
-account page shows no At home and away card.
+The connect and account shots run in fresh browser contexts. The served player
+finds its own server and shows the App Store, Google Play and APK links.
+`connect-ready.png` signs in by password. For `connect-headers.png`, the browser
+receives the 404 a static web host returns for the server probe. Its local storage
+holds a saved set for the HTTPS address typed into the form.
+
+The account shots use the local TLS proxy from the Cast capture. A temporary
+listener saves a sample header through the account card. A second password sign-in
+lets the password-change confirmation count one signed-out device.
+The proxy turns away authenticated API requests with its own 401 for the narrow
+sign-in banner and the child’s prompt. The child signs in on this device through
+the adult’s Household page. The listener, household member and sessions are removed
+after the capture.
 
 `SERVER_BIN=<file>` runs a server binary built elsewhere instead of building one
 into the `SERVER` checkout (pair it with `SKIP_ADMIN=1` unless that binary
@@ -553,7 +588,7 @@ and pause steps always run, so a partial run stages its shots as a full one does
 ## The Bridge's page
 
 The `bridge/` shots (`sign-in.png`, `status-unpaired.png`, `status-paired.png`,
-`libraries.png`, `accounts.png`) come from `capture-bridge.mjs`, which `run.sh`
+`libraries.png`, `accounts.png`, `settings-agent.png`) come from `capture-bridge.mjs`, which `run.sh`
 runs after the setup captures when the `BRIDGE` checkout (default the sibling
 `audiosilo-bridge`) is there; without it, or with
 `SKIP_BRIDGE=1`, the shots keep their previous images. `run.sh` syncs the
@@ -577,22 +612,35 @@ shots show what a reader's container would: the library folders as
 as `http://audiosilo:8080` (the address the shot's Pair form shows too), and
 whisper.cpp on the CPU for speech recognition, which a Linux image picks where
 a Mac picks mlx-whisper. At the end
-it unpairs on both sides. The agent container never
-runs, so the Agent card and the setup checklist say it is not running.
+it unpairs on both sides.
+
+For **Libraries**, the script presses **Check now** and stages the next
+`GET /api/libraries` response for one library using the slow-mount fixture from
+the Bridge's `LibrariesTab.test.tsx`. The library id, name and mount path come
+from the paired Bridge. The fixture sets the failed five-second check and its
+time, which the page renders as **Waiting for the folder** and **Last check**.
+
+For **Accounts** and **Settings > Agent**, `run.sh` starts a separate Bridge
+with its own data and home folders. Those two manifest entries have
+`endpoint: true`. The other Bridge captures run in the standard configuration.
+The endpoint Bridge starts with the configured address, model and an empty
+staging folder. It reports the stopped endpoint
+runner. The script sets a sample Endpoint API key in the Bridge's vault so
+both tabs show **Replace** and **Remove**.
 
 The Audible shots (`bridge/audible-sign-in.png`, `bridge/accounts-audible.png`,
 `admin/audible-accounts-card.png`, `admin/audible-titles.png`, Bridge Phase 4a, and
-4b's `admin/audible-backup-settings.png` (the Account settings dialog since 4c), `admin/audible-backup-all.png` and
+4b's `admin/audible-backup-settings.png` (the Account settings dialog since 4c), `admin/audible-backup-all.png`,
+`admin/audible-backup-all-skipped.png` and
 `admin/audible-destination.png`)
 come from the same script, so they are `capture: 'bridge'` in the manifest even
-though two show the console. No Audible account is used: when one of them (the manifest's `audible: true`) is
+when they show the console. When one of them (the manifest's `audible: true`) is
 wanted and the checkout has `cmd/audiblefake`, `run.sh` builds the Bridge with
 `-tags embedui,audiblefake` (a development build; release images never carry the
 tag), builds and starts the Audible fake on `:8794` (`SHOTS_AUDIBLE_PORT`) and
 points the Bridge at it (`AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL`), with this machine's
 ffmpeg (`AUDIOSILO_BRIDGE_TOOLS_FFMPEG_PATH`: its bare `PATH` has none, and the
-backup decrypts with it). After the Accounts
-shot, the script makes an **Audiobooks** library in `.cache/audible-library`
+backup decrypts with it). The script makes an **Audiobooks** library in `.cache/audible-library`
 (three short silent books, needing **ffmpeg**, shaped like three of the fake's
 30 made-up titles; one given its title's ASIN with an admin edit), signs in to
 Audible on the Accounts tab (the fake's sign-in address is followed here and its
@@ -605,8 +653,14 @@ console's API (book 4 of the series the library has book 1 of: the fake licenses
 its fixture M4B, the Bridge downloads it, decrypts it with ffmpeg, places it beside
 book 1 and has the server index it; up to 4 minutes), signs in to the console in
 the same browser and shoots the Audible accounts card, its Account settings and
-Back up everything dialogs (closed again, nothing saved or queued), the Settings >
-Audible page, and one title's Destination dialog (a folder typed, not saved). At the end it removes the account on the
+Back up everything dialogs, the Settings > Audible page, and one title's
+Destination dialog. For the titles page and batch captures, sqlite3 seeds
+a legacy destination under a hidden folder on *A Small Hour in Varrow* in
+the disposable server database. This follows the server's
+`TestAudibleBackupAllSkipsInvalidDestination` fixture. For the skipped-count
+capture, the script confirms the batch after the other captures and clips the
+console's reply showing the queued count and the one skipped title.
+At the end it removes the account on the
 Bridge (which deregisters the fake's device and deletes it on the server), turns
 the module off and deletes the library. The seeded library is never touched.
 

@@ -22,7 +22,9 @@ The Bridge files what it shares as **issues** on the community database's
 repositories, under **your** GitHub account, through a GitHub app called
 **AudioSilo Contributions**. A free GitHub account is fine.
 
-![The Bridge's Accounts tab: the GitHub card and the Agent card](/img/screenshots/bridge/accounts.png)
+![The Bridge's Accounts tab with GitHub sign-in and the controls for a saved Endpoint API key](/img/screenshots/bridge/accounts.png)
+
+Here the agent uses an endpoint. You can replace or remove its saved API key on this tab.
 
 1. On the Accounts tab, press **Sign in to GitHub**. The card shows a short code
    and an address on github.com.

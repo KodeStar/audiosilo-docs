@@ -2,8 +2,9 @@
 // User Guide: its sign-in, the Status tab before and after pairing, the Libraries tab
 // and the Accounts tab.
 //
-// run.sh starts a real Bridge (the BRIDGE checkout, built with its page embedded) on a
-// fresh data dir after the other captures and hands this script its one-time password.
+// run.sh starts each Bridge (the BRIDGE checkout with its page embedded) on fresh data
+// and passes the selected files and the one-time password to this script. Accounts and
+// Settings > Agent use their own Bridge configured for the endpoint backend.
 // The Bridge is paired with the demo server for real: a pairing code from the admin API
 // (POST /admin/bridge/pair; it replaces the stand-in capture-admin.mjs paired, which is
 // no longer needed by then), typed into the page's Pair form. Its first heartbeat lists
@@ -20,6 +21,7 @@
 // (the Audible fake, for the Audible shots).
 import {chromium} from 'playwright';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 import {mkdir, rm} from 'node:fs/promises';
 import {CACHE, DESKTOP_CONTEXT, apiClient, around, fitViewportToPage, fitted, pathQuery, shoot, silence, sleep, step, submitSignIn, waitForScans, wanted} from './lib.mjs';
 
@@ -34,6 +36,7 @@ const SHOTS = {
   paired: 'bridge/status-paired.png',
   libraries: 'bridge/libraries.png',
   accounts: 'bridge/accounts.png',
+  settingsAgent: 'bridge/settings-agent.png',
 };
 const AUDIBLE_SHOTS = {
   signIn: 'bridge/audible-sign-in.png',
@@ -42,6 +45,7 @@ const AUDIBLE_SHOTS = {
   titles: 'admin/audible-titles.png',
   settings: 'admin/audible-backup-settings.png',
   backupAll: 'admin/audible-backup-all.png',
+  backupSkipped: 'admin/audible-backup-all-skipped.png',
   destination: 'admin/audible-destination.png',
 };
 if (!wanted(...Object.values(SHOTS), ...Object.values(AUDIBLE_SHOTS))) process.exit(0);
@@ -208,12 +212,23 @@ async function audibleShots() {
 
   if (!wanted(...Object.values(AUDIBLE_SHOTS).filter((f) => f.startsWith('admin/')))) return;
 
+  if (wanted(AUDIBLE_SHOTS.titles, AUDIBLE_SHOTS.backupAll, AUDIBLE_SHOTS.backupSkipped)) {
+    // The current PATCH rejects this old destination on entry. Seed it in the
+    // disposable DB as in the server's TestAudibleBackupAllSkipsInvalidDestination.
+    if (!audible.account || !/^[a-zA-Z0-9_-]+$/.test(audible.account)) throw new Error('no fixture Audible account');
+    const changes = execFileSync('sqlite3', [path.join(CACHE, 'data', 'audiosilo.db')], {
+      input: `.timeout 15000\nUPDATE audible_titles SET dest_path = '.backups/A Small Hour in Varrow.m4b'
+        WHERE asin = 'B0FAKE0007' AND account = '${audible.account}'; SELECT changes();\n`, encoding: 'utf8',
+    });
+    if (changes.trim() !== '1') throw new Error('the old destination fixture needs one indexed Audible title');
+  }
+
   // Phase 4b: one title backed up for real (the fake's fixture M4B: licensed, downloaded,
   // decrypted by ffmpeg, placed beside the series' book the library has, rescanned) and
-  // one marked Not this book, so the titles page shows both. Only the card and titles
-  // shots show them, so the slow backup runs only for those.
+  // one marked Not this book. Both affect the batch estimate and the queued count,
+  // so the two confirmations use the same seed as the titles page.
   await step('audible: a backup', async () => {
-    if (!wanted(AUDIBLE_SHOTS.card, AUDIBLE_SHOTS.titles)) return;
+    if (!wanted(AUDIBLE_SHOTS.card, AUDIBLE_SHOTS.titles, AUDIBLE_SHOTS.backupAll, AUDIBLE_SHOTS.backupSkipped)) return;
     const titlePath = (asin) => `/admin/audible/titles/${audible.account}/${asin}`;
     await server(admin, 'PATCH', titlePath(AUDIBLE_REJECT), {rejected: true});
     await untilKind('POST', `${titlePath(AUDIBLE_BACKUP)}/backup`);
@@ -264,6 +279,9 @@ async function audibleShots() {
     await step('audible: console titles', async () => {
       await consolePage.goto(`${ORIGIN}/admin/server?topic=audible`, {waitUntil: 'networkidle', timeout: 45000});
       await consolePage.getByRole('list', {name: 'Audible titles'}).waitFor({timeout: 15000});
+      if (wanted(AUDIBLE_SHOTS.titles)) {
+        await consolePage.getByText(/Your destination is no longer valid/).first().waitFor();
+      }
       await tallShoot(consolePage, AUDIBLE_SHOTS.titles, {settle: 1000, max: 2600, fitSettle: 800});
     });
     await step('audible: destination', async () => {
@@ -272,6 +290,18 @@ async function audibleShots() {
       const field = consolePage.getByRole('dialog').getByLabel('Folders and file name');
       await field.fill(`Wen Liang/Mapmakers/MM03 - ${AUDIBLE_DEST_TITLE}`);
       await dialogShoot(AUDIBLE_SHOTS.destination);
+    });
+    await step('audible: batch with one invalid destination', async () => {
+      if (!wanted(AUDIBLE_SHOTS.backupSkipped)) return;
+      // Queue the batch last. The other screenshots show the account before it.
+      await consolePage.goto(`${ORIGIN}/admin/server?topic=bridge`, {waitUntil: 'networkidle'});
+      await card.getByRole('button', {name: 'Back up everything...', exact: true}).click();
+      await consolePage.getByRole('dialog').getByRole('button', {name: /^Back up \d+ books?$/}).click();
+      const notice = consolePage.locator('[data-slot="toast"]').filter({hasText: '1 title skipped'});
+      await notice.waitFor({timeout: 10000});
+      await consolePage.mouse.move(0, 0);
+      await sleep(350);
+      await shoot(consolePage, AUDIBLE_SHOTS.backupSkipped, {clip: around([await notice.boundingBox()], 10)});
     });
   } finally {
     await consolePage.close().catch(() => {});
@@ -353,16 +383,60 @@ try {
       await tallShoot(page, SHOTS.paired);
     });
     await step('bridge: libraries', async () => {
+      if (!wanted(SHOTS.libraries)) return;
       await tab(page, 'Libraries');
-      await page.getByRole('button', {name: 'Check now'}).waitFor({timeout: 15000});
-      await sleep(1500);
-      await tallShoot(page, SHOTS.libraries);
+      const check = page.getByRole('button', {name: 'Check now'});
+      await check.waitFor({timeout: 15000});
+      const librariesURL = `${BASE}api/libraries`;
+      const checked = new Date().toISOString();
+      // Reproduce the slow mount response from LibrariesTab.test.tsx on the
+      // next poll after Check now. The host's disposable library is on local disk.
+      await page.route(librariesURL, async (route) => {
+        const response = await route.fetch();
+        const data = await response.json();
+        const lib = data.libraries.at(-1);
+        lib.checked_at = checked;
+        lib.slow_at = checked;
+        lib.unanswered_at = null;
+        lib.unknown = true;
+        const podcast = lib.library.kind === 'podcasts';
+        lib.status = {library_id: lib.library.id, mount_path: lib.mount_path,
+          checked_path: podcast ? '.audiosilo/library.json' : '', mapped: false, writable: false,
+          error: (podcast ? 'the library folder' : `the folder ${lib.mount_path}`) + ' is not answering (no answer within 5s)'};
+        await route.fulfill({response, body: shown(JSON.stringify(data))});
+      });
+      try {
+        await check.click();
+        await page.getByText('Waiting for the folder', {exact: true}).waitFor({timeout: 20000});
+        await page.getByText('Last check', {exact: true}).first().waitFor();
+        await tallShoot(page, SHOTS.libraries);
+      } finally {
+        await page.unroute(librariesURL);
+      }
     });
+    if (wanted(SHOTS.accounts, SHOTS.settingsAgent)) {
+      await step('bridge: endpoint credential', async () => {
+        const settings = await bridgeApi(btoken, 'GET', '/settings/agent');
+        if (settings.service?.state !== 'not_running') throw new Error('expected a stopped endpoint agent service');
+        await bridgeApi(btoken, 'PUT', '/accounts/agent', {
+          kind: 'endpoint_api_key', value: 'documentation-only', endpoint: settings.openai_compatible.base_url,
+        });
+      });
+    }
     await step('bridge: accounts', async () => {
+      if (!wanted(SHOTS.accounts)) return;
       await tab(page, 'Accounts');
-      await page.getByText('GitHub', {exact: true}).first().waitFor({timeout: 15000});
-      await sleep(1500);
+      await page.getByRole('region', {name: 'Agent'}).getByRole('button', {name: 'Replace', exact: true}).waitFor();
+      await page.getByRole('region', {name: 'Audible'}).getByRole('button', {name: 'Sign in to Audible'}).waitFor();
       await tallShoot(page, SHOTS.accounts);
+    });
+    await step('bridge: endpoint service', async () => {
+      if (!wanted(SHOTS.settingsAgent)) return;
+      await tab(page, 'Settings');
+      const card = page.getByRole('region', {name: 'Agent', exact: true});
+      await card.getByText(/agent-endpoint.*isn't running/i).waitFor();
+      await card.getByRole('button', {name: 'Remove', exact: true}).waitFor();
+      await clipShoot(page, card, SHOTS.settingsAgent);
     });
     if (wanted(...Object.values(AUDIBLE_SHOTS))) {
       if (AUDIBLE_FAKE) await audibleShots();

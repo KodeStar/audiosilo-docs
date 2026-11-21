@@ -218,15 +218,14 @@ back.
 **Edit chapters** on the Chapters card lets you move, add, delete and rename
 chapters. Your list is saved on the server. The audio files are not changed.
 
-![The chapter editor with its player and a new chapter after chapter 1](/img/screenshots/admin/book-chapters-edit.png)
-
 Each row is a chapter's start time and title. Times count from the start of the
 book, like `1:02:03` or `12:34.5`. A row with a lock starts one of the book's
 files. You can rename it, but its time is fixed and it can't be deleted, so no
 chapter runs from one file into the next.
 
-When the editor's player is waiting for the server to convert the audio, it keeps
-trying. **Stop trying again** ends the retries.
+![The chapter editor waiting to play Folk Tales, with the pause button and a new chapter named The woodcutter](/img/screenshots/admin/book-chapters-edit.png)
+
+While the editor waits for the server to convert the audio, the pause button offers **Stop trying again**.
 
 To edit the chapters:
 
@@ -301,11 +300,22 @@ tags alone isn't enough. The book must be
 A book that is one audio file with no chapters can get chapters from your
 [Bridge](bridge.md), which finds them in the narration (see
 [Detect chapters](chapter-detection.md)).
+
+![The Chapters card for A Long Lecture with Detect chapters available](/img/screenshots/admin/book-detect-chapters.png)
+
+Choose **Detect chapters** to review the job before you queue it.
+
+![The Chapters card while the Bridge finds chapters in the narration](/img/screenshots/admin/book-chapters-working.png)
+
+You can follow the job here or cancel it while it runs.
+
 The Chapters card then says **Found in the narration on this server.** Click
 **Use the file's chapters** to turn them off, and **Use automatic** to bring
 them back.
 
 ![The Chapters card with chapters found in the narration](/img/screenshots/admin/book-chapters-generated.png)
+
+The finished list gives each chapter a start time and a title.
 
 ### Characters and recaps
 

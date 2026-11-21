@@ -89,7 +89,6 @@ AUDIBLE_PORT="${SHOTS_AUDIBLE_PORT:-8794}"
 OIDC_PORT="${SHOTS_OIDC_PORT:-8796}"
 OIDC_IDP_PORT="${SHOTS_OIDC_IDP_PORT:-8797}"
 OIDC_DATA="$CACHE/oidc-data"
-BRIDGE_DATA="$CACHE/bridge-data"
 MIRROR_DATA="$CACHE/mirror-data"
 
 mkdir -p "$CACHE"
@@ -441,7 +440,7 @@ AS_BASE="http://127.0.0.1:$PORT/web/" ADMIN_PASSWORD="$ADMIN_PASSWORD" PODCASTS_
 
 if [ "${SKIP_ADMIN:-0}" != "1" ]; then
   echo "==> capturing admin console + public pages"
-  AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+  AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" SERVER_BIN="$SERVER_BIN" \
     MIRROR_ORIGIN="${MIRROR_PASSWORD:+http://127.0.0.1:$MIRROR_PORT}" \
     MIRROR_PASSWORD="${MIRROR_PASSWORD:-}" WEB_DIR="$FRONTEND/dist" node capture-admin.mjs
 
@@ -490,6 +489,58 @@ OIDC_CONFIG
   OIDC_PID=""
 fi
 
+# Select the requested files before overriding SHOTS_ONLY for this process.
+# Each Bridge starts with an empty data directory on the same port.
+capture_bridge_pass() { # instance name and optional Audible fake URL
+  local bridge_name="$1" bridge_fake_url="$2" bridge_files bridge_ffmpeg bridge_password
+  local bridge_data="$CACHE/$1-data" bridge_home="$CACHE/$1-home" bridge_log="$CACHE/$1.log"
+  bridge_files="$(BRIDGE_PASS="$bridge_name" node --input-type=module -e '
+    import {SHOTS} from "./manifest.mjs";
+    import {wanted} from "./lib.mjs";
+    const endpoint = process.env.BRIDGE_PASS === "bridge-endpoint";
+    const files = SHOTS.filter(s => s.capture === "bridge" && Boolean(s.endpoint) === endpoint && wanted(s.file));
+    console.log(files.map(s => s.file).join(","));
+  ')"
+  [ -n "$bridge_files" ] || return 0
+  rm -rf "$bridge_data" "$bridge_home" && mkdir -p "$bridge_data" "$bridge_home"
+  if [ "$bridge_name" = bridge-endpoint ]; then
+    # Settings reports the running backend. Start with the endpoint selected
+    # and its own empty staging directory, as when its service is stopped.
+    mkdir -p "$bridge_data/endpoint-staging"
+    cat > "$bridge_data/config.yaml" <<YAML
+agent:
+  backend: openai-compatible
+  endpoint_staging_dir: "$bridge_data/endpoint-staging"
+  openai_compatible:
+    base_url: "http://models.home.arpa:8080/v1"
+    model: "qwen3:32b"
+YAML
+  fi
+  # As in a fresh container: none of this machine's tools on PATH (no gh sign-in,
+  # no local speech recognition) and a HOME of its own. The Audible shots back a
+  # title up, which decrypts with ffmpeg (every image has one): this machine's.
+  bridge_ffmpeg=""
+  [ -n "$bridge_fake_url" ] && bridge_ffmpeg="$(command -v ffmpeg || true)"
+  env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME="$bridge_home" \
+    AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL="$bridge_fake_url" \
+    AUDIOSILO_BRIDGE_TOOLS_FFMPEG_PATH="$bridge_ffmpeg" \
+    "$CACHE/audiosilo-bridge" serve --data "$bridge_data" --listen "127.0.0.1:$BRIDGE_PORT" \
+    > "$bridge_log" 2>&1 &
+  BRIDGE_PID=$!
+  wait_healthy "http://127.0.0.1:$BRIDGE_PORT/api/health" "$bridge_log" "Bridge"
+  bridge_password="$(grep "The password for the Bridge's page is:" "$bridge_log" | awk -F': ' '{print $2}' | tr -d ' ' || true)"
+  if [ -z "$bridge_password" ]; then
+    echo "  ! no one-time password in $bridge_log: the Bridge shots keep their previous images"
+  else
+    SHOTS_ONLY="$bridge_files" BRIDGE_BASE="http://127.0.0.1:$BRIDGE_PORT/" BRIDGE_PASSWORD="$bridge_password" \
+      AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+      AUDIBLE_FAKE_URL="$bridge_fake_url" node capture-bridge.mjs
+  fi
+  kill "$BRIDGE_PID" 2>/dev/null || true
+  wait "$BRIDGE_PID" 2>/dev/null || true
+  BRIDGE_PID=""
+}
+
 # The Bridge's own page: a real Bridge, built with its page embedded, on a fresh
 # data dir, paired with the demo server by capture-bridge.mjs (see its header).
 if [ "${SKIP_BRIDGE:-0}" != "1" ] && manifest_wanted capture bridge; then
@@ -519,29 +570,8 @@ if [ "${SKIP_BRIDGE:-0}" != "1" ] && manifest_wanted capture bridge; then
         && go build -tags "$BRIDGE_TAGS" -ldflags "-X main.version=${BRIDGE_VERSION:-dev}" \
           -o "$CACHE/audiosilo-bridge" ./cmd/audiosilo-bridge) > "$CACHE/bridge-build.log" 2>&1 \
       || { echo "  ! the Bridge build failed (see $CACHE/bridge-build.log)"; exit 1; }
-    rm -rf "$BRIDGE_DATA" "$CACHE/bridge-home" && mkdir -p "$BRIDGE_DATA" "$CACHE/bridge-home"
-    # As in a fresh container: none of this machine's tools on PATH (no gh sign-in,
-    # no local speech recognition) and a HOME of its own. The Audible shots back a
-    # title up, which decrypts with ffmpeg (every image has one): this machine's.
-    BRIDGE_FFMPEG=""
-    [ -n "$AUDIBLE_FAKE_URL" ] && BRIDGE_FFMPEG="$(command -v ffmpeg || true)"
-    env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME="$CACHE/bridge-home" \
-      AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL="$AUDIBLE_FAKE_URL" \
-      AUDIOSILO_BRIDGE_TOOLS_FFMPEG_PATH="$BRIDGE_FFMPEG" \
-      "$CACHE/audiosilo-bridge" serve --data "$BRIDGE_DATA" --listen "127.0.0.1:$BRIDGE_PORT" \
-      > "$CACHE/bridge.log" 2>&1 &
-    BRIDGE_PID=$!
-    wait_healthy "http://127.0.0.1:$BRIDGE_PORT/api/health" "$CACHE/bridge.log" "Bridge"
-    BRIDGE_PASSWORD="$(grep "The password for the Bridge's page is:" "$CACHE/bridge.log" | awk -F': ' '{print $2}' | tr -d ' ' || true)"
-    if [ -z "$BRIDGE_PASSWORD" ]; then
-      echo "  ! no one-time password in $CACHE/bridge.log: the Bridge shots keep their previous images"
-    else
-      BRIDGE_BASE="http://127.0.0.1:$BRIDGE_PORT/" BRIDGE_PASSWORD="$BRIDGE_PASSWORD" \
-        AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
-        AUDIBLE_FAKE_URL="$AUDIBLE_FAKE_URL" node capture-bridge.mjs
-    fi
-    kill "$BRIDGE_PID" 2>/dev/null || true
-    BRIDGE_PID=""
+    capture_bridge_pass bridge "$AUDIBLE_FAKE_URL"
+    capture_bridge_pass bridge-endpoint ""
     if [ -n "${AUDIBLE_PID:-}" ]; then kill "$AUDIBLE_PID" 2>/dev/null || true; AUDIBLE_PID=""; fi
   fi
 fi

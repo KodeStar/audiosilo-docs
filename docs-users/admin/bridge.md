@@ -46,6 +46,8 @@ code.
 
 ![Server > Settings > Bridge with a Bridge connected](/img/screenshots/admin/settings-bridge-paired.png)
 
+The paired Bridge shows which GitHub account it uses and which libraries it can write to.
+
 ## The setup card
 
 The **Get set up** card shows the Bridge's setup checklist, the same as on its own
@@ -54,7 +56,9 @@ Bridge**, which opens the right tab of the Bridge's page. When speech recognitio
 waits for a [worker](../getting-started/running-a-worker.md) that isn't
 connected, it opens the **Workers** tab.
 
-![The Setup card on Server > Settings > Bridge](/img/screenshots/admin/bridge-setup.png)
+![The Setup card shows a GitHub sign-in waiting to refresh and the credential hand-off kept to the Bridge's group](/img/screenshots/admin/bridge-setup.png)
+
+The Bridge keeps the agent credential in its group while it retries the GitHub sign-in.
 
 | Step | Done when |
 |---|---|
@@ -114,8 +118,9 @@ When a library isn't ready, the line under it says why. Usually:
   to the owner of your library folders.
 
 The Bridge checks its libraries every 10 minutes. **Check now** on its own page
-checks them at once. **Last check** on the Bridge's **Libraries** tab shows when
-a folder was last verified.
+checks them at once. On the Bridge's **Libraries** tab, **Checked** shows when the
+displayed result was recorded. If a check got no answer from the folder or the
+server, **Last check** explains whether writes are waiting.
 
 ## Audible accounts
 
@@ -146,6 +151,10 @@ an episode they are about to play, says **High priority** and goes first. When a
 job is done, it says what it made.
 A failed or cancelled job keeps its **Last step**, so you can see where it
 stopped.
+
+![A cancelled Verify job with Comparing the files as its last step](/img/screenshots/admin/bridge-jobs-cancelled.png)
+
+This Verify job stopped while the Bridge was comparing the files.
 
 A job that **Needs attention** says why, with **Open in the Bridge**. There,
 **Retry** sends it on once you've fixed the cause. See

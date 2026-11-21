@@ -49,7 +49,9 @@ If the invite has expired or is used up, the page says so. Ask for a new one. Th
 
 **In the web player** there is nothing to type. It already knows the server it came from, so tap **Sign in**. If your server has [single sign-on](../admin/single-sign-on.md), the next step also offers **Sign in with** and its name. After it, the web player goes back to where you started, such as **Add someone** or the book you were opening.
 
-![The web player's connect screen: the server it belongs to, with Sign in and Try the demo](/img/screenshots/web-player/connect.png)
+![The web player’s Connect screen with Sign in, the App Store and Google Play buttons, and the Android APK link](/img/screenshots/web-player/connect.png)
+
+You can sign in here or use **Get the AudioSilo app** to install the player on your phone.
 
 **In the iOS and Android apps**, without a QR code:
 
@@ -57,6 +59,10 @@ If the invite has expired or is used up, the page says so. Ask for a new one. Th
 2. Check the server the app found and tap **Sign in**.
 3. Choose **Invite code** or **Username and password**.
 4. Enter your code, or your username and password, and tap **Sign in**.
+
+![A typed HTTPS server address with Proxy headers expanded, showing the saved header set for that address](/img/screenshots/web-player/connect-headers.png)
+
+When you enter a server address, **Proxy headers** shows any headers this device has kept for that address.
 
 If you run the server, your admin username and password work here too. The sign-in step also has **No password? Scan a QR code instead**, which opens the scanner.
 

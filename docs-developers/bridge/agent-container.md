@@ -587,6 +587,10 @@ variable name. The runner checks host temporary mounts one folder down and clean
 created in its own run folders. To start a stopped service, use
 `docker compose --profile endpoint up -d agent-endpoint`.
 
+![Settings > Agent with the endpoint service stopped, its start command and its saved API key controls](/img/screenshots/bridge/settings-agent.png)
+
+The service message includes the Compose command to start the runner. The key controls apply to the saved endpoint address.
+
 The endpoint's model is whoever answers at that address, and codex runs its
 commands as the runner's uid with its sandbox off. In the agent container such a
 run could read the subscriptions' credentials, plant a `/agent/codex/config.toml`

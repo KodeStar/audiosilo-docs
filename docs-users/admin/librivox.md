@@ -58,7 +58,9 @@ books library.
 3. Type a title or an author, press **Search** and select a result.
 4. Press **Add to** *the library* on the recording you want.
 
-![Find on LibriVox in the web player](/img/screenshots/web-player/find-librivox.png)
+![Two recordings of The Wind in the Willows, one downloading with Cancel and one with Add to Books](/img/screenshots/web-player/find-librivox.png)
+
+Reopening the work shows the active download. When the server refuses to show a recording’s earlier job, its **Add** button returns.
 
 The book goes to the library you opened the page from. With more than one books
 library, you can pick another under **Add to**.

@@ -68,7 +68,9 @@ Bridge's [Accounts tab](../getting-started/bridge-accounts.md#the-accounts-state
 
 ## The titles page
 
-![Server > Settings > Audible: the titles and whether each is on this server](/img/screenshots/admin/audible-titles.png)
+![Audible titles with their backup states and a warning for the saved destination of A Small Hour in Varrow](/img/screenshots/admin/audible-titles.png)
+
+Choose **Destination...** on *A Small Hour in Varrow* to replace its invalid backup folder.
 
 **Server > Settings > Audible** lists every title your accounts own or have
 preordered. Each row says whether the title is **On this server** (with a link to
@@ -185,6 +187,8 @@ books** to queue them.
 
 ![Back up everything's confirmation](/img/screenshots/admin/audible-backup-all.png)
 
+Check the book count and estimated size before you queue the backups.
+
 It skips titles marked **Not this book**, contested titles, preorders and titles
 already backed up. It retries failed and cancelled backups. A big library can take
 days.
@@ -192,6 +196,10 @@ days.
 If a saved destination is no longer valid, the confirmation after queuing tells
 you how many titles were skipped. Change their destinations and try again. An
 invalid account template needs fixing before the batch can start.
+
+![Backup confirmation showing one title skipped because its destination is no longer valid](/img/screenshots/admin/audible-backup-all-skipped.png)
+
+The other books have been queued. Choose a new destination for the skipped title before you try again.
 
 ## Backing up by itself
 

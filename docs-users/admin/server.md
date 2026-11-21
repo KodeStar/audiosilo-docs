@@ -130,7 +130,9 @@ servers leave it empty.
 
 ### Community metadata
 
-![Server settings, Community metadata](/img/screenshots/admin/settings-metadata.png)
+![Community metadata settings showing that the server will try the report again in about a week](/img/screenshots/admin/settings-metadata.png)
+
+When the service answers but does not accept reports, the server waits about a week before trying again.
 
 **Look up community metadata** turns on extra book details from the free
 community database at [AudioSilo Meta](https://meta.audiosilo.app). Books
@@ -207,7 +209,7 @@ Good to know:
 - A server in [demo mode](#demo-mode) never sends a report.
 - An ASIN isn't sent again for a month.
 
-A line under the switch shows the last report and the next scheduled check. Switching it on runs a check straight away, unless one ran in the last day or the service asked for a quiet week. A report that stopped part way says how many ASINs it sent. The server
+A line under the switch shows the last report and, after a refusal, when the server will try again. Switching it on runs a check straight away, unless one ran in the last day or the service asked for a quiet week. A report that stopped part way says how many ASINs it sent. The server
 tries the rest again the next day.
 
 #### Keeping a local copy
