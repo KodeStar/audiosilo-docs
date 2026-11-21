@@ -275,7 +275,9 @@ container healthchecks).
 | `503` | `{"error":"database unavailable"}` once startup has completed |
 | `503` | During startup the JSON includes `status: "starting"`, `code: "server_starting"` and `starting_for_seconds`. Retry after 5 seconds. |
 
-The health routes are exempt from rate limiting. During startup, a browser requesting HTML gets a page that reloads itself.
+The health routes are exempt from rate limiting. The startup answer is not the health routes' own:
+until the database is open, every request to the server gets it (`server.StartGate`). During
+startup, a browser requesting HTML gets a page that reloads itself.
 
 ## Authentication & pairing
 
@@ -5985,7 +5987,7 @@ with a specific message on a validation failure: `username_required` (an empty
 
 ### `GET /api/v1/admin/users/{id}`
 
-The top-level `calendar_link` gives `active` and the creation time `created_at` when there is a link.
+The top-level `calendar_link` is always present: `active`, and the creation time `created_at` only when there is a link (`{ "active": false }` without one).
 
 One account plus everything the console needs to manage it:
 
@@ -10099,7 +10101,7 @@ effect. Lists are never `null`.
 | `metadata.upcoming_window_days` | read-only (2.7.0): how many days after its release a book still counts as new, the value the running server read at start (config `upcoming.window_days`, default `90`). Always present. The console's Series cards mark **New** by it. Sending it in a `PATCH` is `400 unknown_setting` |
 | `metadata.upcoming_status` | read-only (2.6.0): how the job's runs went, absent without a metadata service. `last_run_at`, `last_success_at` (both absent before the first run; equal when the last run worked), `last_error` (the last failed run's error, cleared by a success), `next_run_at`, `series` (local series matched to a community series) and `items` (what they lack in all). The console's Settings > Metadata words it |
 | `metadata.report_unknown` | the opt-in [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)'s switch (2.6.0; config `metadata.report_unknown`, default `false`). From 2.7.0 absent, with `report_status`, without a metadata service and on a demo server, so the console shows no switch there. Applies at once: switched on (with metadata on) it runs now unless a run was made in the last 23 hours, the service is in its quiet week after `not_offered`, or (mirror mode) the local copy isn't ready yet; switched off it stops a run in flight |
-| `metadata.report_status` | read-only (2.6.0): the report’s last run and its next scheduled check in `next_run_at` when set. Switching the report on schedules it immediately. The status is absent without a metadata service and on a demo server. `state` is `never` (no run yet), `ok` (the run worked; `last_sent` ASINs were accepted, `0` = nothing new to send), `not_offered` (the `base_url` is plain `http` off this machine, so nothing is sent; or the service took no reports, and it is left alone for 7 days) or `failed` (a lookup failed, or the service failed or refused a report; tried the next day, and ASINs in reports it accepted before that still count in `last_sent`); `last_run_at` (absent before the first run) and `last_sent`. The console's Settings > Metadata words it |
+| `metadata.report_status` | read-only (2.6.0): the report’s last run and its next scheduled check in `next_run_at` when set. Switching the report on sets it to now when a run is due then (see `metadata.report_unknown` for when it isn't). The status is absent without a metadata service and on a demo server. `state` is `never` (no run yet), `ok` (the run worked; `last_sent` ASINs were accepted, `0` = nothing new to send), `not_offered` (the `base_url` is plain `http` off this machine, so nothing is sent; or the service took no reports, and it is left alone for 7 days) or `failed` (a lookup failed, or the service failed or refused a report; tried the next day, and ASINs in reports it accepted before that still count in `last_sent`); `last_run_at` (absent before the first run) and `last_sent`. The console's Settings > Metadata words it |
 | `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |
 | `demo.max_users` | `null` = the default cap (`max_users_default`); `0` = no limit |
 | `demo.idle_ttl` | `""` = 24h |

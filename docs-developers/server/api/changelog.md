@@ -76,7 +76,9 @@ Changes to existing routes:
 
 - `POST /auth/password` returns 200 with `signed_out`, the number of the caller’s other sessions
   ended. Clients supporting older servers must also accept their empty 204.
-- While the server starts, both health routes return 503 `server_starting`, `starting_for_seconds` and `Retry-After: 5`. Health probes bypass rate limiting.
+- While the server starts, every request, both health routes and `GET /server` included, returns
+  503 `server_starting`, `starting_for_seconds` and `Retry-After: 5`. Health probes bypass rate
+  limiting.
 - A podcast fetch status or retry returns 409 `show_unreadable` when the server cannot read the
   show folder. Streaming that episode returns 404 `episode_not_found` without scheduling a
   download. A temporary share fault on a file open or folder listing returns 503
