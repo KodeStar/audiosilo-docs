@@ -320,7 +320,11 @@ The result is counts only, never a title or a credential: `account`, `poll_id`,
 `enriched`, `enrich_failed`, `enrich_deferred` and `overlong` (both omitted when 0), `books`.
 `matched` counts the titles that kept a match.
 A poll that finished records `last_poll_at`, the counts and clears a refusal on the
-Bridge's row; one stopped, cancelled or lost records nothing.
+Bridge's row; one stopped, cancelled or lost records nothing. A failed poll records
+its reason as the account's `last_error` (`Manager.Failed`), except a server `429`
+that outlasts the [retry budget](pairing-and-jobs.md#when-the-server-returns-429)
+while reading the library's books or reporting the titles (`serverFailure`): that
+fails the job and leaves the account's row as it was.
 
 ### Matching rules
 

@@ -992,7 +992,9 @@ Deletion journals and renames only owned audio and CHAP files into
 `.audiosilo-trash/podcasts/<episode_id>-g<generation>-<nonce>/`. Then it saves
 `Fetch.deleted_at` without losing the other Fetch fields, removes the barrier,
 rescans the show, and unlinks the trash. Entries, artwork and listener state
-remain.
+remain. A rescan the server still rate limits (`askRescan`, [Polling](#polling-and-outcomes))
+leaves the indexing to the show's next poll, and the run's later deletions skip
+their rescans.
 
 - When Windows refuses to rename an open file, the Bridge skips that candidate.
 - Recovery aborts a delete journal whose audio never moved. Once the audio moved,

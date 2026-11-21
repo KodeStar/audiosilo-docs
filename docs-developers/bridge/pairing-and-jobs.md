@@ -492,8 +492,10 @@ ended) by the time anyone looks.
 
 ### When the server returns 429
 
-The server's [rate limiter](../server/auth-and-security.md#rate-limiting) rejects
-the request before the route runs, so the Bridge can send it again.
+The server answers a 429 before the request has any effect: its
+[rate limiter](../server/auth-and-security.md#rate-limiting) before the route
+runs, and pairing's wrong-code lockout before the code is read. So the Bridge
+can send it again.
 `link.Backoff.Do` waits the `Retry-After`, read as seconds or an HTTP date
 (`link.APIError.RetryAfter`; `RetryAfterSet` says the header was valid). A
 `Retry-After: 0`, or a date in the past, asks again at once and still counts as
@@ -515,8 +517,9 @@ The budget depends on the call:
 - **Progress reports and keepalives** make one attempt and leave the wait to the
   reporting loop ([above](#claims-and-leases)).
 - **A call with its own `link.Backoff`** gives up sooner and leaves the work to a
-  later run: Audible's [enrichment PUTs](audible.md#enrichment-pacing) and the
-  podcast [rescans](podcasts.md#polling-and-outcomes).
+  later run: Audible's [enrichment PUTs](audible.md#enrichment-pacing), and the
+  podcast episode and poll [rescans](podcasts.md#polling-and-outcomes). A
+  subscribe's show rescan keeps the job's budget.
 
 If a required call still fails with a 429, the runner checks
 `jobs.ServerQueuedHandler`. The podcast, Audible and LibriVox handlers return
@@ -531,7 +534,8 @@ and asks the admin to cancel and queue the job again when the server is ready.
 once (nobody is working on it). For a `claimed` or `running` job it sets
 `cancel_requested`: the Bridge reads it in the answer to its next report (within
 about 32 seconds at a job with nothing new to report: the keepalive plus one
-2-second reporter tick), stops the job and reports it `cancelled`. The console
+2-second reporter tick, or up to a minute after a report the server answered
+`429`), stops the job and reports it `cancelled`. The console
 shows the job as cancelling meanwhile. If the Bridge never reports again, the
 lease runs out and the job is cancelled then. Cancelling an ended job is
 `409 finished`. When the same request arrives while the old job is stopping, the server records
