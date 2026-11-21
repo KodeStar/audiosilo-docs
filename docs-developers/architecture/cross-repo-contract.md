@@ -1362,6 +1362,11 @@ heartbeat, `http(s)` only) for the browser to open, and nothing more.
   and retries every 5 minutes. A demoted admin's Bridge comes back when they are
   re-promoted. An unpair or a new pairing revoked it for good.
 - A failure to check the token is a `503`, which the Bridge retries.
+- From 2.7.0 a paired Bridge token has its own rate budget, 2,000 requests/s with a
+  burst of 20,000, so the players behind its address keep theirs. A `429` from it
+  carries `Retry-After`. The public pairing exchange, and a call whose token is
+  missing or refused, still pay the address's budget
+  ([Rate limiting](../server/auth-and-security.md#rate-limiting)).
 
 ### The routes the Bridge calls
 
