@@ -394,7 +394,9 @@ try {
         const response = await route.fetch();
         const data = await response.json();
         const lib = data.libraries.at(-1);
-        lib.checked_at = checked;
+        // The shown result stands from the check before the slow one, as in the
+        // test fixture: Checked keeps its earlier time, Last check the slow one.
+        lib.checked_at = new Date(Date.parse(checked) - 10 * 60_000).toISOString();
         lib.slow_at = checked;
         lib.unanswered_at = null;
         lib.unknown = true;

@@ -152,8 +152,8 @@ The Inbox is added after the main Books screens so they keep showing only the se
 for the metadata and large-library shots. Its loopback metadata service answers
 the lookup for the archive's copy of **A Christmas Carol** with 404 and
 also returns 404 when the server reports that ASIN. The book has an ISBN set
-through the admin API. The fixture checks the server's seven-day quiet period
-and its next daily scheduler tick. `admin/settings-metadata.png` shows the
+through the admin API. The fixture waits for the declined report (`not_offered`)
+and the scheduler's next daily tick. `admin/settings-metadata.png` shows the
 service responding and the notice that the server tries the report again in about a week.
 
 `admin/health-unknown-asin.png` shows its entry under **ASIN not in the community
