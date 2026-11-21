@@ -453,7 +453,7 @@ only when no row was ever seen.
   since one version is one write. A late answer carrying a row already adopted
   never offers it again.
 - **The offer** (`jumpOffer`) is judged against the page on screen. When a save's
-  answer kept a row this device never saw, whose place is further than the one on screen,
+  answer kept a row this device never saw, whose place is elsewhere than the one on screen (another CFI, at least 1% of the book away, `SAME_PLACE`), ahead or behind,
   a non-blocking card says `On {device} you were at {percent}%. Jump there?` with
   Jump (`goto {cfi}`) and Stay. `device_name` is the server's; when it is empty the
   card says "On another device". The reader does not read `other_place`.

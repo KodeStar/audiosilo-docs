@@ -449,7 +449,10 @@ additional inputs.
 `fileInput` hands ffmpeg the open file. An ffmpeg with the `fd:` protocol can seek on the
 descriptor. For an older binary, `metadata.ToolInput` supplies a seekable descriptor path on Unix
 or a checked, held path on Windows. This also lets remuxes and watch renditions read M4B files
-whose index follows the audio. A probe that times out is tried again on the next request. A failed
+whose index follows the audio. A podcast episode (publisher bytes, `media.TranscodeOpened`) never
+takes that fallback: on an older ffmpeg it is read through `pipe:0`, which is not seekable, so its
+`-ss` is an output seek that decodes up to `t`, and an M4A whose index follows the audio doesn't
+demux there. A probe that times out is tried again on the next request. A failed
 probe is cached for one minute.
 
 - **`-ss` is input-side** (before `-i`) for seekable inputs. ffmpeg seeks
