@@ -1969,9 +1969,10 @@ caps are fixed.
 
 | Bucket | Mechanism | Limit | Applied to |
 |---|---|---|---|
-| `ipLimiter` | Token bucket per IP (`rateLimiter`) | `rate_limit.address`, ~50 req/s, burst 200 | Everything the two credential buckets don't take. The full list is below the table |
+| `ipLimiter` | Token bucket per IP (`rateLimiter`) | `rate_limit.address`, ~50 req/s, burst 200 | Everything the credential and Bridge buckets don't take. The full list is below the table |
 | `tokenLimiter` | Token bucket per credential (`rateLimiter`) | `rate_limit.token`, ~50,000 req/s, burst 100,000 | Authenticated API routes outside `/api/v1/auth/` (`requireAuth`, and so `requireAdmin`), once they authenticate, a book's `/ebook` included. Keyed by the credential's `tokens` row id (a session or an API key). See [Signed-in requests are limited per credential](#signed-in-requests-are-limited-per-credential) |
 | `mediaLimiter` | Token bucket per credential (`rateLimiter`) | `rate_limit.media`, ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`), once they authenticate. These are the routes `requireBookMediaAuth` and `requireMediaAuth` wrap, both `mediaAuth`. See [Signed-in requests are limited per credential](#signed-in-requests-are-limited-per-credential) |
+| `bridgeLimiter` | Token bucket per Bridge token (`rateLimiter`) | fixed, 2,000 req/s, burst 20,000 (`bridgeRate`, `bridgeBurst`) | From 2.7.0, a paired Bridge's authenticated `/api/v1/bridge/*` requests (`requireBridge`), keyed by its token row id. Sized at ten times the busiest second of a 1,000-show podcast backlog, and far under `rate_limit.token`, so a stolen Bridge token still meets a cap until an unpair revokes it. Its refusal leaves the address alone, so the players behind the Bridge's address don't pay for its pace |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem`, `POST /auth/exchange`, and the Bridge's pairing exchange `POST /bridge/pair` (one shared counter) |
 | `oidcLimiter` | Failure lockout per IP | 10 failures / 15 min | Single sign-on's `GET /auth/oidc/callback` and `POST /auth/oidc/finish` (one shared counter). A callback with no flow cookie, the provider's `?error=`, a provider that doesn't answer and a finish with no cookie charge nothing, since any page can make a visitor's browser send those. A locked-out callback redirects to `/connect#oidc=rate_limited` |
@@ -1984,8 +1985,10 @@ caps are fixed.
   redeem and demo sessions;
 - every `/api/v1/auth/*` route, whether or not it carries a token (sign-in,
   pairing, password, API keys);
-- the Bridge's `/api/v1/bridge/*`, which takes its own token kind, not
-  `requireAuth`;
+- the Bridge's public pairing exchange, `POST /api/v1/bridge/pair`, and any
+  other `/api/v1/bridge/*` request whose Bridge token is missing, refused or
+  could not be checked (it pays the address, then gets its 401 or 503). Before
+  2.7.0 every Bridge request paid here;
 - a request whose token is missing or refused;
 - a demo account's API requests. Its media stays on `mediaLimiter`.
 

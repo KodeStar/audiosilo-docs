@@ -207,8 +207,7 @@ Good to know:
 - A server in [demo mode](#demo-mode) never sends a report.
 - An ASIN isn't sent again for a month.
 
-A line under the switch says when the last report went out, and whether it
-failed. A report that stopped part way says how many ASINs it sent. The server
+A line under the switch shows the last report and the next scheduled check. Switching it on runs a check straight away, unless one ran in the last day or the service asked for a quiet week. A report that stopped part way says how many ASINs it sent. The server
 tries the rest again the next day.
 
 #### Keeping a local copy
@@ -370,7 +369,8 @@ when, with the details. It also lists what people did with their household
 members. Filter by **Area** or **Who**, or search.
 
 It records changes to accounts, invites, devices, access, progress, libraries,
-books, settings, backups and notifications. Sign-ins and listening are in
+books, settings, backups and notifications. An Audible backup action names the
+account it was for. Sign-ins and listening are in
 [Activity](activity.md), and scans in [Health > Jobs](health.md#jobs).
 
 The log never holds a password or other secret, and no IP addresses. Entries

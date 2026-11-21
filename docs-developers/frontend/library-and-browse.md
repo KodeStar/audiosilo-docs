@@ -180,9 +180,9 @@ again shows where; the body's `library_id` and `path` are not read),
 
 A `librivox.fetch` has no book path, so a row follows it by its id, not through
 `useBridgeJobs` or `useBridgeJobSurface`, which are keyed on a book. It is polled
-while open and the app is in the foreground (`librivoxJobPollInterval`: 5 s, 60 s
-while parked) and never after a `404`. A first read that failed with no answer or a
-server error is asked again every 60 s; a refusal (`400`, `401`, `403`) is not.
+while the app is visible. A visible recording polls every five seconds, an off-page watch every 30
+seconds, and a parked job every minute. Failed reads back off. A hidden browser tab pauses
+polling.
 
 **The page.** One scroller holds the search (asked on submit only), the works
 found, and the opened work's recordings under it.
@@ -208,17 +208,16 @@ found, and the opened work's recordings under it.
 
 **The fetch watcher** (`fetch-watcher.tsx`) follows a fetch past the page. Every
 open job a row follows, and an Add's job as it answers, goes to
-`watchLibrivoxFetch(cid, id)`, an in-memory list (nothing is persisted, so after a
-restart the Library's stale time covers it). `LibrivoxFetchWatcher`, a root
-listener, is the one poller: one `useLibrivoxJob(id, true, cid)` per watch,
-whatever page is open, while the app is in the foreground. A row reads the same
+`watchLibrivoxFetch(cid, id)`. The list persists under `audiosilo.librivoxWatches`. The root
+`LibrivoxFetchWatcher` restores it at launch and polls while the app is in the foreground. A row
+reads the same
 query without polling. When a job ends, the watcher asks the works again, and for
 a `done` one reads the library's lists and the connection's recently added again
 (`invalidateLibraryLists`) and asks the works once more after `DONE_RECHECK_MS`
 (the server records the book just after the job ends). It then drops the watch.
-It also drops one that is gone (`404`), refused (`400`, `401`, `403`) or whose
-connection signed out. The watcher keeps the hooks' `bridge` gate, so a lapsed
-heartbeat pauses its reads and keeps the watch.
+A missing job or a definite server refusal (400 or 403) ends the watch. A proxy refusal keeps it.
+Signing out pauses reads. Signing back in with the same connection resumes them. A signed-out
+watch expires seven days from its first watch. The Bridge capability gates reads while it is away.
 
 Strings are under `librivox.*` in all six locales, and fixtures are in
 `src/testing/librivox-fixtures.ts`.

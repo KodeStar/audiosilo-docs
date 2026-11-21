@@ -176,6 +176,8 @@ No podcasts at all? Update the app, and ask your admin whether you can see the p
 
 ### An episode download says the server couldn't get it
 
+If the server cannot read the show folder, check its permissions before retrying. If the Bridge logs that an old folder still holds a download, check both folders for a copy of the same show before moving or deleting any files.
+
 An episode that isn't on your server yet has to be fetched there before it can download. The message under the download says why your server couldn't fetch it. Tap **Retry download** on the episode's page, or **Retry** on the Downloads page, to ask again. If it says your server can't fetch episodes now, ask your admin.
 
 ### My book restarted from the beginning
@@ -211,6 +213,10 @@ The drive or share holding the book stopped answering. **Read the files again** 
 ### New books I added aren't showing up
 
 The folder view shows new files at once. Search and lists need a scan. Press **Rescan** on the library, or [scan on a schedule](./admin/libraries.md#scanning-on-a-schedule). A waiting scan shows in [Health > Jobs](./admin/health.md#jobs).
+
+Some network drives report a creation date in 1970. The server then dates the
+book by its files' modification time instead, so it is not listed as added in
+1970. Upgrading fixes books that already show that date.
 
 ### One folder shows as one giant book, or as many one-chapter books {/* #one-folder-shows-as-a-single-giant-book---or-as-lots-of-one-chapter-books */}
 

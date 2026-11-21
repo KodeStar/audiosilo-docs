@@ -93,6 +93,16 @@ its top edge in screen coordinates against the window, on both platforms:
 
 A `KeyboardAvoidingView` inside an overlay in a portal measures nothing useful.
 
+**One-tap and sleep bookmarks.** `addBookmarkOrQueue` and `queueNewBookmark` keep unsent entries
+in `audiosilo.annotationOutbox`. Each book sends its oldest entry first. A pending row appears on
+the book and can be deleted or restored with Undo. The Journal reads the server’s saved bookmarks.
+
+Each entry keeps a UUID across retries. With `bookmark_client_id`, a 200 replay and a 201 creation
+both settle it. For older servers the outbox checks existing bookmarks before retrying an
+uncertain save. A definitive POST refusal removes the entry. Repeated server errors give up only
+after ten qualifying failures over seven days. A gap over a day starts that count again. Offline
+waits, 429s and 503s do not count.
+
 **What Save sends** is decided by the pure planners, given the connection's
 `annotations` flag:
 

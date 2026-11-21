@@ -90,7 +90,7 @@ The Bridge writes the file and the server reads it as a rebuildable input to its
 show and episode index. Unknown keys are ignored. A breaking change requires a
 version bump, and the server skips and logs a version it doesn't support.
 
-- The Bridge caps the file at **24 MiB** and **20,000 episodes**.
+- The Bridge allows **24 MiB** excluding the repeated show folder name in episode paths, up to **32 MiB** on disk, and **20,000 episodes**.
 - The server reads at most **32 MiB**, and requires a regular file, never a
   symlink.
 
@@ -201,8 +201,12 @@ The Bridge assigns a show folder once, from the show's title:
 
 An empty name becomes `Podcast`, and Windows reserved names get ` (podcast)`. A
 name that clashes with any root entry, case-folded in NFC, gets ` (2)`, ` (3)`
-and so on. A change to the feed's title never renames the folder. **Do not rename
-show folders by hand.** The saved episode paths contain the folder name.
+and so on. A change to the feed's title never renames the folder. When a show folder is renamed,
+the Bridge locates it by `show_id` and rewrites the episode paths, pending journals and trash
+records under the show lock. A second copy beside the original is left alone. An original that
+lost its feed.json but still holds episode audio or a download temp also prevents adoption. The
+Bridge logs the folder that holds the files. An unreadable original does not establish a rename.
+The server carries follows, settings and episode places at its next scan.
 
 Episode paths are `<show>/<UTC YYYY-MM-DD|undated>-<10 hex>.<ext>`. On a collision
 the hash expands to 16 hex, then the Bridge adds `-2`, `-3` and so on. The hash is
@@ -377,7 +381,9 @@ The fetch branch for an absent file has one **two-second** budget. It covers the
 pin lookup, the enqueue or promotion, the status reads and the waiting. The branch:
 
 1. registers a per-path broadcast;
-2. rechecks presence;
+2. rechecks presence. A temporary storage fault returns 503 `share_not_answering` without
+   arranging another fetch. A lasting refusal on the show gives a stream 404 `episode_not_found`
+   and the fetch routes 409 `show_unreadable`;
 3. wakes on job and rescan changes;
 4. checks presence once more before returning.
 
@@ -618,7 +624,9 @@ controller keeps:
 **Exclusions.**
 
 - A device download of an episode not on its server waits outside the player's
-  download queue until the server has the file. It probes and polls on the same
+  download queue until the server has the file. A listener’s Retry sends one fetch request and
+  polls its status. If sign-in or restart interrupts that request, the device remembers that it
+  still needs to send it. It probes and polls on the same
   timing, but waits and asks again at `fetch_limit`, and asks at most three at once
   per server ([Offline](../frontend/offline.md#an-episode-not-on-its-server-yet)). Keep-ahead
   never plans an episode, and a device's copy never holds a file against the show's
@@ -1195,6 +1203,10 @@ names.
 
 ### Episode downloads and proven resume
 
+A fetch waiting on a slow mount reports **Waiting for the folder**. A busy mapping check keeps the
+last proven result within its age limit. A committed download awaiting a rate-limited rescan waits
+out the 429. A successful resume rehashes the saved partial before publication.
+
 The audio download uses a plain GET, never HEAD, with
 `Accept-Encoding: identity`, no environment proxy, and the same DNS, dial and
 redirect guard.
@@ -1210,6 +1222,9 @@ redirect guard.
   attempts, including a fallback from resume to a fresh GET. A Retry-After above
   ten seconds returns to the scheduler.
 
+Retention checks compare the server and Bridge clocks before deleting. When the clocks disagree by
+more than five minutes the Bridge logs the problem and leaves the files in place.
+
 **The ceiling.** The absolute ceiling for the download, probe and publication is
 `5 min + 3 * ceil(B / 262144) seconds + 6 seconds`. `B` is the known whole-file GET
 total, or the configured cap. A 300 MiB file gets 65 minutes 6 seconds. The
@@ -1220,6 +1235,12 @@ Waits for the mapping and the locks come before it.
 60 seconds, for a finite positive duration and a supported audio stream. The
 detected codec, MIME type and duration are recorded. Tags never replace the feed's
 metadata. The probe's inputs cannot open network or playlist resources.
+
+A partial belongs to the enclosure that supplied it. A change of query alone can resume a named
+audio file when the feed gives the same known length and the strong ETag still matches. A
+completed download requires its original enclosure. A temporary private-feed outage preserves the
+checkpoint. A source mismatch starts from byte zero. If the stale partial cannot be cleared the
+job ends `write_failed`.
 
 **Resume** needs all of these:
 
@@ -1242,17 +1263,19 @@ encoding, and exactly T bytes at the end.
 - Last-Modified, the URL and the size prove nothing on their own.
 - A fresh, unsolicited 206 is rejected.
 
-A partial the Bridge can't open or read back when it resumes is its own fault, not
-the host's. The episode starts again from zero once in that job, before any ranged
-GET is sent, and only a second such partial fails the job `write_failed`.
+If the partial is gone or has changed, the Bridge can start from zero. If a temporary read failure
+prevents verification, it keeps the partial. If a restart needs to remove a partial and cannot,
+the job fails with `write_failed` and leaves the checkpoint for cleanup.
 
 **Cleanup.** Only a resumable stop with a proven partial may keep it. A terminal
 cancellation, a lost identity, pairing or mapping, a cap or probe failure, or
 exhausted work cleans the owned partials and validators when that is safe. A
 partial the Bridge can't remove keeps its checkpoint record and validator, so a
 later clear tries it again. A new download's checkpoint never overwrites a record
-while that partial stays, so it is never orphaned.
+while that partial stays. After a day, cleanup can release a record it still cannot clear. The
+orphan sweep can then reclaim the file when it becomes accessible.
 
+Cleanup groups checkpoint records by show and skips a partial claimed by another live record.
 Recovery cleans only owned records older than 24 hours with no live job, under
 mapping checks and locks. Then it sweeps partials nothing records
 (`sweepPartials`), at most once an hour (`sweepEvery`) and after a mapping check. It

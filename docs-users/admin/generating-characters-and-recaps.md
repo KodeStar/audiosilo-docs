@@ -116,6 +116,7 @@ it on once you've fixed the cause.
 |---|---|
 | The agent isn't available | Check the agent container is running and has a credential. The job carries on by itself. |
 | The agent reached its usage limit | Nothing. It carries on once the limit resets. |
+| Waiting for the server to confirm sharing | The Bridge checks again by itself. It keeps your files while it waits. |
 | Waiting for an ASR worker | Start the [worker](../getting-started/running-a-worker.md#when-the-worker-is-off). The job carries on once it connects. |
 | The agent's credential was refused | Replace it (see [Add a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)). |
 | The job reached its spending limit | Raise the cap (see [Costs](#costs-and-the-monthly-cap)), or wait for next month. |

@@ -23,13 +23,17 @@ because it waits on the network and `library` must not import `meta`.
 
 ## Where the chapter list comes from
 
+For a book with an identifier, a recorded match takes precedence. `MatchChapters` asks for the
+selected recording. If it names no usable recording, the lookup’s recording is eligible only on
+the same work. If the recorded work itself no longer exists, the lookup can supply the work too. A
+book without an ASIN or ISBN is never due for this check.
+
 `meta.Service.RecordingChapters(asin, isbn)` looks the identifier up (an ASIN,
 else an ISBN). It then fetches the chapters of the recording **the lookup
 names** (`recording_id`), through metaserve's
 [`GET /api/v1/works/{id}/recordings/{rid}/chapters`](../meta/api.md#apiv1worksidrecordingsridchapters).
 
-It never falls back to `pickRecording`'s first recording, which the enrichment
-envelope uses. A work's chapters belong to one recording, and another recording
+The chapter check never substitutes the first recording of a work. A work's chapters belong to one recording, and another recording
 may be a different edition altogether. `internal/meta` caches nothing, because
 the `community_chapters` row is the cache.
 
@@ -56,7 +60,7 @@ minutes**, and at once on a `Kick`, a pass lists the books due a check
 
 `basis` is what the check depended on (`chapterBasisExpr`):
 
-- the identifiers;
+- the identifiers and, when present, the recorded work and recording;
 - the duration in ms;
 - a hash of the scan's own chapters (`books.chapters_hash`);
 - the book's files in play order, relative to the book (`''` for a single-file

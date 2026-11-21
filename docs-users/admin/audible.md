@@ -136,7 +136,7 @@ The reason under the title says what to do. Press **Back up** again to retry.
 | **This account doesn't have the right to download it.** | The title left the account, or Audible doesn't allow it. |
 | **Audible refused the download.** | [Sign in again](#sign-in-again-after-updating-the-bridge) on the Bridge. |
 | **The Bridge can't write to this library.** | Check the library is **Ready** in [Server > Settings > Bridge](bridge.md#libraries), and that the destination is a normal path. |
-| **A different file is already where it would go.** | [Choose another destination](#choosing-a-destination), or move that file. |
+| **A different file is already where it would go.** The reason can also name an existing book or audio in the destination folder. | [Choose another destination](#choosing-a-destination), or move that file. |
 | **There isn't enough free space.** | The Bridge needs about twice the book's size in its data folder, and the book's size in the library. |
 | **The download link ran out twice.** | Back it up again. |
 | **The Bridge no longer has this account.** | Sign in again on the Bridge. |
@@ -171,7 +171,8 @@ Type a path inside the library:
 
 Leave it empty for the usual place. The path can't start with a dot or contain
 `..`. It can't be a disc folder, such as `CD 3`, inside a book already on the
-server, because the backup would join that book.
+server, because the backup would join that book. A title whose saved destination
+is no longer valid appears in **Needs a look**.
 
 ![The Destination dialog for one title](/img/screenshots/admin/audible-destination.png)
 
@@ -187,6 +188,10 @@ books** to queue them.
 It skips titles marked **Not this book**, contested titles, preorders and titles
 already backed up. It retries failed and cancelled backups. A big library can take
 days.
+
+If a saved destination is no longer valid, the confirmation after queuing tells
+you how many titles were skipped. Change their destinations and try again. An
+invalid account template needs fixing before the batch can start.
 
 ## Backing up by itself
 
@@ -206,7 +211,9 @@ account already had, use [Back up everything](#back-up-everything).
 
 By default, a backup goes **beside the series' other books**, named like the books
 already there. A book of a new series goes in `Author/Series/`, and a book in no
-series in `Author/Title/`.
+series in `Author/Title/`. When a check finds several titles of a new series, the
+Bridge places them together. A title with nothing usable in its name gets its
+Audible identifier as the folder name.
 
 To choose yourself, set a **Placement template** in **Account settings...**, for
 example:
@@ -223,7 +230,8 @@ template.
 
 The Bridge keeps folder and file names safe for a network share (SMB) or a Windows
 disk. It drops `?`, `*`, `<` and `>`, turns `"` into `'` and `|` into `-`. So
-*Who Moved My Cheese?* is backed up as `Who Moved My Cheese`. A book the Bridge
+*Who Moved My Cheese?* is backed up as `Who Moved My Cheese`. A name Windows
+reserves, such as `CON` or `NUL`, gets an underscore added. A book the Bridge
 backed up earlier into a folder under its old name, with the `?`, is found there
 and isn't downloaded again.
 

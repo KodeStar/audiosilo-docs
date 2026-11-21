@@ -748,6 +748,8 @@ The card goes on with the Bridge actions described under
 
 ##### The Chapters card
 
+An eligible book offers **Detect chapters** here. The card shows the current job, as does the row in **Health > Long books without chapters**.
+
 The Chapters card opens with the **Community chapters** panel
 (`features/book/community-chapters.tsx`). Its words and its one action come
 from `communityState` in `book-model.ts`, a pure function of the page's
@@ -819,8 +821,9 @@ rules are the pure `chapters-edit-model.ts`, and the paste dialog is
   0.1 s, plays 5 s from the row's start, and sets the row's start or adds a
   chapter at the playhead, which never passes the file's end. A load failure mints
   a new token once (the old one may have expired or been capped), then says the
-  audio didn't load. It plays the file as stored, so a file the browser can't
-  play doesn't load.
+  audio didn't load. It plays a directly playable file or a completed MP3 remux (`remux_cached`)
+  from the chosen position. For other files it requests an MP3 transcode from the playhead.
+  **Stop trying again** ends retries when the server has no slot.
 
 With an edited list in use (`chapter_source: "edited"`), the card says
 "Chapters edited on this server." with `chapter_edit`'s author and time, and
@@ -1596,9 +1599,7 @@ row of any kind is `CancelledStatus` (see
 
 - The list also shows while no Bridge is paired, when there are jobs, so
   queued ones can be cancelled.
-- Queuing a job whose open twin is still stopping after a cancel
-  (`cancel_requested`) gets that job back, and the toast says it is still
-  stopping.
+- Queuing the same job while its previous claim is stopping ends the old job as cancelled and queues a fresh one.
 
 **Book jobs.** The list words the book kinds (`isBookKind`) with
 `GenerateStatus`, with the job's path linking to the book's page. They are

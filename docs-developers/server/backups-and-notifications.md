@@ -164,6 +164,11 @@ A second backup while one runs is refused (`ErrBusy`, answered
 
 ## Restore at the next start
 
+A managed restore renews the Audible progress feed ID. For a database restored by hand, the
+launcher compares the counter with the separate `progress-feed.json` in the data folder and renews
+it if the database is behind. Restoring the entire folder can roll both records back together.
+Update the Bridge with the server so it can reread a renewed feed.
+
 A restore never swaps the database under a running server. It takes two steps.
 
 1. **`RequestRestore`** (`POST /admin/backups/{name}/restore`) takes a quick
@@ -390,7 +395,7 @@ Both Bridge events carry:
 Bridge's report or from a lease that ran out on the last attempt. It also fires
 when a job moves into `needs_attention` with a park that isn't transient
 (`bridge.Job.Notable`). The transient parks are `agent_rate_limited`,
-`agent_unavailable` and `asr_worker_waiting`, and they never fire it. A park
+`agent_unavailable`, `asr_worker_waiting` and `share_unconfirmed`, and they never fire it. A park
 that changes its code in place fires it when the new code isn't transient. The
 event adds:
 
@@ -509,7 +514,8 @@ A private show is hidden from admins who don't follow it. Its events carry
 
 #### Bridge messages
 
-The server reports a Bridge event once per move, after the move has committed,
+For a notable park, the same claim can notify again after six hours, a code change or a switch
+between a timed wait and a wait for a person. The server emits after the move commits,
 on a context that the request's end doesn't cancel. Its message names the book:
 its title, else its path, else its library.
 
@@ -556,7 +562,7 @@ warning colour) or `<kind> failed: <title>`. The kind's words come from
   Bridge's Accounts tab. The job then carries on by itself.
 - `contrib_unavailable`: sign in to GitHub on the Bridge's Accounts tab and the
   job carries on. When the Bridge is signed in already, GitHub couldn't be
-  reached to refresh its sign-in, so retry the job there once it can be.
+  reached to refresh its sign-in. The Bridge retries automatically.
 - `core_needed`;
 - `chapters_not_detected`;
 - anything else: "See the job in Settings > Bridge."
@@ -602,23 +608,16 @@ Health > Jobs."
 
 ### Delivery
 
-`Emit` records the event, then queues one delivery per enabled destination
-whose `events` include its kind. It never blocks. Four workers drain a queue of
-256, and a delivery that finds the queue full is dropped and logged.
+The server writes the event and one `notify_outbox` row per subscribed destination in one
+transaction. Each destination receives its oldest pending event first. Other destinations can
+continue while one waits. Delivery resumes at startup and a five-minute sweep finds outstanding
+work.
 
-Each delivery is one `POST` with a 10 second timeout. The service retries it
-**twice**, after 10 seconds and then after a minute, when it timed out,
-couldn't connect, or got a `429` or a `5xx`. Any other status fails at once.
-
-- A retry is queued again after its delay (`time.AfterFunc`) rather than waited
-  out on a worker. A destination that doesn't answer therefore holds a worker
-  for one attempt at a time and never delays the other destinations'
-  deliveries.
-- A retry that finds the queue full is dropped and logged.
-- A retry goes to the destination as it is set when the retry runs. If the
-  destination was deleted, switched off or unsubscribed from the event
-  meanwhile, it goes nowhere. If its address and secret changed, it goes to the
-  new ones.
+Each POST has a ten-second timeout. A timeout, connection failure, 429 or 5xx can be retried after
+ten seconds and then a minute. The server counts each attempt before sending it, with three
+attempts total across restarts. A restart after a successful send but before its outcome was
+recorded can deliver that event again. Pending deliveries expire after seven days. Before each
+send the server checks the destination’s current subscription, address and credentials.
 
 The HTTP client **never follows a redirect**, and a `3xx` is a failure
 (`http_3xx`). A redirect would send the message, and a webhook's signature,

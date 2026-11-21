@@ -103,11 +103,7 @@ Its **Community metadata** card says "No ASIN or ISBN: matched to its store
 listing". A book [added from LibriVox](librivox.md) says it is matched to its
 LibriVox recording instead.
 
-A few things need an ASIN or ISBN, so they leave such a book out: the
-[community chapter check](#community-chapters) and the missing books on the
-[Series](#series) page. In the players, such a book shows its community details
-on its book page and in Search's characters, but not offline (see
-[Recaps and characters](../listening/recaps-and-characters.md#good-to-know)).
+A hand match also connects the book to its series in the player and to Upcoming releases. Community chapter checks and the console’s missing-books view still need an ASIN or ISBN. Downloading the book keeps its [recaps and characters](../listening/recaps-and-characters.md#good-to-know) for offline listening.
 
 ### Unlinking a community match
 
@@ -228,6 +224,9 @@ Each row is a chapter's start time and title. Times count from the start of the
 book, like `1:02:03` or `12:34.5`. A row with a lock starts one of the book's
 files. You can rename it, but its time is fixed and it can't be deleted, so no
 chapter runs from one file into the next.
+
+When the editor's player is waiting for the server to convert the audio, it keeps
+trying. **Stop trying again** ends the retries.
 
 To edit the chapters:
 

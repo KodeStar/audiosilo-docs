@@ -581,6 +581,12 @@ page's **Settings > Agent** ([Configuration](configuration.md#characters-and-rec
 
 ### The endpoint's own agent service
 
+On **Settings > Agent**, the service row identifies the endpoint runner. If it finds a credential
+or cannot complete its mount check, it refuses the run. The page can show the offending path or
+variable name. The runner checks host temporary mounts one folder down and cleans credential files
+created in its own run folders. To start a stopped service, use
+`docker compose --profile endpoint up -d agent-endpoint`.
+
 The endpoint's model is whoever answers at that address, and codex runs its
 commands as the runner's uid with its sandbox off. In the agent container such a
 run could read the subscriptions' credentials, plant a `/agent/codex/config.toml`

@@ -117,6 +117,11 @@ a cast token gets `401` there.
 
 ## The heartbeat and the capability
 
+The status body is limited to 2 MiB. The server keeps up to 4,096 library IDs and mappings and
+filters them to libraries it owns. A size refusal (400 `too_large` or HTTP 413) makes the Bridge
+retry within the older limits of 64 KiB and 512 entries, keeping mapped libraries first. It tries
+the full list again after an hour.
+
 The Bridge sends `PUT /bridge/status` every **30 seconds**, and at once after
 pairing and after a mapping check finishes:
 
@@ -170,6 +175,9 @@ The link separately remembers `claim_min_priority` for that pairing. Without
 it, the runner makes ordinary claims and uses two ordinary download slots.
 
 ### The setup checklist
+
+The Audible status checks both the scheduled sync job and the push to Audible. A successful push
+can clear its own failure while a job failure still needs attention.
 
 `setup` is the Bridge's onboarding checklist (FIRST-RUN-PLAN F2), built by the
 Bridge's pure `setup.Checklist` from what the app already knows, in a fixed order:
@@ -410,8 +418,7 @@ A change to eligible kinds, pairing, negotiated reserve or capacities cancels
 and joins the outstanding claim, then reissues immediately without cancellation
 backoff. Unchanged heartbeats/progress do not restart the long poll. Admission
 is kept until that call returns, so a job racing cancellation is still owned
-and handled. Jobs recovered after restart or stranded by re-pairing resume
-through ordinary admission because persisted execution rows have no priority.
+and handled. Jobs recovered after restart on the same pairing resume through ordinary admission. Re-pairing ends work from the old link.
 
 If the claim committed a lease but the reply was not delivered (including
 write/flush failure or Bridge disconnect), the server releases that untouched
@@ -472,8 +479,8 @@ about 32 seconds at a job with nothing new to report: the keepalive plus one
 2-second reporter tick), stops the job and reports it `cancelled`. The console
 shows the job as cancelling meanwhile. If the Bridge never reports again, the
 lease runs out and the job is cancelled then. Cancelling an ended job is
-`409 finished`. Until a cancelled job has stopped it is still open, so queuing the
-same again returns it (the console says it is still stopping).
+`409 finished`. When the same request arrives while the old job is stopping, the server records
+the old job as cancelled and queues a new job. The old claim learns this at its next report.
 
 The Bridge's own page can cancel a job it is running too; that is reported to the
 server as `cancelled`, the same as an admin's cancel.
@@ -516,9 +523,10 @@ Through `cancelOpenTx`, a queued or parked job is cancelled at once with the
 reason. For a claimed or running one, `cancelOpenTx` sets `cancel_requested` and
 records the reason now, unless an admin asked first, whose cancel keeps its own
 error. `UpdateHeld` keeps the reason through the Bridge's reports, which always
-send an error of their own, while the job works and when it ends `cancelled`. A
-job that ends `done`, `failed` or `needs_attention` anyway carries the Bridge's own
-error (or none), never the reason.
+send an error of their own, while the job works and when it ends `cancelled`. After a cancel
+request, the server stores a failure or park as `cancelled` and preserves the cancel reason. A
+completed job remains `done`. A cancelled podcast job counts against
+the feed's outage only for a definite feed response.
 
 The console words a cancelled row (`cancelledView` in `generate-model.ts`, which
 keeps a copy of those strings, `SERVER_CANCEL_REASONS`; `CancelledStatus` in
@@ -563,15 +571,12 @@ they were:
   2.4.0), so a restart no longer reads as a park dropped and a new one raised:
   no spurious `bridge_job_failed` events, and the console keeps the reason.
 
-When the server refuses the token (a `401`), a running job stops where it is,
-without a final report, and is kept aside. When a link to the same server works
-again (the refusal ended, or the Bridge was paired with that server again) it is
-resumed under its claim, as after a restart: if the server took it back meanwhile,
-its first report is a `409` and it is recorded lost (or cancelled, as after a
-restart). Paired with another server instead,
-it is recorded as lost: each `server_jobs` row records the `server_id` of the server
-that handed it out (Bridge store migration `0003`), so a start that finds an open
-row of another server never reports it to the wrong one.
+If the admin who paired the Bridge loses the admin role, the server refuses that Bridge’s token. Restoring the role lets the same pairing work again.
+
+A refused token stops the running job. The Bridge can resume it after a temporary refusal of the
+same pairing. Forgetting the link or pairing again ends the old claims, even on the same server.
+The Bridge reads `GET /api/v1/server` for the server ID, binds each claim to its pairing and
+releases work before recording it lost. It never reports an old result on the new link.
 
 ### Kinds are allow-listed twice
 
@@ -640,7 +645,7 @@ The community jobs belong to the `contributions` [module](../server/modules.md).
   is off, before anything else about the job is checked (as the module's own
   routes would);
 - `Enqueue` refuses it **`409 cannot_contribute`** unless `Status.CanContribute()`;
-- while the toggle is off, a **queued** one is **held**. `nextQueued` passes over
+- while the toggle is off, a queued share-only job is held. `nextQueued` passes over
   it (`bridge.Service.ModuleOn`, wired by `SetBridge`), so turning the module off
   leaves its queued jobs at rest, a requeued one included, until it is on again.
   A held `sidecars.contribute` job still gives way to a new `sidecars.generate`
@@ -655,10 +660,10 @@ The community jobs belong to the `contributions` [module](../server/modules.md).
   one, `UpdateHeld` sets `cancel_requested` with the server's reason
   `CancelModuleOff` (see [Cancelling](#cancelling)). A parked one is asked when
   it reports working again;
-- a `sidecars.generate` job with `contribute: "issue"` the Bridge already holds
-  carries on and is never asked to stop. The Bridge would drop the characters
-  and recaps it is writing, and it files them itself when it finishes. The
-  server takes no part in that step.
+- a Bridge that claims with `share_off=1` can take a queued generate-and-share job for local
+  processing. The server sends `share_off: true` on the claim and reports while the toggle is off.
+  The Bridge remembers that decision and finishes the local files. Older Bridges leave the queued
+  job held.
 
 On the Bridge, each kind has a handler and a **lane**, which sets how many jobs
 of that lane run at once:
@@ -716,6 +721,10 @@ file ownership; the [reference](../server/api/reference.md#podcasts) lists the
 listener routes.
 
 ### Audible jobs
+
+A failed `audible.sync` carries the counts reached before the failure beside its code and message.
+A backup reporting `exists` can name the conflict as `file`, `book` or `audio`. The console alone
+controls the account’s sync switch.
 
 `audible.poll` belongs to the `audible` module. It is internal (refused by
 `POST /admin/bridge/jobs` with `400`) and quiet. Its params are
@@ -789,8 +798,9 @@ it ends done, the server records the book as the recording. See
 The server tells admins about notable jobs itself (the Bridge has no route for
 it); neither podcast kind is `Job.Notable`. When a notable job moves into `done`
 it records `bridge_job_finished`, and into `failed`, or into
-`needs_attention` with a park that isn't transient, `bridge_job_failed`, once per
-move and only after the move has committed. That covers the Bridge's reports and a
+`needs_attention` with a park that isn't transient, `bridge_job_failed`, after the move commits. A
+repeated park on the same claim is quiet for six hours unless its reason or its need for a person
+changes. That covers the Bridge's reports and a
 lease that runs out on the last attempt alike. A report that leaves the state as it
 was is never news. The rules (which parks are transient) are in
 [Characters and recaps](generating.md#notifications), the events in
@@ -811,7 +821,9 @@ What the Bridge does:
 
 1. Finds the library among the ones the server listed and where it sees it (its
    mapping, else the server's root path).
-2. Asks the server for the book's files (`GET /bridge/libraries/{id}/book`).
+2. Asks the server for the book’s files (`GET /bridge/libraries/{id}/book`). An unavailable
+   server, refused token, 408, 429 or 5xx gets another try for up to two minutes. Other 4xx
+   responses end the check at once.
 3. Stats each file through its mount and compares the size with the server's.
 4. When they all match, probes whether it can write in **the book's own folder**
    (a probe file created and removed; a folder can refuse writes where the

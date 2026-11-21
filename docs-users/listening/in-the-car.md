@@ -64,6 +64,8 @@ On Android Auto you can name a book: *"play The Hound of the Baskervilles on Aud
 
 ## While it plays
 
+On Android, Pause and a timed sleep timer stop the book playing in the car, even if the app shows a different book. An end-of-chapter timer follows the book you set it on. Resuming from the car continues its book.
+
 The car's Now Playing screen shows the chapter you're in, with a scrubber for that chapter. Next and previous move by chapter.
 
 **Bookmark** adds a bookmark where you are, like the bookmark button in the app. If your server can't be reached, the bookmark is kept on the phone and sent later.

@@ -1004,10 +1004,9 @@ Two rules in `meta-gating.ts` decide whether `/meta` is asked for:
   answers a book with no ASIN or ISBN from its console match (a LibriVox
   download), and an older one answers `matched: false` without asking upstream,
   so the one request is cheap either way.
-- `matchableById`: a book that is not an episode with an ASIN, an ISBN **or**
-  `generated: true`. The offline copy (`canMatch` in `offline-meta.ts`) uses it,
-  because it runs for every download, so a book matched only in the console reads
-  as unmatched offline.
+- `matchableById` lets the offline copy consider a book with an ASIN, ISBN, generated content or a
+  nonempty `work_id`. The work ID covers console matches on a server that sends it. Episodes are
+  excluded.
 
 `types.ts` also mirrors `Book.generated_parts`, which of `characters`, `recaps`
 and `description` the book has. Each is a `GeneratedPart`, and a name a newer
@@ -1563,22 +1562,12 @@ Tokens are stripped before the metadata is persisted.
 
 #### Proxy headers
 
-A connection to a server behind a sign-in proxy (Cloudflare Access, Authentik,
-Authelia) can carry custom headers, `Connection.proxyHeaders` (`{ origin,
-headers }`). The rules are in `src/lib/proxy-headers.ts` and the storage in
-`src/lib/proxy-headers-store.ts`. They are credentials, kept like the token:
+`src/lib/proxy-headers-store.ts` keeps one header set per HTTPS origin. All connections to that address share it.
 
-- **Storage.** They live in memory and in secure-store under
-  `audiosilo.proxy-headers.<id>` (see [Storage layers](#storage-layers)). `persist`
-  strips them and keeps only the non-secret `hasProxyHeaders` marker, and
-  `hydrate` reads them beside the token for a marked connection only. They never
-  reach AsyncStorage, the query cache, a URL or a log line.
-- **Lifetime.** They go wherever the token goes: sign-out, a retired identity,
-  the auth reset, a connection `hydrate` drops. The identity migration copies them
-  in its token step (`copyProxyHeaders`). `removeConnection` deletes the token
-  first, so a failed delete stops the removal with the headers still kept. A new
-  connection to a server another connection here reaches with headers takes a
-  copy of that set under its own id.
+- **Storage.** Secure storage holds the values in `audiosilo.proxy-sets`. AsyncStorage holds only
+  the `audiosilo.proxySets` marker. Hydration migrates older per-connection sets.
+- **Lifetime.** Signing out or changing a connection’s identity keeps the set. Removing its last
+  remembered server or removing it in the connect screen clears it.
 - **One https origin.** A set names the origin (scheme, host and port) it was
   entered for. `proxyHeaderRecord` is the one rule: a request to that origin
   carries the set, and any other URL gets none: a plain-http URL, another port,
@@ -2025,6 +2014,10 @@ still behind it until the app is in front again.
 
 ## Progress sync (`src/playback/progress-sync.ts`)
 
+A queued save uses the client for its current connection. A late refusal for a token that has
+already been replaced cannot sign out the new session. Replays claim entries across tabs and check
+the connection again before sending or deleting them.
+
 The offline-safe write path for listening progress:
 
 - **Last-write-wins.** Every save carries `version: 0`, a per-install
@@ -2289,7 +2282,7 @@ There are two deliberate tiers. Know which one you are writing to.
 | Layer | Module | Backing | Used for |
 |---|---|---|---|
 | Plain | `src/lib/storage.ts` (`getItem`/`setItem`/`removeItem`, JSON-serialized) | AsyncStorage on native; localStorage on web, through AsyncStorage's web shim | connection metadata, settings, language pref, downloads registry, progress mirror and queue, the listening outbox, open span and sync state, device id |
-| Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain, Android Keystore) on native. On iOS it uses the `audiosilo.tokens.afu` keychain service, readable after first unlock (see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)). localStorage on web, where SecureStore doesn't exist. | **session tokens** (`audiosilo.token.<connectionId>`), plus profile PIN hashes (`audiosilo.profilePin.<profileId>`), the device's copy of an upcoming calendar link (`audiosilo.upcoming-calendar.<connectionId>`) and a connection's [proxy headers](#proxy-headers) (`audiosilo.proxy-headers.<connectionId>`) |
+| Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain, Android Keystore) on native. On iOS it uses the `audiosilo.tokens.afu` keychain service, readable after first unlock (see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)). localStorage on web, where SecureStore doesn't exist. | **session tokens** (`audiosilo.token.<connectionId>`), plus profile PIN hashes (`audiosilo.profilePin.<profileId>`), the device's copy of an upcoming calendar link (`audiosilo.upcoming-calendar.<connectionId>`) and the [proxy header sets](#proxy-headers) (`audiosilo.proxy-sets`) |
 
 The split exists because these values are secrets. Hardware-backed storage on
 native is worth the extra API for them, while everything else is non-sensitive

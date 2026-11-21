@@ -9,6 +9,8 @@ A **bookmark** marks a moment in a book: a line you loved, or a scene to hear ag
 
 Tap the bookmark button in the [full player](full-player.md) or on the [player bar](playback.md#the-mini-player-and-the-player-bar). In the web player, you can press **B**. A message confirms *"Bookmark added"*, and the book keeps playing.
 
+If the server is offline or busy, a one-tap bookmark stays on this device. The book’s **Bookmarks** tab shows **Waiting to sync**. You can delete it there or let the app send it when the server is available.
+
 To say why you marked the moment:
 
 1. Tap **Add note** on the confirmation while it's showing.

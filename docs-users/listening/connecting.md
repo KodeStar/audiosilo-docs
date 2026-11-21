@@ -123,6 +123,10 @@ To listen away from home at all, the server must be reachable from the internet.
 
 ## Good to know
 
+The web connect page links to the mobile apps in their stores.
+
+On the web, removing a person or server also removes it from the other tabs. Reconnecting checks the server and the person before restoring the saved connection.
+
 - On a device in [kids mode](kids-mode.md#links-in-kids-mode), the app doesn't open links or QR codes. It asks for a grown-up.
 - A link to a book, opened while you're signed out, takes you through signing in and then to the book. That still holds if you sign in by scanning a QR code for the same server.
 - A server behind a sign-in proxy, such as Cloudflare Access, needs the app to send extra headers. Tap **Proxy headers** on the connect screen before you continue. See [Behind a sign-in proxy](../getting-started/remote-access.md#behind-a-sign-in-proxy).

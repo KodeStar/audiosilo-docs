@@ -90,6 +90,8 @@ not evicted like a cache:
     readalong.json       # its read-along map, beside book.epub (optional, Bridge Phase 3c)
 ```
 
+The completed download’s size is the sum of the files actually saved. On iOS, an MP3 remux can be smaller than the Matroska file listed by the server.
+
 `fileName` keeps the file's own extension, with one exception. **On iOS** a `.mka`
 is saved as `<i>.mp3`:
 
@@ -668,7 +670,7 @@ name and checked again on every read (`readReadalongFile`). The manifest's
 item's seed, and `readalongSource` reads the copy only while the book names it or
 names no map.
 
-**Kept current.** The root's services start `startReadalongRefresh`, on the web after
+**Kept current.** The root's services start `startItemRefresh`, on the web after
 paint. It first takes the `/item` answers the query cache already holds, then watches
 the server's `/item` answers for a downloaded book. `readalongChange` decides what
 each answer does:
@@ -700,7 +702,7 @@ Text tab says "The read-along is for a different edition of the ebook" instead
 ([The ebook reader](reader.md#the-map)).
 
 A download made by an app that did not yet keep maps, or one whose map fetch failed,
-has no map until `startReadalongRefresh` takes the book's next `/item` answer.
+has no map until `startItemRefresh` takes the book's next `/item` answer.
 `readalongChange` then says `fetch`, tried once per launch. Until then the Text tab
 needs the server, as for a book that isn't downloaded.
 
@@ -1148,11 +1150,10 @@ a marker (`DownloadManifest.meta = { savedAt }`).
   write the registry once (`persistSoon`). If the download was removed or replaced
   while the file was written, the marker isn't set, and a removed book's file is
   deleted again.
-- *What `captureOfflineMeta` skips.* A book with no ASIN or ISBN and no generated
-  content (`canMatch`, `metaEnabledFor` on the cached full item first, since the
-  manifest's book can be the list shape). That includes a book matched only in the
-  console. Online its page shows the match. Offline it reads as unmatched. Also a
-  server without `metadata`.
+- *Which books qualify.* On a server with `metadata`, an ASIN, ISBN, generated content or a
+  nonempty `work_id` makes the download eligible. A new `/item` answer can supply the work ID
+  after the download finishes. `startItemRefresh` updates the stored item and queues the community
+  material for capture.
 - *How it reads.* It reads through the screens' own option factories
   (`bookMetaQuery`, `metaWorkQuery`), so it reuses a fresh answer they hold. It never
   throws and never retries.

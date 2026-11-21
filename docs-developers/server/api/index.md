@@ -567,7 +567,9 @@ backup can finish downloading:
 
 Only reads are exempt. An upload to a streaming-shaped path (the admin
 custom-cover `PUT /admin/libraries/{id}/cover`) stays bounded by the 30 s
-timeout, so a slow client can't hold it open.
+timeout, so a slow client can't hold it open. The OPML import has a bound of its
+own, 5 minutes, and runs on when its client leaves (see
+[OPML import](reference.md#post-apiv1podcastsopmlimport)).
 
 ## Path-addressed content: `?path=`
 
@@ -586,8 +588,9 @@ chapter `file_path` fields.
 
 Two server-side guarantees apply to every `?path=`, plus a length cap.
 
-**Length cap.** The cap is 4096 bytes as sent (`relpath.MaxBytes`, which
-`catalog.MaxPathBytes` names). These routes answer a longer path with 400
+**Length cap.** A decoded `?path=` value longer than 4,096 bytes is refused before authentication
+(`catalog.MaxPathBytes`, also named `relpath.MaxBytes`). These routes answer a longer path with
+400
 `path is too long`:
 
 - the content routes (`item`, `chapters`, `cover`, `stream`, progress,
@@ -613,9 +616,10 @@ also runs before the path is cleaned or stored. Elsewhere:
 - A podcast show or episode folder name over the cap in a Bridge's feed is
   invalid.
 
-**Traversal safety.** The server resolves the path through `library.SafeJoin`,
-which rejects `..` escapes, absolute-path injection and symlinks pointing
-outside the library root (400 `invalid path`).
+**Traversal safety.** A path whose components climb out of the library returns 400. The folder
+route treats a leading slash as relative to the library root. A link leading outside the library
+returns 404 on the stream, folder and item routes. A temporary share fault returns 503
+`share_not_answering`. A lasting refusal, such as permission denied, is treated as a missing file.
 
 **Scope authorization.** The server checks the path against the caller's share
 scope (`authorizedPath`). A path outside any granting share is 403, even if it
@@ -750,6 +754,8 @@ has them. For the others, each row says when the flag is `true`.
 | `metadata` | whether [community metadata lookup](reference.md#get-apiv1librariesidmeta) is configured. It gates the standalone [work lookup](reference.md#get-apiv1metawork) too, and the enriched-book material is drawn only when it is true |
 | `export` | whether the admin [library export](reference.md#get-apiv1adminlibrariesidexport) exists |
 | `upload`, `websocket` | roadmap phases. They will flip on when they land |
+| `bookmark_client_id` | The bookmark POST accepts a device-generated UUID and returns the stored bookmark on replay. |
+| `unauthorized_mark` | Every server-generated 401 carries `X-AudioSilo-Unauthorized`. |
 | `oidc` | whether [single sign-on](reference.md#single-sign-on) can run (the conditions are there); sent `false` otherwise. While it is `true`, `auth.methods` adds `"oidc"` and `auth.oidc.name` names the provider for the button. Only a page on the server's own origin can use it |
 
 ### Catalog and browsing
@@ -948,15 +954,16 @@ when to try again.
 
 | Limiter | Scope | Policy |
 |---|---|---|
-| Address token bucket | public routes, every `/auth/*` route (with or without a token), the Bridge's `/bridge/*`, a request whose token is missing or refused, a demo account's API requests (not its covers and audio); static files are not counted | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
+| Address token bucket | public routes, every `/auth/*` route (with or without a token), the Bridge's pairing exchange `POST /bridge/pair`, a request whose token is missing or refused (a Bridge's too), a demo account's API requests (not its covers and audio); static files are not counted | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
 | Credential token bucket | every other authenticated API request (admin routes included), once its token is proved | ~50,000 requests/second, burst 100,000, per session or API key; past it the address is charged too |
 | Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own) |
+| Bridge token bucket (2.7.0) | a paired Bridge's authenticated `/bridge/*` requests | 2,000 requests/second, burst 20,000, per Bridge token; fixed, not in `rate_limit.*`; a refusal never charges the address |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
 | Redeem lockout | `POST /auth/redeem`, `POST /auth/exchange`, `POST /bridge/pair` (one shared counter) | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
 | Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/revoke; listing is not counted) | at most 10 attempts per IP per 15 min, metered at admission |
 
-The three token buckets' rates are `rate_limit.*` in the server's
+The address, credential and media buckets' rates are `rate_limit.*` in the server's
 [configuration](../configuration.md#rate-limits-rate_limit). The table shows
 the defaults. A failed authentication on any route charges the address bucket,
 so the address limit bounds guessing tokens.
@@ -989,7 +996,7 @@ CORS is a strict allow-list driven by `cors_origins` in the server config:
   - the request headers `Authorization, Content-Type, X-AudioSilo-Client, Range`
     (`Access-Control-Allow-Headers`);
   - the exposed response headers
-    `Retry-After, X-OPML-Exported, X-OPML-Omitted-Private, X-OPML-Omitted-Unavailable`
+    `Retry-After, X-OPML-Exported, X-OPML-Omitted-Private, X-OPML-Omitted-Unavailable, X-AudioSilo-Transcode-Sent, X-AudioSilo-Unauthorized`
     (`Access-Control-Expose-Headers`), on every allowed response, not only
     preflights;
   - a 600 s preflight cache.
@@ -1016,6 +1023,9 @@ The two lists are the consts `corsAllowHeaders` and `corsExposeHeaders`
 - `Retry-After` is exposed because every `429` sends it, and so do some `503`s:
   a busy transcode, or an episode on its way. The request timeout sends none.
 - The OPML export's counts are exposed too.
+- `X-AudioSilo-Unauthorized` is exposed so a cross-origin player can tell AudioSilo's own 401
+  from a proxy's. Its values are in
+  [Authentication & pairing](reference.md#authentication--pairing).
 - `X-AudioSilo-Transcode-Sent` is exposed so a cross-origin player can read a
   transcode `HEAD`'s count of the bytes the same ask's running `GET` has sent,
   and wait on a slow transcode instead of asking again and taking over its

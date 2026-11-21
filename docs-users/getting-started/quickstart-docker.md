@@ -112,7 +112,7 @@ This updates the server and the web player together. Your books are never change
   docker logs audiosilo   # the admin password and auth code, shown once
   ```
 
-- **Health check.** The image checks every 30 seconds that the server answers, and `docker ps` shows the container as `healthy` or `unhealthy`. Docker doesn't restart an unhealthy container by itself. To have it restarted, add an autoheal container and a label:
+- **Health check.** The image checks every 30 seconds that the server answers, and `docker ps` shows the container as `healthy` or `unhealthy`. The health check allows up to 30 minutes for startup. During an upgrade the page may show **AudioSilo is starting** and reloads by itself when the server is ready. Docker doesn’t restart an unhealthy container by itself. To have it restarted, add an autoheal container and a label:
 
   ```yaml
   services:

@@ -129,8 +129,9 @@ They survive show pruning and index rebuilds.
 - The unavailable-root guard keeps the index when the root is unreadable, or
   empty after it held shows.
 - A partial scan does not prune.
-- Do not rename show folders by hand, because the feed's episode paths include
-  them.
+- After a rename, the scanner locates the unique folder with the same `show_id`. Follows, settings
+  and episode places move with it. Downloaded episodes appear on the next scan, others after the
+  Bridge polls. A copy alongside its original leaves the state at the original.
 
 See [Podcasts](../bridge/podcasts.md#files-on-disk-feedjson-v1) for the file
 contract.
@@ -1573,10 +1574,7 @@ These looks are still not bounded, or not by an on-demand read's 10 seconds:
 - a file cache's background open of its source (`media.FileCache`, a remux or
   a rendition being made), once the request's own look has answered. Its stats
   of the source get a scan's look time;
-- a podcast episode's demand fetch's open;
-- the `/fs` browse listing and its pending-book check (`hasAudio`);
-- the scan's stat of the library root, which
-  [the root probe](#the-unavailable-root-guard) guards.
+- the scan’s root availability probe, which has its [own deadline](#the-unavailable-root-guard).
 
 **One hung share holds back only itself.** Abandoned reads are counted per
 mount (`stuckByMount`, a `mounts.PerMount`). Once 16 are outstanding on one
@@ -1614,6 +1612,13 @@ What a cut-short read does to the stored book is in
 (`[mp3 @ 0xcbcc3c000]` is stored as `[mp3]`).
 
 #### A folder that does not answer
+
+On a Re-read, a transient fault on the book, a part’s stat or a disc listing returns 503
+`share_not_answering`. The request that leads a shared index read returns the same response if it
+reaches its wait limit. A lasting refusal, such as permission denied or a device gone, returns
+404. A refused sibling disc still counts as a disc, so a healthy disc keeps its split parent. A
+server resource error, such as too many open files, follows the route’s own error handling. The
+scan keeps the indexed book when it cannot establish that it is gone.
 
 Discovery's looks wait at most the probe's time each. A folder whose listing is
 given up on is skipped for the run. So is a folder holding an audio file whose

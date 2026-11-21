@@ -48,14 +48,12 @@ flow rewrites it to a plain-http fallback). The set is held in memory as the
 session's `pendingProxyHeaders`, and only for an https origin. The flow's bare
 clients are `connectClient(base)` (`src/api/connect-client.ts`) and
 `probeServerId`, through `connectProxyHeaders(url)`: the pending set for that
-origin, else a signed-in connection's set for it (a second person on the same
-server). A reconnect's sign-in (`ownId`) takes only the pending set or that
-connection's own set, never another connection's. The set is read as the sign-in
-is sent, so a connection that signed out while the step was open lends nothing.
+origin, otherwise the set saved for that HTTPS origin. Signing out preserves it. The connect
+screen shows a kept set for the address and lets the listener remove it.
 The scanner hands a code back
 to a new `ConnectStart`, which takes up the pending set, so a QR code pairs with
 the headers when its address is the field's. The flow's layout drops the pending
-set when the flow is left, and a sign-in stores it with the connection (see
+set when the flow is left, and a sign-in saves it for the address (see
 [Proxy headers](state-and-data.md#proxy-headers)).
 
 #### Pairing links, QR codes and invite links
@@ -156,7 +154,7 @@ status and the request that failed (`SignInStage`):
 | `401` or `400` at `login` | Wrong name or password. |
 | `invite_used` or `invite_expired` on a redeem | Its own sentence. These codes need server 2.5.0; an older server's bare `401` reads as a code that didn't work. |
 | `member_disabled` | Its own sentence. |
-| `429` | The wait in whole minutes from `Retry-After` when the server sent one (`connect.signIn.errors.wait`), else "Too many tries". |
+| `429` | The wait in seconds under a minute, otherwise in minutes, from `Retry-After` when the server sent one (`connect.signIn.errors.wait`), else "Too many tries". |
 | Anything else, such as no answer or a `5xx` | "Sign in failed". |
 
 `sharedRefusalText` is the part a pairing link shares.
@@ -326,7 +324,8 @@ and what the failure means for the link (`PairOutcome`), so the two can't disagr
 
 **Temporary** means the same link can work later:
 
-- A `429` names the wait in minutes from `Retry-After` when sent, else "Too many tries".
+- A `429` names the remaining seconds under a minute, otherwise minutes. When the wait ends the
+  text invites another try. Without `Retry-After` it says "Too many tries".
 - A `5xx` or another non-`4xx` status is "The server couldn't finish pairing..."
   (`pairingServerError`).
 - A `408` or no answer is "Could not reach the server to finish pairing.", or the

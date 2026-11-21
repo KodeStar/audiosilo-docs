@@ -53,6 +53,8 @@ other libraries scan as usual.
 
 ### Working through a list
 
+Under **Long books without chapters**, each book shows its chapter detection job while it is queued, running or waiting for attention. Open the book’s **Chapters** card for the job details.
+
 - **Ignore** hides a book from this list, even through rescans. **Show
   ignored** lists them, each with **Show again**.
 - Tick several rows (or **Select all**) to act on them together from the bar at
@@ -129,6 +131,7 @@ book's page. A book you match by hand after the run found its match keeps your
 match. The run skips it and says **Matched since this run**. To undo every community match at once, use
 [Clear community matches](server.md#community-metadata). If community
 metadata lookups stop answering, the run stops early but keeps what it found.
+While the community service is only busy, the run waits and carries on.
 
 ### Books with an ASIN the community doesn't know
 
@@ -138,6 +141,10 @@ by its title and records the match, so players get the community details.
 Nothing changes until you review and apply. An ASIN you set yourself is never
 replaced. A book whose ASIN the community database learns before you apply is
 left as it is.
+
+The list appears once the server has its first result for the report. A book
+with an ISBN can still be listed if its ASIN is unknown. Turning the report off
+hides the list.
 
 ### Weak matches
 

@@ -49,6 +49,11 @@ The list shows whether each destination's last message arrived, or why it
 failed. The switch turns a destination off without deleting it. To change one,
 use **Edit** in its **...** menu.
 
+A message that fails for a passing reason is tried up to three times in all. If
+the server restarts, it carries on with the messages still waiting, in order for
+each destination. A destination can get a message twice if the server stops just
+after sending it.
+
 ## What to send
 
 The **What to send** table has a row per event and a column per destination.

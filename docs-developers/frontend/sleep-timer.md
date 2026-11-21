@@ -435,10 +435,10 @@ The watch works in four steps:
 1. **The bookmark.** On an outcome with `fellAsleep`, the watch puts a bookmark at
    the stop position on the playing book's own server, through `resolveClient`. It
    is named `player.sleepTimer.fellAsleepNote` ("Fell asleep"), translated when it
-   is made, because the server stores it as text. Where the server has
-   `annotations`, it is labelled `fell_asleep` (`FELL_ASLEEP_LABEL`); elsewhere
-   `addBookmark` drops the label. It is best effort. Offline, signed out or refused,
-   the bookmark isn't made, and it never throws into the timer's ending path.
+   is made, because the server stores it as text. The timer stores the bookmark with its
+   `fell_asleep` label before sending it, so it can appear briefly as **Waiting to sync**. Replay
+   sends the label once the server’s `annotations` support is known. If local storage refuses the
+   write, the timer tries the server once.
    [The Fell asleep marker](annotations.md#the-fell-asleep-marker) explains how the
    app tells it apart.
 2. **The record.** The device keeps the last touch before the fire and the stop

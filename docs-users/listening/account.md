@@ -21,7 +21,7 @@ Accounts made by invite often have no password. That's fine day to day, but a pa
 2. Enter a password of at least 8 characters. To change one, enter your current password first.
 3. Save.
 
-Setting a first password signs nothing out.
+The confirmation tells you how many of your other devices were signed out. Setting a first password signs nothing out.
 
 **Changing a password signs out your other devices.** This device stays signed in. Every other device needs to sign in again, and so do household members signed in on those devices. The API keys and calendar links those members made there stop working too. Your own [API keys](#personal-api-keys) and [calendar link](upcoming.md#add-to-your-calendar) keep working. If someone else knew your old password, this locks them out.
 
@@ -53,7 +53,7 @@ For a server behind a sign-in proxy, the **Proxy headers** card holds the header
 
 The card then lists each header's name and the address it's sent with requests to. It never shows a saved value again. When you change the headers, a saved value's field says **Kept as it is**, and the value stays unless you type a new one. **Remove headers** stops this device sending them.
 
-The card needs an `https://` address. If this device reaches the server only over plain HTTP, the card says so and offers no **Add headers**. A demo account shows the card only when it already has headers.
+The card needs an `https://` address. If this device reaches the server only over plain HTTP, the card says so and offers no **Add headers**. A kid's or demo account gets the card only while no full account on this device uses that address, and a demo account only once it has headers. Everyone using the same HTTPS address on this device shares the saved set. Signing out keeps it.
 
 ## Signed-in devices
 
@@ -81,6 +81,7 @@ API keys let dashboards and tools reach your server for you, such as a Home Assi
 
 **Sign out of** the server, at the bottom of the page, disconnects this device. Before it does, the app:
 
+- counts any bookmarks waiting to sync before you sign out;
 - warns you if you have no password, since you'd need a new invite to get back in, and offers **Set a password**;
 - tries to send any listening that hasn't synced, and asks before losing it.
 

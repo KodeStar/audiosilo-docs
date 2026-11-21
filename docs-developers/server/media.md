@@ -440,37 +440,22 @@ directly.
 through ffmpeg to MP3. The handler returns `503` when no ffmpeg is configured,
 either because of `--ffmpeg ""` or because the binary was never found. The
 `transcode` capability flag in `GET /server` reflects this (see
-[Configuration](configuration.md)). The exact invocation:
+[Configuration](configuration.md)).
 
-```
-ffmpeg -nostdin -loglevel error [-ss <t>] -i <abs path> \
-       -vn -c:a libmp3lame -b:a 128k -f mp3 pipe:1
-```
+The server opens the input under its library root. `metadata.InputFormatArgs` restricts ffmpeg and
+ffprobe to the supported audio containers. A playlist disguised as an audio file cannot open
+additional inputs.
 
-A podcast episode is transcoded from the descriptor the server already
-verified (`media.TranscodeOpened`), never by reopening its path. The server
-rewinds the descriptor and hands it to ffmpeg as its stdin. When that ffmpeg has
-the `fd:` protocol (ffmpeg 6.1 and later), ffmpeg reads it **seekably** through
-`fd:`:
+`fileInput` hands ffmpeg the open file. An ffmpeg with the `fd:` protocol can seek on the
+descriptor. For an older binary, `metadata.ToolInput` supplies a seekable descriptor path on Unix
+or a checked, held path on Windows. This also lets remuxes and watch renditions read M4B files
+whose index follows the audio. A podcast episode (publisher bytes, `media.TranscodeOpened`) never
+takes that fallback: on an older ffmpeg it is read through `pipe:0`, which is not seekable, so its
+`-ss` is an output seek that decodes up to `t`, and an M4A whose index follows the audio doesn't
+demux there. A probe that times out is tried again on the next request. A failed
+probe is cached for one minute.
 
-```
-ffmpeg -nostdin -loglevel error -protocol_whitelist fd [-ss <t>] -i fd: \
-       -vn -c:a libmp3lame -b:a 128k -f mp3 pipe:1
-```
-
-With `fd:`, `-ss` is a fast input seek, and a non-faststart m4a (its `moov`
-index after the audio) demuxes.
-
-`inputFor` asks each ffmpeg binary once per process whether its Input protocols
-list `fd` (`-hide_banner -protocols`, 5 s at most, cached per path). A probe that
-couldn't run is asked again on the next request. An older ffmpeg gets the
-previous non-seekable form, `-protocol_whitelist pipe -i pipe:0 -ss <t>`, an
-output seek that decodes up to `t`. Either way, the descriptor is the only input
-ffmpeg may open. `transcodeArgs` builds both shapes and is unit-tested.
-
-Design points worth knowing before touching it:
-
-- **`-ss` is input-side** (before `-i`) for a path and for `fd:`. ffmpeg seeks
+- **`-ss` is input-side** (before `-i`) for seekable inputs. ffmpeg seeks
   near the start position before decoding, which is fast even deep into a long
   m4b.
 - **`-vn`** drops any embedded cover-art or video stream, so the output is pure
@@ -557,8 +542,7 @@ never remuxes, because `servePodcastStream` answers it first. Otherwise
 `--ffmpeg ""` restores the 2.4.x behaviour exactly.
 
 **The ffmpeg run.** The server opens the source in Go after `SafeJoin`, as
-`ServeFile` does, and hands it over as stdin (`fd:` or `pipe:0`, as `inputFor`
-decides above):
+`ServeFile` does, and passes it as the seekable input described above. With descriptor support:
 
 ```
 ffmpeg -nostdin -loglevel error -xerror -protocol_whitelist fd -f matroska -i fd: \
@@ -708,9 +692,7 @@ ffmpeg -nostdin -loglevel error -protocol_whitelist fd -i fd: \
   reads those from the API.
 - `+faststart` puts the index first, so a player can start before the end
   arrives. `+bitexact` makes the same ffmpeg write the same bytes every run.
-- The only input is the descriptor (`fd:`, or `pipe:0` for an older ffmpeg, as
-  for the transcode). The demuxer is ffmpeg's guess, since the library holds
-  every audio format.
+- The input stays seekable on older ffmpeg too. The server restricts the demuxers to the supported audio formats.
 - Unlike the remux, the encode has no `-xerror`, because it would fail the
   whole encode on one damaged MP3 frame that playback would skip. A read error
   partway still exits 0, so the server checks the finished copy instead

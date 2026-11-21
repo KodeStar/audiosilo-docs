@@ -1399,8 +1399,10 @@ another server, person or library.
   recent place. An older server sends no `server_time`, and the Bridge counts back
   from its own clock.
 - A row the Bridge fails to record keeps the cursor, so the pass reads it again.
-- A cursor the server refuses with `400` (`link.ErrBadCursor`) goes back to the
-  feed's start, instead of stopping that account's push for good.
+- The Bridge sends `refuse_stale=1`. On 400 `invalid_cursor` it reads from the start with the
+  original baseline cutoff. A title’s stored `row_read` prevents an older or equal row from being
+  pushed again. After three refused resets without an accepted cursor between them the account
+  waits an hour.
 - It skips rows written by `audible:<account>`.
 - A row on a title the last sync didn't list for that book stays pending (`listed`
   0, `store.PendAudiblePush`) until a sync lists it.
@@ -1463,7 +1465,7 @@ Both take a *bridge token* in the header only, and act for the account's
 | Route | What |
 |---|---|
 | `POST /bridge/audible/accounts/{account}/listening` | The account's places on Audible, furthest only. The body is `{sent_at, events}`: strict, `sent_at` required, with the Sync v2 event shapes and limits. `200` is the Sync v2 answer |
-| `GET /bridge/progress?account=&since=&limit=` | The person's places on the synced titles' books, one row per title, keyset by `(change_seq, asin)`: `{rows, next, more, server_time}` (`server_time` for [the baseline](#the-server-to-audible-the-push-loop)). It leaves out the account's own rows, and a row whose own title's `runtime_s` disagrees with the book's length (per title). `400 invalid_request` for no account, a bad limit or a bad cursor |
+| `GET /bridge/progress?account=&since=&limit=` | The person's places on the synced titles' books, one row per title, keyset by `(change_seq, asin)`: `{rows, next, more, server_time}` (`server_time` for [the baseline](#the-server-to-audible-the-push-loop)). It leaves out the account's own rows, and a row whose own title's `runtime_s` disagrees with the book's length (per title). `400 invalid_request` for no account or a bad limit. An invalid cursor returns `400 invalid_cursor`. A Bridge requesting `refuse_stale=1` also gets that code for a cursor from another feed or past the end |
 
 The feed is keyset on `progress.change_seq` (`0066`), the order the server wrote
 progress rows in. Triggers set it, so no write path can miss it.

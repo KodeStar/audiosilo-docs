@@ -217,7 +217,9 @@ The security rules are in
 
 These are gated by `annotations` (seam 8).
 
-- Every bookmark carries `label`, which `POST .../bookmarks` accepts.
+- Every bookmark carries `label`, which `POST .../bookmarks` accepts. With `bookmark_client_id`,
+  the POST also accepts a UUID. A replay for the same book returns the stored bookmark with 200.
+  Reusing it for another book returns 409 `client_id_conflict`.
 - The owner edits a row with `PATCH /bookmarks/{id}` and `PATCH /notes/{id}`. Each
   answers the bare row.
 - `GET /me/bookmarks` (`{ bookmarks, next_cursor? }`) and `/me/notes`
@@ -782,8 +784,10 @@ force a preflight on every cross-origin call. The server's
   cross-origin dev loop shows none. A development build can opt in with
   `EXPO_PUBLIC_IDENTIFY_CROSS_ORIGIN=1`, never a production build.
 
-For an allowed origin the server also allows `Range`, and exposes `Retry-After` and
-the OPML export's `X-OPML-*` counts. What an older server means for the player is in
+For an allowed origin the server allows `Range` and exposes `Retry-After`, the OPML export’s
+`X-OPML-*` counts, `X-AudioSilo-Transcode-Sent` and `X-AudioSilo-Unauthorized`. When the server
+advertises `unauthorized_mark`, the player treats an unmarked 401 as a proxy refusal; with an older
+server it falls back to the error body. What an older server means for the player is in
 [CORS](../server/api/index.md#cors).
 
 ### Media for a player on another site
@@ -1358,8 +1362,17 @@ heartbeat, `http(s)` only) for the browser to open, and nothing more.
   and retries every 5 minutes. A demoted admin's Bridge comes back when they are
   re-promoted. An unpair or a new pairing revoked it for good.
 - A failure to check the token is a `503`, which the Bridge retries.
+- From 2.7.0 a paired Bridge token has its own rate budget, 2,000 requests/s with a
+  burst of 20,000, so the players behind its address keep theirs. A `429` from it
+  carries `Retry-After`. The public pairing exchange, and a call whose token is
+  missing or refused, still pay the address's budget
+  ([Rate limiting](../server/auth-and-security.md#rate-limiting)).
 
 ### The routes the Bridge calls
+
+A heartbeat accepts up to 2 MiB. The server filters IDs and mappings to its libraries and
+truncates long lists. The Bridge fits an oversized retry to the older server’s limits. A claim is
+bound to the pairing that received it. Re-pairing with the same server ends old claims too.
 
 The shapes are in [The Bridge](../server/api/reference.md#the-bridge) in the API
 reference.
@@ -1560,6 +1573,9 @@ server's head checks and the player's reader. See [Read-along](../bridge/readalo
 
 ### Setup and contributions
 
+With `share_off=1` a Bridge can claim a queued generate-and-share job even when Contributions is
+off. A claim or report carrying `share_off: true` tells it to keep the files local.
+
 The heartbeat's `setup` block is the Bridge's onboarding checklist: `paired`,
 `libraries`, `asr`, `agent`, `budget`, `github`, plus `can_contribute` and
 `github_login`. `agent` and `github` are optional. An item may carry
@@ -1657,6 +1673,11 @@ version gate on these payloads. Use the actual paired release tags from the rele
 notes. See [Planned destinations](../bridge/audible.md#planned-destinations).
 
 ### Audible position sync
+
+The Bridge sends `refuse_stale=1` on the progress feed. The server can return 400 `invalid_cursor`
+after a restore or when the cursor is past the end. The Bridge rereads from the start with its
+original baseline and each title’s last read timestamp. Older Bridges omit the flag and keep
+paging.
 
 `audible.sync` (feature `audible`) is internal, quiet, deduped per account, and
 promoting.
@@ -1969,6 +1990,9 @@ The [job shapes](../bridge/podcasts.md#fetch-and-retain-jobs) and the shared
 - Fetch and retain never change poll validators or secret flags.
 
 ### Podcast files
+
+After a hand rename, the server and Bridge identify the show by the ID in `feed.json`. A unique
+new folder keeps the followers, policy and episode places. A second copy does not acquire them.
 
 - The Bridge-owned `feed.json` v1 is the shared format. The server indexes episodes
   even without audio.
@@ -2357,6 +2381,8 @@ the caller's own or an admin's, stamps it whenever it names `finished`, even whe
 the row was already in that state.
 
 ### The offered place
+
+A late place read without a device ID can move the initial play position when newer than every known save. It never raises a Jump or Stay offer.
 
 The server persists a diverged event's lost place on the row (`other_place`). So a
 device that never saw that answer still offers it.

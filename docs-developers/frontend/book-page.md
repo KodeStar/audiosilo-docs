@@ -247,7 +247,7 @@ The player never contributes.
   `stageOf` reads them as that stage.
 - **Parked:** the park in the player's own words (`bridge.park.*`, by `parkReason`;
   `chapters_not_detected` is "The Bridge couldn't find the chapters in the
-  narration."), and when it tries again by itself. A book waiting for an ASR worker
+  narration."), and when it tries again by itself. A book waiting for an ASR worker or for confirmation that it can share (`share_unconfirmed`)
   says "It carries on by itself" (`parkEndsByItself`); any other park says "Open the
   console to fix it".
 - **Failed:** the error and Try again.
@@ -289,6 +289,10 @@ for a count:
 - `useBookAnnotations`' bookmarks and notes (`ANNOTATIONS_STALE_MS`, 60 s, since every
   write invalidates them anyway);
 - the characters met (`splitCharacters(...).visible`).
+
+A one-tap or sleep bookmark queued on this device appears as **Waiting to sync** with a seek pin
+and Delete/Undo. Each book sends its oldest pending bookmark first. See
+[Annotations](annotations.md) for the replay and expiry rules.
 
 A summary counts as *visible* only when it will actually render (`summaryIsVisible`:
 an `in_short`, or an `ending` on a finished book). The page computes it once and passes

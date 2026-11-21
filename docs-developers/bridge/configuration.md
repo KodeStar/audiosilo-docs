@@ -65,7 +65,7 @@ of speech recognition and the agent.
 | Setting | Environment | Default | What it is |
 |---|---|---|---|
 | `podcasts.allow_networks` | `AUDIOSILO_BRIDGE_PODCASTS_ALLOW_NETWORKS` | `[]` | the CIDR list explicitly allowed for feed, artwork and episode audio fetches: a YAML array, comma-separated in the environment. Invalid CIDRs fail startup. Private, loopback and other non-public addresses are blocked unless allowed, so grant only the ranges needed |
-| `podcasts.max_feed_mb` | `AUDIOSILO_BRIDGE_PODCASTS_MAX_FEED_MB` | `32` | the feed response cap in MiB after decompression, 1 to 64. It is separate from the 24 MiB saved-file cap and the fixed 10 MiB artwork cap |
+| `podcasts.max_feed_mb` | `AUDIOSILO_BRIDGE_PODCASTS_MAX_FEED_MB` | `32` | the feed response cap in MiB after decompression, 1 to 64. It is separate from the 24 MiB saved-file cap measured without the repeated folder name (32 MiB absolute) and the fixed 10 MiB artwork cap |
 | `podcasts.max_episode_mb` | `AUDIOSILO_BRIDGE_PODCASTS_MAX_EPISODE_MB` | `1024` | the whole-episode cap in MiB, an integer from 1 to 4096. It is checked against the GET length or resume total and against the received bytes, separately from the feed and artwork limits. It does not use the feed's size estimate |
 
 Audio staging is on the show's filesystem, not an agent work volume. That
