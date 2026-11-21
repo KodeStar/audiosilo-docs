@@ -587,10 +587,11 @@ On a `429` the Bridge waits, then retries the same book and doubles the gap, up 
 2 s. The wait is:
 
 - the `Retry-After`, in seconds or as an HTTP date. The link reads it into
-  `link.APIError.RetryAfter`, and `RetryAfterSet` records whether it was provided.
+  `link.APIError.RetryAfter`, and `RetryAfterSet` records whether the header was valid.
 - none for an explicit `Retry-After: 0`, including an HTTP date in the past. The
   Bridge retries immediately, within the same attempt cap.
-- with no header, 2 s, doubling with each `429` in a row.
+- with a missing or invalid header, a jittered wait between 1 and 2 seconds
+  on the first retry. The range doubles with each consecutive `429`.
 
 The poll leaves the rest of the backfill to the next poll after:
 
@@ -747,8 +748,10 @@ A parked job runs on once the mapping is writable again, and keeps its download.
 7. **Place** (`transfer.Local.Place`,
    [The hardened transfer](#the-hardened-transfer-internaltransfer)), after the
    mapping check again.
-8. **Rescan** (`POST /bridge/rescan` with the placed file, 3 tries). The server
-   answers the book path. A failure here says the book is placed.
+8. **Rescan** (`POST /bridge/rescan` with the placed file). The link handles
+   a 429 within the [job's retry budget](pairing-and-jobs.md#when-the-server-returns-429).
+   The importer makes up to three attempts for other errors. The server answers
+   with the book path. A failure here says the book is placed.
 9. **Enrich** (`PUT /bridge/libraries/{id}/enrichment` with the title's ASIN; see
    [Enrichment after placing](#enrichment-after-placing)).
 
@@ -867,7 +870,7 @@ and it isn't `importjob.SpanMismatch` (the poll's rule).
   and a pack placed as a pack.
 
 The placement marker keeps the verdicts. The one PUT waits out `429`s as the poll's
-enrichment does (`limitWait`), then gives up with `enriched: false`. `asin_set` and
+enrichment does (`enrichLimit.Do`), then gives up with `enriched: false`. `asin_set` and
 a moved book are `enriched: false` too, with no failure.
 
 ### Secrets
@@ -1281,7 +1284,10 @@ Each ASIN appears once, `library_id` is above 0, `path` is a clean book path (or
    the title, resets it. A `duplicate` answer re-arms nothing.
 
 **Server answers.** `sync_off` from the server ends the job quietly (done,
-`sync_off`). `user_unavailable` fails it with that code.
+`sync_off`). `user_unavailable` fails it with that code. If the AudioSilo
+server still returns a 429 when the Bridge posts listening places, the sync job
+fails so the server can schedule another. The account keeps its previous
+`sync_at`, `sync_error` and `sync_retry_at`.
 
 **The event id** is `aud-` and the first 32 hex characters of
 `sha256(account|asin|position_ms|last_updated|kind|library_id|path)` (`EventID`).
@@ -1302,7 +1308,8 @@ again to another book is a new event.
   sent once a job and never retried in it;
 - `waiting` with `wait_until`, or `sync_off`.
 
-A failure's result is `{code, message}`.
+A coded failure includes `{code, message}` in its result. If the server keeps
+rate limiting the listening POST, the job reports the error with the counts so far.
 
 **The server's fold** (`OnEnded`, `catalog.FoldAudibleSync`):
 

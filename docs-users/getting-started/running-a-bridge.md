@@ -425,6 +425,8 @@ setting also covers artwork and episode downloads.
   `http://audiosilo:8080` only works in the same compose file.
 - **Pairing says the server's certificate isn't trusted.** Pair with the server's
   `http://` address on your network instead.
+- **The server is limiting pairing requests.** If the server gives a wait time,
+  the Bridge shows it. Wait that long before pressing **Pair** again.
 - **The server refused the Bridge's token.** Pair it again with a new code. The
   causes are in [Online, offline and its details](../admin/bridge.md#online-offline-and-its-details).
 - **A library says Not found or Can't write.** Mount it at the server's path,
