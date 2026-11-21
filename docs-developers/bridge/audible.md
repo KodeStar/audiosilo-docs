@@ -584,14 +584,10 @@ Bridge paces the PUTs instead (`audiblejob.enrich`), at most one per 200 ms
 (`enrichGap`).
 
 On a `429` the Bridge waits, then retries the same book and doubles the gap, up to
-2 s. The wait is:
-
-- the `Retry-After`, in seconds or as an HTTP date. The link reads it into
-  `link.APIError.RetryAfter`, and `RetryAfterSet` records whether the header was valid.
-- none for an explicit `Retry-After: 0`, including an HTTP date in the past. The
-  Bridge retries immediately, within the same attempt cap.
-- with a missing or invalid header, a jittered wait between 1 and 2 seconds
-  on the first retry. The range doubles with each consecutive `429`.
+2 s. It waits the `Retry-After` as the link reads it
+([When the server returns 429](pairing-and-jobs.md#when-the-server-returns-429)),
+or with no valid header a jittered 1 to 2 s on the first retry, a range that
+doubles with each `429` in a row (`enrichLimit`).
 
 The poll leaves the rest of the backfill to the next poll after:
 
@@ -1284,10 +1280,10 @@ Each ASIN appears once, `library_id` is above 0, `path` is a clean book path (or
    the title, resets it. A `duplicate` answer re-arms nothing.
 
 **Server answers.** `sync_off` from the server ends the job quietly (done,
-`sync_off`). `user_unavailable` fails it with that code. If the AudioSilo
-server still returns a 429 when the Bridge posts listening places, the sync job
-fails so the server can schedule another. The account keeps its previous
-`sync_at`, `sync_error` and `sync_retry_at`.
+`sync_off`). `user_unavailable` fails it with that code. A `429` that outlasts the
+[retry budget](pairing-and-jobs.md#when-the-server-returns-429) fails the job, so the
+server can schedule another, and leaves the account's `sync_at`, `sync_error` and
+`sync_retry_at` as they were.
 
 **The event id** is `aud-` and the first 32 hex characters of
 `sha256(account|asin|position_ms|last_updated|kind|library_id|path)` (`EventID`).
@@ -1308,8 +1304,8 @@ again to another book is a new event.
   sent once a job and never retried in it;
 - `waiting` with `wait_until`, or `sync_off`.
 
-A coded failure includes `{code, message}` in its result. If the server keeps
-rate limiting the listening POST, the job reports the error with the counts so far.
+A failure's result carries the counts reached once Audible gave places, and
+`{code, message}` when the failure has a code (a server `429` has none).
 
 **The server's fold** (`OnEnded`, `catalog.FoldAudibleSync`):
 

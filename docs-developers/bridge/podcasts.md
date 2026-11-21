@@ -1029,7 +1029,7 @@ its lease, checks the mapping and identities, and rereads the latest feed. That
 keeps metadata changes from a concurrent poll.
 
 If the server returns a 429 when a fetch calls `jobs.Reporter.ConfirmLease`, the
-Bridge retries within the [job's lease budget](pairing-and-jobs.md#when-the-server-returns-429).
+Bridge retries within the [job's retry budget](pairing-and-jobs.md#when-the-server-returns-429).
 The fetch publishes the episode only after the server confirms the claim.
 
 ### Publication order
@@ -1078,9 +1078,9 @@ symlinked show, audio, attachment or journal path fails.
   every write, so the next poll or fetch recovers it. A journal that fails any of
   these checks keeps refusing writes until it is repaired.
 - A new generation without CHAP removes its old CHAP file.
-- If the server still rate limits the rescan after the disk commit, the fetch
-  finishes with the episode saved. The next poll asks the server to index the
-  show. Other rescan failures give `index_failed`. A retry repairs the indexing
+- A rescan the server still rate limits after the disk commit leaves the episode
+  saved and its indexing to the show's next poll ([Polling](#polling-and-outcomes)).
+  Other rescan failures give `index_failed`. A retry repairs the indexing
   with `reused:true` and no publisher GET.
 
 The shared `publish-v1.json` fixture fixes the exact shape.

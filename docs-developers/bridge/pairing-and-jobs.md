@@ -69,10 +69,9 @@ in time. For those, the message also gives the address to use instead: the
 server's as this computer reaches it, like `http://192.168.1.10:8080`. A compose
 service name given to a Bridge outside that compose project is the usual cause.
 
-`link.Pair` uses `link.Client.Prompt` to make up to three attempts. It returns
-a `429` immediately if the server asks for a wait over 10 seconds. The Accounts
-tab uses the same policy when it reads the server's list of people.
-`pairError` (`internal/app/backend.go`) has formatted pairing failures since v0.4.0. Once the
+Pairing waits out only a short `429` and answers a longer one at once (the page's
+budget in [When the server returns 429](#when-the-server-returns-429)).
+`pairError` (`internal/app/backend.go`) has worded pairing failures since v0.4.0. Once the
 server has accepted the code, `Conn.Pair` saves without the caller's cancellation
 (`context.WithoutCancel`), so a page closed mid-pairing doesn't lose a spent code.
 
@@ -454,8 +453,8 @@ leaves the caches keyed on the content generation warm. A new
 state, result or error, or a report that expires another job's lease, is a
 content write.
 
-Progress reports and keepalives make one HTTP attempt under the report send lock
-(`link.SingleAttempt`), then release it. After no answer, a 5xx or a 408,
+Progress reports and keepalives make one HTTP attempt (`link.SingleAttempt`) and
+hold the report send lock only for that attempt. After no answer, a 5xx or a 408,
 the loop schedules the next idle report after **10 seconds** (`jobs.DefaultReportRetry`).
 After a 429, it waits those 10 seconds or a longer `Retry-After`, up to one minute.
 Progress within the same step waits too. A new step, a park or the final report
@@ -493,18 +492,31 @@ ended) by the time anyone looks.
 
 ### When the server returns 429
 
-The server's rate limiter rejects the request before the route runs, so the
-Bridge can send it again. The link reads `Retry-After` as seconds or an HTTP
-date. `link.Backoff.Do` uses that delay when retrying. With a missing or invalid
-header, it uses exponential backoff with jitter. The default first wait is
-between 0.5 and 1 second.
+The server's [rate limiter](../server/auth-and-security.md#rate-limiting) rejects
+the request before the route runs, so the Bridge can send it again.
+`link.Backoff.Do` waits the `Retry-After`, read as seconds or an HTTP date
+(`link.APIError.RetryAfter`; `RetryAfterSet` says the header was valid). A
+`Retry-After: 0`, or a date in the past, asks again at once and still counts as
+an attempt. With a missing or invalid header it backs off exponentially with
+jitter, the first wait between 0.5 and 1 second by default.
 
-For a required call in a running job, `link.WithRetryDeadline` supplies the
-lease expiry from the claim or latest successful report, minus a 10-second
-margin (`jobs.leaseMargin`). The call takes that deadline at its first 429.
-If the requested wait would put the next attempt past it, the call returns the
-429 immediately. Without a known lease, or if that deadline has already passed
-at the first refusal, the default is three attempts with waits capped at one minute.
+The budget depends on the call:
+
+- **A required call in a running job.** `link.WithRetryDeadline` supplies the
+  lease expiry from the claim or latest successful report, minus a 10-second
+  margin (`jobs.leaseMargin`). The call takes that deadline at its first 429.
+  If the requested wait would put the next attempt past it, the call returns the
+  429 immediately.
+- **Any other call** (no known lease, or a deadline already passed at the first
+  refusal): three attempts, each wait capped at one minute.
+- **A call a person waits for on the Bridge's page** (`link.Client.Prompt`:
+  pairing, and the Accounts tab's list of people): three attempts, and a wait
+  over 10 seconds returns the 429 at once.
+- **Progress reports and keepalives** make one attempt and leave the wait to the
+  reporting loop ([above](#claims-and-leases)).
+- **A call with its own `link.Backoff`** gives up sooner and leaves the work to a
+  later run: Audible's [enrichment PUTs](audible.md#enrichment-pacing) and the
+  podcast [rescans](podcasts.md#polling-and-outcomes).
 
 If a required call still fails with a 429, the runner checks
 `jobs.ServerQueuedHandler`. The podcast, Audible and LibriVox handlers return
@@ -765,8 +777,8 @@ listener routes.
 
 ### Audible jobs
 
-A failed `audible.sync` carries the counts it collected before a server 429.
-For a coded failure it also reports the code and message.
+A failed `audible.sync` carries the counts reached once Audible gave places, and
+`{code, message}` when the failure has a code ([its result](audible.md#audible-to-the-server-audiblesync)).
 A backup reporting `exists` can name the conflict as `file`, `book` or `audio`. The console alone
 controls the account’s sync switch.
 
