@@ -123,9 +123,6 @@ to the same account again replaces its sign-in rather than adding a second one.
 | **Back up** | which **new** purchases the Bridge backs up by itself. You change this later in the console |
 | **Name (optional)** | how the console names the account. Empty, it is the person and the store, such as "Chris (US)" |
 
-If **Belongs to** can't list people because your server is limiting requests,
-the form shows the server's message. If the message gives a wait time, try again after that.
-
 **Change** on an account edits these. Syncing listening places is off for a new
 account; you turn it on in the console. Changing who an account belongs to turns
 it off again.
