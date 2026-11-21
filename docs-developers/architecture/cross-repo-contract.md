@@ -758,9 +758,6 @@ is in [Release pipeline](release-pipeline.md), and the operator runbook is
 
 ## 12. CORS for web development
 
-CORS exposes `X-AudioSilo-Unauthorized`. When `unauthorized_mark` is advertised, the player treats
-an unmarked 401 as a proxy refusal. Older servers use the error-body fallback.
-
 **What couples:** during development the web player (`expo start --web` on `:8081`)
 and the API (`:8080`) are different origins.
 
@@ -788,8 +785,9 @@ force a preflight on every cross-origin call. The server's
   `EXPO_PUBLIC_IDENTIFY_CROSS_ORIGIN=1`, never a production build.
 
 For an allowed origin the server allows `Range` and exposes `Retry-After`, the OPML export’s
-`X-OPML-*` counts, `X-AudioSilo-Transcode-Sent` and `X-AudioSilo-Unauthorized`. What an older
-server means for the player is in
+`X-OPML-*` counts, `X-AudioSilo-Transcode-Sent` and `X-AudioSilo-Unauthorized`. When the server
+advertises `unauthorized_mark`, the player treats an unmarked 401 as a proxy refusal; with an older
+server it falls back to the error body. What an older server means for the player is in
 [CORS](../server/api/index.md#cors).
 
 ### Media for a player on another site

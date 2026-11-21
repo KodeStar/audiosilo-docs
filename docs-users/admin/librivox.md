@@ -108,7 +108,7 @@ waiting for does not wait.
 
 ## Cancel or restart
 
-You can close the app while a recording downloads. The app checks it again when you return, including after signing back in to the same account. It keeps a signed-out download on its list for up to seven days. If the server refuses access, the row offers **Add** again when you can use that library.
+You can close the app while a recording downloads. The app checks it again when you return, including after signing back in to the same account. If you stay signed out for seven days, the app drops the download from its list. If you lose access to the library, the row offers **Add** again once you have it back.
 
 **Cancel** on the player's row stops the download. In the console, use
 **Cancel** in the [Jobs](bridge.md#jobs) list on **Server > Settings > Bridge**.

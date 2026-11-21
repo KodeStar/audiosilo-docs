@@ -90,8 +90,6 @@ restart.
 
 ## Libraries
 
-On the Bridge’s **Libraries** tab, **Last check** shows when the folder was last verified. If the server is busy, the Bridge can keep a recent check while it can still verify the same folder.
-
 The **Libraries** card lists every library with what the Bridge found:
 
 | Status | Means |
@@ -116,7 +114,8 @@ When a library isn't ready, the line under it says why. Usually:
   to the owner of your library folders.
 
 The Bridge checks its libraries every 10 minutes. **Check now** on its own page
-checks them at once.
+checks them at once. **Last check** on the Bridge's **Libraries** tab shows when
+a folder was last verified.
 
 ## Audible accounts
 

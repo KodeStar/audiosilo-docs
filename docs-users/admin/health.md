@@ -131,10 +131,9 @@ book's page. A book you match by hand after the run found its match keeps your
 match. The run skips it and says **Matched since this run**. To undo every community match at once, use
 [Clear community matches](server.md#community-metadata). If community
 metadata lookups stop answering, the run stops early but keeps what it found.
+While the community service is only busy, the run waits and carries on.
 
 ### Books with an ASIN the community doesn't know
-
-The card appears once the server has a report result or has recorded its first successful check. Books with an ISBN can still appear if their ASIN is unknown. Turning the report off clears the list from view. A match run waits out a busy community service.
 
 **ASIN not in the community database** has a **Find matches by title** card
 above its list. It works like **Match automatically**, but looks each book up
@@ -142,6 +141,10 @@ by its title and records the match, so players get the community details.
 Nothing changes until you review and apply. An ASIN you set yourself is never
 replaced. A book whose ASIN the community database learns before you apply is
 left as it is.
+
+The list appears once the server has its first result for the report. A book
+with an ISBN can still be listed if its ASIN is unknown. Turning the report off
+hides the list.
 
 ### Weak matches
 

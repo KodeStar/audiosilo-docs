@@ -2707,8 +2707,8 @@ one work rule (from 2.7.0):
    the `work_id` and `recording_id` an admin accepted or a match run applied. The
    server fetches that work through `meta.Service.EnrichMatch`. Without a recording ID the work’s
    first recording is eligible. An explicit recording ID missing from the work leaves the match
-   envelope without a recording. When the identifiers already found the matched work, a different
-   recorded recording wins only if the work still lists it. Otherwise the identifiers’ answer
+   envelope without a recording. When the identifiers already found the matched work, the recorded
+   recording is used only if the work still lists it. Otherwise the identifiers’ answer
    stands. Cached answers can serve during an outage.
 
 Either way the server folds the matched recording plus up to three
@@ -12301,7 +12301,7 @@ don't (see [the Bridge's matching rules](../../bridge/audible.md#matching-rules)
 | Status | Meaning |
 |---|---|
 | `200` | `{ books, next }` |
-| `400` | `invalid_cursor` for a bad cursor, `invalid_request` for a bad `limit`, or `not_books` - a podcast library |
+| `400` | `invalid_cursor` for a bad cursor, `invalid_request` for a bad `limit`, or `not_books` for a podcast library |
 | `404` | `unknown_library` |
 
 ### `PUT /api/v1/bridge/libraries/{id}/enrichment`
@@ -12394,7 +12394,7 @@ queued until the destination is corrected. A failed backup with `code: "exists"`
 | Status | Meaning |
 |---|---|
 | `200` | `{ titles, next }` |
-| `400` | `invalid_request` - a `state` or `matched` value not listed above, a `limit` that isn't a positive number, a `q` over 200 bytes. A bad cursor returns `invalid_cursor` |
+| `400` | `invalid_request` for a `state` or `matched` value not listed above, a `limit` that isn't a positive number, a `q` over 200 bytes. A bad cursor returns `invalid_cursor` |
 | `404` | `module_off` |
 
 ### `POST /api/v1/admin/audible/accounts/{account}/poll`

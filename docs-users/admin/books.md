@@ -215,8 +215,6 @@ back.
 
 #### Edit chapter times and titles
 
-When preview playback is waiting for a transcode slot, choose **Stop trying again** to end the retries.
-
 **Edit chapters** on the Chapters card lets you move, add, delete and rename
 chapters. Your list is saved on the server. The audio files are not changed.
 
@@ -226,6 +224,9 @@ Each row is a chapter's start time and title. Times count from the start of the
 book, like `1:02:03` or `12:34.5`. A row with a lock starts one of the book's
 files. You can rename it, but its time is fixed and it can't be deleted, so no
 chapter runs from one file into the next.
+
+When the editor's player is waiting for the server to convert the audio, it keeps
+trying. **Stop trying again** ends the retries.
 
 To edit the chapters:
 

@@ -369,7 +369,8 @@ when, with the details. It also lists what people did with their household
 members. Filter by **Area** or **Who**, or search.
 
 It records changes to accounts, invites, devices, access, progress, libraries,
-books, settings, backups and notifications. Sign-ins and listening are in
+books, settings, backups and notifications. An Audible backup action names the
+account it was for. Sign-ins and listening are in
 [Activity](activity.md), and scans in [Health > Jobs](health.md#jobs).
 
 The log never holds a password or other secret, and no IP addresses. Entries

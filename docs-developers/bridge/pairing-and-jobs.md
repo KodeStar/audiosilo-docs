@@ -525,8 +525,8 @@ records the reason now, unless an admin asked first, whose cancel keeps its own
 error. `UpdateHeld` keeps the reason through the Bridge's reports, which always
 send an error of their own, while the job works and when it ends `cancelled`. After a cancel
 request, the server stores a failure or park as `cancelled` and preserves the cancel reason. A
-completed job remains `done`. Podcast outage counts include only a definite feed response from a
-cancelled job.
+completed job remains `done`. A cancelled podcast job counts against
+the feed's outage only for a definite feed response.
 
 The console words a cancelled row (`cancelledView` in `generate-model.ts`, which
 keeps a copy of those strings, `SERVER_CANCEL_REASONS`; `CancelledStatus` in

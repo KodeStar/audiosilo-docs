@@ -163,8 +163,6 @@ everything** and **Back up by itself** skip it. **Back up** still works for it.
 
 ### Choosing a destination
 
-A title with an invalid saved destination appears in **Needs a look**. The audit log names the account for backup actions.
-
 **Destination...** sets where one title's backup goes, instead of the usual place.
 Type a path inside the library:
 
@@ -173,13 +171,12 @@ Type a path inside the library:
 
 Leave it empty for the usual place. The path can't start with a dot or contain
 `..`. It can't be a disc folder, such as `CD 3`, inside a book already on the
-server, because the backup would join that book.
+server, because the backup would join that book. A title whose saved destination
+is no longer valid appears in **Needs a look**.
 
 ![The Destination dialog for one title](/img/screenshots/admin/audible-destination.png)
 
 ## Back up everything
-
-If a saved destination is no longer valid, the confirmation after queuing tells you how many titles were skipped. Change their destinations and try again. An invalid account template needs fixing before the batch can start.
 
 **Back up everything...**, on each account, backs up all the account's
 **Available** titles that aren't on this server yet. It first shows how many books
@@ -191,6 +188,10 @@ books** to queue them.
 It skips titles marked **Not this book**, contested titles, preorders and titles
 already backed up. It retries failed and cancelled backups. A big library can take
 days.
+
+If a saved destination is no longer valid, the confirmation after queuing tells
+you how many titles were skipped. Change their destinations and try again. An
+invalid account template needs fixing before the batch can start.
 
 ## Backing up by itself
 
@@ -208,11 +209,11 @@ account already had, use [Back up everything](#back-up-everything).
 
 ## Where backups go
 
-When a poll finds several titles in a new series, the Bridge plans them together. It adds an underscore to Windows device names. A standalone title with nothing usable in its name gets its Audible identifier as the folder name.
-
 By default, a backup goes **beside the series' other books**, named like the books
 already there. A book of a new series goes in `Author/Series/`, and a book in no
-series in `Author/Title/`.
+series in `Author/Title/`. When a check finds several titles of a new series, the
+Bridge places them together. A title with nothing usable in its name gets its
+Audible identifier as the folder name.
 
 To choose yourself, set a **Placement template** in **Account settings...**, for
 example:
@@ -229,7 +230,8 @@ template.
 
 The Bridge keeps folder and file names safe for a network share (SMB) or a Windows
 disk. It drops `?`, `*`, `<` and `>`, turns `"` into `'` and `|` into `-`. So
-*Who Moved My Cheese?* is backed up as `Who Moved My Cheese`. A book the Bridge
+*Who Moved My Cheese?* is backed up as `Who Moved My Cheese`. A name Windows
+reserves, such as `CON` or `NUL`, gets an underscore added. A book the Bridge
 backed up earlier into a folder under its old name, with the `?`, is found there
 and isn't downloaded again.
 

@@ -79,9 +79,9 @@ To connect an app through the proxy:
 
 The app stores the headers as securely as your sign-in. To change them, use the **Proxy headers** card on the [account page](../listening/account.md#proxy-headers).
 
-If the proxy refuses a request, the app keeps you signed in and shows a banner. Open it to check the headers. For a sign-in refusal, **Sign in again** opens the password step if you have a password, or the pairing code otherwise. On a small screen the action fits below the message. A child is prompted to ask a grown-up. Kids and demo accounts can see the reason but cannot edit the headers.
+If the proxy refuses a request, the app keeps you signed in and shows a banner. Open it to check the headers. For a sign-in refusal, **Sign in again** opens the password step if you have a password, or the pairing code otherwise. A child is prompted to ask a grown-up. Kids and demo accounts can see the reason but cannot edit the headers.
 
-AudioSilo marks its own sign-in refusals so the player can recognize an expired session behind a proxy. With an older server the player also checks the error body. A standard AudioSilo sign-in error still opens sign-in. An ambiguous reply behind saved proxy headers, or a proxy that removes the mark from a newer server’s reply, shows the proxy banner.
+The app tells the two apart: when your AudioSilo sign-in itself has expired, it takes you to sign in as usual. When it can't be sure which one refused, it shows the proxy banner.
 
 Good to know:
 

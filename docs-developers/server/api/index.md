@@ -1020,9 +1020,9 @@ The two lists are the consts `corsAllowHeaders` and `corsExposeHeaders`
 - `Retry-After` is exposed because every `429` sends it, and so do some `503`s:
   a busy transcode, or an episode on its way. The request timeout sends none.
 - The OPML export's counts are exposed too.
-- CORS exposes `X-AudioSilo-Unauthorized`. On every 401 from AudioSilo its value is the error
-  body’s `code`, or `unauthorized` for a body without one. A token lookup that fails because the
-  database is unavailable returns 503.
+- `X-AudioSilo-Unauthorized` is exposed so a cross-origin player can tell AudioSilo's own 401
+  from a proxy's. Its values are in
+  [Authentication & pairing](reference.md#authentication--pairing).
 - `X-AudioSilo-Transcode-Sent` is exposed so a cross-origin player can read a
   transcode `HEAD`'s count of the bytes the same ask's running `GET` has sent,
   and wait on a slow transcode instead of asking again and taking over its
