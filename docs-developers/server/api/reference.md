@@ -6485,8 +6485,12 @@ settings are not echoed; read them from
 | `409` | `name already taken` (`code: "name_taken"`); also `name_taken` when the server's config declares a library by this name at another folder (the next start would give it the declared folder; the library is deleted, say, and not back yet) |
 
 Invalid `kind` is `400 invalid_kind`. If either library is a podcast library,
-equal, ancestor or descendant roots conflict (`409 root_overlaps`), using
-cleaned absolute paths. This also applies when moving a books root over a
+equal, ancestor or descendant roots conflict (`409 root_overlaps`). From 2.7.0
+the roots are compared as written and with their links resolved, by the
+platform's rule for names (macOS and Windows ignore case, macOS a name's Unicode
+spelling too), and a volume's root (`/`, `C:\`) holds every folder on it. A
+rename that keeps the root skips the check, and overlaps already stored are
+only logged at start. This also applies when moving a books root over a
 podcast root. Two books libraries may share a folder or nest one inside the
 other (their books are then listed twice, once in each): the server allows it,
 and from 2.7.0 the console's Add library and folder edit ask first. Podcast libraries stay in this admin list regardless of the
@@ -8874,7 +8878,8 @@ a scan last finished.
   `available` on [`GET /admin/libraries`](#get-apiv1adminlibraries)), with
   their indexed `books` and how many people have `listeners` progress in them:
   what the scanner kept, since nothing is pruned while a root is offline.
-  `[]` when none.
+  From 2.7.0 podcast libraries are listed too, `books` then counting their
+  episodes. `[]` when none.
 - `checked_at` - when the newest finished scan of any library ended (`""` when
   none has; interrupted runs don't count).
 
