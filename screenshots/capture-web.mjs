@@ -499,15 +499,12 @@ async function openFirstBook(page, shot) {
 // loading, with a spinner, before it starts by itself) and Retry after a failure.
 const PLAYING_OR_FAILED = /^(pause|retry)$/i;
 
-// Press the book page's primary button (Resume, Start listening...) and wait until the
-// book plays (or failed); returns when the button was pressed. `scope` narrows the
-// transport to one bar (the Cast shot's docked player); with `ifShown` a page without
-// the button (its book already started by itself) is fine.
-async function startPlayback(page, {scope = page, ifShown = false} = {}) {
+// Start the book from its page and wait for playback. Return the time of the press.
+async function startPlayback(page) {
   const primary = firstVisible(page.getByRole('button', {name: PRIMARY_PLAY}));
-  if (!ifShown || (await primary.count())) await primary.click({timeout: 8000});
+  await primary.click({timeout: 8000});
   const at = Date.now();
-  await firstVisible(scope.getByRole('button', {name: PLAYING_OR_FAILED})).waitFor({timeout: 20000});
+  await firstVisible(page.getByRole('button', {name: PLAYING_OR_FAILED})).waitFor({timeout: 20000});
   return at;
 }
 
@@ -543,9 +540,9 @@ async function pausePlayback(page, scope = page) {
 }
 
 // Start the open book and stage it paused (startPlayback, then pausePlayback).
-async function playThenPause(page, opts = {}) {
-  const at = await startPlayback(page, opts);
-  await pausePlayback(page, opts.scope);
+async function playThenPause(page) {
+  const at = await startPlayback(page);
+  await pausePlayback(page);
   return at;
 }
 
@@ -784,15 +781,10 @@ async function captureWide(name, viewport, shots) {
     // menu are shot over Home on every run.
     await step('back home', async () => {
       await tid(page, 'top-bar-(home)').click({timeout: 8000});
-      // The Home tab still has the playing book's page pushed (View book details):
-      // back out of it to Home's root.
-      for (let i = 0; i < 3; i++) {
-        const back = firstVisible(page.getByRole('button', {name: /^back$/i}));
-        if (!(await back.count())) break;
-        await back.click({timeout: 8000});
-        await sleep(SETTLE_MS);
-      }
-      await sleep(3000);
+      // Switching tabs restores Home's last page. Pressing the selected tab
+      // returns to its root while keeping the paused book in the dock.
+      await page.getByRole('tab', {name: 'Home', exact: true, selected: true}).click({timeout: 8000});
+      await tid(page, 'home-column').waitFor({timeout: 8000});
     });
   }
 
@@ -2484,16 +2476,10 @@ async function captureCast() {
     await page.goto(`${origin}/web/connect`, {waitUntil: 'networkidle', timeout: 45000});
     await probeServer(page, origin);
     await signInWithPassword(page, HOUSE_VIEWER.username, HOUSE_PASSWORD);
-    await tid(page, 'ready-screen').waitFor({timeout: 15000});
+    // Start listening resumes the book once the Ready screen has loaded Ellen's place.
+    await tid(page, 'ready-screen').getByText(/Your place in .+ came with you/).waitFor({timeout: 15000});
     await firstVisible(page.getByRole('button', {name: 'Start listening'})).click({timeout: 8000});
-    // Ellen's book on the go, from Home's first cover (the Now card's, which may start it
-    // at once).
-    const card = page.locator('[role="button"]:has(img)').first();
-    await card.waitFor({state: 'visible', timeout: 20000});
-    await card.click({timeout: 12000});
-    await tid(page, 'book-page').waitFor({timeout: 15000});
-    await sleep(SETTLE_MS);
-    await playThenPause(page, {scope: tid(page, 'shell-docked-player'), ifShown: true});
+    await pausePlayback(page, tid(page, 'shell-docked-player'));
     await expandPlayer(page);
     await tid(page, 'companion-tab-chapters').click({timeout: 8000});
     // The transport and the action row, centred on the play button.
