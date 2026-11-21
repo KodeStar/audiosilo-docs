@@ -82,9 +82,14 @@ Changes to existing routes:
   download. A temporary share fault on a file open or folder listing returns 503
   `share_not_answering` with `Retry-After: 30`.
 - A show lookup accepts the other Unicode spelling of a uniquely visible indexed show. A hand rename preserves follows and episode places.
-- An OPML import that cannot acquire a slot returns 503 `opml_busy` with `Retry-After: 1` and
-  refunds its request allowance. An invalid document that followed nothing also refunds the
-  allowance.
+- [OPML import](reference.md#post-apiv1podcastsopmlimport): an unknown library, like one the
+  caller holds no whole grant on, returns 403 `no_library_access` (it was 404
+  `library_not_found`). The import has its own 5 minute bound instead of the 30 s request
+  timeout, and runs to its end when its client stops waiting. Two imports run at once per
+  server: a third returns 503 `opml_busy` with `Retry-After: 1` and refunds its request
+  allowance. An invalid document that followed nothing also refunds the allowance.
+- A paired Bridge's requests no longer spend its address's rate limit bucket (each Bridge token
+  has its own), so players behind the same address as a Bridge are not slowed by its work.
 - The player’s series rails, Upcoming and the local recordings in `/meta` follow a recorded
   community work match even when the book has no ASIN or ISBN. If the work no longer lists the
   recording selected for the match, the match does not substitute another edition’s details.

@@ -2043,20 +2043,21 @@ in order:
 5. the client gate (`403 no_library_access`);
 6. unknown or repeated parameters (`400 invalid_request`);
 7. a missing or non-positive `library_id` (`400 invalid_request`);
-8. `404 library_not_found`;
-9. no whole-library grant (`403 no_library_access`), checked before the kind so an
-   ungranted library's kind is not revealed;
-10. `409 not_podcast_library`;
-11. the content type: `application/xml`, `text/xml`, `text/x-opml` or
+8. no whole-library grant, or no such library (`403 no_library_access`), checked
+   before the kind so an ungranted library's kind, or whether it exists, is not
+   revealed (before 2.7.0 an unknown library was `404 library_not_found`);
+9. `409 not_podcast_library`;
+10. the content type: `application/xml`, `text/xml`, `text/x-opml` or
     `application/x-opml+xml`, with no parameter but `charset=utf-8` and no
     `Content-Encoding` but `identity`, else `415 unsupported_opml_type`;
-12. the caller's import budget, 2 a minute with burst 1: `429 opml_rate_limited`
+11. the caller's import budget, 2 a minute with burst 1: `429 opml_rate_limited`
     with `Retry-After`, or `503 opml_busy` with `Retry-After: 1` while the server's
     per-user budget table is full;
-13. whether one of two server-wide import slots is free (`503 opml_busy`,
-    `Retry-After: 1`, answered before the body is read);
-14. the body, read whole, at most 1 MiB;
-15. then the slot.
+12. whether one of two server-wide import slots is free, so a third import at
+    once gets `503 opml_busy` with `Retry-After: 1`, answered before the body is
+    read;
+13. the body, read whole, at most 1 MiB;
+14. then the slot.
 
 A busy answer refunds the budget it took, so the `Retry-After` retry runs rather
 than meeting `429`. From 2.7.0 so does a `400 invalid_opml`, so a corrected
@@ -2078,6 +2079,14 @@ one whose `xmlUrl` is blank, or a `type="rss"` outline without one, is a row
 with `missing_feed_url` (`htmlUrl` or `url` is never used instead); any other
 outline is a category and produces no row (but counts in `outline_index`).
 Within an upload the first outline with a given normalized URL wins.
+
+From 2.7.0 an import has its own bound of 5 minutes instead of the 30 s
+[request timeout](index.md#status-codes), and it outlives its client: a player
+that gives up waiting (a shipped one waits 45 s) does not cancel it, and it keeps
+its slot until it ends. When the bound or the server stopping ends it first, the
+answer is `503 {"error":"request timed out"}`: the rows reached are followed and
+the rest untouched, and uploading again is safe (done rows answer
+`already_following` or `already_queued`).
 
 `200` answers the decisions, not completion:
 

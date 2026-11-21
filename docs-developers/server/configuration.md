@@ -332,7 +332,7 @@ bucket is answered `429 rate limit exceeded`.
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `rate_limit.address.rate` / `.burst` | float / int, `50` / `200` | Per client address: what runs before a credential is proved (a missing or refused token pays here), every `/api/v1/auth/*` route (sign-in, pairing, password, API keys), the Bridge's requests and a demo account's API requests (its covers and audio stay per credential, below) |
+| `rate_limit.address.rate` / `.burst` | float / int, `50` / `200` | Per client address: what runs before a credential is proved (a missing or refused token pays here), every `/api/v1/auth/*` route (sign-in, pairing, password, API keys), the Bridge's pairing exchange and a Bridge request whose token is missing or refused, and a demo account's API requests (its covers and audio stay per credential, below). From 2.7.0 a paired Bridge's own requests are not here: each Bridge token has a fixed budget of its own, 2,000 requests/s with a burst of 20,000, not set in `config.yaml` |
 | `rate_limit.token.rate` / `.burst` | float / int, `50000` / `100000` | Per signed-in device or API key (its `tokens` row): every other authenticated API request, admin routes included, so people behind one address each have their own |
 | `rate_limit.media.rate` / `.burst` | float / int, `200` / `2000` | Per signed-in device, API key or cast token: covers and audio (`/cover`, `/stream`, `/meta/cover`) |
 

@@ -567,7 +567,9 @@ backup can finish downloading:
 
 Only reads are exempt. An upload to a streaming-shaped path (the admin
 custom-cover `PUT /admin/libraries/{id}/cover`) stays bounded by the 30 s
-timeout, so a slow client can't hold it open.
+timeout, so a slow client can't hold it open. The OPML import has a bound of its
+own, 5 minutes, and runs on when its client leaves (see
+[OPML import](reference.md#post-apiv1podcastsopmlimport)).
 
 ## Path-addressed content: `?path=`
 
@@ -952,15 +954,16 @@ when to try again.
 
 | Limiter | Scope | Policy |
 |---|---|---|
-| Address token bucket | public routes, every `/auth/*` route (with or without a token), the Bridge's `/bridge/*`, a request whose token is missing or refused, a demo account's API requests (not its covers and audio); static files are not counted | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
+| Address token bucket | public routes, every `/auth/*` route (with or without a token), the Bridge's pairing exchange `POST /bridge/pair`, a request whose token is missing or refused (a Bridge's too), a demo account's API requests (not its covers and audio); static files are not counted | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
 | Credential token bucket | every other authenticated API request (admin routes included), once its token is proved | ~50,000 requests/second, burst 100,000, per session or API key; past it the address is charged too |
 | Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own) |
+| Bridge token bucket (2.7.0) | a paired Bridge's authenticated `/bridge/*` requests | 2,000 requests/second, burst 20,000, per Bridge token; fixed, not in `rate_limit.*`; a refusal never charges the address |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
 | Redeem lockout | `POST /auth/redeem`, `POST /auth/exchange`, `POST /bridge/pair` (one shared counter) | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
 | Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/revoke; listing is not counted) | at most 10 attempts per IP per 15 min, metered at admission |
 
-The three token buckets' rates are `rate_limit.*` in the server's
+The address, credential and media buckets' rates are `rate_limit.*` in the server's
 [configuration](../configuration.md#rate-limits-rate_limit). The table shows
 the defaults. A failed authentication on any route charges the address bucket,
 so the address limit bounds guessing tokens.
