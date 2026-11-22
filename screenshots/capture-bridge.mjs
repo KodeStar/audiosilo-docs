@@ -104,6 +104,10 @@ const audible = {library: null, account: null, moduleOn: false};
 const AUDIBLE_BACKUP = 'B0FAKE0004';
 const AUDIBLE_REJECT = 'B0FAKE0025';
 const AUDIBLE_DEST_TITLE = "The Cartographer's Return";
+// The titles shot's refused backup: Echo's destination is saved inside a folder of two
+// discs that is then joined into one book, so its backup lands in a book of no title.
+const AUDIBLE_REFUSED = 'B0FAKE0009';
+const AUDIBLE_TAPES = 'Household Recordings/Family Tapes';
 // The Audible card on the Bridge's Accounts tab.
 const audibleCard = () => page.getByRole('region', {name: 'Audible', exact: true});
 const clipShoot = async (p, locator, file) => {
@@ -124,6 +128,20 @@ const untilKind = async (method, path, ms = 60000) => {
       if (Date.now() > until) throw e;
     }
   }
+};
+const titlePath = (asin) => `/admin/audible/titles/${audible.account}/${asin}`;
+// Polls the title's row until `ended` answers true for it, throwing at once when its
+// backup failed, was cancelled or waits for attention.
+const untilBackup = async (asin, ended) => {
+  for (const until = Date.now() + 240000; Date.now() < until; await sleep(2000)) {
+    const {titles = []} = (await server(admin, 'GET', `/admin/audible/titles?account=${audible.account}&q=${asin}`)) ?? {};
+    if (titles[0] && ended(titles[0])) return;
+    const imp = titles[0]?.import;
+    if (imp && ['failed', 'cancelled', 'needs_attention'].includes(imp.state)) {
+      throw new Error(`the backup of ${asin} ended ${imp.state} ${imp.code}`);
+    }
+  }
+  throw new Error(`the backup of ${asin} never finished`);
 };
 
 async function audibleShots() {
@@ -228,19 +246,9 @@ async function audibleShots() {
   // so the two confirmations use the same seed as the titles page.
   await step('audible: a backup', async () => {
     if (!wanted(AUDIBLE_SHOTS.card, AUDIBLE_SHOTS.titles, AUDIBLE_SHOTS.backupAll, AUDIBLE_SHOTS.backupSkipped)) return;
-    const titlePath = (asin) => `/admin/audible/titles/${audible.account}/${asin}`;
     await server(admin, 'PATCH', titlePath(AUDIBLE_REJECT), {rejected: true});
     await untilKind('POST', `${titlePath(AUDIBLE_BACKUP)}/backup`);
-    for (const until = Date.now() + 240000; Date.now() < until; await sleep(2000)) {
-      const {titles = []} =
-        (await server(admin, 'GET', `/admin/audible/titles?account=${audible.account}&q=${AUDIBLE_BACKUP}`)) ?? {};
-      const imp = titles[0]?.import;
-      if (imp?.state === 'done' && titles[0].match) return;
-      if (imp && ['failed', 'cancelled', 'needs_attention'].includes(imp.state)) {
-        throw new Error(`the backup ended ${imp.state} ${imp.code}`);
-      }
-    }
-    throw new Error('the backup never finished');
+    await untilBackup(AUDIBLE_BACKUP, (t) => t.import?.state === 'done' && t.match);
   });
 
   const consolePage = await ctx.newPage();
@@ -276,12 +284,44 @@ async function audibleShots() {
       });
     }
     await step('audible: console titles', async () => {
-      await consolePage.goto(`${ORIGIN}/admin/server?topic=audible`, {waitUntil: 'networkidle', timeout: 45000});
-      await consolePage.getByRole('list', {name: 'Audible titles'}).waitFor({timeout: 15000});
-      if (wanted(AUDIBLE_SHOTS.titles)) {
-        await consolePage.getByText(/Your destination is no longer valid/).first().waitFor();
+      const want = wanted(AUDIBLE_SHOTS.titles);
+      try {
+        if (want) {
+          // The destination is saved before the discs are joined, as the refusal needs.
+          await server(admin, 'PATCH', titlePath(AUDIBLE_REFUSED), {dest_path: `${AUDIBLE_TAPES}/CD3`});
+          for (const disc of ['CD1', 'CD2']) {
+            const dir = path.join(AUDIBLE_DIR, AUDIBLE_TAPES, disc);
+            await mkdir(dir, {recursive: true});
+            if (!silence(path.join(dir, 'Track.mp3'), 5)) throw new Error('could not seed Family Tapes');
+          }
+          await server(admin, 'PUT', `/admin/libraries/${audible.library.id}/folder-override${pathQuery(AUDIBLE_TAPES)}`, {mode: 'book'});
+          await waitForScans(server, admin);
+          await untilKind('POST', `${titlePath(AUDIBLE_REFUSED)}/backup`);
+          await untilBackup(AUDIBLE_REFUSED, (t) => {
+            if (t.match) throw new Error('the backup meant to be refused matched its title');
+            return t.fold_refusal_reason === 'not_own_book';
+          });
+        }
+        await consolePage.goto(`${ORIGIN}/admin/server?topic=audible`, {waitUntil: 'networkidle', timeout: 45000});
+        await consolePage.getByRole('list', {name: 'Audible titles'}).waitFor({timeout: 15000});
+        if (want) {
+          await consolePage.getByText(/Your destination is no longer valid/).first().waitFor();
+          const echo = consolePage.getByRole('listitem').filter({hasText: 'Echo of the Drowned Choir'});
+          const reason = "The server couldn't confirm that the book at the backup destination belongs to this title.";
+          await echo.getByText(reason, {exact: true}).waitFor({timeout: 15000});
+          if (await echo.getByText('Backed up', {exact: true}).isVisible()) throw new Error('the refused backup shows as backed up');
+        }
+        await tallShoot(consolePage, AUDIBLE_SHOTS.titles, {settle: 1000, max: 2600, fitSettle: 800});
+      } finally {
+        if (want) {
+          // Back up everything skips a done backup whose book is still indexed, so Echo
+          // would drop out of the batch shot later in this run (16 queued, as the
+          // confirmation before it shows). Its book leaves the library again here.
+          await rm(path.join(AUDIBLE_DIR, AUDIBLE_TAPES), {recursive: true, force: true});
+          await server(admin, 'POST', `/admin/libraries/${audible.library.id}/scan`);
+          await waitForScans(server, admin);
+        }
       }
-      await tallShoot(consolePage, AUDIBLE_SHOTS.titles, {settle: 1000, max: 2600, fitSettle: 800});
     });
     await step('audible: destination', async () => {
       if (!wanted(AUDIBLE_SHOTS.destination)) return;
