@@ -206,9 +206,9 @@ If you mounted a library somewhere else, tell the Bridge where it is on the
 
 When a folder takes too long to answer, **Last check** tells you when the Bridge tried and whether writes are waiting.
 
-You can use an empty books library for your first backup. Mount its folder as
-usual and wait for **Ready**. The Bridge uses the same
-[marker check](../admin/bridge.md#libraries) for podcast libraries.
+An empty library, books or podcasts, can be **Ready** too: the Bridge writes a
+small hidden marker there ([how](../admin/bridge.md#libraries)). Leave it in
+place.
 
 ## 6. Speech recognition
 

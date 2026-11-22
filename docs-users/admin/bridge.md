@@ -104,9 +104,8 @@ The **Libraries** card lists every library with what the Bridge found:
 | **Not reported yet** | the Bridge hasn't checked it yet |
 
 The Bridge compares a book's files with the sizes the server sees. For an empty
-books library or a podcast library, the Bridge writes or reuses a hidden marker
-called `.audiosilo/library.json`. The server confirms it can read the same marker
-from its library folder. Leave the marker in place.
+books library or a podcast library, it leaves a small hidden file,
+`.audiosilo/library.json`, that the server must see too. Leave it in place.
 
 The Bridge also checks that it can write a small test file. Once the library
 shows **Ready**, the Bridge can save books there.

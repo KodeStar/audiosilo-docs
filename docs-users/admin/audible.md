@@ -4,8 +4,8 @@ description: "Have your Bridge back up the Audible books you bought into your li
 ---
 
 Your [Bridge](bridge.md) finds the Audible books already on your server and backs
-up the titles you choose. You can also turn on [automatic backups for new purchases](#backing-up-by-itself).
-Each backup is a lossless copy that keeps the book's chapters.
+up the titles you choose. You can also turn on
+[automatic backups for new purchases](#backing-up-by-itself). Each backup is a lossless copy that keeps the book's chapters.
 
 It can also keep each account's **listening places** in step with Audible, both
 ways. You need to be an admin and have a Bridge.
@@ -27,8 +27,8 @@ keep the copies for yourself.
    is for and which library it goes with (see
    [Bridge accounts](../getting-started/bridge-accounts.md#audible)).
 4. Check that the library shows **Ready** in
-   [Server > Settings > Bridge](bridge.md#libraries). An empty books library
-   can receive your first backup once the server confirms the Bridge's marker.
+   [Server > Settings > Bridge](bridge.md#libraries). An empty library can be
+   **Ready** too.
 5. Wait for the first check, or press [Check now](#check-now).
 6. Open **Server > Settings > Audible** and press **Back up** on a title, or
    [Back up everything](#back-up-everything) on the account.
@@ -124,19 +124,18 @@ library. Once the server indexes it, the title shows **On this server** with
 **Backed up here**.
 
 The Bridge backs up one book per account at a time. A download cut off part way
-can pick up where it stopped. If the Bridge restarts
-after removing the copy protection, it resumes from the decrypted copy without
-downloading the book again. The Bridge never overwrites an existing book.
+picks up where it stopped. Once the copy protection is removed, the Bridge keeps
+that copy, so a restart, or a retry after a passing problem, doesn't download
+the book again. The Bridge never overwrites an existing book.
 
 To stop a backup, choose **Cancel** in the Bridge's [Jobs](bridge.md#jobs) list.
-This removes the temporary copy. At startup the Bridge cleans up leftover
-downloads and decrypted copies that are at least seven days old.
+This removes the temporary copy. When it starts, the Bridge also clears away
+copies left over for seven days or more.
 
 ### When a backup fails
 
 The reason under the title says what to do. After fixing the problem, press
-**Back up** again. If the Bridge had already removed the copy protection, it can
-retry from the copy it kept without downloading the book again.
+**Back up** again.
 
 | Reason | What to do |
 |---|---|

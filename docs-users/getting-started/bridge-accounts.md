@@ -125,10 +125,10 @@ to the same account again replaces its sign-in rather than adding a second one.
 | **Back up** | which **new** purchases the Bridge backs up by itself. You change this later in the console |
 | **Name (optional)** | how the console names the account. Empty, it is the person and the store, such as "Chris (US)" |
 
-After sign-in, the **Back up** row shows the setting **Last known to the Bridge**.
 The console's [Audible accounts card](../admin/audible.md#the-audible-accounts-card)
-shows the current setting. If you change it there, the Bridge shows the new value
-the next time you choose **Change** and **Save** on the Bridge's account card.
+holds the current **Back up** setting. The Bridge's card shows the value it last
+saw, as **Last known to the Bridge**, and catches up the next time you press
+**Change** and **Save** there.
 
 Use **Change** to edit the person, library or name. Listening place sync starts
 off. You can turn it on in the console. Changing the person turns it off again.

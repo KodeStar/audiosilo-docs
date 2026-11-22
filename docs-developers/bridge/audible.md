@@ -746,8 +746,8 @@ slot only while the account holder has none (`Reporter.HoldsSlot`).
    reused listing or an explicit path, `booksAt` checks the destination and its
    possible book folders by path on the server. If any path names a book, it
    reads the full current listing for the matching and conflict checks.
-   Finally, `vacant` refuses an occupied destination (`exists`). It also checks each folder
-   of the path under its former name, the one the Bridge gave before
+   Finally, `vacant` refuses an occupied destination (`exists`). It also checks
+   each folder of the path under its former name, the one the Bridge gave before
    `placement.Sanitize` dropped SMB-unsafe characters (`formerDirs`, `formerName`).
    So a title backed up as `Who Moved My Cheese?` is `exists`, and the Bridge
    doesn't download it again into `Who Moved My Cheese`. The file's own name is
@@ -779,7 +779,7 @@ title:
 |---|---|
 | `<account>-<asin>.aaxc.part` | the partial download, and its state file `.aaxc.part.state` (`audible.StatePath`: `{size, etag, last_modified}`, written before the body) |
 | `<account>-<asin>.ready.m4b.partial` | ffmpeg writes here during decryption. An interrupted decrypt cannot be used for placement. |
-| `<account>-<asin>.ready.m4b` and its `.json` | The completed decrypt and its record identify the server, pairing, title, planned placement, file size and modification time. |
+| `<account>-<asin>.ready.m4b` and its `.json` | the completed decrypt, and its record of the server, pairing, title, planned placement, file size and modification time |
 | `<account>-<asin>.placed.json` | the placement marker, written after the install (below) |
 
 **`audible.Download`** resumes a partial only when its state file agrees with
@@ -818,8 +818,8 @@ attempt removes them.
 **Completed decrypt.** A shutdown, lost lease or temporary placement failure
 keeps the ready file and its metadata. This includes a network error, a rate
 limit or an unqualified HTTP 404 at lease confirmation. On the next claim for
-that account and title, `readStaged` checks the server, pairing, ASIN, size and
-exact modification time. A valid stage skips the Audible title lookup, license,
+that account and title, `readStaged` checks the record against the file and the
+pairing (the modification time exactly). A valid stage skips the Audible title lookup, license,
 download and decrypt.
 
 Cancellation, a dropped pairing or a permanent refusal such as `unknown_account`,
@@ -837,13 +837,12 @@ After a books mount passes its writable mapping check, `transfer.SweepStaged`
 looks for library-side placement files. If startup records name folders in that
 library, only files directly in those folders qualify. With no recorded folder,
 the Bridge walks the library only if a local Audible account maps to it on this
-server. With neither an account nor a record, it skips the library.
+server.
 
-Only regular files named `.audiosilo-import-<16 hex>.part` qualify. The 16 digits
-must be lowercase hexadecimal, and the modification time must be at least seven
-days old. The sweep skips hidden directories, symlinks and files an active
-placement holds. It rechecks the writable mapping before each removal.
-Ordinary library files stay in place.
+Only regular files named `.audiosilo-import-<16 lowercase hex>.part`, modified at
+least seven days ago, qualify. The sweep skips hidden directories, symlinks and
+files an active placement holds. It rechecks the writable mapping before each
+removal.
 
 **The placement marker.** After the install the Bridge writes
 `<account>-<asin>.placed.json` before removing the private decrypt. If it stops

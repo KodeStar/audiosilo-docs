@@ -1,6 +1,6 @@
 ---
 title: Library mappings
-description: "How the Bridge verifies a library using a sample book or a shared marker, tests whether it can write there, and reports the result."
+description: "How the Bridge finds each server library on its own disk and proves it has the server's copy: the default mapping, the size comparison, the marker for empty books and podcast libraries, the write probe, and how often it checks."
 ---
 
 The server and the Bridge usually run in different containers, so a library at
@@ -64,7 +64,9 @@ a missing marker. It asks the server to read the marker from its own root with
 `GET /api/v1/bridge/libraries/{id}/marker`. A matching nonce proves `mapped`.
 The Bridge then probes for `writable`. If the server cannot confirm a marker
 the Bridge just wrote, the Bridge removes it. It can replace a removed library's
-marker and refuses one naming another current library.
+marker and refuses one naming another current library. The marker's limit: if a
+share disconnects and both processes see the same bare mount point, the check
+can pass there too.
 
 Both sides require:
 
@@ -75,8 +77,7 @@ Both sides require:
 
 The server also checks the library id and answers only `{nonce}`. A marker that
 is absent or invalid is `404 no_marker`. `checked_path` is
-`.audiosilo/library.json`. If a share disconnects and both processes see the
-same bare mount point, the marker check can pass there too. An older Bridge's
+`.audiosilo/library.json`. An older Bridge's
 sample-book lookup on a podcast library returns `404 no_book`, so it cannot map
 it as books.
 
