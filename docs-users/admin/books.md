@@ -59,9 +59,11 @@ If the book is already matched to a community book, the dialog opens with that
 match selected and in view. If the search didn't find it, the dialog adds it at the end, marked
 **Current match** instead of a percentage.
 
-Accepted values are marked **Community** and are kept like your own edits. You
-can revert them the same way. Save or discard any unsaved edits on the page
-before you match.
+Accepted values are marked **Community**. Choose **Revert** beside a community
+title to restore the book's title from your library. It now shows **Edited**,
+and later metadata fills keep it. To let fills change it again, choose
+**Revert** beside the **Edited** title. Save or discard any unsaved edits before
+you match.
 
 To match many books at once, use **Match automatically** on the Health page
 (see [Matching every book at once](health.md#matching-every-book-at-once)).
@@ -207,8 +209,8 @@ community value has a **Revert** button that puts back what the files say.
 A book that holds several books of a series takes a range as its **Series
 number**, such as `1-3`. In **Other series**, write it as `Box Sets #2-4`. The
 [Series](#series) page then counts the omnibus as books 1 to 3, and in an
-up-to-date app the next book after it is book 4. A range in a file or folder
-name isn't read, so type it in here.
+up-to-date app the next book after it is book 4. AudioSilo can also read the
+range from a [file or folder named like `Author; Series; Books 01-03`](../getting-started/organizing-your-library.md#names-like-author-series-book-04-title).
 
 ### Covers
 

@@ -121,7 +121,7 @@ Titles, authors, narrators and series can come from the files' **tags** or from 
 - **The files' tags first** suits well-tagged files, like most bought audiobooks.
 - **Folder names first** suits folders named like `Author / Series / 01 - Title`.
 
-Either way, the other fills in what the first leaves empty. Changing this later re-reads the whole library, so it's worth a look now. See [Organize your audiobook files](./organizing-your-library.md#where-titles-authors-and-series-come-from).
+Either way, the other fills in what the first leaves empty, and both read names such as `Author; Series; Book 02; Title`. You can change this setting later in the library. See [Organize your audiobook files](./organizing-your-library.md#where-titles-authors-and-series-come-from).
 
 ### Step 4: Community metadata
 

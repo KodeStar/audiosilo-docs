@@ -498,10 +498,10 @@ dates from 0001. Later migrations added these columns:
   [The first scan after updating](scanner.md#the-first-scan-after-updating)).
   When a count is left at revision 0, see
   [MP3 lengths](scanner.md#mp3-lengths).
-- `tag_read_failed_at`: the `indexed_at` of the index whose primary file
-  ffprobe rejected during a backfill of names or tag hints, `NULL` until one
-  does. It counts only while it equals the row's `indexed_at`, so the book's
-  next index ends it without clearing the column. See
+- `tag_read_failed_at`: the `indexed_at` of the index whose names or tag
+  hints a backfill could not read for good, `NULL` until one fails. It counts
+  only while it equals the row's `indexed_at`, so the book's next index ends it
+  without clearing the column. See
   [Backfills for a skipped book](scanner.md#backfills-for-a-skipped-book).
 - `ebook_path`: the book's ebook, library-relative, `''` for none. It is the
   one readable `.epub` beside the audio by `library.BookEbook`'s rule.
@@ -616,7 +616,7 @@ chapters' `scanned_title` from their titles. See
 
 A scan also writes an `@rev` key (`catalog.scannedRevKey`). It is the revision
 of the name-reading rules the snapshot used: the path baseline
-(`metadata.DeriveFromPath`) plus the tags over it. Today it is `5`
+(`metadata.DeriveFromPath`) plus the tags over it. Today it is `6`
 (`catalog.scannedRev`).
 
 | Revision | What changed | What the next scan does with an older snapshot |
@@ -625,6 +625,7 @@ of the name-reading rules the snapshot used: the path baseline
 | 3 (2.6.0) | A leaf named `Author; Series; Book NN[; Title]` came to state its series and position. | Reads a snapshot older than 3 with such a leaf once, and stamps an unflagged revision 1 or 2 snapshot, as [the scanner](scanner.md#a-leaf-that-states-its-series) describes. |
 | 4 (2.7.0) | The tag reading of 2.4.0 and 2.5.0: a series tag carrying its position, generic titles in every script, the MP4 narrator item, and a narrator tag over composer. | Reads once a snapshot older than 4 that may read otherwise (an MP4, a narrator, a splittable series tag, a non-ASCII letter in its title or path), and stamps the rest, as [the scanner](scanner.md#books-already-indexed) describes. |
 | 5 (2.7.0) | A book of several files stopped taking its first file's title tag over the album that tag extends. | Reads a folder book of more than one file once when its snapshot is older than 5, and its last file too where the title depends on it, as [the scanner](scanner.md#a-book-of-several-files-title) describes. |
+| 6 (2.7.0) | The scanner reads a structured leaf's title part, author and `Books NN-NN` range (a title-less leaf is named by its series and position) and weighs the folder title against conflicting multi-file tags. | Checks structured leaves and their direct disc folders once. It also checks revision 5 multi-file books whose folder gives a title different from the scanned one. Other current revision 5 snapshots get the new stamp alone. Earlier revisions keep their [scan checks](scanner.md#books-already-indexed). |
 
 A snapshot with no revision (any server before revision 1) was read when the
 lone folder above a book (`Charles Dickens/Great Expectations`) was its series
@@ -2228,16 +2229,18 @@ write path calls `refreshEffective` inside its own transaction:
 - `EditBook` and `EditBooks` (the admin edits; the bulk form is
   all-or-nothing).
 
-Two consequences:
+Players, search, the `/fs` annotations, `/meta` lookups and the export read
+edited values straight off the row. A rescan writes the newly scanned values
+and re-applies the overrides in the same transaction. Readers therefore see
+the edited value throughout the scan.
 
-- **No read-time join.** Players, search, the `/fs` annotations, `/meta`
-  lookups and the export read edited values straight off the row. The player
-  wire format did not change.
-- **An edit is a lock.** A rescan writes the newly scanned values and then
-  re-applies the overrides in the same transaction, so an edited field is never
-  visible with its scanned value, even for a moment. Reverting deletes the
-  override and re-layers from the stored `scanned` value. That needs no rescan
-  and no disk access.
+Reverting an admin edit deletes the override and resolves the underlying
+layers from the database. When an admin reverts a community title, the server
+saves the underlying title as an `edited` override if it passes ordinary title
+validation. A later metadata fill respects that choice, even if the admin
+reverts after the fill planned its changes. Reverting that edit lets fills
+change the title again. If the restored title fails validation, the server
+removes the community override and stores no edit.
 
 Per field, `resolve` yields the effective value, its source, the scanned value,
 whether it is locked, and who last edited it. Sources are not stored. `resolve`
@@ -2314,9 +2317,11 @@ path with `metadata.FromPathLayout`. That uses the folder LAYOUT from
 - The folder holding the book is the series when there is an author folder
   above it.
 - The leaf is the title, with its leading number split off as the position.
-  The exception is a leaf named `Author; Series; Book NN[; Title]`, which gives
-  its series, position or range, and title part (`metadata.LeafSeries`).
-- Disc and track folders are parts.
+  A structured leaf such as `Author; Series; Book 02; Title` supplies its own
+  title, series and position. `Book 01-05` and `Books 01-05` both supply a
+  range. At the library root the leaf also supplies the author.
+- Disc and track folders are parts. A disc folder indexed directly under a
+  structured leaf uses its parent's book details.
 
 The layout's title, author and series go over the scanned ones wherever the
 layout says anything. Where it says nothing, it still replaces a scanned value
@@ -2328,13 +2333,17 @@ title always keeps a value.
 The position goes with the series. It is the layout's own position, or else
 the scanned one only while the series it numbers stays (the same series,
 compared ignoring letter case). A tag title that IS the leaf's name, number and all
-(`13 Reasons Why`), is kept whole with no position read from it. The exception
-is a `LeafSeries` leaf, whose parts the layout reads even when the title is the
-whole leaf (an untagged book's).
+(`13 Reasons Why`), is kept whole with no position read from it. The layout
+parses a structured leaf even when the title tag repeats its whole name.
 
-This is a resolve rule, not a scan rule, and `books.scanned` is the same in
-either mode. So a change of source needs no rescan and no disk access. From
-2.7.0 it is a resumable job:
+Both source modes read an untagged structured leaf the same way:
+`Bruno Miller; Dark Road; Books 01-05` has the scanned title "Dark Road 1-5"
+from `DeriveFromPath`, with source `path`. How the leaf combines with tags is in
+[A leaf that states its series](scanner.md#a-leaf-that-states-its-series).
+
+The catalog applies the library's source preference when it resolves the book.
+Both modes use the same `books.scanned` snapshot. A resumable job updates the
+books from the database when the preference changes.
 
 - `UpdateLibrary` marks the library due in the edit's transaction
   (`markResolve`, the `server_state` key `library_resolve_due`: each due

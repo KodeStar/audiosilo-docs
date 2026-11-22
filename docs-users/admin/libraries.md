@@ -153,15 +153,13 @@ but your files stay where they are.
 take their title, author, series and series number from:
 
 - **The files' tags first**: the default. Folder names fill in whatever the
-  tags leave empty (see
-  [Where titles, authors and series come from](../getting-started/organizing-your-library.md#where-titles-authors-and-series-come-from)).
+  tags leave empty. For a book of several files the folder can also give the
+  title (see [A book made of several files](../getting-started/organizing-your-library.md#a-book-made-of-several-files)).
 - **Folder names first**: for a library whose folders are named well but whose
-  tags aren't. Names like
-  [`Author; Series; Book 04; Title`](../getting-started/organizing-your-library.md#names-like-author-series-book-04-title)
-  are read by their parts.
+  tags aren't. The files' tags fill in whatever the folders leave empty.
 
-Whichever comes second fills in what the first leaves empty. An Audiobookshelf
-`metadata.json` in a book's folder wins over both.
+Both settings read [names like `Author; Series; Book 04; Title`](../getting-started/organizing-your-library.md#names-like-author-series-book-04-title).
+An Audiobookshelf `metadata.json` in a book's folder wins over both.
 
 Changing this updates the books without a rescan. A large library finishes in
 the background, so for a while some books can still show the old details. Your

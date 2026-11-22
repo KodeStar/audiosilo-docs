@@ -260,9 +260,14 @@ your store's ASIN.
 
 **Fill in matched books** offers the community database's latest details for books that
 are already matched. Use it for books that got an ASIN without their details,
-or to clean up series an earlier match added. It never brings back an ASIN or
-ISBN you left unticked or later reverted. For a book matched before version
-2.7.0, [match it](books.md#matching-with-community-metadata) to the same book
+or to clean up series an earlier match added.
+
+A fill keeps a title you reverted on the book's page, and can still fill its
+other fields (see [Matching with community metadata](books.md#matching-with-community-metadata)).
+
+A fill never brings back an ASIN or ISBN you left unticked or later reverted.
+For a book matched before version 2.7.0,
+[match it](books.md#matching-with-community-metadata) to the same book
 and edition again with nothing ticked, so the server knows which ones you left
 out.
 
