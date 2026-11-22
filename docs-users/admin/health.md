@@ -94,9 +94,11 @@ leaves the other pair, and the group in your main library, still listed.
 To bring a group or pair back right away, choose **Undo** in the confirmation
 message. To bring it back later:
 
-1. Choose **Show ignored**. For a pair from two libraries, also turn on
-   **Include other libraries**.
-2. Choose **Suggest as duplicates again** on its card.
+1. For a pair from two libraries, turn on **Include other libraries** first.
+2. Choose **Show ignored**.
+3. Choose **Suggest as duplicates again** on its card.
+
+The card leaves the ignored list and shows under **Likely duplicates** again.
 
 If copies share an ASIN or ISBN but have **different lengths**, check for a
 match to the wrong recording before removing either one. To remove a copy,
