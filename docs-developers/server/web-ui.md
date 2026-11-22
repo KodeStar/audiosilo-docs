@@ -1175,8 +1175,8 @@ notice per series and library from `GET /admin/issues/series-spellings`:
 
 - The suggested spelling is picked first in a select.
 - **Use this spelling** calls `useMerge` with `series` and the group's library
-  ID. One merge request changes the matching main series names. **Undo** sends
-  the books from that response back in one request.
+  ID: the same merge and **Undo** as
+  [Library > Authors](#library--authors-narrators-and-series).
 - Ignore and Show again cover every one of the series' books.
 
 ##### Match automatically

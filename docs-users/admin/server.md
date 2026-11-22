@@ -379,10 +379,10 @@ books, settings, backups and notifications. An Audible backup action names the
 account it was for. Sign-ins and listening are in
 [Activity](activity.md), and scans in [Health > Jobs](health.md#jobs).
 
-After a spelling merge, look for **Edited several books**. **Merged spellings**
-lists the old spellings, and the entry shows the spelling you chose, how many
-books changed and the library if you picked one. When **Undo** restores books,
-a second entry shows the field under **Reverted** and how many books it restored.
+A spelling merge shows as **Edited several books**, with the spelling you
+chose, how many books changed and the library, if you picked one. **Merged
+spellings** lists the old spellings. An **Undo** that restores books adds a
+second entry, with what it put back under **Reverted** and how many books.
 
 The log never holds a password or other secret, and no IP addresses. Entries
 are kept for a year.

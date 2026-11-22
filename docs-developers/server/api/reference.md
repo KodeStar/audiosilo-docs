@@ -7261,8 +7261,8 @@ unparseable filter, as for the list.
 
 ### `POST /api/v1/admin/books/bulk`
 
-Applies the same field edit to the books named in the request. The server
-edits every selected book in one transaction or changes none.
+Applies the same field edit to every book in the request, in one
+transaction: every book is edited or none is.
 
 Select up to 1,000 books. Each path is at most 4,096 bytes. The edit itself can use up to 1 MiB.
 The whole body can use 5,274,112 bytes. An oversized list, edit or request returns 400
@@ -7337,10 +7337,12 @@ ending with that book's path in parentheses.
 
 ### `POST /api/v1/admin/books/merge`
 
-*Admin only.* Replaces source spellings with a target spelling. In one
-transaction, the server selects the matching books, reads their prior
-overrides for the response and sets the field to the target as an `edited` override.
-If any edit fails, the whole merge rolls back.
+Replaces source spellings with a target spelling. In one transaction, the
+server selects the matching books and sets the field to the target as an
+`edited` override, so every book changes or none does. Audited as
+`book.bulk_edit` with `merged`
+([Audit log](../backups-and-notifications.md#audit-log)), only when books
+changed.
 
 | Body field | Meaning |
 |---|---|
@@ -7380,13 +7382,13 @@ override value, or `null` if it had none. A prior override includes its
 |---|---|
 | `400` | `too_large` if more than 5,000 books would change, more than 1,000 sources are supplied or the body exceeds 1 MiB. The server writes nothing. |
 | `400` | Malformed JSON or an unknown key returns `invalid request`. A field validation failure, including a negative `library_id` or unrelated series names, returns `invalid_override` with the offending `field`. |
-| `401` / `403` | Authentication is required. A signed-in non-admin gets `403`. |
+| `401` / `403` | anonymous / non-admin |
 | `404` | The supplied library ID is unknown. The response is `{"error":"library not found"}`. |
 | `409` | `not_book_library` if the ID belongs to a podcast library. |
 
 ### `POST /api/v1/admin/books/merge/undo`
 
-*Admin only.* Send the original `field` and `target` with the `books` array
+Send the original `field` and `target` with the `books` array
 from the merge response. Each book's `library_id` and `path` set the scope.
 The server counts a repeated path in the same library once.
 
@@ -7404,7 +7406,8 @@ The server counts a repeated path in the same library once.
 If the current override still equals the target, Undo restores the prior
 value with its original source. For `previous: null`, it removes the override
 so the field follows its underlying metadata again. Undo restores eligible
-books in one transaction. A write failure rolls back every restoration.
+books in one transaction, so a write failure restores none. Audited as
+`book.bulk_edit` with `revert`, only when it restored books.
 
 The `200` response counts restored books and lists every skip by library,
 path and reason. The list is empty when all books were restored.
@@ -7426,8 +7429,7 @@ path and reason. The list is empty when all books were restored.
 Undo returns `400` with `too_large` for more than 5,000 entries in `books`
 or a body over 36,185,536 bytes. Malformed JSON or an unknown key returns `400` with
 `invalid request`. An empty list or invalid field, target or prior override
-returns `400` with `invalid_override`. The same `401` and `403` rules apply
-as for the merge.
+returns `400` with `invalid_override`.
 
 ### `GET /api/v1/admin/authors` · `GET /api/v1/admin/narrators`
 
