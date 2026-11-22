@@ -194,8 +194,10 @@ To fix that, click **⋯ > Folder detection...**, open the folder and choose:
 
 ![The folder detection dialog](/img/screenshots/admin/detection.png)
 
-Your choice is saved at once and the library rescans. It survives rescans and
-even a full index rebuild.
+When AudioSilo saves your choice, it rescans the library. The setting survives rescans and a full index rebuild.
+
+AudioSilo refuses **Always one book** if an Audible title's destination or an account's placement template puts a backup in a disc folder directly inside this folder.
+[Choose a separate folder for the backup](audible.md#choosing-a-destination). If a queued or running backup still uses the old folder, let it finish or cancel it before trying again.
 
 ### The Folders page
 

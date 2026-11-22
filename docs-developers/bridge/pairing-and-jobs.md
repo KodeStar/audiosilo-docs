@@ -370,6 +370,19 @@ The Bridge may report a job it holds (`claimed`, `running` or `needs_attention`)
 `running`, `done`, `failed`, `needs_attention` or `cancelled`; it can never put a
 job back in the queue.
 
+### Job history
+
+When the server enqueues a new job, it applies the kind's history rule
+(`kindSpec.prune`) in the same transaction. Each rule applies only to ended
+jobs of the same kind.
+
+| Job kind | History kept on enqueue |
+|---|---|
+| `audible.poll`, `audible.sync` | The newest ended poll and the newest ended sync for each Audible account. |
+| `podcast.poll` | The newest ended poll for the show in that library. |
+| `podcast.fetch`, `podcast.retain` | The newest ended fetch for the episode or retain for the show in that library, plus any older results the server has yet to apply (`podcast_folded`). |
+| Other kinds, including `audible.import` | Enqueuing a job keeps all earlier history. |
+
 ### Claims and leases
 
 The Bridge long-polls `GET /bridge/jobs/next?wait=25&kind=…`. The server picks the

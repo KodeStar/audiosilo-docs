@@ -404,7 +404,8 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `account_paused` | `409` | `POST /admin/audible/accounts/{account}/poll` (Check now), a backup or Back up everything for an account whose library was deleted, until the Bridge maps it again |
 | `unknown_title` | `404` | an Audible title route (a backup, `PATCH /admin/audible/titles/{account}/{asin}`) naming no title of the account |
 | `already_matched` / `import_open` / `not_available` | `409` | [`POST /admin/audible/titles/{account}/{asin}/backup`](reference.md#post-apiv1adminaudibletitlesaccountasinbackup): the title is on this server; its backup is waiting, running or pending; it is `unavailable` or `gone` |
-| `invalid_dest_path` / `invalid_template` | `400` | a title's `dest_path` or an account's `template` the server refuses (the reason in `error`) |
+| `invalid_dest_path` | `400` | The Audible backup destination is invalid. Disc conflicts add a `reason` to the existing code. Older clients can keep reading `code`. See [Audible disc destinations](reference.md#audible-disc-destinations). |
+| `invalid_template` | `400` | The account's placement template is invalid. The server describes the problem in `error`. |
 | `unknown_user` | `404` | the Bridge's `PUT /bridge/audible/accounts/{account}` naming no user, or one an account may not be mapped to (a kid household member, a demo or a disabled account) |
 | `unknown_library` | `404` | the Bridge's `PUT /bridge/audible/accounts/{account}` or `GET /bridge/libraries/{id}/books` naming no library |
 | `not_books` | `400` | the same two routes naming a podcast library |
@@ -418,6 +419,12 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 
 The codes below come from feature areas whose full rules live in the API
 reference.
+
+**Audible disc destinations.** A title destination edit, an account template edit
+or a library change through `PUT /bridge/audible/accounts/{account}` can return
+`400 invalid_dest_path`. The `reason` is `indexed_book` if the disc's parent is
+already a book or `book_override` if it has a one-book override. Setting a
+conflicting [folder override](reference.md#put-apiv1adminlibrariesidfolder-override) also returns `book_override`.
 
 **Podcast actions** (full shapes and async feed failures:
 [Podcasts](reference.md#podcasts)):

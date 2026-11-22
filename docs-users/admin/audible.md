@@ -56,9 +56,12 @@ paired, the card still lists the accounts this server keeps, with **Remove...**.
 
 ![The Account settings dialog](/img/screenshots/admin/audible-backup-settings.png)
 
-You change who an account is for, and its library, on the Bridge's Accounts
-tab. You set what it backs up, where, and whether it syncs here, in **Account
-settings...**.
+Use **Account settings...** to choose what the account backs up, where, and whether it syncs.
+To change the person or library, use **Change** on the Bridge's **Accounts** tab.
+
+When you choose a different library, AudioSilo checks the account's placement template and saved destinations there.
+It skips destinations for titles already matched to a book, unless you marked the match **Not this book**.
+If a disc folder conflicts, [choose a separate folder](#choosing-a-destination) in the title's destination or the account's template, then try the library change again.
 
 An account marked **Paused** lost its library. Choose another library for it on
 the Bridge's Accounts tab.
@@ -197,10 +200,17 @@ Type a path inside the library:
 - **a file**, such as `Author/Series/Title.m4b` (`.m4b`, `.m4a` or `.mp4`), or
 - **a folder**, such as `Author/Series/Book 3`.
 
-Leave it empty for the usual place. The path can't start with a dot or contain
-`..`. It can't be a disc folder, such as `CD 3`, inside a book already on the
-server, because the backup would join that book. A title whose saved destination
-is no longer valid appears in **Needs a look**.
+Leave it empty to use the account's usual place. The path can't start with a dot or contain
+`..`. A title whose saved destination is no longer valid appears in **Needs a look**.
+
+If you choose a disc folder such as `Author/Book/CD 3`, or a file inside it, AudioSilo checks the folder holding the discs.
+
+- If `Author/Book` is already a book in the library, choose a separate folder for the Audible backup, such as `Author/New Title`.
+- If `Author/Book` is set to **Always one book**, that setting would join the discs into one book. Choose a backup folder outside `Author/Book`.
+
+A queued or running backup keeps its original destination even if you edit it here.
+To set `Author/Book` to **Always one book**, change any destination or template that still points to a disc there.
+Then let the backup finish or cancel it in [**Server > Settings > Bridge > Jobs**](bridge.md#jobs) before changing the folder setting.
 
 ![The Destination dialog for one title](/img/screenshots/admin/audible-destination.png)
 
@@ -262,6 +272,9 @@ number), `{Narrator}`, `{Year}` and `{ASIN}`. A part in `{ ... }` is dropped whe
 variable inside it is empty. A last part ending in `.m4b` names the file; otherwise
 it is a folder. A title's own [destination](#choosing-a-destination) wins over the
 template.
+
+If the template names a disc folder, such as `Author/Book/CD 3/{Title}.m4b`, the same
+[destination checks](#choosing-a-destination) apply. If AudioSilo refuses it, change the template to use a separate folder for each book.
 
 The Bridge keeps folder and file names safe for a network share (SMB) or a Windows
 disk. It drops `?`, `*`, `<` and `>`, turns `"` into `'` and `|` into `-`. So
