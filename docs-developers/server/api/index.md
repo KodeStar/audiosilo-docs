@@ -44,62 +44,44 @@ serializes as JSON `null`, not `[]` (e.g. `{"books": null}`). Treat `null` and
 
 ## Response compression
 
-The server gzips JSON answers to `GET` requests under `/api/v1/`
-(`gzip.BestSpeed`, `api/compress.go`, server v2.5.1) for a client that sends
-`Accept-Encoding: gzip`. A 200-book page is about 71 KB of JSON and about 10 KB
-gzipped.
+API routes serve uncompressed responses (identity) by default. Reviewed JSON
+reads opt in to gzip at registration. Examples include the book list, search,
+read-along and the console's settings, logs, audit and JSON library export.
+For a client that accepts gzip, a 200-book page shrinks from about 71 KB to
+about 10 KB. Browsers and the apps' `fetch` decode it automatically.
 
-- The JSON shape is unchanged, and nothing needs opting in. Browsers, the apps'
-  `fetch` and Go's `http.Transport` (the Bridge) all send the header and decode
-  the answer themselves.
-- A client that sends no `Accept-Encoding`, or one without gzip, gets the plain
-  bytes as before.
+On an opted-in route, a `GET` with a `Range` or `Upgrade` header stays
+identity, even with `Accept-Encoding: gzip`. A client that does not accept
+gzip also gets the plain bytes. When a route serves `HEAD` through its `GET`
+handler, it sends no body. Its `Vary` and `Content-Encoding` match the
+equivalent `GET`, so an identity route's `HEAD` also stays identity.
+The API only negotiates gzip for these two methods.
 
-An answer is compressed only when both the request and the answer qualify.
+For an eligible request, the gzip writer adds `Vary: Accept-Encoding` to JSON
+responses so caches can distinguish the representations. It uses
+`gzip.BestSpeed` for `application/json` bodies of at least **1 KiB** when the
+client accepts gzip. It passes through responses with status `204`, `206` or
+`304`, or with a `Content-Range`, `Content-Encoding` or `ETag` header.
 
-**The request** is a `GET` under `/api/v1/` without a `Range` header, and it is
-not in one of the excluded classes:
-
-- the media: a cover, a stream, an ebook, a community cover (`/meta/cover`) and
-  a backup's download;
-- everything under `/api/v1/auth/`;
-- everything under `/api/v1/bridge/`: the Bridge's long-poll claim, and job
-  parameters that can carry a private feed URL.
-
-A `HEAD` of such a `GET` follows the same rule (from 2.5.1). It sends no body,
-but it carries the same `Vary: Accept-Encoding` as its `GET`, and the same
-`Content-Encoding: gzip` when the `GET` would be gzipped. A cache that learns
-from a `HEAD` therefore stores the right variant. A `POST` or any other method
-is never compressed.
-
-**The answer** is `application/json`, at least **1 KiB**, and has a body (not
-`204` or `304`). Its handler has set no `Content-Encoding` or `ETag` of its own.
-A handler with a validator, such as
-[`GET /libraries/{id}/readalong`](reference.md#get-apiv1librariesidreadalong),
-compresses its own representation. Smaller answers go out as they are.
-
-Every JSON answer to a compressible request, `HEAD` included, carries
-`Vary: Accept-Encoding`, compressed or not. A cache in between therefore never
-hands one client's encoding to another. A
-[list answer cache](../overview.md#the-list-answer-cache) hit sends a gzip made
-when the answer was stored.
-
-**Why the exclusions.** Compressing a secret beside text an attacker can
-influence leaks the secret through the compressed size (BREACH). Every
-credential the API hands out is minted by a `POST`: sign-in, pairing, API keys,
-cast tokens, member sessions, auth codes, Bridge pairing and recovery codes.
-`/api/v1/auth/` is also excluded whole, so no compressed body holds a
-credential. Media keeps its exact bytes for `Range` and seeking.
+Handlers that supply their own encoding use the same negotiation result.
+The [list answer cache](../overview.md#the-list-answer-cache) can send a
+stored gzip copy. The [read-along map](reference.md#get-apiv1librariesidreadalong)
+has a separate ETag for each representation.
 
 :::note[Adding a route]
-A new `GET` that returns a credential, or a long poll or stream, joins
-`compressExcluded` in `api/compress.go` (path prefixes), with a test that it
-stays identity. Anything else is compressed by default.
+To opt in a reviewed JSON read, wrap its handler in `compressJSON` at
+registration, inside any authentication or authorization wrapper. See the book
+list in `internal/api/api.go`.
+
+Keep credential routes, `/auth/*`, `/bridge/*` and Upcoming calendar links
+on identity. Compressing a secret alongside caller-controlled text can reveal
+it through response size. Media, file downloads, long polls and handlers that
+flush also keep their original writer. Cover a new identity route's `GET` and
+`HEAD` in `TestCompressExclusions`.
 :::
 
-A reverse proxy needs no compression rule for the API, because the server
-compresses. A proxy that compresses again is harmless, since it sees the
-answer's `Content-Encoding` and passes it through.
+Let the server handle API compression when running behind a reverse proxy.
+A proxy that gzips every JSON response can compress routes that serve identity.
 
 ## Authentication
 
@@ -937,12 +919,8 @@ absent date is unknown or not set.
 
 ## Rate limiting
 
-Two limiter mechanisms guard the API (`internal/api/ratelimit.go`):
-
-- **Token buckets.** They are keyed by client IP until a request's credential is
-  proved, and by the credential after. The `/auth/*` routes and a demo
-  account's API requests stay keyed by IP.
-- **Failure lockouts and attempt caps**, keyed by IP.
+The API uses token buckets for request rates and separate per-IP lockouts and
+caps for sign-in and account operations.
 
 Tripping any of them returns **429** with an error envelope. From 2.5.0 it also
 carries a `Retry-After` header in whole seconds (at least 1). The value is the
@@ -954,10 +932,10 @@ when to try again.
 
 | Limiter | Scope | Policy |
 |---|---|---|
-| Address token bucket | public routes, every `/auth/*` route (with or without a token), the Bridge's pairing exchange `POST /bridge/pair`, a request whose token is missing or refused (a Bridge's too), a demo account's API requests (not its covers and audio); static files are not counted | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
-| Credential token bucket | every other authenticated API request (admin routes included), once its token is proved | ~50,000 requests/second, burst 100,000, per session or API key; past it the address is charged too |
-| Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own) |
-| Bridge token bucket (2.7.0) | a paired Bridge's authenticated `/bridge/*` requests | 2,000 requests/second, burst 20,000, per Bridge token; fixed, not in `rate_limit.*`; a refusal never charges the address |
+| Address token bucket | Public routes (including `POST /bridge/pair`), all `/auth/*` routes, unproved tokens and demo accounts' API and media requests. Health probes and static files are exempt. | 50 requests/second, burst 200, per IP |
+| Credential token bucket | Other authenticated API requests, including admin routes, once the server verifies the token | 50,000 requests/second, burst 100,000, per session or API key. Reaching this limit also charges the address. |
+| Media token bucket | Library covers and streams, community covers, Upcoming covers and calendar feeds, and podcast discovery artwork | 200 requests/second, burst 2,000, per credential (a cast token has a bucket of its own) |
+| Bridge token bucket | A paired Bridge's `/bridge/*` requests after the server verifies its token | Fixed at 2,000 requests/second, burst 20,000, per Bridge token. Reaching this limit leaves the address bucket alone. |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
 | Redeem lockout | `POST /auth/redeem`, `POST /auth/exchange`, `POST /bridge/pair` (one shared counter) | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
@@ -965,8 +943,9 @@ when to try again.
 
 The address, credential and media buckets' rates are `rate_limit.*` in the server's
 [configuration](../configuration.md#rate-limits-rate_limit). The table shows
-the defaults. A failed authentication on any route charges the address bucket,
-so the address limit bounds guessing tokens.
+the defaults. If a Bridge token is missing, refused or cannot be checked, the
+request must pass the address bucket before the server returns the token error.
+An empty address bucket returns `429` first.
 [Auth & security](../auth-and-security.md#rate-limiting) explains how the
 address and credential buckets work together.
 

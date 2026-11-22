@@ -74,6 +74,16 @@ Additions:
 
 Changes to existing routes:
 
+- JSON reads bypass gzip when a request carries an `Upgrade` header.
+  Authentication errors on opted-in reads and the small `/api/v1/healthz`
+  response no longer acquire `Vary: Accept-Encoding` from the gzip writer.
+  A [read-along map](reference.md#get-apiv1librariesidreadalong) requested
+  with `Range` now uses the identity ETag even when the client accepts gzip.
+  Its `200` response carries the whole uncompressed map.
+- When a community or Upcoming cover fetch encounters user info (username or
+  password) in the original URL or a redirect target, the player receives
+  `404 no cover`. Podcast discovery artwork returns `502 artwork_unavailable`
+  for a redirect with user info. See [Podcast discovery](reference.md#podcast-discovery).
 - `POST /auth/password` returns 200 with `signed_out`, the number of the caller’s other sessions
   ended. Clients supporting older servers must also accept their empty 204.
 - While the server starts, every request, both health routes and `GET /server` included, returns

@@ -1474,13 +1474,20 @@ pairing and Bridge tokens are refused on all of them.
 - Directory searches go only to the fixed HTTPS origins `itunes.apple.com` and
   `api.podcastindex.org`, on port 443, with no proxy, no cookies and no
   redirects.
-- Artwork fetches go only to URLs that a search result registered. A caller can
-  name an id, never a URL. A fetch follows at most three redirects, and never
-  from HTTPS to HTTP.
-- Both check the address actually dialled, not only a DNS answer checked
-  beforehand (`internal/netguard`, shared with community covers). They refuse
-  loopback, private, link-local, carrier-grade NAT and other reserved addresses.
-  An IPv4-mapped or NAT64 address is judged by the IPv4 address it carries.
+- For discovery artwork, the caller supplies an ID from a search result. Discovery and
+  community covers both use `media.ArtFetcher` (`internal/media/remoteart.go`).
+  It accepts absolute HTTP or HTTPS URLs and follows at most three redirects.
+  It refuses user info in the original URL or any redirect target, and refuses
+  redirects from HTTPS to HTTP. It sends no caller headers or cookies.
+- Directory searches and both artwork callers use `netguard.Transport`. It
+  connects directly and checks the resolved IP address at every dial, including
+  after a redirect. It refuses loopback, private, link-local, carrier-grade NAT
+  and other reserved addresses. IPv4-mapped and well-known NAT64 addresses are
+  checked against the IPv4 address they carry.
+- The artwork fetcher requires HTTP `200`. It checks the declared
+  `Content-Length` and enforces the caller's byte limit while reading.
+  Community covers allow 16 MiB and 15 seconds per fetch. Discovery artwork
+  allows 2 MiB and five seconds per fetch. Each caller has four fetch slots.
 - Search never fetches a returned feed. The Bridge's subscribe job remains the
   guard for a feed that resolves to a private address. Search results drop feed
   URLs that look private or name a literal non-public host.
@@ -1961,18 +1968,23 @@ unresolved join, so `rel_path` keys stay consistent (see
 
 ## Rate limiting
 
-`internal/api/ratelimit.go` has two mechanisms, and `api.New` wires eight
-buckets. The three token buckets take their rates from `rate_limit.*`, read at
-start (`RateLimitConfig.Effective`). An unset value is the default in the table
-(see [Configuration](configuration.md#rate-limits-rate_limit)). The lockouts and
-caps are fixed.
+`quota.Limiter` in `internal/quota` implements the token bucket shared by the
+API, podcast discovery and OPML. In `internal/api/ratelimit.go`,
+`initRateLimits` creates four independent API buckets with `quota.PerSecond`.
+The address, credential and media buckets read `rate_limit.*` at startup.
+Unset rates and bursts take the defaults below. The Bridge budget is fixed.
+See [Configuration](configuration.md#rate-limits-rate_limit).
+
+The separate `limiter` in `internal/api/ratelimit.go` counts failed attempts or
+caps all attempts within a time window. `api.New` sets up the five lockouts
+and caps shown below.
 
 | Bucket | Mechanism | Limit | Applied to |
 |---|---|---|---|
-| `ipLimiter` | Token bucket per IP (`rateLimiter`) | `rate_limit.address`, ~50 req/s, burst 200 | Everything the credential and Bridge buckets don't take. The full list is below the table |
-| `tokenLimiter` | Token bucket per credential (`rateLimiter`) | `rate_limit.token`, ~50,000 req/s, burst 100,000 | Authenticated API routes outside `/api/v1/auth/` (`requireAuth`, and so `requireAdmin`), once they authenticate, a book's `/ebook` included. Keyed by the credential's `tokens` row id (a session or an API key). See [Signed-in requests are limited per credential](#signed-in-requests-are-limited-per-credential) |
-| `mediaLimiter` | Token bucket per credential (`rateLimiter`) | `rate_limit.media`, ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`), once they authenticate. These are the routes `requireBookMediaAuth` and `requireMediaAuth` wrap, both `mediaAuth`. See [Signed-in requests are limited per credential](#signed-in-requests-are-limited-per-credential) |
-| `bridgeLimiter` | Token bucket per Bridge token (`rateLimiter`) | fixed, 2,000 req/s, burst 20,000 (`bridgeRate`, `bridgeBurst`) | From 2.7.0, a paired Bridge's authenticated `/api/v1/bridge/*` requests (`requireBridge`), keyed by its token row id. Sized at ten times the busiest second of a 1,000-show podcast backlog, and far under `rate_limit.token`, so a stolen Bridge token still meets a cap until an unpair revokes it. Its refusal leaves the address alone, so the players behind the Bridge's address don't pay for its pace |
+| `ipLimiter` | Token bucket per IP | `rate_limit.address`, 50 req/s, burst 200 | Public routes, unproved credentials and the other requests listed below |
+| `tokenLimiter` | Token bucket per credential | `rate_limit.token`, 50,000 req/s, burst 100,000 | Authenticated API routes outside `/api/v1/auth/` served by `requireAuth` or `requireAdmin`, including a book's `/ebook`. The key is the session or API key's token row ID. |
+| `mediaLimiter` | Token bucket per credential | `rate_limit.media`, 200 req/s, burst 2,000 | Authenticated reads through `mediaAuth`, including covers, streams, the Upcoming calendar feed and discovery artwork. See [Signed-in requests are limited per credential](#signed-in-requests-are-limited-per-credential). |
+| `bridgeLimiter` | Token bucket per Bridge token | Fixed at 2,000 req/s, burst 20,000 (`bridgeRate`, `bridgeBurst`) | After `requireBridge` proves the token, it charges the bucket keyed by that token's row ID. Exhausting it returns `429` without charging the address shared with other clients. |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem`, `POST /auth/exchange`, and the Bridge's pairing exchange `POST /bridge/pair` (one shared counter) |
 | `oidcLimiter` | Failure lockout per IP | 10 failures / 15 min | Single sign-on's `GET /auth/oidc/callback` and `POST /auth/oidc/finish` (one shared counter). A callback with no flow cookie, the provider's `?error=`, a provider that doesn't answer and a finish with no cookie charge nothing, since any page can make a visitor's browser send those. A locked-out callback redirects to `/connect#oidc=rate_limited` |
@@ -1981,21 +1993,20 @@ caps are fixed.
 
 **What `ipLimiter` covers.**
 
-- public routes: `GET /server`, the health check, the setup page, sign-in,
+- public routes including `GET /server`, the setup page, sign-in,
   redeem and demo sessions;
 - every `/api/v1/auth/*` route, whether or not it carries a token (sign-in,
   pairing, password, API keys);
 - the Bridge's public pairing exchange, `POST /api/v1/bridge/pair`, and any
   other `/api/v1/bridge/*` request whose Bridge token is missing, refused or
-  could not be checked (it pays the address, then gets its 401 or 503). Before
-  2.7.0 every Bridge request paid here;
+  could not be checked. The server charges the address before it returns the
+  token error (`401`, or `503` if the lookup failed). An empty bucket returns
+  `429` first.
 - a request whose token is missing or refused;
-- a demo account's API requests. Its media stays on `mediaLimiter`.
+- a demo account's API and media requests.
 
-Static files are not counted. These are the files the mux hands to a handler
-that the web package registered (`web.IsStatic`): the console, the web player,
-and the connect page and its assets, all served from memory. One cold console
-page loads forty-odd chunks.
+Health probes and static files are exempt. The mux recognises the console,
+web player and connect page assets through `web.IsStatic`.
 
 **Two lockout patterns.** The failure-lockout `limiter` is used in two ways:
 
@@ -2015,17 +2026,17 @@ redirect, so it sends `Retry-After` on the redirect to the result page. Its valu
 rounded up by `setRetryAfter`, at least 1). Before 2.5.0 only the account
 limiter sent one.
 
-From 2.5.0 the token buckets' `429` (`rateLimited`) sends one too: the wait for
-the next token (`rateLimiter.Wait`). For a request limited per credential (media
-or the authenticated API), it is the longer of the credential's and the
-address's waits. A refusal charges the address too, and the next request meets
-the address's bucket first.
+A token bucket's `429` carries the wait for its next token
+(`quota.Limiter.Wait`). When a media or API credential exhausts its bucket,
+the request also charges the address. The server sends the longer of the two
+waits. A proved Bridge token that exhausts its bucket gets only its own wait.
 
-**Podcast discovery and OPML** have budgets of their own, outside the eight
-buckets. They are per user and held in memory, so a restart resets them
-(`internal/podcast/discovery`, `handlers_podcast_discovery.go`). The full tables
-are in [Podcast discovery](api/reference.md#podcast-discovery) in the API
-reference.
+**Podcast discovery and OPML** create their own in-memory buckets with
+`quota.PerMinute`. Discovery sets its user, provider and artwork budgets in
+`internal/podcast/discovery/discovery.go`. OPML sets its per-user import and
+export budgets in `internal/api/handlers_podcast_discovery.go`. A restart
+resets them. See [Podcast discovery](api/reference.md#podcast-discovery) and
+[OPML import and export](api/reference.md#opml-import-and-export).
 
 | Budget | Limit | Refusal |
 |---|---|---|
@@ -2074,7 +2085,7 @@ then:
    refuses, the route charges the address too, since the lookup was already
    done.
 
-**Demo accounts.** A demo account spends its API requests from its address's
+**Demo accounts.** A demo account spends its API and media requests from its address's
 bucket instead (`allowCredential`). Anyone can mint a demo session, so a
 per-token budget would be no limit at all.
 
@@ -2261,7 +2272,7 @@ The enumerated critical list:
 - `library.SafeJoin`
 - `Scope.Allows` / `Scope.VisibleInBrowse` / `pathFilterSQL` (its single-parameter form too)
 - the household member rule (`catalog/members.go`) and the member routes
-- the rate limiters (`limiter`, `rateLimiter`), the route classes in `rateLimit` and the
+- the rate limiters (`limiter`, `quota.Limiter`), the route classes in `rateLimit` and the
   per-credential limiting in `requireAuth`/`mediaAuth` (`allowCredential`)
 - `auth.ResolveRequest` / `lookupToken`
 - the cast token checks: `relpath.Within` / `relpath.Clean`, the grant's `covers`,
