@@ -98,12 +98,13 @@ seek bar). Away from 1x, one more line gives the wall-clock time left in the pho
 
 ## Playing and syncing
 
-Now Playing passes the playing file to `ChapterNav.index` to find its chapter.
+`WatchAudioEngine` passes the playing file to `NowPlayingTimes.of`, which finds
+its chapter with `ChapterNav.index`.
 When files share a start, `ChapterNav.step` steps Previous and Next in file order,
 from the playing file and the seconds into it, as the
-[phone's transport](player-ui.md#rings-the-transport-and-titles) does. With every
-file length known, it uses whole-book seconds. A chapter tap or a step between tied files gives
-`WatchAudioEngine.seek` the chapter's file path and in-file start.
+[phone's transport](player-ui.md#rings-the-transport-and-titles) does. When no two
+files share a start, it uses whole-book seconds. A chapter tap or a step between
+tied files gives `WatchAudioEngine.seek` the chapter's file path and in-file start.
 `Timeline.resumePlace` resolves those to a queue index and seconds. For a skip
 or scrub given only book seconds, it prefers the playing file among tied files.
 
@@ -173,8 +174,8 @@ or the script change, since the Linux `ci` job has no Swift toolchain.
 which file and chapter a place selects, ties with a zero-length marker, and the
 file and seconds reached by Previous and Next.
 
-The Swift tests also cover spans, the outbox, acks and offers, addresses, message
-decoding and encoding, the rendition plan, held books, the `remove` decision, `StatePublication`,
+The other Swift tests carry the TS test vectors too. They cover the rest of the
+timeline, spans, the outbox, acks and offers, addresses, message decoding and encoding, the rendition plan, held books, the `remove` decision, `StatePublication`,
 the download percent (`DownloadProgress`), a refused start (`StartRefusal`), `AccountRules` and
 `JSONFile.load`.
 

@@ -587,8 +587,9 @@ content with its own scroller. Children mount only while the sheet is open.
 - **Speed** is `speed-model.ts`: the grid, the presets, stepping and the sheet's own
   range (`SPEED_MIN`/`SPEED_MAX`). The range is the same 0.5-2 that `clampRate` in
   `rate.ts` enforces in the store.
-- **Sleep** uses `stopAfterRows` in `sleep-sheet-model.ts` for "Or stop after".
-  The playing file identifies the current chapter when starts tie. If that chapter
+- **Sleep** is `sleep-sheet-model.ts`: the presets (`SLEEP_MINUTES`), the notice
+  (`sleepNotice`) and the "Or stop after" rows (`stopAfterRows`). The playing file
+  identifies the current chapter when starts tie. If that chapter
   has no known length, the sheet hides the whole list, since a later chapter's end
   could still fall inside the playing file. The End of chapter tile gets its own
   target from `chapterTimerTarget` in `src/playback/sleep-timer.ts`.

@@ -541,12 +541,15 @@ Other queue math that lives here:
 - **`buildBookQueue`** resolves each chapter's file by `file_path`, falling back
   to a valid `file_index`. It records the resolved path and index and adds the
   file's offset to the chapter's in-file start. The screens use the same sum
-  (`chapterBookOffset`). For some books indexed on demand, the server reports
-  `book_offset` as 0 for every chapter.
+  (`chapterBookOffset`). Neither reads the server's `book_offset`, which comes
+  back as 0 for every chapter on some books indexed on demand.
 - **`buildChapterClips(specs, chapters)`** produces the native clip list. Android
   plays the clips as items; iOS uses them for its chapter lock screen.
   - Each chapter becomes one clip mapped to `(fileIndex, [startInFile,
     endInFile])`.
+  - The clips run in file order. A stable sort by file keeps tied markers that
+    arrive out of file order in the right place, and keeps the chapter order
+    within each file.
   - The last chapter in each file clips "to end" (`endInFile = 0`), so an
     inaccurate final `end` can't cut off the file's tail.
   - It returns `[]` for **0 or 1 chapters**, and the engine then plays one item per

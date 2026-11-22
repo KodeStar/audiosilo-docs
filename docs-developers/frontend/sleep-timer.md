@@ -37,7 +37,9 @@ The sleep sheet arms and reads the store in two places:
   list real chapters only, never the synthetic `virtualChapterInterval` ones. They
   arm through `startUntilPosition(endPosition, stopAfterLabel(row))`. The first row
   ("This chapter") uses the chapter's own label (`chapterSleepLabel`), and the
-  others use `afterChapters`.
+  others use `afterChapters`. The playing file picks the first row among chapters
+  that share a start, and the list is empty when that chapter has no length
+  ([Speed and sleep sheets](player-ui.md#speed-and-sleep-sheets)).
 - The "End of chapter" tile shows the countdown of `chapterTimerTarget`. The store
   exports it so the tile and the timer it starts compute one target.
 
