@@ -14,9 +14,9 @@ It's **off by default** and works **both ways**. You see others only while you s
 
 There's one switch per server. When several people [share a device](profiles.md), each sets their own. Turn it off any time: once the server saves the change, you stop showing up for others, and they disappear from your Home page. Demo accounts can't turn it on.
 
-If you change the switch offline in the web player, it says **Waiting to sync** until the network returns, then **Saving**. Keep the tab open.
+If you change the switch offline in the web player, it says **Waiting to sync** until the network returns, then **Saving**. Keep the tab open. In the phone apps, changing it needs a connection, and the app tells you if the change didn't go through.
 
-If a server can't be reached, the page says which one and offers **Retry**. With no network, it says you're offline and checks again by itself. If it offers **Reconnect** or names a sign-in proxy, see [Getting back in](connecting.md#getting-back-in-after-signing-out).
+If no switch can show because a server can't be reached, the page says which one and offers **Retry**. With no network, it says you're offline and checks again by itself. If it offers **Reconnect** or names a sign-in proxy, see [Getting back in](connecting.md#getting-back-in-after-signing-out).
 
 ## What you see
 

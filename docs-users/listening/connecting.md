@@ -101,7 +101,7 @@ If the server signs this device out, a **Reconnect** button appears at the top o
 Other messages mean you're still signed in:
 
 - **isn't answering**: the server didn't answer. See [A server "isn't answering"](../troubleshooting.md#the-top-bar-says-a-server-isnt-answering).
-- **You're offline**: this device has no network. See [With no connection](offline-downloads.md#with-no-connection).
+- **Offline** or **You're offline**: this device has no network. See [With no connection](offline-downloads.md#with-no-connection).
 - The page names a **sign-in proxy**: the proxy in front of your server turned the device away. See [Behind a sign-in proxy](../getting-started/remote-access.md#behind-a-sign-in-proxy).
 
 A [password](account.md#password) is the most dependable way back in. With one, you can sign in on any device with no code or invite.

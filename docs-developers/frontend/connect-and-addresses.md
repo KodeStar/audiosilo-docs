@@ -475,8 +475,9 @@ The rule is pure and tested:
 
 The connection client also checks each successful `/server` read before using
 its flags (`acceptsServerAnswer`, `src/api/connection-clients.ts`). It takes the
-answer only from the connection's current `effectiveUrl` and only when it names
-the connection's `server_id`. Anything else fails the read
+answer only from the connection's current `effectiveUrl`, only when it names
+the connection's `server_id` and only with a `capabilities` object. Anything else
+fails the read
 (`UnexpectedServerAnswerError`, which leaves reachability as it was):
 
 - a late answer from an address the connection has left, or one with no `server_id`;

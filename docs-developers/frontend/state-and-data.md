@@ -583,6 +583,9 @@ check:
 
 - **A 401** is the proxy's when `ApiError.fromProxy` says so, and otherwise
   AudioSilo's, which has already flagged the connection `needsReconnect`.
+  `fromProxy` follows the server's `X-AudioSilo-Unauthorized` mark, or the
+  error body for a server without `unauthorized_mark`
+  ([the contract](../architecture/cross-repo-contract.md)).
 - **Every 403 on this route is the proxy's**, whatever its body: the server
   answers `/server` to anyone.
 
@@ -591,7 +594,11 @@ check:
 or not a proxy refused too, and otherwise the proxy notice naming the server,
 with no Retry. `useCapabilitiesAllRead` lists refused connections in `refusals`
 and the other failures in `retryable`; a page's **Retry** asks only the failed or
-paused checks with no refusal and no saved answer.
+paused checks with no refusal and no saved answer. The single-server reads take
+it through `serverRefusalState` (Up next, Collections, You > Stats and Year, and
+Account's signed-in devices and API keys). The pages that read every server list
+`refusals` through `ServerRefusals`: Search, Upcoming, the Journal's
+`ServerNotes` and the Household page's sharing switches.
 
 | Client method | Hook | Capability | Endpoint |
 |---|---|---|---|
@@ -1446,7 +1453,8 @@ guide: [Upcoming releases](/users/listening/upcoming).
   - `isLoading`;
   - `statuses`: each answered server's `ok`, `pending` or `stale`;
   - `failed` names servers whose Upcoming list or `/server` check failed or
-    paused without data, and `refusals` the refused checks
+    paused without data. A refused check is named in `refusals` instead, never
+    in `failed`
     ([Capability-gated reads](#capability-gated-reads-player-redesign-phase-1a));
   - `retry` refetches the failed lists and asks the unrefused checks again.
 - **The pure rules** (`src/lib/upcoming.ts`, tested apart):

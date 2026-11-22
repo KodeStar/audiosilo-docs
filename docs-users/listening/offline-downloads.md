@@ -93,7 +93,7 @@ A watch has its own downloads, separate from your phone's. See [Apple Watch](app
 
 ## With no connection
 
-When your device loses its network connection, the top bar says **Offline · downloads play** (just **Offline** where this device can't download) and downloaded books keep playing.
+When your device loses its network connection, downloaded books keep playing. On a phone, a bar under the page title says **Offline - changes sync when reconnected**. On a tablet or computer, that bar shows too, and the top bar says **Offline · downloads play** (just **Offline** where this device can't download).
 
 - **Home, the Library, Folders** and every other page keep what they've already loaded. Where a list still needs your server, it says **You're offline** and loads by itself when the network returns. The web player keeps Home's shelves, Up next and your [signed-in devices](account.md#signed-in-devices) even when you reload the page.
 - **Wi-Fi with no internet isn't offline.** The apps still reach a server on the same network. If one server stops answering, Home names it and **Retry** asks it again.
