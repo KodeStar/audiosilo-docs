@@ -1738,7 +1738,10 @@ one), state, and on this server. The legal line sits under the filters.
 - **Matched by title** for a `fuzzy` match, **Backed up here** for an `import`
   one, **Not this book** for a rejected title, and **Not synced** for a
   `no_sync` one;
-- the backup's state and code (`importStatus`, `audible.code.<code>`).
+- the backup's state and code (`importStatus`, `audible.code.<code>`);
+- for a done backup the server refused as the title's match, the stored
+  reason in place of **Backed up** (`FoldNote`, `foldReasonKey`:
+  `audible.fold.<reason>`, `audible.fold.other` for a code it doesn't know).
 
 **Per-title actions** (`title-actions.tsx`):
 

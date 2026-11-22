@@ -109,8 +109,10 @@ Each pending removal stores the old account ID, the pairing ID, the number of
 failed attempts and the next retry time. After a successful heartbeat, the
 Bridge drops rows from ended pairings and retries at most one due DELETE in the
 background. Unpairing and pairing again gives a new pairing ID, even on the
-same server. Adding the same Audible account again gives it a fresh account ID,
-so a late DELETE can only remove the old entry.
+same server. Pairing again with the same server after its token was refused,
+with no unpair between, keeps the pairing ID and its pending removals. Adding
+the same Audible account again gives it a fresh account ID, so a late DELETE
+can only remove the old entry.
 
 | DELETE outcome | What the Bridge does |
 |---|---|
@@ -1074,11 +1076,13 @@ request. Where the Bridge finds preorders is in [Preorders](#preorders).
 `FoldAudibleImport` runs from the jobs' `OnEnded` hook for a done `audible.import`:
 
 1. The result must name the job's library (and the params' library) and a clean
-   book path, else `ErrImportNotIndexed`.
+   book path, else `ErrImportNotIndexed` (stored as `invalid_result`, as is an
+   unreadable result).
 2. `importOwnBook` checks the book. It must be indexed in a books library, else
-   `ErrImportNotIndexed`. It must be the **title's own**, else `ErrImportNotOwn`
-   (logged). The title's own book carries the title's ASIN, or holds **only** the
-   files the backup placed (a single-file book is its file). A file the scan joined
+   `ErrImportNotIndexed` (`not_indexed`). It must be the **title's own**, else
+   `ErrImportNotOwn` (logged; `not_own_book`, or `rejected_match` for the book
+   marked Not this book). The title's own book carries the title's ASIN, or holds
+   **only** the files the backup placed (a single-file book is its file). A file the scan joined
    into a folder book already there never makes that book (nor another title's)
    this title's match. Nor does it ever match the book the admin marked Not this
    book for the title.
@@ -1659,6 +1663,8 @@ The code is in `features/audible/`.
   and **Destination...** (`title-actions.tsx`);
 - the import's state and code (`importStatus`). The loaded titles are fetched
   again every 5 s while a backup is queued or running (`backupRunning`);
+- a done backup's refusal (`fold_refusal_reason`, `FoldNote`) in place of
+  **Backed up**;
 - **Backed up here** for an `import` match;
 - **Don't sync** / **Sync again**, with a **Not synced** badge.
 
