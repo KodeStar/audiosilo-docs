@@ -300,10 +300,19 @@ plus their name on desktop. The menu holds:
 
 A phone keeps all of this in the Me tab's You hub.
 
-The same `serverStatus()` drives the top bar's server line (`serverLine`). It
-shows the default server's name, or for that server "Offline · downloads play"
-or "Needs signing in again". Else it shows "&lt;server&gt; isn't answering" for
-another server that `firstOffline` finds, else the name with "+ N more".
+The profile menu, the top bar's server line and `OfflineBanner` all pass the
+device's network state (`useDeviceOnline`) to `serverStatus`, so losing the
+network reads as offline at once, before any server probe finishes:
+
+- **The top bar's server line** (`serverLine`, `serverLineLabel`) shows the
+  default server's name, with "+ N more" for the others. For that server it
+  shows "Needs signing in again", or with no network "Offline · downloads play"
+  ("Offline" where `useDownloads().supported` is false, a browser on plain
+  http). With a network it shows "&lt;server&gt; isn't answering" for the default
+  server or another that `firstOffline` finds down.
+- **`OfflineBanner`** (`offlineBannerText`) says "Offline - changes sync when
+  reconnected" with no network. With one, it names the server that isn't answering, or says "Some servers offline"
+  when several are down on a page that covers more than one server.
 
 The docked bar's sync line is `usePlaceSync`. In order of precedence it shows
 sign in again, then saved on this device, then synced or synced just now (see

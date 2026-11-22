@@ -820,11 +820,13 @@ Each answer is handled like this:
   It moves to the list as `too_old`, so an event that never gets an answer can't hold
   its book "pending" forever.
 - A `404` or `405` is a **rollback** only when the server's own `/server` answers
-  without `listening_sync`. Anything else at the address keeps the outbox. A
-  rollback:
+  without `listening_sync`, and `keepServerAnswer` takes that answer. It first
+  rechecks the address and server id ([`acceptsServerAnswer`](connect-and-addresses.md#the-pick-rule-srclibserver-addressts)),
+  so a late answer from the old address or one from another server leaves the
+  events queued. A rollback:
   - marks the connection rolled back for the launch;
   - makes that `/server` answer the connection's from then on, in the query cache
-    and on the device (`keepServerAnswer`);
+    and on the device;
   - turns the outbox into one legacy `PUT` per book (`legacySavesOf`) and drops it.
     Each `PUT` takes the newest span's end, finished when the newest finish-state
     event is a `finish` not older than it;

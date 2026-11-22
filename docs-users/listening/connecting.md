@@ -96,7 +96,13 @@ If the server has no books yet, an admin sees **Open the admin console** to [add
 
 The app remembers every server you've used. The connect screen lists them under **Reconnect**, so you only re-enter your code or password, never the address.
 
-If the server signs this device out while you're using it, a **Reconnect** bar appears at the top of the screen. Tap it to sign in again.
+If the server signs this device out, a **Reconnect** button appears at the top of the screen or on the page you were using. Tap it to sign in to that server again. It shows even while you're offline, but signing in needs a connection.
+
+Other messages mean you're still signed in:
+
+- **isn't answering**: the server didn't answer. See [A server "isn't answering"](../troubleshooting.md#the-top-bar-says-a-server-isnt-answering).
+- **Offline** or **You're offline**: this device has no network. See [With no connection](offline-downloads.md#with-no-connection).
+- The page names a **sign-in proxy**: the proxy in front of your server turned the device away. See [Behind a sign-in proxy](../getting-started/remote-access.md#behind-a-sign-in-proxy).
 
 A [password](account.md#password) is the most dependable way back in. With one, you can sign in on any device with no code or invite.
 

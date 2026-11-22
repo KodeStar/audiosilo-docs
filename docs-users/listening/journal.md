@@ -50,6 +50,8 @@ The **Bookmarks** and **Notes** tabs gather every one you've made, newest first.
 
 These two tabs need server version 1.17.4 or later. On an older server, bookmarks stay on each book's page.
 
+If one server doesn't answer, you still see bookmarks and notes from the others. **Retry** asks only the servers that didn't answer. If a server needs you to sign in again, or a sign-in proxy turned the device away, the tab names that server. See [Getting back in](connecting.md#getting-back-in-after-signing-out).
+
 ## Exporting your bookmarks and notes
 
 You can export every bookmark and note as a file to keep, print or open in a spreadsheet. The Diary isn't included.

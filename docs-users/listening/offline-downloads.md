@@ -93,10 +93,11 @@ A watch has its own downloads, separate from your phone's. See [Apple Watch](app
 
 ## With no connection
 
-When your device has no network, downloaded books play and everything else waits for your server:
+When your device loses its network connection, downloaded books keep playing. On a phone, a bar under the page title says **Offline - changes sync when reconnected**. On a tablet or computer, that bar shows too, and the top bar says **Offline · downloads play** (just **Offline** where this device can't download).
 
-- **Home, the Library, Folders** and any other page or list show **You're offline** in place of what they haven't loaded yet. Anything already loaded stays on screen. When the network comes back, they load by themselves.
-- **Wi-Fi with no internet isn't offline.** The apps still reach a server on the same network. If a server doesn't answer, the page says so and offers **Retry**. With more than one server, Home names the one that didn't answer, and **Retry** asks only that one.
+- **Home, the Library, Folders** and every other page keep what they've already loaded. Where a list still needs your server, it says **You're offline** and loads by itself when the network returns. The web player keeps Home's shelves, Up next and your [signed-in devices](account.md#signed-in-devices) even when you reload the page.
+- **Wi-Fi with no internet isn't offline.** The apps still reach a server on the same network. If one server stops answering, Home names it and **Retry** asks it again.
+- **If your AudioSilo sign-in has ended**, **Reconnect** shows even while you're offline. Signing in again needs a connection. See [Getting back in](connecting.md#getting-back-in-after-signing-out).
 - A [one-tap bookmark](bookmarks-and-notes.md) or a **Fell asleep** bookmark stays on this device until it syncs, even if you close the app.
 - Notes and ratings need a connection in the phone apps. In the web player they can wait while the tab stays open.
 - **The player's [Text tab](companion.md#text)** is hidden for a book that isn't downloaded.

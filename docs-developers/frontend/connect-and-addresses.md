@@ -473,6 +473,24 @@ The rule is pure and tested:
   (`src/api/server-id-probe.ts`), a bare client with a 2.5 s timeout
   (`PROBE_TIMEOUT_MS`).
 
+The connection client also checks each successful `/server` read before using
+its flags (`acceptsServerAnswer`, `src/api/connection-clients.ts`). It takes the
+answer only from the connection's current `effectiveUrl`, only when it names
+the connection's `server_id` and only with a `capabilities` object. Anything else
+fails the read
+(`UnexpectedServerAnswerError`, which leaves reachability as it was):
+
+- a late answer from an address the connection has left, or one with no `server_id`;
+- another `server_id` at the paired address or the away address, which also marks
+  the connection `server-reset`;
+- another `server_id` at an address known only as home, which asks for no sign-in:
+  another network can have another AudioSilo at the same private address.
+
+The listening outbox's rollback checks its `/server` answer the same way
+([Offline](offline.md#listening-sync-the-outbox)). A kept answer restored at launch
+has no address, so it is checked by its `server_id` alone and never marks a reset
+([The kept `/server` answer](state-and-data.md#the-kept-server-answer-srcapiserver-snapshotsts)).
+
 :::danger[Never send a token to an unverified home address]
 A home address is a private IP or a local name, and another network can have a
 different machine at the same address. A connection's token goes to its home address

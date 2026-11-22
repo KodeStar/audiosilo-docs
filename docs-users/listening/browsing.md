@@ -25,7 +25,7 @@ Each tab remembers where you were. Tap the tab you're already on to go back to i
 
 From left to right:
 
-- The **AudioSilo** logo, which goes Home. Under it is the server you're using, with a warning if it isn't answering or needs you to sign in again.
+- The **AudioSilo** logo, which goes Home. Under it is the server you're using, with a warning if it isn't answering, your device is offline, or it needs you to sign in again.
 - **Home**, **Library**, **Downloads** and **You**. On narrower screens these are icons only.
 - A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player). In the app on a tablet it opens the Search page.
 - **Up next**, with the number of books queued.
@@ -210,12 +210,12 @@ Favourites are your personal shelf:
 - Find them on Home's **Favourites** shelf, in the Library's **Collections** section, or at the top of **Folders**.
 - Tap the heart again to remove one.
 
-Favourites belong to your account, so they follow you to every device.
+Favourites belong to your account, so they follow you to every device. If a change doesn't reach the server, the heart goes back to how it was and the player tells you.
 
 ## Good to know
 
 - **Older servers.** Authors, Series, Narrators, Collections, Up next, This week, Next in your series, **Mark as not finished**, Listening in the house and the Cast button need a recent server. On an older one they don't appear. Ask whoever runs your server to update it.
 - **A server that doesn't answer.** The Library and Folders say so, with **Retry**. If your sign-in ended, they offer **Reconnect** instead. Your other servers keep working.
-- **More than one server.** The Library stays on the library you chose, even while its server loads or doesn't answer. It never shows another server's books in its place. To browse another server meanwhile, choose one of its libraries in the picker.
+- **More than one server.** The Library stays on the library you chose, even while its server loads or doesn't answer. It never shows another server's books in its place. To browse another server meanwhile, choose one of its libraries in the picker. While the Library waits for a server's libraries, the picker names that server. If your sign-in there has ended, the page offers **Reconnect** instead.
 - **No connection.** Pages show **You're offline** and load again by themselves. See [With no connection](offline-downloads.md#with-no-connection).
 - **Sharing a collection** isn't offered on a demo account.

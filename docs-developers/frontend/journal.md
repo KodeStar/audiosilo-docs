@@ -71,8 +71,12 @@ with it. `keepFirstPage` trims a released list.
   (`serverInfoQuery`). Until the flag is known to be on, the query has no function at
   all (`skipToken`).
   - A server reading `false` is `unsupported`.
-  - A server whose `/server` failed is an `error`, never an endless load. Its Retry asks
-    `/server` again too.
+  - If `/server` fails with no saved flags, the source reports `error`.
+    `ServerNotes` shows the sign-in or proxy notice for a refused check. **Retry**
+    skips refused sources and asks the rest again, their `/server` check included
+    when the list never ran (`retryable`, see
+    [Capability-gated reads](state-and-data.md#capability-gated-reads-player-redesign-phase-1a)).
+    Ready sources keep their rows.
   - A server whose `/server` is held for the network with no answer kept is still
     `loading`, and its source is `waiting`.
 - **Notes wait for the first list.** The Diary shows none, so `useJournalSources({ notes })`

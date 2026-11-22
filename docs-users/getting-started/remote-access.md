@@ -79,17 +79,15 @@ To connect an app through the proxy:
 
 The app stores the headers as securely as your sign-in. To change them, use the **Proxy headers** card on the [account page](../listening/account.md#proxy-headers).
 
-If the proxy refuses a request, the app keeps you signed in and shows a banner. Open it to check the headers. For a sign-in refusal, **Sign in again** opens the password step if you have a password, or the pairing code otherwise. A child is prompted to ask a grown-up. While a full account on this device uses the same address, kids and demo accounts can see the reason but cannot edit the headers.
+If the proxy turns the player away, you stay signed in to AudioSilo. A banner, or the page that couldn't load, says the sign-in proxy turned this device away. In the browser, sign in to the proxy again. In the apps, check the saved headers for that address.
 
 ![A phone’s proxy banner offering to check headers or sign in again](/img/screenshots/web-player/proxy-sign-in.png)
 
-Tap the banner to check your headers, or **Sign in again** to reconnect your account.
+Tap the proxy banner to check your headers. If the player can't tell whether the proxy or your AudioSilo sign-in refused, the banner also offers **Sign in again**. This opens the password step if you have a password, or the pairing code otherwise. When the player knows your AudioSilo sign-in has ended, it offers **Reconnect** instead, even if the proxy turns the device away too.
 
 ![The prompt in kids mode asking a grown-up to update the proxy headers or pair the device again](/img/screenshots/web-player/proxy-child.png)
 
-In kids mode, a grown-up handles the headers or pairs the device again.
-
-The app tells the two apart: when your AudioSilo sign-in itself has expired, it takes you to sign in as usual. When it can't be sure which one refused, it shows the proxy banner.
+In kids mode, a grown-up handles the headers or pairs the device again. While a full account on this device uses the same address, kids and demo accounts can see the reason but can't edit the headers.
 
 Good to know:
 
