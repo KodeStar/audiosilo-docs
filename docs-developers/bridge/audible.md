@@ -66,10 +66,10 @@ app's own flow, and the admin pastes back the address where it ends:
    - seals the credentials as `audible_<id>` and stores the row.
 
    If any step after the registration fails, the Bridge deregisters the new device
-   and puts back what it changed, best effort. A new account is DELETEd on the
-   server. An existing one's earlier sign-in goes back in the vault, and its
-   earlier mapping is PUT again. A failed sign-in leaves no device and the account
-   as it was.
+   and puts back what it changed, best effort. If it already asked the server
+   to map a new account, it records a pending removal and sends the DELETE.
+   For an existing account, it restores the earlier sign-in and sends the
+   earlier mapping again if that mapping was on the same server.
 
 The device is named `"<first name>'s AudioSilo"` in the Amazon account's device
 list (`audible.DeviceName`, decisions 14/16: "AudioSilo", not "Bridge"). The
@@ -92,22 +92,42 @@ If the server omits it, the Bridge keeps its local value. The Accounts card
 labels this value **Last known to the Bridge**. A console edit reaches the card
 on the next mapping save.
 
-**Remove** (page `DELETE /api/accounts/audible/{id}`, answering `{audible,
-warning}`) runs to the end even if the page goes away. In order, it:
+**Remove** (page `DELETE /api/accounts/audible/{id}`, answering `{audible, warning}`)
+finishes even if the page closes. The Bridge takes these steps in order.
 
-1. forgets locally **first**: the vault, then the row (it takes `finishMu`
-   meanwhile);
-2. DELETEs on the server;
-3. deregisters (`audible.Deregister`: `POST /auth/deregister` with
-   `deregister_all_existing_accounts: false`, this device only). It first
-   refreshes an access token within 2 minutes of expiry.
+1. Under `finishMu`, it forgets the sign-in in the vault and deletes the local
+   account row. For an account on the paired server, the same SQLite transaction
+   records the pending DELETE in `audible_removals` (migration `0022`).
+2. It releases the lock and sends `DELETE /bridge/audible/accounts/{account}`
+   on that pairing.
+3. It calls `audible.Deregister`, which refreshes an access token within two
+   minutes of expiry and asks Amazon to remove this device
+   (`POST /auth/deregister` with `deregister_all_existing_accounts: false`).
+   If the page warns about the device, the admin removes it in Amazon's device list.
 
-A server or Amazon failure is a `warning` for the page, never the account kept.
-When the server's DELETE failed, the server keeps an orphaned account until an
-admin removes it
-([`DELETE /admin/audible/accounts/{account}`](../server/api/reference.md#delete-apiv1adminaudibleaccountsaccount)).
-The admin does that from the console with **Remove** (see
-[The console](#the-console) for which card lists it).
+Each pending removal stores the old account ID, the pairing ID, the number of
+failed attempts and the next retry time. After a successful heartbeat, the
+Bridge drops rows from ended pairings and retries at most one due DELETE in the
+background. Unpairing and pairing again gives a new pairing ID, even on the
+same server. Adding the same Audible account again gives it a fresh account ID,
+so a late DELETE can only remove the old entry.
+
+| DELETE outcome | What the Bridge does |
+|---|---|
+| Any `2xx` or `404` | Clears the pending removal. The server normally returns `204` even if the account is already gone. |
+| Network failure, `401`, `408`, `429` or `5xx` | Keeps the removal for retry. A refused token still belongs to the same pairing. |
+| Other `4xx`, such as `403` | Logs the refusal and drops the pending removal. The server may still list the account. |
+
+The retry delay starts at one minute and doubles up to one hour. A longer
+`Retry-After` takes precedence, up to 24 hours. On the 168th failed attempt,
+the Bridge logs a warning and drops the removal. That takes about a week of
+hourly failures. Failed heartbeats do not count toward the limit.
+
+After a temporary failure, the page says the Bridge will try again. If the
+Bridge is unpaired, paired to a different known server, or receives a permanent
+refusal, the page says the server may still list the account. An admin can
+remove an old entry with **Remove...** in the console.
+See [the admin account DELETE](../server/api/reference.md#delete-apiv1adminaudibleaccountsaccount).
 
 **Refused.** A `401`/`403` on a signed call (`audible.IsRefused`) marks the account
 refused (`refused_at`, `last_error`; the page's **Sign in again**). The exception
@@ -1062,8 +1082,11 @@ request. Where the Bridge finds preorders is in [Preorders](#preorders).
    into a folder book already there never makes that book (nor another title's)
    this title's match. Nor does it ever match the book the admin marked Not this
    book for the title.
-3. It sets the match (`match_how = 'import'`) and clears `rejected` and
-   `import_pending`, only while `import_job_id` is still this job.
+3. If the checks pass, it sets the match (`match_how = 'import'`) and clears
+   `rejected`, `import_pending` and any previous refusal. If it refuses the
+   result, it records the reason and time on the title and keeps the existing
+   match. An older job cannot overwrite a newer backup's outcome.
+   See the [admin title fields](../server/api/reference.md#get-apiv1adminaudibletitles).
 
 A later poll keeps an `import` match while its book is indexed and the poll names no
 other match for the title (`importMatches`). The poll may have listed the library

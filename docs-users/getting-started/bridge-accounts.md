@@ -144,9 +144,17 @@ off. You can turn it on in the console. Changing the person turns it off again.
 
 ### Removing an account
 
-**Remove**, then **Remove the account**, removes it everywhere: from the Bridge,
-from the server and from your Amazon device list. Books already in your library
-stay. If the server or Amazon can't be reached, the card says what didn't happen.
+On the Audible card, choose **Remove**, then **Remove the account**. The Bridge
+forgets the sign-in immediately. Books already in your library stay.
+
+If the paired server is offline, the card says the Bridge will try again.
+Leave the Bridge paired and it will retry on its own once the server responds.
+If the card says the server may still list the account, check the console.
+Use **Remove...** there for an old account the Bridge can no longer remove.
+See [Removing an account from the server](../admin/audible.md#removing-an-account).
+
+The Bridge also asks Amazon to remove the AudioSilo device. If the card warns
+about the device, remove it yourself in Amazon's device list.
 
 Backing up is for a personal backup of books you bought. Read the note at the top
 of [Back up your Audible books](../admin/audible.md) first.

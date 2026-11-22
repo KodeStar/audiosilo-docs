@@ -110,7 +110,8 @@ internal/
   store/      SQLite, append-only migrations (0001 the engine, 0002 server_jobs,
               0003 generate_books, server_jobs.server_id, books.contrib_mode,
               0004 workers, 0005 books.goal, 0006 accounts, 0007-0008 podcasts,
-              0009-0012 and 0014 Audible, 0013 idx_books_unfinished: a partial
+              0009-0012 and 0014 Audible, 0022 pending Audible account removals,
+              0013 idx_books_unfinished: a partial
               index whose WHERE is unfinishedBook's word for word, so the
               periodic passes scan only the books the engine may act on)
   -- Phase 2b --
