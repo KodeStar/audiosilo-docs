@@ -55,8 +55,8 @@ listeners chapter recaps and the book's community chapters.
 
 ![Matching a book with community metadata](/img/screenshots/admin/book-match.png)
 
-If the book is already matched, the dialog opens with that match selected and
-in view. If the search didn't find it, the dialog adds it at the end, marked
+If the book is already matched to a community book, the dialog opens with that
+match selected and in view. If the search didn't find it, the dialog adds it at the end, marked
 **Current match** instead of a percentage.
 
 Accepted values are marked **Community** and are kept like your own edits. You
@@ -85,7 +85,8 @@ book is listed under **Not matched to community metadata** in
 ### What matching sends
 
 The server sends search terms to AudioSilo Meta only when you open **Match
-with community metadata** or run [Match automatically](health.md#matching-every-book-at-once):
+with community metadata** (or **Compare with community**) or run
+[Match automatically](health.md#matching-every-book-at-once):
 
 - the book's tagged title, author, series, narrators and language, and its
   length;
@@ -93,7 +94,9 @@ with community metadata** or run [Match automatically](health.md#matching-every-
   [Audiobookshelf import](import.md#match-your-books-after-an-import), and what
   you type;
 - up to three names from its path (the author, series and book folders), never
-  the full path.
+  the full path;
+- the community book it is already matched to, if any, so the dialog can show
+  it.
 
 It sends nothing about your server or who listens. With a
 [local copy](server.md#keeping-a-local-copy), lookups use the copy when it can

@@ -126,14 +126,16 @@ many, with a **Match automatically** button that opens this list.
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
 A confident match scores at least 90% and usually leads the next candidate by
-at least 10 points. Under **To review**, a row marked **Held for review** lists
-the reasons that apply to that book. You may see more than one.
+at least 10 points. Its length must also be close to the book's. Other matches
+go to **To review**. A row there marked **Held for review** lists the reasons
+that apply to that book. You may see more than one.
 
 - An ASIN or ISBN from the book's tags or an Audiobookshelf import
   ([only a hint](#asin-and-isbn-tags-are-hints)) points to a work whose title or
   series position doesn't match yours.
-- That identifier names another book, so the run found the proposed match by
-  title instead. Check it even if the score is high.
+- That identifier names another book, so the run searched again without it,
+  using the book's title, author and other details. Check what it found even if
+  the score is high.
 - The community has only a dramatization, and your book doesn't say it is one.
 - The recording differs from your book's length by more than 10%, or 20% when
   your book's narrator reads it. The row shows both lengths.
