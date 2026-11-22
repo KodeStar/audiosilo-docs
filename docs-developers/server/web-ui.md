@@ -597,8 +597,13 @@ The Overview is built on `GET /admin/stats`, `GET /admin/sessions/live`,
 #### Library > Authors, Narrators and Series
 
 These screens run on `GET /admin/authors`, `/admin/narrators` and
-`/admin/series`. Narrators' merge suggestions are applied as a bulk edit, with
-Undo.
+`/admin/series`. For an author or narrator suggestion, `useMerge` sends one
+[`POST /admin/books/merge`](api/reference.md#post-apiv1adminbooksmerge) with
+the spellings and the selected library, if any. The confirmation's **Undo**
+sends the returned books with the original field and target in one
+[`POST /admin/books/merge/undo`](api/reference.md#post-apiv1adminbooksmergeundo).
+If Undo skips books, the console shows up to three paths and counts the rest.
+If the Undo request fails, the console offers **Undo** again.
 
 **Series gaps.** A series card shows community series gaps, hidden when
 metadata is off:
@@ -1169,9 +1174,9 @@ Series spelled several ways (`series-spellings.tsx`) are grouped too, with one
 notice per series and library from `GET /admin/issues/series-spellings`:
 
 - The suggested spelling is picked first in a select.
-- "Use this spelling" runs the Authors page's merge (`useMerge` on `series`).
-  That is a bulk `series` edit of the books whose main series is that series,
-  with Undo.
+- **Use this spelling** calls `useMerge` with `series` and the group's library
+  ID: the same merge and **Undo** as
+  [Library > Authors](#library--authors-narrators-and-series).
 - Ignore and Show again cover every one of the series' books.
 
 ##### Match automatically

@@ -387,8 +387,20 @@ book credited to two people counts for each of them.
 
 When two names look alike, a suggestion appears above the list, for example
 "“Sanderson, Brandon” looks like Brandon Sanderson". Click **Merge authors** (or
-**Merge narrators**) to set one spelling on every book, as an edit. The
-confirmation has an **Undo** button.
+**Merge narrators**) to use the suggested spelling, as an edit. The merge covers
+the selected library, or all book libraries if you haven't picked one. For two
+names AudioSilo doesn't suggest, use a [bulk edit](#changing-many-books-at-once).
+
+Only a whole credit changes. For example, merging “Sanderson, Brandon” into
+“Brandon Sanderson” leaves “Sanderson, Brandon & Janci Patterson” as written.
+AudioSilo changes every matching book together or none of them, and none if
+more than 5,000 books would change.
+
+Choose **Undo** in the confirmation to put back each book's earlier name, your
+earlier edit or the community value. A name that came from the book's files or
+folder follows them again. Undo skips a book whose name someone has changed or
+reverted since, or that a scan found had moved, and restores the others. The
+message lists up to three skipped paths and counts any others.
 
 ## Series
 
@@ -399,9 +411,10 @@ author** to narrow the list.
 ![Library > Series](/img/screenshots/admin/series.png)
 
 Spellings that differ only in capitals, accents, punctuation or spaces count as
-one series. Other differences ("The Expanse" and "Expanse") make two series.
-Fix those with a [bulk edit](#changing-many-books-at-once), or use
+one series. To use one spelling throughout a library, open
 [Series spelled several ways](health.md#series-spelled-several-ways) in Health.
+Names such as "The Expanse" and "Expanse" count as two series. To give their
+books the same series name, use a [bulk edit](#changing-many-books-at-once).
 
 With community metadata on, a series with a matched book also shows the books
 you don't have, as dashed gaps: "You have 1, 2, 4 of 5; missing 3, 5". A gap
