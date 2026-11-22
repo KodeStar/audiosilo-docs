@@ -63,7 +63,7 @@ these changes both sides, with tests on both:
 
 | The player | The watch |
 |---|---|
-| `book-queue.ts` | `Core/Timeline.swift`; whole-book chapter moves in `Core/PlayerRules.swift` |
+| `book-queue.ts` and `transport.ts` | `Core/Timeline.swift` resolves file places and `ChapterNav` in `Core/PlayerRules.swift` selects and steps between chapters |
 | `listening-sync.ts`, `listening-outbox.ts` | `Core/SpanRecorder.swift`, `Core/Outbox.swift` |
 | `progress-sync.ts`, `place-reconcile.ts` | `Core/AckAndOffer.swift` |
 | `server-address.ts`, `pairingFallback` | `Core/AddressPicker.swift` |
@@ -97,6 +97,14 @@ seek bar). Away from 1x, one more line gives the wall-clock time left in the pho
 (`Skips.wallClockLine`, `formatTimeLeft`). At 1x that line is absent.
 
 ## Playing and syncing
+
+Now Playing passes the playing file to `ChapterNav.index` to find its chapter.
+When files share a start, `ChapterNav.step` takes Previous and Next in file order
+from the current file and seconds into it. With every file length known, it uses
+whole-book seconds. A chapter tap or a step between tied files gives
+`WatchAudioEngine.seek` the chapter's file path and in-file start.
+`Timeline.resumePlace` resolves those to a queue index and seconds. For a skip
+or scrub given only book seconds, it prefers the playing file among tied files.
 
 **Starting to play** (`Playback/WatchAudioEngine.swift`):
 
@@ -158,8 +166,13 @@ npm run test:watch    # swift test on watch-core/; skips, and passes, without sw
 ```
 
 `.github/workflows/watch.yml` runs it on a macOS runner when `targets/watch/**`, `watch-core/**`
-or the script change, since the Linux `ci` job has no Swift toolchain. The Swift tests carry the
-TS test vectors. They cover the timeline, spans, the outbox, acks and offers, addresses, message
+or the script change, since the Linux `ci` job has no Swift toolchain.
+`TimelineTests`, the phone's Jest tests and Wear's JUnit tests all read
+`watch-core/Tests/WatchCoreTests/Fixtures/timeline-ties.json`. Its cases check
+which file and chapter a place selects, ties with a zero-length marker, and the
+file and seconds reached by Previous and Next.
+
+The Swift tests also cover spans, the outbox, acks and offers, addresses, message
 decoding and encoding, the rendition plan, held books, the `remove` decision, `StatePublication`,
 the download percent (`DownloadProgress`), a refused start (`StartRefusal`), `AccountRules` and
 `JSONFile.load`.

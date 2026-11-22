@@ -157,6 +157,16 @@ per downloaded file. Audio focus and becoming-noisy are handled, with speech att
 chapters, the skips are 15 and 30 s, and a scrubber is a move. `OngoingNotification` adds the
 `OngoingActivity` while playing.
 
+Now Playing identifies the chapter with `ChapterNav.index` and the playing file.
+When files share a start, `ChapterNav.step` orders chapters by file and in-file
+start and gives `PlayerEngine.seek` the target file path and seconds. A chapter
+tap supplies the same coordinates. With every file length known, Previous and
+Next use whole-book seconds.
+
+`Timeline.resumePlace` resolves the seek. A timed skip prefers the playing file
+among files at the target offset. For a system scrub, `ChapterPlayer.seekTo`
+passes the Media3 item index so the engine can seek in that specific file.
+
 **The speaker.** `setSuppressPlaybackOnUnsuitableOutput(true)` holds until the listener confirms
 the speaker (prefs `player`, `speakerConfirmed`). A play with only the built-in speaker shows the
 one-time question in `Prompts.kt`. Yes rebuilds the player without suppression and hands it to the
@@ -284,6 +294,11 @@ card, the action and the section hide for a kid's or demo account, as on iOS.
 ```sh
 npm run test:wear    # wear-core's JUnit suites (JDK 17 or later); skips, and passes, with no JDK
 ```
+
+`TimelineTest` reads `watch-core/Tests/WatchCoreTests/Fixtures/timeline-ties.json`,
+the same vectors as the Swift and phone tests. They check the current chapter
+with and without a known file, zero-length markers, and the file and seconds
+reached by Previous and Next.
 
 After `npx expo prebuild -p android`, from `android/`:
 

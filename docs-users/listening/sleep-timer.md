@@ -12,8 +12,8 @@ The sleep timer stops the book for you, so you can fall asleep listening without
 Pick one of these to start the timer:
 
 - **Minutes**: 5, 10, 15, 30, 45 or 60.
-- **End of chapter**: stops when the current chapter ends. A book without chapter marks uses its files or its [parts](playback.md#books-without-chapters).
-- **Or stop after**: this chapter and up to three more, each with the clock time it ends.
+- **End of chapter** uses the book's chapter times. The button shows how long until playback stops. A book without chapter marks uses its files or its [parts](playback.md#books-without-chapters).
+- Under **Or stop after**, choose **This chapter** or one of the next three. Each row shows when playback will stop. If the player doesn't know the length of the current chapter, it hides the whole list.
 
 The times are real time at your current speed.
 

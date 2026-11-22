@@ -538,11 +538,11 @@ track is exactly what it always was. A local file is never transcoded.
 
 Other queue math that lives here:
 
-- **`chapterBookOffset`** recomputes every chapter's whole-book offset from the
-  client's own file durations plus the in-file `start`. It locates the file **by
-  `file_path` first**, with a bounds-checked `file_index` fallback. It deliberately
-  ignores the server's `book_offset`, which comes back 0 for every chapter on some
-  on-demand-indexed books. That made chapter detection resolve to the last chapter.
+- **`buildBookQueue`** resolves each chapter's file by `file_path`, falling back
+  to a valid `file_index`. It records the resolved path and index and adds the
+  file's offset to the chapter's in-file start. The screens use the same sum
+  (`chapterBookOffset`). For some books indexed on demand, the server reports
+  `book_offset` as 0 for every chapter.
 - **`buildChapterClips(specs, chapters)`** produces the native clip list. Android
   plays the clips as items; iOS uses them for its chapter lock screen.
   - Each chapter becomes one clip mapped to `(fileIndex, [startInFile,
@@ -565,36 +565,36 @@ Other queue math that lives here:
 - **`locate(offsets, bookPosition, prefer?)`** and **`toBookPosition(offsets, index,
   positionInTrack)`** convert between the whole-book timeline and per-track
   coordinates.
-- **`chapterAt(chapters, bookPosition, playing?)`** finds the active chapter by
-  `book_offset`.
-- **Files that share an offset.** A file of unknown length (a server with no
-  prober, or a VBR MP3 with no header, reports 0) gives the next file the same
-  offset. `locate` resolves such a tie to the **first** of the tied files, since the
-  length is unknown rather than zero, so a book starts in its first file. A caller
-  that knows the file the place is in (the playing one, a chapter's) passes it as
-  `prefer`, and among the tied files that one wins. `chapterAt` does the same for
-  chapters that share a start in different files: the first file's wins, unless
-  `playing` names another tied file, so the player names the chapter of the file
-  it is in. Within one file, a tie is a chapter of no length before another, and the
-  later one is the chapter playing. The companion's chapter list seeks to a chapter
-  in its own file (`seekBook(offset, trackIndexById(...))`).
+- **Files that share an offset.** A file of unknown length contributes zero seconds
+  to the next file's offset. Given only whole-book seconds, `locate` picks the
+  first file at the latest offset reached. For a skip, scrub or seek, `seekBook`
+  passes the playing file as `prefer`. For a book with file offsets of 0, 60 and
+  60 s, a skip back to 65 s stays in file three while it plays. A skip back to
+  55 s lands in file one.
+- **Chapter names.** `chapterAt(chapters, bookPosition, playing?)` looks for the
+  latest chapter start reached in the playing file. If none qualifies, it checks
+  all files. `indexAtOffset` checks every start because ties can occur on either
+  side of a later start. At equal starts, `tiedMarkerWins` prefers the first file
+  in play order. Within one file, a chapter with length takes precedence over a
+  zero-length marker. Otherwise the first in chapter list order wins. A lone
+  zero-length marker still names its chapter.
+- **Chapter taps and saved places.** A chapter tap carries the file's path and the
+  seconds into it, as can a saved place. `filePlaceIn` looks up the path in the
+  queue that will play, which can have a different file order after a partial
+  download. If the named file is missing, `locateBookPlace` uses the whole-book
+  position. The companion's chapter list calls
+  `seekBook(c.book_offset, { path: c.file_path, pos: c.start })`.
 - **A file's length** as the player reads it is `fileDurationOf(queue, index,
   engine)`: the engine's, unless the server measured the file and the engine's is
   unknown or more than `FINISHED_TOLERANCE` (5 s) shorter, then the server's. The
   snapshot's `duration`, the seek clamp and the time left in the file use it.
   `shortOfFileEnd` and `endsShortOfBook` feed the engine fault check
   ([An engine that runs off a short file](#an-engine-that-runs-off-a-short-file)).
-- **`chapterCountdowns`** feeds the sleep sheet's "Or stop after" rows, with
-  wall-clock times scaled by the playback rate (`rate.ts` `wallClockSeconds`).
-  **`nextChapterEnd`** answers the sleep timer's question "where does the next
-  worthwhile chapter end?". Both use the same `chapterEndPosition`, so the list the
-  listener picks from and the boundary a shake retargets cannot disagree.
-
-  Neither assumes the chapters ascend by position. `chapterBookOffset`'s fallback
-  for an out-of-range `file_index` degrades to 0 preceding files, so stale or
-  duplicated metadata yields ends that are not monotonic. `chapterCountdowns`
-  therefore locates the current chapter with `chapterAt`, and `nextChapterEnd` takes
-  the **nearest** qualifying end rather than the first qualifying array element.
+- **`chapterCountdowns`** starts the sleep sheet's list at the chapter found by
+  `chapterAt` for the playing file. It scales the time until each end by the
+  playback rate. The End of chapter tile and a shake use `nextChapterEnd`, which
+  scans for the nearest qualifying end in whole-book seconds. Both functions
+  calculate chapter ends with `chapterEndPosition`.
 
 `total` is the largest of the book's reported duration, the summed file durations
 and the furthest chapter end. Metadata with `duration: 0` then degrades instead of
@@ -607,8 +607,8 @@ per-track, and the selectors map it to the whole-book timeline:
 
 - `selectBookPosition` is `toBookPosition(queue.offsets, snapshot.trackIndex,
   snapshot.position)`.
-- `selectCurrentChapter` overlays `queue.chapters` on that position by
-  `book_offset`. The full player's seek bar is **chapter-relative**.
+- `selectCurrentChapter` passes that position and the playing file's path to
+  `chapterAt`. The full player's seek bar is **chapter-relative**.
 
 The actions are `playBook`, `toggle`, `pause`, `retry`, `seekBook`, `seekInTrack`,
 `goToTrack`, `skipSeconds`, `setRate` and `stop`. `seekInTrack` and `goToTrack`
@@ -819,19 +819,21 @@ It keeps the newest record by `updated_at`. Unlike the replay queue, it is **nev
 pruned on sync**. It exists so a flaky resume fetch can't lose the position, after
 a beta report of a book that "restarted from the beginning".
 
-**On the way out: the `resumeFloor` save guard (`store.ts`).** The store keeps the
-whole-book position it actually resumed from as a running high-water mark.
+**On the way out: the `resumeFloor` save guard (`store.ts`).** The floor starts at
+the resume position and advances as the player saves progress. The store keeps
+both the whole-book seconds and the track that set the floor.
 `persist` refuses to save a position more than `SLIP_TOLERANCE` (60 s) *below* that
 floor.
 
-- Only a deliberate seek or jump by the listener lowers the floor: `lowerFloorTo`
-  in `seekBook`, `seekInTrack` and `goToTrack`, and a native `onRemoteMove`, which
-  is the listener's own move made outside the app.
+- A deliberate seek or jump can lower the floor through `lowerFloorTo`, including
+  a native `onRemoteMove`. A natural advance to a later file at the same offset
+  can also lower it. The next file can report fewer whole-book seconds even though
+  the listener has moved forward.
 - The server is last-write-wins. Without the guard, a restart at 0 that slipped
   through with a fresh timestamp would overwrite real progress for good. The guard
   makes that write impossible.
-- `retry()` also reloads at `max(resumeFloor, currentPosition)`, so a transient 0
-  in the snapshot can't be loaded again.
+- When Retry needs the floor, `reloadPlace` uses the file that set it. This keeps
+  a low engine reading from restarting a different file at the same book second.
 
 ### An engine that runs off a short file
 
