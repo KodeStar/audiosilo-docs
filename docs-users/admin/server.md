@@ -332,10 +332,10 @@ It measures the playing time of MP3s whose bitrate varies, so some lengths
 may change. This scan can take longer than usual and lists those books as
 updated in the scan report.
 
-The scan also reads each Audiobookshelf `metadata.json` file once more.
-If an author or narrator name contains a comma, the server separates the
-people in that list with semicolons. After a successful scan, the next scan
-skips those books and files if nothing has changed.
+The scan also reads each
+[Audiobookshelf `metadata.json`](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)
+file once more, so authors or narrators listed separately in the file stay
+separate even when a name holds a comma.
 :::
 
 A console tab left open while the server updates says **AudioSilo was

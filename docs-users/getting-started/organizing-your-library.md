@@ -105,6 +105,7 @@ A book of one file keeps its title tag. A title you edited in the admin console 
 Audiobookshelf can leave a `metadata.json` file in each book's folder. It does so only with its **Store metadata with item** setting on, which is off by default (see [Move over from Audiobookshelf](coming-from-audiobookshelf.md)). AudioSilo reads the file, so your matches and corrections from Audiobookshelf come across.
 
 - Its title, authors, narrators, series, description, genres, ASIN, ISBN and similar details win over the tags.
+- Authors or narrators listed separately in the file stay separate, even when a name holds a comma (`Le Guin, Ursula K.`).
 - A book with an ASIN or ISBN in the file counts as [matched](../admin/books.md#matching-with-community-metadata) straight away.
 - Your edits in the admin console still win over the file.
 - When the file changes, the next scan picks it up.

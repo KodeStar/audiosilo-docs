@@ -496,10 +496,9 @@ again when the file is new, changed or gone. ABS rewrites the file without
 touching the audio, so the book's own signature can't tell.
 
 - Discovery records the file's size, mtime and reader revision
-  (`metadata.ABSSignature`) during the directory walk. Revision 2 makes the
-  next scan read each existing file once, even if the book has no MP3. If an
-  author or narrator name contains a comma, the reader uses a semicolon
-  between people in that list.
+  (`metadata.ABSSignature`) during the directory walk. A new reader revision
+  reads each existing file once more (see
+  [The first scan after updating](#the-first-scan-after-updating)).
 - `catalog.SetABSFiles` reads and writes a skipped book, in batches of 250
   beside the path backfill, when:
   - its signature differs from the stored one (`Signature.ABSSig`); or
@@ -1034,11 +1033,12 @@ runs the probe.
   - ffprobe's `genre` replaces dhowden's when it gives any.
 
 **The probe** gives the duration, chapters, audio `codec` and richer
-container tags. The `codec` is the
-`codec_name` of the first audio stream, and it feeds the `direct_playable` API
-flag. The [in-process probe](#the-in-process-probe) handles most files and
-ffprobe handles the rest when available. A successful MP3 frame count supplies
-the duration when ffprobe would estimate it.
+container tags. The `codec` is the `codec_name` of the first audio stream, and
+it feeds the `direct_playable` API flag. The
+[in-process probe](#the-in-process-probe) handles most files and ffprobe
+handles the rest when available. A successful
+[MP3 frame count](#mp3-lengths) supplies the duration when ffprobe would
+estimate it.
 
 #### A series tag with a position
 
@@ -1363,9 +1363,8 @@ scanned 1,165 books with 9,165 files in 9.9 s, down from 197 s. It called
 ffprobe for three files.
 
 **One open, one cache.** In the normal scan path, `metadata.ExtractTimeout`
-opens a file once. It reads
-the tags (`dhowden/tag`), the iTunes narrator and the probe through one 64 KiB
-block cache (at most 4 MiB kept), then closes the file before any ffprobe run.
+opens a file once. It reads the tags (`dhowden/tag`), the iTunes narrator and
+the probe through one 64 KiB block cache (at most 4 MiB kept), then closes the file before any ffprobe run.
 
 **What it answers.** Exactly what the scan took from ffprobe:
 
@@ -1397,10 +1396,10 @@ exception is an [MP3 length](#mp3-lengths) measured by counting frames.
   still reads tags and can count MP3 frames in-process. If the count succeeds,
   it replaces ffprobe's duration estimate. If ffprobe fails on that file, the
   scanner uses the full in-process result, including its codec and chapters.
-  This covers Ubuntu 24.04's 6.1, a nightly or master build, and an ffprobe
-  whose `-version` fails. Servers before 2.5.1
-  [downloaded the BtbN master build](configuration.md#ffmpegffprobe-resolution--auto-download)
-  on Linux and Windows.
+  This covers Ubuntu 24.04's 6.1, an ffprobe whose `-version` fails, and a
+  nightly or master build, such as the BtbN build that servers before 2.5.1
+  [downloaded](configuration.md#ffmpegffprobe-resolution--auto-download) on
+  Linux and Windows.
 - **Without ffprobe**, the scanner uses the 8.1 rules. A file it cannot read
   has no duration. See [With no ffprobe](#with-no-ffprobe).
 
@@ -1480,9 +1479,9 @@ for a constant 32 kbit/s file. The count skips such bytes as it searches for
 the next frame. If it skips more than one eighth of the region being counted,
 it gives the file to ffprobe.
 
-The frame count has its own deadline, the same 30 seconds as an ffprobe run.
-If a count cannot finish while other reads are running, the scanner retries
-the file alone. If the reads succeed but the count still runs out of time
+The frame count has its own deadline, the same 30 seconds as an ffprobe run,
+and a count that cannot finish while other reads are running is retried alone
+(see [A probe that ran out of time](#read-problems)). If the reads succeed but the count still runs out of time
 and ffprobe supplies an estimate, the scanner keeps that estimate at the
 current duration revision. It tries again when the book's files change or an
 admin selects **Read the files again**. A temporary read error leaves the
@@ -1503,8 +1502,9 @@ reports it as updated. It records revision 2 with the book's `indexed_at`.
 If an older server re-indexes the book later, the timestamps differ and the
 newer server checks the lengths again.
 
-The same scan refreshes each [Audiobookshelf metadata.json](#audiobookshelf-metadatajson)
-once. After these reads succeed, a second scan of the unchanged library skips
+The same scan reads each [Audiobookshelf metadata.json](#audiobookshelf-metadatajson)
+once more, for the reader's
+[name joining](data-model.md#the-audiobookshelf-layer). After these reads succeed, a second scan of the unchanged library skips
 both the audio and those metadata files. If a part's length changes, later
 parts start at new offsets on the whole-book timeline. Saved places,
 bookmarks and notes keep their existing positions.
@@ -2003,7 +2003,7 @@ slower than reading one file at a time would. Lower `scan.concurrency` there.
 **A read cut short on a hung share.** Any file of an already-indexed book can
 come back with its read cut short, or refused at its mount's abandoned-read cap
 (`Metadata.TagsUnread`, `ReadRefused`; see
-[The in-process probe](#the-in-process-probe)). A file whose length ran out of
+[Bounded reads on a hung share](#bounded-reads-on-a-hung-share)). A file whose length ran out of
 time even when read alone counts too: an
 ffprobe time-out, or with no ffprobe the in-process read's `ProbeTimedOut`
 (`library.readCutShort`). The scan then sets `Book.ReadCutShort`, and the

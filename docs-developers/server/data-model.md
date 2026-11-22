@@ -486,17 +486,15 @@ dates from 0001. Later migrations added these columns:
   the book unchanged then fills it from `book_files` without a re-index. A
   book whose files are in another order is re-indexed, which records it. See
   [the stored order key](scanner.md#book-detection-booksindir).
-- `duration_rev` records the revision used to measure the book's lengths
-  (`catalog.durationRev`, currently 2). `duration_rev_indexed_at` identifies
-  the index that measured them. A lower revision or a timestamp different
-  from the row's `indexed_at` schedules an MP3 book for re-indexing. A
-  temporary frame-count read error leaves revision 0. A count that runs out
-  of time even on its own can keep ffprobe's estimate at revision 2. See
+- `duration_rev`: the revision used to measure the book's lengths
+  (`catalog.durationRev`, currently 2). `duration_rev_indexed_at` is the
+  `indexed_at` it was written with. A lower revision, or a timestamp other
+  than the row's `indexed_at`, schedules a book holding an MP3 for
+  re-indexing. When a count is left at revision 0, see
   [MP3 lengths](scanner.md#mp3-lengths).
-- `tag_read_failed_at` records the book's `indexed_at` if ffprobe newly
-  rejects its primary file during a backfill of names or tag hints. While the
-  timestamps match, scans skip those checks. Re-indexing the book invalidates
-  the mark.
+- `tag_read_failed_at`: the `indexed_at` of the index whose primary file
+  ffprobe rejected during a backfill of names or tag hints, `NULL` for none.
+  See [Backfills for a skipped book](scanner.md#backfills-for-a-skipped-book).
 - `ebook_path`: the book's ebook, library-relative, `''` for none. It is the
   one readable `.epub` beside the audio by `library.BookEbook`'s rule.
   `ebook_sig` is the size, mtime and name of the file the rule names, readable
@@ -2517,7 +2515,7 @@ The migration history so far:
 | 0079 | `book_matches_work` | The index `idx_book_matches_work` on `book_matches(work_id)`, so a work's recordings ([a book's work key](#a-books-work-key)) are found from the recorded matches as from `upcoming_owned` (already indexed by `idx_upcoming_owned_work`). No data moves |
 | 0080 | `listening_stay` | Listening sync: `progress.stay_version` and `edit_version` (`INTEGER`, nullable, `NULL` on every existing row), so a Stay on another device's offer wins and holds the row ([A Stay](api/reference.md#a-stay)). No data moves |
 | 0081 | `share_grant_mark` | Clears `shares.whole_library_id` on every share that no longer holds that library's whole-library rule (`share_paths` with its `library_id` and path `''`): a mark older versions left after a path edit on a grant, an interrupted grant, or deleting the library of a grant that also held another library's folders. Such a share is an ordinary one again, its folders open to change; `catalog.DeleteLibrary` now clears the mark itself |
-| 0082 | `duration_rev` | `books.duration_rev` (`INTEGER NOT NULL DEFAULT 0`) and `duration_rev_indexed_at` (`TEXT`): the revision of the scan's length reading a book was indexed with, so a book holding an MP3 is read once more after the upgrade and its header-less VBR files' lengths counted ([Header-less VBR MP3 lengths](scanner.md#the-in-process-probe)). A book with no MP3 starts at revision 1. Rebuildable index values, never on the wire |
+| 0082 | `duration_rev` | `books.duration_rev` (`INTEGER NOT NULL DEFAULT 0`) and `duration_rev_indexed_at` (`TEXT`): the revision of the scan's length reading a book was indexed with, so a book holding an MP3 is read once more after the upgrade and its header-less VBR files' lengths counted ([MP3 lengths](scanner.md#mp3-lengths)). A book with no MP3 starts at revision 1. Rebuildable index values, never on the wire |
 | 0083 | `path_keys` | `books.path_key` (`TEXT`, `NULL` on every existing row), the book's path in NFC that a path spelled another way is found by, keyed at the next start by `catalog.KeyPaths` (see [Identity and metadata columns](#identity-and-metadata-columns)). The partial indexes `idx_books_path_key` (keys other than `''`) and `idx_books_path_key_unset` (rows not keyed yet). A rebuildable index value, never on the wire |
 | 0084 | `path_rekeys` | The re-key's log `path_rekeys` (`user_id` and `library_id` `ON DELETE CASCADE`, indexes `idx_path_rekeys_user` and `idx_path_rekeys_library`), and path indexes on `bookmarks`, `notes`, `listening_history` and `favourites`. No data moves in the migration; the start that applies it takes a before-upgrade backup, then moves listener rows to their book's path (see [Moving state to the book's path](#moving-state-to-the-books-path-path_rekeys)) |
 | 0085 | `audible_place_guard` | The triggers `progress_audible_place_insert` and `progress_audible_place_update`, which clear an `audible:` device from a `progress` row any other writer inserts or moves (see [Audible's own places](#progress)). No data moves |

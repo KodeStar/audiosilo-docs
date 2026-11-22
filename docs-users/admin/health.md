@@ -45,13 +45,15 @@ Click a card to open its list.
 | **Converted to play in browsers** | The format doesn't play in web browsers, so the server converts it for the web player. The apps play it as it is. | Nothing needed: it works. |
 
 If the server rejects a file as invalid audio, scans skip it until its size
-or modification time changes, or the server restarts. **Read again** retries
-it at any time.
+or modification time changes, or the server restarts.
 
 A slow disk or network share can time out a scan. Its books show **reading it
 timed out** and keep their length and chapters. A single file that took too
 long is listed under **Files that couldn't be read** with **took too long to
 read as audio**, which is not a damaged file. The next scan tries both again.
+A very large MP3 that can't be measured in time keeps an estimated length, and
+scans don't measure it again until its files change. To try sooner, use
+[**Read the files again**](books.md#a-books-page) on its page.
 A drive or share that stops answering holds up only the libraries on it. The
 other libraries scan as usual.
 
