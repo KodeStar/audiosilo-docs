@@ -157,6 +157,12 @@ per downloaded file. Audio focus and becoming-noisy are handled, with speech att
 chapters, the skips are 15 and 30 s, and a scrubber is a move. `OngoingNotification` adds the
 `OngoingActivity` while playing.
 
+Chapters that share a start follow the Apple Watch's rules
+([Playing and syncing](apple-watch.md#playing-and-syncing)): `ChapterNav.index`,
+`ChapterNav.step` and `Timeline.resumePlace`, with `PlayerEngine.seek` taking the
+file path and seconds. For a system scrub, `ChapterPlayer.seekTo` passes the
+Media3 item index so the engine seeks in that file.
+
 **The speaker.** `setSuppressPlaybackOnUnsuitableOutput(true)` holds until the listener confirms
 the speaker (prefs `player`, `speakerConfirmed`). A play with only the built-in speaker shows the
 one-time question in `Prompts.kt`. Yes rebuilds the player without suppression and hands it to the
@@ -284,6 +290,9 @@ card, the action and the section hide for a kid's or demo account, as on iOS.
 ```sh
 npm run test:wear    # wear-core's JUnit suites (JDK 17 or later); skips, and passes, with no JDK
 ```
+
+`TimelineTest` reads the same `timeline-ties.json` vectors as the Swift and phone
+tests ([Apple Watch tests](apple-watch.md#tests)).
 
 After `npx expo prebuild -p android`, from `android/`:
 

@@ -274,9 +274,6 @@ have carried the listener in the wall-clock time between them.
 - a move forward beyond that by more than the threshold, or backward by more than
   the threshold, is a jump.
 
-One rule covers every source, which is why the store isn't touched. A recording site
-in `seekBook` would miss every jump the engine makes on the OS's behalf.
-
 What must **not** read as a jump, and why it doesn't:
 
 - **Loading or resuming a book**, and a book change: the baseline drops when
@@ -284,7 +281,10 @@ What must **not** read as a jump, and why it doesn't:
   state) is skipped. For a short settle window after the first fresh sample, the
   samples only move the baseline.
 - **Retry, reloads and buffering**: only `playing` and `paused` are sampled.
-- **The downloads hot-swap**: same book, same position.
+- **A download swap or Retry** that changes the file order or the offsets drops
+  the previous sample and clears any undo chip (`startJumpUndo`), since old
+  whole-book seconds no longer line up. A queue with the same files, order and
+  offsets keeps the chip.
 - **The app coming back after iOS suspended JS**: a heartbeat runs only while the
   app is not active and a book is loaded. A stalled heartbeat marks the return
   `unobserved`. Forward movement up to the allowance is then accepted even from a
@@ -587,9 +587,12 @@ content with its own scroller. Children mount only while the sheet is open.
 - **Speed** is `speed-model.ts`: the grid, the presets, stepping and the sheet's own
   range (`SPEED_MIN`/`SPEED_MAX`). The range is the same 0.5-2 that `clampRate` in
   `rate.ts` enforces in the store.
-- **Sleep** is `sleep-sheet-model.ts`: the presets, the "Or stop after" rows and the
-  notice. The End of chapter tile's target comes from `chapterTimerTarget`
-  (`src/playback/sleep-timer.ts`), the rule the timer itself arms.
+- **Sleep** is `sleep-sheet-model.ts`: the presets (`SLEEP_MINUTES`), the notice
+  (`sleepNotice`) and the "Or stop after" rows (`stopAfterRows`). The playing file
+  identifies the current chapter when starts tie. If that chapter
+  has no known length, the sheet hides the whole list, since a later chapter's end
+  could still fall inside the playing file. The End of chapter tile gets its own
+  target from `chapterTimerTarget` in `src/playback/sleep-timer.ts`.
 
 Picking a timer records a touch (`noteInteraction`) and closes the sheet. The sleep
 readouts (`useSleepPill`, `useSleepCountdown`) read the phase, the countdown and the
@@ -645,6 +648,11 @@ The whole-book timeline is `book-timeline.tsx` with the pure
 - **Runs.** Chapters are merged into runs like the Now card's `scaleRuns`. Each run
   is placed by time with `runBox`, the one mapping that the playhead, taps and pins
   use.
+- **Chapter names.** At the playhead, `BookTimeline` uses the current chapter or
+  row supplied by its caller for the hover tip and slider value text. Elsewhere it
+  calls `chapterAtSecond`. The player uses `chapterAt` and keeps the playing
+  chapter's name when the hovered chapter shares its start. The book page uses
+  `rowAt`. Both follow the [tie rule](playback.md#building-the-queue-book-queuets).
 - **Pins.** Bookmark and note pins come from `usePlayingPins`, the playing book's
   case of `useBookAnnotations`. That hook reads ANY book's bookmarks and notes, and
   their `pins`, through its own connection. It never throws when the connection is
@@ -659,14 +667,24 @@ The whole-book timeline is `book-timeline.tsx` with the pure
 The book page draws the same `BookTimeline` for any book
 ([The book page](book-page.md#the-chapters-tab)).
 
+Home's Now card uses `tiedChapterIndexAt` for both the chapter label and the
+highlight on its scale. It uses the playing file and seconds into it for a live
+place, or the saved file and seconds when showing saved progress.
+
 ### Rings, the transport and titles
 
 - **Rings** (`src/components/ui/progress-ring.tsx`): `ProgressRing` (a fraction the
   caller ticks) and `CountdownRing` (empties by itself, on the UI thread). Both are
   transform-only.
 - **The transport cluster** (`transport-controls.tsx`) comes in three sizes.
-  Previous and next read the live position at press time through `stepSegment`
-  (`transport.ts`), which steps by chapters, else by files.
+  Previous and Next read the live file and position through `stepSegment` in
+  `transport.ts`. When files share a start, `stepInFileOrder` orders chapters by
+  file and then by seconds into that file. It seeks by file path and in-file
+  start, so Next reaches the next file's chapter even at the same book time.
+  Previous restarts the chapter, or goes to the one before within its first three
+  seconds.
+  With distinct file starts the controls use whole-book seconds. They step by
+  file if the queue has no chapters or no usable book duration.
 - **`prettify-title.ts` cleans filename-shaped labels for display.** Audiobook
   "chapter" labels are often just the audio *filename* (`01_the_hobbit_ch1.mp3`).
   `prettifyChapterTitle` strips a recognised extension, turns underscores into
