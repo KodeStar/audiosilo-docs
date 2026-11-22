@@ -1985,13 +1985,12 @@ search result registered (its SHA-256). The caller can never name a URL. An id
 of the wrong shape, unknown, expired or evicted is `404 artwork_not_found` and
 fetches nothing.
 
-The server fetches the image itself and re-encodes it as a JPEG of at most 320 px.
-The fetch has these limits:
-
-- public addresses only, checked at connect time;
-- at most three redirects, and never from HTTPS down to HTTP;
-- no credentials, cookies or caller headers;
-- five seconds, and at most 2 MiB.
+The server fetches the image itself and re-encodes it as a JPEG of at most
+320 px. It checks for a public address at each connection and follows at most
+three redirects. It refuses user info in the original URL or a redirect
+target, and refuses redirects from HTTPS to HTTP.
+The fetch sends no credentials, cookies or caller headers and has a limit of
+five seconds and 2 MiB.
 
 SVG, HTML and anything that does not decode as an image fail. Success is
 `image/jpeg` with `X-Content-Type-Options: nosniff` and
@@ -3333,13 +3332,14 @@ as `?token=` on an `<img>`.
 | `size` | int | no | `96` (from 2.5.1), `160`, `320` (default) or `640`: the thumbnail's longest side in pixels |
 | `token` | string | no | media-auth fallback |
 
-**Not an open proxy.** The server looks up the book's envelope (the same lookup and
-cache as `/meta`) and serves `url` only when it is, character for character, a
-cover URL that envelope hands out. Anything else is `404 no such cover` before
-anything is fetched, so a caller can make the server fetch only images it could
-already see named in a book it can reach. The fetch itself keeps the guards of
+The server uses the same book lookup and cache as `/meta`. The requested
+`url` must exactly match a cover URL in that book's envelope. Any other URL
+gets `404 no such cover` before the server fetches an image.
+
+The fetch keeps the guards of
 [`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity): public
-addresses only, at most 3 redirects, 15 seconds, at most 16 MiB.
+addresses only, at most three redirects and never from HTTPS to HTTP, no user
+info, 15 seconds and 16 MiB.
 
 Response `200`: `image/jpeg`, the image decoded and re-encoded within `size` x
 `size` pixels (never scaled up), so the upstream's bytes and content type never
@@ -3370,7 +3370,7 @@ reach the client.
 | `400` | `url is required`; `size must be one of [96 160 320 640]` (an empty `size=` too); `path is required` / `invalid library id` |
 | `401` | missing/invalid token |
 | `403` | path outside the caller's share scope |
-| `404` | `no such cover` - the book is unmatched (neither its identifiers nor its recorded match find a work) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
+| `404` | `no such cover` when the book is unmatched or its envelope has no such URL. `no cover` when the fetch encounters an invalid URL (including user info), or the image is too large or cannot be decoded. Other cases include `no book at that path` and `metadata lookup not enabled` (`meta_covers` false). |
 | `500` | `could not load book` - the book or its recorded match could not be read |
 | `502` | `metadata service unavailable` - the book's envelope couldn't be had; `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects or (from 2.7.0) one from `https` down to `http`, an answer other than `200`), or its fetch failed less than a minute ago |
 
@@ -3810,13 +3810,16 @@ is spoken in its audio, as a Bridge wrote it into the book's `.audiosilo/` folde
 |---|---|---|
 | `path` | string | yes: the book's own path (`rel_path`), not a part or a track |
 
-Response `200`: the map file's bytes as they are on disk.
+A successful `GET` returns the whole map. A `Range` header is ignored: the
+answer is `200` with the whole uncompressed map under its identity ETag, even
+when the client accepts gzip (or `304` on a matching `If-None-Match`).
 
 | Header | Value |
 |---|---|
 | `Content-Type` | `application/json; charset=utf-8` |
-| `Content-Encoding` | `gzip` when the request's `Accept-Encoding` allows it (`Vary: Accept-Encoding`) |
-| `ETag` | `"<size hex>-<mtime ns hex>"` of the file, `"<size hex>-<mtime ns hex>-gz"` for the gzipped answer (so a cache never pairs one encoding's validator with the other's bytes); a matching `If-None-Match` is `304`, checked before anything is gzipped |
+| `Vary` | `Accept-Encoding` |
+| `Content-Encoding` | `gzip` when the request negotiates gzip and compressing the map makes it smaller. Otherwise the header is absent. |
+| `ETag` | `"<size hex>-<mtime ns hex>"` for identity. When the request negotiates gzip, the tag has a `-gz` suffix, even if the map is too small to shrink. The server checks `If-None-Match` before compressing. |
 | `Cache-Control` | `private, no-cache` (the Bridge may rewrite the map at any moment) |
 
 **Header auth only**, as [`/ebook`](#get-apiv1librariesidebook): `?token=` is
@@ -5528,7 +5531,7 @@ Errors, in order: `401`; `403` `kid_account`; `404` `metadata_off`; `404`
 caller holds, none at all) or listed without a cover, before any fetch; `502`
 `cover_unavailable` when the image couldn't be fetched (also for a minute after a
 failed fetch, as on `/meta/cover`); `404` (no code) when the fetched file is no usable
-image.
+image, or the cover URL or a redirect target carries user info.
 
 ## Listening in the house
 
@@ -8718,28 +8721,29 @@ Requires the `metadata` [capability](#get-apiv1server). `?path=` required.
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|
-| `url` | string | yes | an absolute `http`/`https` URL, at most 2048 characters |
+| `url` | string | yes | An absolute HTTP or HTTPS URL of at most 2,048 bytes, with no user info (username or password). |
 
 ```json
 { "url": "https://covers.openlibrary.org/b/isbn/9780553418026-L.jpg" }
 ```
 
-The fetch connects to **public addresses only**: every connection's resolved
-address, a redirect's included, is checked when it is made, so a loopback,
-private, link-local or otherwise reserved address is refused (no proxy is
-used). It follows at most 3 redirects and gives up after 15 seconds. The image
-must be a JPEG, PNG or WebP; one with more than 40 megapixels is refused from
-its header, and one over 5 MiB (the upload limit) is re-encoded as a JPEG
-within 1600 x 1600 pixels first. The book is checked before anything is
-fetched. A success is audited as `book.cover_set` with `source: "community"`
-and, like an upload, moves the book's
-[`cover_version`](#get-apiv1librariesidbooks).
+The server checks the book before fetching the image. It connects directly to
+public addresses and checks the resolved address on every connection. It
+follows at most three redirects, refuses user info on each redirect target
+and refuses redirects from HTTPS to HTTP. The fetch has 15 seconds in total,
+reads at most 64 KiB of response headers and requires a final HTTP `200`.
+
+The image must be a JPEG, PNG or WebP within 16 MiB and 40 megapixels. The
+server checks the pixel limit from the image header. For an image over the
+5 MiB upload limit, it first re-encodes the image as a JPEG within
+1600 x 1600 pixels. Saving the cover records `book.cover_set` with
+`source: "community"` and updates the book's [`cover_version`](#get-apiv1librariesidbooks).
 
 Response `200`: `{ "status": "cover set", "path": "…" }`.
 
 | Status | Meaning |
 |---|---|
-| `400` | `url must be an absolute http(s) URL`; `invalid request` (malformed body or an unknown key); `invalid library id`; `path is required` |
+| `400` | `url must be an absolute http(s) URL`, also when the submitted URL or a redirect target carries user info; `invalid request` (malformed body or an unknown key); `invalid library id`; `path is required` |
 | `401` / `403` | anonymous / non-admin |
 | `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` |
 | `413` | `code: "too_large"` - the image is over 16 MiB, or over 40 megapixels |
@@ -8812,9 +8816,9 @@ Thumbnails of community cover images. This is how the console's match dialog sho
 each candidate's `cover_url` (from
 [`GET …/book/match`](#get-apiv1adminlibrariesidbookmatch)), which its CSP
 can't load from the image's own host. Requires the `metadata`
-[capability](#get-apiv1server). The server fetches each image as
-[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity) does
-(public addresses only, at most 3 redirects, 15 seconds each).
+[capability](#get-apiv1server). Each image has the same fetch limits as a
+[saved community cover](#put-apiv1adminlibrariesidcovercommunity). An entry
+whose URL or redirect target carries user info is `""`.
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|

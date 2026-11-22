@@ -74,6 +74,20 @@ Additions:
 
 Changes to existing routes:
 
+- [Response compression](index.md#response-compression) is now opted in per
+  route. Every JSON read that was compressed before still is; a request with an
+  `Upgrade` header is now answered uncompressed. `/api/v1/healthz` and refusals
+  written before a route's handler runs (a `401`, a rate limit's `429`, a kid,
+  demo or module refusal, an unknown route) no longer carry
+  `Vary: Accept-Encoding`, and neither do the JSON errors of podcast discovery
+  artwork and the OPML export. A
+  [read-along map](reference.md#get-apiv1librariesidreadalong) requested with
+  `Range` is now the whole uncompressed map under its identity ETag, even when
+  the client accepts gzip.
+- When a community or Upcoming cover's URL or a redirect target carries user
+  info (username or password), the player receives `404 no cover`. Podcast
+  discovery artwork returns `502 artwork_unavailable` for a redirect with user
+  info. See [Podcast discovery](reference.md#podcast-discovery).
 - `POST /auth/password` returns 200 with `signed_out`, the number of the caller’s other sessions
   ended. Clients supporting older servers must also accept their empty 204.
 - While the server starts, every request, both health routes and `GET /server` included, returns
