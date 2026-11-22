@@ -12586,9 +12586,31 @@ queued until the destination is corrected. A failed backup with `code: "exists"`
 | `dest_path` | the console's destination for the title's backup, `""` for the account's placement |
 | `import_job_id` | the title's latest backup job, `null` for none |
 | `import` | the title's backup: `{job_id, state, code}` with `state` the job's ([job states](#the-job-object)) and `code` a failed or parked job's code (`not_released`, `no_rights`, `audible_refused`, `not_writable`, `exists`, `disk_full`, `offline_url_expired`, `unknown_account`, `drm_free` (Audible offers the title only as a DRM-free MP3, which the Bridge doesn't back up yet), or `""`); `{job_id: null, state: "pending"}` for a Back up on a preorder waiting for its release; `null` for none |
+| `fold_refusal_reason` | Optional string. The code below explains why the server could not use a completed backup as this title's match. |
+| `fold_refused_at` | Optional string. The UTC time the server recorded the refusal, in RFC 3339 format with up to nine fractional digits. |
 | `needs_attention` | a preorder still not available 14 days after its `release_date`: the account is no longer polled hourly for it |
 | `planned` | where a backup would go, as the Bridge planned it at its last poll (the object the [titles PUT](#put-apiv1bridgeaudibleaccountsaccounttitles) takes); `null` when matched, not planned, or the account is no longer mapped to the plan's library (paused or mapped again: none until its next poll) |
 | `contested` | for a title left unmatched as `contested`, `{library_id, path, with: [{asin, title}]}`: the book it tied for and the account's other titles (not `gone`) contested over that book or matched to it, by title, at most 10; `null` otherwise, or while the account isn't mapped to that library |
+
+Both refusal fields are omitted when the title has no recorded refusal, in the
+list and in the [title PATCH](#patch-apiv1adminaudibletitlesaccountasin)'s
+answer. The backup job itself can still be `done`.
+
+| `fold_refusal_reason` | Why the server refused the match |
+|---|---|
+| `invalid_result` | The server could not read the backup result, or it named the wrong library or lacked a usable book path. |
+| `not_indexed` | The server found no indexed book at that path in the backup's books library. |
+| `not_own_book` | The indexed book's ASIN did not match the title's, and the server could not verify that the book contained only files placed by this backup. |
+| `rejected_match` | The book at that path was marked **Not this book** for this title. |
+
+The server clears both fields when it queues the title's next backup or
+successfully matches a completed import. A poll that adds or changes the
+accepted match also clears them, as does undoing **Not this book** on an
+existing match. A poll that repeats the same match and a move of the matched
+book both preserve the refusal.
+
+Removing the finished job alone preserves the refusal on the title. Deleting a
+library clears refusals whose backup jobs belong to that library.
 
 | Status | Meaning |
 |---|---|
@@ -12675,7 +12697,8 @@ out is left as it is:
 ```
 
 - `rejected` `true` marks the title "Not this book" (and drops a pending preorder
-  request); `false` clears it. A done backup clears it too.
+  request). `false` clears the mark. A completed backup clears it when the
+  server accepts the book as the title's match.
 - `dest_path` is where in the account's library its backup goes, `""` for the
   account's placement: a file path, or a folder (a last segment without an audio
   extension) the title's file goes in. At most 1024 bytes, clean (no `..`, no
@@ -12935,8 +12958,8 @@ clock too, so the Bridge counts its baseline's recent window back from
 ### `DELETE /api/v1/admin/audible/accounts/{account}`
 
 *Admin*, **not** behind the module's toggle. Removes an account the Bridge can no
-longer remove (one from a Bridge since unpaired or replaced, or whose removal on the
-Bridge couldn't reach the server), exactly as the Bridge's delete does: its titles
+longer remove (one from a Bridge since unpaired or replaced, or whose removal the
+Bridge [gave up on](../../bridge/audible.md#the-sign-in-internalaudibleacct)), exactly as the Bridge's delete does: its titles
 go, its open poll and sync are cancelled, and so are its open backups. It signs nothing out of
 Amazon: that is the Bridge's. `204`, known or not; audited as `bridge.audible.remove`
 when there was one, its target the account's name (its label, else "person

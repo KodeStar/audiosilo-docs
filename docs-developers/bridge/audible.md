@@ -1,6 +1,6 @@
 ---
 title: Audible
-description: "Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, preorders from the orders and the catalog (remembered, Bridge 0012), the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the current device profile (Bridge 0010), redacted account ids, contests settled by series number and planned destinations; position sync both ways (audible.sync, the push loop, furthest only, the two Bridge routes, server 0066 and 0085, and Bridge 0011)."
+description: "Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, preorders from the orders and the catalog (remembered, Bridge 0012), the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065, and 0093's backup refusals), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the current device profile (Bridge 0010), redacted account ids, owed account removals (Bridge 0022), contests settled by series number and planned destinations; position sync both ways (audible.sync, the push loop, furthest only, the two Bridge routes, server 0066 and 0085, and Bridge 0011)."
 ---
 
 The Bridge does three things with Audible accounts:
@@ -30,7 +30,7 @@ probe and OpenAudible sources were not imported.
 | Where | What |
 |---|---|
 | The Bridge's vault | each account's sign-in, sealed as `audible_<id>` (`secrets.AudibleName`): the access, refresh and adp tokens, the device's RSA key, its serial, the customer id and marketplace (`audible.Credentials.Marshal`). **Full Amazon account access**, so never anywhere else |
-| The Bridge's `bridge.db` | `audible_accounts` (migration `0009`): `id`, `label`, `marketplace`, `customer_hash` (sha256 of the customer id, never the id), `server_id` (the server the mapping was last recorded on), `user_id`/`user_name`, `library_id`, `policy`, `sync` (sent to the server, which ignores it), `created_at`, `last_ok_at`, `last_poll_at`, `last_titles`, `last_matched`, `refused_at`, `last_error`, `device_profile` (migration `0010`, [below](#the-device-profile)), and the push and sync health columns and `refusal_kind` with the `audible_push` table (migration `0011`, [below](#bridge-migration-0011_audible_push)). The remembered pending preorders: `audible_preorders` (migration `0012`, [below](#preorders)). Unique on `(customer_hash, marketplace)` where the hash isn't empty. No credential |
+| The Bridge's `bridge.db` | `audible_accounts` (migration `0009`): `id`, `label`, `marketplace`, `customer_hash` (sha256 of the customer id, never the id), `server_id` (the server the mapping was last recorded on), `user_id`/`user_name`, `library_id`, `policy`, `sync` (sent to the server, which ignores it), `created_at`, `last_ok_at`, `last_poll_at`, `last_titles`, `last_matched`, `refused_at`, `last_error`, `device_profile` (migration `0010`, [below](#the-device-profile)), and the push and sync health columns and `refusal_kind` with the `audible_push` table (migration `0011`, [below](#bridge-migration-0011_audible_push)). The remembered pending preorders: `audible_preorders` (migration `0012`, [below](#preorders)). The owed server removals: `audible_removals` (migration `0022`, under Remove below). Unique on `(customer_hash, marketplace)` where the hash isn't empty. No credential |
 | The server | the mapping and the titles (`0063`, `0064`, `0065`, `0066`, below), the poll and sync schedules, what to back up and when, and whether an account's places sync. It never talks to Audible and never holds a credential or a book's key |
 
 No credential reaches the store, job params or results, logs, the heartbeat or the
@@ -66,10 +66,10 @@ app's own flow, and the admin pastes back the address where it ends:
    - seals the credentials as `audible_<id>` and stores the row.
 
    If any step after the registration fails, the Bridge deregisters the new device
-   and puts back what it changed, best effort. A new account is DELETEd on the
-   server. An existing one's earlier sign-in goes back in the vault, and its
-   earlier mapping is PUT again. A failed sign-in leaves no device and the account
-   as it was.
+   and puts back what it changed, best effort. If it already asked the server
+   to map a new account, it records a pending removal and sends the DELETE.
+   For an existing account, it restores the earlier sign-in and sends the
+   earlier mapping again if that mapping was on the same server.
 
 The device is named `"<first name>'s AudioSilo"` in the Amazon account's device
 list (`audible.DeviceName`, decisions 14/16: "AudioSilo", not "Bridge"). The
@@ -92,22 +92,44 @@ If the server omits it, the Bridge keeps its local value. The Accounts card
 labels this value **Last known to the Bridge**. A console edit reaches the card
 on the next mapping save.
 
-**Remove** (page `DELETE /api/accounts/audible/{id}`, answering `{audible,
-warning}`) runs to the end even if the page goes away. In order, it:
+**Remove** (page `DELETE /api/accounts/audible/{id}`, answering `{audible, warning}`)
+finishes even if the page closes. The Bridge takes these steps in order.
 
-1. forgets locally **first**: the vault, then the row (it takes `finishMu`
-   meanwhile);
-2. DELETEs on the server;
-3. deregisters (`audible.Deregister`: `POST /auth/deregister` with
-   `deregister_all_existing_accounts: false`, this device only). It first
-   refreshes an access token within 2 minutes of expiry.
+1. Under `finishMu`, it forgets the sign-in in the vault and deletes the local
+   account row. For an account on the paired server, the same SQLite transaction
+   records the pending DELETE in `audible_removals` (migration `0022`).
+2. It releases the lock and sends `DELETE /bridge/audible/accounts/{account}`
+   on that pairing.
+3. It calls `audible.Deregister`, which refreshes an access token within two
+   minutes of expiry and asks Amazon to remove this device
+   (`POST /auth/deregister` with `deregister_all_existing_accounts: false`).
+   If the page warns about the device, the admin removes it in Amazon's device list.
 
-A server or Amazon failure is a `warning` for the page, never the account kept.
-When the server's DELETE failed, the server keeps an orphaned account until an
-admin removes it
-([`DELETE /admin/audible/accounts/{account}`](../server/api/reference.md#delete-apiv1adminaudibleaccountsaccount)).
-The admin does that from the console with **Remove** (see
-[The console](#the-console) for which card lists it).
+Each pending removal stores the old account ID, the pairing ID, the number of
+failed attempts and the next retry time. After a successful heartbeat, the
+Bridge drops rows from ended pairings and retries at most one due DELETE in the
+background. Unpairing and pairing again gives a new pairing ID, even on the
+same server. Pairing again with the same server after its token was refused,
+with no unpair between, keeps the pairing ID and its pending removals. Adding
+the same Audible account again gives it a fresh account ID, so a late DELETE
+can only remove the old entry.
+
+| DELETE outcome | What the Bridge does |
+|---|---|
+| Any `2xx` or `404` | Clears the pending removal. The server answers `204` whether or not it knew the account ([the Bridge DELETE](../server/api/reference.md#delete-apiv1bridgeaudibleaccountsaccount)). |
+| Network failure, `401`, `408`, `429` or `5xx` | Keeps the removal for retry. A refused token still belongs to the same pairing. |
+| Other `4xx`, such as `403` | Logs the refusal and drops the pending removal. The server may still list the account. |
+
+The retry delay starts at one minute and doubles up to one hour. A longer
+`Retry-After` takes precedence, up to 24 hours. On the 168th failed attempt,
+the Bridge logs a warning and drops the removal. That takes about a week of
+hourly failures. Failed heartbeats do not count toward the limit.
+
+After a temporary failure, the page says the Bridge will try again. If the
+Bridge is unpaired, paired to a different known server, or receives a permanent
+refusal, the page says the server may still list the account. An admin can
+remove an old entry with **Remove...** in the console.
+See [the admin account DELETE](../server/api/reference.md#delete-apiv1adminaudibleaccountsaccount).
 
 **Refused.** A `401`/`403` on a signed call (`audible.IsRefused`) marks the account
 refused (`refused_at`, `last_error`; the page's **Sign in again**). The exception
@@ -1054,16 +1076,21 @@ request. Where the Bridge finds preorders is in [Preorders](#preorders).
 `FoldAudibleImport` runs from the jobs' `OnEnded` hook for a done `audible.import`:
 
 1. The result must name the job's library (and the params' library) and a clean
-   book path, else `ErrImportNotIndexed`.
+   book path, else `ErrImportNotIndexed` (stored as `invalid_result`, as is an
+   unreadable result).
 2. `importOwnBook` checks the book. It must be indexed in a books library, else
-   `ErrImportNotIndexed`. It must be the **title's own**, else `ErrImportNotOwn`
-   (logged). The title's own book carries the title's ASIN, or holds **only** the
-   files the backup placed (a single-file book is its file). A file the scan joined
+   `ErrImportNotIndexed` (`not_indexed`). It must be the **title's own**, else
+   `ErrImportNotOwn` (logged; `not_own_book`, or `rejected_match` for the book
+   marked Not this book). The title's own book carries the title's ASIN, or holds
+   **only** the files the backup placed (a single-file book is its file). A file the scan joined
    into a folder book already there never makes that book (nor another title's)
    this title's match. Nor does it ever match the book the admin marked Not this
    book for the title.
-3. It sets the match (`match_how = 'import'`) and clears `rejected` and
-   `import_pending`, only while `import_job_id` is still this job.
+3. If the checks pass, it sets the match (`match_how = 'import'`) and clears
+   `rejected`, `import_pending` and any previous refusal. If it refuses the
+   result, it records the reason and time on the title and keeps the existing
+   match. An older job cannot overwrite a newer backup's outcome.
+   See the [admin title fields](../server/api/reference.md#get-apiv1adminaudibletitles).
 
 A later poll keeps an `import` match while its book is indexed and the poll names no
 other match for the title (`importMatches`). The poll may have listed the library
@@ -1565,7 +1592,8 @@ The server keeps two tables. The columns are in the
   `last_queued_at`, `template` and `policy_since`.
 - **`audible_titles`**: one row per account and ASIN, with its state and match,
   plus the console's and an import's columns: `rejected`, `ignored`, `dest_path`,
-  `import_job_id` and `import_pending`, which a titles PUT never overwrites.
+  `import_job_id`, `import_pending` and the refusal pair `fold_refusal_reason` and
+  `fold_refused_at` (`0093`), which a titles PUT never overwrites.
 
 `ignored` has no route that sets it yet. Back up everything, the policy pass and
 the preorder clock skip an ignored title. Migration `0066` adds `sync_queued_at`,
@@ -1635,6 +1663,8 @@ The code is in `features/audible/`.
   and **Destination...** (`title-actions.tsx`);
 - the import's state and code (`importStatus`). The loaded titles are fetched
   again every 5 s while a backup is queued or running (`backupRunning`);
+- a done backup's refusal (`fold_refusal_reason`, `FoldNote`) in place of
+  **Backed up**;
 - **Backed up here** for an `import` match;
 - **Don't sync** / **Sync again**, with a **Not synced** badge.
 

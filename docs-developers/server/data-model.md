@@ -1691,8 +1691,8 @@ Pairing a new Bridge clears the status, and unpairing deletes the row.
 
 Migration `0063` adds the Bridge's Audible accounts
 ([Audible](../bridge/audible.md)). The credentials stay in the Bridge's vault.
-These tables hold only what the Bridge reports. Later migrations added
-columns, listed after the tables.
+The server keeps the account mapping, the titles the Bridge reports and the
+outcomes of backups and matches.
 
 **`audible_accounts`** *(0063; `template` and `policy_since` in 0064;
 `sync_queued_at`, `last_sync_at` and `refused_at` in 0066; `refusal_ended_at`
@@ -1726,7 +1726,8 @@ Mapping the account to another person turns `sync` off and clears
 `sync_queued_at` and `last_sync_at`.
 
 **`audible_titles`** *(0063; `import_pending` in 0064; `planned`,
-`contest_library_id` and `contest_path` in 0065; `no_sync` in 0066)*:
+`contest_library_id` and `contest_path` in 0065; `no_sync` in 0066;
+`fold_refusal_reason` and `fold_refused_at` in 0093)*:
 
 - `account` (FK `ON DELETE CASCADE`) + `asin`.
 - `title`, `authors` and `series` (JSON), `release_date`, `runtime_s`.
@@ -1752,6 +1753,10 @@ Mapping the account to another person turns `sync` off and clears
   a stored match clears them.
 - `no_sync`: the console's "Don't sync this book". A poll keeps it, like
   `rejected` and `ignored`. Only the sync reads it; backups never do.
+- `fold_refusal_reason TEXT NOT NULL DEFAULT ''` and `fold_refused_at TEXT`
+  store the code and UTC timestamp when the server refuses a completed backup
+  as the title's match. Existing rows start with an empty reason and a NULL
+  timestamp. See the [admin title fields and codes](api/reference.md#get-apiv1adminaudibletitles).
 
 The titles are indexed by match, by title, and by account then title (the
 console's orders).
@@ -1779,6 +1784,9 @@ What each later migration did:
   trigger. A `preorder` title then takes no part in its account's sync, like a
   `gone` one, and a preorder becoming available offers its book's place to
   Audible again. It adds `refusal_ended_at`.
+- `0093_audible_fold_refusal` adds the refusal columns and a trigger that
+  clears them on a newly accepted match. Every case that clears or keeps them
+  is under the [admin title fields](api/reference.md#get-apiv1adminaudibletitles).
 
 ### Podcasts
 
@@ -2573,6 +2581,7 @@ The migration history so far:
 | 0090 | `chapter_basis_match` | Includes the recorded work and recording in the basis for a community chapter check. |
 | 0091 | `mp3_rev2_tag_read_failed` | Advances current revision 1 rows for books without an MP3 to revision 2. The next scan [re-indexes MP3 books once](scanner.md#the-first-scan-after-updating). Adds the nullable `books.tag_read_failed_at` timestamp. |
 | 0092 | `health_ignores` | Stores duplicate decisions per comparison and split-disc ignores per folder. Carries forward [existing Health ignores](#health-ignores). |
+| 0093 | `audible_fold_refusal` | Records why and when the server refused to match a completed backup on the [Audible title](#audible-accounts-and-titles). |
 
 `server_state.progress_feed` identifies the Audible progress feed. A restore renews this ID before
 clients can page it. The separate data-folder mark detects a database restored behind the last

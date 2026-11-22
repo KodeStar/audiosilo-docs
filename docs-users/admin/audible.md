@@ -122,8 +122,8 @@ it matched. **Back up everything** and **Back up by itself** skip it. Then:
 3. Press **Back up**.
 
 The Bridge downloads the book, removes its copy protection and saves it in your
-library. Once the server indexes it, the title shows **On this server** with
-**Backed up here**.
+library. Once the server matches the saved book to the title, the title shows
+**On this server** with **Backed up here**.
 
 The Bridge backs up one book at a time. A download cut off part way
 picks up where it stopped. Once the copy protection is removed, the Bridge keeps
@@ -134,6 +134,22 @@ To stop a backup, choose **Cancel** in the Bridge's [Jobs](bridge.md#jobs) list.
 This removes the temporary copy. A failed backup keeps its copy in the Bridge's
 data folder until you back the title up again. When it starts, the Bridge also
 clears away copies left over for seven days or more.
+
+### When the server can't match a finished backup
+
+The Bridge can finish saving the files even if the server can't match them
+to the Audible title. The message under the title explains why.
+
+- The server couldn't use the backup details to match this title to a book in its library.
+- The server couldn't find the backed-up book in the library index.
+- The server couldn't confirm that the book at the backup destination belongs to this title.
+- The backup went into the book marked “Not this book” for this title, so the server didn't match it.
+
+The message clears when you back the title up again, when a backup or a check
+matches the title to a book, or when you delete the library the backup went
+into. If you marked the right book by mistake, **Undo Not this book** accepts
+that match and clears the message. A check that finds the same match, or moving
+the matched book, keeps it.
 
 ### When a backup fails
 
@@ -314,13 +330,14 @@ titles update once the check finishes.
 
 ## Removing an account
 
-Remove an account on the Bridge's Accounts tab (see
+Remove the account on the Bridge's **Accounts** tab (see
 [Bridge accounts](../getting-started/bridge-accounts.md#removing-an-account)). That
-removes it everywhere, including from your Amazon device list.
+removes it from the Bridge, this server and your Amazon device list, and says
+what to do if one of them can't be reached.
 
 **Remove...** in the console is for an account the Bridge can no longer remove,
 such as one from a Bridge you replaced. It removes the account from **this server
-only**, so also remove the device in your Amazon account. Any check, backup or
+only**. If the device is still listed on Amazon, remove it there too. Any check, backup or
 sync that hasn't finished is cancelled. Books already on your server stay. If
 your Bridge still has the account, its checks fail until you map it again on the
 Bridge.
