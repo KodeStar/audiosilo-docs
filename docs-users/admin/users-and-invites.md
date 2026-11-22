@@ -250,10 +250,9 @@ working, [disable the account](#disabling-vs-deleting).
 - **Disable account** - their devices stop working, but nothing is lost.
   **Enable** brings everything back.
 - **Delete account** - permanent. It removes their devices, invites, progress,
-  bookmarks, notes and history. Your audio files stay in the library.
-
-Deleting a person also removes their [Audible accounts](audible.md) and those of any household members you delete with them.
-AudioSilo cancels unfinished library checks, listening place syncs and backups only for those accounts.
+  bookmarks, notes and history. Their [Audible accounts](audible.md), and those
+  of household members deleted with them, go too, and any check, sync or backup
+  waiting for those accounts is cancelled. Your audio files are not touched.
 
 When in doubt, disable.
 

@@ -381,7 +381,7 @@ jobs of the same kind.
 | `audible.poll`, `audible.sync` | The newest ended poll and the newest ended sync for each Audible account. |
 | `podcast.poll` | The newest ended poll for the show in that library. |
 | `podcast.fetch`, `podcast.retain` | The newest ended fetch for the episode or retain for the show in that library, plus any older results the server has yet to apply (`podcast_folded`). |
-| Other kinds, including `audible.import` | Enqueuing a job keeps all earlier history. |
+| Other kinds, including `audible.import` | All of it. |
 
 ### Claims and leases
 

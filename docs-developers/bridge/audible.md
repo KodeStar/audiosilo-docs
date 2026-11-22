@@ -267,21 +267,22 @@ progress or anything sent to the server carries an account id.
 - **promoting**: a request that finds the account's poll open raises its
   priority, never lowers it.
 
-When it queues a new poll, the server keeps the account's newest ended poll (`pruneAudibleEnded`).
+Queueing a poll keeps the account's newest ended poll (`pruneAudibleEnded`,
+[Job history](pairing-and-jobs.md#job-history)).
 Removing an account cancels its open poll (`CancelAudibleRemoved`), and so does
 deleting the library it is mapped to (`CancelAudiblePaused`). Both are
 `IsCancelReason`'s, and the console keeps a copy (`SERVER_CANCEL_REASONS`).
 
-**The scheduler** (`internal/audible.RunScheduler`) runs when the module starts and
-every minute while it is on. Each pass first looks for open polls, syncs and backups
-whose account is gone (`catalog.CancelOrphanAudibleJobs`). This recovers jobs left
-open by an interrupted deletion, even while the Bridge is offline. The sweep uses
-the open-job index and takes no write transaction when it finds no orphan accounts.
-
-With an online Bridge that offers the poll kind, the scheduler queues up to 20 due accounts at priority `-10` and records
-`last_queued_at`, so a failed poll waits its interval. `catalog.DueAudiblePolls`
-picks accounts that are not paused, are mapped to a person an account may still be
-mapped to, and have a `last_queued_at` older than `poll_hours` (6 by default).
+**The scheduler** (`internal/audible.RunScheduler`) runs when the module starts
+and every minute while it is on. Each pass first cancels the open polls, syncs
+and backups whose account is gone (`catalog.CancelOrphanAudibleJobs`), Bridge
+online or not, which recovers the jobs an interrupted
+[person delete](#on-the-server-0063-catalogaudiblego) left open. With an online
+Bridge that offers the poll kind, it then queues up to 20 due accounts at
+priority `-10` and records `last_queued_at`, so a failed poll waits its
+interval. `catalog.DueAudiblePolls` picks accounts that are not paused, are
+mapped to a person an account may still be mapped to, and have a
+`last_queued_at` older than `poll_hours` (6 by default).
 
 The console's Check now (`POST /admin/audible/accounts/{account}/poll`) queues at a
 person's priority (`0`), or raises the open poll to it. A request that finds the
@@ -1615,10 +1616,12 @@ the preorder clock skip an ignored title. Migration `0066` adds `sync_queued_at`
   book's place to Audible, never a stale row an earlier book left at the new path,
   and a carry that fails leaves the titles where they were.
 - Unpairing keeps the rows. Deleting a person removes their accounts and those of
-  any household members deleted with them. The delete transaction records those
-  account IDs. After commit, `catalog.CancelRemovedAudibleJobs` cancels open polls,
-  syncs and backups only for those IDs that are still absent, including backups
-  queued in a previous library. Deleting a single household member uses the same rule.
+  the household members deleted with them; deleting one household member removes
+  theirs. The delete transaction records those account ids, and after commit
+  `catalog.CancelRemovedAudibleJobs` cancels the open polls, syncs and backups of
+  the ids still absent, a backup queued in an earlier library included. A delete
+  interrupted before that is caught by the
+  [scheduler's sweep](#the-poll-audiblepoll).
 - The Bridge's writes are user-state writes (`store/userstate.go`): titles and the
   poll times don't move the content generation; a mapping change does.
 - Free text is cleaned and bounded, never refused (one odd title never fails a

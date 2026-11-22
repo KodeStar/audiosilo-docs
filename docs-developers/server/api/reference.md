@@ -6589,11 +6589,10 @@ state onto it (see [Joined books](../scanner.md#joined-books-disc-sets)); on
 any other folder without audio it changes nothing. Clearing it splits the discs
 out again.
 
-The server refuses `"book"` if a saved Audible title destination, an account template
-or an open backup in this library places audio in a disc folder directly under `path`.
-It returns `400 invalid_dest_path` with `reason: "book_override"` and saves no override.
-An open backup retains the library and placement it had when queued, even after edits
-to the account or title. See [Audible disc destinations](#audible-disc-destinations).
+`"book"` is refused, and nothing saved, while an Audible title's destination, an
+account's template or an open backup in this library places audio in a disc
+folder directly under `path`: `400 invalid_dest_path` with `reason:
+"book_override"` ([Audible disc destinations](#audible-disc-destinations)).
 
 Response `200`: `{ "status": "override set", "path": "…", "mode": "collection" }`.
 `400` for any other mode or a path over 4096 bytes (`path is too long`, before
@@ -12267,8 +12266,14 @@ one, an id that doesn't match is `404 unknown_account`.
 ### Audible disc destinations
 
 When a destination names a disc folder such as `Shelf/CD 2`, or a file inside it,
-the server checks its parent (`Shelf`) in the target library. A conflict returns
-HTTP 400 with `code: "invalid_dest_path"`, a message in `error` and a `reason`.
+the server checks its parent (`Shelf`) in the target library, since the scan
+would join the disc into that book and the done fold would refuse it only after
+the whole download. It checks on a title's `dest_path`
+([PATCH](#patch-apiv1adminaudibletitlesaccountasin)), an account's `template`
+([PATCH](#patch-apiv1adminaudibleaccountsaccount)), the Bridge's library change
+([PUT](#put-apiv1bridgeaudibleaccountsaccount)) and a `book`
+[folder override](#put-apiv1adminlibrariesidfolder-override). A conflict is
+`400` with `code: "invalid_dest_path"`, a message in `error` and a `reason`.
 
 | `reason` | Condition |
 |---|---|
@@ -12282,7 +12287,12 @@ a `reason` on a title edit.
 For templates, the server checks a disc folder it can identify before the Bridge
 substitutes title data. For example, `Shelf/CD 2/` and `Shelf/CD 2/{Title}.m4b`
 both use a disc directly under `Shelf`. When the parent depends on title data,
-the server checks the actual book and files in the [finished backup](../../bridge/audible.md#on-the-server-the-done-fold).
+the server checks the actual book and files in the
+[finished backup](../../bridge/audible.md#on-the-server-the-done-fold).
+
+An open backup keeps the library and placement it was queued with, whatever
+later edits to the title or account say. So the folder override also counts the
+open backups' placements, and only a finished or cancelled backup lets it pass.
 
 ### The account object
 
@@ -12370,7 +12380,7 @@ This also applies when a paused account gets a new library.
 | Status | Meaning |
 |---|---|
 | `200` | `{ "account": Account }` (without `titles`) |
-| `400` | `invalid_request`, `invalid_policy`, `invalid_marketplace`, `not_books` (a podcast library), or `invalid_dest_path` with [disc destination reason](#audible-disc-destinations) `indexed_book` or `book_override` |
+| `400` | `invalid_request` (the JSON); `invalid_policy`; `invalid_marketplace`; `not_books` - the library is a podcast library; `invalid_dest_path` with a [disc `reason`](#audible-disc-destinations) |
 | `404` | `unknown_account` - an id the Bridge couldn't have made; `unknown_user` - no such user, or one an account may not be mapped to (above); `unknown_library` |
 
 ### `DELETE /api/v1/bridge/audible/accounts/{account}`
@@ -12675,10 +12685,11 @@ parsed: the Bridge plans unmatched titles by it), with no library or path; Check
 now on a poll still queued gives it the account's current template. It is quiet
 (no notifications) and held while the module is off. The
 module's scheduler queues each due account's poll every `poll_hours` at priority
-`-10` while an online Bridge offers the kind. Enqueuing a new poll keeps the newest
-ended poll for that account. At startup and every minute while the module is on,
-the scheduler also cancels open polls, syncs and backups whose account is gone.
-It checks for these jobs even when the Bridge is offline.
+`-10` while an online Bridge offers the kind. Only the newest ended poll of each
+account is kept ([Job history](../../bridge/pairing-and-jobs.md#job-history)).
+At start and every minute while the module is on, Bridge online or not, the
+scheduler also cancels the open polls, syncs and backups of accounts that are
+gone.
 
 ### `POST /api/v1/admin/audible/titles/{account}/{asin}/backup`
 
@@ -12740,9 +12751,11 @@ out is left as it is:
   account's placement: a file path, or a folder (a last segment without an audio
   extension) the title's file goes in. At most 1024 bytes, clean (no `..`, no
   leading or trailing `/`, no `.` segment), no hidden, dot-led segment, no
-  backslash or control character. The server checks the [disc destination](#audible-disc-destinations)
-  in the account's library. Clearing `dest_path` checks the account's template.
-  A queued backup keeps its original placement. The Bridge checks it against its mapping.
+  backslash or control character, and not a
+  [disc folder another book would join](#audible-disc-destinations) in the
+  account's library (clearing it checks the account's template instead). It is
+  copied into a backup when it is queued; the Bridge checks it again against its
+  mapping.
 - `no_sync` `true` keeps the title's book out of the account's
   [position sync](#audible-position-sync), both ways; `false` lets it sync again.
 
@@ -12754,7 +12767,7 @@ logged and the next scheduled sync carries the change.
 | Status | Meaning |
 |---|---|
 | `200` | the [title](#get-apiv1adminaudibletitles) (not wrapped) |
-| `400` | `invalid_request` for invalid JSON or an unknown field. `invalid_dest_path` describes the problem in `error`. A disc conflict adds `reason` (`indexed_book` or `book_override`). |
+| `400` | `invalid_request` - the JSON (an unknown field too); `invalid_dest_path` - with what is wrong in `error`, and a [disc `reason`](#audible-disc-destinations) for a disc folder |
 | `404` | `unknown_account`; `unknown_title`; `module_off` |
 
 Audited as **`bridge.audible.title`** (with `account`, `asin`, and `rejected`,
@@ -12776,8 +12789,9 @@ it is:
 - `template`: the placement template, `""` for the Bridge's placement beside the
   series' other books. At most 500 bytes, in the Bridge's
   [template grammar](../../bridge/audible.md#the-template-grammar) (its variables,
-  mods and the segment rules the server checks). The server also checks a
-  [disc destination](#audible-disc-destinations) against the account's current library.
+  mods and the segment rules the server checks), and not a
+  [disc folder another book would join](#audible-disc-destinations) in the
+  account's library.
 - `sync`: `true` turns the account's [position sync](#audible-position-sync) on
   and queues its first `audible.sync` at once (when an online Bridge offers the
   kind); `false` turns it off and cancels its open sync ("sync with Audible was
@@ -12789,7 +12803,7 @@ The account's person and library stay the Bridge's.
 | Status | Meaning |
 |---|---|
 | `200` | `{ "account": Account }` (without `titles` and `backup_estimate`) |
-| `400` | `invalid_request` for invalid JSON or an unknown field, `invalid_policy`, or `invalid_template` for a template syntax error. A disc conflict returns `invalid_dest_path` with `reason` (`indexed_book` or `book_override`). |
+| `400` | `invalid_request` - the JSON (an unknown field too); `invalid_policy`; `invalid_template` - with what is wrong in `error`; `invalid_dest_path` with a [disc `reason`](#audible-disc-destinations) |
 | `404` | `unknown_account`; `module_off` |
 
 Audited as `bridge.audible.account` (with `account`, and `policy`, `template` and
