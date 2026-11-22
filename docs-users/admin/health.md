@@ -83,21 +83,20 @@ over MP3), then a single file, higher bitrate and more listeners, in that order.
 ![Comparing likely duplicates](/img/screenshots/admin/health-duplicates.png)
 
 If you want to keep two narrations, for example, choose **They're different
-books**. This hides the group and keeps all its books in your library. If a
-copy joins or leaves, you can review the books that still match as a new group.
+books**. This hides the group and deletes nothing. If you later add or remove a
+copy, the books that still match come back as a new group.
 
-Turn on **Include other libraries** to see matching pairs alongside the groups
-in each library. If two copies in your main library both match a third in your
-kids' library, you see two cross-library pairs. Ignoring one pair leaves the
-other pair and the group in your main library available to review.
+Turn on **Include other libraries** to also see matching pairs from two
+libraries. If two copies in your main library both match a third in your kids'
+library, you see two pairs. Choosing **They're different books** on one pair
+leaves the other pair, and the group in your main library, still listed.
 
-Choose **Undo** in the confirmation message to bring a comparison back.
-To find it later, turn on **Include other libraries** if the pair spans two
-libraries. Choose **Show ignored**, then **Suggest as duplicates again** on
-its card.
+To bring a group or pair back right away, choose **Undo** in the confirmation
+message. To bring it back later:
 
-An upgrade keeps your earlier choices. The duplicate comparisons and split
-disc sets you had already ignored stay hidden.
+1. Choose **Show ignored**. For a pair from two libraries, also turn on
+   **Include other libraries**.
+2. Choose **Suggest as duplicates again** on its card.
 
 If copies share an ASIN or ISBN but have **different lengths**, check for a
 match to the wrong recording before removing either one. To remove a copy,

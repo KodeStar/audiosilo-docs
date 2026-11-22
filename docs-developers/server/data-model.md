@@ -25,7 +25,9 @@ to understand before you change the schema.
     `collection_items` and `ratings`;
   - per-library config: `folder_overrides`, `book_enrichment`,
     `issue_ignores`, `duplicate_decisions`, `book_overrides`, `chapter_overrides`,
-    `chapter_choices`, `chapter_edits`, `book_covers`, `book_matches` and `book_hints`.
+    `chapter_choices`, `chapter_edits`, `book_covers`, `book_matches` and `book_hints`
+    (`duplicate_decisions` keys a comparison by its library IDs and member
+    paths, see [Health ignores](#health-ignores)).
 
   The rest of a listener's own state hangs off the account rather than a path:
   `collections`, `collection_shares`, `listening_goals` and
@@ -70,8 +72,8 @@ Move-tracking covers the remaining gap, a file that *moves* on disk. The
 scanner fingerprints files (`books.content_hash`) and calls
 `catalog.MoveDurableState` to carry every path-keyed book table from the
 old path to the new one (see [Scanner](scanner.md#move-detection)). That is
-every table above except `folder_overrides`, which is keyed by folder, not
-book. When an admin joins a folder's disc folders into one book,
+every table above except `folder_overrides` and a split-disc set's
+`issue_ignores` row, which are keyed by folder, not book. When an admin joins a folder's disc folders into one book,
 `catalog.JoinDurableState` hands the disc books' state to the joined book the
 same way (see [Joined books](scanner.md#joined-books-disc-sets)).
 
@@ -2089,11 +2091,13 @@ For duplicates, the migration recovers selections that share an admin and
 timestamp. Before the first scan, `MapLegacyDuplicateIgnores` checks the
 pre-upgrade index for groups hidden under the old all-members rule. For a
 cross-library pair, it checks whether the whole former group was hidden.
-It marks confirmed member flags `duplicate_mapped` and clears the startup
-marker in the same transaction.
+It changes each confirmed member's `issue_ignores` kind from `duplicate` to
+`duplicate_mapped`, and deletes the `map_duplicate_ignores_0092`
+`server_state` key that the migration set, in the same transaction.
 
-Where a `duplicate` flag is still unresolved, a comparison with no exact
-decision stays hidden only if all members had old flags. Restoring a
+While any member still has a `duplicate` row, a comparison with no exact
+decision stays hidden only if every member has a `duplicate` or
+`duplicate_mapped` row. Restoring a
 comparison with old flags records an explicit `ignored = 0`. That keeps the
 fallback from hiding a later group containing the restored comparison.
 

@@ -1136,17 +1136,17 @@ the book's own parked detect job.
 
 The console (`duplicates.tsx`) shows one card per comparison from
 [`GET /admin/issues/duplicates`](api/reference.md#get-apiv1adminissuesduplicates).
-"Include other libraries" adds a card for each directly matching pair from
-different libraries. The groups within each library keep their own cards.
+"Include other libraries" adds a card for each cross-library pair, beside the
+cards of the groups within each library.
 The console suggests a copy to keep unless a shared identifier points to
 recordings of different lengths.
 
 "They're different books" dismisses only the pair or group on that card.
-Undo in the toast restores it. "Show ignored" also lets an admin choose
-"Suggest as duplicates again" on a dismissed card. Both actions use the
-card's full membership. For a group over 1,000 copies, `useIssueActions`
-sends the comparison's `key` as `group_key` with one member in a single
-request.
+Undo in the toast restores it, and so does "Suggest as duplicates again" on
+the card under "Show ignored". Both send the card's full membership. For a
+group over 1,000 copies, `useIssueActions` sends one member with the card's
+`key` as [`group_key`](api/reference.md#post-apiv1adminissuesignore--delete-apiv1adminissuesignore),
+in a single request.
 
 - **Paging.** The groups come 50 at a time (`useDuplicates`, an infinite query
   on `limit` and `cursor`; `DUPLICATES_PAGE`). A "Show more" button

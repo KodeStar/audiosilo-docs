@@ -2143,10 +2143,14 @@ Within a group, the copy worth keeping comes first, by:
 3. the higher bitrate;
 4. more listeners.
 
-The duplicates list can also include directly matching pairs across
-libraries. A match through a third book is enough to connect a group within
-one library. Each cross-library pair needs a match between its own two books.
-See the [API reference for the cross-library cap and pagination](api/reference.md#get-apiv1adminissuesduplicates).
+With `across`, the duplicates list also holds pairs from different libraries
+(`crossMatches`). A match through a third book is enough to connect a group
+within one library, but each cross-library pair needs a match between its own
+two books. A signal more than 16 books in any one library share
+(`maxCrossCopies`), such as a placeholder ISBN, makes no cross-library pairs.
+Those books still group within their library and can still pair across
+libraries on another signal. Paging is in the
+[API reference](api/reference.md#get-apiv1adminissuesduplicates).
 
 #### Ignoring and offline libraries
 
@@ -2184,7 +2188,7 @@ through the fingerprint:
   `progress`, `bookmarks`, `notes`, `listening_history`,
   `listening_sessions`, `listening_daily`, `favourites`, `up_next`,
   `collection_items`, `ratings`, `book_enrichment`, `issue_ignores`,
-  `book_overrides`, `chapter_overrides`, `chapter_choices`, `chapter_edits`,
+  `duplicate_decisions`, `book_overrides`, `chapter_overrides`, `chapter_choices`, `chapter_edits`,
   `book_covers` and `book_matches`. So a rename or move never orphans a user's position, queue entry, collection entry or rating, a
   book's attached ASIN, an issue an admin ignored, or an admin's edits and
   custom cover.
@@ -2246,7 +2250,7 @@ For example, `Author/Series A/Book` moving to `Author/Series B/Book` pairs
 `Author/Series A` with `Author/Series B`.
 
 `catalog.MoveFolderFavourites` carries the folder's favourites and its
-`split_disc_set` Health ignore to the new path. Both conditions must hold.
+`split_disc_set` Health ignore to the new path, but only when:
 
 - every move out of the folder agrees on where it went; and
 - the old folder is gone from disk **by exact name**. `dirPresent` checks each

@@ -7067,7 +7067,7 @@ With `issue=no_chapters`, eligible book rows can carry `detect_job` so Health ca
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
 | `added_before` | date | - | exclusive upper bound, same formats |
-| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `unknown_asin`, `series_spellings`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
+| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `unknown_asin`, `series_spellings`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind (for `split_discs`, the disc set) are left out. Any other value is `400 unknown issue` |
 | `issue_ignored` | `true`\|`false` | - | with `issue`, list **only** the books an admin ignored for it; without `issue` it is `400 issue_ignored needs an issue` |
 | `sort` | string | `title` | `title` \| `author` \| `surname` \| `series` \| `narrator` \| `published` \| `added` \| `duration` \| `size` |
 | `order` | string | `asc` | `asc` \| `desc` |
@@ -8905,8 +8905,8 @@ a scan last finished.
     whose chapters no admin has edited (an edit settles it, applied or dormant).
     The console's fix is a bulk edit with `chapter_source: "community"`.
   - `split_discs` is a book split across disc folders (a CD rip read as one book
-    per disc), counted once and listed by its first disc in the scanner's natural
-    order (CD2 before CD10). Ignoring that disc hides the whole set. The
+    per disc), counted once and listed by its first disc in `metadata.DiscOrder`
+    (CD2 before CD10). Ignoring that disc hides the whole set. The
     console joins the discs by setting a `book`
     [folder override](#put-apiv1adminlibrariesidfolder-override) on their
     parent folder. Split discs are excluded from `duplicate`.
@@ -8937,27 +8937,23 @@ a scan last finished.
 
 ### `GET /api/v1/admin/issues/duplicates`
 
-Returns duplicate groups within each library. With `across=1`, the response
-also includes one two-book comparison for each directly matching pair from
-different libraries. The Health summary counts only the groups within a library.
+Returns **comparisons**: duplicate groups within each library and, with
+`across=1`, two-book pairs from different libraries. The Health summary counts
+only the groups within a library.
 
 | Query param | Type | Notes |
 |---|---|---|
 | `library_id` | int | Return groups and pairs involving this library. A non-positive or non-integer ID returns `400 invalid library_id`. |
 | `ignored` | `true` | Return only ignored comparisons. The default returns only open comparisons. |
 | `across` | `1` or `true` | Include cross-library pairs. Each copy's row names its `library_id` and `library_name`. |
-| `limit` | int | from 2.5.1: groups per page, at most 500 (a larger value is 500; one that is not a positive integer counts as absent). A page can end early (below), so page on `next_cursor`, not on the count |
+| `limit` | int | from 2.5.1: comparisons per page, at most 500 (a larger value is 500; one that is not a positive integer counts as absent). A page can end early (below), so page on `next_cursor`, not on the count |
 | `cursor` | string | from 2.5.1: the previous page's `next_cursor`, passed back verbatim; a malformed one is `400 invalid cursor` |
 
-Within a library, matches can connect through a third book. Across libraries,
-the two books must themselves share an audio fingerprint and size, an ASIN, an
-ISBN, or matching author, title and narrator with compatible lengths. Each
-pair appears once even if it matches in several ways.
-
-If more than 16 books in **any one library** share a matching signal, such
-as a placeholder ISBN, that signal produces no cross-library pairs
-(`maxCrossCopies`). The books still group within their library and can still
-pair across libraries on another signal.
+Within a library, matches can connect through a third book. A cross-library
+pair needs its two books to match each other directly, on the same
+[signals](../scanner.md#duplicates), and appears once even if it matches in
+several ways. A signal more than 16 books in any one library share makes no
+cross-library pairs (see [Duplicates](../scanner.md#duplicates)).
 
 ```json
 {
@@ -9008,10 +9004,11 @@ pair across libraries on another signal.
   same book. A group that gains or loses a copy needs its own decision.
 - Pages sort by the first copy's library ID, its path, then the comparison
   `key`. The cursor includes all three, so comparisons sharing the same first
-  copy can fall on successive pages. If rankings change between requests, a
+  copy can fall on successive pages. If the kept copy changes between requests, a
   comparison can appear on two pages. Clients should deduplicate by `key`.
-- `total` - how many groups there are in all, on every page (counted after the
-  `ignored` filter, so every ignored group can be reached). `next_cursor` is
+- `total` - how many comparisons there are in all, on every page, pairs
+  included (counted after the `ignored` filter, so every ignored one can be
+  reached). `next_cursor` is
   omitted on the last page.
 - With `limit`, a page also stops before a group that would take it past
   **300 copies**, unless the page is still empty. Each copy is a full admin row,
@@ -9089,15 +9086,13 @@ Each request takes up to 1,000 selections with paths of at most 4,096 bytes. An 
   including when a different disc comes first.
 - For `duplicate`, send the distinct references from **one comparison** in a
   single request. Send every member of a group within one library, or both
-  members of a pair from different libraries. A dismissal hides only that
-  comparison. Use the same selection to restore it.
-- For a group with more than 1,000 copies in one library, send exactly one
-  member in `books` and copy the group's returned `key` into `group_key`.
-  Both methods accept this form for an in-library group of any size and
-  apply to the whole group in one request.
-  The server can resolve a saved decision even after a rescan changes the
-  group. If the key matches neither a stored decision nor a current group in
-  that library, `POST` returns `400 duplicate group has changed` and
+  members of a pair from different libraries. Send the same selection to
+  restore it.
+- `group_key` selects a whole in-library group of any size in one request:
+  send one member in `books` and the group's returned `key` in `group_key`. A
+  group of more than 1,000 copies needs this form. The key still resolves a
+  saved decision after a rescan changes the group. If the key matches neither
+  a stored decision nor a current group in that library, `POST` returns `400 duplicate group has changed` and
   `DELETE` returns `204`.
 
 The following body selects the entire Alice comparison shown above by key.
