@@ -901,8 +901,9 @@ A file place is used only when it belongs to the record the resume picked
 (`holdsFilePlace`). That is the same place (within 1 s), or a record of the same
 device in the same finished state that is at most 5 s newer than the file place.
 Both are compared on this device's clock, with a server timestamp moved back by the
-stored `clockSkewMs`. So a server clock that runs ahead keeps a timely file place, and
-a mirror that lost writes never resumes at a stale file.
+stored `clockSkewMs`, 0 until a sync answer has measured it. So once the skew is
+known, a server clock that runs ahead keeps a timely file place, and a mirror that lost
+writes never resumes at a stale file.
 
 ### Taking a finish back
 

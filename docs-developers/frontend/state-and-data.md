@@ -2145,7 +2145,10 @@ The offline-safe write path for listening progress:
     `answerOffer` records choices in `answered`. `ignoreOffer` records timeouts
     in `ignored`. Each list keeps up to 20 keys.
 
-  These fields stay in the mirror across captures. A legacy `PUT` omits them.
+  `ack_version`, `answered` and `ignored` stay in the mirror across captures, and a
+  legacy `PUT` omits them. The file place is kept across captures only while it holds
+  the new record's place (`holdsFilePlace`,
+  [Resume by file](offline.md#what-the-listener-sees)).
   `ack_version` is what a listening span sends as its `base_version`. It is
   set when a sync answer kept this device's event, when a resume or an explicit
   start takes a server row, when the place reconcile moves to one, and when an

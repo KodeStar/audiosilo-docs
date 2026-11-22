@@ -56,7 +56,7 @@ Each device tells the server what you listened to: from where to where, and when
 - **Finished stays finished**, unless you start the book again or [mark it as not finished](end-of-book.md#mark-a-book-finished-yourself).
 - **Listening counts when it happened.** Offline listening shows in your history, Journal and stats at the time you listened, even if it syncs days later.
 
-If you let the question go without choosing, your place stays where it is. While the server still keeps the other place, the app or web player can ask again the next time you press play or skip. Once you choose **Jump** or **Stay**, it doesn't ask about that place again.
+If you let the question go without choosing, your place stays where it is. If the server keeps the other device's place over what you listen to next, the app or web player can ask again after you press play or skip. Once you choose **Jump** or **Stay**, it doesn't ask about that place again.
 
 Until it reaches the server, your listening waits on the device. Home says how many listens are waiting, and your [account page](account.md#listening-sync) shows the details.
 

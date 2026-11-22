@@ -116,11 +116,14 @@ seek bar). Away from 1x, one more line gives the wall-clock time left in the pho
 - **A file that fails** stops the book, its span ending where the audio last moved
   (`lastAdvance`), not at the moment of the failure.
 
-**Resume** (`Resume.plan`, `Core/PlayerRules.swift`) is the phone's
+**Resume** (`Resume.plan`, `Core/PlayerRules.swift`) follows the phone's
 ([Resume protection](playback.md#resume-protection)) on the watch's clock. It moves
 these server times back by `clockSkewMs`: the time of the watch's own row, another
-device's `updated_at` and a finish's `finished_at`. Another device's row replaces the place
-here only when it is newer and its version is above the watch's acknowledged one.
+device's `updated_at` and a finish's `finished_at`. The skew is 0 until the answer
+to a foreground batch measures it (a single-event retry's or a background upload's
+never does). Unlike the phone, which weighs the times alone, another device's row
+replaces the place here only when it is newer and its version is above the watch's
+acknowledged one, and an unfinished row with no device id never does.
 
 **Spans** follow the phone's rules
 ([Listening spans](playback.md#listening-spans-sync-v2)), except that the watch cuts every 15 s
@@ -139,17 +142,19 @@ write (`SpanRecorder.close`'s `clearStore`).
 **Stay** is the phone's too ([Stay wins](playback.md#stay-wins)):
 `SpanRecorder.standBy(..., stay:)`, gated by the cached `/server`'s `listening_stay`
 (`AppModel.takesStay`), and `Spans.carried`. `Outbox` reads the flag as it builds each
-request, a single-event retry's too, and sends a queued `stay` as a `jump` while it is
-off. Unlike the phone, a `stay` refused alone with a `400` is not tried again as a
+request, a single-event retry's and the background upload's too, and sends a queued
+`stay` as a `jump` while it is off. Unlike the phone, a `stay` refused alone with a `400` is not tried again as a
 `jump`. It moves to the couldn't-sync list as `invalid`, as a v2.6.0 server's
 `rejected` `invalid` does.
 
 **Offers** (`Core/AckAndOffer.swift`) follow the phone's
 [throttles](playback.md#offering-another-devices-place-sync-v2), with two
-differences. A held Stay counts only for a request that went out with `stay`
-(`AckRules.staysHeld`, `OfferThrottle.shouldShow(..., stayHeld:)`). And there is no
-held-listen repeat. An offer that timed out is noted as answered (`ignoreOffer`) and
-is not offered again.
+differences. There is no held-listen repeat: only a held Stay, sent as a `stay`, offers
+the kept place again at once (`AckRules.staysHeld`, `OfferThrottle.shouldShow(...,
+stayHeld:)`), so a Stay that went as a `jump` earns nothing. And the offer is a sheet
+with no timeout. One swiped away unanswered (`AppModel.ignore`) has its key noted in the
+same `answered` list as Jump and Stay (`ignoreOffer`, nothing acknowledged), so it is
+not offered again.
 
 **Addresses.** The home rule is the [phone's](connect-and-addresses.md#the-pick-rule-srclibserver-addressts):
 no token before the `server_id` probe. The pick is dropped on backgrounding and probed again while active.

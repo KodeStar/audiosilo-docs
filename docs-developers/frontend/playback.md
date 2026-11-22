@@ -788,7 +788,9 @@ local mirror** and the offline replay queue. All three are compared on this
 device's clock. A server timestamp (the live row, or a mirror record marked
 `server_clock`) is moved back by the connection's known skew (`knownSkew`, the
 outbox's `clockSkewMs`, [stored per connection](offline.md#the-three-storage-documents)).
-A tie prefers the server's row, then the mirror.
+That skew is 0 until a sync answer has measured it, so before the first one a device
+whose clock is off from the server's compares the times as they are. A tie prefers the
+server's row, then the mirror.
 
 With nothing pending for the book (no queued save, no events waiting), a finished
 server row beats a newer unfinished mirror record when its `finished_at` is newer
@@ -950,8 +952,9 @@ were at {place}. Jump there?`. `describePlace` gives the chapter and the time in
 it, or "another device" when the server has no name. The toast has two answers:
 
 - **Jump** closes the preceding span, acknowledges the row and calls `seekBook`.
-  The new span starts with `moved_back` for a move more than one second back,
-  or `jump` for a forward move.
+  The move's reason is `moved_back` for a move more than one second back, else
+  `jump`. Playing, the new span starts with it. Paused, the move is sent at once as a
+  span of its own and the next play starts with the same reason.
 - **Stay**, the close button, acknowledges the row and calls `standByPlace` to
   send this device's place. See [Stay wins](#stay-wins).
 
@@ -970,9 +973,11 @@ picked-up checks above when `placeToMoveTo` finds nothing to move to. The thrott
   book page's line (`settledOffers`).
 - **A held listen** lifts the throttles for the row the server kept. `heldListens`
   names the books where the server kept its row over a `listen` this device sent
-  (`diverged` with `kept: "stored"`, or `not_applied` with `resume_behind`). After
-  a new play or move here, the toast offers that row again, even when its key timed
-  out or the 10 minutes have not passed. Save ticks alone keep the throttles. A held
+  (`diverged` with `kept: "stored"`, or `not_applied` with `resume_behind`). When the
+  answer to the listening of a new play or move here holds the row again, the toast
+  offers it again, even when its key timed out or the 10 minutes have not passed. The
+  row must still be unfinished, at a version this device has not acknowledged, and
+  more than 30 s away. Save ticks alone keep the throttles. A held
   `stay` offers a new kept place at once ([Stay wins](#stay-wins)). An `answered`
   key is never offered again, and the book page's line never repeats an offer.
 - Against a v2.6.0 server the repeat was not seen: after a timeout, a new play or
