@@ -481,8 +481,12 @@ same first answers as the gate opens instead (see
   one of the scoped keys, so a storage reset wipes it. Signing out or removing a
   connection drops its entries (`forget`). Every key carries its connection id,
   so the cache never reads another connection's entry or a signed-out one's. A
-  document written by another app version is ignored, since the answers' shapes
-  may have changed.
+  document written by another app version or another document version is
+  removed when read, since the answers' shapes may have changed.
+- **Device rows without addresses.** The signed-in devices (`myDevices`) are
+  kept field by field from a list in `startup-cache.ts`: `last_ip` is left out,
+  so other devices' addresses never reach localStorage, and a new `MyDevice`
+  field fails the type check until it is listed as kept or left out.
 - **Native keeps none.** Its query cache lives as long as the app, a cold start
   is not a browser reload, and AsyncStorage can't be read before the first
   render.
