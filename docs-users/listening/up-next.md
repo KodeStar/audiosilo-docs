@@ -25,7 +25,7 @@ Open it from:
 
 Up next shows one server's queue. That's the server of the book you're playing, or your main server when nothing is playing.
 
-Offline, Up next shows the last queue it loaded. If it hasn't loaded one, it says **You're offline**. If that server needs you to sign in again, **Reconnect** appears above any books the player already has in the queue.
+Offline, Up next shows the last queue it loaded, or **You're offline** if it hasn't loaded one. If that server needs you to sign in again, **Reconnect** shows above the queue.
 
 ## What's in it
 

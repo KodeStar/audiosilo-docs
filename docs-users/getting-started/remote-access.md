@@ -79,17 +79,15 @@ To connect an app through the proxy:
 
 The app stores the headers as securely as your sign-in. To change them, use the **Proxy headers** card on the [account page](../listening/account.md#proxy-headers).
 
-If the player gets an access denial (403) while checking which features the server offers, the page names the sign-in proxy. A proxy refusal leaves your AudioSilo sign-in in place. In the browser, sign in to the proxy. In the apps, check the saved headers for that address.
+If the proxy turns the player away, you stay signed in to AudioSilo. A banner, or the page that couldn't load, says the sign-in proxy turned this device away. In the browser, sign in to the proxy again. In the apps, check the saved headers for that address.
 
 ![A phone’s proxy banner offering to check headers or sign in again](/img/screenshots/web-player/proxy-sign-in.png)
 
-Tap the proxy banner to check your headers. If the player can't tell whether your AudioSilo sign-in expired, the banner also offers **Sign in again**. This opens the password step if you have a password, or the pairing code otherwise.
+Tap the proxy banner to check your headers. If the player can't tell whether the proxy or your AudioSilo sign-in refused, the banner also offers **Sign in again**. This opens the password step if you have a password, or the pairing code otherwise. When the player knows your AudioSilo sign-in has ended, it offers **Reconnect** instead, even if the proxy turns the device away too.
 
 ![The prompt in kids mode asking a grown-up to update the proxy headers or pair the device again](/img/screenshots/web-player/proxy-child.png)
 
-In kids mode, a grown-up handles the headers or pairs the device again. While a full account on this device uses the same address, only a full account can edit its headers.
-
-If the player already knows your AudioSilo sign-in has ended, it offers **Reconnect** even when the proxy also refuses access.
+In kids mode, a grown-up handles the headers or pairs the device again. While a full account on this device uses the same address, kids and demo accounts can see the reason but can't edit the headers.
 
 Good to know:
 

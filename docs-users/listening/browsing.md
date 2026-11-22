@@ -74,8 +74,6 @@ If you have more than one library or server, use the **Library** picker beside t
 
 With more than one server, the picker names each library with its server, like **Books · Home**. Until you choose a library, the Library shows your first server.
 
-While the picker waits for a server's libraries, it names that server. If your sign-in there has ended, the picker offers **Choose a library** when another library is available. Tap **Reconnect** on the page to return to the signed-out server.
-
 ### Books
 
 Every book in the library, as a cover grid or a list:
@@ -212,12 +210,12 @@ Favourites are your personal shelf:
 - Find them on Home's **Favourites** shelf, in the Library's **Collections** section, or at the top of **Folders**.
 - Tap the heart again to remove one.
 
-Favourites belong to your account, so they follow you to every device. If a change fails, the heart or list entry goes back to how it was. The player says **Couldn't update your favourites. Try again.**
+Favourites belong to your account, so they follow you to every device. If a change doesn't reach the server, the heart goes back to how it was and the player tells you.
 
 ## Good to know
 
 - **Older servers.** Authors, Series, Narrators, Collections, Up next, This week, Next in your series, **Mark as not finished**, Listening in the house and the Cast button need a recent server. On an older one they don't appear. Ask whoever runs your server to update it.
 - **A server that doesn't answer.** The Library and Folders say so, with **Retry**. If your sign-in ended, they offer **Reconnect** instead. Your other servers keep working.
-- **More than one server.** The Library stays on the library you chose, even while its server loads or doesn't answer. It never shows another server's books in its place. To browse another server meanwhile, choose one of its libraries in the picker.
+- **More than one server.** The Library stays on the library you chose, even while its server loads or doesn't answer. It never shows another server's books in its place. To browse another server meanwhile, choose one of its libraries in the picker. While the Library waits for a server's libraries, the picker names that server. If your sign-in there has ended, the picker says **Choose a library** and the page offers **Reconnect**.
 - **No connection.** Pages show **You're offline** and load again by themselves. See [With no connection](offline-downloads.md#with-no-connection).
 - **Sharing a collection** isn't offered on a demo account.

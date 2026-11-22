@@ -360,10 +360,10 @@ the Library's server state
 `{ data, isPaused, error }`:
 
 - It answers `null` once the query holds data, so a kept answer always shows.
-- It answers `'failed'` for an `ApiError`, including one carried by a
-  `ServerReadError`. An HTTP error still counts as a failure if the device
-  subsequently goes offline. The screen can distinguish a refused capability
-  check from an item the listener can't open.
+- It answers `'failed'` for an `ApiError`, including one a `ServerReadError`
+  carries, so the server's own answer stands whatever the network did since. The
+  screen then tells a refused `/server` check (`ServerReadError`) from an item
+  the listener can't open.
 - The screen checks it **before its skeleton**. A held query stays `isPending`,
   and `useAllLibraryBooks().isLoading` counts it. A skeleton drawn for a held
   query never ends.
@@ -430,8 +430,7 @@ connections of the person listening that have `needsReconnect`. The state reads
 - The Library: `refusedConnection` over the server the Library is on
   (`useSelectedLibrary().server`) while that server's list is not in, and in
   Folders mode and Books mode.
-- Up next, as a compact row above any kept queue entries. It takes precedence
-  over the offline message even when the queue read is paused.
+- Up next, as a compact row above any kept queue entries.
 - You > Stats and Year (`useSignedOutConnection(cid)` when their reads fail).
 - The book page, the episode page and folder browse, through `LoadFailedNote`. It
   shows the sign-in state for the page's `cid`, or else the `ErrorNote` with its
@@ -510,7 +509,8 @@ device. It is the one copy of a server's facts for a launch that cannot reach it
   the stores' hydration, before any screen or the car's lists read a flag.
   Both the snapshot and the web startup cache skip a saved `/server` answer
   whose `server_id` is missing or belongs to another server (`foreignServerAnswer`).
-  A reset requires a [live answer from the current address](connect-and-addresses.md#the-pick-rule-srclibserver-addressts).
+  Only a [live answer from the current address](connect-and-addresses.md#the-pick-rule-srclibserver-addressts)
+  can mark the connection `server-reset`.
   `seedServerSnapshot` puts each kept answer into `qk.server(cid)`:
   - dated `savedAt`, so the first observer still asks the server again and the
     first answer replaces it;
@@ -556,34 +556,42 @@ Outside React, two functions read the flags:
 `useCapability`. It keeps its answer (`gcTime: Infinity`), so a gated hook
 mounted later starts from the known flags.
 
-The feature query uses `skipToken` until its flag is true. If both the flag
-and the feature data are unknown, `useCapabilityQuery` exposes a paused
-`/server` read as paused. A failed check becomes a `ServerReadError` with the
-original error as its `cause`. A 404 from the check therefore leaves a collection
-or LibriVox job in place. Only the resource's own 404 can mark it gone.
+The feature query uses `skipToken` until its flag is true. While neither the
+flag nor the feature's data is known, `useCapabilityQuery` reports the feature
+paused while its `/server` read is paused, and failed when it failed: a
+`ServerReadError` with the `/server` error as its `cause`. A caller that reads a
+404 or 403 as "gone" or "forbidden" rules out a `ServerReadError` first, so only
+the resource's own answer counts.
 
-While the feature waits on that check, its `refetch` retries the connection's
-`/server` query and forwards `cancelRefetch`. If the check
-fails again, it returns a result containing the new `ServerReadError` or throws
-that error for `throwOnError`. Once the flag is true, the feature's observer
-fetches the resource.
+While the feature waits on that check, its `refetch` asks the connection's
+`/server` again, forwarding `cancelRefetch`. If the check fails again, it returns
+the new `ServerReadError` in its result, or throws it under `throwOnError`. Once
+the flag is true, the feature's observer fetches the resource.
 
 `serverInfoQuery` sets `retryOnMount: false` and skips its mount refetch on
-error, so opening another screen preserves the failure.
-An explicit retry, connection recovery, a change of credentials or a foreground
-refresh can ask again. Before the foreground refresh, `forgetUnobservedServerFailures`
-clears failures that have no observers so the next screen can ask. It preserves
-any previous data at its original age.
+error, so opening another screen doesn't ask a server that just failed again.
+These ask again: an explicit retry, the connection becoming reachable, a change of
+credentials or proxy headers, the end of a proxy refusal (`onProxyRefusalsOver`),
+the connection's client moving to another address (`useReadServerAgainOnMove`) and
+a foreground refresh. Before the foreground refresh,
+`forgetUnobservedServerFailures` clears the failures no screen observes, so the
+next screen to mount asks; a failure that holds older data keeps that data at its
+original age.
 
-`refusedServer` classifies access refusals from this public `/server` check.
-A 401 uses `ApiError.fromProxy` to distinguish a proxy refusal from an AudioSilo
-sign-in failure. An AudioSilo 401 offers **Reconnect**. **Every 403 on this route
-counts as a proxy refusal**, even if its JSON looks like an AudioSilo error.
-For a proxy refusal, the page names the proxy. An existing `needsReconnect`
-flag takes precedence and shows **Reconnect**.
-`useCapabilitiesAllRead` lists refused connections in `refusals` and the
-remaining failures in `retryable`. **Retry** asks only the failed or paused
-checks with no refusal and no saved answer.
+`refusedServer` (`src/api/server-read-error.ts`) reads a refusal of this public
+check:
+
+- **A 401** is the proxy's when `ApiError.fromProxy` says so, and otherwise
+  AudioSilo's, which has already flagged the connection `needsReconnect`.
+- **Every 403 on this route is the proxy's**, whatever its body: the server
+  answers `/server` to anyone.
+
+`ServerRefusal` (`src/components/layout/server-refusal-state.tsx`) then shows
+**Reconnect** (`SignInAgainState`) when the connection `needsReconnect`, whether
+or not a proxy refused too, and otherwise the proxy notice naming the server,
+with no Retry. `useCapabilitiesAllRead` lists refused connections in `refusals`
+and the other failures in `retryable`; a page's **Retry** asks only the failed or
+paused checks with no refusal and no saved answer.
 
 | Client method | Hook | Capability | Endpoint |
 |---|---|---|---|
@@ -1437,10 +1445,10 @@ guide: [Upcoming releases](/users/listening/upcoming).
     this;
   - `isLoading`;
   - `statuses`: each answered server's `ok`, `pending` or `stale`;
-  - `failed` names servers whose Upcoming list or capability check failed or
-    paused without data. A refused capability check appears in `refusals`.
-  - `retry` refetches failed Upcoming lists and retries the capability checks
-    that still need an answer. It skips refused checks.
+  - `failed` names servers whose Upcoming list or `/server` check failed or
+    paused without data, and `refusals` the refused checks
+    ([Capability-gated reads](#capability-gated-reads-player-redesign-phase-1a));
+  - `retry` refetches the failed lists and asks the unrefused checks again.
 - **The pure rules** (`src/lib/upcoming.ts`, tested apart):
   - `upcomingEligibility` decides who may be asked, and `available`.
   - `mergeUpcoming` tags each item with its connection and keeps the **first**

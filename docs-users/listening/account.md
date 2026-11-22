@@ -47,7 +47,7 @@ On a phone with a paired watch, a card signs the watch in to this server. On an 
 
 If the server has home and away addresses, an **At home and away** card lists them. In the apps, the one in use is marked **In use**. See [At home and away](connecting.md#at-home-and-away).
 
-If your device has a network connection but the server doesn't answer, you can still check its saved addresses. Offline, the card appears only if the server previously told the player it supports home and away addresses.
+If the server doesn't answer, the card still shows the addresses saved on this device. With no network, it shows only for a server the player has already seen offer home and away addresses.
 
 ## Proxy headers
 
@@ -71,7 +71,7 @@ To sign out this device, use [Sign out](#signing-out) at the bottom of the page.
 
 The web player keeps the last device list for this account, so you can reload the page and see it offline. If you're offline with no saved list, the card says **You're offline**. It checks again when the network returns.
 
-If the list can't load while you're online, **Retry** checks this server again. If the server signed this device out, tap **Reconnect**. If the card names a sign-in proxy, [check your proxy access](../getting-started/remote-access.md#behind-a-sign-in-proxy).
+If the list can't load while you're online, **Retry** asks this server again. If the card offers **Reconnect** or names a sign-in proxy, see [Getting back in](connecting.md#getting-back-in-after-signing-out).
 
 ## Listening sync
 
@@ -85,7 +85,7 @@ Anything the server turned down is listed under **Couldn't sync**, with the reas
 
 API keys let dashboards and tools reach your server for you, such as a Home Assistant tile. See [Create API keys](api-keys.md).
 
-Offline, you can still see key names and dates the player has already loaded. If the list hasn't loaded, the section says **You're offline**. **Create API key** and **Revoke** appear only when the player knows this server supports keys.
+Offline, the section still shows the keys the player has already loaded, or **You're offline** if it hasn't loaded them. **Create API key** and **Revoke** appear only once the player knows this server offers keys.
 
 ## Signing out
 
