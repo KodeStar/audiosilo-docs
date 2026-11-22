@@ -1134,17 +1134,28 @@ the book's own parked detect job.
 
 ##### Duplicates
 
-Duplicates (`duplicates.tsx`) render each group from
-`GET /admin/issues/duplicates` side by side, the copy worth keeping first.
-"They're different books" ignores every copy.
+The console (`duplicates.tsx`) shows one card per comparison from
+[`GET /admin/issues/duplicates`](api/reference.md#get-apiv1adminissuesduplicates).
+"Include other libraries" adds a card for each cross-library pair, beside the
+cards of the groups within each library.
+The console suggests a copy to keep unless a shared identifier points to
+recordings of different lengths.
+
+"They're different books" dismisses only the pair or group on that card.
+Undo in the toast restores it, and so does "Suggest as duplicates again" on
+the card under "Show ignored". Both send the card's full membership. For a
+group over 1,000 copies, `useIssueActions` sends one member with the card's
+`key` as [`group_key`](api/reference.md#post-apiv1adminissuesignore--delete-apiv1adminissuesignore),
+in a single request.
 
 - **Paging.** The groups come 50 at a time (`useDuplicates`, an infinite query
   on `limit` and `cursor`; `DUPLICATES_PAGE`). A "Show more" button
   (`LoadMore`) under the list fetches the next page. It also fetches it by
   itself as it nears the viewport, except after a failed page. The pages
   already shown stay.
-- **Moving groups.** A group that moves across a page boundary between loads
-  is shown once, where its copies first appeared.
+- **Moving groups.** The console shows each comparison `key` once across all
+  loaded pages. Two cards can share their first copy and still have distinct
+  keys.
 - **The count.** "n of total" uses the newest page's `total`, or the groups
   shown if those are more.
 - **Covers.** Each copy's cover loads only as its column nears the viewport
