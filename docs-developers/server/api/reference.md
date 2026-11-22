@@ -1157,8 +1157,8 @@ callers only and omitted otherwise, so the player's listing is unchanged.
 **Order.** Directories come first, then files, each group in **natural order**
 (`naturalLess`, the order a folder book's files play in, so `2` lists before `10`;
 see [Book detection](../scanner.md#book-detection-booksindir)). A
-joined book's discs play in `discOrder`, which also ignores spaces, hyphens and
-underscores, so only a disc set named unevenly (`CD1` beside `CD 2`) lists in
+joined book's discs play in `metadata.DiscOrder`, which also ignores spaces,
+hyphens and underscores, so only a disc set named unevenly (`CD1` beside `CD 2`) lists in
 another order than it plays. An older server sorts each group by its lowercased
 name, character by character (`10` before `2`).
 
@@ -8905,10 +8905,11 @@ a scan last finished.
     whose chapters no admin has edited (an edit settles it, applied or dormant).
     The console's fix is a bulk edit with `chapter_source: "community"`.
   - `split_discs` is a book split across disc folders (a CD rip read as one book
-    per disc), counted once and listed by its first disc. The console's fix sets a
-    `book` [folder override](#put-apiv1adminlibrariesidfolder-override) on the
-    folder holding the discs, which joins them. Its discs are never also grouped
-    as `duplicate`.
+    per disc), counted once and listed by its first disc in the scanner's natural
+    order (CD2 before CD10). Ignoring that disc hides the whole set. The
+    console joins the discs by setting a `book`
+    [folder override](#put-apiv1adminlibrariesidfolder-override) on their
+    parent folder. Split discs are excluded from `duplicate`.
   - `unmatched` is **left out while community metadata is off**, since there is
     nothing to match against.
   - `unknown_asin` is a book whose own ASIN the community database doesn't know,
@@ -8936,21 +8937,33 @@ a scan last finished.
 
 ### `GET /api/v1/admin/issues/duplicates`
 
-Groups of books that look like the same book **within one library** (copies in
-different libraries are usually deliberate and are grouped only with `across`).
+Returns duplicate groups within each library. With `across=1`, the response
+also includes one two-book comparison for each directly matching pair from
+different libraries. The Health summary counts only the groups within a library.
 
 | Query param | Type | Notes |
 |---|---|---|
-| `library_id` | int | one library; a non-positive or non-integer id is `400 invalid library_id` |
-| `ignored` | `true` | return **only** the groups an admin said are different books (instead of the open ones) |
-| `across` | `1` or `true` | also group copies in **different** libraries (2.4.0, the console's "Include other libraries"): each copy's row names its `library_id` and `library_name`, and with `library_id` the groups holding one of that library's books are kept, their copies from any library. Without it nothing changes; the Health `duplicate` count never uses it |
+| `library_id` | int | Return groups and pairs involving this library. A non-positive or non-integer ID returns `400 invalid library_id`. |
+| `ignored` | `true` | Return only ignored comparisons. The default returns only open comparisons. |
+| `across` | `1` or `true` | Include cross-library pairs. Each copy's row names its `library_id` and `library_name`. |
 | `limit` | int | from 2.5.1: groups per page, at most 500 (a larger value is 500; one that is not a positive integer counts as absent). A page can end early (below), so page on `next_cursor`, not on the count |
 | `cursor` | string | from 2.5.1: the previous page's `next_cursor`, passed back verbatim; a malformed one is `400 invalid cursor` |
+
+Within a library, matches can connect through a third book. Across libraries,
+the two books must themselves share an audio fingerprint and size, an ASIN, an
+ISBN, or matching author, title and narrator with compatible lengths. Each
+pair appears once even if it matches in several ways.
+
+If more than 16 books in **any one library** share a matching signal, such
+as a placeholder ISBN, that signal produces no cross-library pairs
+(`maxCrossCopies`). The books still group within their library and can still
+pair across libraries on another signal.
 
 ```json
 {
   "groups": [
     {
+      "key": "3a12d203c553ce7e7b6580782057b1f63a0103442992ff3609c77991b41df021",
       "reason": "same_files",
       "ignored": false,
       "books": [
@@ -8961,10 +8974,13 @@ different libraries are usually deliberate and are grouped only with `across`).
     }
   ],
   "total": 132,
-  "next_cursor": "THV3aXMgQ2Fycm9sbC9BbGljZSdzIEFkdmVudHVyZXMgaW4gV29uZGVybGFuZAAx"
+  "next_cursor": "TGV3aXMgQ2Fycm9sbC9BbGljZSdzIEFkdmVudHVyZXMgaW4gV29uZGVybGFuZAAzYTEyZDIwM2M1NTNjZTdlN2I2NTgwNzgyMDU3YjFmNjNhMDEwMzQ0Mjk5MmZmMzYwOWM3Nzk5MWI0MWRmMDIxADE"
 }
 ```
 
+- `key` identifies this exact comparison. It is the 64-character hex SHA-256
+  digest of the sorted library and path references. Changing the order of the
+  displayed copies preserves the key. Adding or removing a member changes it.
 - `reason` - why the books were grouped, from the joins that formed the group.
   "Lengths match" means within a minute or 2%. For `same_book` an unknown length
   (no ffprobe) matches only another unknown one; for a shared ASIN or ISBN an
@@ -8987,17 +9003,13 @@ different libraries are usually deliberate and are grouped only with `across`).
   (better format, then a single file, then the higher bitrate, then more
   listeners). Under `id_length_differs` the order says nothing about which to
   keep.
-- `ignored` - every copy in the group is ignored for `duplicate`. Without
-  `?ignored=true` only groups with `ignored: false` are returned; with it, only
-  the ignored ones. An ignored group becomes open again by itself when a new
-  copy joins it.
-- Groups are ordered by library and the kept copy's path, and paged by keyset
-  on that order (from 2.5.1): `cursor` names the last group's kept copy, so a
-  group that comes or goes between pages moves no other group across the
-  boundary. The groups are found afresh for every page. A group whose kept copy
-  changes between two page loads (a better copy arrived) can sort elsewhere, so
-  a client paging through should show a group once even if a later page brings
-  it again.
+- `ignored` says whether the comparison is dismissed. A dismissal applies to
+  one pair or one group's exact membership. Other comparisons can include the
+  same book. A group that gains or loses a copy needs its own decision.
+- Pages sort by the first copy's library ID, its path, then the comparison
+  `key`. The cursor includes all three, so comparisons sharing the same first
+  copy can fall on successive pages. If rankings change between requests, a
+  comparison can appear on two pages. Clients should deduplicate by `key`.
 - `total` - how many groups there are in all, on every page (counted after the
   `ignored` filter, so every ignored group can be reached). `next_cursor` is
   omitted on the last page.
@@ -9058,9 +9070,8 @@ the books of the other spellings, as an author merge is; ignoring a series is a
 
 ### `POST /api/v1/admin/issues/ignore` · `DELETE /api/v1/admin/issues/ignore`
 
-`POST` stops listing books under one issue kind; `DELETE` lists them again (the
-console's Undo and "Show again"). For duplicates, ignore every copy of a group
-("They're different books").
+`POST` hides a selection under one issue kind. `DELETE` shows it again. Both
+operations are idempotent and return `204 No Content` on success.
 
 Each request takes up to 1,000 selections with paths of at most 4,096 bytes. An oversized body
 (over 4,225,536 bytes) or list returns 400 `too_large`. A single overlong path returns 400
@@ -9070,16 +9081,40 @@ Each request takes up to 1,000 selections with paths of at most 4,096 bytes. An 
 { "kind": "no_cover", "books": [ { "library_id": 1, "path": "Sun Tzu/The Art of War" } ] }
 ```
 
-- `kind` - one of the ten kinds above.
-- `books` - 1 to 1000 `{library_id, path}` refs. The books needn't be indexed:
-  the rows are path-keyed durable state (`issue_ignores`), so an ignore
-  survives rescans and rebuilds and moves with the book. A ref in a library
-  that doesn't exist is skipped.
-- Idempotent both ways. Response `204 No Content`.
+- `kind` names one of the [Health issue kinds](#get-apiv1adminissues).
+- `books` contains library IDs and library-relative paths. For a per-book
+  issue, send each book to hide or restore. The book can be absent from the
+  index. The server skips references to missing libraries. For `split_discs`,
+  send the displayed disc. The decision covers the folder containing the discs,
+  including when a different disc comes first.
+- For `duplicate`, send the distinct references from **one comparison** in a
+  single request. Send every member of a group within one library, or both
+  members of a pair from different libraries. A dismissal hides only that
+  comparison. Use the same selection to restore it.
+- For a group with more than 1,000 copies in one library, send exactly one
+  member in `books` and copy the group's returned `key` into `group_key`.
+  Both methods accept this form for an in-library group of any size and
+  apply to the whole group in one request.
+  The server can resolve a saved decision even after a rescan changes the
+  group. If the key matches neither a stored decision nor a current group in
+  that library, `POST` returns `400 duplicate group has changed` and
+  `DELETE` returns `204`.
+
+The following body selects the entire Alice comparison shown above by key.
+
+```json
+{
+  "kind": "duplicate",
+  "books": [{ "library_id": 1, "path": "Inbox/Alice (copy)" }],
+  "group_key": "3a12d203c553ce7e7b6580782057b1f63a0103442992ff3609c77991b41df021"
+}
+```
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request`; `books is required`; `every book needs a library_id and a path`; `unknown issue`; `code: "too_large"` for more than 1000 books |
+| `400` | `invalid request`, `books is required`, `every book needs a library_id and a path`, `unknown issue`, or `too_large` for an oversized selection or body |
+| `400` | `select a duplicate group in one library or a pair in different libraries` for an invalid duplicate selection, including a reference outside the group identified by the key |
+| `400` | `group_key needs one member of a duplicate group` if a nonempty `group_key` has the wrong length, the kind is different, or the selection has multiple members |
 
 ### `POST /api/v1/admin/libraries/{id}/book/rescan`
 

@@ -833,8 +833,9 @@ or the one holding it, with `book` and a disc set.
 - **The joined book** (`joinedBook`) is a folder book at the folder's path,
   with the discs' audio as its files. Hidden files and the ignore rules apply
   as usual.
-  - The disc folders come in natural order (`discOrder`): `CD2` before `CD10`,
-    `CD 1` equal to `CD1`, ties by path.
+  - `metadata.DiscOrder` sorts disc folder names in natural order, so `CD2`
+    precedes `CD10`. If names compare equally, as `CD 1` and `CD1` do, the
+    exact path bytes break the tie.
   - Each disc's files keep exactly the order a book of that disc alone has
     (natural name order, `sortFileOrder`, above), since the state carry-over
     maps a disc position as offset plus position.
@@ -2106,7 +2107,7 @@ predicate over `books b`, shared by the counts (`IssueCounts`) and the lists
 |---|---|
 | `scan_error` | `scan_error` is set |
 | `suspect` | `suspect_parts >= 2`, and the folder has no `book` override |
-| `split_discs` | it is the **first** disc (by `rel_path`) of a book split across disc folders. `split_parent` is set, and that folder has no override of either mode (either one settles how it reads). Its fix sets `book` on `split_parent`, which joins the discs |
+| `split_discs` | It is the first disc in `metadata.DiscOrder` (`disc_before` in SQL). The discs share a `split_parent` with no folder override. Setting `book` on that folder joins the discs. |
 | `no_cover` | a scan has checked it (`has_cover` not `NULL`), and it has no sidecar image, no embedded art and no custom cover |
 | `unmatched` | it has no ASIN, no ISBN and no recorded community match (`book_matches`, see [Data model](data-model.md#durable-per-library-config-path-keyed-no-fk-to-books); `NOT catalog.matchedExpr`). [Tag hints](data-model.md#tag-hints) and an import's [match hints](data-model.md#match-hints-from-an-import) don't count. Offered only while community metadata is on |
 | `unknown_asin` | its own ASIN is one the [unknown-ASIN report](configuration.md#the-unknown-asin-report-metadatareport_unknown) found the community database doesn't know (an `unknown_asin_reports` row with `unknown = 1`, matched on the upper-cased, trimmed ASIN; `unknownASINExpr`), and it has no ISBN, no `book_matches` row and no ASIN a community match gave it (`book_overrides` of source `community`), so matching it by hand settles it. It still counts as matched (`matchedExpr`), so Match automatically skips it; from 2.7.0 the kind's own card starts an [`unknown_asin` match run](api/reference.md#post-apiv1adminmatch-runs) for it, which finds each book by its title. The summary lists the kind only while the report is on, since only its lookups fill the table |
@@ -2118,11 +2119,8 @@ predicate over `books b`, shared by the counts (`IssueCounts`) and the lists
 
 #### Duplicates
 
-Duplicates are groups, found in Go (`DuplicateGroups`, a union-find over every
-book) and only **within one library**. A copy in another library is
-deliberate, such as a kids' library holding a book that is also in the main
-one, and players already show such copies once. Two books join a group when
-they have any of these:
+`findDuplicateSets` uses a union-find to group copies within each library.
+Health counts those groups. Two books join when any of the following match.
 
 - the same audio fingerprint (`content_hash`) and the same total size. The
   reason is `same_files` only when every member of the group shares that audio
@@ -2145,21 +2143,20 @@ Within a group, the copy worth keeping comes first, by:
 3. the higher bitrate;
 4. more listeners.
 
-A request asks for the open groups, or only the ignored ones with
-`?ignored=true`, filtered before paging. A page holds at most `limit` groups
-after a keyset `cursor` (500 at most, which is also the size of an unpaged
-answer). A paged answer also ends before the group that would take it past 300
-copies (see
-[`GET /admin/issues/duplicates`](api/reference.md#get-apiv1adminissuesduplicates)).
+The duplicates list can also include directly matching pairs across
+libraries. A match through a third book is enough to connect a group within
+one library. Each cross-library pair needs a match between its own two books.
+See the [API reference for the cross-library cap and pagination](api/reference.md#get-apiv1adminissuesduplicates).
 
 #### Ignoring and offline libraries
 
-An admin can **ignore** a book under a kind (`issue_ignores`, path-keyed
-durable state that moves with the book and survives rebuilds). A duplicate
-group is hidden once every member is ignored, and comes back when a new copy
-joins it. Libraries whose root is offline are reported beside the categories
-(`GET /admin/issues` `offline`), from the same availability probe as the
-library list.
+An ordinary Health ignore follows the book's path. A split-disc ignore covers
+the parent folder, so the set stays ignored when a different disc comes first.
+A duplicate dismissal covers the exact group or cross-library pair. See
+[Health ignore storage](data-model.md#health-ignores).
+
+`GET /admin/issues` lists libraries whose root is offline beside the issue
+categories, using the same availability probe as the library list.
 
 ## Move detection
 
@@ -2205,8 +2202,10 @@ through the fingerprint:
 `MoveDurableState` runs **two transactions**, each all or nothing:
 
 1. **The book's own state** (`moveBookState`). `book_enrichment` and
-   `issue_ignores` move with `UPDATE OR REPLACE`. Then, if the moved book has
-   any metadata override, chapter override, chapter choice, edited chapter
+   `issue_ignores` move with `UPDATE OR REPLACE`. The same transaction
+   rewrites the book's path in every `duplicate_decisions` row that names it.
+   Then, if the moved book has any metadata override, chapter override,
+   chapter choice, edited chapter
    list, custom cover or recorded community match, the destination's rows in
    **all six** of those tables are deleted first, and the moved book's set takes their place. Edits and cover follow the book as one set,
    so a stale lock or cover left at the new path by an earlier book can't merge
@@ -2246,8 +2245,8 @@ moved book's old and new path, then goes on up while the folder names match.
 For example, `Author/Series A/Book` moving to `Author/Series B/Book` pairs
 `Author/Series A` with `Author/Series B`.
 
-`catalog.MoveFolderFavourites` re-keys each pair's favourites, landing once,
-like a book's. A pair counts only when:
+`catalog.MoveFolderFavourites` carries the folder's favourites and its
+`split_disc_set` Health ignore to the new path. Both conditions must hold.
 
 - every move out of the folder agrees on where it went; and
 - the old folder is gone from disk **by exact name**. `dirPresent` checks each

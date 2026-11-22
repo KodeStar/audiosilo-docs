@@ -24,8 +24,8 @@ to understand before you change the schema.
     `listening_sessions`, `listening_daily`, `favourites`, `up_next`,
     `collection_items` and `ratings`;
   - per-library config: `folder_overrides`, `book_enrichment`,
-    `issue_ignores`, `book_overrides`, `chapter_overrides`, `chapter_choices`,
-    `chapter_edits`, `book_covers`, `book_matches` and `book_hints`.
+    `issue_ignores`, `duplicate_decisions`, `book_overrides`, `chapter_overrides`,
+    `chapter_choices`, `chapter_edits`, `book_covers`, `book_matches` and `book_hints`.
 
   The rest of a listener's own state hangs off the account rather than a path:
   `collections`, `collection_shares`, `listening_goals` and
@@ -112,6 +112,7 @@ erDiagram
     libraries ||--o{ book_matches : "durable config"
     libraries ||--o{ book_hints : "durable config"
     libraries ||--o{ issue_ignores : "durable config"
+    libraries ||--o{ duplicate_decisions : "libraries in a comparison"
     libraries ||--o{ scan_runs : "scan history"
     libraries ||--o{ community_chapters : "path-keyed, NO FK to books"
     libraries ||--o{ chapter_choices : "path-keyed, NO FK to books"
@@ -534,8 +535,9 @@ The console's Health page reads these:
   duplicate groups (which leave such discs out) and the admin's `split_discs`
   mark on `GET /fs`. The partial index `idx_books_split_parent` on
   `(library_id, split_parent, rel_path)` (`WHERE split_parent <> ''`) finds a
-  folder's discs in order. An unchanged book whose value is out of date gets
-  it without a re-index (see [Joined books](scanner.md#joined-books-disc-sets)).
+  folder's discs. Health picks the first with `metadata.DiscOrder`. The scanner
+  updates `split_parent` on an unchanged book without re-indexing it (see
+  [Joined books](scanner.md#joined-books-disc-sets)).
 
 Every re-index rewrites them, like the rest of the row.
 
@@ -2052,19 +2054,52 @@ keeps the report to once a day across restarts. The run status is the
   `import_id`, `set_at`. Identifiers another app gave a book, kept as hints for a
   community match only. See
   [Match hints from an import](#match-hints-from-an-import).
-- **`issue_ignores`** *(0017)*: PK `(library_id, path, kind)`, `created_by`
-  (FK to `users`, `ON DELETE SET NULL`), `created_at`. An admin's "ignore this"
-  on a Health issue. `kind` is one of `catalog.IssueKinds` (`scan_error`,
-  `suspect`, `split_discs`, `duplicate`, `no_cover`, `unmatched`,
-  `unknown_asin`, `series_spellings`, `no_chapters`, `detailed_chapters`,
-  `transcode`). It is path-keyed like the
-  rest of this group, so an ignore survives a rebuild, moves with the book
-  (`MoveDurableState`) and needn't point at an indexed book.
+- **`issue_ignores`** and **`duplicate_decisions`** store an admin's
+  [Health ignores](#health-ignores).
 
-All of these FK to `libraries` with `ON DELETE CASCADE` only. Deleting a
-library removes its config, and nothing else does. Pruning a vanished book
-keeps its edits and cover for the day the path comes back, although a custom
-cover is only served while a book is indexed at its path.
+Deleting a library removes its config through `ON DELETE CASCADE`. Pruning
+a vanished book keeps its edits and cover for the day the path comes back,
+although a custom cover is only served while a book is indexed at its path.
+
+#### Health ignores
+
+Health identifies each book by its library ID and library-relative path.
+Neither table stores `books.id`, so decisions survive index rebuilds. Both record
+`created_at` and `created_by`. Deleting the admin sets `created_by` to `NULL`.
+
+- **`issue_ignores`** (0017) has primary key `(library_id, path, kind)`. For
+  per-book issues, `path` follows the book on a detected move. For a split
+  disc set, the stored kind is `split_disc_set` and `path` names the folder
+  holding the discs (`books.split_parent`). When the scanner detects a folder
+  rename, `MoveFolderFavourites` moves that ignore to the new folder path.
+- **`duplicate_decisions`** (0092) has primary key
+  `(library_id, other_library_id, paths)`. Within one library the two IDs
+  are equal and `paths` is a JSON array of all member paths sorted by path
+  bytes. For a cross-library pair, the array contains one path per library in
+  ascending library ID order. A dismissal sets `ignored` to 1.
+  `MoveDurableState` rewrites a moved book's path in every comparison that
+  names it. Both library IDs reference `libraries` with `ON DELETE CASCADE`.
+
+Migration `0092_health_ignores` maps old split-disc ignores to their parent
+using the index or a recognizable disc folder name. If it cannot identify
+the parent, it keeps the old `split_discs` row. Health still checks every
+indexed disc of the set for those rows.
+
+For duplicates, the migration recovers selections that share an admin and
+timestamp. Before the first scan, `MapLegacyDuplicateIgnores` checks the
+pre-upgrade index for groups hidden under the old all-members rule. For a
+cross-library pair, it checks whether the whole former group was hidden.
+It marks confirmed member flags `duplicate_mapped` and clears the startup
+marker in the same transaction.
+
+Where a `duplicate` flag is still unresolved, a comparison with no exact
+decision stays hidden only if all members had old flags. Restoring a
+comparison with old flags records an explicit `ignored = 0`. That keeps the
+fallback from hiding a later group containing the restored comparison.
+
+To downgrade to v2.6.x, restore the pre-upgrade database backup. That
+version reads the old per-book flags and would show mapped duplicate groups
+and migrated split-disc sets as open.
 
 #### `book_matches`
 
@@ -2529,6 +2564,7 @@ The migration history so far:
 | 0089 | `notify_outbox` | Records pending notification deliveries and attempts for each event and destination. |
 | 0090 | `chapter_basis_match` | Includes the recorded work and recording in the basis for a community chapter check. |
 | 0091 | `mp3_rev2_tag_read_failed` | Advances current revision 1 rows for books without an MP3 to revision 2. The next scan [re-indexes MP3 books once](scanner.md#the-first-scan-after-updating). Adds the nullable `books.tag_read_failed_at` timestamp. |
+| 0092 | `health_ignores` | Stores duplicate decisions per comparison and split-disc ignores per folder. Carries forward [existing Health ignores](#health-ignores). |
 
 `server_state.progress_feed` identifies the Audible progress feed. A restore renews this ID before
 clients can page it. The separate data-folder mark detects a database restored behind the last

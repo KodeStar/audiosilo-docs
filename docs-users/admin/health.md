@@ -67,29 +67,41 @@ Under **Long books without chapters**, each book shows its chapter detection job
 
 The Bridge is looking for chapters in the narration of **A Long Lecture**.
 
-- **Ignore** hides a book from this list, even through rescans. **Show
-  ignored** lists them, each with **Show again**.
+- **Ignore** hides a book from this list, even through rescans. Under **One
+  book split into disc folders**, it hides the whole set. The set stays
+  ignored if you add an earlier disc or rename the folder holding the discs.
+  Choose **Show ignored**, then **Show again**, to bring a book or disc set back.
 - Tick several rows (or **Select all**) to act on them together from the bar at
   the bottom. **Shift-click** selects a run.
 
 ### Duplicates
 
-**Likely duplicates** shows each group of copies side by side, with the copy
-worth keeping first. That is the better format (M4B/AAC over MP3), then a
-single file over several, then the higher bitrate, then the copy more people
-listen to.
+**Likely duplicates** shows possible copies in the same library side by side.
+When AudioSilo suggests a copy to keep, it prefers the better format (M4B/AAC
+over MP3), then a single file, higher bitrate and more listeners, in that order.
 
 ![Comparing likely duplicates](/img/screenshots/admin/health-duplicates.png)
 
-- AudioSilo never deletes a copy for you. To remove one, delete its files from
-  the library folder and rescan.
-- If they are really different books (two narrations, say), click **They're
-  different books**.
-- **Include other libraries** also compares copies across libraries.
+If you want to keep two narrations, for example, choose **They're different
+books**. This hides the group and keeps all its books in your library. If a
+copy joins or leaves, you can review the books that still match as a new group.
 
-Copies that share an ASIN or ISBN but have **different lengths** may not be
-copies at all. One may be matched to the wrong recording. Check before you
-delete either.
+Turn on **Include other libraries** to see matching pairs alongside the groups
+in each library. If two copies in your main library both match a third in your
+kids' library, you see two cross-library pairs. Ignoring one pair leaves the
+other pair and the group in your main library available to review.
+
+Choose **Undo** in the confirmation message to bring a comparison back.
+To find it later, turn on **Include other libraries** if the pair spans two
+libraries. Choose **Show ignored**, then **Suggest as duplicates again** on
+its card.
+
+An upgrade keeps your earlier choices. The duplicate comparisons and split
+disc sets you had already ignored stay hidden.
+
+If copies share an ASIN or ISBN but have **different lengths**, check for a
+match to the wrong recording before removing either one. To remove a copy,
+delete its files from the library folder and rescan.
 
 ### Series spelled several ways
 
