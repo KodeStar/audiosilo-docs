@@ -781,10 +781,23 @@ the UI sees during it is `loading`.
 The player enforces "never restart an in-progress book from 0" twice: once on the
 way in and once on the way out.
 
-**On the way in: `loadInitialProgress` (`progress-sync.ts`).** It returns a
-discriminated `ResumeLookup` that reconciles three sources by `updated_at`, newest
-wins: the server's record, a **durable local mirror**, and the offline replay
-queue. The result is one of:
+**On the way in.** `loadInitialProgress` in `progress-sync.ts` compares the live
+server row, the durable mirror and the queued save on the device's clock.
+`resumeLookupOf` takes the newest `updated_at`. Ties prefer the live row, then
+the mirror. Local captures already use device time. For a live row or a mirror
+record marked `server_clock`, the player subtracts the connection's known skew.
+
+The outbox learns that skew from a timed sync answer. It compares `server_time`
+with the midpoint between sending the request and receiving the answer, then
+stores `clockSkewMs` for the next launch. Until it has a measurement it uses
+zero. Reading progress with a GET cannot update the estimate.
+
+`holdsFilePlace` can reuse a saved file offset when the two positions agree
+within one second. Otherwise it requires the same device and finish state, with
+the file record at most five seconds older on the device clock. With no pending
+listening or save for the book, a finished server row can beat a newer unfinished
+mirror if its `finished_at` is newer on that clock or its version exceeds the
+device's acknowledgement. The lookup returns one of three results.
 
 - `progress`: a saved position exists somewhere. `playBook` resumes from it and
   restores the saved playback speed. The exception is a finished book, which
@@ -901,10 +914,11 @@ stale place is never written.
 
 The reconcile moves only when the server's record meets all of these:
 
-- another `device_id` wrote it;
-- it is newer than anything this device's mirror knows for the book;
-- it is not finished;
-- it is more than `MOVE_THRESHOLD_S` (30 s) from the engine's place.
+- Another `device_id` wrote it.
+- If the mirror holds this device's own save, the row is newer on the device
+  clock. See [Resume protection](#resume-protection).
+- The row is unfinished and its position is above zero.
+- Its position is more than `MOVE_THRESHOLD_S` (30 s) from the engine's place.
 
 A seek of the listener's own while the check was out wins (`localMoveCount`). The
 move is `seekBook`, so the resume floor and the undo chip see it, and a toast
@@ -917,10 +931,10 @@ it, through `onPickedUpAgain`, and never looks anything up itself.
 
 ### Offering another device's place (Sync v2)
 
-On a server with `listening_sync`, the server never moves a place back silently. A
-span made without seeing the stored row is `diverged`. The server keeps the further
-place, answers the other one, and keeps it on the row as `other_place`
-([`POST /api/v1/me/listening/sync`](../server/api/reference.md#post-apiv1melisteningsync)).
+When two devices listen at different places before seeing each other's saves,
+the sync response can report `diverged`. The server usually keeps the further
+place and can return the other one on the progress row as `other_place`.
+See [the sync response](../server/api/reference.md#post-apiv1melisteningsync).
 
 The player **offers** such a place and never moves to it by itself.
 `offerOf(row, deviceId, ackVersion, enginePosition, answered)` (pure) finds it, in
@@ -937,34 +951,39 @@ order:
 were at {place}. Jump there?`. `describePlace` gives the chapter and the time into
 it, or "another device" when the server has no name. The toast has two answers:
 
-- **Jump** acknowledges the row, then calls `seekBook` there. The next span is a
-  `jump`, or `moved_back` when the place is behind.
-- **Stay**, the close button, acknowledges, then calls `standByPlace`, which sends
-  this device's place at once so the server applies it over the other
-  ([Stay wins](#stay-wins)).
+- **Jump** closes the preceding span, acknowledges the row and calls `seekBook`.
+  The new span starts with `moved_back` for a move more than one second back,
+  or `jump` for a forward move.
+- **Stay**, the close button, acknowledges the row and calls `standByPlace` to
+  send this device's place. See [Stay wins](#stay-wins).
 
-A toast that times out acknowledges nothing. It only notes the place's key
-(`ignoreOffer`), so the same place is not offered again while this device's next
-spans still never move the other place back.
+The player checks each sync answer for the loaded book. It also checks on
+foreground, reconnect and pickup when `placeToMoveTo` finds no move. Normally it
+shows a key once per launch and waits ten minutes between offers from the same
+device for that book (`OFFER_REPEAT_MS`).
 
-The player checks for an offer:
+If the toast times out after 12 seconds, `ignoreOffer` records its key in
+`ignored` without advancing `ack_version`. Jump and Stay record the key in
+`answered` and acknowledge the row. Older mirrors keep their existing
+`answered` keys, including any timeouts recorded there.
 
-- on each sync answer for the loaded book (`onSyncAnswer`), never moving a playing
-  book;
-- on the foreground, reconnect and picked-up checks above, where `placeToMoveTo`
-  finds nothing to move to.
+`heldListens` checks the events actually sent. A `listen` answered with
+`diverged` and `kept: stored`, or `not_applied` and `resume_behind`, means the
+server kept its row over this device's listen. After a new play or move here,
+`offerLoadedPlace` can offer that row again, even for a key that timed out or
+within the ten-minute wait. Ordinary save ticks retain the throttle. A held
+`stay` can offer a new kept key immediately. An explicit answer still suppresses
+its key. In a two-device check against v2.6.0, the first offer appeared but a
+later play or seek did not bring it back.
 
-Each place is shown once per launch, and a device's places at most once per book
-every 10 minutes (`OFFER_REPEAT_MS`), since a device that plays on sends a new
-place with every span. A Stay that another device's Stay held is the one exception
-to the 10 minutes ([Stay wins](#stay-wins)). The book page shows the same offer as a line
-(`ListeningOfferLine`, [Book page](book-page.md#the-primary-action-and-the-action-row)),
-on a server with the flag only.
+The book page's `ListeningOfferLine` also checks both lists of keys before
+showing **Play from there**. Only the loaded player's toast can repeat a held
+offer after a new play or move. See [the book page actions](book-page.md#the-primary-action-and-the-action-row).
 
-On a server without the flag, the auto-move with Undo above stays. Its only offer is
+On a server without `listening_sync`, the auto-move with Undo above stays. Its only offer is
 the loaded book's toast for a save the
 [replay guard](state-and-data.md#the-replay-guard) held (`onHeldSave`,
-`offerLoadedPlace(..., { held: true })`). There **Stay** also lifts the guard for the
+`offerLoadedPlace` with `held: true`). There **Stay** also lifts the guard for the
 session and saves this device's place at once (`saveLoadedPlace`). That save and the
 session's later ones go through even when the other device has saved again since the
 offer. A timed-out toast lifts nothing. The book page shows no line there.
@@ -976,8 +995,13 @@ events** instead of saves, and the capture only keeps this device's mirror.
 `usesListeningSync` decides which path applies. It reads the flag from the cached
 `/server` answer, which a launch seeds from
 [the kept `/server` answer](state-and-data.md#the-kept-server-answer-srcapiserver-snapshotsts).
-While the flag is unknown, the player sends events too (see
-[the outbox](offline.md#listening-sync-the-outbox)).
+While the flag is unknown, the player also records events. If the sync POST
+returns 404 or 405, `rollBack` checks the connection's own `GET /server`.
+If that answer confirms the capability is absent or false, the outbox converts
+waiting events into one guarded `PUT /libraries/{id}/progress` per book.
+Each save takes the newest span end and the applicable finish state. The player
+switches to legacy saves for that connection. An unconfirmed 404 or 405 leaves
+the events queued. See [the outbox](offline.md#listening-sync-the-outbox).
 
 A span runs from where playing began to where it ended. It carries:
 
@@ -1027,9 +1051,8 @@ A span's life:
   - A move to where the place already is, in the same file (`movesNowhere`:
     Previous at the book's start), is no move. The span goes on and no event says
     it. A book with unknown file lengths starts every file at 0, so the file has to
-    match too. Two cases still count as a move: the last move went elsewhere (a seek
-    still on its way reads as where it left), or the engine moved first with nothing
-    to compare (a paused lock-screen move, `from: null`).
+    match too. A paused lock-screen move still counts when the engine moved first
+    and there is no earlier position to compare (`from: null`).
   - The Apple Watch and Wear OS share both rules (`Spans.isBareMove`,
     `Spans.movesNowhere`).
   - The end of the book then sends `finish` once (`finishAfter`). The outbox
@@ -1050,9 +1073,11 @@ A span's life:
     (`reloadLeftBook`), so a failure leaves the player as it found it. How the
     Undo and Mark as not finished take a finish back is in
     [Taking a finish back](offline.md#taking-a-finish-back).
-  - Either finish is dated after its span's end is stamped (`takeSpan`). The server
-    applies a batch in time order, with request order only breaking ties, so a
-    finish dated earlier would be applied before the book's last span.
+  - If a seek is still landing, the span closes at its target with its move
+    reason. The player timestamps `finish` after closing that span and consumes
+    the reason. If playback continues across the finish, the next span starts
+    with `resume`. **Listen again** on the finished book sends `unfinish`
+    followed by a `listen` starting at zero with `start: "restart"`.
   - The web's `pagehide` closes the span and sends what waits with `keepalive`.
 - **Offline**, the tick leaves the span open until it is an hour long
   (`MAX_SPAN_MS`), so a day offline is a handful of events. Offline means the
@@ -1087,6 +1112,34 @@ The events go to the outbox and are sent from there
 history spans, because the server writes history from the listening, and saves no
 `PUT`.
 
+#### While a seek lands
+
+`store.ts` keeps the requested track and seconds into that track in
+`pendingSeek`. A second seek closes the first move's span at its target and
+measures direction from there. For example, seeking from 0 to 30 seconds and
+back to 0 sends `moved_back` even if the engine still reports 0. Relative skips
+also add up from the pending target, including across files. Retry uses the same
+tracking when its reload briefly reports zero.
+
+While the engine call is outstanding, the periodic save and span cut wait. An
+ordinary pause, background save or handoff to another tab can skip the place
+save too. Stopping, switching books or marking the book finished saves the target
+before unloading. A Cast background checkpoint also saves the target and leaves
+the span alone. On Sync v2 the place save updates the mirror. On the legacy
+path the save carries that position in the progress `PUT`.
+
+Once the engine accepts the seek, saves can use the target while its position
+report catches up. A changed report at the target, or within playing distance
+past it in the same file, confirms the position. If the newest seek is refused,
+the store can restore an earlier outstanding seek that no later landing superseded.
+
+After 10 seconds (`ASK_SETTLE_MAX_MS`), a changing report showing playback
+elsewhere lets `observeSeek` drop a seek the engine never took. The span at the
+target ends there. A new span starts at the engine's position, so neither span
+claims the intervening audio. Saves and periodic cuts resume. If that call later
+lands on the same book with no newer request, `landGivenUpSeek` takes the
+listener's move and lowers the resume floor so the target can be saved.
+
 ### Stay wins
 
 A Stay is an explicit choice. On a server with `listening_stay`, the server applies
@@ -1113,15 +1166,16 @@ the start as `invalid`.
   `openMissingSpan` opens, only while that play goes on. A close with none open
   (`takeSpan`: the pause, the end) leaves the next play a `jump`, and a cut with
   none open leaves it waiting.
-- **The flag gone.** The outbox sends a queued `stay` as a `jump`
-  ([the outbox](offline.md#listening-sync-the-outbox)).
-- **A Stay held by another.** This device's `stay` that comes back `diverged`
-  `kept: stored` means another device's Stay holds the row (`staysHeld`). The kept
-  place is offered at once (`offerLoadedPlace`'s `stayHeld`), still once a launch
-  per place.
-
-The Apple Watch and Wear OS do the same
-([Apple Watch](apple-watch.md#playing-and-syncing)).
+- **Older servers.** The outbox checks the flag when building each request and
+  sends a queued `stay` as `jump` with the same event ID if support is absent.
+  With a stale flag, the phone retries a Stay refused alone with HTTP 400 once
+  as `jump`. A v2.6.0 server answers a literal `stay` with HTTP 200 and the
+  per-event result `rejected: invalid`. That result moves the event to the
+  couldn't-sync list on the phone and both watches.
+- **A Stay held by another.** If the server keeps the stored row over a
+  `stay` actually sent, the player can offer the new kept place immediately.
+  The [Apple Watch](apple-watch.md#playing-and-syncing) and
+  [Wear OS](wear-os.md#sync) apply this rule to their own requests.
 
 ### One tab plays at a time (web)
 
@@ -1275,10 +1329,14 @@ nothing moves. Another device's record is left to the
   from where the engine is, because a floor left at a place far ahead would refuse
   its every save and span. A seek that has not settled within 5 s
   (`TAB_MOVE_MAX_MS`) counts as refused too, so it stops holding the play's
-  spans and saves. If it lands after all, the tab takes it then
-  (`landTabPlaceLate`): the floor goes to the place and the span opens again
-  there, so it never covers audio nobody heard. Not when the listener moved or
-  another book started meanwhile.
+  spans and saves. If it lands later with no intervening move or book switch,
+  `landTabPlaceLate` adopts the place before the same report can run a save
+  tick. It resets the floor and opens the playing span at the shared place.
+  Playing normally up to that position is insufficient to confirm a seek.
+- A Cast receiver can report a move before publishing its position. For an
+  unconfirmed tab seek, a matching Cast move can confirm the landing only
+  within 10 seconds of the original request. After that, a remote scrub counts
+  as the listener's own move. A confirmed seek can still land later.
 - A book switch drops a move still out (`switchBook` clears `catchingUp`), so it
   holds none of the next book's saves or spans.
 

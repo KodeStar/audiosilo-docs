@@ -22,7 +22,7 @@ A slim line above the title shows the book's folders on your server. Tap one to 
 
 ## Listening and the buttons
 
-The big button does what you most likely want: **Start listening**, **Resume**, **Listen again** for a finished book, or **Pause**. Resume never starts the book over.
+Tap **Start listening** to begin a book or **Resume** to carry on where you left off. While the book plays, the button changes to **Pause**.
 
 On a phone it opens the [full player](full-player.md). On a tablet or computer the book plays under the [player bar](playback.md#the-mini-player-and-the-player-bar).
 
@@ -35,7 +35,7 @@ Beside it:
 - **Add to collection**. On a phone it's in the **More** menu.
 - **More** (**...**): **Send to watch**, **Mark as finished** or **Mark as not finished**, and **More in this series**.
 
-If you listened further on another device, a line under the buttons offers that place, such as *"On Apple Watch: Chapter 12, 4:10 · Play from there"*. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
+If another device has a different place, a line under the buttons can show its chapter and time. Tap **Play from there** to listen from that place. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 
 ![A book's page offering another device's place, with Play from there](/img/screenshots/web-player/book-place-offer.png)
 
@@ -45,7 +45,9 @@ If you're an admin and your server has a [Bridge](../admin/bridge.md), a book th
 
 ![A finished book's page: the Finished badge with its date, the stars and Listen again](/img/screenshots/web-player/book-finished.png)
 
-A finished book shows **Finished** with the date. If your server keeps ratings, tap a star to rate it. It's the same rating as on the [end credits](end-of-book.md#the-end-credits).
+A finished book shows **Finished** with the date. Tap **Listen again** to clear the finished mark and play from the beginning.
+
+If your server keeps ratings, tap a star to rate the book. It's the same rating as on the [end credits](end-of-book.md#the-end-credits).
 
 ## About this book
 

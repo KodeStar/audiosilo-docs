@@ -2140,13 +2140,13 @@ The offline-safe write path for listening progress:
 - **Sync v2 fields on the mirror.** A mirror record also keeps:
   - the playing file and the seconds into it (`file`, `file_pos`), for the resume
     by file;
-  - on a `listening_sync` server, the version of the book's server row that this
-    device has acknowledged (`ack_version`, never lowered; `ackVersion`), and the
-    offers it has answered (`answered`, with `device_id|updated_at` keys;
-    `answerOffer`).
+  - on a `listening_sync` server, the highest version the device has acknowledged
+    for the book (`ack_version`) and two lists of `device_id|updated_at` keys.
+    `answerOffer` records choices in `answered`. `ignoreOffer` records timeouts
+    in `ignored`. Each list keeps up to 20 keys.
 
-  `ack_version` and `answered` are kept across captures, and a `PUT` never sends
-  them. `ack_version` is what a listening span sends as its `base_version`. It is
+  These fields stay in the mirror across captures. A legacy `PUT` omits them.
+  `ack_version` is what a listening span sends as its `base_version`. It is
   set when a sync answer kept this device's event, when a resume or an explicit
   start takes a server row, when the place reconcile moves to one, and when an
   offer is answered ([the outbox](offline.md#listening-sync-the-outbox)).

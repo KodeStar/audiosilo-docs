@@ -42,21 +42,22 @@ The player shows whether your place is **Synced**, or **Saved on this device, wi
 Four rules protect your place:
 
 - **A book never silently restarts from the beginning.** If a streamed book can't find your place, the player shows **Retry** instead of starting at zero.
-- **An earlier position can't overwrite your progress by accident.** Only a move back you make yourself counts, including a scrub from the lock screen, headphones or a car. If you listened offline while another device got further, the further place isn't overwritten, and for the book you're playing the player asks which to keep. See [Listening on more than one device](#listening-on-more-than-one-device).
-- **You pick up another device's place.** If a book is still loaded here and you've listened further elsewhere, the player jumps to the newer place and says so, with **Undo**. When you press play in the app after a pause of a minute or more, the app asks your server for your latest place first, so you don't hear the old one. The play button shows a spinner while it waits, for at most 1.5 seconds.
+- **You can move back on purpose.** The player remembers a move you make from the lock screen, headphones or a car. If two devices listened offline, see [Listening on more than one device](#listening-on-more-than-one-device).
+- **You can pick up where you left off elsewhere.** When you return to a loaded book, the player checks for a newer place on your other device. If it moves you there, the message offers **Undo**. After a pause of a minute or more, pressing play in the app waits up to 1.5 seconds for that check.
 - **Auto-rewind.** After a pause, playback backs up a few seconds so you catch the sentence again. Change it in [Settings](settings.md#playback).
 
 ## Listening on more than one device
 
-Each device tells the server what you listened to: from where to where, and when. The server puts it together, so:
+If you listen on two devices before they sync, the server usually keeps the place further on. When the other device's place is more than half a minute away, the player can offer it to you.
 
-- **Nothing moves your place back by itself.** If two devices listened without seeing each other (a watch on a run while your phone was offline, say), the server keeps the place further on.
-- **You choose where to carry on.** When another device's place is more than half a minute away, the player asks: *"On Apple Watch you were at Chapter 12, 4:10. Jump there?"* **Jump** goes there. **Stay** keeps your place. The [book's page](book-page.md#listening-and-the-buttons) offers it too.
-- **Stay wins.** Your server takes the place you chose, even if the other device played on after yours asked. If that device keeps playing before it catches up, your place stays put and that device asks you instead. See [when Stay doesn't win](#good-to-know).
-- **Finished stays finished**, unless you start the book again or [mark it as not finished](end-of-book.md#mark-a-book-finished-yourself).
-- **Listening counts when it happened.** Offline listening shows in your history, Journal and stats at the time you listened, even if it syncs days later.
+- Choose **Jump** to go to the other device's place. On the [book's page](book-page.md#listening-and-the-buttons), choose **Play from there**.
+- Choose **Stay** to keep your current place. Your device sends that choice even when paused. If your other device keeps playing before it receives your choice, it can ask you to jump to the place you kept. See [when Stay doesn't win](#good-to-know).
 
-Until it reaches the server, your listening waits on the device. Home says how many listens are waiting, and your [account page](account.md#listening-sync) shows the details.
+Letting the message disappear keeps your place for now. If the server still keeps the other place, your phone or web player can offer it again the next time you play or skip. The player remembers an explicit **Jump** or **Stay** for that place.
+
+A finished book stays finished when older listening arrives. Choose **Listen again** on its page to start it from the beginning, or [mark it as not finished](end-of-book.md#mark-a-book-finished-yourself).
+
+Offline listening counts in your history, Journal and stats at the time you listened. Home says how many listens are waiting to sync. Your [account page](account.md#listening-sync) shows the details.
 
 **Places from Audible.** If your admin has turned on [Audible sync](../admin/audible.md#syncing-listening-places) for your Audible account, Audible counts as one more device. A place further on in Audible reaches you within about 15 minutes. Your place here goes back to Audible a few minutes after you stop. It never moves your place back.
 
@@ -109,7 +110,8 @@ Many such books can get real chapters, from the community database or from your 
 
 - **One tab plays at a time in a browser.** Start playing in a second tab and the first one pauses and says **Playing in another tab**. Press play there to take it back. With the same book in both tabs, the tab you return to carries on where the other got to. Tabs signed in to different servers or accounts can play at once. Your other devices and the apps aren't paused.
 - **Older servers** don't combine listening from several devices. The app saves your place as before, and the protections in [Your position follows you](#your-position-follows-you) still apply. On some, **Mark as finished** needs a connection.
-- **When Stay doesn't win.** It doesn't beat listening that went on more than two minutes after it, such as when you chose Stay offline a while ago. It doesn't beat a change made since, such as marking the book finished. Then the usual rules above apply. If another device's Stay got there first, you're asked again straight away. On a server before 2.7, Stay wins only if the other device hasn't played on since your device asked, or your place is further on.
+- **When Stay doesn't win.** Someone may have marked the book finished since the offer, or listened on for more than two minutes after your choice. If another device chose **Stay** first, the player can offer its new place straight away.
+- **On a 2.6.0 server**, choose while the message is visible. Pressing play or skipping may not bring it back. If the other device played on after the offer appeared, **Stay** can keep whichever place is further on.
 - **MKA books.** An `.mka` book with MP3 inside plays like any MP3 book when your server has ffmpeg (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). On the very first play of a large one, a jump may not land exactly until the server has finished preparing it.
 - **MP3 files recorded at a varying bitrate.** Skips, seeks and chapter jumps land at the place the player shows. If a file holds less audio than its listed length, playback stops with an error where its audio ends, instead of running on into the next file, and the book isn't marked finished. Move back into the file, or on to the next one, then press play or **Retry**.
 - **A book that stopped with an error.** You can still skip, seek or pick a chapter, in the app or on the lock screen. The player shows the new place, and play or **Retry** loads the book there.

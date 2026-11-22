@@ -803,8 +803,10 @@ Each answer is handled like this:
   kept for has its version acknowledged (`ackVersion`, never lowered). That is
   `keptMine`: applied, or diverged with `kept: "event"`, and the row's `device_id` is
   this device's. The place reconcile is told of the rows (`onSyncAnswer`) so it can
-  offer another device's place. A `stay` that came back `diverged` `kept: "stored"`
-  (`staysHeld`) has the kept place offered at once.
+  offer another device's place. `heldListens` identifies the books for which the
+  server kept its row over a listen, using each event's start as sent. The
+  [player's offer rules](playback.md#offering-another-devices-place-sync-v2)
+  determine when that place appears again.
 - An answer that arrives while the cached `listening_sync` flag is `false` makes the
   query cache ask `/server` again. The server took the events, so the cached answer
   is older than the server.

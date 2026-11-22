@@ -145,6 +145,13 @@ a fresh `sent_at` and needs no `clock_offset`. The worker runs the `server_id` p
 the home address is allowed in the background too. It never gates on a connectivity API: a
 `NetworkCallback` only triggers a try.
 
+`Outbox.kt` reads `listening_stay` when building each request, including a
+single-event retry. If the flag is missing or false, a queued `stay` goes as
+`jump`. If the watch sends a literal `stay` to v2.6.0 under a stale flag, the
+server answers HTTP 200 with `rejected: invalid`. The watch drops it from the
+queue and records the failure. A Stay refused alone with HTTP 400 also goes to
+the failed list. The phone retries that HTTP 400 once as a jump.
+
 Sign-out, and a replacing account, are blocked while events wait unless the listener discards
 them. Sign-out stops the player first.
 
@@ -167,9 +174,20 @@ Media3 1.9.0 opens neither.
 an unsuitable output or suppressed-too-long ends the span where the audio last moved. A transient
 focus loss closes the span but keeps the wish to play.
 
-Spans, ticks, the pull before play, the offer and its throttles, the bare move and the move to
-nowhere, and Stay are the Apple Watch's (`SpanRecorder.kt`, `Outbox.kt`, `PlayerEngine.stay`; see
-[Stay wins](playback.md#stay-wins)).
+`Resume.plan` in `PlayerRules.kt` compares the server row with the local
+place before play. It uses the watch clock for the watch's own row, another
+device's `updated_at` and a finish's `finished_at`, subtracting the known
+server skew. To replace a local place with another device's listening place,
+the row must be newer and its version must exceed the watch's acknowledgement.
+With no events waiting for the book, a newer finish or an unseen finished
+version can restart it from zero.
+
+On a move, Stay or cut while playing, `SpanRecorder.kt` queues the closed span
+and replaces the stored open span in one write. `AckAndOffer.kt` keeps the
+acknowledged version and offer keys. If a request actually sent `stay` and got
+`diverged` with `kept: stored`, `AckRules.staysHeld` lets `OfferThrottle`
+show a new place immediately. A dismissed offer stays suppressed on a new play
+or move, as on [Apple Watch](apple-watch.md#playing-and-syncing).
 
 ## Storage and identity
 
