@@ -763,8 +763,10 @@ end ([What a kill leaves behind](playback.md#what-a-kill-leaves-behind)). On the
 - when it last synced (`lastSyncAt`);
 - the "couldn't sync" list: rejected events with their reason, kept 30 days, at most
   100;
-- the server's clock skew from the answers' `server_time` (`clockSkewMs`), which
-  `progress-sync` reads through `stored-skews.ts`.
+- the server's clock skew (`clockSkewMs`), which `progress-sync` reads through
+  `stored-skews.ts`. A sync answer whose request times are known measures it
+  (`clockSkewOf`): its `server_time` minus the midpoint of sending and answering.
+  Until a connection has one, the skew is 0. A progress `GET` never measures it.
 
 **Locking.** The read-modify-writes of the three documents run in a serial queue and
 under `tabLock` (`src/lib/tab-lock.ts`), so two tabs can't lose each other's events.
@@ -793,7 +795,11 @@ A queued span whose `start` is `stay` goes as a `jump` while the connection's
 `/server` doesn't say `listening_stay` (`eventsForServer`, on every send path: the
 batch, one by one, and the web page's keepalive), and the stored event keeps its `stay`
 and its id
-([Stay wins](playback.md#stay-wins)).
+([Stay wins](playback.md#stay-wins)). The flag is read as each request is built. A
+stale cached `true` can still let a `stay` through: a v2.6.0 server answers it inside
+a `200` as `rejected` `invalid`, so it moves to the couldn't-sync list like any
+rejected event, and a server that refuses the whole request with a `400` gets it
+again as a `jump` (below).
 
 Each answer is handled like this:
 
@@ -803,8 +809,10 @@ Each answer is handled like this:
   kept for has its version acknowledged (`ackVersion`, never lowered). That is
   `keptMine`: applied, or diverged with `kept: "event"`, and the row's `device_id` is
   this device's. The place reconcile is told of the rows (`onSyncAnswer`) so it can
-  offer another device's place. A `stay` that came back `diverged` `kept: "stored"`
-  (`staysHeld`) has the kept place offered at once.
+  offer another device's place. `heldListens` identifies the books for which the
+  server kept its row over a listen, using each event's start as sent. The
+  [player's offer rules](playback.md#offering-another-devices-place-sync-v2)
+  determine when that place appears again.
 - An answer that arrives while the cached `listening_sync` flag is `false` makes the
   query cache ask `/server` again. The server took the events, so the cached answer
   is older than the server.
@@ -889,11 +897,13 @@ place was saved on a download's older file order. The server does the same with 
 span's file places. The local resume works on any server; the server's remap needs
 `listening_sync`.
 
-A file place is used only when it is not older than the record it is for
-(`holdsFilePlace`). The check allows 5 s of slack, widened by how far the
-connection's server clock is known to be ahead (the stored `clockSkewMs`). So a device
-whose clock runs slow keeps its file place, and a mirror that lost writes never
-resumes at a stale file.
+A file place is used only when it belongs to the record the resume picked
+(`holdsFilePlace`). That is the same place (within 1 s), or a record of the same
+device in the same finished state that is at most 5 s newer than the file place.
+Both are compared on this device's clock, with a server timestamp moved back by the
+stored `clockSkewMs`, 0 until a sync answer has measured it. So once the skew is
+known, a server clock that runs ahead keeps a timely file place, and a mirror that lost
+writes never resumes at a stale file.
 
 ### Taking a finish back
 

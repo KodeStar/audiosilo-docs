@@ -173,9 +173,10 @@ Media3 1.9.0 opens neither.
 an unsuitable output or suppressed-too-long ends the span where the audio last moved. A transient
 focus loss closes the span but keeps the wish to play.
 
-Spans, ticks, the pull before play, the offer and its throttles, the bare move and the move to
-nowhere, and Stay are the Apple Watch's (`SpanRecorder.kt`, `Outbox.kt`, `PlayerEngine.stay`; see
-[Stay wins](playback.md#stay-wins)).
+Resume, spans, the pull before play, the offer and its throttles, the bare move and the move
+to nowhere, and Stay with its outbox rules are the Apple Watch's (`PlayerRules.kt`,
+`SpanRecorder.kt`, `AckAndOffer.kt`, `Outbox.kt`, `PlayerEngine.stay`; see
+[Apple Watch](apple-watch.md#playing-and-syncing)).
 
 ## Storage and identity
 
