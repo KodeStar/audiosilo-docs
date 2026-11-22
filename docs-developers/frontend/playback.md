@@ -866,7 +866,7 @@ it.
 
 Once the engine has played on from the ask, its moves and its end are the book's: a server length
 can overestimate the audio (ffprobe's bitrate estimate for a header-less VBR file, which a
-server from 2.7.0 counts instead, except where the count gives up),
+server from 2.7.0 counts instead, except where the count gives up or runs out of time),
 and a listener who played to the real end has finished.
 
 ### Picking up another device's place (`place-reconcile.ts`)

@@ -486,8 +486,11 @@ If ffprobe rejects the primary file as invalid while filling in names or tag
 hints, and the last index had no `probe_failed` problem, the scanner records
 that index's `indexed_at` in `books.tag_read_failed_at`. Scans skip those two
 checks, even after a restart, until a file change or **Read the files again**
-re-indexes the book. A timeout, a failure to start ffprobe or a temporary
-frame-count read error leaves the checks pending for the next scan.
+re-indexes the book. A rejection is ffmpeg's invalid-data error, or a format
+not on the server's list (`metadata.ErrProbeRejected`). Any other ffprobe
+failure (a timeout, a read error, an ffprobe that fails to start) and a frame
+count cut short for now (`uncountedForNow`) leave the checks pending for the
+next scan.
 
 #### Audiobookshelf `metadata.json`
 
@@ -1364,7 +1367,8 @@ ffprobe for three files.
 
 **One open, one cache.** In the normal scan path, `metadata.ExtractTimeout`
 opens a file once. It reads the tags (`dhowden/tag`), the iTunes narrator and
-the probe through one 64 KiB block cache (at most 4 MiB kept), then closes the file before any ffprobe run.
+the probe through one 64 KiB block cache (at most 4 MiB kept), then closes the
+file before any ffprobe run.
 
 **What it answers.** Exactly what the scan took from ffprobe:
 
@@ -1446,8 +1450,10 @@ to ffprobe.
 
 #### MP3 lengths
 
-A Xing, Info or VBRI header can give the frame count for the whole file. The
-probe uses that count directly. With a recognized encoder tag, the 8.1 rules
+From 2.7.0 (server#435, widened by server#452), the probe counts the frames of
+an MP3 whose length ffprobe would only estimate. A Xing, Info or VBRI header
+can give the frame count for the whole file. The probe uses that count
+directly. With a recognized encoder tag, the 8.1 rules
 subtract encoder delay and end padding from the header duration. The 7.1 rules
 use the full frame duration.
 
@@ -1474,19 +1480,25 @@ nor bytes. The full count includes a final truncated frame, as ffmpeg does.
 
 The probe excludes trailing ID3v1 and APEv2 tags, including an APEv2 cover,
 when it places samples and sets the end of a frame count. A Lyrics3 trailer
-stays inside that region. Its non-frame bytes can trigger a full count even
-for a constant 32 kbit/s file. The count skips such bytes as it searches for
-the next frame. If it skips more than one eighth of the region being counted,
+stays inside that region. When the 2 MiB walk reaches it, as in a constant
+32 kbit/s file with less than 2 MiB of audio, its non-frame bytes trigger a
+full count. The count skips such bytes as it searches for the next frame. If
+it skips more than one eighth of the region being counted,
 it gives the file to ffprobe.
 
 The frame count has its own deadline, the same 30 seconds as an ffprobe run,
 and a count that cannot finish while other reads are running is retried alone
-(see [A probe that ran out of time](#read-problems)). If the reads succeed but the count still runs out of time
-and ffprobe supplies an estimate, the scanner keeps that estimate at the
-current duration revision. It tries again when the book's files change or an
-admin selects **Read the files again**. A temporary read error leaves the
-revision at 0 for a later scan. With [no ffprobe](#with-no-ffprobe), a count
-that times out reports `ProbeTimedOut`.
+(see [A probe that ran out of time](#read-problems)). If the reads succeed but
+the count still runs out of time and ffprobe supplies an estimate, the scanner
+keeps that estimate at the current duration revision
+(`Metadata.CountOutOfTime`). It tries again when the book's files change or an
+admin selects **Read the files again**. A read error, or a probe that runs out
+of its 5 s before it can tell whether to count, leaves the revision at 0
+(`uncountedForNow`), so each later scan indexes the book again. A count that
+gives up or finds no frames records the current revision, because it would end
+the same way next time. With [no ffprobe](#with-no-ffprobe), a count that
+times out reports `ProbeTimedOut` and is a
+[read cut short](#read-problems), read again by each scan.
 
 The setup preview and tag backfills normally skip sampling and counting
 (`metadata.WithoutFrameCount`). They do not store a length. If an ffprobe
@@ -1500,12 +1512,23 @@ when the revision belongs to the current index. The first scan re-indexes
 each book containing an MP3, even a single MP3 among other formats, and
 reports it as updated. It records revision 2 with the book's `indexed_at`.
 If an older server re-indexes the book later, the timestamps differ and the
-newer server checks the lengths again.
+newer server checks the lengths again. A change to the length reading bumps
+`catalog.durationRev`, with a migration like `0091` that moves the books with
+no MP3 on.
 
-The same scan reads each [Audiobookshelf metadata.json](#audiobookshelf-metadatajson)
-once more, for the reader's
-[name joining](data-model.md#the-audiobookshelf-layer). After these reads succeed, a second scan of the unchanged library skips
-both the audio and those metadata files. If a part's length changes, later
+A book whose last read was kept as stored for a read problem (`keptAsStored`:
+an unreadable file or an ffprobe timeout) is not re-indexed for the revision.
+It waits until `problemCleared` finds the file answers, like any other kept
+book. A book kept for a part that reads the same every time
+(`Book.LengthOnly`: a FIFO, a length out of time) and a book whose lengths
+alone were written (`recordLengths`) record revision 2 as they are
+(`stampDurationRev`), because reading them again would only keep them again.
+
+The same scan reads each
+[Audiobookshelf metadata.json](#audiobookshelf-metadatajson) once more, for
+the reader's [name joining](data-model.md#the-audiobookshelf-layer). After
+these reads succeed, a second scan of the unchanged library skips both the
+audio and those metadata files. If a part's length changes, later
 parts start at new offsets on the whole-book timeline. Saved places,
 bookmarks and notes keep their existing positions.
 
@@ -2003,9 +2026,8 @@ slower than reading one file at a time would. Lower `scan.concurrency` there.
 **A read cut short on a hung share.** Any file of an already-indexed book can
 come back with its read cut short, or refused at its mount's abandoned-read cap
 (`Metadata.TagsUnread`, `ReadRefused`; see
-[Bounded reads on a hung share](#bounded-reads-on-a-hung-share)). A file whose length ran out of
-time even when read alone counts too: an
-ffprobe time-out, or with no ffprobe the in-process read's `ProbeTimedOut`
+[Bounded reads on a hung share](#bounded-reads-on-a-hung-share)). A file whose
+length ran out of time even when read alone counts too: an ffprobe time-out, or with no ffprobe the in-process read's `ProbeTimedOut`
 (`library.readCutShort`). The scan then sets `Book.ReadCutShort`, and the
 book's row is not rewritten at all (`catalog.recordReadProblem`). Names,
 length, codec, chapters, cover flag, mtime and size stay as the last full read

@@ -490,11 +490,15 @@ dates from 0001. Later migrations added these columns:
   (`catalog.durationRev`, currently 2). `duration_rev_indexed_at` is the
   `indexed_at` it was written with. A lower revision, or a timestamp other
   than the row's `indexed_at`, schedules a book holding an MP3 for
-  re-indexing. When a count is left at revision 0, see
+  re-indexing, unless a read problem keeps the book as stored (see
+  [The first scan after updating](scanner.md#the-first-scan-after-updating)).
+  When a count is left at revision 0, see
   [MP3 lengths](scanner.md#mp3-lengths).
 - `tag_read_failed_at`: the `indexed_at` of the index whose primary file
-  ffprobe rejected during a backfill of names or tag hints, `NULL` for none.
-  See [Backfills for a skipped book](scanner.md#backfills-for-a-skipped-book).
+  ffprobe rejected during a backfill of names or tag hints, `NULL` until one
+  does. It counts only while it equals the row's `indexed_at`, so the book's
+  next index ends it without clearing the column. See
+  [Backfills for a skipped book](scanner.md#backfills-for-a-skipped-book).
 - `ebook_path`: the book's ebook, library-relative, `''` for none. It is the
   one readable `.epub` beside the audio by `library.BookEbook`'s rule.
   `ebook_sig` is the size, mtime and name of the file the rule names, readable
