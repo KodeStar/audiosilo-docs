@@ -12,9 +12,9 @@ holds the outside accounts the Bridge uses:
   recaps.
 - **Audible** (optional), to back up the books you bought.
 
-You sign in only on the Bridge's own page. The console's **Server > Settings >
-Bridge** shows these accounts read-only. After you enter a credential, the page
-never shows it again. It only says whether one is set.
+You sign in on the Bridge's own page. The console's **Server > Settings >
+Bridge** shows the account status and lets you manage Audible backups. After
+you enter a credential, the Bridge only shows whether one is set.
 
 ## GitHub
 
@@ -84,8 +84,8 @@ then says why the agent isn't ready.
 ## Audible
 
 The **Audible** card signs the Bridge in to one or more Audible accounts. The
-Bridge then lists each account's books, finds the ones already on your server and
-backs up the ones you choose. You manage them in the console. See
+Bridge finds the books already in your library and backs up the titles you choose.
+You can also turn on automatic backups for new purchases. See
 [Back up your Audible books](../admin/audible.md).
 
 Each account belongs to **one person** on your server and goes with **one books
@@ -125,9 +125,13 @@ to the same account again replaces its sign-in rather than adding a second one.
 | **Back up** | which **new** purchases the Bridge backs up by itself. You change this later in the console |
 | **Name (optional)** | how the console names the account. Empty, it is the person and the store, such as "Chris (US)" |
 
-**Change** on an account edits these. Syncing listening places is off for a new
-account; you turn it on in the console. Changing who an account belongs to turns
-it off again.
+After sign-in, the **Back up** row shows the setting **Last known to the Bridge**.
+The console's [Audible accounts card](../admin/audible.md#the-audible-accounts-card)
+shows the current setting. If you change it there, the Bridge shows the new value
+the next time you choose **Change** and **Save** on the Bridge's account card.
+
+Use **Change** to edit the person, library or name. Listening place sync starts
+off. You can turn it on in the console. Changing the person turns it off again.
 
 ### The account's states
 

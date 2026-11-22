@@ -1,6 +1,6 @@
 ---
 title: Library mappings
-description: "How the Bridge finds each server library on its own disk and proves it has the server's copy: the default mapping, the size comparison, the write probe, why a books library with no book is never mapped, the podcast marker, and how often it checks."
+description: "How the Bridge verifies a library using a sample book or a shared marker, tests whether it can write there, and reports the result."
 ---
 
 The server and the Bridge usually run in different containers, so a library at
@@ -26,7 +26,7 @@ looks at:
 
 ## The check
 
-For each **books** library, one at a time:
+For a **books** library with an indexed sample, the Bridge checks the following.
 
 1. **The folder.** The mount path must exist and be a folder.
 2. **A known book.** The Bridge asks the server for the library's **sample book**
@@ -45,31 +45,26 @@ For each **books** library, one at a time:
    library is **writable**. The leading dot keeps a probe a crash leaves behind out
    of the server's scan, which never walks hidden names.
 
-Why sizes and not just "the folder exists": a stale copy, a different share or an
-empty mount point can sit at the right path. The research spike for the Bridge
-found that only comparing a known book's file sizes with the server's catches a
-stale copy of a library, so that is the test.
+A different share or a stale copy can sit at the expected mount path. The file
+sizes give the Bridge a way to detect that mismatch.
 
-**A books library with no indexed book is never mapped.** With nothing to compare, a
-wrong mount would look right, and a later write job would land in the wrong
-folder. Such a library reports "the library has no indexed book to compare against
-yet" until the server has indexed one.
+## The marker for empty books libraries and podcast libraries {/* #podcast-libraries-the-marker */}
 
-## Podcast libraries: the marker
-
-Podcast libraries have no sample book. `internal/mapping/podcast.go` instead
-checks the shared root with `.audiosilo/library.json`:
+When the server answers the books library's sample lookup with `no_book`,
+the Bridge checks the root marker. Other lookup errors follow the normal error
+path. Podcast libraries always use this marker. In both cases
+`internal/mapping/podcast.go` reads or creates `.audiosilo/library.json`.
 
 ```json
 {"version":1,"library_id":3,"nonce":"a1b2c3d4e5f60718a1b2c3d4e5f60718"}
 ```
 
-The Bridge creates a missing marker after probing writability, then calls
-`GET /api/v1/bridge/libraries/{id}/marker` and requires the same nonce before
-reporting `mapped`. It probes writing again for `writable`. A new marker is
-removed on a failed check, so a wrong mount is not left claiming that library.
-A marker of a removed library can be replaced; one naming another current
-library is refused.
+The Bridge reuses a marker naming this library, or probes writability and creates
+a missing marker. It asks the server to read the marker from its own root with
+`GET /api/v1/bridge/libraries/{id}/marker`. A matching nonce proves `mapped`.
+The Bridge then probes for `writable`. If the server cannot confirm a marker
+the Bridge just wrote, the Bridge removes it. It can replace a removed library's
+marker and refuses one naming another current library.
 
 Both sides require:
 
@@ -80,9 +75,10 @@ Both sides require:
 
 The server also checks the library id and answers only `{nonce}`. A marker that
 is absent or invalid is `404 no_marker`. `checked_path` is
-`.audiosilo/library.json`. The library can be empty, but both mounts must see the
-marker. An older Bridge's sample-book lookup on a podcast library returns
-`404 no_book`, so it cannot map it as books.
+`.audiosilo/library.json`. If a share disconnects and both processes see the
+same bare mount point, the marker check can pass there too. An older Bridge's
+sample-book lookup on a podcast library returns `404 no_book`, so it cannot map
+it as books.
 
 What a failed check means:
 
@@ -114,9 +110,9 @@ Each check becomes one entry of the heartbeat's `libraries`:
 |---|---|
 | `library_id` | the server's library |
 | `mount_path` | where the Bridge looked |
-| `mapped` | the sample book's file sizes matched, or the podcast marker matched |
+| `mapped` | the sample book's file sizes matched, or the server confirmed the library marker |
 | `writable` | the probe file could be written and removed there |
-| `checked_path` | the sample book's path, or `.audiosilo/library.json` for podcasts |
+| `checked_path` | the sample book's path, or `.audiosilo/library.json` for a marker check |
 | `error` | why it isn't mapped or writable, `""` when it is both |
 
 The errors the Bridge writes:
@@ -125,7 +121,7 @@ The errors the Bridge writes:
 |---|---|
 | `the folder <path> is not found here` (or `... is permission denied`) | nothing at the mount path, or the Bridge can't read it |
 | `<path> is not a folder` | the mount path is a file |
-| `the library has no indexed book to compare against yet` | the server has no book in it to compare |
+| `the library has no indexed book to compare against yet` | the server has no sample book and the link does not support marker reads |
 | `could not ask the server for a book: ...` | the book lookup failed |
 | `this folder doesn't hold the server's copy of the library (<file>: <reason>)` | a file is missing (`not found here`), unreadable (`permission denied`) or a different size (`size differs: N bytes here, M on the server`) |
 | `mapped, but not writable here: permission denied` | the right library, but the Bridge can't write there |
@@ -162,7 +158,7 @@ sends a heartbeat at once so the console sees the results. Every heartbeat in
 between carries the last results.
 
 A temporary refusal (429, server unavailable or timeout) keeps the last mapping result and its
-check time for up to three check intervals. The Bridge verifies that the sample file or podcast
+check time for up to three check intervals. The Bridge verifies that the sample file or library
 marker still proves the same folder. The Libraries tab shows **Last check**. Without current
 proof, writes wait for the next check. A slow mount shows **Waiting for the folder**.
 

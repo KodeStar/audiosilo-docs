@@ -103,17 +103,19 @@ The **Libraries** card lists every library with what the Bridge found:
 | **Not found** | the Bridge couldn't find it |
 | **Not reported yet** | the Bridge hasn't checked it yet |
 
-The Bridge checks a library by finding a book the server knows and comparing its
-files, then writing a small test file. A library must be **Ready** before the
-Bridge can save anything for its books.
+The Bridge compares a book's files with the sizes the server sees. For an empty
+books library or a podcast library, the Bridge writes or reuses a hidden marker
+called `.audiosilo/library.json`. The server confirms it can read the same marker
+from its library folder. Leave the marker in place.
+
+The Bridge also checks that it can write a small test file. Once the library
+shows **Ready**, the Bridge can save books there.
 
 When a library isn't ready, the line under it says why. Usually:
 
 - **The folder isn't mounted** in the Bridge's container, or is at another path.
   Mount it at the same path as the server, or set its folder on the Bridge's page.
 - **It's a different copy.** The files don't match the server's.
-- **A books library has no books yet.** The Bridge checks again once the server
-  has indexed one. (A podcast library can be ready while empty.)
 - **Can't write.** Mount the folder read-write and set the Bridge's `PUID`/`PGID`
   to the owner of your library folders.
 

@@ -791,8 +791,9 @@ controls the account’s sync switch.
 `{"account", "template"}` (`template` the account's placement template, omitted
 when empty), with no library or path. It is deduped per account, and it promotes
 an open poll to a person's priority when Check now asks. It runs in the `light`
-lane and writes nothing into a library; an ASIN it backfills goes through the
-server. A refused poll fails with a code in its result. The module's scheduler queues it, and
+lane. For its final step, it releases the slot and sends missing ASINs to the
+server. One poll at a time runs this backfill, leaving light slots available for
+other polls and verify jobs. A refused poll fails with a code in its result. The module's scheduler queues it, and
 queued polls are held while the module is off. One the Bridge already holds
 carries on, as every Audible job does. See
 [Audible](audible.md#the-poll-audiblepoll).
@@ -811,9 +812,14 @@ the `audible` module too:
 The server sets its priority by who asked (a console Back
 up, a policy or Back up everything; see
 [the priorities](audible.md#on-the-server-queueing-internalaudibleimportsgo-catalogaudible_importgo)).
-It runs in the `download` lane, one per account at a time, and its partial
-download survives a restart. See
-[Backing up a title](audible.md#backing-up-a-title-audibleimport).
+It runs in the `download` lane, one import per account at a time. An import
+parked for its library mapping releases its slot. Once the mapping is writable,
+it reclaims a slot and checks the mapping again. A job waiting for the same
+account yields its slot if the holder is parked or still reclaiming a slot.
+
+After a restart the import can resume from a partial download or place a
+completed decrypt. A new claim after a temporary placement failure can reuse
+that decrypt too. See [Resume and temp files](audible.md#resume-and-temp-files).
 
 `audible.sync` brings an account's places on Audible to the server. It belongs to
 the `audible` module. It is internal and quiet, with no library or book path. The

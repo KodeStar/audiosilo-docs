@@ -3,11 +3,9 @@ title: Back up your Audible books
 description: "Have your Bridge back up the Audible books you bought into your library, and keep your listening places in step with Audible."
 ---
 
-Your [Bridge](bridge.md) can sign in to your Audible accounts and list the books
-each one owns. It shows which are already on your server, and **backs up** the
-rest into your library. It downloads each book, removes its copy protection
-(DRM) and puts it beside your other books. The copy is lossless and keeps its
-chapters.
+Your [Bridge](bridge.md) finds the Audible books already on your server and backs
+up the titles you choose. You can also turn on [automatic backups for new purchases](#backing-up-by-itself).
+Each backup is a lossless copy that keeps the book's chapters.
 
 It can also keep each account's **listening places** in step with Audible, both
 ways. You need to be an admin and have a Bridge.
@@ -29,7 +27,8 @@ keep the copies for yourself.
    is for and which library it goes with (see
    [Bridge accounts](../getting-started/bridge-accounts.md#audible)).
 4. Check that the library shows **Ready** in
-   [Server > Settings > Bridge](bridge.md#libraries).
+   [Server > Settings > Bridge](bridge.md#libraries). An empty books library
+   can receive your first backup once the server confirms the Bridge's marker.
 5. Wait for the first check, or press [Check now](#check-now).
 6. Open **Server > Settings > Audible** and press **Back up** on a title, or
    [Back up everything](#back-up-everything) on the account.
@@ -120,17 +119,24 @@ it matched. **Back up everything** and **Back up by itself** skip it. Then:
 2. Optionally, press **Destination...** to choose where it goes.
 3. Press **Back up**.
 
-The Bridge downloads it, removes the copy protection, copies it into the library
-and has the server index it. The title then shows **On this server** with
+The Bridge downloads the book, removes its copy protection and saves it in your
+library. Once the server indexes it, the title shows **On this server** with
 **Backed up here**.
 
-The backup shows in the Bridge's [Jobs](bridge.md#jobs) list, where **Cancel**
-stops it. The Bridge backs up one book at a time. A download cut off part way
-picks up where it stopped. The Bridge never overwrites anything in your library.
+The Bridge backs up one book per account at a time. A download cut off part way
+can pick up where it stopped. If the Bridge restarts
+after removing the copy protection, it resumes from the decrypted copy without
+downloading the book again. The Bridge never overwrites an existing book.
+
+To stop a backup, choose **Cancel** in the Bridge's [Jobs](bridge.md#jobs) list.
+This removes the temporary copy. At startup the Bridge cleans up leftover
+downloads and decrypted copies that are at least seven days old.
 
 ### When a backup fails
 
-The reason under the title says what to do. Press **Back up** again to retry.
+The reason under the title says what to do. After fixing the problem, press
+**Back up** again. If the Bridge had already removed the copy protection, it can
+retry from the copy it kept without downloading the book again.
 
 | Reason | What to do |
 |---|---|

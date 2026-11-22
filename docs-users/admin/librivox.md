@@ -21,9 +21,8 @@ community metadata database too, and downloads the audio from archive.org, where
 LibriVox keeps its recordings.
 
 :::note[A new books library]
-The Bridge checks a books library against a book the server has indexed. A
-library with no books yet can't be **Ready**, so add one book to it first (see
-[Libraries](bridge.md#libraries)).
+You can add the first book to an empty library as soon as the library shows
+**Ready** in [Server > Settings > Bridge](bridge.md#libraries).
 :::
 
 ## Add a book in the console
