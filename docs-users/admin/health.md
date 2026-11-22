@@ -80,8 +80,6 @@ The Bridge is looking for chapters in the narration of **A Long Lecture**.
 When AudioSilo suggests a copy to keep, it prefers the better format (M4B/AAC
 over MP3), then a single file, higher bitrate and more listeners, in that order.
 
-![Comparing likely duplicates](/img/screenshots/admin/health-duplicates.png)
-
 If you want to keep two narrations, for example, choose **They're different
 books**. This hides the group and deletes nothing. If you later add or remove a
 copy, the books that still match come back as a new group.
@@ -90,6 +88,8 @@ Turn on **Include other libraries** to also see matching pairs from two
 libraries. If two copies in your main library both match a third in your kids'
 library, you see two pairs. Choosing **They're different books** on one pair
 leaves the other pair, and the group in your main library, still listed.
+
+![With Include other libraries on, Health compares copies of The Art of War in Books and Inbox](/img/screenshots/admin/health-duplicates.png)
 
 To bring a group or pair back right away, choose **Undo** in the confirmation
 message. To bring it back later:

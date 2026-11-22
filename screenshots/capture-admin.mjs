@@ -822,11 +822,15 @@ await step('match automatically', async () => {
 });
 
 await step('health duplicates', async () => {
-  await open(page, '/health/issues?issue=duplicate');
-  await page.getByRole('button', {name: "They're different books"}).first().waitFor({timeout: 8000});
-  // The compare sits under the category cards: bring its heading to the top.
+  await open(page, '/health/issues?issue=duplicate&across=1');
+  const pair = page.getByRole('region', {name: 'The Art of War', exact: true}).first();
+  await pair.getByText(library?.name || 'Books', {exact: true}).waitFor({timeout: 8000});
+  await pair.getByText(inbox?.name || 'Inbox', {exact: true}).waitFor({timeout: 8000});
+  // The page's scroll-padding already clears the sticky navigation; the extra
+  // 140 px keeps the category cards' foot above the heading, and the first
+  // pair, down to They're different books, still fits below it.
   await page.locator('#issue-heading').evaluate((el) => el.scrollIntoView({block: 'start'}));
-  await page.mouse.wheel(0, -24);
+  await page.mouse.wheel(0, -140);
   await sleep(1200);
   await shoot(page, 'admin/health-duplicates.png');
 });
