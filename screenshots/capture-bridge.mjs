@@ -285,32 +285,43 @@ async function audibleShots() {
     }
     await step('audible: console titles', async () => {
       const want = wanted(AUDIBLE_SHOTS.titles);
-      if (want) {
-        // The destination is saved before the discs are joined, as the refusal needs.
-        await server(admin, 'PATCH', titlePath(AUDIBLE_REFUSED), {dest_path: `${AUDIBLE_TAPES}/CD3`});
-        for (const disc of ['CD1', 'CD2']) {
-          const dir = path.join(AUDIBLE_DIR, AUDIBLE_TAPES, disc);
-          await mkdir(dir, {recursive: true});
-          if (!silence(path.join(dir, 'Track.mp3'), 5)) throw new Error('could not seed Family Tapes');
+      try {
+        if (want) {
+          // The destination is saved before the discs are joined, as the refusal needs.
+          await server(admin, 'PATCH', titlePath(AUDIBLE_REFUSED), {dest_path: `${AUDIBLE_TAPES}/CD3`});
+          for (const disc of ['CD1', 'CD2']) {
+            const dir = path.join(AUDIBLE_DIR, AUDIBLE_TAPES, disc);
+            await mkdir(dir, {recursive: true});
+            if (!silence(path.join(dir, 'Track.mp3'), 5)) throw new Error('could not seed Family Tapes');
+          }
+          await server(admin, 'PUT', `/admin/libraries/${audible.library.id}/folder-override${pathQuery(AUDIBLE_TAPES)}`, {mode: 'book'});
+          await waitForScans(server, admin);
+          await untilKind('POST', `${titlePath(AUDIBLE_REFUSED)}/backup`);
+          await untilBackup(AUDIBLE_REFUSED, (t) => {
+            if (t.match) throw new Error('the backup meant to be refused matched its title');
+            return t.fold_refusal_reason === 'not_own_book';
+          });
         }
-        await server(admin, 'PUT', `/admin/libraries/${audible.library.id}/folder-override${pathQuery(AUDIBLE_TAPES)}`, {mode: 'book'});
-        await waitForScans(server, admin);
-        await untilKind('POST', `${titlePath(AUDIBLE_REFUSED)}/backup`);
-        await untilBackup(AUDIBLE_REFUSED, (t) => {
-          if (t.match) throw new Error('the backup meant to be refused matched its title');
-          return t.fold_refusal_reason === 'not_own_book';
-        });
+        await consolePage.goto(`${ORIGIN}/admin/server?topic=audible`, {waitUntil: 'networkidle', timeout: 45000});
+        await consolePage.getByRole('list', {name: 'Audible titles'}).waitFor({timeout: 15000});
+        if (want) {
+          await consolePage.getByText(/Your destination is no longer valid/).first().waitFor();
+          const echo = consolePage.getByRole('listitem').filter({hasText: 'Echo of the Drowned Choir'});
+          const reason = "The server couldn't confirm that the book at the backup destination belongs to this title.";
+          await echo.getByText(reason, {exact: true}).waitFor({timeout: 15000});
+          if (await echo.getByText('Backed up', {exact: true}).isVisible()) throw new Error('the refused backup shows as backed up');
+        }
+        await tallShoot(consolePage, AUDIBLE_SHOTS.titles, {settle: 1000, max: 2600, fitSettle: 800});
+      } finally {
+        if (want) {
+          // Back up everything skips a done backup whose book is still indexed, so Echo
+          // would drop out of the batch shot later in this run (16 queued, as the
+          // confirmation before it shows). Its book leaves the library again here.
+          await rm(path.join(AUDIBLE_DIR, AUDIBLE_TAPES), {recursive: true, force: true});
+          await server(admin, 'POST', `/admin/libraries/${audible.library.id}/scan`);
+          await waitForScans(server, admin);
+        }
       }
-      await consolePage.goto(`${ORIGIN}/admin/server?topic=audible`, {waitUntil: 'networkidle', timeout: 45000});
-      await consolePage.getByRole('list', {name: 'Audible titles'}).waitFor({timeout: 15000});
-      if (want) {
-        await consolePage.getByText(/Your destination is no longer valid/).first().waitFor();
-        const echo = consolePage.getByRole('listitem').filter({hasText: 'Echo of the Drowned Choir'});
-        const reason = "The server couldn't confirm that the book at the backup destination belongs to this title.";
-        await echo.getByText(reason, {exact: true}).waitFor({timeout: 15000});
-        if (await echo.getByText('Backed up', {exact: true}).isVisible()) throw new Error('the refused backup shows as backed up');
-      }
-      await tallShoot(consolePage, AUDIBLE_SHOTS.titles, {settle: 1000, max: 2600, fitSettle: 800});
     });
     await step('audible: destination', async () => {
       if (!wanted(AUDIBLE_SHOTS.destination)) return;
