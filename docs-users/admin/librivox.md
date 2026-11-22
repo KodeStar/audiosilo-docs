@@ -13,18 +13,13 @@ You need:
 - an admin account;
 - community metadata turned on, in **Server > Settings > Community metadata**;
 - a paired Bridge, updated together with your server;
-- the library shown as **Ready** in [Server > Settings > Bridge](bridge.md#libraries).
+- the library shown as **Ready** in [Server > Settings > Bridge](bridge.md#libraries)
+  (an empty library can be **Ready** too).
 
 The search reads the community metadata database, so your server never asks
 LibriVox itself. The Bridge reads the recording's list of sections from the
 community metadata database too, and downloads the audio from archive.org, where
 LibriVox keeps its recordings.
-
-:::note[A new books library]
-The Bridge checks a books library against a book the server has indexed. A
-library with no books yet can't be **Ready**, so add one book to it first (see
-[Libraries](bridge.md#libraries)).
-:::
 
 ## Add a book in the console
 

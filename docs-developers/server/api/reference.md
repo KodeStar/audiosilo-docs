@@ -11926,8 +11926,9 @@ A field left out keeps its value. A `claimed` or `running` job's lease is renewe
 
 ### `GET /api/v1/bridge/libraries/{id}/marker`
 
-*Bridge token.* Reads the mapping marker for an empty or populated podcast
-library (the route accepts either kind). Response `200 {"nonce":"<32 lowercase hex>"}`
+*Bridge token.* The Bridge uses this route to confirm the mapping marker for
+a books library with no sample book, or for any podcast library.
+Response `200 {"nonce":"<32 lowercase hex>"}`
 requires `<root>/.audiosilo/library.json` to be a regular file no larger than
 4 KiB, with version `1`, matching `library_id`, and a valid nonce; the marker
 folder cannot be a symlink. The server reads only and never creates it.

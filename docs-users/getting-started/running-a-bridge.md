@@ -206,9 +206,9 @@ If you mounted a library somewhere else, tell the Bridge where it is on the
 
 When a folder takes too long to answer, **Last check** tells you when the Bridge tried and whether writes are waiting.
 
-For a **podcast** library, mount its own folder the same way. An empty podcast
-library can be ready too, because the Bridge writes a small hidden marker there.
-Leave it in place.
+An empty library, books or podcasts, can be **Ready** too: the Bridge writes a
+small hidden marker there ([how](../admin/bridge.md#libraries)). Leave it in
+place.
 
 ## 6. Speech recognition
 

@@ -87,6 +87,10 @@ one stays.
 **Map** (page `PUT /api/accounts/audible/{id}`) records the new mapping on the
 server first, then locally. The page checks that the library is a books library
 the heartbeat listed and that the person is one `GET /bridge/users` lists.
+`putMapping` stores the policy the server returns on sign-in or a mapping save.
+If the server omits it, the Bridge keeps its local value. The Accounts card
+labels this value **Last known to the Bridge**. A console edit reaches the card
+on the next mapping save.
 
 **Remove** (page `DELETE /api/accounts/audible/{id}`, answering `{audible,
 warning}`) runs to the end even if the page goes away. In order, it:
@@ -156,10 +160,10 @@ How the Bridge keeps track of the profile and handles a denial:
   limit, stays `ErrDenied`. `Manager.signed` retries a throttled license once when
   a newer sign-in replaced the device meanwhile. Otherwise it marks the account
   refused with `audibleacct.ThrottledText` and answers the denial.
-- The import then fails `audible_refused` with the advice to sign in again (never
-  `no_rights`). Every later import of the account fails `audible_refused` at once,
-  before the title read or a license, until a sign-in again. Any refused account's
-  imports fail this way, after a second read of the account. A sign-in refusal
+- The import then fails `audible_refused` with the advice to sign in again.
+  Later imports that still need Audible fail before the title read or license
+  if a second account read confirms the refusal. An import with a valid staged
+  book can finish without contacting Audible. A sign-in refusal
   gets Audible's sign-in advice until a sign-in again or a poll that succeeds
   clears it.
 - A sign-in again of the same Amazon account replaces the device and deregisters
@@ -584,8 +588,10 @@ from the library. Every preorder ordered later is remembered.
 A first poll can backfill hundreds of ASINs, one PUT each. The server's
 [address limiter](../server/auth-and-security.md#rate-limiting) is shared with the
 house's players, and it answers a quick run `429`. The server is unchanged. The
-Bridge paces the PUTs instead (`audiblejob.enrich`), at most one per 200 ms
-(`enrichGap`).
+Bridge paces the PUTs (`audiblejob.enrich`), at most one per 200 ms
+(`enrichGap`). When there are ASINs to add, the poll releases its `light` slot
+before waiting for the single backfill allowed to run. That wait counts toward
+the poll's ten-minute enrichment budget.
 
 On a `429` the Bridge waits, then retries the same book and doubles the gap, up to
 2 s. It waits the `Retry-After` as the link reads it
@@ -689,7 +695,7 @@ park's code, else the result's `code`, else an error that starts with a known co
 |---|---|
 | `not_released` | The title is a preorder: a remembered pending one, or a library title with a release date ahead. Or Audible's license denial says it isn't out (`audible.ErrNotReleased`) |
 | `no_rights` | The title is neither in the account's library (`ErrNotInLibrary`) nor a remembered pending preorder. Or Audible won't let it be downloaded (`UnavailableReason`: no rights, a show or a periodical). Or the license is denied for rights (`ErrNoRights`) |
-| `audible_refused` | Audible refused the account's sign-in (`audibleacct.ErrRefused`, and the account is marked refused), or refused the license for another reason (`ErrDenied`). Or Audible denied the device as throttled (`ErrThrottled`, a device on an older [profile](#the-device-profile)). Then the message is `ThrottledText`'s advice to sign in again on the Bridge, the account is marked refused, and its later imports fail at once until a sign-in again |
+| `audible_refused` | Audible refused the sign-in (`audibleacct.ErrRefused`) or license (`ErrDenied`). A throttled device (`ErrThrottled`, see [The device profile](#the-device-profile)) marks the account refused. Imports that need a new download then fail with advice to sign in again. |
 | `not_writable` | The library isn't the account's, isn't a books library the server lists, or isn't mapped **and** writable at the mount in use. Or the destination or template gives no valid path: `transfer.CleanRel`'s refusals (a hidden segment included), or an audio extension other than `.m4b`, `.m4a`, `.mp4`. Or the path is one the Bridge can't follow: a file where a folder goes, a link out of the mapping, an unreadable folder. Or the install hit a read-only filesystem or a permission refusal |
 | `exists` | Something is at the destination (a different file, a folder, a link). Or the destination is inside a book the library already has: its folder is a listed book's, or already holds audio. The Bridge checks this **before** the license, and again at the install |
 | `disk_full` | Before writing a byte, the Bridge found free space short in its temp folder (2.2x the size, less what the partial holds) or at the library's nearest existing folder (1.1x, `transfer.DefaultHeadroom`). Or the download, the decrypt (ffmpeg's words too) or the copy hit ENOSPC/EDQUOT. A free space that can't be read is no refusal |
@@ -704,12 +710,13 @@ A download over `DownloadOptions.MaxBytes` (`audible.DefaultMaxDownloadBytes`,
 **Not writable while running.** The job waits for a mapping check the mount hasn't
 had yet (`mappingPoll`, 1 s), with no park. When the mapping isn't writable:
 
-- a **new** job is refused at once;
-- a **resumed** job parks `not_writable` (`Reporter.Park`, `progress.park.code`);
-- any job at the `place` step parks `not_writable` too. The Bridge checks the
-  mapping again before the copy, since it may have changed during the download.
+- A new job without a staged book fails before downloading.
+- A resumed job, a new job with a valid stage, or a job about to place its
+  book parks with `not_writable`.
 
-A parked job runs on once the mapping is writable again, and keeps its download.
+A parked job releases its download slot. It reclaims a slot and rechecks the
+mapping before proceeding. A job waiting for the same account releases its own
+slot only while the account holder has none (`Reporter.HoldsSlot`).
 
 ### The steps on the Bridge
 
@@ -717,23 +724,30 @@ A parked job runs on once the mapping is writable again, and keeps its download.
 
 1. **Gate and checks.** It takes the account's gate. It checks the account (this
    Bridge's, mapped on the paired server) and the library (the account's, mapped
-   and writable).
+   and writable). An empty books library can qualify through the
+   [library marker check](mappings.md#podcast-libraries-the-marker).
 2. **The title.** `Manager.Title` reads `GET /1.0/library/{asin}`, signed. On
    `ErrNotInLibrary` it takes a [remembered preorder](#preorders)'s record
    instead. A preorder fails `not_released`, and an unavailable reason fails
    `no_rights`.
 3. **The destination** (`audiblejob.Destination`). **All of this happens before
    the license and the download.**
-   - `dest_path` comes first, and the template isn't consulted.
+   - An explicit `dest_path` takes precedence over the template and Auto.
    - Else the template (`placement.ModeTemplate`).
    - Else Auto: `importjob.Plan` over the paged books listing. It follows the
      series siblings' folder and code convention, else an existing author folder's
      spelling, else `Author/Title`. An empty author folder is dropped.
 
-   Then `transfer.OnDisk` spells the path as the disk spells the folders that
-   exist. That is the path the server indexes on a case-insensitive disk. Last,
-   `vacant` refuses an occupied destination (`exists`). It also checks each folder
-   of the path under its former name, the one the Bridge gave before
+   Without an explicit path, `booksFor` can reuse a listing for up to 15 minutes
+   on the same server, pairing and library. After a rescan, the next planning
+   pass refreshes the affected book from its listing page.
+
+   `transfer.OnDisk` uses the spelling of existing folders on disk. With a
+   reused listing or an explicit path, `booksAt` checks the destination and its
+   possible book folders by path on the server. If any path names a book, it
+   reads the full current listing for the matching and conflict checks.
+   Finally, `vacant` refuses an occupied destination (`exists`). It also checks
+   each folder of the path under its former name, the one the Bridge gave before
    `placement.Sanitize` dropped SMB-unsafe characters (`formerDirs`, `formerName`).
    So a title backed up as `Who Moved My Cheese?` is `exists`, and the Bridge
    doesn't download it again into `Who Moved My Cheese`. The file's own name is
@@ -742,9 +756,10 @@ A parked job runs on once the mapping is writable again, and keeps its download.
 4. **License** (`Client.License`): the AAXC URL, key, IV and size.
 5. **Download** to `<data>/audible/tmp/<account>-<asin>.aaxc.part`
    ([Resume and temp files](#resume-and-temp-files)).
-6. **Decrypt** (`audible.Decrypt`: `ffmpeg -audible_key <key> -audible_iv <iv> -c copy
-   -f ipod`) to `<account>-<asin>.m4b` in the same folder. Then the partial is
-   deleted, to make room for the copy.
+6. **Decrypt.** ffmpeg writes to `<account>-<asin>.ready.m4b.partial` with
+   `-c copy -f ipod`. Once ffmpeg succeeds, the importer syncs the audio, saves
+   its metadata and renames the file to `.ready.m4b`. It then removes the
+   encrypted download and its state.
 7. **Place** (`transfer.Local.Place`,
    [The hardened transfer](#the-hardened-transfer-internaltransfer)), after the
    mapping check again.
@@ -763,7 +778,8 @@ title:
 | File | What |
 |---|---|
 | `<account>-<asin>.aaxc.part` | the partial download, and its state file `.aaxc.part.state` (`audible.StatePath`: `{size, etag, last_modified}`, written before the body) |
-| `<account>-<asin>.m4b` | the decrypted copy, always removed when the run ends |
+| `<account>-<asin>.ready.m4b.partial` | ffmpeg writes here during decryption. An interrupted decrypt cannot be used for placement. |
+| `<account>-<asin>.ready.m4b` and its `.json` | the completed decrypt, and its record of the server, pairing, title, planned placement, file size and modification time |
 | `<account>-<asin>.placed.json` | the placement marker, written after the install (below) |
 
 **`audible.Download`** resumes a partial only when its state file agrees with
@@ -776,6 +792,7 @@ size. The `Range` request carries `If-Range` (a strong ETag, else
 | `200` | replaces the partial |
 | `206` at another offset or for another total | starts again |
 | `416` for another file | starts again |
+| `416` without `Content-Range` | accepts the partial as complete only if its byte count matches a known length |
 | `200` without a length | is held to `ExpectedSize` |
 | a short body | fails with `io.ErrUnexpectedEOF` |
 
@@ -794,23 +811,50 @@ and then finishes. A `401`/`403`/`410` means the URL expired over a long wait or
 restart. The importer licenses once more, and a second one fails
 `offline_url_expired`.
 
-**Who keeps the partial**, from the gate on:
+**Partial download.** A shutdown, interrupted claim after a token refusal, or
+lost lease keeps the encrypted partial and its state. Cancellation or a failed
+attempt removes them.
 
-- a **stop** (`jobs.Resumes`: the Bridge shutting down, a refused token) keeps the
-  partial and its state for the next run;
-- a **lost claim** (`jobs.Lost`: the lease lapsed and the server hands the job out
-  again) keeps them too;
-- a **cancel** or a **failure** deletes them (`audible.RemovePartial`);
-- `Importer.Abandon` deletes them for a job the runner ends without running it,
-  unless its claim was lost;
-- the decrypted copy always goes.
+**Completed decrypt.** A shutdown, a token refusal or a lost lease keeps the
+ready file and its metadata. So does every failure except the three below,
+such as `exists`, `not_writable`, a network error, a rate limit or a 404 for
+the job at the lease check (a proxy answers one while the server restarts). On
+the next claim for that account and title, `readStaged` checks the record
+against the file, the server and the pairing (the size and modification time
+exactly). A valid stage skips the Audible title lookup, license, download and
+decrypt, and plans the destination again.
 
-**The start-up sweep** (`audiblejob.SweepTmp`, from `app.newAudible`) keeps only
-`*.aaxc.part` files younger than `PartialMaxAge` (7 days) with their state, and
-placement markers as young. Everything else in the folder goes.
+Only cancellation, a dropped pairing, a success, or `unknown_account`,
+`unknown_title` or `no_rights` (`bookRefused`) removes the stage. A failed
+title nobody backs up again keeps its stage until the start-up sweep below. For
+a job that ends before running, `Importer.Abandon` removes the files unless the
+claim was lost or another import holds the account's gate.
+
+**Startup cleanup.** In the private temp folder, `audiblejob.SweepTmp` keeps
+partial downloads with their state, completed decrypts with their metadata, and
+placement markers while the corresponding files are younger than seven days.
+Everything else in the folder goes, whatever its age: incomplete decrypts, a
+state or metadata file without its audio, and an older Bridge's
+`<account>-<asin>.m4b`. Before expiring old records, it collects the recorded
+destination folders.
+
+Once per start, after a books mount passes its writable mapping check,
+`transfer.SweepStaged` looks for library-side placement files. If startup
+records name folders in that library, only files directly in those folders
+qualify. With no recorded folder,
+the Bridge walks the library only if a local Audible account maps to it on this
+server.
+
+Only regular files named `.audiosilo-import-<16 lowercase hex>.part`, modified at
+least seven days ago, qualify. The sweep skips hidden directories, symlinks and
+files an active placement holds. It rechecks the writable mapping before each
+removal.
 
 **The placement marker.** After the install the Bridge writes
-`<account>-<asin>.placed.json`. It holds `library_id`, the request's `dest_path`
+`<account>-<asin>.placed.json` before removing the private decrypt. If it stops
+between install and marker creation, the next run of the same request uses
+`transfer.Matches` to check the bytes at the planned path. On a match it records
+the install and resumes at the rescan. The marker holds `library_id`, the request's `dest_path`
 and `template`, the placed `path`, `size`, `mtime_ns` and the join verdicts. The
 marker counts while the library holds exactly that file: its size, and its
 modification time within `markerSlack` (2 s). Then:
@@ -826,26 +870,30 @@ now keeps the marker and fails, to try again. The result removes the marker.
 
 ### The hardened transfer (`internal/transfer`)
 
-`transfer.Local.Place` is the only writer into a library. It is hardened in three
-ways.
+`transfer.Local.Place` installs the finished audio in the mapped library.
 
 - **Contained.** It opens the mapping's root first as an `os.Root`. A missing root,
   or a root that is a file, fails before the source is read. Every call goes
   through the root, so a symlink can't lead out. `transfer.CleanRel` applies
   `mapping.SafeJoin`'s rules. It also refuses an empty path and any hidden (dot)
   segment, which the server never indexes (`ErrInvalidPath`).
-- **No replace.** The same bytes already at the destination are `AlreadyPresent`
-  (an earlier run's copy). Anything else there (a different file, a folder, a link)
-  is `ErrExists`. The copy is staged as a `.audiosilo-import-*.part` dotfile beside
-  the destination (`0644`, synced, size-checked). `fsutil.InstallNoReplace` then
-  installs it with an exclusive hard link, else `RenameNoReplace`. That is
-  `renameat2(RENAME_NOREPLACE)` on Linux and a check-then-rename elsewhere; it is
-  the podcast episode install's primitive, moved into `fsutil`. A file that raced
-  in is kept: `ErrExists`, or `AlreadyPresent` when it is these bytes. A failure or
-  cancel leaves no staged copy.
-- **Free space.** It needs 1.1x the file (`DefaultHeadroom`) free at the nearest
-  existing folder, else `ErrDiskFull`. A free space that can't be read is no
-  refusal. ENOSPC/EDQUOT during the copy is `ErrDiskFull` too.
+- **Stage beside the destination.** On Linux and macOS, `LinkSource` tries a
+  hard link from the synced decrypt to a temporary name in the destination
+  folder. This saves a second write of the audio. The source group must match
+  the group a copy would receive, which is the folder's group on macOS and in
+  Linux setgid folders. A group mismatch or a Linux default ACL makes the Bridge
+  copy the audio so the destination's permissions apply.
+- **Copy fallback.** Other platforms, a cross-device link, or an unsupported
+  or disallowed link use a copy. The Bridge checks for 1.1 times the file size
+  in free space (`DefaultHeadroom`), then syncs and size-checks the copy.
+  Running out of space or quota gives `ErrDiskFull`.
+- **Publish.** The importer calls `Reporter.ConfirmLease` immediately before
+  `fsutil.InstallNoReplace` publishes the staged file with an exclusive hard
+  link or a no-replace rename. A failed lease check leaves the destination
+  untouched. If a file already occupies the path, matching
+  bytes give `AlreadyPresent` and a conflict gives `ErrExists`. After a fresh
+  install the Bridge attempts to fsync the destination folder before removing
+  the private stage. This flush is best effort and is skipped on Windows.
 
 **Why joining an existing book is `exists`.** A backup is a book of its own. The
 server's scan would make a file part of an existing book when it is placed in a

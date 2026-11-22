@@ -183,7 +183,8 @@ A few rules hold across the seam:
 - **One Bridge per server.** Pairing another revokes the first.
 - **Library mappings are checked, never assumed.** Before anything may write to a
   library, the Bridge proves it sees the server's copy of it (a known book's file
-  sizes, or a podcast root marker). See [Library mappings](mappings.md).
+  sizes, or a root marker for an empty books library or a podcast library). See
+  [Library mappings](mappings.md).
 - **Path is the identity**, as everywhere. A job is about `(library_id, rel_path)`,
   follows its book when it moves, and goes with its library.
 - **Hidden folders stay hidden.** No server route reaches content through a

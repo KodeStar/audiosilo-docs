@@ -216,10 +216,12 @@ Audible accounts ([Audible](audible.md)) have **no settings**.
 - An account's backup policy, placement template and position sync are set in the
   console.
 
-Backups download into `<data>/audible/tmp/` (`0700`). So the data folder needs
-room for about 2.2 times the largest book being backed up. A partial download there
-is kept across a restart for up to 7 days (see
-[Resume and temp files](audible.md#resume-and-temp-files)).
+Allow about 2.2 times the largest book's size in the Bridge's data folder.
+The Bridge uses `<data>/audible/tmp/` (`0700`) for the download and decrypted
+audio. A backup that fails keeps its decrypted copy there for the next try. At
+startup the Bridge removes downloads and decrypted copies at least seven days
+old, and unfinished decrypts at once. See
+[Resume and temp files](audible.md#resume-and-temp-files).
 
 Backups decrypt with the same ffmpeg the Bridge's other jobs use: the one its
 engine resolved at start, else `tools.ffmpeg_path`

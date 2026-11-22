@@ -1435,10 +1435,10 @@ See [Pairing and jobs](../bridge/pairing-and-jobs.md).
 
 ### Library mappings are checked
 
-The Bridge never assumes a mapping. Before it calls a books library mapped, it
-compares a known indexed book's file sizes through its mount with the server's. Then
-it probes writing. A podcast library instead uses a shared root marker that the
-Bridge reads back through the server, even when the library is empty.
+The Bridge compares an indexed book's file sizes through its mount with the
+sizes the server sees. For a books library without a sample, or any podcast
+library, the Bridge writes or reuses a root marker and asks the server to
+confirm its nonce. It then probes writability.
 
 The Bridge checks after pairing, when the server's libraries change, every
 `mapping.check_minutes` (default 10), and on demand. Each heartbeat carries the last
