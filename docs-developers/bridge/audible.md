@@ -267,17 +267,22 @@ progress or anything sent to the server carries an account id.
 - **promoting**: a request that finds the account's poll open raises its
   priority, never lowers it.
 
-Enqueue keeps only the newest ended poll of each account (`pruneAudiblePolls`).
+Queueing a poll keeps the account's newest ended poll (`pruneAudibleEnded`,
+[Job history](pairing-and-jobs.md#job-history)).
 Removing an account cancels its open poll (`CancelAudibleRemoved`), and so does
 deleting the library it is mapped to (`CancelAudiblePaused`). Both are
 `IsCancelReason`'s, and the console keeps a copy (`SERVER_CANCEL_REASONS`).
 
-**The scheduler** (`internal/audible.RunScheduler`, the module's `Start`) passes
-at once, then every minute while the module is on. With an online Bridge that
-offers the kind, it queues up to 20 due accounts at priority `-10` and records
-`last_queued_at`, so a failed poll waits its interval. `catalog.DueAudiblePolls`
-picks accounts that are not paused, are mapped to a person an account may still be
-mapped to, and have a `last_queued_at` older than `poll_hours` (6 by default).
+**The scheduler** (`internal/audible.RunScheduler`) runs when the module starts
+and every minute while it is on. Each pass first cancels the open polls, syncs
+and backups whose account is gone (`catalog.CancelOrphanAudibleJobs`), Bridge
+online or not, which recovers the jobs an interrupted
+[person delete](#on-the-server-0063-catalogaudiblego) left open. With an online
+Bridge that offers the poll kind, it then queues up to 20 due accounts at
+priority `-10` and records `last_queued_at`, so a failed poll waits its
+interval. `catalog.DueAudiblePolls` picks accounts that are not paused, are
+mapped to a person an account may still be mapped to, and have a
+`last_queued_at` older than `poll_hours` (6 by default).
 
 The console's Check now (`POST /admin/audible/accounts/{account}/poll`) queues at a
 person's priority (`0`), or raises the open poll to it. A request that finds the
@@ -922,11 +927,10 @@ server's scan would make a file part of an existing book when it is placed in a
 listed book's folder, or in a folder that already holds audio. The server refuses
 such a done import (`ErrImportNotOwn`, in
 [The done fold](#on-the-server-the-done-fold)). So `vacant` refuses that
-destination before the license (step 3). The server refuses the one join left
-before it queues anything: a `dest_path` whose folder is a disc folder ("CD 3")
-directly inside an indexed book, or inside a folder with a `book` override, is
-`400 invalid_dest_path` (`checkDestOwnFolder`), since the scan would join the disc
-into that book and the fold would refuse it only after the whole download.
+destination before the license (step 3). The server also checks disc folders when
+saving destinations, templates, library mappings and folder overrides. The API
+distinguishes an indexed parent book from a setting that joins its discs.
+See [Audible disc destinations](../server/api/reference.md#audible-disc-destinations).
 
 ### Enrichment after placing
 
@@ -1081,11 +1085,10 @@ request. Where the Bridge finds preorders is in [Preorders](#preorders).
 2. `importOwnBook` checks the book. It must be indexed in a books library, else
    `ErrImportNotIndexed` (`not_indexed`). It must be the **title's own**, else
    `ErrImportNotOwn` (logged; `not_own_book`, or `rejected_match` for the book
-   marked Not this book). The title's own book carries the title's ASIN, or holds
-   **only** the files the backup placed (a single-file book is its file). A file the scan joined
-   into a folder book already there never makes that book (nor another title's)
-   this title's match. Nor does it ever match the book the admin marked Not this
-   book for the title.
+   marked Not this book). Ordinarily a matching ASIN is enough. When the scan
+   joins a backed-up disc into its parent book, even a matching ASIN requires
+   the file check. In that case, or when the ASIN differs, the book must have
+   indexed files and every one must appear in the backup's list of placed files.
 3. If the checks pass, it sets the match (`match_how = 'import'`) and clears
    `rejected`, `import_pending` and any previous refusal. If it refuses the
    result, it records the reason and time on the title and keeps the existing
@@ -1612,9 +1615,13 @@ the preorder clock skip an ignored title. Migration `0066` adds `sync_queued_at`
   the book's places (`moveAudibleTitles`). So the re-match trigger offers the moved
   book's place to Audible, never a stale row an earlier book left at the new path,
   and a carry that fails leaves the titles where they were.
-- Unpairing keeps the rows; deleting a user removes their accounts (the FK). The
-  delete, of a person or of an owner's household member, then cancels the gone
-  accounts' open poll, backups and sync (`catalog.CancelOrphanAudibleJobs`).
+- Unpairing keeps the rows. Deleting a person removes their accounts and those of
+  the household members deleted with them; deleting one household member removes
+  theirs. The delete transaction records those account ids, and after commit
+  `catalog.CancelRemovedAudibleJobs` cancels the open polls, syncs and backups of
+  the ids still absent, a backup queued in an earlier library included. A delete
+  interrupted before that is caught by the
+  [scheduler's sweep](#the-poll-audiblepoll).
 - The Bridge's writes are user-state writes (`store/userstate.go`): titles and the
   poll times don't move the content generation; a mapping change does.
 - Free text is cleaned and bounded, never refused (one odd title never fails a

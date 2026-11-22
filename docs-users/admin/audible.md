@@ -56,9 +56,15 @@ paired, the card still lists the accounts this server keeps, with **Remove...**.
 
 ![The Account settings dialog](/img/screenshots/admin/audible-backup-settings.png)
 
-You change who an account is for, and its library, on the Bridge's Accounts
-tab. You set what it backs up, where, and whether it syncs here, in **Account
-settings...**.
+Use **Account settings...** to choose what the account backs up, where, and
+whether it syncs here. To change the person or library, use **Change** on the
+Bridge's **Accounts** tab.
+
+When you choose a different library, AudioSilo checks the account's template and
+the saved destinations of its titles that aren't on this server, or that you
+marked **Not this book**. If one puts a backup in a
+[disc folder that would join another book](#choosing-a-destination), choose a
+separate folder for it, then change the library again.
 
 An account marked **Paused** lost its library. Choose another library for it on
 the Bridge's Accounts tab.
@@ -197,10 +203,28 @@ Type a path inside the library:
 - **a file**, such as `Author/Series/Title.m4b` (`.m4b`, `.m4a` or `.mp4`), or
 - **a folder**, such as `Author/Series/Book 3`.
 
-Leave it empty for the usual place. The path can't start with a dot or contain
-`..`. It can't be a disc folder, such as `CD 3`, inside a book already on the
-server, because the backup would join that book. A title whose saved destination
-is no longer valid appears in **Needs a look**.
+Leave it empty to use the account's usual place. The path can't start with a
+dot or contain `..`. A title whose saved destination is no longer valid appears
+in **Needs a look**.
+
+A disc folder such as `Author/Book/CD 3`, or a file inside it, is refused when
+the scan would join it into `Author/Book`:
+
+- `Author/Book` is already a book in the library, or
+- `Author/Book` is set to **Always one book** in
+  [folder detection](libraries.md#folder-detection).
+
+Choose a separate folder for the backup instead, such as `Author/New Title`.
+
+Clearing a destination is refused in the same way while the account's template
+names such a disc folder.
+
+A backup that is waiting, running or needs attention keeps the destination it
+was queued with, even if you edit it here. So **Always one book** on
+`Author/Book` is refused until no destination or template points at a disc there
+and that backup has ended. **Cancel** in
+[**Server > Settings > Bridge > Jobs**](bridge.md#jobs) ends a waiting backup at
+once. A running one ends when the Bridge stops it.
 
 ![The Destination dialog for one title](/img/screenshots/admin/audible-destination.png)
 
@@ -262,6 +286,9 @@ number), `{Narrator}`, `{Year}` and `{ASIN}`. A part in `{ ... }` is dropped whe
 variable inside it is empty. A last part ending in `.m4b` names the file; otherwise
 it is a folder. A title's own [destination](#choosing-a-destination) wins over the
 template.
+
+A template that names a disc folder, such as `Author/Book/CD 3/{Title}.m4b`,
+gets the same [disc folder check](#choosing-a-destination).
 
 The Bridge keeps folder and file names safe for a network share (SMB) or a Windows
 disk. It drops `?`, `*`, `<` and `>`, turns `"` into `'` and `|` into `-`. So

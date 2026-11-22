@@ -197,6 +197,10 @@ To fix that, click **⋯ > Folder detection...**, open the folder and choose:
 Your choice is saved at once and the library rescans. It survives rescans and
 even a full index rebuild.
 
+**Always one book** is refused while an Audible backup is set to go into a disc
+folder directly inside this folder (see
+[Choosing a destination](audible.md#choosing-a-destination)).
+
 ### The Folders page
 
 **Library > Folders** makes the same choice with more room. Pick a library and

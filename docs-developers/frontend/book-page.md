@@ -121,13 +121,15 @@ Both ways to play go through the app's one play path, `usePlayBook`
 
 - The primary calls it with `{ toggle: true }`. A loaded book pauses or plays in place
   on every layout; it never restarts.
-- A chapter row, a timeline tap or a step key calls it with `{ at: jump }`. A `Jump` is
-  a `BookPlace`, `{ position?, track? }`, with a track for a file of unknown length.
+- A chapter row calls it with `{ at: jump }`. A `Jump` is a `BookPlace`. For a
+  chapter it carries the corrected whole-book `position` and, when known,
+  `file: { path, pos }` with the library-relative path and the chapter's start in
+  that file. A file row carries `track`. A timeline tap supplies whole-book seconds.
   - On a phone it opens the full player there, unless the player is already on top.
     The route applies the jump once, also to the loaded book.
-  - On a tablet or desktop it jumps the loaded book there (`seekBook`, or
-    `goToTrack`) and plays on, or starts this book there in place
-    (`startBookInPlace`).
+  - On a tablet or desktop it jumps the loaded book there or starts it in place
+    (`startBookInPlace`). Both look the chapter's file up in the queue that plays,
+    as [the player does](playback.md#building-the-queue-book-queuets).
 
 `usePlayBook` rejects when the book can't start. The error is a `PlaybackStartError`
 when the engine couldn't start it (see
@@ -350,16 +352,24 @@ chapters have the same shape either way.
 `useBookAnnotations` (`pinsOf`):
 
 - While the book is loaded, its place follows the player
-  (`timelinePosition(selectBookPosition)`), and a tap or drag `seekBook`s.
+  (`timelinePosition(selectBookPosition)`), and a tap or drag calls `seekBook`.
 - Otherwise it draws the saved place, and a tap jumps through `usePlayBook`.
-- A step key goes to the next chapter start or back to the start of the current one
-  (`nextSegmentStart`, `previousSegmentStart`, the transport's own rules).
+- `scrubTarget` keeps both kinds of tap short of the book's end.
+- A step key on a loaded book uses the player's `stepSegment`
+  ([the transport](player-ui.md#rings-the-transport-and-titles)). Before the book loads, the keys use whole-book
+  seconds from the saved place (`nextSegmentStart` and `previousSegmentStart`).
 
-`scrubTarget` keeps a tap from landing in the last 30 s. The current row is
-`rowAt(rows, position)`; the page passes it in, and every row counts as heard once the
-book is finished. A row is memoised on its few values: its state and the bookmark
-glyph. A bookmark inside the book marks the row `rowAt` puts it in. So a moving place
-redraws only the rows that change.
+`rowAt(rows, position, file)` matches the playing chapter by file path and in-file
+start, so it finds the right row even when a partial queue orders the files
+differently. Before playback, it uses the saved file and seconds when available.
+With only book seconds it follows the player's tie rule
+([Chapter names](playback.md#building-the-queue-book-queuets)).
+
+The timeline uses the current row at the playhead and `rowAt(rows, seconds)` for
+other hover positions. It uses a row as the current timeline segment only when
+every row has a known start. A bookmark marks the row `rowAt` finds for its book
+position. Each row is memoised on its state and bookmark glyph, and all rows
+count as heard once the book is finished.
 
 ### The Details tab
 
