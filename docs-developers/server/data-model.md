@@ -1725,9 +1725,9 @@ in 0071)*:
 Mapping the account to another person turns `sync` off and clears
 `sync_queued_at` and `last_sync_at`.
 
-**`audible_titles`** (0063) gained `import_pending` in 0064, `planned`,
-`contest_library_id` and `contest_path` in 0065, `no_sync` in 0066 and the
-backup refusal fields in 0093.
+**`audible_titles`** *(0063; `import_pending` in 0064; `planned`,
+`contest_library_id` and `contest_path` in 0065; `no_sync` in 0066;
+`fold_refusal_reason` and `fold_refused_at` in 0093)*:
 
 - `account` (FK `ON DELETE CASCADE`) + `asin`.
 - `title`, `authors` and `series` (JSON), `release_date`, `runtime_s`.
@@ -1785,10 +1785,8 @@ What each later migration did:
   `gone` one, and a preorder becoming available offers its book's place to
   Audible again. It adds `refusal_ended_at`.
 - `0093_audible_fold_refusal` adds the refusal columns and a trigger that
-  clears them when the title gains a new accepted match or an admin accepts a
-  previously rejected match. A repeated match or a move of the same book
-  preserves them. Queueing the title's next backup, successfully matching an
-  import, or deleting the library that owns the backup job clears them.
+  clears them on a newly accepted match. Every case that clears or keeps them
+  is under the [admin title fields](api/reference.md#get-apiv1adminaudibletitles).
 
 ### Podcasts
 

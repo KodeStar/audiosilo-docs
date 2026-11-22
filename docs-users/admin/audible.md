@@ -145,13 +145,11 @@ to the Audible title. The message under the title explains why.
 - The server couldn't confirm that the book at the backup destination belongs to this title.
 - The backup went into the book marked “Not this book” for this title, so the server didn't match it.
 
-All four messages clear as soon as the server queues the title's next backup.
-They also clear when the server matches a finished backup or a check finds a new
-match. If you marked the right book by mistake, **Undo Not this book** accepts
-that match and clears the message.
-
-Checking again with the same match or moving the matched book keeps the message.
-Deleting the library where the backup went clears it.
+The message clears when you back the title up again, when a backup or a check
+matches the title to a book, or when you delete the library the backup went
+into. If you marked the right book by mistake, **Undo Not this book** accepts
+that match and clears the message. A check that finds the same match, or moving
+the matched book, keeps it.
 
 ### When a backup fails
 
@@ -332,13 +330,10 @@ titles update once the check finishes.
 
 ## Removing an account
 
-Remove the account on the Bridge's **Accounts** tab. The Bridge forgets the
-sign-in, asks the paired server to remove the account and asks Amazon to remove
-the AudioSilo device.
-
-If the paired server is offline, leave the Bridge paired. It retries the removal
-on its own once the server responds. If the Bridge warns about the Amazon device, remove it
-in Amazon's device list. See [Removing an account on the Bridge](../getting-started/bridge-accounts.md#removing-an-account).
+Remove the account on the Bridge's **Accounts** tab (see
+[Bridge accounts](../getting-started/bridge-accounts.md#removing-an-account)). That
+removes it from the Bridge, this server and your Amazon device list, and says
+what to do if one of them can't be reached.
 
 **Remove...** in the console is for an account the Bridge can no longer remove,
 such as one from a Bridge you replaced. It removes the account from **this server

@@ -1697,7 +1697,7 @@ While the `audible` module is on, an **Audible accounts** card
 (`features/audible/audible-accounts-card.tsx`) sits under Libraries, in the
 paired view only (`Paired` in `bridge-topic.tsx`). With no Bridge paired,
 **Remove** on Server > Settings > Audible is the console's way to clear an
-orphaned account.
+account the Bridge can no longer remove.
 
 The card runs on
 [`GET /admin/audible/accounts`](api/reference.md#get-apiv1adminaudibleaccounts),

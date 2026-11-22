@@ -1,6 +1,6 @@
 ---
 title: Audible
-description: "Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, preorders from the orders and the catalog (remembered, Bridge 0012), the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the current device profile (Bridge 0010), redacted account ids, contests settled by series number and planned destinations; position sync both ways (audible.sync, the push loop, furthest only, the two Bridge routes, server 0066 and 0085, and Bridge 0011)."
+description: "Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, preorders from the orders and the catalog (remembered, Bridge 0012), the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065, and 0093's backup refusals), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the current device profile (Bridge 0010), redacted account ids, owed account removals (Bridge 0022), contests settled by series number and planned destinations; position sync both ways (audible.sync, the push loop, furthest only, the two Bridge routes, server 0066 and 0085, and Bridge 0011)."
 ---
 
 The Bridge does three things with Audible accounts:
@@ -30,7 +30,7 @@ probe and OpenAudible sources were not imported.
 | Where | What |
 |---|---|
 | The Bridge's vault | each account's sign-in, sealed as `audible_<id>` (`secrets.AudibleName`): the access, refresh and adp tokens, the device's RSA key, its serial, the customer id and marketplace (`audible.Credentials.Marshal`). **Full Amazon account access**, so never anywhere else |
-| The Bridge's `bridge.db` | `audible_accounts` (migration `0009`): `id`, `label`, `marketplace`, `customer_hash` (sha256 of the customer id, never the id), `server_id` (the server the mapping was last recorded on), `user_id`/`user_name`, `library_id`, `policy`, `sync` (sent to the server, which ignores it), `created_at`, `last_ok_at`, `last_poll_at`, `last_titles`, `last_matched`, `refused_at`, `last_error`, `device_profile` (migration `0010`, [below](#the-device-profile)), and the push and sync health columns and `refusal_kind` with the `audible_push` table (migration `0011`, [below](#bridge-migration-0011_audible_push)). The remembered pending preorders: `audible_preorders` (migration `0012`, [below](#preorders)). Unique on `(customer_hash, marketplace)` where the hash isn't empty. No credential |
+| The Bridge's `bridge.db` | `audible_accounts` (migration `0009`): `id`, `label`, `marketplace`, `customer_hash` (sha256 of the customer id, never the id), `server_id` (the server the mapping was last recorded on), `user_id`/`user_name`, `library_id`, `policy`, `sync` (sent to the server, which ignores it), `created_at`, `last_ok_at`, `last_poll_at`, `last_titles`, `last_matched`, `refused_at`, `last_error`, `device_profile` (migration `0010`, [below](#the-device-profile)), and the push and sync health columns and `refusal_kind` with the `audible_push` table (migration `0011`, [below](#bridge-migration-0011_audible_push)). The remembered pending preorders: `audible_preorders` (migration `0012`, [below](#preorders)). The owed server removals: `audible_removals` (migration `0022`, under Remove below). Unique on `(customer_hash, marketplace)` where the hash isn't empty. No credential |
 | The server | the mapping and the titles (`0063`, `0064`, `0065`, `0066`, below), the poll and sync schedules, what to back up and when, and whether an account's places sync. It never talks to Audible and never holds a credential or a book's key |
 
 No credential reaches the store, job params or results, logs, the heartbeat or the
@@ -114,7 +114,7 @@ so a late DELETE can only remove the old entry.
 
 | DELETE outcome | What the Bridge does |
 |---|---|
-| Any `2xx` or `404` | Clears the pending removal. The server normally returns `204` even if the account is already gone. |
+| Any `2xx` or `404` | Clears the pending removal. The server answers `204` whether or not it knew the account ([the Bridge DELETE](../server/api/reference.md#delete-apiv1bridgeaudibleaccountsaccount)). |
 | Network failure, `401`, `408`, `429` or `5xx` | Keeps the removal for retry. A refused token still belongs to the same pairing. |
 | Other `4xx`, such as `403` | Logs the refusal and drops the pending removal. The server may still list the account. |
 
@@ -1588,7 +1588,8 @@ The server keeps two tables. The columns are in the
   `last_queued_at`, `template` and `policy_since`.
 - **`audible_titles`**: one row per account and ASIN, with its state and match,
   plus the console's and an import's columns: `rejected`, `ignored`, `dest_path`,
-  `import_job_id` and `import_pending`, which a titles PUT never overwrites.
+  `import_job_id`, `import_pending` and the refusal pair `fold_refusal_reason` and
+  `fold_refused_at` (`0093`), which a titles PUT never overwrites.
 
 `ignored` has no route that sets it yet. Back up everything, the policy pass and
 the preorder clock skip an ignored title. Migration `0066` adds `sync_queued_at`,
