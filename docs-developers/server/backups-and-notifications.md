@@ -295,6 +295,12 @@ Notes on the longer rows:
   is the member's username. `DELETE /me/devices/{id}?also_members=1` also
   records one `device_revoke` per member it signs out, with the owner's device
   id.
+- **`book.bulk_edit`.** A spelling merge that changes books adds one **Edited
+  several books** entry. Its details include the target in `set`, the changed
+  count in `books` and the first 20 source spellings in `merged` (**Merged
+  spellings**), each limited to 120 characters. A merge scoped to one library
+  also records its name in `library`. An Undo that restores books adds one
+  entry with the field in `revert` and the restored count in `books`.
 - **`settings.support`.** An answer to the console's
   [support card](web-ui.md#the-support-card). Details: `choice` (`donated` or
   `snoozed`) and, for a snooze, `returns_at`. It is not recorded when a donation

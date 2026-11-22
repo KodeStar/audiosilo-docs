@@ -385,10 +385,20 @@ book credited to two people counts for each of them.
 
 ### Merging two spellings
 
-When two names look alike, a suggestion appears above the list, for example
-"“Sanderson, Brandon” looks like Brandon Sanderson". Click **Merge authors** (or
-**Merge narrators**) to set one spelling on every book, as an edit. The
-confirmation has an **Undo** button.
+When two names look alike, click **Merge authors** or **Merge narrators** above
+the list to use the suggested spelling. The merge covers the selected library,
+or all book libraries if you haven't picked one.
+
+The whole credit must match. For example, merging “Sanderson, Brandon” into
+“Brandon Sanderson” leaves “Sanderson, Brandon & Janci Patterson” as written.
+AudioSilo saves the edit on every matching book at once. If any edit fails or
+more than 5,000 books would change, it changes none.
+
+Choose **Undo** in the confirmation to put back any earlier edit or community
+value. A credit that came from the book's tags follows its tags again. If
+someone has since changed or reverted that credit, or a scan found the book
+had moved, Undo skips that book and restores the others. The message lists up
+to three skipped paths and counts any others.
 
 ## Series
 
@@ -399,9 +409,10 @@ author** to narrow the list.
 ![Library > Series](/img/screenshots/admin/series.png)
 
 Spellings that differ only in capitals, accents, punctuation or spaces count as
-one series. Other differences ("The Expanse" and "Expanse") make two series.
-Fix those with a [bulk edit](#changing-many-books-at-once), or use
+one series. To use one spelling throughout a library, open
 [Series spelled several ways](health.md#series-spelled-several-ways) in Health.
+Names such as "The Expanse" and "Expanse" count as two series. To give their
+books the same series name, use a [bulk edit](#changing-many-books-at-once).
 
 With community metadata on, a series with a matched book also shows the books
 you don't have, as dashed gaps: "You have 1, 2, 4 of 5; missing 3, 5". A gap

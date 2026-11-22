@@ -106,14 +106,21 @@ delete its files from the library folder and rescan.
 
 ### Series spelled several ways
 
-AudioSilo already shows spellings that differ only in capitals, accents or
-punctuation as one series. But the books still say it differently in the
-players' details. This list fixes that.
+Pick the series spelling you want listeners to see, then click **Use this
+spelling**. AudioSilo offers this choice when books in one library spell their
+main series differently in capitals, accents, punctuation or spacing.
+**Ignore** hides the suggestion for that series.
 
-- **Use this spelling** sets one spelling on every book of the series, as an
-  edit. Pick another spelling from the list beside it if you prefer. The
-  message has an **Undo** button.
-- **Ignore** stops suggesting that series.
+AudioSilo changes every matching main series name at once and keeps each
+book's position in the series. If any edit fails or more than 5,000 books
+would change, it changes none. The merge skips books that list the series
+only as an additional series.
+
+Choose **Undo** in the confirmation to restore any earlier series edit or
+community value. A series name that came from the book's tags follows its tags
+again. Undo skips books whose series name someone has since changed or
+reverted, and books a scan can no longer find at their old path. It restores
+the others and shows up to three skipped paths, with a count of any more.
 
 ### When a library is offline
 

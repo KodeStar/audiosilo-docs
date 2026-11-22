@@ -7261,9 +7261,8 @@ unparseable filter, as for the list.
 
 ### `POST /api/v1/admin/books/bulk`
 
-Applies the same field edit to many books in one transaction: **every book is
-edited or none is**. Merging two spellings of an author is a bulk `set` of
-`author` over their books.
+Applies the same field edit to the books named in the request. The server
+edits every selected book in one transaction or changes none.
 
 Select up to 1,000 books. Each path is at most 4,096 bytes. The edit itself can use up to 1 MiB.
 The whole body can use 5,274,112 bytes. An oversized list, edit or request returns 400
@@ -7336,6 +7335,100 @@ new main series. One book whose old main series can't be listed refuses the whol
 request: `400` `code: "invalid_override"` with `field: "series"`, its `error`
 ending with that book's path in parentheses.
 
+### `POST /api/v1/admin/books/merge`
+
+*Admin only.* Replaces source spellings with a target spelling. In one
+transaction, the server selects the matching books, reads their prior
+overrides for the response and sets the field to the target as an `edited` override.
+If any edit fails, the whole merge rolls back.
+
+| Body field | Meaning |
+|---|---|
+| `field` | Required. One of `author`, `narrator` or `series`. |
+| `sources` | Required. An array of 1 to 1,000 nonblank spellings. Each must exactly match the whole effective credit or main series name to select a book. For `series`, all sources must have the same series key as the target. |
+| `target` | Required. The spelling to keep. The server trims it and requires a nonblank value of at most 500 characters with no control characters. |
+| `library_id` | Optional integer. A positive ID selects one book library. Zero or omission selects all book libraries. |
+
+For example, a source of `Weir, Andy` matches that author credit in full. A
+longer co-credit containing that name keeps its spelling. Books that already
+use the target are excluded.
+
+```json
+{
+  "field": "author",
+  "sources": ["Weir, Andy", "A. Weir"],
+  "target": "Andy Weir",
+  "library_id": 1
+}
+```
+
+The `200` response contains only the books that changed, or `{"books":[]}`
+if none matched. Keep this list for Undo. Each `previous` is the field's prior
+override value, or `null` if it had none. A prior override includes its
+`source` (`edited` or `community`).
+
+```json
+{
+  "books": [
+    { "library_id": 1, "path": "Andy Weir/Artemis", "previous": null },
+    { "library_id": 1, "path": "Andy Weir/The Martian", "previous": "A. Weir", "source": "community" }
+  ]
+}
+```
+
+| Status | When it applies |
+|---|---|
+| `400` | `too_large` if more than 5,000 books would change, more than 1,000 sources are supplied or the body exceeds 1 MiB. The server writes nothing. |
+| `400` | Malformed JSON or an unknown key returns `invalid request`. A field validation failure, including a negative `library_id` or unrelated series names, returns `invalid_override` with the offending `field`. |
+| `401` / `403` | Authentication is required. A signed-in non-admin gets `403`. |
+| `404` | The supplied library ID is unknown. The response is `{"error":"library not found"}`. |
+| `409` | `not_book_library` if the ID belongs to a podcast library. |
+
+### `POST /api/v1/admin/books/merge/undo`
+
+*Admin only.* Send the original `field` and `target` with the `books` array
+from the merge response. Each book's `library_id` and `path` set the scope.
+The server counts a repeated path in the same library once.
+
+```json
+{
+  "field": "author",
+  "target": "Andy Weir",
+  "books": [
+    { "library_id": 1, "path": "Andy Weir/Artemis", "previous": null },
+    { "library_id": 1, "path": "Andy Weir/The Martian", "previous": "A. Weir", "source": "community" }
+  ]
+}
+```
+
+If the current override still equals the target, Undo restores the prior
+value with its original source. For `previous: null`, it removes the override
+so the field follows its underlying metadata again. Undo restores eligible
+books in one transaction. A write failure rolls back every restoration.
+
+The `200` response counts restored books and lists every skip by library,
+path and reason. The list is empty when all books were restored.
+
+```json
+{
+  "restored": 1,
+  "skipped": [
+    { "library_id": 1, "path": "Andy Weir/Artemis", "reason": "changed" }
+  ]
+}
+```
+
+- `changed` means the field's override now differs from the target or someone
+  has removed it. Undo preserves the current value.
+- `not_found` means no book is indexed at that library and path, for example
+  after a scan found that the book had moved. Other eligible books still go back.
+
+Undo returns `400` with `too_large` for more than 5,000 entries in `books`
+or a body over 36,185,536 bytes. Malformed JSON or an unknown key returns `400` with
+`invalid request`. An empty list or invalid field, target or prior override
+returns `400` with `invalid_override`. The same `401` and `403` rules apply
+as for the merge.
+
 ### `GET /api/v1/admin/authors` · `GET /api/v1/admin/narrators`
 
 The distinct authors (or narrators) with their book counts and total duration,
@@ -7379,9 +7472,8 @@ The narrators route uses the key `narrators` instead of `authors`.
   kept, so names in non-Latin scripts get suggestions too and two different
   ones never group by accident. `suggested` is the spelling
   with the most books (ties: the `Given Surname` form over `Surname, Given`, then
-  alphabetical); `books` is the group's total. The
-  server never merges on its own; applying a suggestion is a
-  [bulk edit](#post-apiv1adminbooksbulk).
+  alphabetical). To apply a suggestion, send the other `names` as `sources`
+  and `suggested` as the `target` to the [merge endpoint](#post-apiv1adminbooksmerge).
 
 ### `GET /api/v1/admin/series`
 
@@ -9060,9 +9152,10 @@ library, from the same rule as the `series_spellings` count.
 - A series can be in both views while some of its books are ignored and some not.
   At most 200 entries, ordered by `suggested` (case-insensitive), then library.
 
-The console's fix is a [bulk edit](#post-apiv1adminbooksbulk) setting `series` on
-the books of the other spellings, as an author merge is; ignoring a series is a
-`series_spellings` ignore of every one of its books.
+The console sends the group's `library_id`, the chosen target and the other
+spellings to the [merge endpoint](#post-apiv1adminbooksmerge) with `field`
+set to `series`. Ignoring a series applies a `series_spellings` ignore to
+every one of its books.
 
 ### `POST /api/v1/admin/issues/ignore` · `DELETE /api/v1/admin/issues/ignore`
 
