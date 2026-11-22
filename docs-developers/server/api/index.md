@@ -54,21 +54,26 @@ compressed. For a client that accepts gzip, a 200-book page shrinks from about
 Only `GET` and `HEAD` are ever compressed. On an opted-in route, a request with
 a `Range` or `Upgrade` header stays identity, even with
 `Accept-Encoding: gzip`, and so does one from a client that does not accept
-gzip. A `HEAD` sends no body, but its `Vary` and `Content-Encoding` match the
-equivalent `GET`.
+gzip. On a route that answers `HEAD`, a `HEAD` sends no body, but its `Vary`
+and `Content-Encoding` match the equivalent `GET`. The podcast discovery
+routes answer `HEAD` with `405`.
 
-On an opted-in route, every JSON response to such a `GET` or `HEAD` carries
-`Vary: Accept-Encoding`, compressed or not, so a cache never hands one client's
-encoding to another. The body is gzipped (`gzip.BestSpeed`) when the client
-accepts gzip and it is `application/json` of at least **1 KiB**. A response
-with status `204`, `206` or `304`, or with its own `Content-Range`,
-`Content-Encoding` or `ETag`, goes out as the handler wrote it.
+On an opted-in route, every JSON response to a `GET` or `HEAD` without `Range`
+or `Upgrade` carries `Vary: Accept-Encoding`, compressed or not, so a cache
+never hands one client's encoding to another. The body is gzipped
+(`gzip.BestSpeed`) when the client accepts gzip and it is `application/json` of
+at least **1 KiB**. A response with status `204`, `206` or `304`, or with its
+own `Content-Range`, `Content-Encoding` or `ETag`, goes out as the handler
+wrote it. A refusal written before the handler runs, such as a `401`, a
+`403 kid_account` or a rate limit's `429`, is identity and carries no `Vary`.
 
-Two handlers write their own gzip on the same terms. The
+Two handlers write their own gzip for a client that accepts it on their
+opted-in route. The
 [list answer cache](../overview.md#the-list-answer-cache) sends a gzip copy
-made when the answer was stored, and the
-[read-along map](reference.md#get-apiv1librariesidreadalong) has a separate
-ETag for each representation.
+made when an answer of at least 1 KiB was stored. The
+[read-along map](reference.md#get-apiv1librariesidreadalong) is gzipped
+whenever gzip makes it smaller, at any size, and has a separate ETag for each
+representation.
 
 :::note[Adding a route]
 To opt in a reviewed JSON read, wrap its handler in `compressJSON` at

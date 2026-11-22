@@ -75,9 +75,12 @@ Additions:
 Changes to existing routes:
 
 - [Response compression](index.md#response-compression) is now opted in per
-  route. Every JSON read the player makes stays compressed; a request with an
-  `Upgrade` header is now answered uncompressed. Authentication errors and
-  `/api/v1/healthz` no longer carry `Vary: Accept-Encoding`. A
+  route. Every JSON read that was compressed before still is; a request with an
+  `Upgrade` header is now answered uncompressed. `/api/v1/healthz` and refusals
+  written before a route's handler runs (a `401`, a rate limit's `429`, a kid,
+  demo or module refusal, an unknown route) no longer carry
+  `Vary: Accept-Encoding`, and neither do the JSON errors of podcast discovery
+  artwork and the OPML export. A
   [read-along map](reference.md#get-apiv1librariesidreadalong) requested with
   `Range` is now the whole uncompressed map under its identity ETag, even when
   the client accepts gzip.
