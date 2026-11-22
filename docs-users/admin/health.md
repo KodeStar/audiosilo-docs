@@ -118,23 +118,37 @@ many, with a **Match automatically** button that opens this list.
      cover where there is none, and [tidies cluttered titles](#tidied-titles).
    - **Use community values** also replaces fields that differ. Fields you
      edited yourself are never replaced.
-4. Check each match and what it would write. **Confident** matches are ticked;
-   untick any that are wrong. **To review** lists matches you need to check.
+4. Check each match and what it would write. **Confident** matches start ticked.
+   Untick any that are wrong. **To review** lists matches you need to check.
    Tick the right ones, or click **Match by hand**.
 5. Click **Apply to *N* books**. The server applies them in the background.
 
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
-A match is **confident** when it scores 90% or more and leads the next
-candidate by at least 10 points. Its length must also be within 10% of the
-book's (20% when the book's narrator reads it). Weaker matches, and matches to a dramatization your
-book doesn't seem to be, go to **To review**.
+A confident match scores at least 90% and usually leads the next candidate by
+at least 10 points. Under **To review**, a row marked **Held for review** lists
+the reasons that apply to that book. You may see more than one.
+
+- An ASIN or ISBN from the book's tags or an Audiobookshelf import points to
+  a work whose title or series position conflicts with yours.
+- That identifier names another book, so the run found the proposed match by
+  title instead. Check it even if the score is high.
+- The community has only a dramatization, and your book doesn't say it is one.
+- The recording differs from your book's length by more than 10%, or 20% when
+  your book's narrator reads it. The row shows both lengths.
 
 Whatever a run writes is a **Community** value that you can revert on the
 book's page. A book you match by hand after the run found its match keeps your
-match. The run skips it and says **Matched since this run**. To undo every community match at once, use
-[Clear community matches](server.md#community-metadata). If community
-metadata lookups stop answering, the run stops early but keeps what it found.
+match. The run skips it and says **Matched since this run**.
+
+If you [unlink a book](books.md#unlinking-a-community-match) after the run applied
+its match, the row says **Unlinked since**. The applied count still includes
+that book. To undo every community match at once, use
+[Clear community matches](server.md#community-metadata).
+
+If the server stops after it has checked every book, you can still review and
+apply those results when it restarts. If community metadata lookups stop
+answering, the run stops early but keeps what it found.
 While the community service is only busy, the run waits and carries on.
 
 ### Books with an ASIN the community doesn't know
@@ -222,8 +236,9 @@ your store's ASIN.
 **Fill in matched books** offers the community database's latest details for books that
 are already matched. Use it for books that got an ASIN without their details,
 or to clean up series an earlier match added. It never brings back an ASIN or
-ISBN you left unticked or removed. For a book matched before version 2.7.0,
-accept its match again with a field ticked, or unlink and match it again.
+ISBN you declined from the match or later removed from its community values.
+For an older match, you can accept the same work and recording again with
+every field unticked to record which identifiers it offers.
 
 ## Jobs
 
