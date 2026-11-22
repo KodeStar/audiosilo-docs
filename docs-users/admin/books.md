@@ -38,7 +38,8 @@ book to its entry in the free community database at
 details, such as the description, series, publisher and cover. It also gives
 listeners chapter recaps and the book's community chapters.
 
-1. On the book's page, click **Match with community metadata**. The dialog
+1. On the book's page, click **Match with community metadata**, or **Compare
+   with community** if the book is already matched. The dialog
    searches straight away, using the book's tags, its folder names, its length
    and any ASIN or ISBN.
 2. If the right book isn't listed, type in **Search the community database**,
@@ -53,6 +54,10 @@ listeners chapter recaps and the book's community chapters.
 6. Click **Accept**.
 
 ![Matching a book with community metadata](/img/screenshots/admin/book-match.png)
+
+If the book is already matched to a community book, the dialog opens with that
+match selected and in view. If the search didn't find it, the dialog adds it at the end, marked
+**Current match** instead of a percentage.
 
 Accepted values are marked **Community** and are kept like your own edits. You
 can revert them the same way. Save or discard any unsaved edits on the page
@@ -80,7 +85,8 @@ book is listed under **Not matched to community metadata** in
 ### What matching sends
 
 The server sends search terms to AudioSilo Meta only when you open **Match
-with community metadata** or run [Match automatically](health.md#matching-every-book-at-once):
+with community metadata** (or **Compare with community**) or run
+[Match automatically](health.md#matching-every-book-at-once):
 
 - the book's tagged title, author, series, narrators and language, and its
   length;
@@ -88,7 +94,9 @@ with community metadata** or run [Match automatically](health.md#matching-every-
   [Audiobookshelf import](import.md#match-your-books-after-an-import), and what
   you type;
 - up to three names from its path (the author, series and book folders), never
-  the full path.
+  the full path;
+- the community book it is already matched to, if any, so the dialog can show
+  it.
 
 It sends nothing about your server or who listens. With a
 [local copy](server.md#keeping-a-local-copy), lookups use the copy when it can
@@ -112,13 +120,16 @@ The book's **Community metadata** card shows what it is matched to. It offers
 remove the match:
 
 1. Click **Unlink**, beside **Compare fields**.
-2. Read the warning and click **Unlink** again. There is no undo.
+2. Check whether the confirmation says the book will stay matched, then click
+   **Unlink** again. There is no undo.
 
 ![The Community metadata card of a matched book, with Unlink](/img/screenshots/admin/book-community-match.png)
 
-Unlink removes everything the match wrote, including its cover. Your own edits
-and uploaded covers stay. An ASIN or ISBN from the book's files, or one you
-typed, also stays, so the book still shows as matched.
+Unlink removes the match, its community values and its community cover. Your
+own edits and uploaded covers stay. The book stays **Matched** if it still has
+an ASIN or ISBN you typed, one from its files or one the Bridge added, even one
+the match had replaced. [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
+can then bring its details back. Otherwise the next match run can find it again.
 
 You can't unlink while a
 [match run](health.md#matching-every-book-at-once) is applying matches to that
