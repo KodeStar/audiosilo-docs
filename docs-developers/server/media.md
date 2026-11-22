@@ -698,9 +698,9 @@ ffmpeg -nostdin -loglevel error -protocol_whitelist fd -i fd: \
   partway still exits 0, so the server checks the finished copy instead
   (`renditionCheck`). A copy fails the check when it has no audio track, or when
   it is more than 1 s shorter than the source's exact duration (the in-process
-  probe, `metadata.ExactDuration`, which counts a header-less VBR MP3's frames
-  from 2.7.0). The length check is skipped when the source's length is only an
-  estimate, such as a header-less VBR MP3 the count gave up on. A
+  probe, `metadata.ExactDuration`, which from 2.7.0 counts the frames of a VBR
+  MP3 with no frame count in a header). The length check is skipped when the
+  source's length is only an estimate, such as a VBR MP3 the count gave up on. A
   copy that fails is not cached, and the server remembers it as a refusal for an
   hour.
 

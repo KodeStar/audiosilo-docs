@@ -280,11 +280,12 @@ See [Scanner](scanner.md).
 Metadata extraction:
 
 - Embedded tags, read in-process through `dhowden/tag`.
-- Durations, chapters and codec, when ffprobe is available. For MP3, MP4, FLAC,
-  Ogg and MKA the package reads them in-process by the rules of the configured
-  ffprobe's release (`fastprobe*.go`, the
+- Durations, chapters and codec. For MP3, MP4, FLAC, Ogg and MKA the package
+  reads them in-process by the rules of the configured ffprobe's release, or
+  FFmpeg 8.1's with no ffprobe (`fastprobe*.go`, the
   [in-process probe](scanner.md#the-in-process-probe)). ffprobe itself reads any
-  file the probe is unsure of (`probe.go`).
+  file the probe is unsure of, and every file with a release that has no rules
+  (`probe.go`).
 - The release date (`ReleaseDate`, a date tag as `YYYY[-MM[-DD]]`).
 - `DeriveFromPath`, the structural path heuristic that fills gaps for untagged
   files (`Author/Series/01 - Title.m4b`). A lone folder above the book is its

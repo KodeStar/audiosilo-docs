@@ -32,7 +32,7 @@ Click a card to open its list.
 
 | Card | What it means | How to fix it |
 |---|---|---|
-| **Files that couldn't be read** | A file couldn't be read, is empty, or isn't audio. The row gives the reason in one line; for a file that isn't audio, **Details** shows the full message. | Fix the file or its permissions. **Read again** checks it straight away; otherwise the next scan does. |
+| **Files that couldn't be read** | A file couldn't be read, is empty, or isn't audio. For a file the server couldn't read as audio, **Details** shows the full message. | Fix the file or its permissions. Select **Read again** to check it straight away. Otherwise the next scan checks it, unless the server rejected it as invalid audio (see below). |
 | **Folder may hold several books** | A folder reads as one book but looks like it holds several. | **Choose detection** opens the folder in [Library > Folders](libraries.md#the-folders-page). Then choose **Separate books** or **Always one book**. |
 | **One book split into disc folders** | A book ripped from CDs reads as one book per disc. | **Join into one book**. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
 | **Likely duplicates** | Copies of one book in the same library. | Compare them side by side. See [Duplicates](#duplicates). |
@@ -44,10 +44,18 @@ Click a card to open its list.
 | **More detailed chapters available** | The community database has finer chapters that fit this copy. | **Use detailed chapters**. |
 | **Converted to play in browsers** | The format doesn't play in web browsers, so the server converts it for the web player. The apps play it as it is. | Nothing needed: it works. |
 
+If the server rejects a file as invalid audio, scans skip it until its size
+or modification time changes, or the server restarts.
+
 A slow disk or network share can time out a scan. Its books show **reading it
 timed out** and keep their length and chapters. A single file that took too
 long is listed under **Files that couldn't be read** with **took too long to
 read as audio**, which is not a damaged file. The next scan tries both again.
+With ffprobe, a very large MP3 that can't be measured in time keeps an
+estimated length, and scans don't measure it again until its files change.
+To try sooner, use [**Read the files again**](books.md#a-books-page) on its
+page. Without ffprobe, the book shows **reading it timed out** instead, and the
+next scan tries again.
 A drive or share that stops answering holds up only the libraries on it. The
 other libraries scan as usual.
 
