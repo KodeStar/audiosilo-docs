@@ -826,7 +826,9 @@ await step('health duplicates', async () => {
   const pair = page.getByRole('region', {name: 'The Art of War', exact: true}).first();
   await pair.getByText('Books', {exact: true}).waitFor({timeout: 8000});
   await pair.getByText('Inbox', {exact: true}).waitFor({timeout: 8000});
-  // Keep the heading and first pair together below the sticky navigation.
+  // The page's scroll-padding already clears the sticky navigation; the extra
+  // 140 px keeps the category cards' foot above the heading, and the first
+  // pair, down to They're different books, still fits below it.
   await page.locator('#issue-heading').evaluate((el) => el.scrollIntoView({block: 'start'}));
   await page.mouse.wheel(0, -140);
   await sleep(1200);
