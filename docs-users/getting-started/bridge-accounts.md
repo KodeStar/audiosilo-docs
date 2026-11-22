@@ -148,8 +148,10 @@ On the Audible card, choose **Remove**, then **Remove the account**. The Bridge
 forgets the sign-in immediately. Books already in your library stay.
 
 If the paired server is offline, the card says the Bridge will try again.
-Leave the Bridge paired until it does. If the card says the server may still
-list the account, remove it with **Remove...** in the console (see
+Leave the Bridge paired until it does. If you unpair first, or the server
+still hasn't accepted the removal after about a week, the Bridge stops trying.
+If the card says the server may still list the account, or the console still
+lists it after that, remove it with **Remove...** in the console (see
 [Removing an account](../admin/audible.md#removing-an-account)).
 
 The Bridge also asks Amazon to remove the AudioSilo device. If the card warns
