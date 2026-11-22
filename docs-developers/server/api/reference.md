@@ -7381,7 +7381,7 @@ override value, or `null` if it had none. A prior override includes its
 | Status | When it applies |
 |---|---|
 | `400` | `too_large` if more than 5,000 books would change, more than 1,000 sources are supplied or the body exceeds 1 MiB. The server writes nothing. |
-| `400` | Malformed JSON or an unknown key returns `invalid request`. A field validation failure, including a negative `library_id` or unrelated series names, returns `invalid_override` with the offending `field`. |
+| `400` | Malformed JSON or an unknown key returns `invalid request`. A validation failure returns `invalid_override` with `field`: `field` for an unknown field name, `library_id` for a negative ID, `sources` for an empty list, a blank source or unrelated series names, `target` for a blank target, and the merged field's own name (`author`, `narrator` or `series`) for a target that is too long or holds control characters. |
 | `401` / `403` | anonymous / non-admin |
 | `404` | The supplied library ID is unknown. The response is `{"error":"library not found"}`. |
 | `409` | `not_book_library` if the ID belongs to a podcast library. |
@@ -7429,7 +7429,9 @@ path and reason. The list is empty when all books were restored.
 Undo returns `400` with `too_large` for more than 5,000 entries in `books`
 or a body over 36,185,536 bytes. Malformed JSON or an unknown key returns `400` with
 `invalid request`. An empty list or invalid field, target or prior override
-returns `400` with `invalid_override`.
+returns `400` with `invalid_override`, and the `401` / `403` rule is the
+merge's. An unknown or podcast library is not an error here: its books are
+skipped as `not_found`.
 
 ### `GET /api/v1/admin/authors` · `GET /api/v1/admin/narrators`
 
