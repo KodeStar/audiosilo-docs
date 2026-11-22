@@ -397,8 +397,8 @@ AudioSilo changes every matching book together or none of them, and none if
 more than 5,000 books would change.
 
 Choose **Undo** in the confirmation to put back each book's earlier name, your
-earlier edit or the community value. A name that came from the book's tags
-follows its tags again. Undo skips a book whose name someone has changed or
+earlier edit or the community value. A name that came from the book's files or
+folder follows them again. Undo skips a book whose name someone has changed or
 reverted since, or that a scan found had moved, and restores the others. The
 message lists up to three skipped paths and counts any others.
 

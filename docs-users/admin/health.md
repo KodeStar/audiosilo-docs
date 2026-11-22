@@ -111,9 +111,9 @@ spelling**. AudioSilo offers this choice when books in one library spell their
 main series differently in capitals, accents, punctuation or spacing.
 **Ignore** hides the suggestion for that series.
 
-AudioSilo changes every matching main series name and keeps each book's
-position in the series. Books that list the series only as an additional series
-keep their spelling. The limit, all-or-nothing rule and **Undo** work as for
+AudioSilo changes every matching main series name in that library and keeps
+each book's position in the series. Books that list the series only as an
+additional series keep their spelling. The limit, all-or-nothing rule and **Undo** work as for
 [merging two spellings](books.md#merging-two-spellings) of an author.
 
 ### When a library is offline
