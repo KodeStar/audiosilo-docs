@@ -276,10 +276,28 @@ async function audibleShots() {
       });
     }
     await step('audible: console titles', async () => {
+      if (wanted(AUDIBLE_SHOTS.titles)) {
+        // Save Echo's destination before joining the discs. Its backup then lands in another book.
+        const title = `/admin/audible/titles/${audible.account}/B0FAKE0009`;
+        const tapes = 'Household Recordings/Family Tapes';
+        await server(admin, 'PATCH', title, {dest_path: `${tapes}/CD3`});
+        for (const disc of ['CD1', 'CD2']) {
+          const dir = path.join(AUDIBLE_DIR, tapes, disc);
+          await mkdir(dir, {recursive: true});
+          if (!silence(path.join(dir, 'Track.mp3'), 5)) throw new Error('could not seed Family Tapes');
+        }
+        await server(admin, 'PUT', `/admin/libraries/${audible.library.id}/folder-override${pathQuery(tapes)}`, {mode: 'book'});
+        await waitForScans(server, admin);
+        await untilKind('POST', `${title}/backup`);
+      }
       await consolePage.goto(`${ORIGIN}/admin/server?topic=audible`, {waitUntil: 'networkidle', timeout: 45000});
       await consolePage.getByRole('list', {name: 'Audible titles'}).waitFor({timeout: 15000});
       if (wanted(AUDIBLE_SHOTS.titles)) {
         await consolePage.getByText(/Your destination is no longer valid/).first().waitFor();
+        const echo = consolePage.getByRole('listitem').filter({hasText: 'Echo of the Drowned Choir'});
+        const reason = "The server couldn't confirm that the book at the backup destination belongs to this title.";
+        await echo.getByText(reason, {exact: true}).waitFor({timeout: 240000});
+        if (await echo.getByText('Backed up', {exact: true}).isVisible()) throw new Error('the refused backup shows as backed up');
       }
       await tallShoot(consolePage, AUDIBLE_SHOTS.titles, {settle: 1000, max: 2600, fitSettle: 800});
     });
