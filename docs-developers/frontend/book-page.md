@@ -128,9 +128,8 @@ Both ways to play go through the app's one play path, `usePlayBook`
   - On a phone it opens the full player there, unless the player is already on top.
     The route applies the jump once, also to the loaded book.
   - On a tablet or desktop it jumps the loaded book there or starts it in place
-    (`startBookInPlace`). Both paths resolve a chapter's file against the actual
-    queue. A partly downloaded book can keep files in a different order. If the
-    file is missing, playback uses the whole-book position.
+    (`startBookInPlace`). Both look the chapter's file up in the queue that plays,
+    as [the player does](playback.md#building-the-queue-book-queuets).
 
 `usePlayBook` rejects when the book can't start. The error is a `PlaybackStartError`
 when the engine couldn't start it (see
@@ -354,15 +353,15 @@ chapters have the same shape either way.
   (`timelinePosition(selectBookPosition)`), and a tap or drag calls `seekBook`.
 - Otherwise it draws the saved place, and a tap jumps through `usePlayBook`.
 - `scrubTarget` keeps both kinds of tap short of the book's end.
-- A step key on a loaded book uses the player's `stepSegment`, which can step
-  between files at the same start. Before the book loads, the keys use whole-book
+- A step key on a loaded book uses the player's `stepSegment`
+  ([the transport](player-ui.md#rings-the-transport-and-titles)). Before the book loads, the keys use whole-book
   seconds from the saved place (`nextSegmentStart` and `previousSegmentStart`).
 
 `rowAt(rows, position, file)` matches the playing chapter by file path and in-file
-start, so its row can differ from its index in a partial queue. Before playback,
-it uses the saved file and seconds when available. With only book seconds it picks
-the latest start reached and breaks ties in file order. In one file a chapter
-with length takes precedence over a zero-length marker at the same start.
+start, so it finds the right row even when a partial queue orders the files
+differently. Before playback, it uses the saved file and seconds when available.
+With only book seconds it follows the player's tie rule
+([Chapter names](playback.md#building-the-queue-book-queuets)).
 
 The timeline uses the current row at the playhead and `rowAt(rows, seconds)` for
 other hover positions. It uses a row as the current timeline segment only when

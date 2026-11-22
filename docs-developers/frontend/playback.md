@@ -569,12 +569,11 @@ Other queue math that lives here:
   to the next file's offset. Given only whole-book seconds, `locate` picks the
   first file at the latest offset reached. For a skip, scrub or seek, `seekBook`
   passes the playing file as `prefer`. For a book with file offsets of 0, 60 and
-  60 s, a skip back to 65 s stays in file three while it plays. A skip back to
+  60 s, a skip back to 65 s stays in file three while file three plays. A skip back to
   55 s lands in file one.
 - **Chapter names.** `chapterAt(chapters, bookPosition, playing?)` looks for the
   latest chapter start reached in the playing file. If none qualifies, it checks
-  all files. `indexAtOffset` checks every start because ties can occur on either
-  side of a later start. At equal starts, `tiedMarkerWins` prefers the first file
+  all files. At equal starts, `tiedMarkerWins` prefers the first file
   in play order. Within one file, a chapter with length takes precedence over a
   zero-length marker. Otherwise the first in chapter list order wins. A lone
   zero-length marker still names its chapter.

@@ -281,10 +281,10 @@ What must **not** read as a jump, and why it doesn't:
   state) is skipped. For a short settle window after the first fresh sample, the
   samples only move the baseline.
 - **Retry, reloads and buffering**: only `playing` and `paused` are sampled.
-- **A download swap or Retry** can give the same book a new file order or new
-  offsets. Either change makes old whole-book seconds unreliable. `startJumpUndo`
-  drops the previous sample and clears any visible undo chip. A replacement queue
-  with the same files in the same order and at the same offsets keeps the chip.
+- **A download swap or Retry** that changes the file order or the offsets drops
+  the previous sample and clears any undo chip (`startJumpUndo`), since old
+  whole-book seconds no longer line up. A queue with the same files, order and
+  offsets keeps the chip.
 - **The app coming back after iOS suspended JS**: a heartbeat runs only while the
   app is not active and a book is loaded. A stalled heartbeat marks the return
   `unobserved`. Forward movement up to the allowance is then accepted even from a
@@ -589,7 +589,7 @@ content with its own scroller. Children mount only while the sheet is open.
   `rate.ts` enforces in the store.
 - **Sleep** uses `stopAfterRows` in `sleep-sheet-model.ts` for "Or stop after".
   The playing file identifies the current chapter when starts tie. If that chapter
-  has no known length, the sheet hides the whole list. A later chapter's end time
+  has no known length, the sheet hides the whole list, since a later chapter's end
   could still fall inside the playing file. The End of chapter tile gets its own
   target from `chapterTimerTarget` in `src/playback/sleep-timer.ts`.
 
@@ -651,8 +651,7 @@ The whole-book timeline is `book-timeline.tsx` with the pure
   row supplied by its caller for the hover tip and slider value text. Elsewhere it
   calls `chapterAtSecond`. The player uses `chapterAt` and keeps the playing
   chapter's name when the hovered chapter shares its start. The book page uses
-  `rowAt`. Both lookups prefer the chapter with length over a zero-length marker
-  at the same start in the same file.
+  `rowAt`. Both follow the [tie rule](playback.md#building-the-queue-book-queuets).
 - **Pins.** Bookmark and note pins come from `usePlayingPins`, the playing book's
   case of `useBookAnnotations`. That hook reads ANY book's bookmarks and notes, and
   their `pins`, through its own connection. It never throws when the connection is
@@ -681,8 +680,8 @@ place, or the saved file and seconds when showing saved progress.
   `transport.ts`. When files share a start, `stepInFileOrder` orders chapters by
   file and then by seconds into that file. It seeks by file path and in-file
   start, so Next reaches the next file's chapter even at the same book time.
-  Previous restarts the chapter after three seconds and goes to the preceding
-  chapter within those first three seconds.
+  Previous restarts the chapter, or goes to the one before within its first three
+  seconds.
   With distinct file starts the controls use whole-book seconds. They step by
   file if the queue has no chapters or no usable book duration.
 - **`prettify-title.ts` cleans filename-shaped labels for display.** Audiobook

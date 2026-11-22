@@ -63,7 +63,7 @@ these changes both sides, with tests on both:
 
 | The player | The watch |
 |---|---|
-| `book-queue.ts` and `transport.ts` | `Core/Timeline.swift` resolves file places and `ChapterNav` in `Core/PlayerRules.swift` selects and steps between chapters |
+| `book-queue.ts`, `transport.ts` | `Core/Timeline.swift` (file places); `ChapterNav` in `Core/PlayerRules.swift` (finding and stepping chapters) |
 | `listening-sync.ts`, `listening-outbox.ts` | `Core/SpanRecorder.swift`, `Core/Outbox.swift` |
 | `progress-sync.ts`, `place-reconcile.ts` | `Core/AckAndOffer.swift` |
 | `server-address.ts`, `pairingFallback` | `Core/AddressPicker.swift` |
@@ -99,9 +99,10 @@ seek bar). Away from 1x, one more line gives the wall-clock time left in the pho
 ## Playing and syncing
 
 Now Playing passes the playing file to `ChapterNav.index` to find its chapter.
-When files share a start, `ChapterNav.step` takes Previous and Next in file order
-from the current file and seconds into it. With every file length known, it uses
-whole-book seconds. A chapter tap or a step between tied files gives
+When files share a start, `ChapterNav.step` steps Previous and Next in file order,
+from the playing file and the seconds into it, as the
+[phone's transport](player-ui.md#rings-the-transport-and-titles) does. With every
+file length known, it uses whole-book seconds. A chapter tap or a step between tied files gives
 `WatchAudioEngine.seek` the chapter's file path and in-file start.
 `Timeline.resumePlace` resolves those to a queue index and seconds. For a skip
 or scrub given only book seconds, it prefers the playing file among tied files.
