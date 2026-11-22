@@ -69,10 +69,11 @@ Bridge's [Accounts tab](../getting-started/bridge-accounts.md#the-accounts-state
 
 ## The titles page
 
-![Audible titles showing an invalid destination for A Small Hour in Varrow, an unmatched backup for Echo of the Drowned Choir and a successful backup for The Silver Wood](/img/screenshots/admin/audible-titles.png)
+![Audible titles showing an invalid destination for A Small Hour in Varrow, an unmatched backup for Echo of the Drowned Choir and a successful backup for Orchard Cycle 4: The Silver Wood](/img/screenshots/admin/audible-titles.png)
 
 Choose **Destination...** on *A Small Hour in Varrow* to set a new place for its backup.
-For *Echo of the Drowned Choir*, the server couldn't confirm that the book at the destination belongs to this title.
+For *Echo of the Drowned Choir*, the server couldn't confirm that the book at the destination belongs to this title
+(see [When the server can't match a finished backup](#when-the-server-cant-match-a-finished-backup)).
 
 **Server > Settings > Audible** lists every title your accounts own or have
 preordered. Each row says whether the title is **On this server** (with a link to
