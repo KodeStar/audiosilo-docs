@@ -7067,7 +7067,7 @@ With `issue=no_chapters`, eligible book rows can carry `detect_job` so Health ca
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
 | `added_before` | date | - | exclusive upper bound, same formats |
-| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `unknown_asin`, `series_spellings`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind (for `split_discs`, the disc set) are left out. Any other value is `400 unknown issue` |
+| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `unknown_asin`, `series_spellings`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. An ignored `split_discs` set leaves out its first disc, whichever disc that is. Any other value is `400 unknown issue` |
 | `issue_ignored` | `true`\|`false` | - | with `issue`, list **only** the books an admin ignored for it; without `issue` it is `400 issue_ignored needs an issue` |
 | `sort` | string | `title` | `title` \| `author` \| `surname` \| `series` \| `narrator` \| `published` \| `added` \| `duration` \| `size` |
 | `order` | string | `asc` | `asc` \| `desc` |
@@ -8950,10 +8950,9 @@ only the groups within a library.
 | `cursor` | string | from 2.5.1: the previous page's `next_cursor`, passed back verbatim; a malformed one is `400 invalid cursor` |
 
 Within a library, matches can connect through a third book. A cross-library
-pair needs its two books to match each other directly, on the same
-[signals](../scanner.md#duplicates), and appears once even if it matches in
-several ways. A signal more than 16 books in any one library share makes no
-cross-library pairs (see [Duplicates](../scanner.md#duplicates)).
+pair needs its two books to match each other directly, and appears once even
+if it matches in several ways. [Duplicates](../scanner.md#duplicates) lists
+the signals and the limit on a signal many books share.
 
 ```json
 {
@@ -9006,10 +9005,10 @@ cross-library pairs (see [Duplicates](../scanner.md#duplicates)).
   `key`. The cursor includes all three, so comparisons sharing the same first
   copy can fall on successive pages. If the kept copy changes between requests, a
   comparison can appear on two pages. Clients should deduplicate by `key`.
-- `total` - how many comparisons there are in all, on every page, pairs
-  included (counted after the `ignored` filter, so every ignored one can be
-  reached). `next_cursor` is
-  omitted on the last page.
+- `total` counts every comparison the request selects, cross-library pairs
+  included, and is the same on every page. The server counts after the
+  `ignored` filter, so every ignored comparison can be reached. `next_cursor`
+  is omitted on the last page.
 - With `limit`, a page also stops before a group that would take it past
   **300 copies**, unless the page is still empty. Each copy is a full admin row,
   so without this a few very large groups (identical audio across a big library)
@@ -9092,8 +9091,10 @@ Each request takes up to 1,000 selections with paths of at most 4,096 bytes. An 
   send one member in `books` and the group's returned `key` in `group_key`. A
   group of more than 1,000 copies needs this form. The key still resolves a
   saved decision after a rescan changes the group. If the key matches neither
-  a stored decision nor a current group in that library, `POST` returns `400 duplicate group has changed` and
-  `DELETE` returns `204`.
+  a stored decision nor a current group in that library, `POST` returns
+  `400 duplicate group has changed` and `DELETE` returns `204` without
+  changing anything. A cross-library pair's key never matches, so send a
+  pair's two members in `books` instead.
 
 The following body selects the entire Alice comparison shown above by key.
 

@@ -72,8 +72,9 @@ Move-tracking covers the remaining gap, a file that *moves* on disk. The
 scanner fingerprints files (`books.content_hash`) and calls
 `catalog.MoveDurableState` to carry every path-keyed book table from the
 old path to the new one (see [Scanner](scanner.md#move-detection)). That is
-every table above except `folder_overrides` and a split-disc set's
-`issue_ignores` row, which are keyed by folder, not book. When an admin joins a folder's disc folders into one book,
+every table above except the rows keyed by a folder rather than a book:
+`folder_overrides` and a split disc set's `issue_ignores` row. When an admin
+joins a folder's disc folders into one book,
 `catalog.JoinDurableState` hands the disc books' state to the joined book the
 same way (see [Joined books](scanner.md#joined-books-disc-sets)).
 
@@ -2073,7 +2074,9 @@ Neither table stores `books.id`, so decisions survive index rebuilds. Both recor
   per-book issues, `path` follows the book on a detected move. For a split
   disc set, the stored kind is `split_disc_set` and `path` names the folder
   holding the discs (`books.split_parent`). When the scanner detects a folder
-  rename, `MoveFolderFavourites` moves that ignore to the new folder path.
+  rename, `MoveFolderFavourites` moves that ignore to the new folder path. A
+  duplicate dismissal never writes this table. Its `duplicate` and
+  `duplicate_mapped` rows are flags from before 0092 (below).
 - **`duplicate_decisions`** (0092) has primary key
   `(library_id, other_library_id, paths)`. Within one library the two IDs
   are equal and `paths` is a JSON array of all member paths sorted by path
@@ -2102,8 +2105,9 @@ comparison with old flags records an explicit `ignored = 0`. That keeps the
 fallback from hiding a later group containing the restored comparison.
 
 To downgrade to v2.6.x, restore the pre-upgrade database backup. That
-version reads the old per-book flags and would show mapped duplicate groups
-and migrated split-disc sets as open.
+version reads only the old per-book flags. On the upgraded database it would
+show as open the mapped duplicate groups, the migrated split-disc sets, and
+every comparison or disc set ignored after the upgrade.
 
 #### `book_matches`
 

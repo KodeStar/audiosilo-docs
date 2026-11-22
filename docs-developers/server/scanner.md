@@ -2249,8 +2249,9 @@ moved book's old and new path, then goes on up while the folder names match.
 For example, `Author/Series A/Book` moving to `Author/Series B/Book` pairs
 `Author/Series A` with `Author/Series B`.
 
-`catalog.MoveFolderFavourites` carries the folder's favourites and its
-`split_disc_set` Health ignore to the new path, but only when:
+`catalog.MoveFolderFavourites` carries the folder's favourites to the new path,
+landing once like a book's, and moves its `split_disc_set` Health ignore with
+them. It does so only when:
 
 - every move out of the folder agrees on where it went; and
 - the old folder is gone from disk **by exact name**. `dirPresent` checks each
