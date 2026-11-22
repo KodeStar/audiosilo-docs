@@ -7726,9 +7726,9 @@ book path).
   [match dialog](#get-apiv1adminlibrariesidbookmatch) opens its search box
   with (`meta.SearchPrefill`). Always present (`""` for a book with nothing to
   say). It is the book's title and author, with these exceptions:
-  - When the tags look swapped or junk, or the title is a whole
-    `Author; Series; Book NN` leaf (an untagged book's), the folders' reading of
-    the path (`metadata.FromPathLayout`) replaces them.
+  - Swapped or junk tags use the path reading (`metadata.FromPathLayout`).
+    A title that repeats the book's own structured file or folder name also
+    uses the path reading, whether it came from a tag or an older scan.
   - Swapped means the title is the author folder's name, or the author, cleaned of
     series and numbering, is the path's title. A tag that matches its own path
     fact is never swapped (`Dune/Dune` by Frank Herbert).
@@ -7856,8 +7856,10 @@ stop it or wait for it to finish before unlinking".
 }
 ```
 
-A revert restores the value from what the last scan stored, with no rescan and no
-disk access. Reverting an ASIN/ISBN falls back to any enrichment for it.
+A revert restores the underlying value from the database. When an admin
+reverts a community title, the server saves the restored title as `edited` if
+it passes title validation. Later fills respect it. Reverting that edit
+releases the lock. Reverting an ASIN/ISBN falls back to any enrichment for it.
 
 **Making an other series the main one swaps them.** When an edit sets `series` to a
 series the book's `more_series` lists, in any spelling (case, accents, punctuation

@@ -685,11 +685,14 @@ the list and position the book had.
 The match dialog calls `GET …/book/match`, which matches the book's tag and
 path facts through metaserve's `works/match`.
 
-- **Search box.** It opens with the book page's `match_query`, so the console
-  never works the query out itself. The server builds it with
-  `meta.SearchPrefill`: the title and author, or the folders' reading of the
-  path when the tags look swapped or junk, or when the title is a whole
-  `Author; Series; Book NN` leaf.
+- **Search box.** The book page's `match_query` comes from `meta.SearchPrefill`.
+  It combines the title and author, using the path to correct swapped or junk
+  tags. If a tag or an older scan supplied the whole structured filename or
+  folder name as the title, `leafTitle` checks that it matches the book's own
+  leaf. The box then uses the title part, or the series and position if the
+  title part is empty. For `Bruno Miller; Dark Road; Books 01-05` the box
+  opens with “Dark Road 1-5 Bruno Miller”. The initial match uses the book's
+  tags and path independently of this text.
 - **Starting pick.** The dialog starts from the book's `community_match` when
   the search lists it.
 - **Accepting.** The ticked fields, ASIN and ISBN included, are accepted as one
