@@ -1483,11 +1483,14 @@ pairing and Bridge tokens are refused on all of them.
   connects directly and checks the resolved IP address at every dial, including
   after a redirect. It refuses loopback, private, link-local, carrier-grade NAT
   and other reserved addresses. IPv4-mapped and well-known NAT64 addresses are
-  checked against the IPv4 address they carry.
+  checked against the IPv4 address they carry. It reads at most 64 KiB of an
+  answer's headers (`netguard.MaxHeaderBytes`), so a remote host cannot make a
+  fetch slot hold megabytes before the body cap applies.
 - The artwork fetcher requires HTTP `200`. It checks the declared
   `Content-Length` and enforces the caller's byte limit while reading.
   Community covers allow 16 MiB and 15 seconds per fetch. Discovery artwork
-  allows 2 MiB and five seconds per fetch. Each caller has four fetch slots.
+  allows 2 MiB and five seconds per fetch. Each caller runs at most four
+  fetches at once, across all users.
 - Search never fetches a returned feed. The Bridge's subscribe job remains the
   guard for a feed that resolves to a private address. Search results drop feed
   URLs that look private or name a literal non-public host.
@@ -1997,12 +2000,11 @@ and caps shown below.
   redeem and demo sessions;
 - every `/api/v1/auth/*` route, whether or not it carries a token (sign-in,
   pairing, password, API keys);
-- the Bridge's public pairing exchange, `POST /api/v1/bridge/pair`, and any
-  other `/api/v1/bridge/*` request whose Bridge token is missing, refused or
-  could not be checked. The server charges the address before it returns the
-  token error (`401`, or `503` if the lookup failed). An empty bucket returns
-  `429` first.
-- a request whose token is missing or refused;
+- the Bridge's public pairing exchange, `POST /api/v1/bridge/pair`;
+- a request whose token is missing, refused or could not be checked, a
+  Bridge's on `/api/v1/bridge/*` included. The server charges the address
+  before it returns the token error (`401`, or `503` if the lookup failed), and
+  an empty bucket answers `429` first;
 - a demo account's API and media requests.
 
 Health probes and static files are exempt. The mux recognises the console,

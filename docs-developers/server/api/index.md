@@ -45,28 +45,30 @@ serializes as JSON `null`, not `[]` (e.g. `{"books": null}`). Treat `null` and
 ## Response compression
 
 API routes serve uncompressed responses (identity) by default. Reviewed JSON
-reads opt in to gzip at registration. Examples include the book list, search,
-read-along and the console's settings, logs, audit and JSON library export.
-For a client that accepts gzip, a 200-book page shrinks from about 71 KB to
-about 10 KB. Browsers and the apps' `fetch` decode it automatically.
+reads opt in to gzip at registration. In practice that is every JSON `GET`
+except `/auth/*`, `/bridge/*`, `GET /me/upcoming/calendar` and the health
+check. Media, ebooks, backups, the calendar feed and the OPML export are never
+compressed. For a client that accepts gzip, a 200-book page shrinks from about
+71 KB to about 10 KB. Browsers and the apps' `fetch` decode it automatically.
 
-On an opted-in route, a `GET` with a `Range` or `Upgrade` header stays
-identity, even with `Accept-Encoding: gzip`. A client that does not accept
-gzip also gets the plain bytes. When a route serves `HEAD` through its `GET`
-handler, it sends no body. Its `Vary` and `Content-Encoding` match the
-equivalent `GET`, so an identity route's `HEAD` also stays identity.
-The API only negotiates gzip for these two methods.
+Only `GET` and `HEAD` are ever compressed. On an opted-in route, a request with
+a `Range` or `Upgrade` header stays identity, even with
+`Accept-Encoding: gzip`, and so does one from a client that does not accept
+gzip. A `HEAD` sends no body, but its `Vary` and `Content-Encoding` match the
+equivalent `GET`.
 
-For an eligible request, the gzip writer adds `Vary: Accept-Encoding` to JSON
-responses so caches can distinguish the representations. It uses
-`gzip.BestSpeed` for `application/json` bodies of at least **1 KiB** when the
-client accepts gzip. It passes through responses with status `204`, `206` or
-`304`, or with a `Content-Range`, `Content-Encoding` or `ETag` header.
+On an opted-in route, every JSON response to such a `GET` or `HEAD` carries
+`Vary: Accept-Encoding`, compressed or not, so a cache never hands one client's
+encoding to another. The body is gzipped (`gzip.BestSpeed`) when the client
+accepts gzip and it is `application/json` of at least **1 KiB**. A response
+with status `204`, `206` or `304`, or with its own `Content-Range`,
+`Content-Encoding` or `ETag`, goes out as the handler wrote it.
 
-Handlers that supply their own encoding use the same negotiation result.
-The [list answer cache](../overview.md#the-list-answer-cache) can send a
-stored gzip copy. The [read-along map](reference.md#get-apiv1librariesidreadalong)
-has a separate ETag for each representation.
+Two handlers write their own gzip on the same terms. The
+[list answer cache](../overview.md#the-list-answer-cache) sends a gzip copy
+made when the answer was stored, and the
+[read-along map](reference.md#get-apiv1librariesidreadalong) has a separate
+ETag for each representation.
 
 :::note[Adding a route]
 To opt in a reviewed JSON read, wrap its handler in `compressJSON` at
@@ -80,8 +82,9 @@ flush also keep their original writer. Cover a new identity route's `GET` and
 `HEAD` in `TestCompressExclusions`.
 :::
 
-Let the server handle API compression when running behind a reverse proxy.
-A proxy that gzips every JSON response can compress routes that serve identity.
+Behind a reverse proxy, leave `/api/v1/` out of the proxy's gzip rule. The
+server already compresses the reads that opted in, and a proxy that gzips every
+JSON response would also compress the routes kept on identity on purpose.
 
 ## Authentication
 
@@ -943,9 +946,9 @@ when to try again.
 
 The address, credential and media buckets' rates are `rate_limit.*` in the server's
 [configuration](../configuration.md#rate-limits-rate_limit). The table shows
-the defaults. If a Bridge token is missing, refused or cannot be checked, the
-request must pass the address bucket before the server returns the token error.
-An empty address bucket returns `429` first.
+the defaults. A failed authentication on any route, a Bridge's included,
+charges the address bucket, so the address limit bounds guessing tokens. While
+that bucket is empty, the answer is `429` before any token error.
 [Auth & security](../auth-and-security.md#rate-limiting) explains how the
 address and credential buckets work together.
 
