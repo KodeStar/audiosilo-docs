@@ -152,13 +152,13 @@ but your files stay where they are.
 **Book details come from** (in **⋯ > Edit library...**) decides where books
 take their title, author, series and series number from:
 
-- **The files' tags first** is the default. When the files name different
-  chapters, the book folder can supply the title if the album is missing or
-  looks like the series. See [A book made of several files](../getting-started/organizing-your-library.md#a-book-made-of-several-files).
-- **Folder names first** uses the title, author and series your folders give.
-  The files' tags fill in missing details.
+- **The files' tags first**: the default. Folder names fill in whatever the
+  tags leave empty. For a book of several files the folder can also give the
+  title (see [A book made of several files](../getting-started/organizing-your-library.md#a-book-made-of-several-files)).
+- **Folder names first**: for a library whose folders are named well but whose
+  tags aren't. The files' tags fill in whatever the folders leave empty.
 
-Both settings recognize [names like `Author; Series; Book 04; Title`](../getting-started/organizing-your-library.md#names-like-author-series-book-04-title).
+Both settings read [names like `Author; Series; Book 04; Title`](../getting-started/organizing-your-library.md#names-like-author-series-book-04-title).
 An Audiobookshelf `metadata.json` in a book's folder wins over both.
 
 Changing this updates the books without a rescan. A large library finishes in

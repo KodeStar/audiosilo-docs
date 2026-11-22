@@ -61,8 +61,9 @@ match selected and in view. If the search didn't find it, the dialog adds it at 
 
 Accepted values are marked **Community**. Choose **Revert** beside a community
 title to restore the book's title from your library. It now shows **Edited**,
-and later metadata fills keep it. To release the lock, choose **Revert** beside
-the **Edited** title. Save or discard any unsaved edits before you match.
+and later metadata fills keep it. To let fills change it again, choose
+**Revert** beside the **Edited** title. Save or discard any unsaved edits before
+you match.
 
 To match many books at once, use **Match automatically** on the Health page
 (see [Matching every book at once](health.md#matching-every-book-at-once)).

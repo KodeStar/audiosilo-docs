@@ -262,9 +262,8 @@ your store's ASIN.
 are already matched. Use it for books that got an ASIN without their details,
 or to clean up series an earlier match added.
 
-If you revert a **Community** title on the book's page, the restored title
-shows **Edited**. Later fills keep that title and can still fill other fields.
-Choose **Revert** beside the **Edited** title to let fills change it again.
+A fill keeps a title you reverted on the book's page, and can still fill its
+other fields (see [Matching with community metadata](books.md#matching-with-community-metadata)).
 
 A fill never brings back an ASIN or ISBN you left unticked or later reverted.
 For a book matched before version 2.7.0,

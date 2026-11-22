@@ -498,11 +498,10 @@ dates from 0001. Later migrations added these columns:
   [The first scan after updating](scanner.md#the-first-scan-after-updating)).
   When a count is left at revision 0, see
   [MP3 lengths](scanner.md#mp3-lengths).
-- `tag_read_failed_at` records the book's `indexed_at` when ffprobe rejects
-  a previously readable primary file during a name or tag-hint backfill, or
-  when the name backfill cannot open a required last file. The scanner keeps
-  the stored names and skips these checks while the timestamps match. Indexing
-  the book again makes the marker expire. See
+- `tag_read_failed_at`: the `indexed_at` of the index whose names or tag
+  hints a backfill could not read for good, `NULL` until one fails. It counts
+  only while it equals the row's `indexed_at`, so the book's next index ends it
+  without clearing the column. See
   [Backfills for a skipped book](scanner.md#backfills-for-a-skipped-book).
 - `ebook_path`: the book's ebook, library-relative, `''` for none. It is the
   one readable `.epub` beside the audio by `library.BookEbook`'s rule.
@@ -2239,9 +2238,9 @@ Reverting an admin edit deletes the override and resolves the underlying
 layers from the database. When an admin reverts a community title, the server
 saves the underlying title as an `edited` override if it passes ordinary title
 validation. A later metadata fill respects that choice, even if the admin
-reverts after the fill planned its changes. Reverting the edited title releases
-the lock. If the restored title fails validation, the server removes
-the community override.
+reverts after the fill planned its changes. Reverting that edit lets fills
+change the title again. If the restored title fails validation, the server
+removes the community override and stores no edit.
 
 Per field, `resolve` yields the effective value, its source, the scanned value,
 whether it is locked, and who last edited it. Sources are not stored. `resolve`
@@ -2337,12 +2336,10 @@ compared ignoring letter case). A tag title that IS the leaf's name, number and 
 (`13 Reasons Why`), is kept whole with no position read from it. The layout
 parses a structured leaf even when the title tag repeats its whole name.
 
-In either source mode an untagged `Bruno Miller; Dark Road; Books 01-05` gets
-the scanned title “Dark Road 1-5” from `DeriveFromPath`, with source `path`.
-With the album “Dark Road” and no usable book title tag it gets the same title.
-In tags-first mode an explicit tagged position wins. A tagged series without
-a position inherits the leaf's number or range only when both name the same
-series. See [A leaf that states its series](scanner.md#a-leaf-that-states-its-series).
+Both source modes read a structured leaf the same way, so an untagged
+`Bruno Miller; Dark Road; Books 01-05` has the scanned title "Dark Road 1-5"
+from `DeriveFromPath`, with source `path`. How the leaf combines with tags is in
+[A leaf that states its series](scanner.md#a-leaf-that-states-its-series).
 
 The catalog applies the library's source preference when it resolves the book.
 Both modes use the same `books.scanned` snapshot. A resumable job updates the

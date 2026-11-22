@@ -996,10 +996,10 @@ The ancestors give the series and author:
   layout). `ReadPathLayout` reads it the same way.
 - A book at the library root has no ancestors, so the old "flat" layout needs
   no special case.
-- A structured file or folder name such as `Author; Series; Book 02; Title`
-  supplies the title, series and position. At the library root it also supplies
-  the author. A disc folder directly inside it uses the same reading. See
-  [A leaf that states its series](#a-leaf-that-states-its-series).
+- One leaf name wins over the folders. `Author; Series; Book NN[; Title]`
+  states its own title, series and position, and a disc folder directly inside
+  it reads the same (see
+  [A leaf that states its series](#a-leaf-that-states-its-series)).
 
 A lone ancestor used to be read as the series. The next scan puts right a
 snapshot from then (no `@rev`, see
@@ -1165,8 +1165,8 @@ unsure of goes without (see [With no ffprobe](#with-no-ffprobe)).
 
 `metadata.LeafSeries` reads the book's folder name or its filename without the
 extension. For `Mark Tufo; Indian Hill; Book 02; Bastion`, `DeriveFromPath`
-returns “Bastion”, series “Indian Hill”, position 2. An author folder supplies
-the author when present. At the library root the first part gives “Mark Tufo”.
+returns "Bastion", series "Indian Hill", position 2. An author folder supplies
+the author when present. At the library root the first part gives "Mark Tufo".
 A separately indexed `CD1` directly inside this folder gets the same names
 and position, even if it contains only one file.
 
@@ -1179,13 +1179,13 @@ and position, even if it contains only one file.
 `Oprah; Picks; Book Club` has no recognized marker and follows the ordinary
 path rules. When a structured leaf omits the title, `DeriveFromPath` uses
 `SeriesTitle()`. An untagged `Bruno Miller; Dark Road; Books 01-05` therefore
-has the title “Dark Road 1-5”. If both the title and position are missing, the
+has the title "Dark Road 1-5". If both the title and position are missing, the
 series name alone supplies the title.
 
 `readNames` takes an explicit series and position from the tags. A series tag
 without a position can inherit the leaf's number or range only for the same
 series. `leafTagSeries` compares the names with `match.SameSeries` or
-`match.NormalizeSeries`, so “Expanse” can take the position from “The Expanse”.
+`match.NormalizeSeries`, so "Expanse" can take the position from "The Expanse".
 A different tagged series drops both ends of the leaf's range. For the
 folder-first reading, see [A library's metadata source](data-model.md#a-librarys-metadata-source).
 
@@ -1241,8 +1241,9 @@ For a book of several files, a title tag that is the album plus a track marker
    unusable, or the tag carries the series name.
 3. When a leaf has no title part, states a range and names the album's series,
    a usable title tag wins if it contains the series name or the book has one file.
-   Otherwise the leaf supplies the title, for example “Dark Road 1-5” even
-   with album “Dark Road”. This also covers ranges starting at 1.
+   Otherwise the leaf supplies the title, for example "Dark Road 1-5" even
+   with album "Dark Road". It comes before rule 4, so a range starting at 1
+   takes it too.
 4. A book at position 1 (the tags' position, else the leaf's volume) keeps the
    album. A series is often named for its first book, whose title tag may be a
    chapter's ("End Credits").
@@ -1250,7 +1251,7 @@ For a book of several files, a title tag that is the album plus a track marker
    first-file tag ("Prologue" in `Indian Hill/Book 3`) counts only when it
    carries the series' name.
 6. A title-less leaf naming the album's series supplies its series and position
-   (“Indian Hill 5”). Otherwise the album stays.
+   ("Indian Hill 5"). Otherwise the album stays.
 
 The result is the stored title, so the player, search and the match's query all
 see the book's own title. `metadata.PathTitle` is the path's title that
@@ -1268,14 +1269,14 @@ reuses those tags from the chapter read. The setup preview and name backfill
 open the last file only when needed.
 
 - **Without an album**, a meaningful title tag shared by the first and last
-  files wins. “Dune (Part 1)” and “Dune (Part 2)” give “Dune”. Different
+  files wins. "Dune (Part 1)" and "Dune (Part 2)" give "Dune". Different
   chapter names give the folder title, as in `Fahrenheit 451`. A folder that
   names no title, such as `03`, leaves the first usable title tag in place.
 - **When a title tag adds a subtitle to the album**, the tag wins if it or its
   suffix names the book folder, or if both files have the same tag. Otherwise
   `partsName` looks for a shared book name after the album, unless the folder
-  names the album itself. “The Wheel of Time: The Great Hunt - The Wheel” and
-  “The Wheel of Time: The Great Hunt - The Dragon” give “The Great Hunt”.
+  names the album itself. "The Wheel of Time: The Great Hunt - The Wheel" and
+  "The Wheel of Time: The Great Hunt - The Dragon" give "The Great Hunt".
   A shared part or volume marker alone contributes no book name. Tags that
   differ only in bracketed notes can still give their common title.
 - **When the album may name a series**, the first file must have no series
@@ -1284,15 +1285,15 @@ open the last file only when needed.
   bracketed notes). If the first title tag names the book folder, its spelling
   wins immediately. If the two files name different chapters and the last
   file's album is absent or agrees with the first, the folder supplies the
-  title. In `The Dragon Reborn`, named chapters with album “The Wheel of Time”
-  give “The Dragon Reborn”. The same rule covers chapter names prefixed with
+  title. In `The Dragon Reborn`, named chapters with album "The Wheel of Time"
+  give "The Dragon Reborn". The same rule covers chapter names prefixed with
   the series.
 
 Track labels, filenames and tags that number the same name in turn give no
 evidence for replacing the album with the folder. The album also stays when
 the folder names a volume (`03`, `Book One`, `Mistborn Book One`), its contents
 (`Files`, `MP3`), a code (`HP1`, an ASIN or an ISBN), or the tagged author.
-Files directly in `Andy Weir` with that author tag keep the album “The Martian”.
+Files directly in `Andy Weir` with that author tag keep the album "The Martian".
 A book directly in its *series* folder can take that folder's name when the
 files name different chapters and have no series tag.
 
