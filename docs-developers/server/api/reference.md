@@ -7533,8 +7533,9 @@ book path).
   `edited_at`. `series_index` is a string here (`"2.5"`, `"1-3"` for a range,
   `""` for none), `abridged` `"true"` / `"false"` / `""`, and `genres` / `tags`
   their canonical JSON list (`"[\"Owned\"]"`, `""` for none).
-  When an override hides an identifier supplied by the Bridge, `enrichment`
-  contains that identifier. Reverting the override restores it.
+  From 2.7.0 an `asin` or `isbn` whose override (edited or community) hides the
+  Bridge's enrichment also carries that value as `enrichment`: what the field
+  falls back to, ahead of `scanned`, once the override goes.
 - `chapters` - every chapter with its effective `title`, the `scanned_title`
   and whether an edit renames it (never while an edited list applies: its titles
   are its own). Each carries its `file_path`, in-file `start` and `end`, and
@@ -7650,13 +7651,14 @@ book path).
     [added from LibriVox](#add-from-librivox) as;
   - `how`: `"auto"` for a run's confident item applied unasked, `"accepted"` for
     the match dialog, a review item the admin included, or a book added from
-    LibriVox.
-  - `matched_at` is when the server recorded the match. A refresh or marketplace
-    repick preserves how, when and by whom the match was made, including its
-    original run. A refresh that follows a merged work to a new ID updates the
-    date.
+    LibriVox;
+  - `matched_at`: when the match was recorded;
   - `web_url`: the work's page on the community site, omitted when no service is
     configured.
+
+  From 2.7.0 a run's refresh or repick that updates a match keeps its `how`,
+  `matched_at` and the account and run that made it. Only a refresh that follows
+  a merged work to its new `work_id` sets `matched_at` again.
 
   It is recorded whether or not the match gave the book an ASIN or ISBN. For a
   store listing with neither, it is what makes the book `matched`. The console's
@@ -7697,19 +7699,18 @@ one request is applied in one transaction.
 transaction. The console's dialog sends it:
 
 - with every accept of ticked fields;
-- alone (after any ticked cover) when a book has no ASIN or ISBN and the admin
-  picks a different work or recording;
-- for the recorded work and recording when the admin takes only its cover or
-  accepts it again with nothing ticked and it offers an ASIN or ISBN.
+- alone (after any ticked cover) for a book with no ASIN or ISBN whose pick
+  (work or recording) differs from its recorded match;
+- alone (after any ticked cover) for the recorded match itself: with nothing
+  ticked, the accept is on only when it offers an ASIN or ISBN.
 
-If the book has an ASIN or ISBN, taking only the cover of another match leaves
-the recorded match in place. From 2.7.0, `asin` and `isbn` are the identifiers
-the match offered, ticked or not (`""` or absent for none).
-A [refresh](#bulk-community-matching) skips an offered identifier the admin
-declined or later reverted. The server leaves out an identifier the book already
-holds from its own files, a Bridge enrichment or an admin edit when the edit
-finishes. A refresh can supply that identifier if the book later loses it.
-An unlink ignores the offered identifiers.
+A cover-only accept of another work, for a book with an ASIN or ISBN, sends
+none and leaves the recorded match in place. From 2.7.0, `asin` and `isbn` are
+the identifiers the match offered, ticked or not (`""` or absent for none), so a
+[refresh](#bulk-community-matching) never fills back one the admin left
+unticked or reverted since. One the book holds of its own once the edit is in
+(its files', a Bridge enrichment or an admin edit) is not stored as offered, so
+a refresh can fill it if the book later loses it. An unlink ignores them.
 
 **Unlinking** (from 2.6.0). `match: { "work_id": "" }`, from any edit (no
 `source` needed), removes the book's recorded match, every `source: "community"`
@@ -7717,9 +7718,8 @@ value and its community cover (as [clearing the community
 matches](#delete-apiv1admincommunity-matches) does for a library, before the rest
 of the edit applies), so it is `matched: false` again unless it has an ASIN or
 ISBN of its own. An admin's own edits and uploads stay. There is no undo.
-When Unlink clears the book's community data, its applied `auto` and `review`
-items in retained runs get `detail: "unlinked"`. Their `applied` value stays
-`"applied"`, so the run counts still describe what it wrote.
+From 2.7.0 the runs' items that applied the match are marked
+[`detail: "unlinked"`](#get-apiv1adminmatch-runsiditems).
 
 Only an explicitly empty `match.work_id` unlinks. Both ids lose leading and
 trailing whitespace and other invisible characters (from 2.7.0: format characters
@@ -8021,8 +8021,8 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
 - The default search (no `q`, `asin` or `isbn`) also looks up the book's recorded
   work by ID if the search missed it. If that lookup succeeds and the resolved
   work is still missing from the list, the server appends it with `recorded: true`.
-  Only this extra candidate carries the flag. The console shows **Current match**
-  in place of its score. Its `recording_id` names the recorded edition if the
+  Only this extra candidate carries the flag. Its `score` is not a match score,
+  so the console shows **Current match** in its place. Its `recording_id` names the recorded edition if the
   work still lists it. If the lookup fails or the work is gone, the server
   returns the search hits alone.
 - Search hits are sorted by `score` (0-100), best first. For `works/match`,
@@ -8105,7 +8105,7 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   ASIN or ISBN (an identifier hit whose length now fits). A hint, from the tags or
   an Audiobookshelf import, can name another edition of the right work.
   - A narrator reading the named recording keeps it: `auto` within 20%, else held
-    as `length_differs` (see [the outcomes](#bulk-community-matching)).
+    as `length_differs` (see [the run's items](#get-apiv1adminmatch-runsiditems)).
   - A plain book never moves onto a dramatization the rule above refuses.
   - The dialog keeps the identifier's recording.
 - No hits is `200 { "candidates": [] }`.
@@ -8256,14 +8256,13 @@ Run **statuses**. A run moves `matching` → `ready` → `applying` → `applied
 - `cancelled`: stopped while matching.
 - `failed`: stopped by itself. `error` is `metadata_off` when community metadata
   was turned off, or `internal`; before 2.7.0 also `metadata_unavailable`.
-- `interrupted`: the server stopped matching before it recorded every book.
-  If matching stopped after the last book was recorded, the server marks the run
-  `ready` at the next start. A run stopped mid-apply also returns to `ready`,
-  with its applied books marked.
+- `interrupted`: the server stopped mid-match with books left (`done < total`).
+  At the next start a run stopped with every book recorded (from 2.7.0), or
+  mid-apply, goes back to `ready` instead, its applied books marked.
 
-If a run's finishing write fails, the server settles it by the same rules.
-For a `matching` run, `done == total` means the review is complete and ready to
-apply. The server retries settling a stuck run when a run starts or applies, on
+From 2.7.0 a stuck run is settled by the same rules. A stuck run is one left
+marked `matching` or `applying` with nothing working on it, because its
+finishing write failed. The server settles it when a run starts or applies, on
 [Stop](#post-apiv1adminmatch-runsidcancel), and on an Unlink it blocks.
 
 #### What a run asks of the community service
@@ -8463,17 +8462,23 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   server, named by `asin_region`.
 - `book` is the book as it is now, with its `duration` in seconds (omitted when
   unknown); `gone: true` when nothing is indexed at the path any more.
-- A review item with one hold reason carries it in `detail` alone. With several,
-  `detail` is the first reason and `holds` is an array of all reasons in this order.
-  A low score or narrow lead alone carries no hold reason.
-  - `identifier_disagrees` means an ASIN or ISBN from the tags or an Audiobookshelf
-    import found a work whose title or series position conflicts with the book.
-  - `identifier_elsewhere` means that identifier pointed to another work. The
-    proposed work came from the second search without the identifier.
-  - `dramatization_only` means the work offers only dramatizations and the run
-    could not select one for this book. The proposal has no recording.
-  - `length_differs` means the recording and book differ in length by more than
-    10%, or 20% when the book's narrator reads it. Compare `proposal.runtime_min`
+- A review item held for one reason carries it in `detail` alone. From 2.7.0
+  one held for several carries them all in `holds`, in this order, with `detail`
+  the first. A low score or narrow lead alone is no hold reason. While an item is
+  `cover_pending` (see `applied`), `holds` lists every reason, even a lone one;
+  once the item has a final apply result, it is gone.
+  - `identifier_disagrees` (from 2.7.0) means an ASIN or ISBN from the tags or an
+    Audiobookshelf import found a work whose title or series position conflicts
+    with the book.
+  - `identifier_elsewhere` (from 2.7.0) means that identifier pointed to another work. The
+    proposed work came from the
+    [second search without the identifier](#what-a-run-asks-of-the-community-service).
+  - `dramatization_only` (from 2.6.0) means the work offers only dramatizations
+    and the run could not select one for this book. The proposal has no
+    recording, so nothing is attached unasked.
+  - `length_differs` (from 2.4.0; a match run's or a refresh's) means the
+    recording and book differ in length by more than 10%, or 20% when the book's
+    narrator reads it. Compare `proposal.runtime_min`
     with `book.duration` in seconds.
 - `matched_since: true` (a match run only) when the book is matched now (an ASIN
   or ISBN, or from 2.6.0 a recorded community match) and wasn't when the run
@@ -8518,8 +8523,10 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   ```
 - `applied` is what applying did:
   - `""`: not yet;
-  - `applied`, with `detail: "unlinked"` if a later [Unlink](#patch-apiv1adminlibrariesidbook)
-    cleared the book's match or community values;
+  - `applied`, with `detail: "unlinked"` (from 2.7.0) once an
+    [Unlink](#patch-apiv1adminlibrariesidbook) took back the book's match and
+    community values. It stays `applied`, so the run's counts still say what
+    the apply did;
   - `skipped`, with `detail` `nothing_to_change`, `matched_since`, `book_gone` or
     (an `unknown_asin` run, from 2.7.0) `asin_known`;
   - `failed`, with `edit_failed` or `cover_failed`.
@@ -8527,10 +8534,8 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   An `applied` item can carry `cover_failed` when its fields went on but its cover
   couldn't be fetched. A match item that an apply's stop cut short after its fields
   went in stays `""` with `detail: "cover_pending"`, so the next apply takes its
-  cover. In that case, `holds` contains every original hold reason, even a
-  single one such as `"holds": ["length_differs"]`. The server omits `holds`
-  when there were no reasons or once the item has a final apply result. If the
-  book was unlinked before the retry, the apply writes nothing (`nothing_to_change`).
+  cover, and `holds` keeps the reasons it was held for (above). If the book was
+  unlinked before the retry, the apply writes nothing (`nothing_to_change`).
 
   From 2.7.0 `cover_superseded` means the cover was not written because the book
   changed since the apply planned it: a cover uploaded or found by a rescan,

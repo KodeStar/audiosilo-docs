@@ -44,9 +44,9 @@ listeners chapter recaps and the book's community chapters.
    and any ASIN or ISBN.
 2. If the right book isn't listed, type in **Search the community database**,
    or paste an ASIN or ISBN, and click **Search**.
-3. Under **Possible matches**, pick the right book and click **Compare fields**.
-   Check the recording's length against your files. Within 2% it matches, and
-   within 5% it is close.
+3. Under **Possible matches**, pick the right one and click **Compare fields**.
+   Each match shows how closely it fits and how its length compares with your
+   files: within 2% it matches, within 5% it is close.
 4. If the book was recorded more than once, pick the right **Edition**. Check
    its narrators and length against your files.
 5. Tick the fields to **Take**. Fields you edited yourself start unticked, and
@@ -55,9 +55,9 @@ listeners chapter recaps and the book's community chapters.
 
 ![Matching a book with community metadata](/img/screenshots/admin/book-match.png)
 
-When the dialog recognizes your recorded match, it opens with that row selected
-and in view. If the opening search missed the work, the dialog can still look it
-up and add it last. That row shows **Current match** in place of a percentage.
+If the book is already matched, the dialog opens with that match selected and
+in view. If the search didn't find it, the dialog adds it at the end, marked
+**Current match** instead of a percentage.
 
 Accepted values are marked **Community** and are kept like your own edits. You
 can revert them the same way. Save or discard any unsaved edits on the page
@@ -122,14 +122,11 @@ remove the match:
 
 ![The Community metadata card of a matched book, with Unlink](/img/screenshots/admin/book-community-match.png)
 
-Unlink removes the recorded match, its community values and its community cover.
-Your own edits and uploaded covers stay. If the book now has no ASIN or ISBN,
-the next match run can find it again.
-
-The book stays **Matched** if it keeps an ASIN or ISBN you entered, one from
-its files, or one the Bridge supplied. This includes an identifier that the
-community value had covered up. **Fill in matched books** can then restore
-community details.
+Unlink removes the match, its community values and its community cover. Your
+own edits and uploaded covers stay. The book stays **Matched** if it still has
+an ASIN or ISBN you typed, one from its files or one the Bridge added, even one
+the match had replaced. [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
+can then bring its details back. Otherwise the next match run can find it again.
 
 You can't unlink while a
 [match run](health.md#matching-every-book-at-once) is applying matches to that

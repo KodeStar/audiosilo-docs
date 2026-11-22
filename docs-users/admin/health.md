@@ -129,8 +129,9 @@ A confident match scores at least 90% and usually leads the next candidate by
 at least 10 points. Under **To review**, a row marked **Held for review** lists
 the reasons that apply to that book. You may see more than one.
 
-- An ASIN or ISBN from the book's tags or an Audiobookshelf import points to
-  a work whose title or series position conflicts with yours.
+- An ASIN or ISBN from the book's tags or an Audiobookshelf import
+  ([only a hint](#asin-and-isbn-tags-are-hints)) points to a work whose title or
+  series position doesn't match yours.
 - That identifier names another book, so the run found the proposed match by
   title instead. Check it even if the score is high.
 - The community has only a dramatization, and your book doesn't say it is one.
@@ -236,9 +237,10 @@ your store's ASIN.
 **Fill in matched books** offers the community database's latest details for books that
 are already matched. Use it for books that got an ASIN without their details,
 or to clean up series an earlier match added. It never brings back an ASIN or
-ISBN you declined from the match or later removed from its community values.
-For an older match, you can accept the same work and recording again with
-every field unticked to record which identifiers it offers.
+ISBN you left unticked or later reverted. For a book matched before version
+2.7.0, [match it](books.md#matching-with-community-metadata) to the same book
+and edition again with nothing ticked, so the server knows which ones you left
+out.
 
 ## Jobs
 
