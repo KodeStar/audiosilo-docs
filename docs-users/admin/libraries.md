@@ -103,6 +103,10 @@ change, and on its [schedule](#scanning-on-a-schedule).
 A rescan never touches your files. Listening progress and bookmarks survive
 rescans, and follow a book when you move or rename its folder.
 
+If a large MP3 takes too long to measure and ffprobe gives an estimate,
+the server keeps that length until the files change. To try again sooner, open the
+[book's page](books.md#a-books-page) and select **⋯ > Read the files again**.
+
 :::tip[Faster scans]
 With ffmpeg 7.1 or 8.1, which the official Docker images have, the server
 reads most files itself, so a first scan finishes much sooner (see

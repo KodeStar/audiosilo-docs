@@ -32,7 +32,7 @@ Click a card to open its list.
 
 | Card | What it means | How to fix it |
 |---|---|---|
-| **Files that couldn't be read** | A file couldn't be read, is empty, or isn't audio. The row gives the reason in one line; for a file that isn't audio, **Details** shows the full message. | Fix the file or its permissions. **Read again** checks it straight away; otherwise the next scan does. |
+| **Files that couldn't be read** | A file couldn't be read, is empty, or isn't audio. For a file the server couldn't read as audio, **Details** shows the full message. | Fix the file or its permissions. Select **Read again** to check it straight away. |
 | **Folder may hold several books** | A folder reads as one book but looks like it holds several. | **Choose detection** opens the folder in [Library > Folders](libraries.md#the-folders-page). Then choose **Separate books** or **Always one book**. |
 | **One book split into disc folders** | A book ripped from CDs reads as one book per disc. | **Join into one book**. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
 | **Likely duplicates** | Copies of one book in the same library. | Compare them side by side. See [Duplicates](#duplicates). |
@@ -43,6 +43,10 @@ Click a card to open its list.
 | **Long books without chapters** | Books over two hours with no chapters, so listeners can't skip between them. | **Detect chapters** with your [Bridge](bridge.md) (see [Detect chapters](chapter-detection.md)), or [match](books.md#matching-with-community-metadata) the book to use its [community chapters](books.md#community-chapters). A book using chapters you [edited](books.md#edit-chapter-times-and-titles) offers no Detect chapters until you revert the edit. |
 | **More detailed chapters available** | The community database has finer chapters that fit this copy. | **Use detailed chapters**. |
 | **Converted to play in browsers** | The format doesn't play in web browsers, so the server converts it for the web player. The apps play it as it is. | Nothing needed: it works. |
+
+If the server rejects a file as invalid audio, scans skip it until its size
+or modification time changes, or the server restarts. **Read again** retries
+it at any time.
 
 A slow disk or network share can time out a scan. Its books show **reading it
 timed out** and keep their length and chapters. A single file that took too

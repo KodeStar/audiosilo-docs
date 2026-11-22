@@ -482,15 +482,24 @@ given migration:
   already recorded that failure (`probe_failed`). Then it takes what the tags
   give.
 
+If ffprobe rejects the primary file as invalid while filling in names or tag
+hints, and the last index had no `probe_failed` problem, the scanner records
+that index's `indexed_at` in `books.tag_read_failed_at`. Scans skip those two
+checks, even after a restart, until a file change or **Read the files again**
+re-indexes the book. A timeout, a failure to start ffprobe or a temporary
+frame-count read error leaves the checks pending for the next scan.
+
 #### Audiobookshelf `metadata.json`
 
 A skipped folder book also has its **Audiobookshelf `metadata.json`** read
 again when the file is new, changed or gone. ABS rewrites the file without
 touching the audio, so the book's own signature can't tell.
 
-- Discovery records each folder's file signature (`metadata.ABSSignature`,
-  size and mtime) from the walk it already makes (`audioDirs`' `absFiles`, no
-  extra directory read).
+- Discovery records the file's size, mtime and reader revision
+  (`metadata.ABSSignature`) during the directory walk. Revision 2 makes the
+  next scan read each existing file once, even if the book has no MP3. If an
+  author or narrator name contains a comma, the reader uses a semicolon
+  between people in that list.
 - `catalog.SetABSFiles` reads and writes a skipped book, in batches of 250
   beside the path backfill, when:
   - its signature differs from the stored one (`Signature.ABSSig`); or
@@ -1024,11 +1033,12 @@ runs the probe.
     `spoken word` and `other`;
   - ffprobe's `genre` replaces dhowden's when it gives any.
 
-**The probe** runs when ffprobe is configured. It gives the duration, the
-chapters, the audio `codec` and richer container tags. The `codec` is the
+**The probe** gives the duration, chapters, audio `codec` and richer
+container tags. The `codec` is the
 `codec_name` of the first audio stream, and it feeds the `direct_playable` API
 flag. The [in-process probe](#the-in-process-probe) handles most files and
-ffprobe itself the rest, with the same answer either way.
+ffprobe handles the rest when available. A successful MP3 frame count supplies
+the duration when ffprobe would estimate it.
 
 #### A series tag with a position
 
@@ -1346,13 +1356,14 @@ makes the reading change more books (`TitleNotSeries` more titles,
 
 A first scan used to be mostly ffprobe: about 94% of a real library's read
 time. Almost all of that was starting the process, some 31 ms on an Intel N305
-before ffprobe read a byte. So the scanner reads ffprobe's answer itself for the
-common formats (`internal/metadata/fastprobe*.go`), and runs ffprobe only for a
-file it can't be sure of. In the spike, its prototype took a scan of a
-1,165-book, 9,165-file slice of a real library from 197 s to 9.9 s, and 3 of
-those files went to ffprobe.
+before ffprobe read a byte. With a known ffprobe release, the scanner reads
+common formats in-process (`internal/metadata/fastprobe*.go`) and calls
+ffprobe for files it cannot read reliably. In the spike, its prototype
+scanned 1,165 books with 9,165 files in 9.9 s, down from 197 s. It called
+ffprobe for three files.
 
-**One open, one cache.** `metadata.ExtractTimeout` opens a file once. It reads
+**One open, one cache.** In the normal scan path, `metadata.ExtractTimeout`
+opens a file once. It reads
 the tags (`dhowden/tag`), the iTunes narrator and the probe through one 64 KiB
 block cache (at most 4 MiB kept), then closes the file before any ffprobe run.
 
@@ -1375,36 +1386,35 @@ reader is a port of FFmpeg's demuxer:
 
 Every other format goes to ffprobe.
 
-**Parity is the contract.** Every value equals what the configured ffprobe
-gives, by the rules of its FFmpeg release (`ffRules`), with one departure from
-2.7.0: a header-less VBR MP3's length is counted (below). Otherwise the probe
-changes no stored duration, chapter or tag. The probe runs for these releases:
+The probe follows the configured ffprobe release's rules (`ffRules`). The
+exception is an [MP3 length](#mp3-lengths) measured by counting frames.
 
-- **7.1 and 8.1** (`knownRules`). They differ in MP3 gapless durations and in
-  empty UTF-16 ID3 strings. The official and LinuxServer.io images are both
-  Alpine 3.24, whose ffprobe is 8.1.3.
-- **Any other release turns the probe off**, and ffprobe reads every file.
-  Tags are still read in-process either way. (With no ffprobe at all, the probe
-  runs by 8.1's rules; see [With no ffprobe](#with-no-ffprobe).) Releases that
-  turn it off include:
-  - Ubuntu 24.04's 6.1;
-  - a master or nightly build, whose version is no release. A server before
-    2.5.1 [downloaded](configuration.md#ffmpegffprobe-resolution--auto-download)
-    the BtbN master builds for Linux and Windows, and 2.5.1 replaces them with
-    the 8.1 branch build;
-  - an ffprobe whose `-version` fails.
+- **With 7.1 or 8.1**, the scanner uses the in-process rules for that release
+  (`knownRules`). The releases differ in MP3 gapless durations and in empty
+  UTF-16 ID3 strings. The official and LinuxServer.io images are both Alpine
+  3.24, whose ffprobe is 8.1.3.
+- **With any other release**, the scanner calls ffprobe for each file. It
+  still reads tags and can count MP3 frames in-process. If the count succeeds,
+  it replaces ffprobe's duration estimate. If ffprobe fails on that file, the
+  scanner uses the full in-process result, including its codec and chapters.
+  This covers Ubuntu 24.04's 6.1, a nightly or master build, and an ffprobe
+  whose `-version` fails. Servers before 2.5.1
+  [downloaded the BtbN master build](configuration.md#ffmpegffprobe-resolution--auto-download)
+  on Linux and Windows.
+- **Without ffprobe**, the scanner uses the 8.1 rules. A file it cannot read
+  has no duration. See [With no ffprobe](#with-no-ffprobe).
 
 The server reads the release from `ffprobe -version` (10 s at most), once per
 ffprobe path per process. An ffprobe upgraded in place is therefore read again
 only after a restart. The release is the major.minor, so `7.1.1`,
 `7.1.1-3ubuntu1` and `n8.1.3` are 7.1, 7.1 and 8.1.
 
-**What goes to ffprobe, per file and silently.** A reader returns `unsure` for
-any shape it does not model exactly. ffprobe then reads that one file, and
-nothing is logged. The shapes are:
+**When the scanner calls ffprobe.** With a known release, a reader returns
+`unsure` for a file it cannot read reliably. The scanner logs the reason at
+debug level and passes the file to ffprobe in cases like these.
 
-- a VBR MP3 with no Xing or VBRI header whose frames can't be counted (below),
-  and a concatenated MP3;
+- an MP3 whose frames cannot be counted, or whose Xing byte count indicates
+  that another stream was appended;
 - a FLAC with a CUESHEET block, or a FLAC or Ogg with an ID3 prefix;
 - a fragmented or compressed MP4, or one with an unknown handler or sample
   entry;
@@ -1435,54 +1445,75 @@ to ffprobe.
   without reading check them every 256 ticks (`blockFile.tick`, a `probeLimit`
   panic that `fastProbe` recovers).
 
-**Header-less VBR MP3 lengths are counted** (2.7.0, server#435). For a VBR MP3
-with no Xing or VBRI header, ffprobe estimates the length from the bitrate of
-the first frames. That was 139.42 s for 150.05 s of decoded audio on a test
-book, and about 7% (some 40 minutes over 10 hours) on real books, so seeks
-landed off. The probe now counts such a file's frames instead:
+#### MP3 lengths
 
-- A file counts as VBR when its first 64 frames, or the frames at 20-80% of the
-  file, differ in bitrate (`mp3ConstantBitrate`). A file with a header, or a CBR
-  one, is never counted, so the common case costs nothing more.
-- The count runs header to header, from the first frame to the trailing ID3v1
-  or APEv2 tags (`mp3FrameCount`), inside the file's one open, in 1 MiB windows
-  through the bounded reader, under the mount's cap (below). It resyncs past
-  junk and counts a last frame cut off by the end, as ffmpeg decodes it. It
-  matches ffmpeg on ID3v2.4 footers, Xing after junk, MPEG2 and 2.5, and APEv2
-  with ID3v1.
-- **When it falls back.** The count gives up once more than an eighth of the
-  audio was skipped as junk (`mp3MaxJunk`: a sample rate that changes,
-  free-format frames). That file then goes to ffprobe and keeps its estimate.
-  A count cut short (its deadline, the scan stopping, a read error, which ends it
-  at once) also leaves the file to ffprobe for now. With no ffprobe, a count
-  out of time is a `ProbeTimedOut`.
-- With an ffprobe whose release has no rules, an MP3's estimate is replaced by
-  the count the same way after ffprobe answers.
+A Xing, Info or VBRI header can give the frame count for the whole file. The
+probe uses that count directly. With a recognized encoder tag, the 8.1 rules
+subtract encoder delay and end padding from the header duration. The 7.1 rules
+use the full frame duration.
 
-**The one-time re-read after the upgrade.** Migration `0082` adds
-`books.duration_rev` and `duration_rev_indexed_at`. A book with no MP3 starts at
-the current revision (`catalog.durationRev`). A book holding an MP3 starts at
-0, so the next scan (the one at start, after an upgrade) indexes it once more
-though its files are unchanged (`Signature.DurationStale`), and counts it in
-the scan report as updated. That scan takes longer than a normal rescan. A row
-an older server re-indexed since (its `duration_rev_indexed_at` no longer its
-`indexed_at`) reads as stale too, so rolling back and forward again still
-works: the columns are only added.
+Without a header, a bitrate estimate can be wrong for a variable-bitrate (VBR)
+file. The probe checks the first 64 frames and up to 16 consecutive frames at
+each of 15 places across the audio (`mp3ConstantBitrate`). If the bitrate or
+sample rate varies, or a sample point yields no pair of frames, it counts the
+whole file. A Xing header with a byte count but no frame count also triggers
+a full count.
 
-Every index then writes the current revision with its `indexed_at`, except one
-that left a header-less VBR file uncounted for now (a deadline, the scan
-stopping, a read error: `Metadata.LengthUncounted`). That writes 0, so a later
-scan tries again. A count that gave up is not retried each scan, because it
-would give up the same way. Bump `durationRev` when a change to the length
-reading should re-read the stored books.
+Encoders can use the lowest bitrate for silence. If the first frame is
+32 kbit/s in MPEG-1, or 8 kbit/s in MPEG-2 or 2.5, and the samples look
+constant, the probe also walks every frame in the first 2 MiB of audio. A
+change of rate or a break in the frames there triggers a full count.
+A file that passes the constant-bitrate checks keeps ffprobe's bitrate
+estimate, which the probe can calculate itself.
 
-A multi-file book whose parts' lengths change moves the parts' offsets in the
-whole-book timeline. Places, bookmarks and notes on it are not remapped, as for
-the natural file order. Only header-less VBR books change.
+The full count reads in 1 MiB windows. It adds each frame's samples at that
+frame's sample rate, so joined 44.1 kHz and 48 kHz sections each contribute
+their actual playing time. With a LAME, Lavf or Lavc encoder tag, it
+subtracts the encoder delay plus the decoder's 529 samples at the first
+frame's rate. This also applies when the Xing header gives neither frames
+nor bytes. The full count includes a final truncated frame, as ffmpeg does.
 
-**Bounded reads on a hung share.** The file's open and its stat, the tag read
-and the narrator walk before the probe are bounded too (`readFile`), by the
-ffprobe run's timeout, the caller's context and the probe's byte budget.
+The probe excludes trailing ID3v1 and APEv2 tags, including an APEv2 cover,
+when it places samples and sets the end of a frame count. A Lyrics3 trailer
+stays inside that region. Its non-frame bytes can trigger a full count even
+for a constant 32 kbit/s file. The count skips such bytes as it searches for
+the next frame. If it skips more than one eighth of the region being counted,
+it gives the file to ffprobe.
+
+The frame count has its own deadline, the same 30 seconds as an ffprobe run.
+If a count cannot finish while other reads are running, the scanner retries
+the file alone. If the reads succeed but the count still runs out of time
+and ffprobe supplies an estimate, the scanner keeps that estimate at the
+current duration revision. It tries again when the book's files change or an
+admin selects **Read the files again**. A temporary read error leaves the
+revision at 0 for a later scan. With [no ffprobe](#with-no-ffprobe), a count
+that times out reports `ProbeTimedOut`.
+
+The setup preview and tag backfills normally skip sampling and counting
+(`metadata.WithoutFrameCount`). They do not store a length. If an ffprobe
+release with no probe rules fails on an MP3 during a tag read, the scanner
+tries the frame count so it can use the same result as the index.
+
+#### The first scan after updating
+
+Migration `0091` advances books without MP3s from duration revision 1 to 2
+when the revision belongs to the current index. The first scan re-indexes
+each book containing an MP3, even a single MP3 among other formats, and
+reports it as updated. It records revision 2 with the book's `indexed_at`.
+If an older server re-indexes the book later, the timestamps differ and the
+newer server checks the lengths again.
+
+The same scan refreshes each [Audiobookshelf metadata.json](#audiobookshelf-metadatajson)
+once. After these reads succeed, a second scan of the unchanged library skips
+both the audio and those metadata files. If a part's length changes, later
+parts start at new offsets on the whole-book timeline. Saved places,
+bookmarks and notes keep their existing positions.
+
+#### Bounded reads on a hung share
+
+Before probing, `readFile` opens and stats the file and reads its tags and
+narrator. The ffprobe timeout, the caller's context and the probe's byte
+budget also bound these operations.
 
 - The open and its stat, and while armed every read from the file, run on a
   goroutine of their own and are waited for only until the deadline

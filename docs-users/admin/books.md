@@ -173,7 +173,8 @@ Click any book to open its page.
 Besides **Match with community metadata** and **Change cover**, the top of the
 page has **Listen in player**, which opens the book in the web player already
 signed in. The **⋯** menu has **Read the files again**, which re-reads the
-book's files at once. Use it after you fix its tags.
+book's files at once. Use it after you fix its tags or to measure its length
+again.
 
 Further down are the book's files, its ebook and
 [Read-along](making-read-along.md#the-read-along-card) card if it has one, and

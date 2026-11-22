@@ -391,6 +391,7 @@ dates from 0001. Later migrations added these columns:
 | 0067 | `tag_asin`, `tag_isbn`, `tag_language`, `hints_checked` |
 | 0082 | `duration_rev`, `duration_rev_indexed_at` |
 | 0083 | `path_key` |
+| 0091 | `tag_read_failed_at` |
 
 #### Identity and metadata columns
 
@@ -468,9 +469,9 @@ dates from 0001. Later migrations added these columns:
 - `content_hash`, `added_at` and `scanned`, described further down.
 - `abs_file`: what an Audiobookshelf `metadata.json` in a folder book's folder
   says, as JSON mapping each field to its value, normalized like an edit
-  (`''` for nothing). `abs_sig` is the file's size and mtime (`''` for no
-  file). `abs_indexed_at` is the `indexed_at` it was read for, `NULL` until a
-  scan has read it. See
+  (`''` for nothing). `abs_sig` records the file's size, mtime and reader
+  revision (`size:mtime_ns@2`, or `''` for no file). `abs_indexed_at` is the
+  `indexed_at` it was read for, `NULL` until a scan has read it. See
   [Metadata overrides and effective values](#metadata-overrides-and-effective-values).
 - `attachments_sig`: the signature of the Bridge's `.audiosilo/` files for the
   book, `name:size:mtime_ns` per known file, joined (`''` for none).
@@ -485,14 +486,17 @@ dates from 0001. Later migrations added these columns:
   the book unchanged then fills it from `book_files` without a re-index. A
   book whose files are in another order is re-indexed, which records it. See
   [the stored order key](scanner.md#book-detection-booksindir).
-- `duration_rev`: the revision of the length reading the book was indexed with
-  (`catalog.durationRev`, 1 from 2.7.0: a header-less VBR MP3's frames are
-  counted). `duration_rev_indexed_at` is the `indexed_at` it was written with.
-  A lower revision, or another index's `indexed_at` after an older server
-  re-indexed the row, reads as stale when the book holds an MP3, and the next
-  scan indexes it once more. An index that left a header-less VBR file
-  uncounted for now writes 0, so a later scan tries again. See
-  [The in-process probe](scanner.md#the-in-process-probe).
+- `duration_rev` records the revision used to measure the book's lengths
+  (`catalog.durationRev`, currently 2). `duration_rev_indexed_at` identifies
+  the index that measured them. A lower revision or a timestamp different
+  from the row's `indexed_at` schedules an MP3 book for re-indexing. A
+  temporary frame-count read error leaves revision 0. A count that runs out
+  of time even on its own can keep ffprobe's estimate at revision 2. See
+  [MP3 lengths](scanner.md#mp3-lengths).
+- `tag_read_failed_at` records the book's `indexed_at` if ffprobe newly
+  rejects its primary file during a backfill of names or tag hints. While the
+  timestamps match, scans skip those checks. Re-indexing the book invalidates
+  the mark.
 - `ebook_path`: the book's ebook, library-relative, `''` for none. It is the
   one readable `.epub` beside the audio by `library.BookEbook`'s rule.
   `ebook_sig` is the size, mtime and name of the file the rule names, readable
@@ -2522,6 +2526,7 @@ The migration history so far:
 | 0088 | `bookmark_client_id` | Optional UUID, unique per user among bookmarks with an ID. Deleting the bookmark frees it. |
 | 0089 | `notify_outbox` | Records pending notification deliveries and attempts for each event and destination. |
 | 0090 | `chapter_basis_match` | Includes the recorded work and recording in the basis for a community chapter check. |
+| 0091 | `mp3_rev2_tag_read_failed` | Advances current revision 1 rows for books without an MP3 to revision 2. The next scan [re-indexes MP3 books once](scanner.md#the-first-scan-after-updating). Adds the nullable `books.tag_read_failed_at` timestamp. |
 
 `server_state.progress_feed` identifies the Audible progress feed. A restore renews this ID before
 clients can page it. The separate data-folder mark detects a database restored behind the last
