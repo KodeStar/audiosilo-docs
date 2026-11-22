@@ -404,7 +404,8 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `account_paused` | `409` | `POST /admin/audible/accounts/{account}/poll` (Check now), a backup or Back up everything for an account whose library was deleted, until the Bridge maps it again |
 | `unknown_title` | `404` | an Audible title route (a backup, `PATCH /admin/audible/titles/{account}/{asin}`) naming no title of the account |
 | `already_matched` / `import_open` / `not_available` | `409` | [`POST /admin/audible/titles/{account}/{asin}/backup`](reference.md#post-apiv1adminaudibletitlesaccountasinbackup): the title is on this server; its backup is waiting, running or pending; it is `unavailable` or `gone` |
-| `invalid_dest_path` / `invalid_template` | `400` | a title's `dest_path` or an account's `template` the server refuses (the reason in `error`) |
+| `invalid_dest_path` | `400` | an Audible title's `dest_path` the server refuses (what is wrong in `error`); a disc folder the scan would join into another book also carries a `reason`, on a title's or account's edit, the Bridge's library change or a `book` folder override: [Audible disc destinations](reference.md#audible-disc-destinations); a [backup](reference.md#post-apiv1adminaudibletitlesaccountasinbackup) of a title whose saved destination no longer validates carries `reason: "title"` |
+| `invalid_template` | `400` | an account's `template` the server refuses (what is wrong in `error`); a backup or Back up everything with a saved template that no longer validates carries `reason: "account"` |
 | `unknown_user` | `404` | the Bridge's `PUT /bridge/audible/accounts/{account}` naming no user, or one an account may not be mapped to (a kid household member, a demo or a disabled account) |
 | `unknown_library` | `404` | the Bridge's `PUT /bridge/audible/accounts/{account}` or `GET /bridge/libraries/{id}/books` naming no library |
 | `not_books` | `400` | the same two routes naming a podcast library |

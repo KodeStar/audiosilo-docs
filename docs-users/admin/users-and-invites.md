@@ -250,9 +250,9 @@ working, [disable the account](#disabling-vs-deleting).
 - **Disable account** - their devices stop working, but nothing is lost.
   **Enable** brings everything back.
 - **Delete account** - permanent. It removes their devices, invites, progress,
-  bookmarks, notes and history. Their [Audible accounts](audible.md) go too, and
-  any backup or check waiting for them is cancelled. Your audio files are not
-  touched.
+  bookmarks, notes and history. Their [Audible accounts](audible.md), and those
+  of household members deleted with them, go too, and any check, sync or backup
+  waiting for those accounts is cancelled. Your audio files are not touched.
 
 When in doubt, disable.
 
