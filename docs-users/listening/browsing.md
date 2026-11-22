@@ -74,6 +74,8 @@ If you have more than one library or server, use the **Library** picker beside t
 
 With more than one server, the picker names each library with its server, like **Books · Home**. Until you choose a library, the Library shows your first server.
 
+While the picker waits for a server's libraries, it names that server. If your sign-in there has ended, the picker offers **Choose a library** when another library is available. Tap **Reconnect** on the page to return to the signed-out server.
+
 ### Books
 
 Every book in the library, as a cover grid or a list:
@@ -210,7 +212,7 @@ Favourites are your personal shelf:
 - Find them on Home's **Favourites** shelf, in the Library's **Collections** section, or at the top of **Folders**.
 - Tap the heart again to remove one.
 
-Favourites belong to your account, so they follow you to every device.
+Favourites belong to your account, so they follow you to every device. If a change fails, the heart or list entry goes back to how it was. The player says **Couldn't update your favourites. Try again.**
 
 ## Good to know
 

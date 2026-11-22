@@ -118,7 +118,9 @@ share theirs too. Off by default."
   that advertise the flag (see [Whose connections](#whose-connections)).
 - The switch moves at once (optimistic) and settles on the server's answer. A refusal
   puts it back with a toast, and a demo account gets its own words.
-- While it loads or saves, the switch waits disabled. A failed load offers Retry.
+- The switch is disabled while the setting loads or a change is pending.
+  A paused web mutation shows **Waiting to sync**. It shows **Saving** while
+  the request runs. A failed settings read offers **Retry**.
 
 ### The avatars
 

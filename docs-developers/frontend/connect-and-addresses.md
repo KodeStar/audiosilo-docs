@@ -473,6 +473,13 @@ The rule is pure and tested:
   (`src/api/server-id-probe.ts`), a bare client with a 2.5 s timeout
   (`PROBE_TIMEOUT_MS`).
 
+The connection client also checks each successful `/server` read before using
+its flags. `acceptsServerAnswer` compares the request address with the
+connection's current `effectiveUrl` and checks the reported `server_id`.
+It discards a late answer from a previous address. A different id at the
+current paired or away address marks the connection `server-reset`. At an
+address known only as home, it discards the answer without prompting for sign-in.
+
 :::danger[Never send a token to an unverified home address]
 A home address is a private IP or a local name, and another network can have a
 different machine at the same address. A connection's token goes to its home address

@@ -109,7 +109,9 @@ If your email matches an account but the sign-in still waits, the provider may n
 
 ### I was signed out, or a "Reconnect" bar appeared
 
-The server stopped accepting this device: an admin signed it out, your password changed, or the server was rebuilt. Tap **Reconnect** and sign in again; the address is already filled in.
+Tap **Reconnect** to sign in again. The address is already filled in. An admin may have signed this device out, your password may have changed, or the server may have been rebuilt.
+
+If the message says a sign-in proxy turned the device away, check your browser's proxy sign-in or the headers saved in the app. See [Behind a sign-in proxy](./getting-started/remote-access.md#behind-a-sign-in-proxy).
 
 ### The top bar says a server "isn't answering"
 

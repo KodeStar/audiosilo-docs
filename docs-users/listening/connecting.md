@@ -96,7 +96,9 @@ If the server has no books yet, an admin sees **Open the admin console** to [add
 
 The app remembers every server you've used. The connect screen lists them under **Reconnect**, so you only re-enter your code or password, never the address.
 
-If the server signs this device out while you're using it, a **Reconnect** bar appears at the top of the screen. Tap it to sign in again.
+If the server signs this device out, tap **Reconnect** to sign in to that server again. You may see it at the top of the screen or on the page you were using.
+
+If the page says the server **isn't answering**, check your connection and try again. If it names a **sign-in proxy**, check your access to the proxy. See [Behind a sign-in proxy](../getting-started/remote-access.md#behind-a-sign-in-proxy).
 
 A [password](account.md#password) is the most dependable way back in. With one, you can sign in on any device with no code or invite.
 

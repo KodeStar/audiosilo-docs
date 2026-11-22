@@ -35,6 +35,8 @@ Replace `YOUR_API_KEY` with your key, and `books.example.com` with your server's
 
 Each key in the list shows when it was created and last used. To switch one off, tap **Revoke** and confirm. Anything using it loses access at once.
 
+If you're offline or the buttons are missing, see [Personal API keys on the account page](account.md#personal-api-keys).
+
 ## Pick the right account
 
 A key can reach everything your account can. A key made by an **admin** can also reach admin information, such as the list of users.

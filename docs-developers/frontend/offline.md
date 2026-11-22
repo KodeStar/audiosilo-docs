@@ -820,8 +820,10 @@ Each answer is handled like this:
   It moves to the list as `too_old`, so an event that never gets an answer can't hold
   its book "pending" forever.
 - A `404` or `405` is a **rollback** only when the server's own `/server` answers
-  without `listening_sync`. Anything else at the address keeps the outbox. A
-  rollback:
+  without `listening_sync`. Before converting events, `keepServerAnswer`
+  rechecks the client's address and the server id. A late answer from the old
+  address or an answer from a different server leaves the events queued.
+  A confirmed rollback:
   - marks the connection rolled back for the launch;
   - makes that `/server` answer the connection's from then on, in the query cache
     and on the device (`keepServerAnswer`);

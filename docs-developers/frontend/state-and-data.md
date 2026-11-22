@@ -177,8 +177,10 @@ across connections.
   write. In the app a mutation is never held for the network (see
   [The online flag](#the-online-flag-srclibdevice-onlinets)).
 - **Optimistic updates.** `useToggleFavourite` shows the full pattern. `onMutate`
-  cancels, snapshots and patches the cached list; `onError` rolls back;
-  `onSettled` invalidates to reconcile server-derived fields.
+  cancels outstanding reads, saves the current list and applies the change.
+  `onError` rolls it back and calls the failure handler from `useFavouriteAction`.
+  This shows one toast even if removing a favourite already unmounted its row.
+  `onSettled` invalidates the list to pick up the server's changes.
   - When no list had been read before the toggle, `onError` has no snapshot to put
     back. It resets the query to unread, so a failed heart doesn't stay shown as
     saved.
@@ -358,9 +360,10 @@ the Library's server state
 `{ data, isPaused, error }`:
 
 - It answers `null` once the query holds data, so a kept answer always shows.
-- It answers `'failed'` for an `ApiError`, which is the server's own answer. So
-  the screen's sign-in or not-in-library state stands, whatever the network did
-  since.
+- It answers `'failed'` for an `ApiError`, including one carried by a
+  `ServerReadError`. An HTTP error still counts as a failure if the device
+  subsequently goes offline. The screen can distinguish a refused capability
+  check from an item the listener can't open.
 - The screen checks it **before its skeleton**. A held query stays `isPending`,
   and `useAllLibraryBooks().isLoading` counts it. A skeleton drawn for a held
   query never ends.
@@ -427,7 +430,8 @@ connections of the person listening that have `needsReconnect`. The state reads
 - The Library: `refusedConnection` over the server the Library is on
   (`useSelectedLibrary().server`) while that server's list is not in, and in
   Folders mode and Books mode.
-- Up next, as a compact row.
+- Up next, as a compact row above any kept queue entries. It takes precedence
+  over the offline message even when the queue read is paused.
 - You > Stats and Year (`useSignedOutConnection(cid)` when their reads fail).
 - The book page, the episode page and folder browse, through `LoadFailedNote`. It
   shows the sign-in state for the page's `cid`, or else the `ErrorNote` with its
@@ -453,9 +457,10 @@ same first answers as the gate opens instead (see
 [the web start](web-build.md#the-web-start-a-split-build)).
 
 - **What is kept** (`isStartupQuery`): `/server`, the libraries, favourites, the
-  queue, collections, the listening goal, the household, the author, narrator and
-  series lists, and Home's shelves and cards (Recently added, Continue listening,
-  the Now card's and This week's ranges). Of the whole-library list
+  queue, collections, signed-in devices (`myDevices`), the listening goal, the
+  household, the author, narrator and series lists, and Home's shelves and cards
+  (Recently added, Continue listening, the Now card's and This week's ranges).
+  Of the whole-library list
   (`useWholeLibrary`, the one the Library grid paints from), only the first page
   is kept. It never keeps a book's detail or anything per book. A new
   first-screen query joins the list only if it is small.
@@ -503,6 +508,9 @@ device. It is the one copy of a server's facts for a launch that cannot reach it
   ([Offline](offline.md#listening-sync-the-outbox)).
 - **Seeded at launch.** `restoreServerSnapshots` runs in `bootstrapPlayback` with
   the stores' hydration, before any screen or the car's lists read a flag.
+  Both the snapshot and the web startup cache skip a saved `/server` answer
+  whose `server_id` is missing or belongs to another server (`foreignServerAnswer`).
+  A reset requires a [live answer from the current address](connect-and-addresses.md#the-pick-rule-srclibserver-addressts).
   `seedServerSnapshot` puts each kept answer into `qk.server(cid)`:
   - dated `savedAt`, so the first observer still asks the server again and the
     first answer replaces it;
@@ -548,9 +556,34 @@ Outside React, two functions read the flags:
 `useCapability`. It keeps its answer (`gcTime: Infinity`), so a gated hook
 mounted later starts from the known flags.
 
-Each gated hook asks only a server whose flag is `true`. Until then its query has
-**no function at all** (`skipToken`). Not even a manual `refetch` reaches an
-older server (React Query rejects it instead), and the query stays pending.
+The feature query uses `skipToken` until its flag is true. If both the flag
+and the feature data are unknown, `useCapabilityQuery` exposes a paused
+`/server` read as paused. A failed check becomes a `ServerReadError` with the
+original error as its `cause`. A 404 from the check therefore leaves a collection
+or LibriVox job in place. Only the resource's own 404 can mark it gone.
+
+While the feature waits on that check, its `refetch` retries the connection's
+`/server` query and forwards `cancelRefetch`. If the check
+fails again, it returns a result containing the new `ServerReadError` or throws
+that error for `throwOnError`. Once the flag is true, the feature's observer
+fetches the resource.
+
+`serverInfoQuery` sets `retryOnMount: false` and skips its mount refetch on
+error, so opening another screen preserves the failure.
+An explicit retry, connection recovery, a change of credentials or a foreground
+refresh can ask again. Before the foreground refresh, `forgetUnobservedServerFailures`
+clears failures that have no observers so the next screen can ask. It preserves
+any previous data at its original age.
+
+`refusedServer` classifies access refusals from this public `/server` check.
+A 401 uses `ApiError.fromProxy` to distinguish a proxy refusal from an AudioSilo
+sign-in failure. An AudioSilo 401 offers **Reconnect**. **Every 403 on this route
+counts as a proxy refusal**, even if its JSON looks like an AudioSilo error.
+For a proxy refusal, the page names the proxy. An existing `needsReconnect`
+flag takes precedence and shows **Reconnect**.
+`useCapabilitiesAllRead` lists refused connections in `refusals` and the
+remaining failures in `retryable`. **Retry** asks only the failed or paused
+checks with no refusal and no saved answer.
 
 | Client method | Hook | Capability | Endpoint |
 |---|---|---|---|
@@ -1404,11 +1437,10 @@ guide: [Upcoming releases](/users/listening/upcoming).
     this;
   - `isLoading`;
   - `statuses`: each answered server's `ok`, `pending` or `stale`;
-  - `failed`: the servers that didn't answer, including one whose `/server` flags
-    couldn't be read, so a cold link settles instead of loading forever;
-  - `retry`: refetches each errored server and reads the unreadable servers'
-    flags again. A request paused for the network is not asked again; it resumes
-    when the network returns.
+  - `failed` names servers whose Upcoming list or capability check failed or
+    paused without data. A refused capability check appears in `refusals`.
+  - `retry` refetches failed Upcoming lists and retries the capability checks
+    that still need an answer. It skips refused checks.
 - **The pure rules** (`src/lib/upcoming.ts`, tested apart):
   - `upcomingEligibility` decides who may be asked, and `available`.
   - `mergeUpcoming` tags each item with its connection and keeps the **first**
@@ -2207,11 +2239,10 @@ of this, because the server resolves each span on its `base_version`.
 
 ## Reachability (`src/api/reachability.ts`)
 
-A small Zustand store (`useReachability { online }`) plus module functions track
-whether the **active server** is reachable, so the sync layer stops hammering a
-dead endpoint.
+A Zustand store (`useReachability`) tracks reachability by connection id so the
+sync layer can wait for the server it needs.
 
-- It starts optimistic (`online: true`).
+- A connection with no entry in `online` counts as reachable.
 - **`noteFailure(cid, e)`** is how every request path reports a failure: the
   query cache, `loadInitialProgress`, `fetchBookProgress`'s mirror fallback, the
   progress saves (`saveProgress` and `flushGroup`, which keep the save queued)
@@ -2225,9 +2256,10 @@ dead endpoint.
   So one slow or broken read never marks a healthy server down, and a read
   answered from a local copy never marks a dead one up. Apart from the web
   `offline` event (below), nothing marks a server down without a check.
-- **`noteSuccess(cid)`** marks a connection up: a save that got through,
-  `loadInitialProgress` reading an `ApiError` (the server answered), or the
-  `/server` query succeeding for a connection marked down (the query cache).
+- **`noteSuccess(cid)`** marks a connection reachable after a successful save,
+  including a listening batch or an event accepted on its individual retry.
+  `loadInitialProgress` also calls it on an `ApiError` (the server answered),
+  as does the query cache when a previously unreachable server answers `/server`.
 - **`noteAnswer(cid)`** counts an answer without changing the state. Every
   connection's `ApiClient` gets it as its `onAnswer` callback, called whenever a
   fetch resolves, whatever the status. That covers the provider's clients and the
@@ -2235,8 +2267,8 @@ dead endpoint.
   check that timed out on a slow but healthy server sees that another request was
   answered meanwhile, and leaves the server up.
 - **`checkReachability(cid)`** asks `GET /server`, one check per connection at a
-  time. Any answer, an `ApiError` included, is reachable; no answer is
-  unreachable.
+  time. A valid response or an `ApiError` counts as reachable. A network failure
+  counts as unreachable. An `UnexpectedServerAnswerError` leaves the state alone.
   - It records nothing once stale: when the connection was removed or moved to
     another address while it waited, or (for no answer) when another request was
     answered meanwhile.

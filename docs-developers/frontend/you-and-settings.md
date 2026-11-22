@@ -254,9 +254,7 @@ The Accounts and devices pane is `ConnectionsSection`
 `SettingsContent` owns that flow, so its dialog state survives the layout switch.
 A connection with `needsReconnect` shows a **Signed out** badge (`Badge` `warning`) and a
 **Reconnect** button beside the row (`reconnectConnection`, the banner's own flow). The row's
-accessibility label carries the badge, since it stands for the row's text. The account
-page's signed-in devices list shows `SignInAgainState` in place of its Retry when its read
-failed and the connection needs signing in again.
+accessibility label carries the badge, since it stands for the row's text.
 
 ## Account (`src/components/account/`)
 
@@ -282,12 +280,23 @@ Each block is gated on its capability, so an older server shows less, quietly:
 | Pair another device: `api.pair()`, the QR, a countdown from arrival (`PAIRING_TTL_MS`, the server's 10-minute `pairingTTL`), Copy link on web, Share on native, Make a new code once expired | `PairDeviceCard`, `usePairing` | hidden for a kid's account (`isKidAccount`) |
 | The watch (Apple Watch on iOS, Wear OS watch on Android, worded by `watchWording`): Install on watch (Android), Set up / Send again, signed in as, the listening it has to send, last sync, and a link to its books in Downloads (`openDownloads`; the books themselves are `WatchSection`, [Apple Watch](apple-watch.md#the-watch-in-downloads), [Wear OS](wear-os.md#the-phone-in-downloads)) | `WatchCard`, `src/watch/` | iOS or Android with a paired watch (`watchLink.supported`, `watchCardVisible`); hidden for a kid's or demo account |
 | Proxy headers: the address’s shared set, names only (values never shown again; an edited row keeps a stored value as "Kept as it is" unless one is typed), Send to among the connection's https origins (`proxyOriginChoices`), Save and Remove headers, the https-only caption when there is none, and what can't carry them (see [Proxy headers](state-and-data.md#proxy-headers)) | `ProxyHeadersCard` | not gated on flags, as it matters most when the proxy refuses everything; for a kid's or demo account only while no full account on the device reaches an address the card could write to, and for a demo account only when it has a set (`canManageProxySet`) |
+| At home and away | `AccountAddresses` | Offline, the card needs a saved `addresses: true`. With a network, it can also show saved addresses after an unanswered capability check. |
 | Signed-in devices: sessions only, this device first (`signedInSessions`), with app, platform, last seen and a glyph (see [Signed-in devices](#signed-in-devices)) | `DevicesSection` | `my_devices` |
 | Listening sync: how many listens wait to reach this server, when this device last synced, and the "Couldn't sync" list (see [Listening sync](#listening-sync)) | `ListeningSyncCard`, `useListeningSync` (`src/playback/use-listening-sync.ts`) | `listening_sync`, or anything still waiting or listed (a server rolled back keeps showing what it left) |
 | Personal API keys: list, create in a dialog, reveal once, revoke with a confirm | `ApiKeysSection`, `useApiKeysManager`, `ApiKeyCreatedModal` | `api_keys` (a notice when it's `false`); hidden for a demo or kid's account |
 | Sign out of the server | `useSignOut`, `SignOutConfirm` | - |
 
+When the capability check pauses or fails with no saved flags, Account still
+renders Signed-in devices and an eligible account's Personal API keys.
+Each can show previously loaded rows or its offline state. A refused check uses
+the connection's [sign-in or proxy notice](state-and-data.md#capability-gated-reads-player-redesign-phase-1a).
+The key list holds metadata only. Create and Revoke require `api_keys === true`.
+
 ### Signed-in devices
+
+The [web startup cache](state-and-data.md#the-startup-cache-web) restores
+`qk.myDevices(cid)` on reload and marks it for refresh. Signing out removes
+that connection's saved list.
 
 Each row of `DevicesSection` shows:
 

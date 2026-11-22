@@ -93,10 +93,12 @@ A watch has its own downloads, separate from your phone's. See [Apple Watch](app
 
 ## With no connection
 
-When your device has no network, downloaded books play and everything else waits for your server:
+When your device loses its network connection, the player shows **Offline** and downloaded books keep playing.
 
-- **Home, the Library, Folders** and any other page or list show **You're offline** in place of what they haven't loaded yet. Anything already loaded stays on screen. When the network comes back, they load by themselves.
-- **Wi-Fi with no internet isn't offline.** The apps still reach a server on the same network. If a server doesn't answer, the page says so and offers **Retry**. With more than one server, Home names the one that didn't answer, and **Retry** asks only that one.
+- **Home, the Library and Folders** keep what they've already loaded. Where a list still needs your server, it says **You're offline** and loads when the network returns.
+- **Account** can show the last [signed-in device list](account.md#signed-in-devices) and any [API key details](account.md#personal-api-keys) the player already has.
+- **On Wi-Fi with no internet**, the apps can still reach a server on the same network. If just one server stops answering, Home names it. **Retry** asks that server again.
+- **If your AudioSilo sign-in has ended**, choose **Reconnect** for that server, even if you're also offline. You'll need a connection to finish [signing in again](connecting.md#getting-back-in-after-signing-out).
 - A [one-tap bookmark](bookmarks-and-notes.md) or a **Fell asleep** bookmark stays on this device until it syncs, even if you close the app.
 - Notes and ratings need a connection in the phone apps. In the web player they can wait while the tab stays open.
 - **The player's [Text tab](companion.md#text)** is hidden for a book that isn't downloaded.
@@ -109,7 +111,7 @@ When your server has [community metadata](book-page.md#about-this-book) switched
 
 The web player can download books too, no app needed. Downloads are kept in the browser's own storage, so a laptop can play them with no connection.
 
-- It needs a **secure connection** (an `https://` address). On plain `http://`, the Downloads tab doesn't appear.
+- It needs a **secure connection** (an `https://` address). On plain `http://`, the Downloads tab doesn't appear and the top bar just says **Offline** when you lose the network.
 - **Clearing the browser's site data deletes your downloads.** Your books and progress stay safe on the server.
 - A browser can clear stored data when the disk runs very low. Installing the web player as an app (below) makes the browser protect it more. For long trips, the [iOS or Android app](mobile-apps.md) is the safest choice.
 - On an **iPhone or iPad**, Safari stops playback in the background. Use the iOS app to listen with the screen off.

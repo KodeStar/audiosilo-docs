@@ -12,9 +12,13 @@ It's **off by default** and works **both ways**. You see others only while you s
 1. Open the [Household page](household.md).
 2. Under **Listening in the house**, turn on **Share what I'm listening to with the house**.
 
-If a server can't be reached, the Household page says it couldn't check that server, with **Retry**. With no network, it says you're offline and checks again by itself.
+There's one switch per server. When several people [share a device](profiles.md), each sets their own. When you turn sharing off and the server saves the change, others stop seeing you and their cards disappear from your Home page.
 
-There's one switch per server. When several people share a device ([profiles](profiles.md)), each sets their own. Turn it off any time: you stop showing up for others, and they disappear from your Home page.
+If you change the switch offline in the web player, it says **Waiting to sync**. Keep the tab open. The switch says **Saving** while the player sends the change, and you can use it again when that finishes.
+
+If no switch appears, the page can say which server it couldn't check. Choose **Retry** to ask again. With no network, the page says you're offline and checks again when the network returns.
+
+If your sign-in has ended, choose **Reconnect** for that server. If the page names a sign-in proxy, [check your proxy access](../getting-started/remote-access.md#behind-a-sign-in-proxy).
 
 Demo accounts can't turn it on.
 
