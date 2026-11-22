@@ -7857,8 +7857,9 @@ stop it or wait for it to finish before unlinking".
 ```
 
 A revert restores the underlying value from the database, with no rescan and
-no disk access. Reverting a community title stores the restored title as an
-`edited` value when it passes title validation, so later fills keep it (see
+no disk access. Reverting a community title in an `edited` request (the
+default `source`) stores the restored title as an `edited` value when it passes
+title validation, so later fills keep it (see
 [Metadata overrides](../data-model.md#metadata-overrides-and-effective-values)).
 Reverting an ASIN/ISBN falls back to any enrichment for it.
 

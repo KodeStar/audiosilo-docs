@@ -625,7 +625,7 @@ of the name-reading rules the snapshot used: the path baseline
 | 3 (2.6.0) | A leaf named `Author; Series; Book NN[; Title]` came to state its series and position. | Reads a snapshot older than 3 with such a leaf once, and stamps an unflagged revision 1 or 2 snapshot, as [the scanner](scanner.md#a-leaf-that-states-its-series) describes. |
 | 4 (2.7.0) | The tag reading of 2.4.0 and 2.5.0: a series tag carrying its position, generic titles in every script, the MP4 narrator item, and a narrator tag over composer. | Reads once a snapshot older than 4 that may read otherwise (an MP4, a narrator, a splittable series tag, a non-ASCII letter in its title or path), and stamps the rest, as [the scanner](scanner.md#books-already-indexed) describes. |
 | 5 (2.7.0) | A book of several files stopped taking its first file's title tag over the album that tag extends. | Reads a folder book of more than one file once when its snapshot is older than 5, and its last file too where the title depends on it, as [the scanner](scanner.md#a-book-of-several-files-title) describes. |
-| 6 (2.7.0) | The scanner reads names and ranges from structured leaves and weighs the folder title against conflicting multi-file tags. | Checks structured leaves and their direct disc folders once. It also checks revision 5 multi-file books whose folder gives a title different from the scanned one. Other current revision 5 snapshots get the new stamp alone. Earlier revisions keep their [scan checks](scanner.md#books-already-indexed). |
+| 6 (2.7.0) | The scanner reads a structured leaf's title part, author and `Books NN-NN` range (a title-less leaf is named by its series and position) and weighs the folder title against conflicting multi-file tags. | Checks structured leaves and their direct disc folders once. It also checks revision 5 multi-file books whose folder gives a title different from the scanned one. Other current revision 5 snapshots get the new stamp alone. Earlier revisions keep their [scan checks](scanner.md#books-already-indexed). |
 
 A snapshot with no revision (any server before revision 1) was read when the
 lone folder above a book (`Charles Dickens/Great Expectations`) was its series
@@ -2336,7 +2336,7 @@ compared ignoring letter case). A tag title that IS the leaf's name, number and 
 (`13 Reasons Why`), is kept whole with no position read from it. The layout
 parses a structured leaf even when the title tag repeats its whole name.
 
-Both source modes read a structured leaf the same way, so an untagged
+Both source modes read an untagged structured leaf the same way:
 `Bruno Miller; Dark Road; Books 01-05` has the scanned title "Dark Road 1-5"
 from `DeriveFromPath`, with source `path`. How the leaf combines with tags is in
 [A leaf that states its series](scanner.md#a-leaf-that-states-its-series).

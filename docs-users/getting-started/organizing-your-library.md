@@ -84,7 +84,7 @@ At the library root it also gives the author, Mark Tufo. Disc folders such as `C
 - `Book 2.5` sorts between books 2 and 3. `Book XX` and `Book 00` leave the number blank.
 - `Book 01-05` and `Books 01-05` both cover books 1 to 5. With no title at the end, `Bruno Miller; Dark Road; Books 01-05` gives "Dark Road 1-5". That also works with the album "Dark Road" if the files give no other book title.
 
-With tags first, a number in the tags wins. A series tag without a number takes the folder's number only for the same series. "Expanse" and "The Expanse" count as a match here.
+With tags first, a number in the tags wins. A series tag without a number takes the name's number only for the same series. "Expanse" and "The Expanse" count as a match here.
 
 ### When the album tag is the series
 
@@ -92,15 +92,15 @@ When the album names a known series, AudioSilo looks for the book's title in its
 
 ### A book made of several files
 
-With tags first, the album usually names the book. When files name different chapters, the folder can supply the title if the album is missing or looks like the series. For example, chapter files in `The Dragon Reborn` can share the album "The Wheel of Time" and still display as "The Dragon Reborn".
+With tags first, the album usually names the book. When files name different chapters, the folder can supply the title if the album is missing, or if it shares no word with the folder's name and the files have no series tag. For example, chapter files in `The Dragon Reborn` can share the album "The Wheel of Time" and still display as "The Dragon Reborn".
 
 AudioSilo also checks whether the title tags name the book.
 
 - With no album, a shared title tag wins. "Dune (Part 1)" and "Dune (Part 2)" give "Dune".
-- Files in `Leviathan Wakes` tagged "The Expanse Box Set: Leviathan Wakes" keep that full title, because the folder matches its end.
-- In `Book 2`, tags like "The Wheel of Time: The Great Hunt - Chapter 1" and "The Wheel of Time: The Great Hunt - Chapter 40" give "The Great Hunt".
+- Files in `Leviathan Wakes` with the album "The Expanse Box Set" and the title tag "The Expanse Box Set: Leviathan Wakes" keep that full title, because the folder matches what the tag adds to the album.
+- In `Book 2`, files with the album "The Wheel of Time" and title tags like "The Wheel of Time: The Great Hunt - Chapter 1" and "The Wheel of Time: The Great Hunt - Chapter 40" give "The Great Hunt".
 
-Folders named `03`, `Book One`, `Mistborn Book One`, `Files`, `MP3`, `HP1`, an ASIN or an ISBN leave the title to the files. So does an author folder: files tagged "The Martian" by Andy Weir, directly in `Andy Weir`, keep that album.
+When the files have an album, folders named `03`, `Book One`, `Mistborn Book One`, `Files`, `MP3`, `HP1`, an ASIN or an ISBN keep it as the title. So does an author folder: files with the album "The Martian" by Andy Weir, directly in `Andy Weir`, keep that album. Without an album, files that name different chapters in a folder like `Mistborn Book One` or `Andy Weir` take the folder's name.
 
 If AudioSilo cannot open the last file it needs for this check, the book keeps its current title until its files change or you choose [**Read the files again**](../admin/books.md#a-books-page). A title you edited always stays.
 
