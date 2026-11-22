@@ -116,13 +116,11 @@ seek bar). Away from 1x, one more line gives the wall-clock time left in the pho
 - **A file that fails** stops the book, its span ending where the audio last moved
   (`lastAdvance`), not at the moment of the failure.
 
-Before play, `Resume.plan` in `Core/PlayerRules.swift` compares places on the
-watch clock. It subtracts `clockSkewMs` from the server's timestamps for the
-watch's own row, another device's `updated_at` and a finish's `finished_at`.
-To replace a local place with another device's listening place, the row must be
-newer and its version must exceed the watch's acknowledgement. When the book
-has no events waiting, a newer finish or an unseen finished version can restart
-it from zero.
+**Resume** (`Resume.plan`, `Core/PlayerRules.swift`) is the phone's
+([Resume protection](playback.md#resume-protection)) on the watch's clock. It moves
+these server times back by `clockSkewMs`: the time of the watch's own row, another
+device's `updated_at` and a finish's `finished_at`. Another device's row replaces the place
+here only when it is newer and its version is above the watch's acknowledged one.
 
 **Spans** follow the phone's rules
 ([Listening spans](playback.md#listening-spans-sync-v2)), except that the watch cuts every 15 s
@@ -134,23 +132,24 @@ when it is that book's and a resume from this watch's own place, not when `Resum
 server's row (`loadsFromRow`). The move is kept on disk too (`open-span-move.json`,
 `OpenSpanStore.saveMove`) until a span opens, so a launch that ends before the book plays (a
 background wake) leaves it to the next. It leaves the store only once that span is stored, and
-leaving the account forgets it. On a move, Stay or cut while playing,
-`SpanRecorder` queues the closed span and replaces the stored open span in one
-write. The replacement starts at the destination of the move or the end of the cut.
+leaving the account forgets it. A move, a Stay or a cut while playing closes the
+span into the outbox, and the stored span is replaced by the next one in a single
+write (`SpanRecorder.close`'s `clearStore`).
 
-**Stay and the outbox.** `SpanRecorder.standBy` records the choice at the
-watch's current place. `Outbox` checks `listening_stay` for each request,
-including a single-event retry. With the flag missing or false it sends a queued
-`stay` as `jump`. If a stale flag lets a literal `stay` through, v2.6.0
-answers HTTP 200 with `rejected: invalid`. The watch removes that event from the
-queue and records the failure. A Stay refused alone with HTTP 400 also goes to
-the watch's failed list. The phone retries that HTTP 400 once as a jump.
+**Stay** is the phone's too ([Stay wins](playback.md#stay-wins)):
+`SpanRecorder.standBy(..., stay:)`, gated by the cached `/server`'s `listening_stay`
+(`AppModel.takesStay`), and `Spans.carried`. `Outbox` reads the flag as it builds each
+request, a single-event retry's too, and sends a queued `stay` as a `jump` while it is
+off. Unlike the phone, a `stay` refused alone with a `400` is not tried again as a
+`jump`. It moves to the couldn't-sync list as `invalid`, as a v2.6.0 server's
+`rejected` `invalid` does.
 
-`Core/AckAndOffer.swift` keeps the acknowledged version and offer keys per
-book. If a request actually sent `stay` and got `diverged` with `kept: stored`,
-`AckRules.staysHeld` lets `OfferThrottle` show a new place within ten minutes.
-The watch remembers a dismissed key even without an acknowledgement. A new play
-or move alone does not repeat that offer.
+**Offers** (`Core/AckAndOffer.swift`) follow the phone's
+[throttles](playback.md#offering-another-devices-place-sync-v2), with two
+differences. A held Stay counts only for a request that went out with `stay`
+(`AckRules.staysHeld`, `OfferThrottle.shouldShow(..., stayHeld:)`). And there is no
+held-listen repeat. An offer that timed out is noted as answered (`ignoreOffer`) and
+is not offered again.
 
 **Addresses.** The home rule is the [phone's](connect-and-addresses.md#the-pick-rule-srclibserver-addressts):
 no token before the `server_id` probe. The pick is dropped on backgrounding and probed again while active.
@@ -159,11 +158,10 @@ The background upload goes to the away or paired address, never home
 
 **Background sync.** Going to the background cuts the span. The watch hands the outbox's first
 chunk to a background upload carrying `clock_offset`, not `sent_at`, and adds a best-effort app
-refresh flush. Replays are safe (event ids are the idempotency keys). The upload
-tag stores the account, event IDs and whether the body contained a Stay
-(`SyncUploadTag.sentStay`). A later wake uses that tag to judge the answer for
-the sending account. An older tag without `sentStay` drains the answered events
-with ordinary offer timing. In the foreground the
+refresh flush. Replays are safe (event ids are the idempotency keys). An answer that arrives on a
+wake is applied like a foreground one, for the account it was sent for. The upload's tag
+(`SyncUploadTag`) records that account, the event ids and whether the body sent a `stay`
+(`sentStay`), so the wake judges a held Stay by what was sent. In the foreground the
 watch sends the outbox at launch, on the foreground, after each closed span, and every 60 s while
 events wait. It never gates on `NWPathMonitor`, which was seen reporting `unsatisfied` while
 `URLSession` worked. It tries, and a failure with no answer means offline.

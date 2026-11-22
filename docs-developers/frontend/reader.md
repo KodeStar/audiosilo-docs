@@ -449,11 +449,12 @@ only when no row was ever seen.
   meanwhile (Jump, Stay, the reader already there) is not used, so a page captured
   before a Jump, sent on the place jumped to, can't move that place back. Sent on 0,
   it diverges, and the server keeps the further place.
-- **The open reader remembers the acknowledged version immediately.** On Jump
-  or Stay, `ReaderScreen` marks the answer `seen` before the mirror write
-  finishes. Its `latestAnswer` reducer ignores older replies and keeps that
-  version seen if a slow save returns it again. A newer unseen version can
-  still raise an offer.
+- **The answer's `seen`** also counts the very version this device acknowledged,
+  since one version is one write. On Jump or Stay, `ReaderScreen` marks its answer
+  `seen` at once, before the mirror write ends. Its `latestAnswer` reducer drops an
+  older answer and keeps that version seen when a slow save answers it again, so a
+  late answer carrying a row already adopted never offers it again. A newer version
+  can still be offered.
 - **The offer** (`jumpOffer`) is judged against the page on screen. When a save's
   answer kept a row this device never saw, whose place is elsewhere than the one on screen (another CFI, at least 1% of the book away, `SAME_PLACE`), ahead or behind,
   a non-blocking card says `On {device} you were at {percent}%. Jump there?` with
