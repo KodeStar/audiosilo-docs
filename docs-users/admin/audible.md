@@ -61,9 +61,10 @@ whether it syncs here. To change the person or library, use **Change** on the
 Bridge's **Accounts** tab.
 
 When you choose a different library, AudioSilo checks the account's template and
-the saved destinations of the titles it can still back up. If one puts a backup
-in a [disc folder that would join another book](#choosing-a-destination), choose
-a separate folder for it, then change the library again.
+the saved destinations of its titles that aren't on this server, or that you
+marked **Not this book**. If one puts a backup in a
+[disc folder that would join another book](#choosing-a-destination), choose a
+separate folder for it, then change the library again.
 
 An account marked **Paused** lost its library. Choose another library for it on
 the Bridge's Accounts tab.
@@ -215,10 +216,15 @@ the scan would join it into `Author/Book`:
 
 Choose a separate folder for the backup instead, such as `Author/New Title`.
 
-A queued or running backup keeps the destination it was queued with, even if you
-edit it here. So **Always one book** on `Author/Book` is refused until no
-destination or template points at a disc there and that backup has finished or
-been cancelled in [**Server > Settings > Bridge > Jobs**](bridge.md#jobs).
+Clearing a destination is refused in the same way while the account's template
+names such a disc folder.
+
+A backup that is waiting, running or needs attention keeps the destination it
+was queued with, even if you edit it here. So **Always one book** on
+`Author/Book` is refused until no destination or template points at a disc there
+and that backup has ended. **Cancel** in
+[**Server > Settings > Bridge > Jobs**](bridge.md#jobs) ends a waiting backup at
+once. A running one ends when the Bridge stops it.
 
 ![The Destination dialog for one title](/img/screenshots/admin/audible-destination.png)
 

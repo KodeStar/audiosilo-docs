@@ -12292,7 +12292,10 @@ the server checks the actual book and files in the
 
 An open backup keeps the library and placement it was queued with, whatever
 later edits to the title or account say. So the folder override also counts the
-open backups' placements, and only a finished or cancelled backup lets it pass.
+open backups' placements: a backup that is queued, running or parked
+(`needs_attention`) holds it until the job ends (`done`, `failed` or `cancelled`).
+Cancelling a running backup only asks the Bridge to stop, so the hold lasts until
+the Bridge reports.
 
 ### The account object
 
@@ -12704,6 +12707,7 @@ by the first poll that reports the title available.
 |---|---|
 | `202` | `{ "pending": false, "job_id": N }`: queued (or the title's open backup, when a request at the same moment queued it first) |
 | `200` | `{ "pending": true, "job_id": null }`: a preorder, backed up on release |
+| `400` | `invalid_dest_path` with reason `title` - the title's saved destination no longer validates; `invalid_template` with reason `account` - the account's saved template no longer does |
 | `404` | `unknown_account`; `unknown_title` (also an `{asin}` that isn't an ASIN); `module_off` |
 | `409` | `already_matched` - the title is on this server (matched, not marked "Not this book"); `import_open` - its backup is waiting, running or parked, or a preorder request is pending; `not_available` - the title is `unavailable` or `gone`; `account_paused`; `kind_unavailable` - no Bridge has reported, or the paired one doesn't run `audible.import`; `library_not_writable` - the Bridge can't write to the account's library |
 

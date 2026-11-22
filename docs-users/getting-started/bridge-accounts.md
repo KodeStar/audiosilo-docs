@@ -130,8 +130,11 @@ holds the current **Back up** setting. The Bridge's card shows the value it last
 saw, as **Last known to the Bridge**. It catches up the next time you press
 **Change** and **Save** on the Bridge's card, or sign in to the account again.
 
-Use **Change** to edit the person, library or name. Listening place sync starts
-off. You can turn it on in the console. Changing the person turns it off again.
+Use **Change** to edit the person, library or name. A new library is refused
+while the account's template or a title's saved destination would put a backup
+in a [disc folder that joins another book](../admin/audible.md#choosing-a-destination)
+there. Listening place sync starts off. You can turn it on in the console.
+Changing the person turns it off again.
 
 ### The account's states
 
