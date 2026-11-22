@@ -13,7 +13,7 @@ Pick one of these to start the timer:
 
 - **Minutes**: 5, 10, 15, 30, 45 or 60.
 - **End of chapter**: stops at a chapter end from the book's chapter times. The button shows how long until playback stops. A book without chapter marks uses its files or its [parts](playback.md#books-without-chapters).
-- **Or stop after**: **This chapter** or one of the next three, each with the time playback stops. The list is hidden when the player doesn't know how long this chapter is.
+- **Or stop after**: **This chapter** and up to three more, each with the time playback stops. The list is hidden when the player doesn't know how long this chapter is.
 
 The times are real time at your current speed.
 
@@ -34,7 +34,7 @@ In the iPhone app, a running timer also shows on the lock screen as a Live Activ
 In a timer's last 30 seconds, a card appears with a ring that empties:
 
 - A **minutes** timer fades the book out.
-- A **chapter** timer plays at full volume and stops at the chapter's end.
+- A **chapter** timer plays at full volume until it stops.
 
 The card stays for 30 seconds after the book pauses. Until it goes, tap **Keep listening** or [shake your phone](#shake-to-extend) to start the timer again. You get the same minutes again, or one more chapter.
 
