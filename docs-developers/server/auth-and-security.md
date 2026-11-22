@@ -471,7 +471,7 @@ The wrappers live in `internal/api/middleware.go`:
 | Wrapper | Accepts | Used on |
 |---|---|---|
 | `requireAuth` | A **session token or an API key**, from the `Authorization` header only (`ResolveRequest(secret, presence, KindSession, KindAPI)`) | Routes that take a session or an API key, including a book's ebook (`GET /libraries/{id}/ebook`) |
-| `requireMediaAuth` | The same, plus `?token=` as a query parameter | **Only** the media GETs `/meta/cover` (a community cover) and `/me/upcoming/cover` (an upcoming release's cover) |
+| `requireMediaAuth` | The same, plus `?token=` as a query parameter | **Only** the media GETs `/meta/cover` (a community cover), `/me/upcoming/cover` (an upcoming release's cover) and `/podcasts/discovery/artwork` (a search result's artwork) |
 | `requireBookMediaAuth` | `requireMediaAuth`, whose one token lookup also accepts a [cast token](#cast-tokens) (`ResolveCastRequest`, then `castOwnBook`) | Only a book's own `/cover` and `/stream` |
 | `requireFeedAuth` | The same sequence, accepting **only** a [calendar feed token](#calendar-feed-tokens), in the header or as `?token=` | Only `GET /me/upcoming/releases.ics` |
 | `requireAdmin` | `requireAuth` plus a role check | Every `/admin/*` route |
@@ -1987,7 +1987,7 @@ and caps shown below.
 | `ipLimiter` | Token bucket per IP | `rate_limit.address`, 50 req/s, burst 200 | Public routes, unproved credentials and the other requests listed below |
 | `tokenLimiter` | Token bucket per credential | `rate_limit.token`, 50,000 req/s, burst 100,000 | Authenticated API routes outside `/api/v1/auth/` served by `requireAuth` or `requireAdmin`, including a book's `/ebook`. The key is the session or API key's token row ID. |
 | `mediaLimiter` | Token bucket per credential | `rate_limit.media`, 200 req/s, burst 2,000 | Authenticated reads through `mediaAuth`, including covers, streams, the Upcoming calendar feed and discovery artwork. See [Signed-in requests are limited per credential](#signed-in-requests-are-limited-per-credential). |
-| `bridgeLimiter` | Token bucket per Bridge token | Fixed at 2,000 req/s, burst 20,000 (`bridgeRate`, `bridgeBurst`) | After `requireBridge` proves the token, it charges the bucket keyed by that token's row ID. Exhausting it returns `429` without charging the address shared with other clients. |
+| `bridgeLimiter` | Token bucket per Bridge token | Fixed at 2,000 req/s, burst 20,000 (`bridgeRate`, `bridgeBurst`) | After `requireBridge` proves the token, it charges the bucket keyed by that token's row ID. Exhausting it returns `429` without charging the address shared with other clients. A proved Bridge is served even while its address's bucket is empty: `rateLimit` lets a `/bridge/*` request through when `MayBeBridgeToken` (`internal/auth/bridge.go`) says its token may be a Bridge's, and `requireBridge` decides. |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem`, `POST /auth/exchange`, and the Bridge's pairing exchange `POST /bridge/pair` (one shared counter) |
 | `oidcLimiter` | Failure lockout per IP | 10 failures / 15 min | Single sign-on's `GET /auth/oidc/callback` and `POST /auth/oidc/finish` (one shared counter). A callback with no flow cookie, the provider's `?error=`, a provider that doesn't answer and a finish with no cookie charge nothing, since any page can make a visitor's browser send those. A locked-out callback redirects to `/connect#oidc=rate_limited` |
@@ -2007,8 +2007,9 @@ and caps shown below.
   an empty bucket answers `429` first;
 - a demo account's API and media requests.
 
-Health probes and static files are exempt. The mux recognises the console,
-web player and connect page assets through `web.IsStatic`.
+Health probes and static files are exempt. `rateLimit` recognises the console,
+web player and connect page assets from the handler the mux picks
+(`web.IsStatic`).
 
 **Two lockout patterns.** The failure-lockout `limiter` is used in two ways:
 

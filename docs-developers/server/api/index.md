@@ -943,7 +943,7 @@ when to try again.
 | Address token bucket | Public routes (including `POST /bridge/pair`), all `/auth/*` routes, unproved tokens and demo accounts' API and media requests. Health probes and static files are exempt. | 50 requests/second, burst 200, per IP |
 | Credential token bucket | Other authenticated API requests, including admin routes, once the server verifies the token | 50,000 requests/second, burst 100,000, per session or API key. Reaching this limit also charges the address. |
 | Media token bucket | Library covers and streams, community covers, Upcoming covers and calendar feeds, and podcast discovery artwork | 200 requests/second, burst 2,000, per credential (a cast token has a bucket of its own) |
-| Bridge token bucket | A paired Bridge's `/bridge/*` requests after the server verifies its token | Fixed at 2,000 requests/second, burst 20,000, per Bridge token. Reaching this limit leaves the address bucket alone. |
+| Bridge token bucket | A paired Bridge's `/bridge/*` requests after the server verifies its token | Fixed at 2,000 requests/second, burst 20,000, per Bridge token. Reaching this limit leaves the address bucket alone, and a paired Bridge is still served while its address bucket is empty. |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
 | Redeem lockout | `POST /auth/redeem`, `POST /auth/exchange`, `POST /bridge/pair` (one shared counter) | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
