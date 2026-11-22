@@ -815,27 +815,33 @@ restart. The importer licenses once more, and a second one fails
 lost lease keeps the encrypted partial and its state. Cancellation or a failed
 attempt removes them.
 
-**Completed decrypt.** A shutdown, lost lease or temporary placement failure
-keeps the ready file and its metadata. This includes a network error, a rate
-limit or an unqualified HTTP 404 at lease confirmation. On the next claim for
-that account and title, `readStaged` checks the record against the file and the
-pairing (the modification time exactly). A valid stage skips the Audible title lookup, license,
-download and decrypt.
+**Completed decrypt.** A shutdown, a token refusal or a lost lease keeps the
+ready file and its metadata. So does every failure except the three below,
+such as `exists`, `not_writable`, a network error, a rate limit or a 404 for
+the job at the lease check (a proxy answers one while the server restarts). On
+the next claim for that account and title, `readStaged` checks the record
+against the file, the server and the pairing (the size and modification time
+exactly). A valid stage skips the Audible title lookup, license, download and
+decrypt, and plans the destination again.
 
-Cancellation, a dropped pairing or a permanent refusal such as `unknown_account`,
-`unknown_title` or `no_rights` removes the stage. For a job that ends before
-running, `Importer.Abandon` leaves the files alone if the claim was lost or
-another import holds the account's gate.
+Only cancellation, a dropped pairing, a success, or `unknown_account`,
+`unknown_title` or `no_rights` (`bookRefused`) removes the stage. A failed
+title nobody backs up again keeps its stage until the start-up sweep below. For
+a job that ends before running, `Importer.Abandon` removes the files unless the
+claim was lost or another import holds the account's gate.
 
 **Startup cleanup.** In the private temp folder, `audiblejob.SweepTmp` keeps
 partial downloads with their state, completed decrypts with their metadata, and
 placement markers while the corresponding files are younger than seven days.
-It discards incomplete decrypts and collects the recorded destination folders
-before expiring old records.
+Everything else in the folder goes, whatever its age: incomplete decrypts, a
+state or metadata file without its audio, and an older Bridge's
+`<account>-<asin>.m4b`. Before expiring old records, it collects the recorded
+destination folders.
 
-After a books mount passes its writable mapping check, `transfer.SweepStaged`
-looks for library-side placement files. If startup records name folders in that
-library, only files directly in those folders qualify. With no recorded folder,
+Once per start, after a books mount passes its writable mapping check,
+`transfer.SweepStaged` looks for library-side placement files. If startup
+records name folders in that library, only files directly in those folders
+qualify. With no recorded folder,
 the Bridge walks the library only if a local Audible account maps to it on this
 server.
 

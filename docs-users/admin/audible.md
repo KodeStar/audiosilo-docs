@@ -5,7 +5,9 @@ description: "Have your Bridge back up the Audible books you bought into your li
 
 Your [Bridge](bridge.md) finds the Audible books already on your server and backs
 up the titles you choose. You can also turn on
-[automatic backups for new purchases](#backing-up-by-itself). Each backup is a lossless copy that keeps the book's chapters.
+[automatic backups for new purchases](#backing-up-by-itself). Each backup
+removes the book's copy protection (DRM) and is a lossless copy that keeps its
+chapters.
 
 It can also keep each account's **listening places** in step with Audible, both
 ways. You need to be an admin and have a Bridge.
@@ -123,14 +125,15 @@ The Bridge downloads the book, removes its copy protection and saves it in your
 library. Once the server indexes it, the title shows **On this server** with
 **Backed up here**.
 
-The Bridge backs up one book per account at a time. A download cut off part way
+The Bridge backs up one book at a time. A download cut off part way
 picks up where it stopped. Once the copy protection is removed, the Bridge keeps
-that copy, so a restart, or a retry after a passing problem, doesn't download
-the book again. The Bridge never overwrites an existing book.
+that copy, so a restart, or a retry after a failed backup, doesn't download
+the book again. The Bridge never overwrites anything in your library.
 
 To stop a backup, choose **Cancel** in the Bridge's [Jobs](bridge.md#jobs) list.
-This removes the temporary copy. When it starts, the Bridge also clears away
-copies left over for seven days or more.
+This removes the temporary copy. A failed backup keeps its copy in the Bridge's
+data folder until you back the title up again. When it starts, the Bridge also
+clears away copies left over for seven days or more.
 
 ### When a backup fails
 

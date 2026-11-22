@@ -93,8 +93,8 @@ A pre-existing marker survives a transient failure. Cleanup removes only
 artifacts created by that failed check. The normal mapping recheck interval
 applies. `bridge.verify` below remains a book check.
 
-Fetch and retention jobs recheck the mapping before mutations, including
-recovery. Then:
+Podcast fetch and retention jobs recheck the mapping before mutations,
+including recovery. Then:
 
 - Staging, publication and deletion stay on that show's filesystem.
 - Regular files and real show and attachment directories are required.
