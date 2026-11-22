@@ -2068,14 +2068,21 @@ or an apply took, with or without an ASIN or ISBN. Columns:
 - PK `(library_id, path)`.
 - `work_id`, and `recording_id` (`''` for none).
 - `how` (a `CHECK`). `auto` is a match run's confident item applied unasked.
-  `accepted` is the match dialog or a review item the admin included, and it is
-  kept when a refresh heals a merged work.
+  `accepted` is the match dialog or a review item the admin included.
 - `run_id`: the run that applied it.
 - `set_by` (the admin) and `set_at`.
 - `offered_asin` and `offered_isbn`: the identifiers the match offered, ticked
   or not, in the fields' stored form (`''` for none). A refresh never fills the
   offered identifier back into a book with neither, so an unticked or reverted
-  ASIN stays off.
+  ASIN stays off. From 2.7.0 one the book holds of its own once the edit is in
+  (its files', an enrichment's or an admin's, anything but a community
+  override) is stored as `''` (`catalog.withoutOwnOffered`).
+
+From 2.7.0 a run's bookkeeping of a match it read (`BookEdit.MatchIf` naming one:
+a refresh's heal or new identifier, a repick's ASIN) rewrites only `work_id`,
+`recording_id` and the offered identifiers, keeping `how`, `run_id`, `set_by`
+and `set_at`. A heal to another `work_id` (a merged work's) also moves `set_at`,
+which the upcoming job reads as the match's change of work.
 
 `run_id` and `set_by` have no foreign keys, because runs are pruned and the row
 outlives either. Index `idx_book_matches_work` on `work_id` *(0079)*.

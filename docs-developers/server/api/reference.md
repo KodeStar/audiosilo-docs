@@ -7528,7 +7528,8 @@ book path).
 - `fields` carries **all sixteen** overridable fields, in the order of the
   table above (the example shows four).
   Each has the effective `value`, its `source`, the `scanned` value (what the
-  scan found), `locked` (an admin edit holds it), and for an
+  scan found, the revert target unless `enrichment` below names another),
+  `locked` (an admin edit holds it), and for an
   edit `edited_by` (the username; omitted once that account is deleted) and
   `edited_at`. `series_index` is a string here (`"2.5"`, `"1-3"` for a range,
   `""` for none), `abridged` `"true"` / `"false"` / `""`, and `genres` / `tags`
@@ -7704,8 +7705,8 @@ transaction. The console's dialog sends it:
 - alone (after any ticked cover) for the recorded match itself: with nothing
   ticked, the accept is on only when it offers an ASIN or ISBN.
 
-A cover-only accept of another work, for a book with an ASIN or ISBN, sends
-none and leaves the recorded match in place. From 2.7.0, `asin` and `isbn` are
+A cover-only accept of another work or edition, for a book with an ASIN or
+ISBN, sends none and leaves the recorded match in place. From 2.7.0, `asin` and `isbn` are
 the identifiers the match offered, ticked or not (`""` or absent for none), so a
 [refresh](#bulk-community-matching) never fills back one the admin left
 unticked or reverted since. One the book holds of its own once the edit is in
@@ -7714,11 +7715,13 @@ a refresh can fill it if the book later loses it. An unlink ignores them.
 
 **Unlinking** (from 2.6.0). `match: { "work_id": "" }`, from any edit (no
 `source` needed), removes the book's recorded match, every `source: "community"`
-value and its community cover (as [clearing the community
+override and its community cover (as [clearing the community
 matches](#delete-apiv1admincommunity-matches) does for a library, before the rest
 of the edit applies), so it is `matched: false` again unless it has an ASIN or
-ISBN of its own. An admin's own edits and uploads stay. There is no undo.
-From 2.7.0 the runs' items that applied the match are marked
+ISBN of its own: its files', an admin's edit, or the Bridge's enrichment (which
+reads as `source: "community"` but is no override, and stays). An admin's own
+edits and uploads stay. There is no undo. From 2.7.0 the book's applied items in
+the runs covering its library are marked
 [`detail: "unlinked"`](#get-apiv1adminmatch-runsiditems).
 
 Only an explicitly empty `match.work_id` unlinks. Both ids lose leading and
@@ -8257,8 +8260,9 @@ Run **statuses**. A run moves `matching` → `ready` → `applying` → `applied
 - `failed`: stopped by itself. `error` is `metadata_off` when community metadata
   was turned off, or `internal`; before 2.7.0 also `metadata_unavailable`.
 - `interrupted`: the server stopped mid-match with books left (`done < total`).
-  At the next start a run stopped with every book recorded (from 2.7.0), or
-  mid-apply, goes back to `ready` instead, its applied books marked.
+  At the next start a run stopped mid-match with every book recorded becomes
+  `ready` instead (from 2.7.0), its review whole. A run stopped mid-apply goes
+  back to `ready`, its applied books marked.
 
 From 2.7.0 a stuck run is settled by the same rules. A stuck run is one left
 marked `matching` or `applying` with nothing working on it, because its
