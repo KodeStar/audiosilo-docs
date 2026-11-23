@@ -17,6 +17,11 @@ the code *testable* in the first place.
     (expo, react-native-\*, uniwind, `@rn-primitives/*`, `@tanstack/*`,
     zustand, …) so they are
     transpiled instead of failing on `import`;
+  - `transform` builds the app's own code (this checkout's `src/`, test files,
+    `src/testing/` and `__mocks__` aside) with the React Compiler whenever
+    `app.json` turns it on (`experiments.reactCompiler`), so every suite tests the
+    app as it ships. `src/testing/react-compiler.test.ts` checks which paths are
+    compiled;
   - `testMatch` picks up `**/*.test.ts` and `**/*.test.tsx`;
   - `collectCoverageFrom` covers `src/**/*.{ts,tsx}` but **excludes
     `src/app/**`**. Screens are intentionally out of coverage scope (see
@@ -205,6 +210,21 @@ Note that the common `await act(async () => { render(ui) })` helper does **not**
 await `render`, because the `act` callback returns before the render promise settles.
 Prefer awaiting `render` directly; where a mount helper wraps it in `act`, the
 `render` inside still needs its own `await`.
+
+### Changing what a mocked hook returns (`src/testing/mock-hooks.ts`)
+
+With the React Compiler on, a `rerender` with the same props re-renders only the
+root: each child's element is memoised, so a child that calls a mocked hook never
+runs again and never sees the value the test just changed. In the app that hook is a
+subscription that re-renders its own caller. Do the same in a test: wrap the mock in
+`mockedHook(fn)`, change the variable it reads, then `await mocksChanged()`, which
+re-renders every component that called a wrapped hook. Don't use a same-props
+`rerender` for this.
+
+A test that guards a component the compiler must build can assert
+`builtByCompiler(fn)` (`src/testing/react-compiler.ts`) first. The compiler silently
+skips a function it cannot compile (a condition inside a `try`, for one), and a guard
+that relies on memoisation then passes for the wrong reason.
 
 ### Rendering overlays (`src/testing/render-overlay.tsx`)
 
