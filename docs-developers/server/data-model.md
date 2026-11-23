@@ -703,8 +703,9 @@ attachment, without the book source-choice pipeline (see
 chapters as JSON with their scanned titles. `UpsertBook` writes it, as it
 writes `scanned`.
 
-`applyChapterSource` (called by `refreshEffective`, or by `refreshBook` with a
-scan's chapters) picks the source in the same transaction:
+`applyChapterSource` (called by `refreshBook`, which a scan runs with its
+chapters and `refreshEffective` runs without) picks the source in the same
+transaction:
 
 1. An admin's edited list (`chapter_edits`, below) goes over every other source
    while the book's files are the ones it was made on. On other files it is
@@ -2257,15 +2258,16 @@ A `books` row always holds the **effective** metadata, built in layers:
 4. then any `book_overrides` / `chapter_overrides`.
 
 `bookLayers.resolve` (in `internal/catalog/overrides.go`) is the single
-statement of that precedence, and of each field's source. `refreshEffective`
+statement of that precedence, and of each field's source. `refreshBook`
 writes its values into the book's metadata columns (with `series_key` and the
 book's `book_more_series` rows) and chapter titles. It then refreshes the
 book's `books_fts` row and its `book_labels` from the result. The admin book
 page shows the same resolution as provenance, so the two can't disagree. Every
-write path calls it inside its own transaction:
+write path runs it inside its own transaction, through `refreshEffective`
+except a scan:
 
-- `UpsertBook` (each scan or on-demand index, through `refreshBook`, which
-  also takes the scan's chapters);
+- `UpsertBook` (each scan or on-demand index, calling `refreshBook` directly
+  with the scan's chapters);
 - `BackfillASIN` (the Bridge's enrichment);
 - `EditBook` and `EditBooks` (the admin edits; the bulk form is
   all-or-nothing).

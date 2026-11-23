@@ -708,10 +708,10 @@ There is no separate "re-apply" step after a scan. In **one transaction**,
 1. writes the values the scan found, and records them in `books.scanned`
    (field to value);
 2. replaces the file rows and records the scan's chapter list;
-3. applies any path-keyed `book_enrichment` (ASIN, ISBN) and admin metadata
-   overrides;
-4. selects the effective chapters, applies chapter-title overrides and refreshes
-   the FTS row in `catalog.refreshBook`.
+3. in `catalog.refreshBook`, applies any path-keyed `book_enrichment` (ASIN,
+   ISBN) and admin metadata overrides;
+4. then, there too, selects the effective chapters, applies chapter-title
+   overrides and refreshes the FTS row.
 
 So an attached ASIN survives a rebuild, and an edited field acts as a lock. The
 rescan re-reads the file, but the edit is applied again before the transaction

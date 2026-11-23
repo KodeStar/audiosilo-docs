@@ -83,7 +83,8 @@ which an `indexed_at` in the basis would.
 - A check gets 5 minutes. Pause searches stop 4 minutes in, counted from the
   check's start (the community list's fetch included), which leaves time to
   save the fit on any book. Boundaries not snapped by then keep their placed
-  positions (counted as approximate), and the fit is still recorded.
+  positions (approximate where their stretch drifts, as below), and the fit is
+  still recorded.
 - A book whose check failed records nothing and waits an hour before it is
   tried again, so failing books can't fill the batch and starve the rest.
 - Five failures in a row, or metadata being switched off, end the pass. After
