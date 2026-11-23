@@ -8225,6 +8225,9 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
 the console's CSP doesn't load, so the console shows it through
 [`POST /admin/meta/covers`](#post-apiv1adminmetacovers).
 
+The dialog requests a [field comparison](#get-apiv1adminbooksmatch-proposal)
+when the admin clicks **Compare fields**.
+
 Accepting a candidate takes up to two existing writes: the fields you take
 from it, the ASIN and ISBN included, with
 [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) and `source: "community"`,
@@ -8237,6 +8240,44 @@ many books at once, see [Bulk community matching](#bulk-community-matching).
 | `400` | `query too long`; `invalid library id`; `path is required` |
 | `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` |
 | `502` | `metadata service unavailable` - the community service failed (including a `503` or `5xx` from `works/match`) and no candidate could be returned. Partial failures still return what was found: on the fallback, if the identifier lookup or the text search fails but the other leg yields candidates, those are returned, and a candidate whose work fails to load is left out. When nothing is returned, any failure along the way (either leg, or loading a hit's work) is a `502`, not an empty list - the failed leg may well have found the book |
+
+### `GET /api/v1/admin/books/match-proposal`
+
+Previews matching one indexed book to a community work: the `overwrite` plan a
+match run would make for the chosen work and recording.
+
+| Query parameter | Meaning |
+|---|---|
+| `library_id` | Required. The book's library ID, a positive integer. |
+| `path` | Required. The indexed book's path relative to that library. |
+| `work_id` | Required. The selected candidate's community work ID, up to 200 bytes with no ASCII control characters. |
+| `recording_id` | Optional. The recording ID within that work, under the same limits. Omit it or pass an empty string to compare the work alone. |
+| `q`, `asin`, `isbn` | Optional. Pass the search text or identifier used to find the candidate. The server trims these values and accepts up to 300 characters for `q` and 20 bytes each for `asin` and `isbn`. |
+
+The server repeats the [candidate search](#get-apiv1adminlibrariesidbookmatch),
+using the book's own facts when the search parameters are absent. If the work
+is missing from those results, it looks up `work_id` with the same book facts.
+
+The `200` response is a single JSON object.
+
+| Field | Meaning |
+|---|---|
+| `work_id`, `recording_id` | The selected work and recording IDs. A work-only comparison returns `recording_id: ""`. |
+| `values` | An object mapping field names to the community values available for comparison, as strings in the form the server stores. A value can appear here even when the plan keeps the book's own value. |
+| `set` | An object mapping field names to the strings the plan would write. It omits fields marked `edited`, including a community title the admin reverted to the library's title. |
+| `revert` | An optional array naming the series fields the plan would restore to their scanned values by removing stale community overrides. |
+| `alternate_series` | When switching the main series checkbox would change which series the book keeps, this object supplies `values`, `set` and optional `revert` for `series_index` and `more_series` under the other choice. |
+| `cover_url`, `cover` | The recording's cover URL, falling back to the work's, or `""` if neither has one. The boolean is true when the plan would take that cover for a book known to have none. |
+| `match` | True when the work or recording differs from the book's recorded match, including when the book has no recorded match. |
+| `match_alone` | True when `match` is true and the book has neither an ASIN nor an ISBN from any source, including one an earlier community match wrote. The dialog can then record the new match with all fields and the cover unticked. |
+
+| Status | Meaning |
+|---|---|
+| `400` | A parameter is missing, invalid or too long. |
+| `401` | The request lacks valid authentication. |
+| `403` | The caller is signed in without the admin role. |
+| `404` | `book_not_found`: no indexed book at the path. `not_found`: no such work, or no such recording in it. A retired work ID that the search doesn't list is also `not_found`, because the lookup follows its redirect to another ID. `metadata_off`: community metadata is off. An unknown library is also a `404`. |
+| `502` | The community metadata service is unavailable. |
 
 ### Bulk community matching
 
@@ -8374,7 +8415,8 @@ Run **statuses**. A run moves `matching` → `ready` → `applying` → `applied
 
 From 2.7.0 a stuck run is settled by the same rules. A stuck run is one left
 marked `matching` or `applying` with nothing working on it, because its
-finishing write failed. The server settles it when a run starts or applies, on
+finishing write failed. The server settles it when a run starts, when an admin
+[previews an apply](#post-apiv1adminmatch-runsidpreview) or applies a run, on
 [Stop](#post-apiv1adminmatch-runsidcancel), and on an Unlink it blocks.
 
 #### What a run asks of the community service
@@ -8567,11 +8609,13 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
 ```
 
 - `proposal.values` is what the best candidate offers for each overridable
-  field, in stored form (a value an override would refuse is left out), as the
-  match dialog's compare table would offer it: its chosen recording is the
-  identifier's, else the closest runtime (a recording selling in the preferred
-  marketplace wins a tie), and its ASIN is that recording's best for this
-  server, named by `asin_region`.
+  field, in stored form (a value an override would refuse is left out). Its
+  chosen recording is the identifier's, else the closest runtime (a recording
+  selling in the preferred marketplace wins a tie), and its ASIN is that
+  recording's best for this server, named by `asin_region`. Its series fields
+  list the work's series in the community's order, the first as the main one.
+  The match dialog's [proposal](#get-apiv1adminbooksmatch-proposal) instead
+  offers the book's own series as the main one when the work is in it.
 - `book` is the book as it is now, with its `duration` in seconds (omitted when
   unknown); `gone: true` when nothing is indexed at the path any more.
 - A review item held for one reason carries it in `detail` alone. From 2.7.0
@@ -8656,6 +8700,29 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   book still has no cover, the recorded match and the ASIN and ISBN the apply
   planned. It is final: `applied` when the item's fields went in, else `skipped`.
 
+#### `POST /api/v1/admin/match-runs/{id}/preview`
+
+Counts the items an [apply](#post-apiv1adminmatch-runsidapply) would take.
+Send the same JSON body as for Apply, with a required `scope` and optional
+`include` and `exclude` arrays of run item IDs.
+
+The server returns `200` with the [run object](#get-apiv1adminmatch-runsid)
+and an additional integer field, `apply_count`. It counts pending `auto` items
+outside `exclude` and pending `review` items in `include`. Both selections omit
+refresh items recorded as having nothing to change under that scope. Apply
+uses the same selection and returns the number it takes in `apply_total`.
+
+Every [stuck](#bulk-community-matching) run is settled first, as before an
+apply. A stuck `applying` run goes back to `ready` with its applied items kept,
+and the count covers the rest. The preview never starts an apply.
+
+| Status | Meaning |
+|---|---|
+| `400` | Invalid run ID or request body, a scope the run's mode does not accept, or more than 20,000 included IDs (`too_large`). The body limit is 1 MiB. |
+| `401`, `403` | Authentication is required. Only an admin can preview a run. |
+| `404` | The run is missing or community metadata is off (`metadata_off`). |
+| `409` | `match_run_not_ready` means the run is not ready to apply after the server checks for interrupted work. |
+
 #### `POST /api/v1/admin/match-runs/{id}/apply`
 
 `{"scope": "ids" | "fill" | "overwrite", "exclude"?: [item ids], "include"?:
@@ -8689,8 +8756,8 @@ is only:
 Any other word or number keeps the file's title. "part" names a split of the book,
 "abridged" another edition, and "Book 2" of a work at position 1 another volume. A
 title of the community's words and nothing more is replaced only when it is all in
-one case. A reverted title has no `edited` source, so a later `fill` can tidy it
-again.
+one case. A title marked `edited` after an admin
+[reverts a community title](#patch-apiv1adminlibrariesidbook) is kept on later fills.
 
 The rules an apply follows:
 

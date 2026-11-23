@@ -1,6 +1,6 @@
 {
   "repo": "KodeStar/audiosilo-server",
-  "ref": "84556ddb12d396cff33a154dde8201e003099516",
+  "ref": "26573d80b820a65893dfb4f19f6adb0a7b7264d6",
   "capabilities": [
     "addresses",
     "admin_ui",
@@ -74,6 +74,7 @@
     "/api/v1/admin/books",
     "/api/v1/admin/books/bulk",
     "/api/v1/admin/books/facets",
+    "/api/v1/admin/books/match-proposal",
     "/api/v1/admin/books/merge",
     "/api/v1/admin/books/merge/undo",
     "/api/v1/admin/books/works",
@@ -129,6 +130,7 @@
     "/api/v1/admin/match-runs/{id}/apply",
     "/api/v1/admin/match-runs/{id}/cancel",
     "/api/v1/admin/match-runs/{id}/items",
+    "/api/v1/admin/match-runs/{id}/preview",
     "/api/v1/admin/meta/covers",
     "/api/v1/admin/meta/mirror",
     "/api/v1/admin/meta/mirror/check",

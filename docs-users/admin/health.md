@@ -143,7 +143,10 @@ many, with a **Match automatically** button that opens this list.
 4. Check each match and what it would write. **Confident** matches start ticked.
    Untick any that are wrong. **To review** lists matches you need to check.
    Tick the right ones, or click **Match by hand**.
-5. Click **Apply to *N* books**. The server applies them in the background.
+5. Click **Apply to *N* books** to apply the matches in the background.
+
+The count on the button updates when you change **What to write** or your
+ticks. It leaves out matches you unticked or matched by hand.
 
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
@@ -260,7 +263,8 @@ your store's ASIN.
 
 **Fill in matched books** offers the community database's latest details for books that
 are already matched. Use it for books that got an ASIN without their details,
-or to clean up series an earlier match added.
+or to clean up series an earlier match added. A book the run found nothing to
+change on under your **What to write** choice isn't counted on the Apply button.
 
 A fill keeps a title you reverted on the book's page, and can still fill its
 other fields (see [Matching with community metadata](books.md#matching-with-community-metadata)).
