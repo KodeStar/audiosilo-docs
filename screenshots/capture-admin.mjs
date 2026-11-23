@@ -103,7 +103,7 @@ const sqlite = sqliteAt(DB);
 let inviteCode = '';
 let samId = null;
 let library = null; // the seeded library ({id, name, root, ...})
-let firstBook = null; // the first book of GET /admin/books ({library_id, path, is_folder, ...})
+let firstBook = null; // the first book of GET /admin/books ({library_id, path, ...})
 // Named, so People > Devices lists it as the admin's tablet (it sends no app
 // header, so it also shows how an app from before the header reads).
 const login = await api(null, 'POST', '/auth/login', {username: 'admin', password: PASSWORD, device_name: 'Kitchen tablet'});
@@ -469,7 +469,7 @@ await step('sign in', async () => {
 });
 
 await step('overview', async () => {
-  if (!wanted('admin/overview.png')) return open(page, '/'); // The palette opens over Overview.
+  if (!wanted('admin/overview.png')) return;
   const addresses = {away: 'https://books.example.org', home: 'http://hearthside.local:8080'};
   const route = '**/api/v1/addresses';
   await page.route(route, (r) => r.fulfill({json: addresses}));
@@ -485,6 +485,7 @@ await step('overview', async () => {
 });
 
 await step('command palette', async () => {
+  await open(page, '/');
   await page.keyboard.press('Control+k');
   await page.getByPlaceholder('Search books, people, settings, or type a command').waitFor({timeout: 8000});
   await sleep(600);

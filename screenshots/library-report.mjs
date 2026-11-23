@@ -1,6 +1,7 @@
-// The public demo cannot report unknown ASINs. Use the same binary in a fresh
-// data directory with a reachable loopback metadata service whose intake is closed.
-// The private database also keeps the large-library fixture out of other shots.
+// The public demo cannot report unknown ASINs or hold a folder past the
+// console's listing limits. Use the same binary in a fresh data directory with
+// a reachable loopback metadata service whose intake is closed. The private
+// database also keeps the large-library and 10,000-file fixtures out of other shots.
 import {spawn} from 'node:child_process';
 import {constants as fsc} from 'node:fs';
 import {cp, link, mkdir, mkdtemp, rm, writeFile} from 'node:fs/promises';
@@ -15,6 +16,8 @@ const carol = 'Charles Dickens/A Christmas Carol';
 const bookPath = `${carol} (ISBN 9780141324524)`;
 const asin = 'B00C14ROL1';
 const isbn = '9780141324524';
+// The Folders page totals at most this many files in one folder.
+const FOLDER_CAP = 10_000;
 
 async function listen(server) {
   server.listen(0, '127.0.0.1');
@@ -64,7 +67,7 @@ async function capturePrivateLibrary(browser, {folders, report, background}) {
       await cp(path.join(CACHE, 'library'), library, {recursive: true, mode: fsc.COPYFILE_FICLONE});
       const clip = path.join(dir, 'part.m4a');
       if (!silence(clip, 1, {}, ['-c:a', 'aac'])) throw new Error('could not encode the folder fixture');
-      for (let n = 1; n <= 10001; n++) {
+      for (let n = 1; n <= FOLDER_CAP + 1; n++) {
         await link(clip, path.join(library, carol, `Part ${String(n).padStart(5, '0')}.m4a`));
       }
     } else {
