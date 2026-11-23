@@ -16,7 +16,8 @@ const carol = 'Charles Dickens/A Christmas Carol';
 const bookPath = `${carol} (ISBN 9780141324524)`;
 const asin = 'B00C14ROL1';
 const isbn = '9780141324524';
-// The Folders page totals at most this many files in one folder.
+// The Folders page totals at most this many items (folders, then audio files)
+// of one folder: the console's TOTALLED.
 const FOLDER_CAP = 10_000;
 
 async function listen(server) {
@@ -112,8 +113,9 @@ async function capturePrivateLibrary(browser, {folders, report, background}) {
     if (folders) {
       await page.goto(`${origin}/admin/library/folders?library=${archive.id}&folder=${encodeURIComponent(carol)}`);
       const files = page.getByRole('region', {name: 'Audio files in this folder'});
-      await files.getByText(/10,000 files · [^·]+ · \d/).waitFor();
-      await files.getByText('Totals cover the first 10,000 items in this folder.').waitFor();
+      const cap = FOLDER_CAP.toLocaleString('en');
+      await files.getByText(new RegExp(`${cap} files · [^·]+ · \\d`)).waitFor();
+      await files.getByText(`Totals cover the first ${cap} items in this folder.`).waitFor();
       await files.getByText('Showing the first 500 audio files.').waitFor();
       await page.getByAltText('A Christmas Carol', {exact: true}).evaluate((img) => img.decode());
       await shoot(page, 'admin/folders.png');
