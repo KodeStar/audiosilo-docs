@@ -360,9 +360,10 @@ hold the pass back.
 **What a pass reads.** `catalog.CoverColorsDue` lists the books that are due a
 reading ([cover art columns](data-model.md#cover-art-columns)): books in book
 libraries that may have art (a custom cover, or `has_cover` true or unknown)
-whose `cover_art` differs from `cover_color_art`. It skips a book whose older
-colour tag matches its current art, because the original art came back. It
-returns up to 100 books with their cover sources at a time, in book ID order.
+whose `cover_art` differs from `cover_color_art`. It skips a book with no
+`cover_color_art` whose colour tag from before 0094 matches its current art,
+because the art that tag was read for came back. The pass asks for 100 books
+with their cover sources at a time, in book ID order.
 The pass reads one book at a time through `api.colorCover`, using `coverArt` and
 the same `coverReads` and `thumbSem` bounds as the cover endpoints, so it never
 holds more than one of their slots.
@@ -383,7 +384,7 @@ holds more than one of their slots.
 `RecordCoverColors` transaction (bounded to 30 s), compare-and-set like any
 other. Ten books in a row whose art fails to read (an unreadable mount) end the
 pass until the next hour. After a full pass, a pass reads only books whose art
-changed since, or whose art could not be read.
+changed since, whose art could not be read, or whose colours failed to record.
 
 ## `DirectPlayable`: when a client should transcode
 

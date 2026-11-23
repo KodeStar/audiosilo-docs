@@ -580,14 +580,16 @@ user state.
 - `cover_color_art`: the raw `cover_art` identity of the last completed
   reading, even one that found no colour. `NULL` until the server records one.
   - The partial index `idx_books_cover_color_due` holds the rows where it is
-    not `cover_art`: the books due a reading.
+    not `cover_art`. `catalog.CoverColorsDue` narrows these candidates to the
+    books due a reading (see
+    [the background colour pass](media.md#the-background-colour-pass)).
   - The trigger `books_legacy_cover_color` sets it when an older server writes
     a palette, and resets it to `NULL` when a writer clears the colour.
   - On the first start after 0094, `catalog.BackfillCoverColorArt` copies
     `cover_art` into it for each book whose `cover_color` tag matches its
     current `cover_version`, without opening a cover file. It deletes the
-    migration's `server_state` marker in the same transaction, so an
-    interrupted start retries.
+    migration's `server_state` key `backfill_cover_color_art_0094` in the same
+    transaction, so an interrupted start retries.
 
 A rebuilt index starts with `cover_art` from index data and no colours. The
 background pass then fills them in.
@@ -1640,6 +1642,12 @@ Its keys:
 - `path_rekey`, `path_rekey_failed` and `path_rekey_unreached`: the start's
   re-key of listener rows, its failed paths and the libraries it left whole
   (see [Moving state to the book's path](#moving-state-to-the-books-path-path_rekeys)).
+- `map_duplicate_ignores_0092`: set by migration 0092 while the duplicate
+  ignores it carried forward still need checking at start (see
+  [Health ignores](#health-ignores)).
+- `backfill_cover_color_art_0094`: set by migration 0094 when any book holds a
+  colour, until `catalog.BackfillCoverColorArt` has verified the older colour
+  tags (see [Cover art columns](#cover-art-columns)).
 
 ### The Bridge
 
@@ -1681,7 +1689,8 @@ Indexes:
 - The per-requester caps count through partial indexes on `requested_by`:
   `idx_bridge_jobs_subscribe_user` (0052, every `podcast.subscribe` job) and
   `idx_bridge_jobs_fetch_requester` (0094, `podcast.fetch` jobs `queued`,
-  `claimed` or `running`). See [the per-person cap](../bridge/podcasts.md#the-per-person-cap).
+  `claimed` or `running`). See [the per-person cap](../bridge/podcasts.md#the-per-person-cap)
+  and the subscribe cap in [Podcast actions](api/reference.md#podcast-actions).
 
 A lease that runs out either requeues the job with `progress`, `result` and
 `error` reset, because they were the dead attempt's report, or fails or cancels
@@ -2606,7 +2615,7 @@ The migration history so far:
 | 0090 | `chapter_basis_match` | Updates a community chapter check's `basis` when the book's recorded match names the same work and either the same recording or no specific recording. Other checks on matched books stay due for a new check (see [the basis](community-chapters.md#the-basis)). |
 | 0091 | `mp3_rev2_tag_read_failed` | Advances current revision 1 rows for books without an MP3 to revision 2. The next scan [re-indexes MP3 books once](scanner.md#the-first-scan-after-updating). Adds the nullable `books.tag_read_failed_at` timestamp. |
 | 0092 | `health_ignores` | Stores duplicate decisions per comparison and split-disc ignores per folder. Carries forward [existing Health ignores](#health-ignores). |
-| 0093 | `audible_fold_refusal` | Records why and when the server refused to match a completed backup on the [Audible title](#audible-accounts-and-titles). A trigger clears the refusal when the title gains a newly accepted match. |
+| 0093 | `audible_fold_refusal` | Records why and when the server refused to match a completed backup on the [Audible title](#audible-accounts-and-titles). A trigger clears the refusal when the title gains a newly accepted match, or when an admin undoes "Not this book". |
 | 0094 | `catalog_pass_indexes` | Adds `books.cover_color_art` with its trigger, start-up backfill and due index (see [Cover art columns](#cover-art-columns)), `idx_books_narrator` (see [FTS design](#fts-design-books_fts)) and `idx_bridge_jobs_fetch_requester` (see [`bridge_jobs`](#bridge_jobs)) |
 
 `server_state.progress_feed` identifies the Audible progress feed. A restore renews this ID before
@@ -2807,8 +2816,9 @@ sound and iteration marks) one character a token.
 - `buildMatchQuery` splits a query the same way. A CJK run becomes an
   adjacent-token phrase whose last token is a prefix.
 - `ftsPhrase` writes the author and narrator filters' phrase the same way. A
-  name with no letter or digit has no phrase, so its filter reads the library's
-  nonempty credits through `idx_books_author` or `idx_books_narrator` (0094).
+  name with no letter or digit has no phrase, so its filter reads the nonempty
+  credits (of the selected library, when there is one) through
+  `idx_books_author` or `idx_books_narrator` (0094).
 
 So `猫` finds `吾輩は猫である`, and `吾輩` still does. A trigram tokenizer was
 rejected, because it can't match the one- and two-character words that CJK
