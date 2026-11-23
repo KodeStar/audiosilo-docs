@@ -360,6 +360,25 @@ tab, is **Add shows**.
 Anything but `allowed` is a sentence instead of the page: "Ask a grown-up to add
 shows.", "The demo can't add shows.", "Adding shows isn't available right now".
 
+While access is `unknown`, `FindShowsAccessState` reads `/server` through
+`useDialogRead`. Held with nothing kept, it is the offline state. A refused read is
+`ServerRefusal`. A failed one says "Couldn't check whether you can add shows."
+(`podcasts.find.accessFailed`) with Retry while online, and keeps that sentence with
+Retry busy while it is asked again. Otherwise it is the skeleton.
+
+A link whose `library` the server lacks shows `library.detail.badLink`, but only
+from a read of the libraries settled since the page opened on that library. A kept
+list may predate the library, so the page reads it once more on opening when the
+kept list lacks the library or its last read failed. While the list is held or
+failed, the page stays, so a typed address, kept results and a running import are
+not dropped.
+
+Offline (`useDeviceOnline`, or the search held), each section says "You're
+offline. Reconnect to find or add shows." and holds what needs the server. That is
+Search and the provider control, each result's Follow, the feed address's Follow
+(its keyboard Go too), Choose a file, Try again and a row's retry. A file picked
+while the network dropped is not sent. Stop still works.
+
 **Sections** come from the flags (`availableSections` in `find-shows-model.ts`, in
 `FIND_SHOWS_SECTIONS` order):
 
@@ -386,6 +405,12 @@ form, the results and, as its footer, the follow requests. The form has a provid
 - The caption `Results from {{provider}}` credits the directory.
 - A refusal reads through `searchErrorCopy`, with the `Retry-After` seconds when
   known, above **Search again**.
+- A search read again that failed keeps its results under "Showing the last results
+  for ..." (`podcasts.find.search.lastResults`) with the failure and Search again.
+  While it is asked again the line reads "Searching..." and the failure is hidden.
+  Offline, the kept results show under the same line, with no Search again. The
+  same search submitted again is asked only after a failure, and not while that
+  ask runs.
 - On search, a `no_library_access` means the server shows this client no podcasts
   (an older or unidentified player). It reads "This app can't use podcasts on this
   server. Update the app, then try again."
