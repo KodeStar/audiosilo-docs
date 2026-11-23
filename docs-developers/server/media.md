@@ -333,11 +333,10 @@ against `bg`, has `bg` only.
 `catalog.RecordCoverColors` stores the colour and writes the art's **own**
 identity to both `cover_art` and `cover_color_art`. A custom cover uses its
 upload timestamp. For file art, the identity includes the sidecar's or audio
-file's size and modification time. A thumbnail request can therefore detect a
-sidecar replaced in place before the next scan. The hash of that identity
-appears in the thumbnail ETag. The write checks that `cover_art` still matches
-the identity at the start of the read, so a slow thumbnail of old art cannot
-overwrite a newer cover's colour.
+file's size and modification time, so a thumbnail request notices a sidecar
+replaced in place before the next scan. The thumbnail ETag carries the hash of
+that identity. The write is a compare-and-set on the identity the read started
+from, so a slow thumbnail of old art cannot overwrite a newer cover's colour.
 
 The write is detached from the request and bounded to 250 ms
 (`coverColorWriteTimeout`). A busy writer costs only the colour, until the next
@@ -358,15 +357,15 @@ moment, so the pass waits for the scan to finish rather than compete with it
 for the disk. A rescan that finds nothing new changes nothing, so it doesn't
 hold the pass back.
 
-**What a pass reads.** `catalog.CoverColorsDue` uses a partial index on books
-whose current `cover_art` differs from the stored `cover_color_art`, including
-books with no recorded reading. It selects only books in book libraries that
-may have art (a custom cover, or `has_cover` true or unknown) and still need a
-reading for it. If an older colour tag matches because the original art has
-returned, the pass skips that book too. The query returns up to 100 due books
-and their cover sources at a time, in book ID order. The pass reads one
-thumbnail at a time through `api.colorCover`, using `coverArt` and the same
-`coverReads` and `thumbSem` bounds as the cover endpoints.
+**What a pass reads.** `catalog.CoverColorsDue` lists the books that are due a
+reading ([cover art columns](data-model.md#cover-art-columns)): books in book
+libraries that may have art (a custom cover, or `has_cover` true or unknown)
+whose `cover_art` differs from `cover_color_art`. It skips a book whose older
+colour tag matches its current art, because the original art came back. It
+returns up to 100 books with their cover sources at a time, in book ID order.
+The pass reads one book at a time through `api.colorCover`, using `coverArt` and
+the same `coverReads` and `thumbSem` bounds as the cover endpoints, so it never
+holds more than one of their slots.
 
 - A thumbnail of the art already in the cache is used as it is. Otherwise the
   pass makes a 160 px thumbnail and does **not cache** it, so a pass over a
@@ -383,7 +382,8 @@ thumbnail at a time through `api.colorCover`, using `coverArt` and the same
 **Writing and stopping.** Each page's colours are recorded in one
 `RecordCoverColors` transaction (bounded to 30 s), compare-and-set like any
 other. Ten books in a row whose art fails to read (an unreadable mount) end the
-pass until the next hour.
+pass until the next hour. After a full pass, a pass reads only books whose art
+changed since, or whose art could not be read.
 
 ## `DirectPlayable`: when a client should transcode
 
