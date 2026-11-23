@@ -59,8 +59,8 @@ next scan tries again.
 
 If a network share stops answering during **Read the files again**, the book
 appears under **Files that couldn't be read**. A scan that gives up on a folder
-lists the books in it there too. Once the share answers, a successful **Read
-the files again** or scan clears them. Libraries on other drives or shares keep
+lists the books in it there too. Once the share answers, **Read again** on the
+row, or the next scan, clears them. Libraries on other drives or shares keep
 scanning.
 
 ### Working through a list

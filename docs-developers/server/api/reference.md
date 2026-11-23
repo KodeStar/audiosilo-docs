@@ -5608,8 +5608,8 @@ listening done since a person last turned sharing on is shown.
   ([data model](../data-model.md#listening-sessions-how-they-are-derived)).
 - `title` comes from the indexed book. From 2.7.0 a session saved on a disc
   folder such as `Book/CD1` takes the joined book's title and author if the
-  caller can read it. Otherwise the title falls back to the path's last segment. The server
-  uses the session's duration if the index has none. Unknown values for
+  caller can read it. Otherwise the title falls back to the path's last
+  segment. The server uses the session's duration if the index has none. Unknown values for
   `author` and `duration` are `null`.
 - `outside_grant` is an optional boolean. In a book library, the server sends
   `true` when the session path is in scope but the caller can't read any indexed
