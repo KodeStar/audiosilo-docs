@@ -3173,12 +3173,20 @@ label built from such a number names this book's chapter, not the work's.
 `include=previous` adds `previous`: the works **before** this one in its series,
 nearest first, at most five, each the same shape as `work`. They come from each
 rail's **main view** only (an alternate order's earlier books are exactly the
-reading-order spoiler the main view avoids): every entry whose numeric position is
-below the current work's. A rail whose own position is not a number contributes
-nothing, nor does an unnumbered entry; a work on two rails counts once. Each is
-fetched and cached like [`/meta/work`](#get-apiv1metawork), and one that fails is
-left out rather than failing the envelope. `previous` is omitted when there are
-none.
+reading-order spoiler the main view avoids): every entry that ends before the
+current work starts (a range such as an omnibus counts by its end, and a current
+work's range by its start). A rail whose own position is neither a number nor a
+range contributes nothing, nor does such an entry; a work on two rails counts
+once.
+
+Each is fetched and cached like [`/meta/work`](#get-apiv1metawork). The server
+waits at most five seconds for them and sends those ready by then, so one that
+is slow or fails is left out rather than failing the envelope. `previous` is
+omitted when none are ready. A lookup still running when the wait ends carries
+on, up to 15 seconds from its start, so a work still being looked up may be
+ready on a later request. Requests asking for the same work share one lookup,
+up to 16 shared lookups at once; past that, a new lookup ends with its own
+request.
 
 `spoilers=hide` gates the envelope by the **caller's own saved progress** on this
 book (the server's progress record, mapped onto the book's chapters by
@@ -7738,8 +7746,10 @@ book path).
   …/book/community-chapters`, or the background pass); poll the page until it
   is `false`.
 - `community_check_failed` - present and `true` when the book's last check
-  failed (the community service didn't answer, or the check ran out of time):
-  `community_chapters` is then the check before it.
+  failed (the community service didn't answer, or the check ran out of its 5
+  minutes): `community_chapters` is then the check before it. A pause search
+  that runs out of time is not a failure
+  ([The pass](../community-chapters.md#the-pass)).
 - `match_query` - the text the console's
   [match dialog](#get-apiv1adminlibrariesidbookmatch) opens its search box
   with (`meta.SearchPrefill`). Always present (`""` for a book with nothing to

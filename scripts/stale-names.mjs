@@ -77,16 +77,25 @@ export function routesFrom(patterns, constants) {
  */
 export function configKeysFrom(goSources) {
   const structs = new Map();
+  function readStruct(name, body) {
+    // An inline struct carries its yaml tag on its closing brace: name it
+    // <outer>.<field> and read it like a named one, so the walk below needs
+    // no special case (a list of them keeps its [] and is not walked).
+    const inline = /^([ \t]+)(\w+)\s+([[\]*]*)struct \{\n([\s\S]*?)^\1\}([^\n]*)/gm;
+    const namedFields = body.replace(inline, (_, indent, field, prefix, inner, tag) => {
+      readStruct(`${name}.${field}`, inner);
+      return `${indent}${field} ${prefix}${name}.${field}${tag}`;
+    });
+    const fields = [];
+    for (const line of namedFields.split('\n')) {
+      const f = line.match(/^\s*\w+\s+([\w.*[\]]+)\s+`[^`]*yaml:"([a-z0-9_]+)/);
+      if (f) fields.push({key: f[2], type: f[1].replace(/^\*+/, '')});
+    }
+    structs.set(name, fields);
+  }
   const structRe = /^type (\w+) struct \{\n([\s\S]*?)^\}/gm;
   for (const src of goSources) {
-    for (const [, name, body] of src.matchAll(structRe)) {
-      const fields = [];
-      for (const line of body.split('\n')) {
-        const f = line.match(/^\s*\w+\s+([\w.*[\]]+)\s+`[^`]*yaml:"([a-z0-9_]+)/);
-        if (f) fields.push({key: f[2], type: f[1].replace(/^\*+/, '')});
-      }
-      structs.set(name, fields);
-    }
+    for (const [, name, body] of src.matchAll(structRe)) readStruct(name, body);
   }
   const keys = new Set();
   const walk = (type, prefix, seen) => {

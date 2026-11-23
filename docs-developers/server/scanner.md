@@ -707,10 +707,11 @@ There is no separate "re-apply" step after a scan. In **one transaction**,
 
 1. writes the values the scan found, and records them in `books.scanned`
    (field to value);
-2. replaces the files and chapters;
-3. layers any path-keyed `book_enrichment` (ASIN, ISBN) and any admin metadata
-   or chapter-title overrides on top;
-4. refreshes the FTS row (`catalog.refreshEffective`).
+2. replaces the file rows and records the scan's chapter list;
+3. in `catalog.refreshBook`, applies any path-keyed `book_enrichment` (ASIN,
+   ISBN) and admin metadata overrides;
+4. then, there too, selects the effective chapters, applies chapter-title
+   overrides and refreshes the FTS row.
 
 So an attached ASIN survives a rebuild, and an edited field acts as a lock. The
 rescan re-reads the file, but the edit is applied again before the transaction
@@ -1742,14 +1743,14 @@ The two kinds of book:
   Book offsets accumulate across parts, and the book's duration is the sum. So
   a chaptered m4b and a folder of split mp3s render identically in a player.
 
-These are the scan's own chapters. Two other sources can replace them, outside
-the scan:
+These are the scan's own chapters, kept in `books.scanned_chapters`. Other
+sources can replace them, outside the scan; which list a book uses is
+[the rule](community-chapters.md#the-rule), applied in the scan's transaction:
 
-- A matched book can have a community recording's chapter list fitted onto its
-  audio (see [Community chapters](community-chapters.md)). `UpsertBook` always
-  writes the scan's chapters, and `refreshEffective` puts the community's back
-  over them in the same transaction when they should stand.
-- A book with no chapters of its own can get the chapters a Bridge found in its
+- an [admin's edited list](community-chapters.md#edited-chapters);
+- a community recording's chapter list fitted onto a matched book's audio (see
+  [Community chapters](community-chapters.md));
+- for a book with no chapters of its own, the chapters a Bridge found in its
   narration, from its `.audiosilo/chapters.json` (below; see
   [Generated chapters](community-chapters.md#generated-chapters)).
 

@@ -1028,7 +1028,8 @@ These are all additive:
 Two query params sit behind the `meta_bundle` capability:
 
 - `?include=previous` adds `previous[]`: the main view's earlier works, nearest
-  first, at most 5.
+  first, at most 5. It can hold only some of them
+  ([Previous books and spoiler gating](../server/api/reference.md#previous-books-and-spoiler-gating)).
 - `?spoilers=hide` gates the envelope by the caller's saved server progress.
 
 Spoiler gating still **stays on the device by default**. The player gates against its
@@ -1130,9 +1131,10 @@ With metadata on, the server, not listeners' devices, contacts the cover hosts. 
 Mirror mode (`metadata.mode: mirror`, opt-in; `remote` is the default) makes the seam
 tighter.
 
-- Once a day the server downloads audiosilo-meta's data release artifact
-  (`meta.sqlite.gz`) into `<data>/meta-mirror/`. The file holds the CC0 core and the
-  CC BY-SA community layer.
+- The server downloads each new audiosilo-meta data release artifact
+  (`meta.sqlite.gz`) into `<data>/meta-mirror/`, on the
+  [mirror's schedule](../server/configuration.md#mirror-mode-metadatamode-mirror).
+  The file holds the CC0 core and the CC BY-SA community layer.
 - It fetches the artifact with audiosilo-meta's public `pkg/release`.
 - It answers the same `/api/v1` requests in-process with audiosilo-meta's public
   [`pkg/query`](../meta/overview.md#public-go-packages) (`Open`, `NewHandler`), which

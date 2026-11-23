@@ -657,7 +657,8 @@ Account's signed-in devices and API keys). The pages that read every server list
 - **Longer timeouts for upstream waits.** `nextBook`, and `bookMeta` with
   `includePrevious`, use a 30 s request timeout (the server's own request budget)
   instead of the client's 15 s. The server can spend its whole community-metadata
-  budget before it answers.
+  budget before it answers, and `previous` can hold only some of the earlier works
+  ([Previous books and spoiler gating](../server/api/reference.md#previous-books-and-spoiler-gating)).
 - **`useNextBook`** takes an optional `connectionId` like `useBook`, so the
   player (outside any route scope) can ask the playing book's own server. Its
   `enabled` flag makes it fetch only when the answer is needed. A community

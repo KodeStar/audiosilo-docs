@@ -80,9 +80,11 @@ which an `indexed_at` in the basis would.
   pass after a start (the first with metadata on, since no copy loads while it
   is off) waits for the local copy, at most 10 minutes (`mirrorReady`), so a
   start sends no lookups to the service while the copy loads.
-- Each check is bounded to 5 minutes, of which the pause searches get 4. Past
-  that, the fit leaves the remaining boundaries unsnapped (counted as
-  approximate) and is still recorded.
+- A check gets 5 minutes. Pause searches stop 4 minutes in, counted from the
+  check's start (the community list's fetch included), which leaves time to
+  save the fit on any book. Boundaries not snapped by then keep their placed
+  positions (approximate where their stretch drifts, as below), and the fit is
+  still recorded.
 - A book whose check failed records nothing and waits an hour before it is
   tried again, so failing books can't fill the batch and starve the rest.
 - Five failures in a row, or metadata being switched off, end the pass. After
@@ -198,18 +200,24 @@ The steps:
 7. **Placing** (`place`). An anchored community boundary takes its anchor's
    time exactly. Every other one is interpolated linearly between the anchors
    around it.
-8. **Snapping** (`snap`). Each placed boundary inside the audio asks the
-   `Prober` for the pauses within `4 s + drift` of it, at most 30 s. Drift is
-   how much the stretch's two lengths differ. The window is kept inside the
-   boundary's file and 0.25 s clear of its neighbours.
+8. **Snapping** (`snap`). Each unpinned boundary gets a search window of
+   `4 s + drift` either side, at most 30 s, inside its own file. Drift is how
+   much the stretch's two lengths differ. The `Prober` gets all of one file's
+   windows at once.
+   - `media.DetectSilences` runs one ffmpeg per file: the concat demuxer reads
+     each window as an excerpt, and `silencedetect` finds pauses at **-40 dB**
+     with `d=0.4`. ffmpeg 5.x and 6.x print six significant digits, so past
+     10,000 s of excerpts in one file the times are good to 0.1 s.
+   - An ffmpeg older than 5.0, or one built without the concat demuxer, runs
+     once a window instead (30 s each), and the server remembers that for that
+     ffmpeg. A window that fails there leaves the others' answers.
+   - In playback order, each window's pauses are clipped to stay 0.25 s clear
+     of the neighbouring boundaries, the preceding one where it moved to.
    - The boundary moves onto the **longest** pause of at least **0.4 s**, to
      **0.3 s** before the speech resumes, but never before the pause starts.
-   - The chaptercheck prober is ffmpeg's `silencedetect` at **-40 dB** with
-     `d=0.4`, run on the window alone. It seeks first, so a window costs a few
-     seconds of decoding however long the file is.
    - A boundary that can't be snapped while its stretch drifts more than 2 s
      counts in `detail.approximate`.
-   - Without ffmpeg, or on `ErrNoProbe`, the fit places by proportion alone.
+   - Without ffmpeg, unpinned boundaries keep their proportional positions.
 9. **Emitting** (`emit`). The chapters cover the audio with no gap, in the
    scanner's `metadata.Chapter` shape (`file_path`, in-file `start` and `end`,
    `book_offset`).
@@ -272,9 +280,9 @@ it, because the joined book is other audio.
 
 ### The rule
 
-`refreshEffective` runs on every scan upsert, edit, enrichment write and
-recorded check. It calls `applyChapterSource`, the one statement of the rule. A
-book gets:
+`refreshBook` runs on every scan upsert, edit, enrichment write and recorded
+check (`refreshEffective` outside a scan). It calls `applyChapterSource`, the
+one statement of the rule. A book gets:
 
 - an admin's **edited** list, while it applies to the book's files (see
   [Edited chapters](#edited-chapters));
@@ -291,10 +299,12 @@ stays on the scan's chapters until it is checked again, never on chapters
 fitted to files that may be gone. The admin book page marks such a check
 `stale: true`.
 
-`SaveCommunityChapters` records a check and re-applies the rule in the same
-transaction. `UpsertBook` always writes the scan's chapters (rows and snapshot)
-and resets `chapters_source`. `refreshEffective` then re-applies the choice in
-the same transaction, so a rescan never shows the scan's chapters for a moment.
+`SaveCommunityChapters` records a check and applies the rule in the same
+transaction. A scan (`UpsertBook`, or a length-only update) records the scan's
+chapters in `scanned_chapters` and writes chapter rows only for the source the
+rule picks, in the same transaction, so a rescan never shows the scan's chapters
+for a moment. A fit that still applies unchanged keeps its rows and their ids;
+only titles that changed are written.
 
 Chapter renames (`chapter_overrides`, keyed by file and start) apply after the
 source, except over an edited list. Renaming a community chapter therefore works
