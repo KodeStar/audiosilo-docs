@@ -985,18 +985,18 @@ it, or "another device" when the server has no name. The toast has two answers:
   The move's reason is `moved_back` for a move more than one second back, else
   `jump`. Playing, the new span starts with it. Paused, the move is sent at once as a
   span of its own and the next play starts with the same reason.
+- **Stay**, the close button, acknowledges the row and calls `standByPlace` to
+  send this device's place. See [Stay wins](#stay-wins).
 
 **The move comes before anything is stored at the old place.** Jump, the book page's
 Play from there and the reconcile's own move (`decide`) all go through
-`answerAfterSpan(ref, answer, move)`. It closes the span heard so far, sends the
-answer in turn behind it, then makes the move right away. The span the close
+`answerAfterSpan(ref, answer, move)`. It closes the span heard so far, queues the
+answer behind it, then makes the move right away. The span the close
 reopened (at the engine's place, stamped after the answer) is stored only when no
 move took it. Stored before the move, that copy is what a kill in between would
 recover, and it would move this device's record back to the old place over the row
 just answered. A mirror that cannot be read leaves the acknowledgement
 unwritten, and the move still goes.
-- **Stay**, the close button, acknowledges the row and calls `standByPlace` to
-  send this device's place. See [Stay wins](#stay-wins).
 
 A toast that times out (12 s) acknowledges nothing. `ignoreOffer` only notes its
 key in the mirror's `ignored` list, while Jump and Stay note theirs in `answered`
@@ -1640,8 +1640,8 @@ span was last kept, under the mirror's own rule that the newest record wins:
 - a book with no record gets its first one, but only from a span that says
   something (heard, or a deliberate move: `spanSaysSomething`). It holds the span's
   last file, offset, speed and time, and the span's base version as its
-  `ack_version`. It is never finished, since the span's length is the audio's, not
-  the book's that a save measures the end by (`bookLengthOf`);
+  `ack_version`. It is never finished: the span's length is the audio's, and a save
+  measures the end against the book's (`bookLengthOf`);
 - never finished at the end of a download that ends early (`ProgressSave.partial`, or
   `downloadEndsBefore` unless the span ended in the book's last file; see
   [A download that ends early](offline.md#a-download-that-ends-early));
@@ -1653,8 +1653,7 @@ span was last kept, under the mirror's own rule that the newest record wins:
 
 The mirror's changes read it strictly, and read it once more before they give up
 (`readMirrorMapStrict`): the stored span is cleared all the same, so a change that
-failed would lose the recovered place. A reconcile hold keeps the stored span at its
-place from before the check ([Picking up another device's place](#picking-up-another-devices-place-place-reconcilets)).
+failed would lose the recovered place.
 
 On the web it also runs for a span another tab left behind, dated when that tab
 kept it.
@@ -1672,8 +1671,7 @@ another tab's span waits.
   document in this tab, and is recovered at once. A duplicated tab inherits the
   sessionStorage, but the live tab it copied still holds the lock, so its span is left
   alone. Without Web Locks (a plain-http address) only a navigation of type `reload`
-  claims it. sessionStorage names the new document only once that sweep is done, so a
-  second reload during it can still finish it.
+  claims it.
 - **Another tab's span.** A page cannot tell a crashed tab's span from one a live tab
   still keeps until it has gone unkept for 30 s (`LIVE_SPAN_MS` in
   `listening-outbox.ts`, [the stored span](offline.md#listening-sync-the-outbox)).

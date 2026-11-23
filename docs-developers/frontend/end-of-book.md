@@ -45,8 +45,8 @@ natural end and the player's *Mark as Finished* menu item use it. It:
 2. clears playback intent and stops the save loop;
 3. does one forced `persist({ forceFinished: true })`. This is the last write,
    and the server is last-write-wins. It records the book's length as both the
-   position and the duration (`bookLengthOf`: for a download that ends early, the
-   whole book's on its server when known), so the book reads 100%;
+   position and the duration (`bookLengthOf`; for a download that ends early,
+   [its length](offline.md#a-download-that-ends-early)), so the book reads 100%;
 4. invalidates the connection's `allProgress` query;
 5. **nulls `nowPlaying`**, which hides the mini player, and resets the snapshot.
 

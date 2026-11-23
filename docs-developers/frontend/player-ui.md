@@ -560,7 +560,8 @@ It shows the furthest recap the saved place is past.
 reconciliation. So it first waits for a span a kill left open to reach the mirror
 (`spanRecovered`, [2 s at most](playback.md#what-a-kill-leaves-behind)), then runs
 `loadInitialProgress` (server, mirror, offline queue) against Home's row, and calls
-`startBookInPlace` with that place's speed. The card is dark in both themes through `ScopedThemeColors`.
+`startBookInPlace` with that place's speed. The card is dark in both themes through
+`ScopedThemeColors`.
 
 ## The player controls
 

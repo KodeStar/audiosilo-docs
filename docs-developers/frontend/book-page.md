@@ -146,9 +146,10 @@ for the book (see
 footer. The place is measured from where the primary would play from
 (`resumePosition`). The line says "On another device" when the server has no name.
 **Play from there** answers the offer (`answerOffer`) and plays the book there
-(`{ at: { position } }`), the play made as the answer's move
-([before anything is stored at the old place](playback.md#offering-another-devices-place-sync-v2)). Answering acknowledges the row's version and notes the
-place, so it isn't offered again. Nor is a place whose toast timed out
+(`{ at: { position } }`) as the answer's move, made
+[before anything is stored at the old place](playback.md#offering-another-devices-place-sync-v2).
+Answering acknowledges the row's version and notes the place, so it isn't offered
+again. Nor is a place whose toast timed out
 (`settledOffers`), and the line never repeats a held offer
 ([the throttles](playback.md#offering-another-devices-place-sync-v2)). Nothing shows on a server without the flag.
 

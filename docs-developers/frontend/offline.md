@@ -748,11 +748,9 @@ or offline. On the next launch `recoverOpenSpan` closes a span a kill left open 
 last stored values. It also brings the mirror's record of its book up to the span's
 end ([What a kill leaves behind](playback.md#what-a-kill-leaves-behind)). On the web:
 
-- A reload recovers its previous document's span at once. sessionStorage names the
-  document that stored it (`audiosilo.openSpanOwner`, per tab, not a scoped key), and
-  the document holds a Web Lock while it has a span stored, so a duplicated tab that
-  inherits the sessionStorage leaves the live tab's span alone
-  ([On the web the recovery can wait 30 s](playback.md#on-the-web-the-recovery-can-wait-30-s)).
+- A reload recovers its previous document's span at once, never a live duplicated
+  tab's (`audiosilo.openSpanOwner` in sessionStorage and a Web Lock;
+  [how](playback.md#on-the-web-the-recovery-can-wait-30-s)).
 - Another tab's span is left to that tab while it is live, which means kept within
   30 s of now (`LIVE_SPAN_MS`). For a tab on an older build, with no `owner`, it
   means its end is under 45 s old.
