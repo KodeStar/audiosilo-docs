@@ -303,6 +303,8 @@ await step('provision notification destinations', async () => {
 // a transcoded stream first, so his session counts as transcoded, and he has a
 // personal API key that was never used.
 const HEARTBEAT_MS = 15000;
+// Nora's last save, before the Activity shots: past the server's 150 s playing window.
+const PAUSE_EARLY_MS = 3 * MIN;
 const LISTEN_MS = Number(process.env.LISTEN_MINUTES || 8) * 60000;
 let listenUntil = 0;
 const LISTENERS = [
@@ -400,7 +402,7 @@ await step('provision listening sessions', async () => {
 
   heartbeats = setInterval(() => {
     for (const l of LISTENERS) {
-      if (l.pauseEarly && Date.now() > listenUntil - 180000) continue;
+      if (l.pauseEarly && Date.now() > listenUntil - PAUSE_EARLY_MS) continue;
       saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.username}: ${e.message}`));
     }
   }, HEARTBEAT_MS);
@@ -830,25 +832,27 @@ await step('shares', async () => {
 // ffprobe's time-out message, which the console reads as a time-out) and put back
 // right after: the category still counts two files.
 const LOST_CHAPTER = 'Unknown Author/The Lost Chapter';
+const TIMED_OUT = 'ffprobe timed out after 30s';
 await step('health issues', async () => {
   if (!wanted('admin/health-issues.png')) return;
   if (!inbox) throw new Error('the Inbox library is required');
   const where = `library_id = ${Number(inbox.id)} AND rel_path = '${LOST_CHAPTER}'`;
-  const error = sqlite(`SELECT quote(scan_error) FROM books WHERE ${where};`).trim();
-  const detail = sqlite(`SELECT quote(scan_error_detail) FROM books WHERE ${where};`).trim();
-  if (!error) throw new Error('The Lost Chapter is not indexed');
-  sqlite(`UPDATE books SET scan_error = 'probe_failed', scan_error_detail = 'ffprobe timed out after 30s' WHERE ${where};`);
+  const stored = sqlite(
+    `SELECT 'scan_error = ' || quote(scan_error) || ', scan_error_detail = ' || quote(scan_error_detail) FROM books WHERE ${where};`,
+  ).trim();
+  if (!stored) throw new Error('The Lost Chapter is not indexed');
+  sqlite(`UPDATE books SET scan_error = 'probe_failed', scan_error_detail = '${TIMED_OUT}' WHERE ${where};`);
   try {
     await open(page, '/health/issues?issue=scan_error');
     const list = page.getByRole('list', {name: "Files that couldn't be read"});
     const row = list.getByRole('listitem').filter({hasText: 'The Lost Chapter'});
     await row.getByText(/took too long to read as audio/).waitFor({timeout: 8000});
     await row.getByRole('button', {name: 'Details', exact: true}).click();
-    await row.getByText('ffprobe timed out after 30s').waitFor({timeout: 8000});
+    await row.getByText(TIMED_OUT).waitFor({timeout: 8000});
     await page.mouse.move(0, 0);
     await fitted(page, () => fitViewportToPage(page, 900, 1800), () => shoot(page, 'admin/health-issues.png'));
   } finally {
-    sqlite(`UPDATE books SET scan_error = ${error}, scan_error_detail = ${detail} WHERE ${where};`);
+    sqlite(`UPDATE books SET ${stored} WHERE ${where};`);
   }
 });
 

@@ -1823,27 +1823,19 @@ async function captureFindShows(ctx, pod, cid) {
     // other shots.
     const again = await sameDevice(ctx);
     try {
-      await routeFindShows(again, pod, stand);
       const first = stand.directory.results.find((r) => r.title === newResult(pod).title);
+      await routeFindShows(again, pod, {...stand, directory: {...stand.directory, results: [first]}});
       let asked = 0;
       await again.route(
         (url) => url.origin === new URL(BASE).origin && url.pathname === '/api/v1/podcasts/discovery/search',
-        (route) => {
-          const q = new URL(route.request().url()).searchParams;
-          if (asked++ === 0) {
-            return route.fulfill({status: 200, contentType: 'application/json',
-              body: JSON.stringify({provider: 'itunes', query: q.get('q') ?? '', country: q.get('country') ?? 'US', results: [first]})});
-          }
-          return route.fulfill({status: 504, contentType: 'application/json',
-            body: JSON.stringify({error: 'The directory did not answer in time.', code: 'discovery_timeout'})});
-        },
+        (route) =>
+          asked++ === 0
+            ? route.fallback()
+            : route.fulfill({status: 504, json: {error: 'The directory did not answer in time.', code: 'discovery_timeout'}}),
       );
       const p = await again.newPage();
       await step('podcasts: find shows last results', async () => {
-        await p.goto(findUrl('search'), {waitUntil: 'networkidle', timeout: 45000});
-        await tid(p, 'directory-search-input').fill(FIND_QUERY);
-        await tid(p, 'directory-search-submit').click({timeout: 8000});
-        await firstVisible(p.getByTestId('discovery-result')).waitFor({timeout: 15000});
+        await searchAndFollow(p, {follow: false});
         // The page's clock from here on, moved past the results' 15 minutes.
         await p.clock.install();
         await p.clock.fastForward('16:00');
@@ -1852,7 +1844,6 @@ async function captureFindShows(ctx, pod, cid) {
         await again.setOffline(false);
         await tid(p, 'directory-search-error').waitFor({timeout: 15000});
         await p.getByText(`Showing the last results for “${FIND_QUERY}”.`).waitFor({timeout: 8000});
-        if (asked < 2) throw new Error('the search was not asked again');
         await imagesLoaded(p, '/podcasts/discovery/artwork');
         await sleep(SETTLE_MS);
         await p.mouse.move(0, 0);
