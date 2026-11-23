@@ -84,8 +84,8 @@ Additions:
 Changes to existing routes:
 
 - With `include=previous`, `GET /libraries/{id}/meta` waits at most five
-  seconds for the earlier works and returns those ready by then, so `previous`
-  can hold fewer works, or be absent, until a later request. See
+  seconds for the earlier works and returns those ready by then, where it used
+  to wait for all of them. `previous` can hold fewer works, or be absent. See
   [Previous books and spoiler gating](reference.md#previous-books-and-spoiler-gating).
 - [Response compression](index.md#response-compression) is now opted in per
   route. Every JSON read that was compressed before still is; a request with an
