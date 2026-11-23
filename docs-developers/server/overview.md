@@ -328,9 +328,9 @@ See [Media & streaming](media.md).
 
 ### `internal/covercolors`
 
-The background cover colour pass. Its `Runner` reads the colour of every book
-whose cover may have art and has no colour stored for it
-(`catalog.CoverColorsDue`), one book at a time. It runs once the start, or a
+The background cover colour pass. `catalog.CoverColorsDue` uses the stored art
+identity to select books whose art changed or has never been read. The
+`Runner` reads their thumbnails one book at a time. It runs once the start, or a
 burst of book changes, has been quiet for 30 s, and then hourly. It does no
 image work itself. `api.colorCover`, the cover endpoints' own reading, is handed
 in as its `Colorer`. See

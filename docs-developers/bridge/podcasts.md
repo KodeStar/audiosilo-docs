@@ -418,17 +418,19 @@ finish.
 ### The per-person cap
 
 Each non-admin creator has a cap of **five open `podcast.fetch` intents** across
-libraries, including prefetch. A parked fetch (`needs_attention`) holds no slot,
-since the Bridge waits on something the listener can't change. Admins and
-server-scheduled work are exempt. The insert transaction checks the cap after dedupe. So joining or
-promoting existing work succeeds at the cap, and does not transfer its requester or
-quota ownership.
+libraries, including prefetch. After checking for an existing intent, the insert
+transaction counts the requester's `queued`, `claimed` and `running` fetches. A
+parked fetch (`needs_attention`) holds no slot, since the Bridge waits on
+something the listener can't change. Admins and server-scheduled work are
+exempt. Joining or promoting existing work succeeds at the cap and keeps the
+original requester.
 
 - A refused new stream fetch is `503 podcast_fetch_unavailable` with
   `fetch.error.code: "fetch_limit"`.
 - A listener's POST Retry gets `409 fetch_limit`.
 
-This cap is independent of the subscribe-request cap.
+The [subscribe cap](../server/api/reference.md#podcast-actions) is counted
+separately, and unlike this one it counts parked requests.
 
 ### One-ahead queue preparation
 
