@@ -124,7 +124,7 @@ export const SHOTS = [
 
   // ── Admin console (admin-ui, desktop 1440x900 dark unless noted) + public server pages
   {file: 'admin/login.png', capture: 'admin', title: 'Admin - Sign in', hint: 'the console sign-in page, signed out'},
-  {file: 'admin/overview.png', capture: 'admin', title: 'Admin - Overview', hint: 'home: listening now (live sessions), totals, recent listening, books per library, server card'},
+  {file: 'admin/overview.png', capture: 'admin', title: 'Admin - Overview', hint: 'Listening now, totals, recent listening and books per library, with the away and home addresses on the Server card'},
   {file: 'admin/palette.png', capture: 'admin', title: 'Admin - Command palette', hint: 'the ⌘K palette open over the overview'},
   {file: 'admin/overview-phone.png', capture: 'admin', title: 'Admin - Phone', hint: 'overview at phone width (400x860) with the bottom tab bar (light)'},
   {file: 'admin/libraries.png', capture: 'admin', title: 'Admin - Libraries', hint: 'Library > Libraries: library cards with covers, status, folder, book count'},
@@ -137,7 +137,7 @@ export const SHOTS = [
   {file: 'admin/book-match.png', capture: 'admin', title: 'Admin - Match with community metadata', hint: 'the match dialog open on a book page with its possible matches and their community covers'},
   {file: 'admin/authors.png', capture: 'admin', title: 'Admin - Authors', hint: 'Library > Authors: author tiles with book counts'},
   {file: 'admin/series.png', capture: 'admin', title: 'Admin - Series', hint: 'Library > Series: one card per series with its spines; a series with a matched book shows the books not on the server as dashed gaps, each with its first release date when the community catalogue knows it (live meta.audiosilo.app) (1440x1400)'},
-  {file: 'admin/folders.png', capture: 'admin', title: 'Admin - Folders', hint: 'Library > Folders: the folder tree and the selected folder\'s detection choice'},
+  {file: 'admin/folders.png', capture: 'admin', title: 'Admin - Folders', hint: 'A Christmas Carol in the folder tree, its detection choices, audio file count, size and length, and both listing limits'},
   {file: 'admin/palette-search.png', capture: 'admin', title: 'Admin - Palette search', hint: 'the ⌘K palette searching books, authors and series for "alice"'},
   {file: 'admin/people.png', capture: 'admin', title: 'Admin - People', hint: "People > People: person cards with what each is listening to and their devices, maya's household (maya, then the members dan, a grown-up, and ivy, a kid, each Managed by maya) as one block across the grid"},
   {file: 'admin/person.png', capture: 'admin', title: 'Admin - Person', hint: 'sam\'s page, Access tab (?tab=access)'},
@@ -147,7 +147,7 @@ export const SHOTS = [
   {file: 'admin/devices.png', capture: 'admin', title: 'Admin - Devices', hint: 'People > Devices: every signed-in device with its app, last seen and address, and Sign out'},
   {file: 'admin/invite.png', capture: 'admin', title: 'Admin - Invite ready', hint: 'the invite card dialog after Invite someone: the scan-with-the-app description, the QR card, Share, the reach notice for the capture\'s address (localhost: only this computer), and the invite link'},
   {file: 'admin/invites.png', capture: 'admin', title: 'Admin - Invites', hint: 'People > Invites: the invite table'},
-  {file: 'admin/shares.png', capture: 'admin', title: 'Admin - Shares', hint: 'People > Shares: list + the selected share\'s folders and people'},
+  {file: 'admin/shares.png', capture: 'admin', title: 'Admin - Shares', hint: 'Carroll classics, Folder share (Fiction) and the Books grant with an extra folder from Inbox'},
   {file: 'admin/settings.png', capture: 'admin', title: 'Admin - Settings', hint: 'Server > Settings > General: the topic list (General to Import, Household among them), This server (a named server, Public address and Home address) and the top of Listening history'},
   {file: 'admin/settings-network.png', capture: 'admin', title: 'Admin - Network & HTTPS', hint: 'Server > Settings ?topic=network: the HTTPS mode cards, certificate status and the Network card (1440x1100)'},
   {file: 'admin/system-mirror.png', capture: 'admin', title: 'Admin - System, local metadata copy', hint: 'Health > System on a server in metadata mirror mode (run.sh seeds its copy with the meta artifact it built): the Community metadata row, Healthy, and the panel under it (data version, built, schema, size, downloaded, last and next check, Check now), clipped to that row'},

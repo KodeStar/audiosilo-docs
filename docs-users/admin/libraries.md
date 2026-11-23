@@ -207,7 +207,7 @@ folder directly inside this folder (see
 a folder in the tree. The page shows the three choices with what each would
 mean for that folder ("Here: 12 books."), then the folder's audio files.
 
-![Library > Folders](/img/screenshots/admin/folders.png)
+![The first 10,000 audio files in A Christmas Carol total 84 MB and 5 hours 22 minutes. The list shows the first 500.](/img/screenshots/admin/folders.png)
 
 If the folder is a book, **Open book** opens its [book page](books.md#a-books-page).
 On the book's page, **Change detection** opens its folder here. You can

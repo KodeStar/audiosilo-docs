@@ -2,15 +2,17 @@
 // data directory with a reachable loopback metadata service whose intake is closed.
 // The private database also keeps the large-library fixture out of other shots.
 import {spawn} from 'node:child_process';
-import {cp, mkdir, mkdtemp, rm, writeFile} from 'node:fs/promises';
+import {constants as fsc} from 'node:fs';
+import {cp, link, mkdir, mkdtemp, rm, writeFile} from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import {once} from 'node:events';
 import {
-  CACHE, DESKTOP_CONTEXT, HOUR, apiClient, pathQuery, shoot, showDockerPaths, sleep, sqliteAt, submitSignIn, waitForScans, wanted,
+  CACHE, DESKTOP_CONTEXT, HOUR, apiClient, pathQuery, shoot, showDockerPaths, silence, sleep, sqliteAt, submitSignIn, waitForScans, wanted,
 } from './lib.mjs';
 
-const bookPath = 'Charles Dickens/A Christmas Carol (ISBN 9780141324524)';
+const carol = 'Charles Dickens/A Christmas Carol';
+const bookPath = `${carol} (ISBN 9780141324524)`;
 const asin = 'B00C14ROL1';
 const isbn = '9780141324524';
 
@@ -20,10 +22,17 @@ async function listen(server) {
   return 'http://127.0.0.1:' + server.address().port;
 }
 
+export async function captureFolders(browser) {
+  if (wanted('admin/folders.png')) await capturePrivateLibrary(browser, {folders: true});
+}
+
 export async function captureLibraryReport(browser) {
   const report = wanted('admin/settings-metadata.png', 'admin/health-unknown-asin.png');
   const background = wanted('admin/library-source-background.png');
-  if (!report && !background) return;
+  if (report || background) await capturePrivateLibrary(browser, {report, background});
+}
+
+async function capturePrivateLibrary(browser, {folders, report, background}) {
   if (!process.env.SERVER_BIN) throw new Error('the private library capture needs SERVER_BIN from run.sh');
   const dir = await mkdtemp(path.join(CACHE, 'report-'));
   const library = path.join(dir, 'archive');
@@ -49,8 +58,18 @@ export async function captureLibraryReport(browser) {
     await new Promise((resolve) => reserve.close(resolve));
     await mkdir(data);
     await mkdir(library);
-    await cp(path.join(CACHE, 'library', 'Charles Dickens', 'A Christmas Carol'),
-      path.join(library, bookPath), {recursive: true});
+    if (folders) {
+      // Keep the original tree, cover and opening tracks. One encoded second
+      // supplies every extra part without copying its audio or running ffmpeg again.
+      await cp(path.join(CACHE, 'library'), library, {recursive: true, mode: fsc.COPYFILE_FICLONE});
+      const clip = path.join(dir, 'part.m4a');
+      if (!silence(clip, 1, {}, ['-c:a', 'aac'])) throw new Error('could not encode the folder fixture');
+      for (let n = 1; n <= 10001; n++) {
+        await link(clip, path.join(library, carol, `Part ${String(n).padStart(5, '0')}.m4a`));
+      }
+    } else {
+      await cp(path.join(CACHE, 'library', carol), path.join(library, bookPath), {recursive: true});
+    }
     if (background) {
       for (const book of ['Jack London/The Scarlet Plague', 'Sun Tzu/The Art of War', 'Lewis Carroll/Through the Looking-Glass']) {
         await cp(path.join(CACHE, 'library', book), path.join(library, book), {recursive: true});
@@ -60,7 +79,7 @@ export async function captureLibraryReport(browser) {
       'bind: ' + JSON.stringify(new URL(origin).host),
       'tls: {mode: "off"}', 'update_check: false', 'name: Hearthside',
       'metadata:', '  base_url: ' + JSON.stringify(service),
-      'libraries:', '  - name: Archive', '    root: ' + JSON.stringify(library),
+      'libraries:', folders ? '  - name: Books' : '  - name: Archive', '    root: ' + JSON.stringify(library),
     ].join('\n') + '\n');
     child = spawn(process.env.SERVER_BIN, ['--data', data], {stdio: ['ignore', 'pipe', 'pipe']});
     exited = once(child, 'close');
@@ -81,11 +100,21 @@ export async function captureLibraryReport(browser) {
     await waitForScans(api, token);
     const [archive] = (await api(token, 'GET', '/admin/libraries')).libraries;
     context = await browser.newContext(DESKTOP_CONTEXT);
-    await showDockerPaths(context, [[library, '/archive'], [data, '/data']]);
+    await showDockerPaths(context, [[library, folders ? '/library' : '/archive'], [data, '/data']]);
     const page = await context.newPage();
     await page.goto(origin + '/admin/');
     await submitSignIn(page, password);
     await page.locator('h1.display').first().waitFor();
+
+    if (folders) {
+      await page.goto(`${origin}/admin/library/folders?library=${archive.id}&folder=${encodeURIComponent(carol)}`);
+      const files = page.getByRole('region', {name: 'Audio files in this folder'});
+      await files.getByText(/10,000 files · [^·]+ · \d/).waitFor();
+      await files.getByText('Totals cover the first 10,000 items in this folder.').waitFor();
+      await files.getByText('Showing the first 500 audio files.').waitFor();
+      await page.getByAltText('A Christmas Carol', {exact: true}).evaluate((img) => img.decode());
+      await shoot(page, 'admin/folders.png');
+    }
 
     if (report) {
       const book = (await api(token, 'GET', '/admin/books?limit=20')).books.find((b) => b.path === bookPath);
