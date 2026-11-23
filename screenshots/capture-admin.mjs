@@ -296,7 +296,10 @@ await step('provision notification destinations', async () => {
 // Live now and the overview have sessions), then keeps saving every 15 s. The
 // Activity shots wait until LISTEN_MINUTES (default 8) have passed, so the
 // charts and totals have twenty-odd minutes of listening to show. Nora
-// stops 90 s before then, so Live now shows her as paused; Theo's device fetches
+// stops 3 minutes before then (Live now reads a session as playing for 150 s
+// after its last save), so Live now shows her as paused; she listens on an
+// AudioSilo Apple Watch (its app id and platform), so Live now and Sessions read
+// her session as the watch's downloaded AAC copy. Theo's device fetches
 // a transcoded stream first, so his session counts as transcoded, and he has a
 // personal API key that was never used.
 const HEARTBEAT_MS = 15000;
@@ -305,7 +308,7 @@ let listenUntil = 0;
 const LISTENERS = [
   {username: 'maya', device: "Maya's iPhone", client: 'AudioSilo/1.4.2 (ios)', speed: 1.25, at: 0.31},
   {username: 'theo', device: 'Pixel 8', client: 'AudioSilo/1.4.2 (android)', speed: 1, at: 0.58, transcode: true},
-  {username: 'nora', device: "Nora's iPad", client: 'AudioSilo/1.3.0 (ios)', speed: 1, at: 0.12, pauseEarly: true},
+  {username: 'nora', device: "Nora's Apple Watch", client: 'audiosilo-watch/2.6.0 (watchos)', speed: 1, at: 0.12, pauseEarly: true},
 ];
 let mayaId = null;
 let heartbeats = null;
@@ -397,7 +400,7 @@ await step('provision listening sessions', async () => {
 
   heartbeats = setInterval(() => {
     for (const l of LISTENERS) {
-      if (l.pauseEarly && Date.now() > listenUntil - 90000) continue;
+      if (l.pauseEarly && Date.now() > listenUntil - 180000) continue;
       saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.username}: ${e.message}`));
     }
   }, HEARTBEAT_MS);
@@ -822,11 +825,31 @@ await step('shares', async () => {
   }
 });
 
+// A probe that runs out of time needs a slow disk, so the Inbox's empty file is
+// stored as a timed-out read for this shot (the scanner's probe_failed code with
+// ffprobe's time-out message, which the console reads as a time-out) and put back
+// right after: the category still counts two files.
+const LOST_CHAPTER = 'Unknown Author/The Lost Chapter';
 await step('health issues', async () => {
-  await open(page, '/health/issues?issue=scan_error');
-  await page.getByRole('list', {name: "Files that couldn't be read"}).waitFor({timeout: 8000}).catch(() => {});
-  await sleep(800);
-  await shoot(page, 'admin/health-issues.png');
+  if (!wanted('admin/health-issues.png')) return;
+  if (!inbox) throw new Error('the Inbox library is required');
+  const where = `library_id = ${Number(inbox.id)} AND rel_path = '${LOST_CHAPTER}'`;
+  const error = sqlite(`SELECT quote(scan_error) FROM books WHERE ${where};`).trim();
+  const detail = sqlite(`SELECT quote(scan_error_detail) FROM books WHERE ${where};`).trim();
+  if (!error) throw new Error('The Lost Chapter is not indexed');
+  sqlite(`UPDATE books SET scan_error = 'probe_failed', scan_error_detail = 'ffprobe timed out after 30s' WHERE ${where};`);
+  try {
+    await open(page, '/health/issues?issue=scan_error');
+    const list = page.getByRole('list', {name: "Files that couldn't be read"});
+    const row = list.getByRole('listitem').filter({hasText: 'The Lost Chapter'});
+    await row.getByText(/took too long to read as audio/).waitFor({timeout: 8000});
+    await row.getByRole('button', {name: 'Details', exact: true}).click();
+    await row.getByText('ffprobe timed out after 30s').waitFor({timeout: 8000});
+    await page.mouse.move(0, 0);
+    await fitted(page, () => fitViewportToPage(page, 900, 1800), () => shoot(page, 'admin/health-issues.png'));
+  } finally {
+    sqlite(`UPDATE books SET scan_error = ${error}, scan_error_detail = ${detail} WHERE ${where};`);
+  }
 });
 
 await step('match automatically', async () => {
@@ -1358,10 +1381,27 @@ await step('settings: bridge', async () => {
         await api(token, 'POST', `/admin${route}/cancel`);
         // The server records a late failure of a cancelled claim as Cancelled.
         await api(bridge, 'PATCH', route, {attempt: claim.attempts, state: 'failed'}, BRIDGE_CLIENT);
+        // A cancellation of the server's own: a share the stand-in is filing when the
+        // Contributions module goes off is asked to stop at its next report, with the
+        // server's reason, and its failure then ends it as Cancelled. The module is
+        // on only for this (the modules shot before shows it off); it is turned on
+        // again below.
+        await api(token, 'PATCH', '/admin/settings', {modules: {contributions: true}});
+        await api(token, 'POST', '/admin/bridge/jobs', {kind: 'sidecars.contribute', library_id: seeded.id,
+          path: 'Jack London/The Scarlet Plague', params: {}});
+        const share = await api(bridge, 'GET', '/bridge/jobs/next?wait=5&kind=sidecars.contribute', undefined, BRIDGE_CLIENT);
+        if (!share) throw new Error('the share job was not handed out');
+        const shareRoute = `/bridge/jobs/${share.id}`;
+        const contributing = {attempt: share.attempts, state: 'running', progress: {step: 'contributing'}};
+        await api(bridge, 'PATCH', shareRoute, contributing, BRIDGE_CLIENT);
+        await api(token, 'PATCH', '/admin/settings', {modules: {contributions: false}});
+        await api(bridge, 'PATCH', shareRoute, contributing, BRIDGE_CLIENT);
+        await api(bridge, 'PATCH', shareRoute, {attempt: share.attempts, state: 'failed'}, BRIDGE_CLIENT);
         await open(page, '/server?topic=bridge');
         const card = page.locator('[aria-labelledby="bridge-jobs-title"]');
         await card.getByLabel('Show jobs').selectOption('cancelled');
         await card.getByText(/Last step: Comparing the files/).waitFor({timeout: 15000});
+        await card.getByText('Its module was turned off.', {exact: true}).waitFor({timeout: 15000});
         await card.scrollIntoViewIfNeeded();
         await page.mouse.move(0, 0);
         await shoot(page, 'admin/bridge-jobs-cancelled.png', {clip: around([await card.boundingBox()])});
@@ -1751,6 +1791,7 @@ await step('activity overview', async () => {
 await step('activity: live now', async () => {
   await open(page, '/activity/live');
   await page.getByText('Playing', {exact: true}).first().waitFor({timeout: 15000});
+  await page.getByText('Watch download · AAC', {exact: true}).waitFor({timeout: 15000});
   await sleep(800);
   await shoot(page, 'admin/activity-live.png');
 });
@@ -1758,6 +1799,7 @@ await step('activity: live now', async () => {
 await step('activity: sessions', async () => {
   await open(page, '/activity/sessions');
   await page.getByRole('table').waitFor({timeout: 15000});
+  await page.getByText('Watch download · AAC', {exact: true}).first().waitFor({timeout: 15000});
   await shoot(page, 'admin/activity-sessions.png');
 });
 

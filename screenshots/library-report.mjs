@@ -136,8 +136,18 @@ async function capturePrivateLibrary(browser, {folders, report, background}) {
         if (settled(status)) break;
         if (Date.now() > until) throw new Error(`the metadata fixture saw ${JSON.stringify(requests)}, report status ${JSON.stringify(status)}`);
       }
+      // Upcoming releases' Check now, asked through its route (the button's toast
+      // would cover the card): the row then shows that check's last-check line.
+      await api(token, 'POST', '/admin/upcoming/check');
+      for (const until = Date.now() + 60000; ; await sleep(500)) {
+        const status = (await api(token, 'GET', '/admin/settings')).metadata.upcoming_status;
+        if (status?.last_run_at) break;
+        if (Date.now() > until) throw new Error(`the upcoming releases check did not run: ${JSON.stringify(status)}`);
+      }
       await page.setViewportSize({width: 1440, height: 1260});
       await page.goto(origin + '/admin/server?topic=metadata');
+      await page.getByTestId('upcoming-run').filter({hasText: /^Last check/}).waitFor();
+      await page.getByRole('button', {name: 'Check now', exact: true}).waitFor();
       await page.getByTestId('report-run').filter({hasText: /tried again about a week after that attempt/}).waitFor();
       await page.getByText(/Responding.*ms/).waitFor();
       const settings = page.getByTestId('report-run').locator('xpath=ancestor::section[1]');

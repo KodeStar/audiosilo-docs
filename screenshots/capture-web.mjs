@@ -1595,6 +1595,7 @@ const FIND_SHOTS = {
   address: 'web-player/find-shows-address.png',
   import: 'web-player/find-shows-import.png',
   phone: 'web-player/phone-find-shows.png',
+  lastResults: 'web-player/find-shows-last-results.png',
 };
 const FIND_QUERY = 'kitchen';
 // A feed address as the server shows it in a request or an import row (its origin only).
@@ -1813,6 +1814,53 @@ async function captureFindShows(ctx, pod, cid) {
     }
   } finally {
     await desk.close();
+  }
+  if (wanted(FIND_SHOTS.lastResults)) {
+    // A search the directory answered once, read again when the browser comes back
+    // online after its 15 minutes were up, and the directory timing out then: the
+    // page keeps the one result with its last-results line, the error and Search
+    // again. Its own context, so the clock and the failing answer stay out of the
+    // other shots.
+    const again = await sameDevice(ctx);
+    try {
+      await routeFindShows(again, pod, stand);
+      const first = stand.directory.results.find((r) => r.title === newResult(pod).title);
+      let asked = 0;
+      await again.route(
+        (url) => url.origin === new URL(BASE).origin && url.pathname === '/api/v1/podcasts/discovery/search',
+        (route) => {
+          const q = new URL(route.request().url()).searchParams;
+          if (asked++ === 0) {
+            return route.fulfill({status: 200, contentType: 'application/json',
+              body: JSON.stringify({provider: 'itunes', query: q.get('q') ?? '', country: q.get('country') ?? 'US', results: [first]})});
+          }
+          return route.fulfill({status: 504, contentType: 'application/json',
+            body: JSON.stringify({error: 'The directory did not answer in time.', code: 'discovery_timeout'})});
+        },
+      );
+      const p = await again.newPage();
+      await step('podcasts: find shows last results', async () => {
+        await p.goto(findUrl('search'), {waitUntil: 'networkidle', timeout: 45000});
+        await tid(p, 'directory-search-input').fill(FIND_QUERY);
+        await tid(p, 'directory-search-submit').click({timeout: 8000});
+        await firstVisible(p.getByTestId('discovery-result')).waitFor({timeout: 15000});
+        // The page's clock from here on, moved past the results' 15 minutes.
+        await p.clock.install();
+        await p.clock.fastForward('16:00');
+        await again.setOffline(true);
+        await sleep(1000);
+        await again.setOffline(false);
+        await tid(p, 'directory-search-error').waitFor({timeout: 15000});
+        await p.getByText(`Showing the last results for “${FIND_QUERY}”.`).waitFor({timeout: 8000});
+        if (asked < 2) throw new Error('the search was not asked again');
+        await imagesLoaded(p, '/podcasts/discovery/artwork');
+        await sleep(SETTLE_MS);
+        await p.mouse.move(0, 0);
+        await shoot(p, FIND_SHOTS.lastResults);
+      });
+    } finally {
+      await again.close();
+    }
   }
   if (wanted(FIND_SHOTS.phone)) {
     const phone = await sameDevice(ctx, {viewport: PHONE});

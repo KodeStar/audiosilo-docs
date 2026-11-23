@@ -130,7 +130,7 @@ servers leave it empty.
 
 ### Community metadata
 
-![Community metadata settings showing that the server will try the report again in about a week](/img/screenshots/admin/settings-metadata.png)
+![Community metadata settings with Check now and the last upcoming releases check, and the notice that the server will try the report again in about a week](/img/screenshots/admin/settings-metadata.png)
 
 When the service answers but does not accept reports, the server waits about a week before trying again.
 

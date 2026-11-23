@@ -137,6 +137,10 @@ the copy to open, signs in there and clips the
 shot to the Community metadata row and the copy's panel. The server isn't
 started when `SHOTS_ONLY` leaves the shot out; without the meta stack the step
 is skipped and the shot keeps its previous image (or a placeholder).
+The copy must be one the server can read: build it from a `META` checkout whose
+artifact schema is no newer than the `audiosilo-meta` version the server pins (its
+`query.MaxSchemaVersion`), else Health shows the copy as **Needs attention**, newer
+than the server understands.
 
 The Health shots (`admin/health-*.png`) need issues to show, and the seeded
 library has almost none. After the other admin shots, `capture-admin.mjs`
@@ -147,6 +151,10 @@ file (the generated audio is silence, made with **ffmpeg**) - and adds it
 through the API with a daily schedule and skip rules. The taller
 `admin/library-edit.png` includes the explanation under **Book details come from**.
 The Inbox is added after the main Books screens so they keep showing only the seeded library.
+A read that runs out of time needs a slow disk, so for `admin/health-issues.png` the
+script stores the empty file's problem (SQLite) as the scanner stores a timed-out
+read (`probe_failed` with ffprobe's "timed out after 30s" message), opens that row's
+**Details** and puts the stored problem back after the shot.
 
 `admin/shares.png` is taken once the Inbox exists. It writes, with SQLite, the
 rules an older server allowed: a former grant (**Library: Fiction**, described
@@ -165,8 +173,11 @@ its listing limits: totals over the first 10,000 items and the first 500 files.
 Its loopback metadata service answers the lookup for the archive's copy of **A Christmas Carol** with 404 and
 also returns 404 when the server reports that ASIN. The book has an ISBN set
 through the admin API. The fixture waits for the declined report (`not_offered`)
-and the scheduler's next daily tick. `admin/settings-metadata.png` shows the
-service responding and the notice that the server tries the report again in about a week.
+and the scheduler's next daily tick, then asks for an upcoming releases check
+(`POST /admin/upcoming/check`, as **Check now** does, without its toast) and waits
+for it to run. `admin/settings-metadata.png` shows the service responding,
+Upcoming's **Check now** with that check's last-check line, and the notice that the
+server tries the report again in about a week.
 
 `admin/health-unknown-asin.png` shows its entry under **ASIN not in the community
 database**. For `admin/library-source-background.png` the script seeds a large
@@ -193,7 +204,8 @@ only derives those from progress saves as they happen: a device's listened time
 is its position advance, capped by the server's clock between two saves, so it
 can't be faked faster than real time. `capture-admin.mjs` therefore signs three
 listeners in with a password (maya, theo and nora, each naming a different app
-build in `X-AudioSilo-Client`), saves each one's progress twice 15 s apart
+build in `X-AudioSilo-Client`; nora's is the AudioSilo Apple Watch app, so Live now
+and Sessions read her session as **Watch download · AAC**), saves each one's progress twice 15 s apart
 before the first shot (so the overview and the people cards show them live),
 and keeps saving every 15 s in the background. Theo's device fetches a
 `?transcode=1` stream first (so his session counts as transcoded) and has an
@@ -202,7 +214,7 @@ unused personal API key; maya adds two household members through the player's AP
 those two shots are wanted: ivy, a kid on "Ivy's books", one of maya's collections,
 and dan, a grown-up on everything), which `admin/people.png` shows as maya's
 household and `admin/person-member.png` as ivy's Access tab (without the household
-both keep their previous images); nora stops 90 s before the Activity shots, so Live now
+both keep their previous images); nora stops 3 minutes before the Activity shots (past the 150 s a session reads as playing), so Live now
 shows her as paused. The Activity screens are captured last, once
 `LISTEN_MINUTES` (default 8) have passed since the listeners started, so the
 charts and totals have twenty-odd minutes of listening to show rather than a
@@ -254,7 +266,12 @@ to refresh. The paired page shows the same hand-off after the budget has been
 reviewed and GitHub has refreshed the sign-in. For the Jobs detail, the stand-in
 claims a second Verify and reports its progress. The admin requests a cancellation,
 then the stand-in reports a failure. The server records the job as Cancelled and
-keeps the last step. The script filters Jobs to Cancelled before capturing the card.
+keeps the last step. For a cancellation of the server's own, the Contributions module
+is turned on, the admin queues a share (`sidecars.contribute`) for The Scarlet Plague
+and the stand-in claims it and reports it running; the module is turned off, so the
+stand-in's next report is asked to stop with the server's reason, and its failure ends
+the job as Cancelled with that reason. The script filters Jobs to Cancelled before
+capturing the card.
 Then the Contributions
 module is turned on (`PATCH /admin/settings`; the modules shot before shows it
 off), which the generate dialog's contribute switch and the story step's
@@ -530,7 +547,11 @@ its follow failed within the hour (`recently_failed`, naming that failed request
 shows that request's reason) and three waiting) while its five requests stay open, so
 the page holds on its "Waiting for the shows being added" line. The import and podcast
 show shots grow the viewport to the end of the list (`fitViewportTo` in `lib.mjs`), and
-the search shots wait for the directory artwork to load (`imagesLoaded`). Nothing is
+the search shots wait for the directory artwork to load (`imagesLoaded`). For
+`web-player/find-shows-last-results.png` the search answers one result once and
+`discovery_timeout` (504) after that; the page's clock is moved on past the results'
+15 minutes and the context goes offline and back online, so the player asks again and
+keeps the result with its last-results line, the error and **Search again**. Nothing is
 followed on the server and no request leaves the machine.
 
 The connect and account shots run in fresh browser contexts. The served player
