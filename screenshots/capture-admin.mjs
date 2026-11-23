@@ -956,14 +956,19 @@ await step('health: system in mirror mode', async () => {
   // few seconds). Any other state but ready means the server refused it and
   // is after a real one ("empty", then a check half a minute after start, which
   // run.sh's dead proxy fails): stop at once, with its metadata switched off.
+  // So does a ready copy with a newer schema than the server reads: Health would
+  // show it as Needs attention.
   const mapi = apiClient(MIRROR_ORIGIN);
   const {token: mtoken} = await mapi(null, 'POST', '/auth/login', {username: 'admin', password: MIRROR_PASSWORD});
   await markSetUp(mapi, mtoken);
   for (const until = Date.now() + 30000; ; await sleep(500)) {
     const m = await mapi(mtoken, 'GET', '/admin/meta/mirror');
-    if (m.state === 'ready') break;
-    if (m.state !== 'opening' || Date.now() > until) {
+    if (m.state === 'ready' && !m.schema_newer) break;
+    if (m.state !== 'opening' || m.schema_newer || Date.now() > until) {
       await mapi(mtoken, 'PATCH', '/admin/settings', {metadata: {enabled: false}}).catch(() => {});
+      if (m.schema_newer) {
+        throw new Error(`the seeded copy's schema ${m.schema_version} is newer than this server reads: set MIRROR_META (see README.md)`);
+      }
       throw new Error(`the seeded local copy isn't answering: ${JSON.stringify(m)}`);
     }
   }

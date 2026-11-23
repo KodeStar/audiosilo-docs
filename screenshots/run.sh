@@ -38,6 +38,9 @@
 #              the Activity shots, default 8 - see README.md),
 #            META=<dir> (the audiosilo-meta checkout, default the sibling
 #              clone - point it at a worktree to capture an unmerged branch),
+#            MIRROR_META=<dir> (the audiosilo-meta checkout whose artifact
+#              seeds admin/system-mirror.png's local copy, default META; use
+#              one whose schema the server reads - see README.md),
 #            META_COMMUNITY=<dir> (the audiosilo-meta-community checkout,
 #              default the sibling clone; its data/ is composed in),
 #            SKIP_ADMIN=1 (skip the admin console build + admin/public
@@ -76,6 +79,7 @@ SERVER_BIN="$(abspath "${SERVER_BIN:-$SERVER/bin/audiosilo}")"
 FRONTEND="$(abspath "${FRONTEND:-$WORKSPACE/audiosilo-frontend}")"
 WEB_DIR="$(abspath "${WEB_DIR:-$FRONTEND/dist}")"
 META="$(abspath "${META:-$WORKSPACE/audiosilo-meta}")"
+MIRROR_META="$(abspath "${MIRROR_META:-$META}")"
 META_COMMUNITY="$(abspath "${META_COMMUNITY:-$WORKSPACE/audiosilo-meta-community}")"
 BRIDGE="$(abspath "${BRIDGE:-$WORKSPACE/audiosilo-bridge}")"
 CACHE="$HERE/.cache"
@@ -392,9 +396,16 @@ if [ "${SKIP_META:-0}" != "1" ]; then
   if [ "${SKIP_ADMIN:-0}" != "1" ] && shot_wanted admin/system-mirror.png; then
     echo "==> starting a mirror-mode server on :$MIRROR_PORT (seeded local copy)"
     rm -rf "$MIRROR_DATA" && mkdir -p "$MIRROR_DATA/meta-mirror"
-    MIRROR_TAG="data-v$(date -u +%Y.%m.%d)-$(git -C "$META" rev-parse --short=7 HEAD 2>/dev/null || echo local)-$(git -C "$META_COMMUNITY" rev-parse --short=7 HEAD 2>/dev/null || echo local)"
-    ln "$CACHE/meta.sqlite" "$MIRROR_DATA/meta-mirror/meta-$MIRROR_TAG.sqlite" 2>/dev/null \
-      || cp "$CACHE/meta.sqlite" "$MIRROR_DATA/meta-mirror/meta-$MIRROR_TAG.sqlite"
+    MIRROR_ARTIFACT="$CACHE/meta.sqlite"
+    if [ "$MIRROR_META" != "$META" ]; then
+      echo "==> building the mirror's artifact from $MIRROR_META"
+      MIRROR_ARTIFACT="$CACHE/mirror-meta.sqlite"
+      (cd "$MIRROR_META" && go run ./cmd/metabuild -data data \
+        --community "$META_COMMUNITY/data" -o "$MIRROR_ARTIFACT")
+    fi
+    MIRROR_TAG="data-v$(date -u +%Y.%m.%d)-$(git -C "$MIRROR_META" rev-parse --short=7 HEAD 2>/dev/null || echo local)-$(git -C "$META_COMMUNITY" rev-parse --short=7 HEAD 2>/dev/null || echo local)"
+    ln "$MIRROR_ARTIFACT" "$MIRROR_DATA/meta-mirror/meta-$MIRROR_TAG.sqlite" 2>/dev/null \
+      || cp "$MIRROR_ARTIFACT" "$MIRROR_DATA/meta-mirror/meta-$MIRROR_TAG.sqlite"
     node -e '
       const [file, tag] = process.argv.slice(1);
       const now = new Date().toISOString(); // after the artifact was built, as a real copy is
