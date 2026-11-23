@@ -397,6 +397,7 @@ dates from 0001. Later migrations added these columns:
 | 0083 | `path_key` |
 | 0091 | `tag_read_failed_at` |
 | 0094 | `cover_color_art` |
+| 0095 | `matched` |
 
 #### Identity and metadata columns
 
@@ -421,6 +422,10 @@ dates from 0001. Later migrations added these columns:
 - `duration`.
 - `asin` and `isbn`: optional external ids. They are present so enrichment and
   metadata services can attach data without reshaping the schema.
+- `matched` (`INTEGER NOT NULL DEFAULT 0`) is `1` if the book has a non-empty
+  effective ASIN or ISBN, or if a [recorded community match](#book_matches)
+  has the same `library_id` and its `path` exactly equals the book's
+  `rel_path`. Otherwise it is `0`.
 - `published` (`YYYY[-MM[-DD]]`) and `description`. An admin edit, an accepted
   community match or an Audiobookshelf `metadata.json` supplies these. The
   audio's tags never do.
@@ -2190,17 +2195,25 @@ cover and row, as
 [clearing the community matches](api/reference.md#delete-apiv1admincommunity-matches)
 does for a library.
 
-A store listing the community database holds with no ASIN or ISBN is matched by
-this row alone. `catalog.matchedExpr`
-(`b.asin <> '' OR b.isbn <> '' OR EXISTS(book_matches ...)`) decides:
+A recorded match sets `books.matched` even when the book has no ASIN or ISBN.
+SQLite maintains the flag in the writer's transaction, including when an
+older server writes to the upgraded database.
 
-- the admin list's `matched` and its facet;
-- Health's `unmatched`, and so a match run's books;
-- Activity's `identified`;
-- the name `/series` and `/admin/series` give a series of several spellings
-  (`seriesName`);
-- the suggested spelling of Health's `series_spellings`;
-- a refresh run's `MatchedBooks`.
+- On `books`, the insert trigger checks for an identifier or a match already
+  recorded at that path. This includes a book that a rescan adds back to the index.
+  The update trigger checks again when the book gains its first identifier,
+  loses its last one, or changes library or path.
+- On `book_matches`, an insert sets the flag on the indexed book. A delete
+  clears it only if the book has neither identifier. Moving a match to a new
+  library or path applies the delete rule at the old key and the insert rule
+  at the new one.
+
+`catalog.matchedExpr` reads `books.matched` for the admin book list and its
+Matched facet, Health's `unmatched` issue and Activity's `identified` count.
+Match runs use the flag to find unmatched books, and refresh runs use it to
+select `MatchedBooks`. Both `seriesName` (for `/series` and `/admin/series`)
+and Health's `series_spellings` use the flag to count matched books when
+choosing among spellings.
 
 What needs an identifier tests `asin` or `isbn` itself: community chapters, the
 unknown-ASIN report, upcoming releases, a repick, the Bridge's estimate and the
@@ -2527,6 +2540,12 @@ filename must match `NNNN_*.sql`, because application order is lexical, and
 `store.go` rejects misnamed files. Each migration runs in its own transaction
 and is recorded in `schema_migrations`. Names already recorded are skipped.
 
+If startup applies any migrations, the server runs
+`PRAGMA wal_checkpoint(TRUNCATE)` once before opening the reader pool. This
+truncates the write-ahead log and releases the disk space a backfill used.
+If the checkpoint is busy or fails, the server logs a warning and continues
+startup.
+
 The migration history so far:
 
 | # | File | What it did |
@@ -2619,6 +2638,7 @@ The migration history so far:
 | 0092 | `health_ignores` | Stores duplicate decisions per comparison and split-disc ignores per folder. Carries forward [existing Health ignores](#health-ignores). |
 | 0093 | `audible_fold_refusal` | Records why and when the server refused to match a completed backup on the [Audible title](#audible-accounts-and-titles). A trigger clears the refusal when the title gains a newly accepted match, or when an admin undoes "Not this book". |
 | 0094 | `catalog_pass_indexes` | Adds `books.cover_color_art` with its trigger, start-up backfill and due index (see [Cover art columns](#cover-art-columns)), `idx_books_narrator` (see [FTS design](#fts-design-books_fts)) and `idx_bridge_jobs_fetch_requester` (see [`bridge_jobs`](#bridge_jobs)) |
+| 0095 | `books_matched` | Adds `books.matched` and backfills it once for existing books. Triggers on `books` and [`book_matches`](#book_matches) keep it current. |
 
 `server_state.progress_feed` identifies the Audible progress feed. A restore renews this ID before
 clients can page it. The separate data-folder mark detects a database restored behind the last
