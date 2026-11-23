@@ -254,9 +254,9 @@ details from its tags and folders. To add it:
 3. Pick the exact narration and check the details the page would record.
 4. The last step opens a prefilled entry on GitHub for the bot to file.
 
-In the admin console, a book the database doesn't know offers **Add it**, which
-opens this page with the book already filled in, by its ASIN or by its title
-and author. See [Weak matches](../admin/health.md#weak-matches).
+In the admin console, **Add it** opens this page for a missing book. An Audible
+ASIN starting with **B0** opens its record. An older ASIN, an ISBN or words
+from the [match dialog](../admin/books.md#matching-with-community-metadata) start a search.
 
 Good to know:
 

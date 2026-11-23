@@ -159,9 +159,11 @@ then never contacts the **Service address** or the cover hosts.
 The other settings on this topic:
 
 - **Status** - whether the **Service address** (or your local copy) is answering.
-- **Check for upcoming releases** - on by default. A daily check of the series
-  you hold, for preorders, recent releases and missing books. Listeners (except
-  kids) see them on [Upcoming releases](../listening/upcoming.md), and you can
+- **Check for upcoming releases** is on by default. The server checks your series
+  daily for preorders, recent releases and missing books. Choose **Check now**
+  to run the full check on demand. If a full check is already running, your
+  request joins it. The row shows the result when the check finishes.
+  Listeners (except kids) see the books on [Upcoming releases](../listening/upcoming.md), and you can
   get a [notification](notifications.md#what-to-send). A calendar app in the
   cloud, like Google Calendar, needs a public HTTPS **Public address** with a
   trusted certificate.
@@ -187,8 +189,8 @@ The other settings on this topic:
   match in one library or all of them, so you can match again from fresh. Your
   own edits and uploaded covers stay. It can't be undone.
 
-The upcoming-release check and the missing-books report only work while
-**Look up community metadata** is on.
+**Check now** appears when both **Look up community metadata** and **Check for
+upcoming releases** are on. The missing-books report also needs community metadata.
 
 #### Helping complete the community database
 

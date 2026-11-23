@@ -41,8 +41,8 @@ The console's first-run setup flow is keyed off the database too, through the
 finished. An upgraded server is marked finished (see
 [Data model](data-model.md#server-state)).
 
-A library declared in `config.yaml` or the environment doesn't finish the flow.
-The flow lists it as already added (`GET /admin/setup`'s `config_libraries`),
+A library declared in `config.yaml` doesn't finish the flow.
+The flow lists it as already added (`from_config` on the admin library row),
 and its naming step can still switch that library's `metadata_source`. That
 choice survives restarts, because the config sync updates only a declared
 library's root and default view.
@@ -857,9 +857,9 @@ makes the cache survive a restart and an outage:
 
 ### Upcoming releases (`upcoming.*`)
 
-[Upcoming releases](api/reference.md#upcoming-releases) is a daily job. Once a
-day the server reads the community metadata for the series it holds. For each
-listener it works out the preorders, recent releases and missing volumes in the
+[Upcoming releases](api/reference.md#upcoming-releases) checks community metadata
+for the server's series once a day. Admins can also [request a full check](api/reference.md#post-apiv1adminupcomingcheck).
+For each listener it works out the preorders, recent releases and missing volumes in the
 series they have ([`GET /me/upcoming`](api/reference.md#get-apiv1meupcoming),
 capability `upcoming`). It tells the admin about a new release in one of those
 series with the `book_released`

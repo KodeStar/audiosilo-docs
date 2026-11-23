@@ -2521,8 +2521,8 @@ if (wanted(...Object.values(HOUSE_SHOTS))) {
 
 // ── Upcoming releases (Tracks U2 and U3) ────────────────────────────────────
 // Home's Coming up in your series and the Upcoming page need what the server's upcoming
-// releases job found: for this pass Sherlock Holmes is matched (HOLMES_MATCH), the job is
-// switched off and on so it runs at once, and the ASIN is reverted afterwards. What the
+// releases job found: for this pass Sherlock Holmes is matched (HOLMES_MATCH), Check now
+// requests a fresh result, and the ASIN is reverted afterwards. What the
 // job stored stays until its next run, so this pass comes after the other player shots.
 // Needs the network (the live catalogue); README.md has the whole account.
 const UPCOMING_SHOTS = {
@@ -2547,7 +2547,6 @@ async function openUpcoming(page) {
 if (wanted(...Object.values(UPCOMING_SHOTS))) {
   console.log('== upcoming releases ==');
   let holmesEdit = '';
-  let jobOff = false; // switched off and not yet back on: the finally switches it on
   let listed = false; // the job listed items: the shots have something to show
   try {
     await step('upcoming: run the job', () =>
@@ -2556,17 +2555,17 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
         const b = seededBook(list?.books ?? [], HOLMES_MATCH.title);
         holmesEdit = `/admin/libraries/${b.library_id}/book${pathQuery(b.path)}`;
         await api(token, 'PATCH', holmesEdit, {set: {asin: HOLMES_MATCH.asin}});
-        jobOff = true;
-        await api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: false}});
-        await api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: true}});
-        jobOff = false;
-        const ready = (up) => up?.status === 'ok' && up.items?.length > 0;
+        // generated_at is the last successful full check, even when earlier items are still listed.
+        const previousRun = (await api(token, 'GET', '/me/upcoming')).generated_at;
+        await api(token, 'POST', '/admin/upcoming/check');
+        const ready = (up) =>
+          up?.status === 'ok' && up.generated_at && up.generated_at !== previousRun && up.items?.length > 0;
         let up = null;
         for (const until = Date.now() + 180000; Date.now() < until && !ready(up); ) {
           await sleep(2000);
           up = await api(token, 'GET', '/me/upcoming').catch(() => null);
         }
-        if (!ready(up)) throw new Error(`no upcoming releases (status ${up?.status ?? 'none'}; the live catalogue may be unreachable)`);
+        if (!ready(up)) throw new Error(`no fresh upcoming releases (status ${up?.status ?? 'none'}; the live catalogue may be unreachable)`);
         listed = true;
         console.log(`  ✓ the job listed ${up.items.length}: ${up.items.map((i) => `${i.series.name} ${i.series.position} (${i.kind})`).join(', ')}`);
       }),
@@ -2638,11 +2637,6 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
       });
     }
   } finally {
-    if (jobOff) {
-      await step('upcoming: switch the job back on', () =>
-        asAdmin((token) => api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: true}})),
-      );
-    }
     if (holmesEdit) {
       await step('upcoming: revert the ASIN', () => asAdmin((token) => api(token, 'PATCH', holmesEdit, {revert: ['asin']})));
     }

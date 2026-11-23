@@ -175,7 +175,8 @@ Each screen is a lazy-loaded chunk, so the first paint carries only the shell
 and the overview. Interface strings work the same way. English is bundled in
 the entry, and it is also the fallback for any missing key. Each other language
 is its own chunk (`import.meta.glob` in `src/i18n/index.ts`), loaded when it is
-chosen.
+chosen. When a translated sentence ends with an interpolated abbreviation such
+as "29 min.", the formatter keeps one final full stop.
 
 ### Lazy screens
 
@@ -715,16 +716,16 @@ path facts through metaserve's `works/match`.
   identifiers even when their fields are unticked.
 - **Match to this work.** With nothing ticked, `match_alone` enables recording
   a new work or recording for a book with no ASIN or ISBN from any source. For the
-  already recorded match, the dialog also allows accepting with nothing ticked
-  when the proposal offers an identifier, so the server remembers it was offered.
+  already recorded match, `records_offered` enables the button when saving would
+  add or change an offered identifier.
 - **Candidates' covers** are thumbnails the server fetched
   (`POST /admin/meta/covers`), batched by URL in `src/api/cover-batch.ts`,
   because the CSP loads no other host's images.
 - **The Cover row.** The proposal's `cover` flag supplies its default tick
   unless the cached cover preview failed. The dialog sends a ticked cover to
   `PUT …/cover/community` after any field writes. With only the cover ticked,
-  it sends the match after the cover succeeds if `match_alone` is true or
-  the book already has that match. If the cover-only request fails, the
+  it sends the match after the cover succeeds if `match_alone` or
+  `records_offered` is true. If the cover-only request fails, the
   dialog stays open.
 
 ##### Listen in player
@@ -992,11 +993,11 @@ scan settings:
 - folder detection (`/fs` browse and `…/folder-override`);
 - export, and delete.
 
-**Config libraries.** A library named in `GET /admin/setup`'s
-`config_libraries` has its **Delete library...** disabled, with the reason. The
-server may still refuse a delete with `409 config_library`, when the config
-changed after the console read it. The console then closes the dialog, shows
-that reason as an error toast and reads the setup again, so the card locks.
+**Config libraries.** A library row with `from_config: true` shows **From your
+config**. Its name and folder are read-only, and **Delete library...** is
+disabled with a reason. If a restart changed the declaration, a
+`409 config_library` makes the console read the libraries again. After a
+refused delete it closes the dialog and shows the reason.
 Any other failure keeps the dialog open with its message.
 
 #### People > People, Invites, Shares and Devices
@@ -1016,20 +1017,17 @@ Any other failure keeps the dialog open with its message.
   host for three notices: loopback (only this computer), a home address by
   `isHomeHost`, the server's own rule (a private or link-local IP, a `.local`,
   `.lan`, `.home.arpa` or `.internal` name, or a single-label name; this network
-  only, the info tone), and a certificate warning worded by its reason
-  (`certificate`): `selfsigned` for `https://` while the server runs in self-signed TLS mode
-  (`runsSelfSigned`, from the settings' `network.tls_mode`; unknown while
-  settings load or a TLS mode change waits for a restart), at an IP address or a
-  name like `nas.local` alike, else `address` for `https://` at an IP address in
-  any other mode, since such an address rarely has a certificate browsers
-  trust. A public host name gets the `selfsigned` warning while the server runs
-  self-signed (a reverse proxy with its own certificate in front of it still
-  reads as self-signed), and none otherwise. The link's base is
+  only, the info tone), and a certificate warning for non-loopback HTTPS links.
+  Self-signed TLS mode gives the `selfsigned` reason unless the invite has
+  `external_https: true`. An IP address still gives the `address` reason
+  when the self-signed warning does not apply. The link's base is
   `baseURL`: the public address, else the address the console was opened at, so
   a home address set in Settings does not change it.
 - **A person's page** is `/admin/people/user/<id>`, with its tab in `?tab=`:
   listening (the default, no param), access, devices, invites, sign-in,
-  account.
+  account. On deletion, the console requests `detail=1` and shows the nonzero
+  household member counts from the response. A successful response without a
+  JSON body still returns the admin to People with the deletion confirmation.
 - **The cross-account invite list** (`GET /admin/invites`) has rotate and
   revoke.
 - **Shares** have a list and a detail view, with `member_ids`.
@@ -1242,13 +1240,11 @@ store's domain), shared with the Settings select.
 
 `lib/meta-site.ts` `addBookUrl` builds the link to `https://meta.audiosilo.app/add`,
 always the public community site, even for a server pointed at another
-`metadata.base_url`. The page reads one parameter, `q`, and acts on it at once:
-an Audible ASIN (`B0` and eight more letters or digits) opens that record, and
-anything else is searched for. The link carries the best way to find the book:
-an Audible ASIN (one the admin typed, else the book's own), else the words the
-admin searched with, else its title and author, else nothing. The match
-dialog's empty state (`NotInDatabase`), Match automatically's Not found rows
-(title and author) and Health's `unknown_asin` rows (the book's ASIN) use it.
+`metadata.base_url`. The match dialog uses the admin's submitted search first.
+Otherwise the dialog, **Not found** rows and Health's `unknown_asin` rows use
+the book's valid ASIN, then its ISBN, then its title and author. The page opens
+the record for a `B0` ASIN. Other identifiers and words start a search. If
+there is nothing to pass, the link opens the page without `q`.
 `unknown_asin` books have their own Health card, listed only while the
 unknown-ASIN report is on, and their fix is the match dialog, which finds them
 by title.
@@ -1668,7 +1664,8 @@ A failed Audible job's code reads as a sentence (`audibleJobReason`):
 - an unknown code keeps the Bridge's own text.
 
 A sync cancelled by turning sync off shows the server's reason, "sync with
-Audible was turned off for the account" (`SERVER_CANCEL_REASONS`).
+Audible was turned off for the account". The admin job's `error_code`
+identifies a server cancellation.
 
 **Podcast jobs.** A `podcast.poll` reads "Scheduled by the server" when the
 scheduler queued it: its params carry `scheduled: true`, or, for one queued
@@ -2176,9 +2173,9 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    never ends the console's session. While the envelope's `printed_password` is
    true (the admin still has the password the log printed), a new password is
    required and a notice says why; otherwise it is optional. Skip is labelled
-   "Keep *name* and this password". A password changed when the rename is then
-   refused stays said ("Your new password is saved"), and Skip becomes "Keep
-   *name*", which marks the step done. The step says a new password ends the
+   "Keep *name* and this password". The console saves the completed step before
+   trying the rename. If the rename fails, the admin can retry it or choose
+   "Keep *name*". The step says a new password ends the
    first-run auth code too: the server deletes it with the password the log
    printed (see
    [Configuration](configuration.md#cli-flags-cmdaudiosilo)).
@@ -2191,7 +2188,7 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
      mistake) and `root_overlaps`, in plain words (`folderErrorKey`).
 
    The envelope's `mount_hints` show as chips. Libraries the server has are
-   listed as already added, and those named in `config_libraries` are marked
+   listed as already added, and rows with `from_config: true` are marked
    "From your config". The library is **not** created here. The folder and
    name become a draft, kept in `localStorage` (`audiosilo.setup.draft`,
    `parseDraft`) until the metadata step.
@@ -2246,7 +2243,7 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
      way Connect, Start and Apply wait; the fields, Continue and Skip don't.
      Only this step waits: Settings > Import never does.
    - While accounts are mapped, the map card's Back is the step's only Back.
-   - An `abs_certificate` refusal of a plain `http://` address says the address
+   - An `abs_certificate_redirect` refusal of a plain `http://` address says the address
      redirects to Audiobookshelf's https one, whose certificate the server
      doesn't trust, and asks for the address Audiobookshelf answers on over
      http.
@@ -2285,7 +2282,8 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
 `finished && !dismissed` and at least one step is `skipped`
 (`showFinishCard`). It lists the skipped steps, each a link to
 `/setup?step=<id>`. **Dismiss** sends `dismissed: true`, server-wide, for every
-admin. The welcome card with **Add your first library** (no libraries at all)
+admin. With the flow finished and dismissed, `printed_password: true` shows
+a **Change password** link to the admin's Sign-in tab. The welcome card with **Add your first library** (no libraries at all)
 is separate and stays.
 
 Strings are the `setup.*` i18n group, in all six locales. A server upgraded
@@ -2600,8 +2598,8 @@ It is locked down three ways, so it is safe even on an exposed port:
 `setup.js` posts `{token, username, password}`. A successful `POST /setup`
 creates the admin and answers `201 {user}`. The username defaults to `admin`,
 and `auth.CreateUser` enforces that admins have a password. The page then shows
-"Your account is ready" with a **Continue setup** link to `/admin`, whose first
-visit opens the console's flow.
+"Your account is ready" with an **Open admin console** link to `/admin`.
+The admin signs in with the username and password they chose.
 
 `POST /setup` creates the account only, and the library is added in the
 console's flow. The handler decodes the body strictly. Any other field is

@@ -48,9 +48,11 @@ If the server rejects a file as invalid audio, scans skip it until its size
 or modification time changes, or the server restarts.
 
 A slow disk or network share can time out a scan. Its books show **reading it
-timed out** and keep their length and chapters. A single file that took too
-long is listed under **Files that couldn't be read** with **took too long to
-read as audio**, which is not a damaged file. The next scan tries both again.
+timed out** and keep their length and chapters. Under **Files that couldn't be
+read**, the row and the result of **Read again** describe the problem in words.
+**Took too long to read as audio** means the file timed out. **Couldn't be read
+as audio** means the audio check failed. Open **Details** for the original message.
+The next scan retries a timed-out read.
 With ffprobe, a very large MP3 that can't be measured in time keeps an
 estimated length, and scans don't measure it again until its files change.
 To try sooner, use [**Read the files again**](books.md#a-books-page) on its
@@ -167,12 +169,14 @@ that apply to that book. You may see more than one.
   the score is high.
 - The community has only a dramatization, and your book doesn't say it is one.
 - The recording differs from your book's length by more than 10%, or 20% when
-  your book's narrator reads it. The row shows both lengths.
+  your book's narrator reads it. The row shows both lengths. If your files
+  change, the length warning disappears once they fall within the run's margin.
 
 Whatever a run writes is a **Community** value that you can revert on the
 book's page. A book you match by hand after the run found its match keeps your
 match. The run skips it and says **Matched since this run**.
 
+After a run has applied its matches, you can reopen its results to read them.
 If you [unlink a book](books.md#unlinking-a-community-match) after the run applied
 its match, the row says **Unlinked since**. The applied count still includes
 that book. To undo every community match at once, use
@@ -209,10 +213,10 @@ find** lists them with their best scores. The [match dialog](books.md#matching-w
 closest candidates, however low they scored.
 
 The community database has gaps, so some books stay unmatched. They still play
-and keep the details from their tags and folders. Each **Not found** row has
-**Add it**, which opens the
-[Add a book](../community/meta-site.md#adding-a-missing-book) page on
-meta.audiosilo.app with the book's title and author filled in.
+and keep the details from their tags and folders. **Add it** on a **Not found**
+row or an unknown-ASIN issue uses the book's ASIN, then its ISBN, then its
+title and author. An ISBN or an ASIN that doesn't start with **B0** starts a
+search on the [Add a book](../community/meta-site.md#adding-a-missing-book) page.
 
 ### ASIN and ISBN tags are hints
 
@@ -273,11 +277,12 @@ change on under your **What to write** choice isn't counted on the Apply button.
 A fill keeps a title you reverted on the book's page, and can still fill its
 other fields (see [Matching with community metadata](books.md#matching-with-community-metadata)).
 
-A fill never brings back an ASIN or ISBN you left unticked or later reverted.
-For a book matched before version 2.7.0,
-[match it](books.md#matching-with-community-metadata) to the same book
-and edition again with nothing ticked, so the server knows which ones you left
-out.
+If the community doesn't recognise a book's ASIN or ISBN, the fill can still
+find it by its recorded match. The review explains this beside any proposed changes.
+The server remembers an offered ASIN or ISBN you left unticked or later
+reverted, so a fill leaves it out. If an older match has no record of the
+offer, [accept the same edition](books.md#matching-with-community-metadata)
+again with nothing ticked.
 
 ## Jobs
 

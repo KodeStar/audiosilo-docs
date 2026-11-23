@@ -68,10 +68,12 @@ community's main series under **Other series** either.
 If the community no longer lists a series detail that an earlier match wrote,
 the dialog offers **Revert**. Leave it ticked to restore the value from your files.
 
-If your book has no ASIN or ISBN, not even one an earlier match filled in, you
-can record the match without changing anything else: untick every field and
-the cover, then click **Match to this work**. A book with an ASIN or ISBN
-can't record a different match this way.
+If your book has no ASIN or ISBN, you can record a new match on its own.
+Untick every field and the cover, then choose **Match to this work**.
+
+For a book already matched to the same work and edition, that button is
+available with nothing ticked only if the offer includes a new or changed ASIN
+or ISBN. The server remembers the offer and leaves the book's fields as they are.
 
 Accepted fields show **Community**. Choose **Revert** beside a community title
 to restore your library's title. It now shows **Edited**, so the dialog leaves
@@ -86,11 +88,11 @@ If the search says "meta.audiosilo.app isn't answering", try again in a minute.
 If the dialog says **The comparison didn't load**, click **Try again**.
 **Accept** works once the comparison loads.
 
-If the book isn't in the community database at all, it stays unmatched and
-plays as normal. The database has gaps. When nothing matches, or none of the
-matches is close, the dialog offers **Add it**, which opens the
-[Add a book](../community/meta-site.md#adding-a-missing-book) page on
-meta.audiosilo.app with the book's ASIN, or your search, already filled in.
+When nothing matches closely, **Add it** opens the community's
+[Add a book](../community/meta-site.md#adding-a-missing-book) page. If you
+submitted a search, it uses that search. Otherwise it uses the book's ASIN,
+then its ISBN, then its title and author. An ASIN starting with **B0** opens the Audible record.
+An older ASIN or an ISBN starts a catalogue search. An unmatched book still plays.
 
 The community database holds books, their recordings, authors, narrators and
 series. Its users add and correct them, and many entries came from a public
@@ -134,8 +136,9 @@ A hand match also connects the book to its series in the player and to Upcoming 
 ### Unlinking a community match
 
 The book's **Community metadata** card shows what it is matched to. It offers
-**Unlink** whenever the book has a match, even with community metadata off. To
-remove the match:
+**Unlink** whenever the book has a match, even with community metadata off.
+If **Unlink** is disabled, the message beside it asks you to save or discard
+your edits first.
 
 1. Click **Unlink**, beside **Compare fields**.
 2. Check whether the confirmation says the book will stay matched, then click

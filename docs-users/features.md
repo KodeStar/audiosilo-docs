@@ -27,7 +27,7 @@ Everything else works with the server alone.
 - [Read the ebook](listening/reading-the-ebook.md): read a book's EPUB, with your place kept on every device.
 - [Follow the narration](listening/reading-the-ebook.md#follow-the-narration) in the ebook, sentence by sentence, once an admin [makes a read-along](admin/making-read-along.md). **(Bridge)**
 - [Recaps and characters](listening/recaps-and-characters.md): catch up without spoilers past where you are.
-- [Upcoming releases](listening/upcoming.md): new and coming books in your series, with a calendar feed.
+- [Upcoming releases](listening/upcoming.md) lists new and coming books in your series, with a calendar feed. Admins can [run the daily check on demand](admin/server.md#community-metadata).
 - [Podcasts](listening/podcasts.md): follow and play shows, download episodes, and import shows from another app. **(Bridge)**
 - [Your listening stats](listening/you.md): time listened, streaks, goals and your top authors.
 - [Your year in listening](listening/year-in-listening.md): a yearly story of cards you can share.
