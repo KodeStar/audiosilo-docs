@@ -9124,8 +9124,9 @@ a scan last finished.
     as the [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)
     last found it. A book can have an ISBN as well. A recorded community match
     or a community-supplied ASIN takes the book out of this category. The book
-    still counts as matched. Health shows the category once the enabled report
-    has its first result.
+    still counts as matched. The category is left out until the report has its
+    first result, and while the report doesn't run (`metadata.report_unknown`
+    off, community metadata off, or a demo server).
     A client that doesn't know the kind can skip it.
 
   What puts a book in each kind is in [Issues](../scanner.md#issues).
@@ -10683,6 +10684,9 @@ for the new `last_run_at`, counts and any `last_error`.
 | `404` `metadata_off` | Community metadata is off. The server checks this first. |
 | `404` `upcoming_off` | Community metadata is on and the upcoming releases check is off. |
 
+Not audited: the check refreshes derived release data and records its result in
+`metadata.upcoming_status`.
+
 ### `GET /api/v1/admin/meta/mirror`
 
 *Admin.* The local metadata copy's [status](#the-local-copys-status-metadatamirror)
@@ -11583,8 +11587,10 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
     `{step, message, done, total}` with the steps `sharing` and `done`, or
     `checking`, `filing` and `done`.
 - `error` gives the failure, park or cancellation reason when present.
-- On the admin job list and single-job read, `error_code: "server_cancelled"` identifies a job the
-  server cancelled or asked to stop for one of its own reasons. The reason is
+- On the console's job reads (the job list, the single-job read, the cancel
+  answer and the jobs Health shows beside its books), `error_code:
+  "server_cancelled"` identifies a job the server cancelled or asked to stop for
+  one of its own reasons. The reason is
   in `error`. This also identifies older failed rows that kept a server stop
   request and its reason. The Bridge's `PATCH /bridge/jobs/{id}` response omits
   this field.

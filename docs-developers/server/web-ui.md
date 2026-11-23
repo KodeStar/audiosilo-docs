@@ -1017,10 +1017,11 @@ Any other failure keeps the dialog open with its message.
   host for three notices: loopback (only this computer), a home address by
   `isHomeHost`, the server's own rule (a private or link-local IP, a `.local`,
   `.lan`, `.home.arpa` or `.internal` name, or a single-label name; this network
-  only, the info tone), and a certificate warning for non-loopback HTTPS links.
-  Self-signed TLS mode gives the `selfsigned` reason unless the invite has
+  only, the info tone), and a certificate warning for some non-loopback HTTPS
+  links. Self-signed TLS mode gives the `selfsigned` reason unless the invite has
   `external_https: true`. An IP address still gives the `address` reason
-  when the self-signed warning does not apply. The link's base is
+  when the self-signed warning does not apply. Any other host name gets no
+  certificate warning. The link's base is
   `baseURL`: the public address, else the address the console was opened at, so
   a home address set in Settings does not change it.
 - **A person's page** is `/admin/people/user/<id>`, with its tab in `?tab=`:
@@ -1246,8 +1247,8 @@ the book's valid ASIN, then its ISBN, then its title and author. The page opens
 the record for a `B0` ASIN. Other identifiers and words start a search. If
 there is nothing to pass, the link opens the page without `q`.
 `unknown_asin` books have their own Health card, listed only while the
-unknown-ASIN report is on, and their fix is the match dialog, which finds them
-by title.
+unknown-ASIN report runs and once it has its first result, and their fix is the
+match dialog, which finds them by title.
 
 #### Health > Jobs
 
@@ -2178,9 +2179,10 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    never ends the console's session. While the envelope's `printed_password` is
    true (the admin still has the password the log printed), a new password is
    required and a notice says why; otherwise it is optional. Skip is labelled
-   "Keep *name* and this password". The console saves the completed step before
-   trying the rename. If the rename fails, the admin can retry it or choose
-   "Keep *name*". The step says a new password ends the
+   "Keep *name* and this password". When the step changed the password, the
+   console saves the completed step before trying the rename. If the rename then
+   fails, a notice says the new password is saved, and the admin can retry the
+   rename or choose "Keep *name*". The step says a new password ends the
    first-run auth code too: the server deletes it with the password the log
    printed (see
    [Configuration](configuration.md#cli-flags-cmdaudiosilo)).
