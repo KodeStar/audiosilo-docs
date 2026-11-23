@@ -1404,7 +1404,9 @@ await step('settings: bridge', async () => {
         const share = await api(bridge, 'GET', '/bridge/jobs/next?wait=5&kind=sidecars.contribute', undefined, BRIDGE_CLIENT);
         if (!share) throw new Error('the share job was not handed out');
         const shareRoute = `/bridge/jobs/${share.id}`;
-        const contributing = {attempt: share.attempts, state: 'running', progress: {step: 'contributing'}};
+        // The progress a real Bridge's share reports (generate/contributejob.go).
+        const contributing = {attempt: share.attempts, state: 'running',
+          progress: {step: 'sharing', message: 'Sharing with the community'}};
         await api(bridge, 'PATCH', shareRoute, contributing, BRIDGE_CLIENT);
         await api(token, 'PATCH', '/admin/settings', {modules: {contributions: false}});
         await api(bridge, 'PATCH', shareRoute, contributing, BRIDGE_CLIENT);
