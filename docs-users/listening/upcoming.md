@@ -94,6 +94,8 @@ Upcoming releases don't appear when:
 - the server's community metadata is off, or
 - an admin turned off **Check for upcoming releases** in [Server settings](../admin/server.md#community-metadata).
 
-On a new server, the first full check runs about an hour after startup. Kids accounts never see upcoming releases.
+On a new server, the first scheduled check runs about an hour after startup.
+An admin can run it sooner with **Check now** in [Community metadata settings](../admin/server.md#community-metadata).
+Kids accounts never see upcoming releases.
 
 Your server asks the community database only about series and books, never about who's listening.

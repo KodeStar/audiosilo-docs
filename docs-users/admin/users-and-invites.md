@@ -68,10 +68,10 @@ the console at. A notice under **Share** says when that limits who can open it:
 - **Works on your home network only**: to invite someone elsewhere, set a
   public address.
 - **Their browser will warn about the certificate**: the server uses its own
-  self-signed certificate, or the link is `https://` at an IP address, which
-  rarely has a certificate browsers trust. The notice says which. They can
-  continue past the warning, or you can set a public address with a real
-  certificate.
+  self-signed certificate (an HTTPS public address hides this one), or the link
+  is `https://` at an IP address, such as `https://192.168.1.20`, which rarely
+  has a certificate browsers trust. The notice says which. They can continue
+  past the warning, or you can set a public address with a real certificate.
 
 ## The People page
 
@@ -197,7 +197,8 @@ On a member's **Account** tab you can also:
 
 Deleting an owner deletes the members listed in the delete dialog, unless you
 untick them. A member you untick, or one added after you opened the page, stays
-as an ordinary account.
+as an independent account. After deletion, **People** confirms how many household
+members it deleted and how many it kept independent, including anyone added in the meantime.
 
 ## Editing someone's progress
 

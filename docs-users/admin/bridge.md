@@ -138,8 +138,6 @@ properly.
 
 ## Jobs
 
-A job that fails or pauses while it is being cancelled shows **Cancelled**. An Audible sync that waited for Audible or found sync switched off says so in its details.
-
 The **Jobs** card lists what the Bridge was asked to do, newest first: characters
 and recaps, descriptions, chapters, read-alongs, community shares, corrections,
 podcast downloads, Audible backups and books added from LibriVox. **Show jobs**
@@ -148,10 +146,13 @@ filters it by state, and **Kind of job** by kind.
 Each job shows its book, its progress, who asked and when. A podcast job names
 the show, or the feed's host while the show is new. Jobs the server queues
 itself say **Scheduled by the server**. A job a listener is waiting for, such as
-an episode they are about to play, says **High priority** and goes first. When a
-job is done, it says what it made.
+an episode they are about to play, goes first. **High priority** appears only
+while the job is open. When a job is done, it says what it made.
 A failed or cancelled job keeps its **Last step**, so you can see where it
-stopped.
+stopped. A job that fails or pauses while being cancelled ends as **Cancelled**.
+When the server cancelled it, the job says why, for example that its module was
+turned off. The details of an Audible sync also show if it waited for Audible or
+found sync switched off.
 
 ![A cancelled Verify job with Comparing the files as its last step](/img/screenshots/admin/bridge-jobs-cancelled.png)
 

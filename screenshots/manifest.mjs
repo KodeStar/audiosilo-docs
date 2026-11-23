@@ -205,7 +205,7 @@ export const SHOTS = [
 
   // ── First-run setup (capture-setup.mjs: a fresh --setup server; desktop 1440 wide, dark) ──
   {file: 'server/setup-wizard.png', capture: 'setup', title: 'Setup page', hint: "the --setup page: Welcome - let's set up your server, the admin username and password, Create account"},
-  {file: 'server/setup-wizard-done.png', capture: 'setup', title: 'Setup page - account ready', hint: 'the --setup page after Create account: Your account is ready, and Continue setup into the console'},
+  {file: 'server/setup-wizard-done.png', capture: 'setup', title: 'Setup page - account ready', hint: 'the --setup page after Create account, showing Your account is ready and the Open admin console link'},
   {file: 'setup/account.png', capture: 'setup', title: 'Setup - Your account', hint: 'step 1 of the console\'s Set up your server flow, as an admin who chose their password on the --setup page: the username, an optional new password, Keep admin and this password'},
   {file: 'setup/folder.png', capture: 'setup', title: 'Setup - Books folder', hint: 'step 2: the typed books folder checked (Found 8 audio files, 4 book folders) and the library name'},
   {file: 'setup/naming.png', capture: 'setup', title: 'Setup - Book names', hint: 'step 3: four sample books named from tags and from folders side by side (the disagreeing rows marked), Folder names first preselected as Suggested (as tall as the page)'},

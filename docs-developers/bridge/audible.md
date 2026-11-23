@@ -271,7 +271,7 @@ Queueing a poll keeps the account's newest ended poll (`pruneAudibleEnded`,
 [Job history](pairing-and-jobs.md#job-history)).
 Removing an account cancels its open poll (`CancelAudibleRemoved`), and so does
 deleting the library it is mapped to (`CancelAudiblePaused`). Both are
-`IsCancelReason`'s, and the console keeps a copy (`SERVER_CANCEL_REASONS`).
+`IsCancelReason`'s, so the console shows them as the server's reason.
 
 **The scheduler** (`internal/audible.RunScheduler`) runs when the module starts
 and every minute while it is on. Each pass first cancels the open polls, syncs

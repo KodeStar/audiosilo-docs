@@ -82,9 +82,10 @@ If you're reorganising, move files *within* the library's folder where you
 can. Progress follows them (see
 [Organize your audiobook files](../getting-started/organizing-your-library.md)).
 
-A library set in the server's `config.yaml` has a **From your config** badge.
-Its name and folder can only be changed in `config.yaml`, followed by a
-restart. Its other settings can be changed here.
+**From your config** marks a library declared in `config.yaml`, both on its
+card and in the setup flow. The console locks its name, folder and **Delete
+library...** action. To change its name or folder, edit the file and restart.
+You can still change its scan settings here.
 
 ## Rescanning
 
@@ -215,11 +216,11 @@ choose **Always one book** before the library's first scan has read the folder.
 
 **Audio files in this folder** counts the audio files directly inside the folder
 and shows their combined size, and their total length when every file's length
-is known. It lists up to 500 of them, with a note when there are more.
+is known. The list shows up to 500 files, with a note when there are more.
 
 In a folder with more than 10,000 items, the totals cover the first 10,000 and
-the file list says so. The counts in the three choices ("Here: 10,000 books.")
-come from the same first 10,000. Folders count first, so a folder holding more
+the file list says so. The counts in the three choices, and the message after
+you choose **Separate books**, then say **at least**. Folders count first, so a folder holding more
 than 10,000 other folders can show no audio files at all.
 
 Use the arrow keys to move through the folder tree and Enter to select a folder.

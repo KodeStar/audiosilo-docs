@@ -615,9 +615,11 @@ request, the server stores a failure or park as `cancelled` and preserves the ca
 completed job remains `done`. A cancelled podcast job counts against
 the feed's outage only for a definite feed response.
 
-The console words a cancelled row (`cancelledView` in `generate-model.ts`, which
-keeps a copy of those strings, `SERVER_CANCEL_REASONS`; `CancelledStatus` in
-`generate-status.tsx`; `en.json` `bridge.jobs.*`):
+The console words a cancelled row (`cancelledView` in `generate-model.ts`;
+`CancelledStatus` in `generate-status.tsx`; `en.json` `bridge.jobs.*`). It tells
+a server's reason by the admin reads' `error_code: "server_cancelled"`
+([The job object](../server/api/reference.md#the-job-object)), which the Bridge
+never receives:
 
 - a server reason as it is;
 - else `bridge.jobs.cancelledByAdmin` "Cancelled by an admin." when
@@ -626,7 +628,7 @@ keeps a copy of those strings, `SERVER_CANCEL_REASONS`; `CancelledStatus` in
 - plus, for a job cancelled from a park, `bridge.jobs.cancelledPark` ("It was
   waiting for attention:" and the park's reason) and the park's plain hint.
 
-A working job with `cancel_requested` and a server reason (`isServerCancelReason`)
+A working job with `cancel_requested` and the server code (`isServerCancelled`)
 shows that reason muted, not as an error (`bridge-jobs.tsx`), for a kind outside
 `BOOK_KINDS` (a podcast request). A book kind's row (every `cancelsOpen` kind among
 them) is `GenerateStatus`, which keeps its progress until the job ends

@@ -292,8 +292,9 @@ example:
 {Author}/{Series}/{ {PaddedSeq} - }{Title}
 ```
 
-Variables include `{Author}`, `{Series}`, `{Title}`, `{PaddedSeq}` (the series
-number), `{Narrator}`, `{Year}` and `{ASIN}`. A part in `{ ... }` is dropped when a
+The template can use up to 500 bytes. Variables include `{Author}`, `{Series}`,
+`{Title}`, `{PaddedSeq}` (the series number), `{Narrator}`, `{Year}` and `{ASIN}`.
+A part in `{ ... }` is dropped when a
 variable inside it is empty. A last part ending in `.m4b` names the file; otherwise
 it is a folder. A title's own [destination](#choosing-a-destination) wins over the
 template.

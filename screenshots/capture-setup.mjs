@@ -119,7 +119,7 @@ await step('the --setup page', async () => {
 
 // The flow from here on: each step needs the one before it.
 await step('the console flow', async () => {
-  await page.getByRole('link', {name: 'Continue setup', exact: true}).click();
+  await page.getByRole('link', {name: 'Open admin console', exact: true}).click();
   await submitSignIn(page, PASSWORD);
   // The console sends a server that hasn't finished setting up to the flow.
   await heading('Your account').waitFor({timeout: 20000});

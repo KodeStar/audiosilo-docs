@@ -216,11 +216,10 @@ The upcoming releases shots (`web-player/home-upcoming.png`,
 server's daily upcoming releases job found, and the seeded books carry no ASIN.
 `capture-web.mjs`'s upcoming pass, after the other player shots, gives The
 Adventures of Sherlock Holmes the same US ASIN the admin series shot uses,
-switches the job off and on through `PATCH /admin/settings` (a server whose
-job has not succeeded in the last day then runs it at once), waits up to three minutes for
-`GET /me/upcoming` to answer `ok` with items, shoots the demo listener's Home
-rail and the Upcoming page (none when the job listed nothing), and reverts the
-ASIN (and switches the job back on if the pass left it off). The covers are the
+then requests **Check now** through `POST /admin/upcoming/check`. The pass waits
+up to three minutes for `GET /me/upcoming` to return a new `generated_at` from
+a successful check with items. It captures the demo listener's Home rail and
+Upcoming page when there are items, then reverts the ASIN. The covers are the
 items' real community covers, which the server fetches from their hosts. A demo
 account can't make a calendar link, so the calendar shot signs the admin in to the
 player in a fresh browser, presses **Get calendar link** on the Upcoming page and

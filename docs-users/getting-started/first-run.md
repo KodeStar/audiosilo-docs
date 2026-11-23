@@ -70,11 +70,11 @@ Start the program with `--setup` (see [Install without Docker](./install-binary.
 
 1. Open the link from the server's log. (The normal sign-in page can't create the first admin.)
 2. Choose an admin username and a password of at least 8 characters.
-3. Press **Create account**, then **Continue setup**, and sign in.
+3. Press **Create account**, then **Open admin console**. Sign in with the username and password you chose.
 
 ![The --setup page: create your admin account](/img/screenshots/server/setup-wizard.png)
 
-![Your account is ready, with Continue setup](/img/screenshots/server/setup-wizard-done.png)
+![Your account is ready, with a link to the admin console](/img/screenshots/server/setup-wizard-done.png)
 
 The link stops working as soon as an admin account exists.
 
@@ -98,7 +98,7 @@ Choose the username and password you sign in to the console with. The username i
 
 Saving a new password here also ends the auth code from the log. Sign in your devices with your username and password, or with the QR code in [step 9](#step-9-connect-a-phone).
 
-If the password saves but the new username is refused, the step says the password is saved. Change the username, or press **Keep** with your current name, such as **Keep admin**, to finish the step.
+If the password saves but the server refuses the new username, the account step counts as done, even if you leave it. Try another name or keep your current one.
 
 ### Step 2: Where are your books?
 
@@ -211,7 +211,9 @@ setup:
   skip: true
 ```
 
-When it starts with this set, the server marks the flow finished and dismisses the **Finish setting up** card, so the admin console never opens the flow. Steps you already finished stay finished, and a flow that was already finished is left as it is.
+When it starts with this set, the server marks an unfinished flow finished and dismisses the **Finish setting up** card. Steps you already finished stay finished.
+
+If you still sign in with the password from the server log, the Overview shows a reminder. Choose **Change password** to replace it.
 
 On a new server with this set, the message the server prints on its first start shows `Admin console:` instead of `Finish setting up:`.
 

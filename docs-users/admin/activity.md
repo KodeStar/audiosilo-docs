@@ -50,9 +50,12 @@ A notice lists anyone who hasn't been active for 60 days.
 minutes. The page refreshes every ten seconds.
 
 Each card shows who is listening, the book, the chapter and how far they are.
-It also shows the device, the app and its version, whether it plays directly or
-is transcoded, the network address and when the session started. A watch shows
-as **AudioSilo**, with **Apple Watch** or **Wear OS** as its platform.
+It also shows the device, app version, whether the server converted the audio,
+network address and start time. A watch identifies its app as **AudioSilo** and
+its platform as **Apple Watch** or **Wear OS**.
+
+When the watch plays its downloaded copy, **Live now** and **Sessions** show
+**Watch download · AAC**, even if the book in your library is an MP3.
 
 A device that [saves once a minute](../listening/playback.md#your-position-follows-you)
 can be up to a minute behind here.

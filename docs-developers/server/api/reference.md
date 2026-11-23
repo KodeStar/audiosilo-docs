@@ -5320,7 +5320,8 @@ With metadata off or the switch off, the job makes no call at all, and switching
 off stops a run in flight. In [mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)
 the local copy answers every read. The job's status (last run, last success, last
 error, next run, series and item counts) is the read-only `metadata.upcoming_status`
-on [`GET /admin/settings`](#get-apiv1adminsettings).
+on [`GET /admin/settings`](#get-apiv1adminsettings). An admin can
+[request a full check](#post-apiv1adminupcomingcheck) at any time while the job is on.
 
 **What counts.** For each local series, a member of the community series the series
 doesn't hold is:
@@ -6154,7 +6155,10 @@ What `user.update` records: [Audit log](../backups-and-notifications.md#audit-lo
 Permanently deletes an account and **all** its durable state (sessions, auth
 codes, progress, bookmarks, notes, history, listening sessions and daily
 listening totals, share grants) via cascade; files on
-disk are untouched. Response: `204 No Content`.
+disk are untouched. By default the server returns `204 No Content`.
+With `?detail=1`, it returns `200 OK` and the integer counts from the deletion
+transaction, for example `{"members_deleted": 2, "members_kept": 1}`. The counts
+cover household members only and can both be zero.
 
 The person's [household members](#household-members) are deleted with them, in the
 same transaction, except those named in `keep_members`, as comma-separated ids
@@ -6217,6 +6221,11 @@ shows the server's numbers rather than re-deriving them.
 The code rides in the `invite_url` **fragment**, so it never reaches server
 logs; the connect page auto-redeems it client-side.
 
+Creation and rotation include `external_https: true` when the configured
+public URL uses HTTPS or, with no public URL, a trusted proxy reports HTTPS in
+an unambiguous protocol header. Forwarding headers never change `invite_url`.
+What the console does with it is in [Admin web UI](../web-ui.md#people--people-invites-shares-and-devices).
+
 `404` if the user doesn't exist. `409 code: "kid_account"` (`not available for a kid's
 account`) for a kid household member: a kid holds no invite, only their owner sets up
 their devices (from the player). The refusal is read inside the minting transaction
@@ -6268,7 +6277,7 @@ preserved with the expiry renewed for the invite's original window. In the same
 transaction it retires the user's **other** still-redeemable invites, so the
 rotated invite is their one active invite. Rotating an expired (or used-up)
 invite revives it as that one. No body. Response `200`: the same shape as
-creation (`auth_code`, `invite_url`, `max_uses`, `expires_at`). `404` if the
+creation, including the optional `expires_at` and `external_https`. `404` if the
 invite doesn't exist. `409 code: "kid_account"` when the invite's account is a kid's
 (a used-up or expired invite kept as history from before the switch to kid can't be
 revived into it).
@@ -6438,7 +6447,7 @@ admin-only fields:
   "libraries": [
     { "id": 1, "name": "Audiobooks", "root": "/srv/audiobooks",
       "kind": "books", "default_view": "hybrid", "sort_order": 0,
-      "book_count": 812, "available": true,
+      "book_count": 812, "available": true, "from_config": true,
       "scan": { "running": false, "total": 812, "done": 812, "indexed": 3,
                 "added": 1, "updated": 2, "moved": 0, "removed": 1 },
       "scan_schedule": "every:6h",
@@ -6450,6 +6459,8 @@ admin-only fields:
 ```
 
 - `book_count` (int) - books indexed in the library.
+- `from_config` (bool) - whether `config.yaml` or the environment declares the
+  library by name, so its name, root and deletion are locked (`409 config_library`).
 - `available` (bool) - whether the root folder is reachable right now. It is
   `false` when the root is missing, unreadable, or doesn't answer within
   **2 seconds**; when it is an empty folder while books are still indexed
@@ -6530,7 +6541,7 @@ otherwise-equal copies of the same book (see [`GET /api/v1/search`](#get-apiv1se
 Body: `{ "ids": [2, 1, 3] }`. Response `200`: `{ "libraries": [ … ] }` in the
 new order, in the same enriched shape as
 [`GET /admin/libraries`](#get-apiv1adminlibraries) (with `book_count`,
-`available`, `scan` and the scan settings).
+`available`, `from_config`, `scan` and the scan settings).
 
 ### `PATCH /api/v1/admin/libraries/{id}`
 
@@ -6550,9 +6561,9 @@ folder declared there, since every start upserts it by name
 (`launcher.syncLibraries`) and the server never writes a library to
 `config.yaml`. A different `name` or `root` on such a library is
 `409 config_library`; the same values
-resent write nothing, and its other settings stay editable. The console reads
-the declared names from `GET /admin/setup`'s `config_libraries` and locks the
-fields. Renaming another library to a declared name at another folder is
+resent write nothing, and its other settings stay editable. The console locks
+the fields when the admin library row has `from_config: true`.
+Renaming another library to a declared name at another folder is
 `409 name_taken`.
 
 A rescan is queued (trigger `change`) **only** when the root or the ignore rules
@@ -7213,6 +7224,11 @@ is a `400` too (`too many format or codec values`).
     from the same drive or share are stuck, so it wasn't tried`);
   - `empty_file`: 0 bytes;
   - `probe_failed`: ffprobe couldn't read it.
+
+  Admin book reads (Health's `GET /admin/books?issue=scan_error` rows, the
+  book detail and the re-read answer) add `scan_error_code: "probe_timeout"`
+  to a `probe_failed` that was an ffprobe timeout
+  ([Read problems](../scanner.md#read-problems)); other problems omit it.
 
   `scan_error_file` is the library-relative file. `scan_error_detail` is the OS's,
   the scan's or ffprobe's own message, and may be empty for `empty_file`. An
@@ -8293,6 +8309,7 @@ The `200` response is a single JSON object.
 | `cover_url`, `cover` | The recording's cover URL, falling back to the work's, or `""` if neither has one. The boolean is true when the plan would take that cover for a book known to have none. |
 | `match` | True when the work or recording differs from the book's recorded match, including when the book has no recorded match. |
 | `match_alone` | True when `match` is true and the book has neither an ASIN nor an ISBN from any source, including one an earlier community match wrote. The dialog can then record the new match with all fields and the cover unticked. |
+| `records_offered` | Present and true when accepting the same work and recording with nothing ticked would add or change an offered ASIN or ISBN. The server remembers the offer without changing either book field. Reaccepting that recording preserves an earlier offer when the new proposal omits it. |
 
 | Status | Meaning |
 |---|---|
@@ -8570,9 +8587,9 @@ Audited as `book.match_run`, `book.asin_repick`, `book.match_refresh` or
 **`unknown_asin`** (from 2.7.0, Health's unknown-ASIN card) is a match run over
 the books in Health's [`unknown_asin`](#get-apiv1adminissues) kind (less those
 ignored), found by their title. Each item's `found_by` is the book's own ASIN.
-An apply writes only while the book still has that ASIN, no ISBN and no
-recorded match, and while the report still holds that ASIN as unknown. Once a
-lookup found it, the ASIN names the book's record, so the item is `skipped`
+An apply writes only while the book still has that ASIN, the report still
+marks it unknown and the book has no recorded match. The book may have an ISBN.
+Once a lookup finds it, the ASIN names the book's record, so the item is `skipped`
 with `detail` `asin_known` and nothing is written (the review reads it
 `matched_since`). The apply records the match, so the book leaves the kind, and
 never replaces an ASIN an admin typed in, whatever the scope.
@@ -8639,8 +8656,11 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   list the work's series in the community's order, the first as the main one.
   The match dialog's [proposal](#get-apiv1adminbooksmatch-proposal) instead
   offers the book's own series as the main one when the work is in it.
-- `book` is the book as it is now, with its `duration` in seconds (omitted when
-  unknown); `gone: true` when nothing is indexed at the path any more.
+- `book` is the book as it is now, with its `duration` in seconds when known.
+  For `outcome: "none"`, it includes the current `asin` and `isbn` when present.
+  The item has `gone: true` when nothing is indexed at the path any more.
+- `identifier_unknown: true` on a refresh item means the identifier lookup
+  missed and the run used the recorded community match. It can accompany field changes.
 - A review item held for one reason carries it in `detail` alone. From 2.7.0
   one held for several carries them all in `holds`, in this order, with `detail`
   the first. A low score or narrow lead alone is no hold reason. While an item is
@@ -8657,8 +8677,11 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
     recording, so nothing is attached unasked.
   - `length_differs` (from 2.4.0; a match run's or a refresh's) means the
     recording and book differ in length by more than 10%, or 20% when the book's
-    narrator reads it. Compare `proposal.runtime_min`
-    with `book.duration` in seconds.
+    narrator reads it. For this hold, `proposal.length_tolerance` records the
+    fraction the run allowed (0.1 or 0.2). The review shows the two lengths
+    only while the recording's length differs from the current `book.duration`
+    by more than that fraction of the book's length. Older proposals use 0.1
+    when the field is absent.
 - `matched_since: true` (a match run only) when the book is matched now (an ASIN
   or ISBN, or from 2.6.0 a recorded community match) and wasn't when the run
   looked: matched since, by hand or otherwise.
@@ -9109,10 +9132,11 @@ a scan last finished.
     nothing to match against.
   - `unknown_asin` is a book whose own ASIN the community database doesn't know,
     as the [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)
-    last found it, with no ISBN and no community match. It still counts as
-    matched, so it is never `unmatched` too. It is **left out while the
-    report doesn't run** (`metadata.report_unknown` off, community metadata
-    off, or a demo server), since only the report's lookups find such a book.
+    last found it. A book can have an ISBN as well. A recorded community match
+    or a community-supplied ASIN takes the book out of this category. The book
+    still counts as matched. The category is left out until the report has its
+    first result, and while the report doesn't run (`metadata.report_unknown`
+    off, community metadata off, or a demo server).
     A client that doesn't know the kind can skip it.
 
   What puts a book in each kind is in [Issues](../scanner.md#issues).
@@ -9754,8 +9778,7 @@ client is read-only (`GET`s), checks `GET /status` says `audiobookshelf` (and
 `isInit`) **before** sending the token anywhere, accepts only `http`/`https`
 addresses without credentials, a query or a fragment, follows redirects only to
 the same host (never `https` → `http`, at most 4 of them), trusts only the
-certificates the system trusts (a self-signed one fails as `abs_certificate`, and
-there is no setting to skip the check), caps every response size
+certificates the system trusts, caps every response size
 and times out each request (3 minutes) and the whole fetch (30 minutes). Its
 errors are fixed English sentences with a code; an ABS response body never
 reaches a response or a log. There is no private-address block: ABS usually
@@ -9809,7 +9832,7 @@ An **import** reads:
 | `cutoff` | sessions **starting at or after** it are skipped; RFC 3339 UTC to the second (rounded down); `null` = none. Always the resolved value, never `"auto"` |
 | `cutoff_utc_offset` | the server's offset from UTC at the cutoff, in minutes (that date's, daylight saving included); `null` without a cutoff. A client shows and edits the cutoff in server time with it (a chosen day is the server's midnight), whatever its own zone |
 | `created_at`, `applied_at` | RFC 3339 UTC; `applied_at` `null` until applied |
-| `error`, `error_code` | `""` unless `failed`. `error` is a safe English sentence; `error_code` is `abs_unreachable` (also a timeout), `abs_certificate`, `abs_unauthorized`, `not_abs`, `fetch_failed` or `interrupted` |
+| `error`, `error_code` | On failure, `error` is a safe English sentence. `error_code` is `abs_unreachable` (also a timeout), `abs_certificate`, `abs_certificate_redirect`, `abs_unauthorized`, `not_abs`, `fetch_failed` or `interrupted`. Both fields are empty otherwise. |
 | `summary` | `null` while fetching or when the fetch failed; planned at review (recounted by a cutoff change) and rewritten at apply with what was written |
 
 The fetched history is kept (gzipped, in `import_payloads`) only while the
@@ -9943,7 +9966,7 @@ with the same username (any case), if any.
 |---|---|
 | `200` | the server's version and its users |
 | `400` | `invalid request`; `code: "invalid_url"` - not an absolute `http`/`https` URL, or it carries credentials, a query or a fragment; `code: "invalid_import"` - the token is empty, over 8 KiB or holds a line break or NUL (ABS is not contacted) |
-| `502` | `code: "abs_unreachable"` (no answer, a timeout or a `5xx`), `"abs_certificate"` (the `https` handshake refused ABS's certificate: untrusted, often self-signed, for another name, or expired; the console points at ABS's plain `http://` address), `"not_abs"` (`/status` didn't answer as an initialised Audiobookshelf), `"abs_unauthorized"` (the token was refused) or `"fetch_failed"` (an unreadable answer) |
+| `502` | `abs_unreachable` (no answer, a timeout or a `5xx`), `abs_certificate` (certificate refusal on an HTTPS address), `abs_certificate_redirect` (an HTTP address redirected to HTTPS and certificate verification failed), `not_abs` (the service did not identify itself as an initialised Audiobookshelf), `abs_unauthorized` (token refused) or `fetch_failed` (unreadable answer). |
 
 Not audited (it changes nothing).
 
@@ -10655,6 +10678,25 @@ error here: it is reported in `error`.
 | `200` | the update status |
 | `409` `update_check_off` | the update check is turned off |
 
+### `POST /api/v1/admin/upcoming/check`
+
+*Admin.* Requests a full upcoming releases check, even after a recent success.
+Multiple pending requests share one check. A request during a full check joins
+that run. A request during a light pass over changed books queues a full check.
+Read `metadata.upcoming_status` on [`GET /admin/settings`](#get-apiv1adminsettings)
+for the new `last_run_at`, counts and any `last_error`.
+
+| Status | Meaning |
+|---|---|
+| `202` | The scheduler accepted the request. The response has no body. |
+| `401` | The request lacks valid authentication. |
+| `403` | The caller lacks the admin role. |
+| `404` `metadata_off` | Community metadata is off. The server checks this first. |
+| `404` `upcoming_off` | Community metadata is on and the upcoming releases check is off. |
+
+Not audited: the check refreshes derived release data and records its result in
+`metadata.upcoming_status`.
+
 ### `GET /api/v1/admin/meta/mirror`
 
 *Admin.* The local metadata copy's [status](#the-local-copys-status-metadatamirror)
@@ -11136,7 +11178,8 @@ server and this request:
   `network.trusted_proxies`. `peer_trusted` says whether that address is
   already trusted.
 - `config_libraries` are the names of the libraries `config.yaml` or the
-  environment declares (re-added at every start).
+  environment declares (re-added at every start). Each admin library row also
+  carries `from_config`.
 - `mount_hints` are folders mounted into the server that may hold books, read
   from `/proc/self/mountinfo` on Linux: folders that exist, not system paths
   (`/`, `/proc`, `/sys`, `/tmp`, `/dev`, `/run`, `/boot`, `/snap` and anything
@@ -11553,7 +11596,14 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
     [Contributions](../../bridge/contributions.md). Their progress is a
     `{step, message, done, total}` with the steps `sharing` and `done`, or
     `checking`, `filing` and `done`.
-- `error` - why it failed or was parked (`""` otherwise).
+- `error` gives the failure, park or cancellation reason when present.
+- On the console's job reads (the job list, the single-job read, the cancel
+  answer and the jobs Health shows beside its books), `error_code:
+  "server_cancelled"` identifies a job the server cancelled or asked to stop for
+  one of its own reasons. The reason is
+  in `error`. This also identifies older failed rows that kept a server stop
+  request and its reason. The Bridge's `PATCH /bridge/jobs/{id}` response omits
+  this field.
 - `state` - `queued`, `claimed`, `running`, `done`, `failed`, `needs_attention` or
   `cancelled` (see [Job states](#job-states)).
 - `requested_by` - the admin who queued it, `null` once that account is deleted.

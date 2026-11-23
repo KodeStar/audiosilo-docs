@@ -1979,9 +1979,8 @@ without the input path and without FFmpeg's context address. It joins them
 with `"; "` and trims the result to 300 bytes. For example:
 `[mov,mp4,m4a,3gp,3g2,mj2] moov atom not found; Invalid data found when
 processing input`. The specific cause usually comes before the generic last
-line. The console shows a `probe_failed` book as one plain line ("couldn't be
-read as audio") with this detail behind **Details**, and strips an address
-from a row stored before.
+line. Health describes the failure in plain words and puts the probe message
+behind **Details**. It also strips the context address from older stored messages.
 
 Every re-index clears and re-checks the columns. A fixed permission, or a share
 that came back, changes neither the file's mtime nor its size, so the
@@ -2003,9 +2002,10 @@ Two exceptions keep a damaged file from costing every scan:
 file to ffprobe (see [The in-process probe](#the-in-process-probe)). An
 ffprobe run that runs out is killed. Its `ProbeErr` wraps
 `metadata.ErrProbeTimeout`, and the problem is `probe_failed` with the detail
-`ffprobe timed out after 30s`. The console's Health page matches that wording
-and says the file "took too long to read as audio" (the disk or share may be
-slow), not that it couldn't be read.
+`ffprobe timed out after 30s`. When reading an admin book row, the catalog
+recognises the timeout prefix and supplies `scan_error_code: "probe_timeout"`.
+Health then says the file "took too long to read as audio". Other probe failures
+read "couldn't be read as audio".
 
 Files that share a slow disk or a busy share can each take longer than that
 while [others are read beside them](#reading-several-files-at-once). So a read
@@ -2105,7 +2105,7 @@ predicate over `books b`, shared by the counts (`IssueCounts`) and the lists
 | `split_discs` | It is the first disc in `metadata.DiscOrder` (`disc_before` in SQL). The discs share a `split_parent` with no folder override. Setting `book` on that folder joins the discs. |
 | `no_cover` | a scan has checked it (`has_cover` not `NULL`), and it has no sidecar image, no embedded art and no custom cover |
 | `unmatched` | it has no ASIN, no ISBN and no recorded community match (`book_matches`, see [Data model](data-model.md#durable-per-library-config-path-keyed-no-fk-to-books); `NOT catalog.matchedExpr`). [Tag hints](data-model.md#tag-hints) and an import's [match hints](data-model.md#match-hints-from-an-import) don't count. Offered only while community metadata is on |
-| `unknown_asin` | its own ASIN is one the [unknown-ASIN report](configuration.md#the-unknown-asin-report-metadatareport_unknown) found the community database doesn't know (an `unknown_asin_reports` row with `unknown = 1`, matched on the upper-cased, trimmed ASIN; `unknownASINExpr`), and it has no ISBN, no `book_matches` row and no ASIN a community match gave it (`book_overrides` of source `community`), so matching it by hand settles it. It still counts as matched (`matchedExpr`), so Match automatically skips it; from 2.7.0 the kind's own card starts an [`unknown_asin` match run](api/reference.md#post-apiv1adminmatch-runs) for it, which finds each book by its title. The summary lists the kind only while the report is on, since only its lookups fill the table |
+| `unknown_asin` | The [unknown-ASIN report](configuration.md#the-unknown-asin-report-metadatareport_unknown) found that the community database does not know the book's own ASIN. An ISBN can also be present. `unknownASINExpr` excludes books with a recorded community match or a community-supplied ASIN. The book still counts as matched. Once the enabled report has its first result, Health shows the card and offers a [match run by title](api/reference.md#post-apiv1adminmatch-runs). |
 | `series_spellings` | Another book in the library has the same main `series_key` with a different `series` spelling. Two range seeks on `idx_books_series_key` look for a spelling below or above the book's own. `SeriesSpellingGroups` uses the same rule to group books by series. The console applies the chosen spelling with the [merge endpoint](api/reference.md#post-apiv1adminbooksmerge). |
 | `no_chapters` | it is longer than **2 hours** and has at most one chapter. The console shows why community chapters weren't used from the row's `chapters_check` (a failed [community chapter check](community-chapters.md)) |
 | `detailed_chapters` | its last community chapter check is `refine` (the community's finer chapters fit), it has no `chapter_source` choice and no edited chapter list. Picking either source, or editing the chapters, settles it |
