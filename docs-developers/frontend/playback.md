@@ -928,7 +928,18 @@ the answer does. Only one check runs at a time. A press waits for a check alread
 running, such as one started when the app came to the front.
 
 While the check is out, the store holds its saves (`holdSaves`, 5 s at most), so the
-stale place is never written.
+stale place is never written. On a `listening_sync` server the hold keeps the
+[open span](#listening-spans-sync-v2) as it was before the check (`savesHeld`):
+
+- The 5 s keep leaves the stored span at its last place and time, so a kill during
+  the hold recovers the place from before the check.
+- The save loop's cut waits, and so does a cut asked by the app going to the
+  background, the server coming back or the web page hiding (`cutListeningSpanNow`).
+  The hold records that cut as owed (`cutOwed`).
+- A hold that ends with no move (released with a flush, or at its 5 s deadline)
+  saves and makes the owed cut. A move cuts the span itself, so a release after a
+  move makes none. A second hold takes over the first one's owed cut.
+- A sign-out's or a removal's last send cuts the span at once, held or not.
 
 The reconcile moves only when the server's record meets all of these:
 
@@ -974,6 +985,16 @@ it, or "another device" when the server has no name. The toast has two answers:
   The move's reason is `moved_back` for a move more than one second back, else
   `jump`. Playing, the new span starts with it. Paused, the move is sent at once as a
   span of its own and the next play starts with the same reason.
+
+**The move comes before anything is stored at the old place.** Jump, the book page's
+Play from there and the reconcile's own move (`decide`) all go through
+`answerAfterSpan(ref, answer, move)`. It closes the span heard so far, sends the
+answer in turn behind it, then makes the move right away. The span the close
+reopened (at the engine's place, stamped after the answer) is stored only when no
+move took it. Stored before the move, that copy is what a kill in between would
+recover, and it would move this device's record back to the old place over the row
+just answered. A mirror that cannot be read leaves the acknowledgement
+unwritten, and the move still goes.
 - **Stay**, the close button, acknowledges the row and calls `standByPlace` to
   send this device's place. See [Stay wins](#stay-wins).
 
@@ -1580,8 +1601,8 @@ Multiply by the speed for book seconds.
 
 | Where | Holds | Behind by at most |
 |---|---|---|
-| This device, a `listening_sync` server | the open span, once it is recovered: at the next launch in the app, [later on the web](#on-the-web-the-recovery-can-wait-30-s) | 5 s |
-| This device, a play that starts before the span is recovered | the mirror | 15 s |
+| This device, a `listening_sync` server | the open span, once it is recovered: at the next launch in the app or on a reload, [later for a span another web tab left](#on-the-web-the-recovery-can-wait-30-s) | 5 s |
+| This device, a start that does not see the recovery within its 2 s wait | the mirror | 15 s |
 | This device, a server without `listening_sync` | the mirror | 15 s |
 | Other devices, a `listening_sync` server | the last cut, until this device launches again, recovers the span and sends it | 60 s, then 5 s |
 | Other devices, a server without `listening_sync` | the last `PUT`, until this device saves again | 60 s |
@@ -1591,16 +1612,49 @@ At the next launch `recoverOpenSpan` closes the stored span into the outbox, and
 the span's end. An offline start then resumes there. Online, the span reaches the
 server with the launch's send and the resume reads it back.
 
+**The place readers wait for the recovery, 2 s at most.** Every reader of the place
+a play starts from waits for `spanRecovered()` (`span-recovery.ts`) before it reads
+this device's places, online or offline:
+
+- `playBook`, before either start: a resume's lookup, and a start at a given place
+  (a chapter tap, a bookmark, a deep link) reading the book's speed and finish
+  (`knownProgress`), so a kill in the last seconds that finished the record is seen
+  and the start sends its `unfinish`;
+- Previously on's Resume (`resumeWithOverlap`);
+- the book page's place (`fetchBookProgress`, alongside the server's read);
+- the car's play specs for downloaded books (`playSpecs`).
+
+The wait is bounded by `SPAN_RECOVERY_WAIT_MS` (2 s), one deadline per recovery
+shared by every reader, counted from the first reader's wait. So Previously on or
+the car, which wait and then start a play, never wait twice. Past the deadline each
+reader reads the places as they are and the recovery lands later, as it would have.
+The recovery is local, but on the web it takes its turn behind every other tab's span
+writes. Home's rows, `knownProgress` elsewhere and a sync answer's `bookPlace` do not
+wait.
+
 `mirrorSpanEnd` treats the span's end as the capture it would have been when the
 span was last kept, under the mirror's own rule that the newest record wins:
 
-- only a record older than the span's end is changed, and only forward;
-- never a finished book's record, and never a book with no record;
+- an existing record changes only when it is older than the span's end, only
+  forward, and never when it is finished;
+- a book with no record gets its first one, but only from a span that says
+  something (heard, or a deliberate move: `spanSaysSomething`). It holds the span's
+  last file, offset, speed and time, and the span's base version as its
+  `ack_version`. It is never finished, since the span's length is the audio's, not
+  the book's that a save measures the end by (`bookLengthOf`);
 - never finished at the end of a download that ends early (`ProgressSave.partial`, or
   `downloadEndsBefore` unless the span ended in the book's last file; see
   [A download that ends early](offline.md#a-download-that-ends-early));
+- never stamped later than now: a keep's time ahead of a clock set back since would
+  outrank every place saved after it, here and on other devices;
+- never for a connection removed since the recovery began;
 - so a place written since stands: the listener's own move, another tab's play, a
   server row.
+
+The mirror's changes read it strictly, and read it once more before they give up
+(`readMirrorMapStrict`): the stored span is cleared all the same, so a change that
+failed would lose the recovered place. A reconcile hold keeps the stored span at its
+place from before the check ([Picking up another device's place](#picking-up-another-devices-place-place-reconcilets)).
 
 On the web it also runs for a span another tab left behind, dated when that tab
 kept it.
@@ -1608,15 +1662,27 @@ kept it.
 ##### On the web the recovery can wait 30 s
 
 In the app every span a launch finds is a previous launch's, so it is recovered at
-once. A web page cannot tell a crashed tab's span from one a live tab still keeps
-until it has gone unkept for 30 s (`LIVE_SPAN_MS` in `listening-outbox.ts`,
-[the stored span](offline.md#listening-sync-the-outbox)).
+once. On the web a reload recovers its previous document's span at once too, but
+another tab's span waits.
 
-- A page opened after those 30 s recovers the span as it launches.
-- A page opened sooner leaves the span alone and looks again 30 s later. Then it
-  closes the span, brings the mirror up and sends the event.
-- Until then this device resumes from the mirror, up to 15 s behind, and other
-  devices hold the last cut, up to 60 s behind.
+- **Its own previous document.** While a document has a span stored it holds a Web
+  Lock named for its tab id (`audiosilo-open-span:<id>`), and sessionStorage names
+  that id (`audiosilo.openSpanOwner`). At launch, a span whose owner is the id
+  sessionStorage names, with no lock of that name held, was left by the previous
+  document in this tab, and is recovered at once. A duplicated tab inherits the
+  sessionStorage, but the live tab it copied still holds the lock, so its span is left
+  alone. Without Web Locks (a plain-http address) only a navigation of type `reload`
+  claims it. sessionStorage names the new document only once that sweep is done, so a
+  second reload during it can still finish it.
+- **Another tab's span.** A page cannot tell a crashed tab's span from one a live tab
+  still keeps until it has gone unkept for 30 s (`LIVE_SPAN_MS` in
+  `listening-outbox.ts`, [the stored span](offline.md#listening-sync-the-outbox)).
+  - A page opened after those 30 s recovers the span as it launches.
+  - A page opened sooner leaves the span alone and looks again 30 s later. Then it
+    closes the span, brings the mirror up and sends the event.
+  - Until then this device resumes from the mirror, up to 15 s behind, and other
+    devices hold the last cut, up to 60 s behind. The launch's recovery is over once
+    its first sweep is, so the place readers' 2 s wait never waits for that look.
 
 ## Web transcode negotiation (`transcode.ts`)
 
