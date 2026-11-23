@@ -82,7 +82,13 @@ type MetaConfig struct {
 	Region string \`yaml:"region"\`
 	MirrorSettings struct {
 		Interval time.Duration \`yaml:"interval,omitempty"\`
+		Retry    *struct {
+			After time.Duration \`yaml:"after"\`
+		} \`yaml:"retry"\`
 	} \`yaml:"mirror,omitempty"\`
+	Sources []struct {
+		URL string \`yaml:"url"\`
+	} \`yaml:"sources"\`
 }
 `;
   assert.deepEqual(configKeysFrom([src]), [
@@ -90,7 +96,10 @@ type MetaConfig struct {
     'metadata',
     'metadata.mirror',
     'metadata.mirror.interval',
+    'metadata.mirror.retry',
+    'metadata.mirror.retry.after',
     'metadata.region',
+    'metadata.sources',
     'name',
     'tls',
     'tls.hosts',

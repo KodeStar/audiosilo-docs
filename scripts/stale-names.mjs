@@ -78,13 +78,13 @@ export function routesFrom(patterns, constants) {
 export function configKeysFrom(goSources) {
   const structs = new Map();
   function readStruct(name, body) {
-    // Inline structs carry their yaml tag on the closing brace. Give them a
-    // local type name so the same walk handles named and inline sections.
-    const inline = /^([ \t]+)(\w+)\s+(\[\])?(\*?)struct \{\n([\s\S]*?)^\1\}([^\n]*)/gm;
-    const namedFields = body.replace(inline, (_, indent, field, list, pointer, inner, tag) => {
-      const type = `${name}.${field}`;
-      readStruct(type, inner);
-      return `${indent}${field} ${list ?? ''}${pointer}${type}${tag}`;
+    // An inline struct carries its yaml tag on its closing brace: name it
+    // <outer>.<field> and read it like a named one, so the walk below needs
+    // no special case (a list of them keeps its [] and is not walked).
+    const inline = /^([ \t]+)(\w+)\s+([[\]*]*)struct \{\n([\s\S]*?)^\1\}([^\n]*)/gm;
+    const namedFields = body.replace(inline, (_, indent, field, prefix, inner, tag) => {
+      readStruct(`${name}.${field}`, inner);
+      return `${indent}${field} ${prefix}${name}.${field}${tag}`;
     });
     const fields = [];
     for (const line of namedFields.split('\n')) {
