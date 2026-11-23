@@ -228,15 +228,14 @@ or parked. One run:
      readable `.epub`, else the job fails. `auto` takes a readable one and falls
      back to the audio, logging why: several `.epub` files, or one whose OPF
      doesn't parse, as a DRM-wrapped one doesn't.
-   - **An earlier run.** An engine book left by an earlier run at the same source
-     path is deleted first (`deleteEarlier`). The job fails instead if another
-     open job follows that book (cancel that one first), or if a stage of it stays
-     busy through up to 40 polls, about two minutes (`giveWayTries`, the same
-     bound as the [give-way wait](chapters.md#a-generate-job-after-a-detect-job);
-     try again in a minute). A `chapters.detect` run at the same path (finished,
-     or cancelled at its transcription or detection) is **continued** instead, so
-     its transcription is reused
-     ([A generate job after a detect job](chapters.md#a-generate-job-after-a-detect-job)).
+   - **Regenerating from audio.** A new run starts at `sanitizing` if a finished
+     whole-book audio run at this path has [reusable chapter transcripts](#transcript-retention).
+     The new run has its own agent passes, costs and contribution history.
+   - **Other earlier runs.** The job can continue a
+     [chapters run](chapters.md#a-generate-job-after-a-detect-job) or a
+     [finished read-along](readalong.md#the-reuse-table). Otherwise it clears the
+     earlier run and starts from the beginning. If another open job still follows
+     the book, or a stage stays busy for 40 polls (about two minutes), the job fails.
    - **The new book** takes its identity from the server's facts (title, authors,
      narrators, series and position, ASIN, ISBN), its `work_id` from the params or
      else the server's metadata cache, its kind (audio or ebook), and the job's
@@ -256,6 +255,19 @@ A book's later volume waits for the earlier one: the engine holds a series lock
 until a book reaches `ready`, so a sequel's agent stages run after its
 predecessor has been written and can carry its knowledge forward. A failed or
 cancelled book releases the lock.
+
+### When the book moves
+
+If a scan finds the book at a new path, the server returns that path in its
+reply to a job report. On its next poll, the Bridge checks the files at the new
+path through the mapped library. It updates the job's relative path in
+`generate_books` and the engine book's source and ebook paths together. The job
+saves its results at the new location.
+
+If another live run holds the new path, the moving job parks with
+`book_not_writable` and retries until the path is free. If the run there is
+done, failed or cancelled and no open job follows it, the Bridge replaces that
+ended run and follows the move.
 
 ### Progress
 
@@ -347,7 +359,7 @@ names an authentication, rate or usage limit, credits or backend failure
 | `share_unconfirmed` | The Bridge cannot confirm permission to share with the server. It waits before community lookups or filing. | It checks again in one minute. |
 | `core_needed` | contributing needs a community core record the book doesn't have | no (the local files are already written) |
 | `core_pending` | the book's core record waits for the next data release | yes |
-| `book_not_writable` | the Bridge can't write in the book's folder or its `.audiosilo/` (before the run, or when writing the results; the results wait in the engine's work folder) | it checks again every minute |
+| `book_not_writable` | The Bridge can't write in the book's folder or its `.audiosilo/`, or it can't follow a move, for example while another live run holds the new path. | It checks again automatically or on **Retry**. |
 | `library_not_writable` | a resumed job's library isn't mapped and writable any more | when the next mapping check passes |
 
 ### The result
@@ -373,7 +385,9 @@ On `done` (at most 64 KiB):
 single-file book; `chapters.json` too for a book whose chapters were found in the
 narration), `work_id` the resolved community work (or the pipeline's
 placeholder slug), `contributed` only with `contribute: issue`, naming each
-dimension's intake issue. `description` says whether
+dimension's intake issue. When a maintainer needs to route an issue,
+the optional `intake_notes` object gives the note for that dimension
+([job result example](contributions.md#result-and-failures)). `description` says whether
 `description.json` was written; when it is `false`, `description_error` says why
 in a few plain words ("the agent account hit its usage limit", "the book has a
 single chapter, so no description leaves out its ending"...), which the console
@@ -556,9 +570,17 @@ the engine book whose notes describe the book, the first of:
   that job ran);
 - the run the book's own `bridge.json` names (a book that moved after).
 
+When `bridge.json` identifies a finished run after a move, the Bridge updates
+its source path and job mapping together. A later regenerate can find the
+retained transcript at the book's new path.
+
 It runs the description step until it writes one. The agent's parks (rate limit,
 budget, credential, unavailable) are the job's park (`needs_attention`, with
-`code`, `hint` and `retry_at`). The job tries again at `retry_at`, on **Retry**,
+`code`, `hint` and `retry_at`). When the agent hits a rate limit, the describe
+job parks immediately and releases the book so another job can use it.
+Before trying again, it rechecks the library mapping, the book's folder and its
+saved notes.
+The job tries again at `retry_at`, on **Retry**,
 or at once when a change on the page answers it ([Parks](#parks)).
 `Handler.WakeParked` does this, because these jobs wait in their own loop, not as
 engine books, so the engine's re-admit doesn't reach them. Each wake is numbered,
@@ -615,15 +637,16 @@ of those:
 - **A job ended without running** (its first report after a restart answered
   with a cancel or a lost claim) releases its engine book (`Abandon`), as the end
   of a run would.
-- **Moves**: the server carries an open job with its book when a scan sees the
-  book move, and the answers to the job's reports carry the new path. The Bridge
-  follows it at the job's next save (`adoptMove`), or when a restart resumes the
-  job, and records it in the job's mapping then (`recordMove`); a job resumed
-  under its claim finds the same book. Until a save records the move, a new
-  attempt (its lease lapsed) or a resume after a second move starts a new engine
-  book.
+- **Moves.** When a resumed job reattaches to its engine book, the Bridge checks
+  its source path and job mapping against the book's current location. It
+  handles an occupied path as it does [when the book moves](#when-the-book-moves)
+  during a run.
 
 ## Contributing
+
+With `contribute: local`, the job publishes the sidecars from its work folder
+into the book's `.audiosilo/` folder. The pipeline makes a second copy only
+when its caller sets `Config.ExportRoot`. The Bridge leaves that setting empty.
 
 With `contribute: issue`, the engine's `contributing` stage files the community
 intake issues, as audiosilo-sidecars did. It uses the token `contrib.TokenSource`
@@ -691,6 +714,16 @@ Decision 5: a book's transcripts are kept privately in the Bridge's data folder
 (`Handler.SweepTranscripts`) purges every finished engine book whose job ended at
 least that long ago and records `swept_at`, so it never looks at it again. With
 `0` a book's transcripts go as its job ends.
+
+An audio regenerate can start at `sanitizing` with a finished run's chapter
+transcripts. A [chapters job](chapters.md#the-job) can start at
+`chapter_detecting` with a finished read-along's window transcripts. Both
+check the retention deadline even between sweeps. The new run starts from
+scratch if the audio changed, the deadline passed, required files are missing,
+or any raw transcript is incomplete. The Bridge checks the saved manifest
+fingerprint when present. A change to the Bridge's ASR model or language rules
+out reuse when both the recorded and current values are known.
+Older runs can still qualify when a setting was never recorded.
 
 The purge (`scratch.PurgeTranscripts`) deletes the reclaimable scratch (the
 split chapter audio, the agents' staged inputs, the re-transcription clips, an

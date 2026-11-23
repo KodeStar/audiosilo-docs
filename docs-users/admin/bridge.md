@@ -204,8 +204,9 @@ applies the fields marked **Reviewed by a maintainer**, such as authors,
 narrators and series. Every change is reviewed before it is merged (see
 [What happens next](../community/contributing-from-your-server.md#what-happens-next)).
 
-If a share or a correction stops part way, its message says what to do. The Bridge
-makes sure the same submission isn't filed twice.
+If a share or a correction stops part way, its message says what to do. If you
+retry only the remaining corrections, the Bridge links to the original submission
+while it's still open on GitHub.
 
 ## When the Contributions module is off
 

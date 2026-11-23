@@ -194,5 +194,5 @@ cap.
   transcribed again and it costs less than generating.
 - **Transcripts.** The Bridge keeps a book's transcripts for **30 days** after
   its job ends, then deletes them. They never go into your library and are never
-  shared. A [read-along](making-read-along.md) or a later run reuses a kept
-  transcript.
+  shared. A [read-along](making-read-along.md) can reuse a kept transcript, and
+  **Regenerate** can too if the audio, transcription model and language still match.

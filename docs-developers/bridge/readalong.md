@@ -157,7 +157,7 @@ audio run.
   the same files by name and order, none modified since. A file it can't look at
   right now says try again, never "the audio changed".
 
-| The earlier engine book | Goes on |
+| The earlier engine book | Where the read-along starts |
 |---|---|
 | a whole run (goal `""`), kept, at or past `readalong_aligning`'s place in the order (its transcripts repaired already) | at `readalong_aligning`, its goal kept |
 | a read-along, kept, done or stopped at `readalong_aligning` | at `readalong_aligning` (a re-align: no transcription) |
@@ -188,11 +188,13 @@ Other jobs meet the same engine books:
     reading the audio clears the ebook run first, since generate always replaces
     the book's earlier run. Then it re-keys the audio run to the book's path.
   - A generate job reading the **ebook** leaves the audio run alone.
-- **A `chapters.detect` job clears a read-along run**, rather than refusing it as a
-  whole run. The exception is a read-along that went on from a whole run, since it
-  holds that run's notes. That protection reads the notes on disk
-  (`facts/knowledge-final.md`), else any fact pass that ever succeeded on the book.
-  So it survives a restart's rewind of the stage history.
+- **A `chapters.detect` job can start at `chapter_detecting`** when a finished
+  read-along has kept every window transcript for the same markerless audio.
+  The Bridge checks the retention deadline and the recorded ASR model and
+  language before using those transcripts. When they no longer qualify, it
+  transcribes again. A current detected chapter list can be written directly.
+  A read-along that holds a whole run's fact notes is protected from replacement.
+  See [the chapters job](chapters.md#the-job).
 
 ## The `readalong_aligning` stage
 

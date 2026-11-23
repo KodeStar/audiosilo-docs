@@ -5,8 +5,9 @@ description: "Have your Bridge find the chapters of a long book that has none, b
 
 A book that is **one audio file with no chapter markers** plays as one long
 track, so listeners can't skip between chapters. Your [Bridge](bridge.md) can
-find its chapters **in the narration**. It transcribes the audio and listens for
-the headings the narrator reads out, like "Chapter One" or "Prologue".
+find its chapters **in the narration**. It transcribes the audio to find spoken
+headings like "Chapter One", or reuses a matching transcript from a finished
+[read-along](making-read-along.md).
 
 Detecting chapters uses no AI agent, so it costs nothing but the time
 transcription takes. [Generating characters and recaps](generating-characters-and-recaps.md)
