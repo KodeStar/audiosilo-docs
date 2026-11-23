@@ -97,6 +97,7 @@ When your device loses its network connection, downloaded books keep playing. On
 
 - **Home, the Library, Folders** and every other page keep what they've already loaded. Where a list still needs your server, it says **You're offline** and loads by itself when the network returns. The web player keeps Home's shelves, Up next and your [signed-in devices](account.md#signed-in-devices) even when you reload the page.
 - **Wi-Fi with no internet isn't offline.** The apps still reach a server on the same network. If one server stops answering, Home names it and **Retry** asks it again.
+- **Dialogs and forms** show what your device last loaded and keep what you type. A line such as **You're offline. Reconnect to change collections.** names what waits for the connection. Those buttons work again as soon as the connection returns, without reopening the dialog.
 - **If your AudioSilo sign-in has ended**, **Reconnect** shows even while you're offline. Signing in again needs a connection. See [Getting back in](connecting.md#getting-back-in-after-signing-out).
 - A [one-tap bookmark](bookmarks-and-notes.md) or a **Fell asleep** bookmark stays on this device until it syncs, even if you close the app.
 - Notes and ratings need a connection in the phone apps. In the web player they can wait while the tab stays open.
@@ -105,6 +106,8 @@ When your device loses its network connection, downloaded books keep playing. On
 ## Community notes offline
 
 When your server has [community metadata](book-page.md#about-this-book) switched on, a downloaded book keeps its description, [recaps and characters](recaps-and-characters.md) and Series tab. They still [hide what you haven't reached](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). They're refreshed when the copy is over a week old and the app can reach your server. A book your admin matched by hand can keep them too.
+
+A book you haven't downloaded shows the community details your device last loaded. If it has none, **About** and each **Previous books** row say they'll load when you reconnect, and they do.
 
 ## Downloads in a web browser
 

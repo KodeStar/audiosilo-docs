@@ -57,8 +57,6 @@ If neither has one, your server's [Bridge](../admin/generating-characters-and-re
 
 ![An About card with a description generated on the server](/img/screenshots/web-player/book-about-generated.png)
 
-You can still read community details your device already has when you go offline. If the player hasn't loaded them for this book, **About** says they'll load when you reconnect.
-
 Under the description you'll find the publisher, release date, language and whether it's abridged, when known. Dates follow your region's format, such as *26 Jun 2012*. A book first published on another date also shows **First published**. Then come the book's **Genres** and **Tags**. Tap one to open the [Library](browsing.md#books) filtered to it.
 
 When the community database matches the book to a free LibriVox recording, the card ends with **Also free on LibriVox**. It opens that recording's page on librivox.org or archive.org. The link never goes to any other site.

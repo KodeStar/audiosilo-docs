@@ -126,10 +126,6 @@ Collections are lists of books you make yourself, such as "Road trip" or "Book c
 
 To add a book, choose **Add to collection** from its [book menu](#the-book-menu) or its [book page](book-page.md#listening-and-the-buttons). You can add it to several collections at once, or create a new one there.
 
-Offline, **Add to collection** shows which collections contain the book when your device already has those details. Reconnect to tick or untick a collection, or to choose **New collection** from this dialog.
-
-If you're creating or renaming a collection when you go offline, you can keep editing the name. Leave the form open and reconnect to use **Create**, **Create and add** or **Save**.
-
 ![A collection's page: its name, description, the owner's buttons and its books](/img/screenshots/web-player/collection.png)
 
 On your own collection you can:
@@ -139,9 +135,7 @@ On your own collection you can:
 - **Delete** it. The books stay in your library.
 - Reorder or remove books, from each book's menu in the list view.
 
-Offline, **Share** can show the people your device last loaded, but saving your choices needs a connection. If the player can't refresh the list online, tap **Retry**. **Save** becomes available once the list loads successfully.
-
-If **Add to collection** or **Share** asks you to sign in again, tap **Reconnect**. The dialog closes and the sign-in page opens.
+If **Share** says **Couldn't load the people on this server**, tap **Retry**. **Save** comes back once the list loads. Offline, **Add to collection**, **Share** and the collection forms work as [With no connection](offline-downloads.md#with-no-connection) describes.
 
 On a collection someone shared with you, **Leave** removes it from your list.
 

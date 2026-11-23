@@ -75,10 +75,8 @@ and while the book's chapters are being found or its results shared.
 - **Also generate for N earlier books in the series first**: earlier books
   without recaps are queued first, because recaps build on the books before.
 
-In the player, you can read the last estimate for this book offline if your
-device already has it. Reconnect to load a missing estimate and to queue the
-job with **Generate**. If the server asks you to sign in again when loading the
-estimate, tap **Reconnect** to close the confirmation and open the sign-in page.
+Offline, the player's confirmation shows the last estimate your device loaded,
+and **Generate** waits until you reconnect.
 
 ## Keeping them local, or contributing them
 

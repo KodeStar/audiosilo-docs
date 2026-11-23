@@ -1,6 +1,6 @@
 ---
 title: Offline & PWA
-description: "How the player downloads books on native (expo-file-system) and web (the Cache API and a service worker): the registry store and its manifest, failures that keep finished files, the ebook and read-along map in a download, the listening-sync outbox, the offline companion (community metadata kept with a download), keeping the next books ready, the Downloads page, playing local files, and what the PWA layer covers offline."
+description: "How the player downloads books on native (expo-file-system) and web (the Cache API and a service worker): the registry store and its manifest, failures that keep finished files, the ebook and read-along map in a download, the listening-sync outbox, the offline companion (community metadata kept with a download), keeping the next books ready, the Downloads page, playing local files, what the PWA layer covers offline, and how a dialog reads offline."
 ---
 
 Offline support has two halves that meet in the middle:
@@ -14,25 +14,6 @@ Offline support has two halves that meet in the middle:
 The playback layer consumes the result. A downloaded book plays from local URIs with
 no network. A streaming book hot-swaps onto its local files as soon as its download
 finishes.
-
-## Dialogs that read from the server
-
-`useDialogRead(query)` in `src/lib/offline-state.ts` returns `unread` and
-`offline`. Use `unread` (from `useUnreadQuery`) to decide what to display. A
-cached answer stays readable. With no answer, handle an offline or failed read
-before showing a loading indicator.
-
-Use `offline` to disable actions that need the server and explain why. It is
-true when the device has no network or the query is paused, even with cached
-data. For example, a Bridge confirmation can show the estimate while its
-button to queue the job is disabled.
-
-For a failed dialog read, call `readRefusalState` from
-`src/components/layout/server-refusal-state.tsx`. It offers sign-in when
-AudioSilo answers the dialog's request with a 401 for an ended session.
-It delegates a refused `/server` check to `serverRefusalState`. Pass the
-dialog's close callback so **Reconnect** closes it before opening sign-in.
-When the helper returns `null`, show the read's own error.
 
 ## The `DownloadEngine` interface
 
@@ -1778,3 +1759,20 @@ with nothing to show renders the shared offline state
 offline banner, and everything refetches on reconnect. In the app the queries wait
 for the network the same way
 ([The online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets)).
+
+## Dialogs that read from the server
+
+A dialog reads through `useDialogRead(query)` (`src/lib/offline-state.ts`). Its
+`unread` is `useUnreadQuery`'s answer
+([Offline states](state-and-data.md#offline-states-srcliboffline-statets)): a kept
+answer shows, and the dialog checks it before its skeleton. Its `offline` is true
+while the device has no network or the read is paused, kept data or not. The dialog
+then shows its offline line and disables what needs the server, so a Bridge
+confirmation shows a kept estimate with its queue button disabled.
+
+On `unread === 'failed'`, the dialog asks `readRefusalState(error, cid, close)`
+(`src/components/layout/server-refusal-state.tsx`). The server's 401 on the dialog's
+own read (a revoked token, which `/server` never refuses) gets the compact
+**Reconnect** row, and anything else goes to `serverRefusalState`. `close` runs
+before sign-in opens, so no dialog is left under it. A `null` answer means the read's
+own error, with Retry while online.
