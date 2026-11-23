@@ -209,25 +209,22 @@ mean for that folder ("Here: 12 books."), then the folder's audio files.
 
 ![Library > Folders](/img/screenshots/admin/folders.png)
 
-**Audio files in this folder** counts the audio files directly inside the folder
-and shows their combined size. It shows the total length when every counted file
-has a known length. The list shows up to 500 audio files, with a note when there
-are more.
-
-The totals cover the first 10,000 items, including folders. In a larger folder,
-the file list shows a note about this limit. Folders come first, so if they fill
-all 10,000 places, the page shows no audio files or limit note.
-
-Use the arrow keys to move through the folder tree and Enter to select a folder.
-**Show more** loads up to 500 more items. Focus moves to the first new folder
-unless you move to another control while the list loads.
-
-A direct link opens the folder's details even if its parent has more items than
-the tree shows. A link to a missing folder says it isn't there any more.
-
 If the folder is a book, **Open book** opens its [book page](books.md#a-books-page).
 On the book's page, **Change detection** takes you back to its folder. You can
 choose **Always one book** before the library's first scan has read the folder.
+
+**Audio files in this folder** counts the audio files directly inside the folder
+and shows their combined size, and their total length when every file's length
+is known. It lists up to 500 of them, with a note when there are more.
+
+In a folder with more than 10,000 items, the totals cover the first 10,000 and
+the file list says so. Folders count first, so a folder holding more than 10,000
+other folders can show no audio files at all.
+
+Use the arrow keys to move through the folder tree and Enter to select a folder.
+**Show more** loads up to 500 more items. A direct link to a folder opens it
+even when its parent has more items than the tree shows, and a link to a
+missing folder says it isn't there any more.
 
 ### Books split into disc folders
 

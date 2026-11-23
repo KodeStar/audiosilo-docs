@@ -1147,8 +1147,8 @@ A transient fault while opening or listing a folder returns 503 `share_not_answe
 `next_offset` is present when more entries remain. In the ordinary listing,
 plain files and directories omit the book fields (`is_book`, `title`, `author`,
 `series`, `series_index`, `series_index_end` for a range, and `duration`).
-`override` (`"book"` or `"collection"`)
-appears when an explicit folder-detection override is set (an admin concern; see
+`override` (`"book"` or `"collection"`) appears when an explicit
+folder-detection override is set (an admin concern; see
 [Scanner](../scanner.md)). `split_discs: true` marks a folder whose audio is
 only in disc folders directly in it (`CD1`, `CD2`, ...), each indexed as its
 own book, which a `book` override would join into one (see
@@ -5614,9 +5614,9 @@ listening done since a person last turned sharing on is shown.
 - `outside_grant` is an optional boolean. In a book library, the server sends
   `true` when the session path is in scope but the caller can't read any indexed
   book at or above that path. For example, the grant may cover only one disc
-  of a joined book, or the book may have left the index. Clients should show the row without
-  requesting artwork or opening the book. Treat an absent field as `false`,
-  including on older servers.
+  of a joined book, or the book may have left the index. Clients should show
+  the row without requesting artwork or opening the book. Treat an absent
+  field as `false`, including on older servers.
 - `position` - seconds into the whole book; `chapter` and `chapter_index` (0-based)
   are the chapter at that position, as the admin's live sessions show it: both
   `null` for a book with one chapter or none, and `chapter` alone `null` for a

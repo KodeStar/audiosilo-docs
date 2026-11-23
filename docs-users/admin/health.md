@@ -58,10 +58,10 @@ page. Without ffprobe, the book shows **reading it timed out** instead, and the
 next scan tries again.
 
 If a network share stops answering during **Read the files again**, the book
-appears under **Files that couldn't be read**. A background scan that gives up
-on a folder also marks affected books already in the library as unreadable.
-Once the share answers, a successful **Read again** or scan clears the issue.
-Libraries on other drives or shares keep scanning.
+appears under **Files that couldn't be read**. A scan that gives up on a folder
+lists the books in it there too. Once the share answers, a successful **Read
+the files again** or scan clears them. Libraries on other drives or shares keep
+scanning.
 
 ### Working through a list
 
@@ -88,10 +88,9 @@ If you want to keep two narrations, for example, choose **They're different
 books**. This hides the group and deletes nothing. If you later add or remove a
 copy, the books that still match come back as a new group.
 
-**Include other libraries** appears only when you have at least two book
-libraries. Turn it on to see matching pairs across libraries.
-If two copies in your main library both match a third in your kids'
-library, you see two pairs. Choosing **They're different books** on one pair
+With two or more book libraries, turn on **Include other libraries** to also
+see matching pairs across them. If two copies in your main library both match a
+third in your kids' library, you see two pairs. Choosing **They're different books** on one pair
 leaves the other pair, and the group in your main library, still listed.
 
 ![With Include other libraries on, Health compares copies of The Art of War in Books and Inbox](/img/screenshots/admin/health-duplicates.png)

@@ -53,6 +53,8 @@ The bar along the top of every page has:
   menu and your account menu.
 
 On a phone the destinations move to a tab bar at the bottom of the screen.
+With the keyboard, a visible ring marks the button, switch, tab or choice in
+focus.
 
 ![The console on a phone](/img/screenshots/admin/overview-phone.png)
 
@@ -90,9 +92,9 @@ The overview is the console's home page. It shows:
   library's [folder detection](libraries.md#folder-detection).
 - **Server** shows the version, available updates and enabled features.
   **Address** lists the public address for use away from home. A different
-  home address gets its own line marked **home network**. If the server supplies neither, the
-  card shows the address you opened and labels it **This browser's address**.
-  You can set both addresses in [Server > Settings > General](server.md#general).
+  home address gets its own line marked **home network**. With neither set,
+  the card shows the address you opened, labelled **This browser's address**.
+  You can set both in [Server > Settings > General](server.md#general).
 
 A notice appears at the top when a library's folder can't be read (see
 [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing)).
@@ -145,6 +147,3 @@ narrators and shares. The last entry, "Search all books for ...", opens
 [Library > Books](books.md#browsing-books) with what you typed.
 
 ![Searching from the command palette](/img/screenshots/admin/palette-search.png)
-
-When you use the keyboard in the console, a visible focus ring marks the
-current button, checkbox, switch, tab or choice card.

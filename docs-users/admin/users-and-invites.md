@@ -108,9 +108,9 @@ import with **Undo**.
 ![A person's Access tab](/img/screenshots/admin/person.png)
 
 The **Access** tab lists this person's whole libraries and shares. A
-whole-library entry also lists any extra folders it grants, including folders
-in other libraries. **Folder share (Fiction)** means an older grant for Fiction
-now gives access only to the folders listed.
+whole-library entry also lists any extra folders an older grant gives, and an
+entry such as **Folder share (Fiction)** is an older grant explained in
+[Shares](sharing.md#good-to-know).
 
 - **Give access** adds a library or share.
 - **Remove** takes that library or share away from this person. To remove just

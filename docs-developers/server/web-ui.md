@@ -171,10 +171,6 @@ the `AUDIOSILO_ADMIN_NEXT` switch are gone.
 - i18next, lucide-react, and fontsource (self-hosted Bricolage Grotesque,
   Figtree, JetBrains Mono).
 
-Buttons, checkboxes, switches, tabs and radio cards use `focusRing` from
-`src/components/ui/focus-ring.ts`. It shows a visible ring on keyboard focus
-in both themes.
-
 Each screen is a lazy-loaded chunk, so the first paint carries only the shell
 and the overview. Interface strings work the same way. English is bundled in
 the entry, and it is also the fallback for any missing key. Each other language
@@ -525,6 +521,9 @@ all six languages.
 - Each destination has a section bar. Phones get a bottom tab bar.
 - Every section has a screen (`PAGES` in `features/section-page.tsx`). An
   unknown section is a 404.
+- Buttons, checkboxes, switches, tabs and radio cards take `focusRing`
+  (`components/ui/focus-ring.ts`), the keyboard-only ring the style guide asks
+  for on every interactive element.
 
 #### ⌘K palette
 
@@ -643,7 +642,10 @@ metadata is off:
 The screen shows a folder tree per library (`/fs`) and the selected folder's
 detection choice (`…/folder-override`). It saves the choice through
 `setFolderMode` in `src/api/hooks.ts`, which notes the rescan and refetches the
-listings.
+listings. The tree asks `/fs?detail=1`, so the first page names the folder
+itself (`folder`), which lets a direct link open a folder past its parent's
+first page. `FolderDetail` (`folder-detail.tsx`) totals the later pages up to
+10,000 entries (`TOTALLED`) and lists the first 500 audio files.
 
 `joinChoices` (`features/library/folders/folders-model.ts`) decides which
 choices a folder offers:
