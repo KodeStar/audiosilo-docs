@@ -205,7 +205,9 @@ narrators and series. Every change is reviewed before it is merged (see
 [What happens next](../community/contributing-from-your-server.md#what-happens-next)).
 
 If a share or a correction stops part way, its message says what to do. The Bridge
-makes sure the same submission isn't filed twice.
+makes sure the same submission isn't filed twice. If you suggest again only the
+corrections still left, it links to the original submission while that is still
+open on GitHub.
 
 ## When the Contributions module is off
 
