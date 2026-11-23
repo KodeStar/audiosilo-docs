@@ -53,7 +53,7 @@ A show the library already has is followed at once. A new show takes a moment wh
 
 You need full access to the library to add shows. Kids accounts and the demo can't add or follow shows. If **Add shows** is missing, your server can't fetch podcasts right now. Ask your admin.
 
-If the player can't check whether you can add shows, it says so. Tap **Retry** once you're online.
+Offline, **Search**, **Follow** and **Choose a file** wait until you reconnect. If the player can't check whether you can add shows, it says so. Tap **Retry** once you're online.
 
 ### Search a podcast directory {/* #searching-a-podcast-directory */}
 
@@ -66,7 +66,7 @@ A show you already follow says **Following** in the results. Tap **Open show** t
 
 Results come from **Apple Podcasts**, or from **Podcast Index** if your admin set it up. The directory sees only the words you searched and your server's address, not yours.
 
-Offline, or if the player can't refresh a search, its last results stay under a line such as *Showing the last results for “kitchen”.* If the refresh failed, tap **Search again**.
+Offline, or when a search can't be refreshed, its last results stay on screen with a line that says so. If the refresh failed, tap **Search again**.
 
 ![Add shows on a phone: the search results](/img/screenshots/web-player/phone-find-shows.png)
 

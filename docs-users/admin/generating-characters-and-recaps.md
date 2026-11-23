@@ -75,8 +75,8 @@ and while the book's chapters are being found or its results shared.
 - **Also generate for N earlier books in the series first**: earlier books
   without recaps are queued first, because recaps build on the books before.
 
-Offline, the player's confirmation shows the last estimate your device loaded,
-and **Generate** waits until you reconnect.
+Offline, the player's confirmation shows an estimate only if it loaded one a
+few minutes before, and **Generate** waits until you reconnect.
 
 ## Keeping them local, or contributing them
 

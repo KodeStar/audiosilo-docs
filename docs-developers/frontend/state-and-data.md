@@ -379,6 +379,11 @@ These screens ask it:
 - the series, author, narrator, book, episode, collection, show and folder
   pages;
 - a book's bookmarks, notes and history sections;
+- the book page's About, for its community details (`book.meta.offline` while
+  `useBookMeta`'s answer is `'offline'`), and each Previous books row once
+  opened;
+- the dialogs with server actions, through `useDialogRead`
+  ([Dialogs that read from the server](offline.md#dialogs-that-read-from-the-server));
 - Signed-in devices (`DevicesSection`) and Your household (`HouseholdMembers`);
 - Your listening (`StatsSection`), for both of its reads and for its server's
   `/server` answer. Any of the three held with nothing kept is the offline
