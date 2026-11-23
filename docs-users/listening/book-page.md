@@ -39,7 +39,7 @@ If another device has a different place, a line under the buttons can show its c
 
 ![A book's page offering another device's place, with Play from there](/img/screenshots/web-player/book-place-offer.png)
 
-If you're an admin and your server has a [Bridge](../admin/bridge.md), a book the community database doesn't cover may also show **Generate characters and recaps**. See [Generating characters and recaps](../admin/generating-characters-and-recaps.md#which-books-offer-it).
+If you're an admin and your server has a [Bridge](../admin/bridge.md), a book the community database doesn't cover may also show **Generate characters, recaps and a description**. See [Generating characters and recaps](../admin/generating-characters-and-recaps.md#which-books-offer-it).
 
 ## A book you've finished
 
