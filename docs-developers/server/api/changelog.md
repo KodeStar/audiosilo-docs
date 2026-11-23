@@ -83,10 +83,10 @@ Additions:
 
 Changes to existing routes:
 
-- With `include=previous`, `GET /libraries/{id}/meta` waits up to five seconds
-  for earlier works as a group. It returns the works ready by then and omits
-  `previous` if none are ready. Shared lookups can finish and cache more works
-  for a later request. See [Previous books and spoiler gating](reference.md#previous-books-and-spoiler-gating).
+- With `include=previous`, `GET /libraries/{id}/meta` waits at most five
+  seconds for the earlier works and returns those ready by then, so `previous`
+  can hold fewer works, or be absent, until a later request. See
+  [Previous books and spoiler gating](reference.md#previous-books-and-spoiler-gating).
 - [Response compression](index.md#response-compression) is now opted in per
   route. Every JSON read that was compressed before still is; a request with an
   `Upgrade` header is now answered uncompressed. `/api/v1/healthz` and refusals

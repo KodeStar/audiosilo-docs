@@ -1449,9 +1449,7 @@ there asks first.
   Metadata's status row shows the local copy's state, links to
   Health > System, and follows it with `useMirrorPoll` while it is busy.
 - **Metadata's Source card** is a two-column radio `SettingsForm` field for
-  `metadata.mode` (`METADATA_MODES`), a restart setting. Here and in setup,
-  **Keep a local copy** describes the weekly default check and the download
-  of about 450 MB per update.
+  `metadata.mode` (`METADATA_MODES`), a restart setting.
 - **Metadata's Danger zone** (`clear-matches.tsx`, the shared
   `components/danger-zone.tsx`) ends the topic. Clear community matches picks a
   library or all (`components/library-select.tsx`, shared with Match

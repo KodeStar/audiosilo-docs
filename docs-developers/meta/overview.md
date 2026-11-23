@@ -123,8 +123,8 @@ The dependency direction mirrors the server's "transport is logic-free" rule.
 These packages are a public API for programs outside this repo. Mirror-mode
 AudioSilo servers (`metadata.mode: mirror`, see the server's
 [configuration](../server/configuration.md#mirror-mode-metadatamode-mirror))
-use them to check for a data release weekly by default, download the newest
-release when the copy needs updating, and answer the same API in-process.
+use them to download each new data release and answer the same API
+in-process.
 
 ### `pkg/query`
 

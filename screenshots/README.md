@@ -127,7 +127,7 @@ in mirror mode, with no library and the update check off, and seeds its
 `meta-mirror/` folder with that artifact (a hard link where it can, else a
 copy) and a `state.json` saying it was downloaded and checked just now (after
 the artifact's build time, as a real copy is), so the copy opens at start and
-its next check is a week away on the default schedule. That server's HTTPS goes to a proxy on a closed
+its next check is a week away. That server's HTTPS goes to a proxy on a closed
 port, so it can never download a real copy. Should it refuse the seeded copy
 (its log says "the local copy can't be used"), `run.sh` stops it and skips the
 shot when it sees that by the time the server is healthy; the copy opens in the

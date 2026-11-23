@@ -339,5 +339,6 @@ version and size.
 
 ![Health > System, the community metadata row with a local copy](/img/screenshots/admin/system-mirror.png)
 
-The server checks for a newer copy once a week by default. Click **Check now**
-to check sooner. If an update fails, the server keeps using the current copy.
+The server checks for a newer copy on its
+[schedule](server.md#keeping-a-local-copy), or click **Check now**. A failed
+update keeps the current copy in use.

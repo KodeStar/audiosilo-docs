@@ -319,14 +319,11 @@ Otherwise the panel offers a button to use them when they are more detailed or
 better titled, or says why they can't be used (another edition, say). **Use the
 file's chapters** always goes back to the book's own.
 
-AudioSilo uses ffmpeg to find pauses near chapter starts. Without ffmpeg it
-estimates those starts. If a long book takes too long to check for pauses,
-AudioSilo still saves the chapters. It keeps the starts it could confirm and
-estimates the rest.
-
-Checks run in the background. Choose **Check now** to check the book straight
-away. If the ASIN is only in the file's tags,
-[match the book first](health.md#asin-and-isbn-tags-are-hints).
+AudioSilo fits each community chapter onto the pause in the audio where it
+starts. This needs ffmpeg. Without it, and for some chapters of a very long
+book, starts may be a few seconds off. Checks run in the background; **Check
+now** runs one straight away. An ASIN in the tags alone isn't enough. The book
+must be [matched](health.md#asin-and-isbn-tags-are-hints) first.
 
 #### Chapters found in the narration
 

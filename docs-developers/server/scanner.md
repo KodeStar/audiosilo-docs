@@ -1743,15 +1743,14 @@ The two kinds of book:
   Book offsets accumulate across parts, and the book's duration is the sum. So
   a chaptered m4b and a folder of split mp3s render identically in a player.
 
-The server records the scan's own chapters in `books.scanned_chapters`.
-It checks the following sources before using them.
+These are the scan's own chapters, kept in `books.scanned_chapters`. Other
+sources can replace them, outside the scan; which list a book uses is
+[the rule](community-chapters.md#the-rule), applied in the scan's transaction:
 
-- An [admin's edited list](community-chapters.md#edited-chapters) takes
-  precedence while it fits the book's files.
-- A matched book can have a community recording's chapter list fitted onto its
-  audio. When an unchanged fit still applies, its chapter rows stay in place
-  across the rescan (see [Community chapters](community-chapters.md)).
-- A book with no chapters of its own can get the chapters a Bridge found in its
+- an [admin's edited list](community-chapters.md#edited-chapters);
+- a community recording's chapter list fitted onto a matched book's audio (see
+  [Community chapters](community-chapters.md));
+- for a book with no chapters of its own, the chapters a Bridge found in its
   narration, from its `.audiosilo/chapters.json` (below; see
   [Generated chapters](community-chapters.md#generated-chapters)).
 

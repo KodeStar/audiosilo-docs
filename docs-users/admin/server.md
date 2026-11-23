@@ -222,12 +222,12 @@ The **Source** card chooses where lookups are answered:
   answers lookups, matching and chapter checks from it. Fewer requests leave
   your server.
 
-By default the server checks GitHub once a week. When it finds a new release,
-it downloads the whole database, about 450 MB per update. The copy takes about
-1.8 GB on disk and needs about 2.5 GB free while it updates.
-
-To change how often it checks, set `metadata.mirror.interval` in `config.yaml`
-and restart the server. See the [configuration example](/developers/server/configuration#mirror-mode-metadatamode-mirror).
+A local copy takes about 1.8 GB of disk, plus about 2.5 GB free while it
+updates. The server looks for a new one on GitHub once a week, and each update
+downloads about 450 MB. To look more or less often, set
+[`metadata.mirror.interval`](/developers/server/configuration#mirror-mode-metadatamode-mirror)
+in `config.yaml` and restart the server. Choose a local copy if you want fewer
+online lookups and have the space.
 
 How it behaves:
 
