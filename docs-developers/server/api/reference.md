@@ -12401,7 +12401,7 @@ even if it has no stored match. Accounts that share a library have separate list
 | Query parameter | Meaning |
 |---|---|
 | `after` | Omit on the first request. For the next page, pass the previous page's `next` ASIN. The page starts after that ASIN. |
-| `limit` | A positive integer. The default and the maximum are 500. |
+| `limit` | A positive integer. The default and the maximum are 500; a larger value reads as 500. |
 
 For example, a request with `limit=1` returns this page when more marks follow.
 
@@ -12421,6 +12421,9 @@ The last page has `"next": ""`. An account with no marks returns
 | `400` | `invalid_cursor` if a nonempty `after` is an invalid ASIN. `invalid_request` if a nonempty `limit` is not a positive integer. |
 | `401` | The request lacks a valid Bridge token in the header. |
 | `404` | `unknown_account` if the account ID is invalid or the server has no such account. |
+
+The checks run in this order: an invalid account ID (`404`), then `limit`
+(`400`), then an unknown account (`404`), then `after` (`400`).
 
 ### `PUT /api/v1/bridge/audible/accounts/{account}/titles`
 
@@ -12500,7 +12503,7 @@ The last page has `"next": ""`. An account with no marks returns
   Anything else is `400 invalid_request` for the whole call, except a `path` over
   the path limit, which is stored as an `error` plan. A marked title can keep a
   plan alongside its rejected match. A poll that matches the title or marks it
-  `gone` drops the plan.
+  `gone` drops the plan, and so does a completed backup's match.
 - Free text is cleaned and bounded, never refused: `title` (500), `reason` (256),
   each author and series name (200), a position (32); authors past the first 20
   and series past the first 10 are dropped.

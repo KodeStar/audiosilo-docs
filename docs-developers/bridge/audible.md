@@ -734,7 +734,7 @@ park's code, else the result's `code`, else an error that starts with a known co
 | `exists` | Something is at the destination (a different file, a folder, a link). Or the destination is inside a book the library already has: its folder is a listed book's, or already holds audio. The Bridge checks this **before** the license, and again at the install |
 | `disk_full` | Before writing a byte, the Bridge found free space short in its temp folder (2.2x the size, less what the partial holds) or at the library's nearest existing folder (1.1x, `transfer.DefaultHeadroom`). Or the download, the decrypt (ffmpeg's words too) or the copy hit ENOSPC/EDQUOT. A free space that can't be read is no refusal |
 | `offline_url_expired` | The presigned download URL answered 401/403/410 again after the one new license |
-| `unknown_account` | The account is not this Bridge's, or is mapped on another server |
+| `unknown_account` | The account is not this Bridge's, or is mapped on another server. Or the server no longer has it when the import re-reads the **Not this book** marks before enriching a joined book (see [Enrichment after placing](#enrichment-after-placing)) |
 | `drm_free` | Audible offers the title only as a DRM-free MP3 (`audible.ErrDRMFree`), which the Bridge doesn't back up yet |
 
 A download over `DownloadOptions.MaxBytes` (`audible.DefaultMaxDownloadBytes`,
@@ -948,7 +948,10 @@ the ASIN.
   matched that book without a span mismatch or an identical twin. The placement
   marker keeps that decision for retries. If the decision allows enrichment,
   the Bridge rereads the account's rejections after the rescan and skips the
-  write if the title is now marked.
+  write if the title is now marked. An older server's `405` reads as no marks.
+  If the re-read fails, the import fails with the book already placed:
+  `unknown_account` when the server no longer has the account, no code for any
+  other failure.
 - A new book can take the title's ASIN. For example, if `CD1` was the only
   indexed disc and the rescan returns `CD2`, the Bridge gives `CD2` the ASIN.
   If the rescan instead joins the discs and returns their previously unlisted
@@ -1139,7 +1142,9 @@ These columns hold what the console says of a title the Bridge left unmatched.
   contested title tied for. They are path-keyed with no FK. A move or a join
   carries them like a match's path, and the library's delete clears them.
 
-Each titles PUT writes all three, and a poll that matches the title clears them.
+Each titles PUT writes all three. A poll that matches the title clears them, and
+so does the done fold's match (`FoldAudibleImport`). Undo of **Not this book**
+clears the contest of a title with a kept match.
 A **Not this book** title keeps its rejected match beside a new plan, for Undo
 and to refuse a backup into the rejected book (what Undo does is in the
 [title PATCH](../server/api/reference.md#patch-apiv1adminaudibletitlesaccountasin)).
@@ -1759,6 +1764,8 @@ All in the [API reference](../server/api/reference.md#audible-accounts):
 After [`POST /bridge/rescan`](../server/api/reference.md#post-apiv1bridgerescan),
 `audible.import` uses the returned book path and the
 [enrichment rules](#enrichment-after-placing) to decide whether to send the PUT.
+Before enriching a book it joined, it reads the marks again with
+`GET .../titles`.
 
 The Bridge mirrors the bridge-token routes by hand in `internal/link/audible.go`
 (`Users`, `PutAudibleAccount`, `DeleteAudibleAccount`, `RejectedAudibleTitles`, `PutAudibleTitles`,
