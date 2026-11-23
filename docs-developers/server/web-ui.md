@@ -148,7 +148,7 @@ aren't valid `fs` paths (`..` segments) never resolve to a file.
 
 ## The admin console (`admin-ui`)
 
-![The admin console's overview](/img/screenshots/admin/overview.png)
+![The admin Overview shows library totals and the Server card with separate away and home addresses](/img/screenshots/admin/overview.png)
 
 The admin console is a single-page app in the **Shelf** design. Its plan lives
 in the workspace's `ADMIN-CONSOLE-PLAN.md`, and its design system in

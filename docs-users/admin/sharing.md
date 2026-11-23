@@ -12,7 +12,7 @@ To give someone a whole library, you don't need a share: pick the library when
 you [invite them](users-and-invites.md#inviting-someone), or use **Give
 access** on their [Access tab](users-and-invites.md#access).
 
-![The Shares page](/img/screenshots/admin/shares.png)
+![The Shares page lists Folder share (Fiction) and whole-library access to Books with the Folk Tales folder from Inbox](/img/screenshots/admin/shares.png)
 
 ## How access works
 

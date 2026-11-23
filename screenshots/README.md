@@ -148,9 +148,21 @@ through the API with a daily schedule and skip rules. The taller
 `admin/library-edit.png` includes the explanation under **Book details come from**.
 The Inbox is added after the main Books screens so they keep showing only the seeded library.
 
+`admin/shares.png` is taken once the Inbox exists. It writes, with SQLite, the
+rules an older server allowed: a former grant (**Library: Fiction**, described
+"Whole library", no grant mark, sharing Jack London), which the console lists as
+**Folder share (Fiction)**, and an extra Inbox folder (Folk Tales) on the Books
+grant. Both are deleted right after the shot. `admin/overview.png` answers
+`/api/v1/addresses` in the browser with a public and a home address, so the
+Server card shows both lines without changing the server's settings (the
+invite shots keep the capture's own address).
+
 `library-report.mjs` starts the same `SERVER_BIN` with a private data directory
-for the metadata and large-library shots. Its loopback metadata service answers
-the lookup for the archive's copy of **A Christmas Carol** with 404 and
+for the metadata, large-library and Folders shots. For `admin/folders.png` it
+copies the seeded library and adds more than 10,000 one-second parts (hard
+links to one encoded clip) to **A Christmas Carol**, so the page shows both
+its listing limits: totals over the first 10,000 items and the first 500 files.
+Its loopback metadata service answers the lookup for the archive's copy of **A Christmas Carol** with 404 and
 also returns 404 when the server reports that ASIN. The book has an ISBN set
 through the admin API. The fixture waits for the declined report (`not_offered`)
 and the scheduler's next daily tick. `admin/settings-metadata.png` shows the
@@ -546,6 +558,10 @@ server branch without writing into it:
 SERVER_BIN=/tmp/shots/audiosilo FRONTEND=../../audiosilo-frontend-wt \
   SKIP_ADMIN=1 SKIP_META=1 SHOTS_ONLY=web-player/ ./run.sh
 ```
+
+`WEB_DIR=<dir>` uses a web export built elsewhere instead of `FRONTEND/dist`.
+`run.sh` builds `FRONTEND/dist` when it is missing, but stops when a given
+`WEB_DIR` holds no `index.html`.
 
 `SHOTS_PORT`, `SHOTS_SETUP_PORT` and `SHOTS_META_PORT` move the three servers
 off 8790 / 8791 / 8795 when a run in another checkout (a worktree, say) already

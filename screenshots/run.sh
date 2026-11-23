@@ -52,6 +52,7 @@
 #              is built when missing, else used as it is, so rebuild it after a
 #              frontend change; relative paths are taken from where run.sh
 #              starts),
+#            WEB_DIR=<dir> (use a web export built separately from FRONTEND),
 #            BRIDGE=<dir> (the audiosilo-bridge checkout, default the sibling
 #              clone; without it the Bridge page shots keep
 #              their previous images), SKIP_BRIDGE=1 (skip them anyway),
@@ -73,6 +74,7 @@ abspath() { case "$1" in /*) printf '%s\n' "$1" ;; *) printf '%s\n' "$PWD/$1" ;;
 SERVER="$(abspath "${SERVER:-$WORKSPACE/audiosilo-server}")"
 SERVER_BIN="$(abspath "${SERVER_BIN:-$SERVER/bin/audiosilo}")"
 FRONTEND="$(abspath "${FRONTEND:-$WORKSPACE/audiosilo-frontend}")"
+WEB_DIR="$(abspath "${WEB_DIR:-$FRONTEND/dist}")"
 META="$(abspath "${META:-$WORKSPACE/audiosilo-meta}")"
 META_COMMUNITY="$(abspath "${META_COMMUNITY:-$WORKSPACE/audiosilo-meta-community}")"
 BRIDGE="$(abspath "${BRIDGE:-$WORKSPACE/audiosilo-bridge}")"
@@ -119,9 +121,13 @@ else
 fi
 
 # ── Web export ──────────────────────────────────────────────────────────────
-if [ ! -f "$FRONTEND/dist/index.html" ]; then
+if [ ! -f "$WEB_DIR/index.html" ]; then
+  if [ "$WEB_DIR" != "$FRONTEND/dist" ]; then
+    echo "WEB_DIR $WEB_DIR does not contain a built web export (index.html)"
+    exit 1
+  fi
   echo "==> no web export found; building via scripts/build-web.sh"
-  (cd "$SERVER" && FRONTEND_DIR="$FRONTEND" DEST="$FRONTEND/dist" scripts/build-web.sh)
+  (cd "$SERVER" && FRONTEND_DIR="$FRONTEND" DEST="$WEB_DIR" scripts/build-web.sh)
 fi
 
 # Whether SHOTS_ONLY (see lib.mjs) keeps <file>: unset keeps everything, else
@@ -326,7 +332,7 @@ demo:
   library: "Books"
   idle_ttl: "24h"
 EOF
-AUDIOSILO_WEB_DIR="$FRONTEND/dist" "$SERVER_BIN" --data "$DATA" \
+AUDIOSILO_WEB_DIR="$WEB_DIR" "$SERVER_BIN" --data "$DATA" \
   > "$CACHE/server.log" 2>&1 &
 MAIN_PID=$!
 
@@ -341,7 +347,7 @@ if [ "$WANT_SETUP" = 1 ]; then
   echo "==> starting --setup server on :$SETUP_PORT"
   rm -rf "$SETUP_DATA" && mkdir -p "$SETUP_DATA"
   AUDIOSILO_BIND="127.0.0.1:$SETUP_PORT" AUDIOSILO_TLS_MODE=off \
-    AUDIOSILO_WEB_DIR="$FRONTEND/dist" \
+    AUDIOSILO_WEB_DIR="$WEB_DIR" \
     "$SERVER_BIN" --setup --data "$SETUP_DATA" \
     > "$CACHE/setup.log" 2>&1 &
   SETUP_PID=$!
@@ -442,13 +448,13 @@ if [ "${SKIP_ADMIN:-0}" != "1" ]; then
   echo "==> capturing admin console + public pages"
   AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" SERVER_BIN="$SERVER_BIN" \
     MIRROR_ORIGIN="${MIRROR_PASSWORD:+http://127.0.0.1:$MIRROR_PORT}" \
-    MIRROR_PASSWORD="${MIRROR_PASSWORD:-}" WEB_DIR="$FRONTEND/dist" node capture-admin.mjs
+    MIRROR_PASSWORD="${MIRROR_PASSWORD:-}" WEB_DIR="$WEB_DIR" node capture-admin.mjs
 
   echo "==> capturing the first-run setup flow"
   if [ "$WANT_SETUP" != 1 ]; then
     echo "  no setup shots wanted, skipped."
   elif [ -n "$SETUP_URL" ]; then
-    SETUP_URL="$SETUP_URL" WEB_DIR="$FRONTEND/dist" node capture-setup.mjs
+    SETUP_URL="$SETUP_URL" WEB_DIR="$WEB_DIR" node capture-setup.mjs
   else
     echo "  ! no setup URL in $CACHE/setup.log: the setup shots keep their previous images"
   fi
@@ -475,7 +481,7 @@ auth:
     client_id: "audiosilo"
     client_secret: "capture-only-secret"
 OIDC_CONFIG
-  AUDIOSILO_WEB_DIR="$FRONTEND/dist" "$SERVER_BIN" --data "$OIDC_DATA" > "$CACHE/oidc.log" 2>&1 &
+  AUDIOSILO_WEB_DIR="$WEB_DIR" "$SERVER_BIN" --data "$OIDC_DATA" > "$CACHE/oidc.log" 2>&1 &
   OIDC_PID=$!
   wait_healthy "http://127.0.0.1:$OIDC_PORT/healthz" "$CACHE/oidc.log" "single sign-on server"
   OIDC_PASSWORD="$(admin_password "$CACHE/oidc.log")"

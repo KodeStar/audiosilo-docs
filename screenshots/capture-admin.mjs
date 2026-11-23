@@ -36,7 +36,7 @@ import http from 'node:http';
 import {cp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
-import {captureLibraryReport} from './library-report.mjs';
+import {captureFolders, captureLibraryReport} from './library-report.mjs';
 import {
   CACHE,
   DAY,
@@ -47,6 +47,7 @@ import {
   addHousehold,
   apiClient,
   around,
+  fitViewportTo,
   fitViewportToPage,
   fitted,
   isoAgo,
@@ -102,7 +103,7 @@ const sqlite = sqliteAt(DB);
 let inviteCode = '';
 let samId = null;
 let library = null; // the seeded library ({id, name, root, ...})
-let firstBook = null; // the first book of GET /admin/books ({library_id, path, is_folder, ...})
+let firstBook = null; // the first book of GET /admin/books ({library_id, path, ...})
 // Named, so People > Devices lists it as the admin's tablet (it sends no app
 // header, so it also shows how an app from before the header reads).
 const login = await api(null, 'POST', '/auth/login', {username: 'admin', password: PASSWORD, device_name: 'Kitchen tablet'});
@@ -468,11 +469,23 @@ await step('sign in', async () => {
 });
 
 await step('overview', async () => {
-  await open(page, '/');
-  await shoot(page, 'admin/overview.png');
+  if (!wanted('admin/overview.png')) return;
+  const addresses = {away: 'https://books.example.org', home: 'http://hearthside.local:8080'};
+  const route = '**/api/v1/addresses';
+  await page.route(route, (r) => r.fulfill({json: addresses}));
+  try {
+    await open(page, '/');
+    const card = page.getByRole('region', {name: 'Server', exact: true});
+    await card.getByText(addresses.away, {exact: true}).waitFor();
+    await card.getByText(addresses.home, {exact: true}).waitFor();
+    await fitted(page, () => fitViewportTo(page, card), () => shoot(page, 'admin/overview.png'));
+  } finally {
+    await page.unroute(route);
+  }
 });
 
 await step('command palette', async () => {
+  await open(page, '/');
   await page.keyboard.press('Control+k');
   await page.getByPlaceholder('Search books, people, settings, or type a command').waitFor({timeout: 8000});
   await sleep(600);
@@ -569,19 +582,7 @@ await step('series', async () => {
   }
 });
 
-await step('folders', async () => {
-  const libId = firstBook?.library_id ?? library?.id;
-  if (!libId) throw new Error('no library');
-  // The first book's own folder (its author folder opens above it), so the
-  // detail shows the detection choice; an author folder holds no audio of its
-  // own and has nothing to choose.
-  const folder = firstBook?.is_folder ? firstBook.path : (firstBook?.path ?? '').split('/').slice(0, -1).join('/');
-  const q = folder ? `&folder=${encodeURIComponent(folder)}` : '';
-  await open(page, `/library/folders?library=${libId}${q}`);
-  await page.getByText('How should AudioSilo read this folder?').waitFor({timeout: 8000}).catch(() => {});
-  await sleep(800);
-  await shoot(page, 'admin/folders.png');
-});
+await step('folders', () => captureFolders(browser));
 
 await step('libraries', async () => {
   await open(page, '/library/libraries');
@@ -688,11 +689,6 @@ await step('invites', async () => {
   await shoot(page, 'admin/invites.png');
 });
 
-await step('shares', async () => {
-  await open(page, '/people/shares');
-  await shoot(page, 'admin/shares.png');
-});
-
 await step('server settings', async () => {
   await open(page, '/server');
   await page.getByLabel('Server name', {exact: true}).waitFor({timeout: 8000});
@@ -793,6 +789,37 @@ await step('provision an Inbox library with issues', async () => {
     });
   }
   console.log('  ✓ provisioned (Inbox library with one of each issue)');
+});
+
+// An older server allowed extra folders on a library grant. Stage its stored
+// rules after Inbox exists and remove them before the next capture.
+await step('shares', async () => {
+  if (!wanted('admin/shares.png')) return;
+  const {shares} = await api(token, 'GET', '/admin/shares');
+  const grant = shares.find((s) => s.whole_library_id === library.id);
+  if (!grant || !inbox) throw new Error('the Books grant and the Inbox library are required');
+  const former = sqlite(`.bail on
+    BEGIN;
+    INSERT INTO shares(name, description, read_only, created_at)
+      VALUES ('Library: Fiction', 'Whole library', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now')) RETURNING id;
+    INSERT INTO share_paths(share_id, library_id, path)
+      VALUES (last_insert_rowid(), ${library.id}, 'Jack London');
+    INSERT INTO share_paths(share_id, library_id, path)
+      VALUES (${grant.id}, ${inbox.id}, 'Folk Tales');
+    COMMIT;`).trim();
+  try {
+    await open(page, '/people/shares');
+    const nav = page.getByRole('navigation', {name: 'Shares'});
+    await nav.getByText('Folder share (Fiction)', {exact: true}).waitFor();
+    await nav.getByText(/Whole library · Inbox › Folk Tales/).waitFor();
+    await shoot(page, 'admin/shares.png');
+  } finally {
+    sqlite(`PRAGMA foreign_keys = ON;
+      BEGIN;
+      DELETE FROM share_paths WHERE share_id = ${grant.id} AND library_id = ${inbox.id} AND path = 'Folk Tales';
+      DELETE FROM shares WHERE id = ${former};
+      COMMIT;`);
+  }
 });
 
 await step('health issues', async () => {

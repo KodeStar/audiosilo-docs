@@ -40,7 +40,7 @@ and your browser offers to install it.
 
 ## The layout
 
-![The console's overview](/img/screenshots/admin/overview.png)
+![Overview shows who is listening and lists the away and home addresses on the Server card](/img/screenshots/admin/overview.png)
 
 The bar along the top of every page has:
 
