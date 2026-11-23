@@ -1,6 +1,6 @@
 {
   "repo": "KodeStar/audiosilo-server",
-  "ref": "5e846e5bf001cd9605c83e7374f6943190803d44",
+  "ref": "acd10619a397dfc56aaea9e916f0cfd65b9739e6",
   "capabilities": [
     "addresses",
     "admin_ui",
@@ -161,7 +161,6 @@
     "/api/v1/admin/stats",
     "/api/v1/admin/support",
     "/api/v1/admin/system",
-    "/api/v1/admin/upcoming/check",
     "/api/v1/admin/update",
     "/api/v1/admin/update/check",
     "/api/v1/admin/users",
