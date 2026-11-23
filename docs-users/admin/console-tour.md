@@ -53,6 +53,8 @@ The bar along the top of every page has:
   menu and your account menu.
 
 On a phone the destinations move to a tab bar at the bottom of the screen.
+With the keyboard, a visible ring marks the button, switch, tab or choice in
+focus.
 
 ![The console on a phone](/img/screenshots/admin/overview-phone.png)
 
@@ -88,10 +90,14 @@ The overview is the console's home page. It shows:
   **Triage** opens [Library health](health.md).
 - **Books per library**. A count that looks wrong is a cue to check that
   library's [folder detection](libraries.md#folder-detection).
-- **Server**: the version, whether a newer one is out, and which features are
-  on. **Address** shows the server's **Public address** and **Home address**
-  from [General](server.md#general). With neither set, it shows this browser's
-  address.
+- **Server** shows the version, available updates and enabled features.
+  **Address** lists the public address for use away from home. A different
+  home address gets its own line marked **home network**. With no home address
+  set, a home-network address you opened the console at (such as
+  `http://192.168.1.20:8080`) is shown on that line. With neither set and no
+  such address, the card shows the address you opened, with the note "This
+  browser's address. Set the server's own in Server settings." You can set
+  both in [Server > Settings > General](server.md#general).
 
 A notice appears at the top when a library's folder can't be read (see
 [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing)).

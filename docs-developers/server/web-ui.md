@@ -521,6 +521,9 @@ all six languages.
 - Each destination has a section bar. Phones get a bottom tab bar.
 - Every section has a screen (`PAGES` in `features/section-page.tsx`). An
   unknown section is a 404.
+- Buttons, checkboxes, switches, tabs and radio cards take `focusRing`
+  (`components/ui/focus-ring.ts`), the keyboard-only ring the style guide asks
+  for on every interactive element.
 
 #### ⌘K palette
 
@@ -639,7 +642,11 @@ metadata is off:
 The screen shows a folder tree per library (`/fs`) and the selected folder's
 detection choice (`…/folder-override`). It saves the choice through
 `setFolderMode` in `src/api/hooks.ts`, which notes the rescan and refetches the
-listings.
+listings. Each folder below the root asks for its first page with
+`/fs?detail=1`, so that page names the folder itself (`folder`), which lets a
+direct link open a folder past its parent's first page. `FolderDetail`
+(`folder-detail.tsx`) reads the later pages until the folder's first 10,000
+entries (`TOTALLED`) are in, totals their audio files and lists the first 500.
 
 `joinChoices` (`features/library/folders/folders-model.ts`) decides which
 choices a folder offers:

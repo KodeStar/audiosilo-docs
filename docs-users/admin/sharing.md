@@ -76,9 +76,12 @@ them. The folders will change; the purpose won't.
 
 - Whole-library access appears under **Whole libraries** on the Shares page.
   Change who has it from each person's [Access tab](users-and-invites.md#access).
-  A folder listed there beside the whole library has its own **✕** to remove
-  it. An entry that no longer gives a whole library is listed with the named
-  shares.
+  An older grant can list extra folders, even from other libraries. Select the
+  grant and click **✕** beside an extra folder to remove it for everyone with
+  the grant. They keep access to the whole library.
+- An older grant that no longer gives whole-library access appears among the
+  named shares. For example, **Folder share (Fiction)** lists the folders it
+  still shares, even if you've deleted the Fiction library.
 - Share a book by its own folder (or file), not a folder inside it. A share
   holding only one disc folder, or one file of a multi-file book, doesn't give
   access to the book (see

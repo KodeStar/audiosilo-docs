@@ -107,10 +107,14 @@ import with **Undo**.
 
 ![A person's Access tab](/img/screenshots/admin/person.png)
 
-What this person can listen to: whole libraries and [shares](sharing.md).
+The **Access** tab lists this person's whole libraries and shares. A
+whole-library entry also lists any extra folders an older grant gives, and an
+entry such as **Folder share (Fiction)** is an older grant explained in
+[Shares](sharing.md#good-to-know).
 
 - **Give access** adds a library or share.
-- **Remove** takes one away.
+- **Remove** takes that library or share away from this person. To remove just
+  an extra folder and keep whole-library access, open [People > Shares](sharing.md#good-to-know).
 
 They see the change the next time their app refreshes. Someone with no access
 can sign in but sees no books. Admins always see everything.

@@ -99,7 +99,12 @@ shares listened in the last day. Otherwise it renders nothing.
 - Its action, "Sharing settings", opens the Household page (`openHousehold()`).
 - Each `HouseCard` shows the person's avatar and name, the book's title, the state line
   and the book's cover. A static green dot follows the name while they are listening
-  now. Tapping the card opens the book on that connection (`openBook`).
+  now. By default the card calls `openBook` on that connection when tapped.
+- When `row.outside_grant` is true, `HouseCard` renders a non-interactive
+  `RowSurface` with the same screen-reader label. It passes `noArt` to
+  `BookCover`, which displays a downloaded cover if available or the title
+  fallback immediately. It requests neither a thumbnail nor full-size artwork.
+  Rows from servers that omit the field keep the usual cover and open action.
 
 ### `InTheHouseCard({ connectionId, libraryId, path })`
 

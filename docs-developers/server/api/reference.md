@@ -1109,6 +1109,7 @@ A transient fault while opening or listing a folder returns 503 `share_not_answe
 | `path` | string | `""` (library root) | directory to list, relative to the root; over 4096 bytes is `400 path is too long` |
 | `offset` | int | `0` | |
 | `limit` | int | `200` | values ≤ 0 or > 500 fall back to 200 |
+| `detail` | int | omitted | An admin can pass `1` for a folder below the root of a book library. With it, a folder the library's ignore rules skip answers `404`. Members get the ordinary listing even with `detail=1`. |
 
 ```json
 {
@@ -1143,16 +1144,23 @@ A transient fault while opening or listing a folder returns 503 `share_not_answe
 }
 ```
 
-`next_offset` is present when more entries remain. The book annotation fields
-(`is_book`, `title`, `author`, `series`, `series_index`, `series_index_end` for a
-range as on a book, `duration`) are
-omitted for plain directories/files; `override` (`"book"` or `"collection"`)
-appears when an explicit folder-detection override is set (an admin concern; see
+`next_offset` is present when more entries remain. In the ordinary listing,
+plain files and directories omit the book fields (`is_book`, `title`, `author`,
+`series`, `series_index`, `series_index_end` for a range, and `duration`).
+`override` (`"book"` or `"collection"`) appears when an explicit
+folder-detection override is set (an admin concern; see
 [Scanner](../scanner.md)). `split_discs: true` marks a folder whose audio is
 only in disc folders directly in it (`CD1`, `CD2`, ...), each indexed as its
 own book, which a `book` override would join into one (see
 [Joined books](../scanner.md#joined-books-disc-sets)); it is sent to **admin**
 callers only and omitted otherwise, so the player's listing is unchanged.
+
+With `detail=1`, the first page (`offset=0`) includes a top-level `folder`
+object. It describes the requested directory itself with the same fields and
+book annotations as a directory in `entries`. Later pages omit `folder`.
+On any detail page, parts of a folder book can carry their indexed `duration`
+in seconds. This includes files in the disc folders of a joined book.
+Files with no known length omit `duration`.
 
 **Order.** Directories come first, then files, each group in **natural order**
 (`naturalLess`, the order a folder book's files play in, so `2` lists before `10`;
@@ -5598,12 +5606,17 @@ listening done since a person last turned sharing on is shown.
   `paused` within 10 minutes (the session gap), else `recent`. The window covers a
   player that saves every 60 s in the background or on a download
   ([data model](../data-model.md#listening-sessions-how-they-are-derived)).
-- `title` - the index's title, else the path's last segment (a book no longer
-  indexed). From 2.7.0 a path that is no book of its own but sits in one (a
-  session saved on a disc folder, `Book/CD1`, before the discs were joined)
-  takes the holding book's title and author, when the caller's scope grants that
-  book; `author` and `duration` are `null` when unknown (`duration` falls back
-  to the session's own).
+- `title` comes from the indexed book. From 2.7.0 a session saved on a disc
+  folder such as `Book/CD1` takes the joined book's title and author if the
+  caller can read it. Otherwise the title falls back to the path's last
+  segment. The server uses the session's duration if the index has none. Unknown values for
+  `author` and `duration` are `null`.
+- `outside_grant` is an optional boolean. In a book library, the server sends
+  `true` when the session path is in scope but the caller can't read any indexed
+  book at or above that path. For example, the grant may cover only one disc
+  of a joined book, or the book may have left the index. Clients should show
+  the row without requesting artwork or opening the book. Treat an absent
+  field as `false`, including on older servers.
 - `position` - seconds into the whole book; `chapter` and `chapter_index` (0-based)
   are the chapter at that position, as the admin's live sessions show it: both
   `null` for a book with one chapter or none, and `chapter` alone `null` for a
