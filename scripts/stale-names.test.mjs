@@ -80,11 +80,16 @@ type Library struct {
 
 type MetaConfig struct {
 	Region string \`yaml:"region"\`
+	MirrorSettings struct {
+		Interval time.Duration \`yaml:"interval,omitempty"\`
+	} \`yaml:"mirror,omitempty"\`
 }
 `;
   assert.deepEqual(configKeysFrom([src]), [
     'libraries',
     'metadata',
+    'metadata.mirror',
+    'metadata.mirror.interval',
     'metadata.region',
     'name',
     'tls',

@@ -1074,9 +1074,9 @@ the artifact predates its table.
 
 ### Reading a newer artifact
 
-The opposite direction matters as much. Mirror-mode AudioSilo servers download the
-newest data release once a day and read it with the `pkg/query` their own build
-carries. So they routinely read an artifact **newer** than their code, which is
+Mirror-mode AudioSilo servers check for a new data release weekly by default.
+They read each new copy with the `pkg/query` their own build carries. So they
+routinely read an artifact **newer** than their code, which is
 why schema changes must stay additive (the rule is in the
 [cross-repo contract](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam)).
 

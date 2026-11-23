@@ -384,8 +384,8 @@ if [ "${SKIP_META:-0}" != "1" ]; then
   # A third server in metadata mirror mode, for the admin/system-mirror.png
   # shot. Its local copy is seeded with the artifact just built (a hard link
   # where it can be) and a state.json saying it was downloaded and checked just
-  # now, so the mirror opens it and its next check is a day away: nothing is
-  # downloaded. No library, no update check, and its HTTPS goes to a proxy on a
+  # now, so the mirror opens the seeded copy and schedules its next check for
+  # a week later. No library, no update check, and its HTTPS goes to a proxy on a
   # closed port, so even a copy it refused (in the background, after it is
   # healthy) can't be replaced by a real download. Started now so the copy opens
   # (seconds: query.Open reads all of it) while metaserve starts.

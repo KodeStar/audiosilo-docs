@@ -707,10 +707,11 @@ There is no separate "re-apply" step after a scan. In **one transaction**,
 
 1. writes the values the scan found, and records them in `books.scanned`
    (field to value);
-2. replaces the files and chapters;
-3. layers any path-keyed `book_enrichment` (ASIN, ISBN) and any admin metadata
-   or chapter-title overrides on top;
-4. refreshes the FTS row (`catalog.refreshEffective`).
+2. replaces the file rows and records the scan's chapter list;
+3. applies any path-keyed `book_enrichment` (ASIN, ISBN) and admin metadata
+   overrides;
+4. selects the effective chapters, applies chapter-title overrides and refreshes
+   the FTS row in `catalog.refreshBook`.
 
 So an attached ASIN survives a rebuild, and an edited field acts as a lock. The
 rescan re-reads the file, but the edit is applied again before the transaction
@@ -1742,13 +1743,14 @@ The two kinds of book:
   Book offsets accumulate across parts, and the book's duration is the sum. So
   a chaptered m4b and a folder of split mp3s render identically in a player.
 
-These are the scan's own chapters. Two other sources can replace them, outside
-the scan:
+The server records the scan's own chapters in `books.scanned_chapters`.
+It checks the following sources before using them.
 
+- An [admin's edited list](community-chapters.md#edited-chapters) takes
+  precedence while it fits the book's files.
 - A matched book can have a community recording's chapter list fitted onto its
-  audio (see [Community chapters](community-chapters.md)). `UpsertBook` always
-  writes the scan's chapters, and `refreshEffective` puts the community's back
-  over them in the same transaction when they should stand.
+  audio. When an unchanged fit still applies, its chapter rows stay in place
+  across the rescan (see [Community chapters](community-chapters.md)).
 - A book with no chapters of its own can get the chapters a Bridge found in its
   narration, from its `.audiosilo/chapters.json` (below; see
   [Generated chapters](community-chapters.md#generated-chapters)).

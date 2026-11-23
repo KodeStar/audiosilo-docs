@@ -345,15 +345,19 @@ These implement [Community chapters](community-chapters.md).
   placement, and snapping to pauses. It does no I/O of its own.
 - `chaptercheck` is its `Runner`. It makes a background pass every 10 minutes,
   and on a `Kick` after any book change (through `Catalog.OnBookChange`). It
-  also checks one book on request. It fetches the list through `internal/meta`,
-  finds pauses with ffmpeg (`media.DetectSilences`) and records the outcome
-  through `catalog`.
+  also checks one book on request. It fetches the list through `internal/meta`.
+  For each file with boundaries to check, `media.DetectSilences` runs ffmpeg
+  once, falling back to one run per window on older ffmpeg versions or builds
+  without the concat demuxer. When probe time runs out, the runner still saves
+  the fit through `catalog`, with the remaining boundaries at their estimated
+  positions.
 
 ### `internal/metamirror`
 
-Mirror mode's runner (`metadata.mode: mirror`). Once a day it downloads the
-community metadata database from audiosilo-meta's data releases on GitHub
-(through audiosilo-meta's public `pkg/release`) into a local copy in
+In mirror mode (`metadata.mode: mirror`), the runner checks audiosilo-meta's
+GitHub data releases weekly by default. The launcher reads
+`metadata.mirror.interval` at startup. When a new release is available, the
+runner downloads the full database through `pkg/release` into
 `<data>/meta-mirror/`. It serves metaserve's own JSON API handler (`pkg/query`)
 over that copy. `internal/meta` puts it in front of the remote service
 (`meta.Service.SetMirror`), and the remote service still answers whatever the

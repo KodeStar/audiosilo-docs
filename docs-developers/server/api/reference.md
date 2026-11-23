@@ -3171,14 +3171,21 @@ label built from such a number names this book's chapter, not the work's.
 #### Previous books and spoiler gating
 
 `include=previous` adds `previous`: the works **before** this one in its series,
-nearest first, at most five, each the same shape as `work`. They come from each
-rail's **main view** only (an alternate order's earlier books are exactly the
-reading-order spoiler the main view avoids): every entry whose numeric position is
-below the current work's. A rail whose own position is not a number contributes
-nothing, nor does an unnumbered entry; a work on two rails counts once. Each is
-fetched and cached like [`/meta/work`](#get-apiv1metawork), and one that fails is
-left out rather than failing the envelope. `previous` is omitted when there are
-none.
+nearest first, at most five, each the same shape as `work`. Only a rail's **main
+view** contributes. A work qualifies if its position, or the end of its range,
+falls before the current work starts. The server skips unnumbered positions and
+counts a work on two rails once.
+
+Once the main metadata is ready, the server waits up to five seconds in total
+for the earlier works. The response includes whichever works are ready and
+omits `previous` if none are ready. An unfinished or failed lookup leaves the
+rest of the response usable.
+
+Each work is cached as for [`/meta/work`](#get-apiv1metawork). Requests for
+the same earlier work share a lookup that can run for up to 15 seconds from
+its start and fill the cache after the response. A later request can then
+include that work. The server shares up to 16 lookups at once. Beyond that
+limit, a new lookup ends when its own request ends or its lookup time expires.
 
 `spoilers=hide` gates the envelope by the **caller's own saved progress** on this
 book (the server's progress record, mapped onto the book's chapters by
@@ -7737,9 +7744,11 @@ book path).
 - `community_checking` - a check of this book is running now (`POST
   …/book/community-chapters`, or the background pass); poll the page until it
   is `false`.
-- `community_check_failed` - present and `true` when the book's last check
-  failed (the community service didn't answer, or the check ran out of time):
-  `community_chapters` is then the check before it.
+- `community_check_failed` is present and `true` when the book's last check
+  failed, for example if the community service did not answer. In that case
+  `community_chapters` holds the preceding check. If only the pause search
+  runs out of time, the server saves the fit with the remaining chapter starts
+  at their estimated positions.
 - `match_query` - the text the console's
   [match dialog](#get-apiv1adminlibrariesidbookmatch) opens its search box
   with (`meta.SearchPrefill`). Always present (`""` for a book with nothing to
