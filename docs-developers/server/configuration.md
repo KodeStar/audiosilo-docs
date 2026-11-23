@@ -568,6 +568,7 @@ of the service's database and answers the same questions itself (see
 | `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, and `GET /libraries/{id}/meta` and `GET /meta/work` both return 404. The `metadata` capability reports false, so players hide the enriched-book material entirely. The key seeds the initial state only. An admin can switch it at runtime (see below) |
 | `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled.** Mirror mode still needs it, because it is the fallback and the site links (`web_url`, the attribution's `source_url`) name it |
 | `metadata.mode` | string, `"remote"` | Where the lookups are answered. `remote` asks `base_url` for each book. `mirror` keeps a local copy of the service's database in `<data>/meta-mirror/` and answers from it (see [Mirror mode](#mirror-mode-metadatamode-mirror)). Any case, stored lower case. Empty (a `config.yaml` written before the key existed) reads as `remote`. Any other value is a config error naming the allowed ones. **Read at start** (a restart setting) |
+| `metadata.mirror.interval` | duration string, one week | How long after a successful check [mirror mode](#mirror-mode-metadatamode-mirror) checks for a new data release. Absent or zero (`0`, `0s` or `"0"`) means one week. Anything else must be a duration of at least `1h` (`48h`, say), or it is a config error; a bare number other than `0` (`3600`) is refused too. **Read at start**, from the config file only (no environment variable or console setting) |
 | `metadata.region` | string, `""` | The Audible marketplace a community match prefers when a recording sells in several. One of `us`, `uk`, `ca`, `au`, `de`, `fr`, `es`, `it`, `jp`, `in`, `br` (the community metadata's region vocabulary), any case, stored lower case. `""` means no preference, so the US store's ASIN comes first. The region orders each match candidate's `asins` (the preferred store's, then `us`, then the rest). It breaks a runtime tie between recordings in favour of the one selling there, and it is what a [bulk match](api/reference.md#bulk-community-matching) repick looks for. It says nothing about a library's language, because a match sends only the book's own. Applies live. Until it is chosen here, in the environment or by an admin's save (`metadata.region_chosen` on `GET /admin/settings`), the console offers the store nearest the admin's browser |
 | `metadata.report_unknown` | bool, `false` | The opt-in daily report of unknown Audible ASINs (see [The unknown-ASIN report](#the-unknown-asin-report-metadatareport_unknown)). Runs only while `metadata.enabled` is on too, and never on a demo server. Applies live. In the console it is **Server > Settings > Community metadata**, *Help complete the community database* (setting id `metadata.report_unknown`), greyed out while the lookup is off. `AUDIOSILO_METADATA_REPORT_UNKNOWN` wins at every start and locks it |
 
@@ -718,8 +719,17 @@ folder is derived data. It is **not** in
 [database backups](backups-and-notifications.md#backups-internalbackup), which
 hold the database only.
 
-**Schedule.** The mirror asks for the release list at most once a day, measured
-from the `checked_at` recorded on disk, so a restart does not download again.
+**Schedule.** The mirror checks GitHub for a new data release once a week, or
+every `metadata.mirror.interval`, measured from the `checked_at` recorded on
+disk, so a restart does not check again. A check that finds the copy's own
+release downloads nothing. To check every two days:
+
+```yaml
+metadata:
+  mode: mirror
+  mirror:
+    interval: 48h
+```
 
 - A server with no copy checks 30 seconds after start.
 - A failed check is retried after an hour.
@@ -769,13 +779,12 @@ while the current copy keeps answering.
 
 **Sizes and cost** (measured October 2026, schema 7, about 281,000 works):
 
-- The gz asset is 444 MB, and the copy about 1.8 GB on disk (1,755,340,800 bytes).
+- Each new release is a full download: the gz asset is 444 MB, and the copy
+  about 1.8 GB on disk (1,755,340,800 bytes).
 - The gz is streamed and never kept, so a first download peaks at about the
   copy's size.
 - An update holds the old copy and the new one (about 3.5 GB) until the swap,
   and the disk guard wants about 2.5 GB free before it starts.
-- Data releases come several times a day, so in practice every daily check
-  downloads a new copy (about 444 MB a day).
 - Download, verification and opening took about 20 s on a fast connection.
 - Once the copy is ready, an uncached book lookup took 5-40 ms, against
   170-350 ms from meta.audiosilo.app.
@@ -1338,7 +1347,8 @@ console's Server > About and Health > System. `internal/launcher` starts one
   isn't positive (rejected loudly rather than silently replaced by 24h);
 - metadata enabled with an empty or non-absolute-`http(s)` `metadata.base_url`;
   a `metadata.region` that isn't one of the marketplace codes; a `metadata.mode`
-  other than `remote` or `mirror`;
+  other than `remote` or `mirror`; a `metadata.mirror.interval` that is negative,
+  above zero but under `1h`, or a bare number other than `0`;
 - a `backups.schedule` that isn't one of the forms above, a `backups.keep`
   outside 1-365, or a `backups.dir` that isn't an absolute path;
 - a `scan.concurrency` outside 0-64;

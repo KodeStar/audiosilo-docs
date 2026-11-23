@@ -379,6 +379,11 @@ These screens ask it:
 - the series, author, narrator, book, episode, collection, show and folder
   pages;
 - a book's bookmarks, notes and history sections;
+- the book page's About, for its community details (`book.meta.offline` while
+  `useBookMeta`'s answer is `'offline'`), and each Previous books row once
+  opened;
+- the dialogs with server actions, through `useDialogRead`
+  ([Dialogs that read from the server](offline.md#dialogs-that-read-from-the-server));
 - Signed-in devices (`DevicesSection`) and Your household (`HouseholdMembers`);
 - Your listening (`StatsSection`), for both of its reads and for its server's
   `/server` answer. Any of the three held with nothing kept is the offline
@@ -657,7 +662,8 @@ Account's signed-in devices and API keys). The pages that read every server list
 - **Longer timeouts for upstream waits.** `nextBook`, and `bookMeta` with
   `includePrevious`, use a 30 s request timeout (the server's own request budget)
   instead of the client's 15 s. The server can spend its whole community-metadata
-  budget before it answers.
+  budget before it answers, and `previous` can hold only some of the earlier works
+  ([Previous books and spoiler gating](../server/api/reference.md#previous-books-and-spoiler-gating)).
 - **`useNextBook`** takes an optional `connectionId` like `useBook`, so the
   player (outside any route scope) can ask the playing book's own server. Its
   `enabled` flag makes it fetch only when the answer is needed. A community

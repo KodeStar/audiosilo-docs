@@ -98,6 +98,8 @@ The app remembers every server you've used. The connect screen lists them under 
 
 If the server signs this device out, a **Reconnect** button appears at the top of the screen or on the page you were using. Tap it to sign in to that server again. It shows even while you're offline, but signing in needs a connection.
 
+A dialog that can't load because the server signed you out, such as **Add to collection**, **Share**, or an admin's **Generate** or **Make read-along** confirmation, shows **Reconnect** in its place. Tapping it closes the dialog and opens sign-in.
+
 Other messages mean you're still signed in:
 
 - **isn't answering**: the server didn't answer. See [A server "isn't answering"](../troubleshooting.md#the-top-bar-says-a-server-isnt-answering).

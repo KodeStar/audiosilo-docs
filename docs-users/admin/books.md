@@ -321,10 +321,10 @@ better titled, or says why they can't be used (another edition, say). **Use the
 file's chapters** always goes back to the book's own.
 
 AudioSilo fits each community chapter onto the pause in the audio where it
-starts. This needs ffmpeg. Without it, starts may be a few seconds off. Checks
-run in the background; **Check now** runs one straight away. An ASIN in the
-tags alone isn't enough. The book must be
-[matched](health.md#asin-and-isbn-tags-are-hints) first.
+starts. This needs ffmpeg. Without it, and for some chapters of a very long
+book, starts may be a few seconds off. Checks run in the background; **Check
+now** runs one straight away. An ASIN in the tags alone isn't enough. The book
+must be [matched](health.md#asin-and-isbn-tags-are-hints) first.
 
 #### Chapters found in the narration
 
