@@ -331,6 +331,11 @@ batches:
    request of up to 60 books.
 3. The server answers with small JPEG thumbnails that are already `data:` URLs
    (server side: [Thumbnails for the admin console](media.md#thumbnails-for-the-admin-console-post-admincovers)).
+4. A cover the server answers as `pending` (still being read after 2 seconds,
+   such as one on a slow share) is asked for again, with the others pending at
+   that moment in one batch, up to `MAX_COVER_ASKS` (6) asks in all. The rest of
+   its batch shows meanwhile. One still pending after that shows no art until
+   the next load.
 
 A grid therefore costs a handful of requests and about 20 KB a cover.
 

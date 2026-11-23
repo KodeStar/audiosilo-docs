@@ -395,8 +395,10 @@ the book now:
 
 **Serving.**
 [`GET /libraries/{id}/readalong`](../server/api/reference.md#get-apiv1librariesidreadalong)
-reads the file again on every request and checks it against the book now. It never
-trusts the indexed head for the bytes it sends. It answers `404 no_readalong` for
+reads the file again on every request that sends it and checks it against the book
+now. It never trusts the indexed head for the bytes it sends. A revalidation of an
+unchanged map the index has read is checked from the indexed head and answered `304`
+without reading the map (from 2.7.0). It answers `404 no_readalong` for
 none, and `409 readalong_stale` with the reason. It takes header auth only, never
 `?token=`.
 

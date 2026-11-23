@@ -245,6 +245,19 @@ cover, instead of full-size art.
   and the player's `?size=` alike. `coverReads` (8) bounds the art being read or
   waiting to be decoded, so a slow mount never has a grid's 60 reads in flight.
   `thumbSem` (4) bounds the decodes themselves.
+- **Shared reads.** Asks for the same thumbnail at the same time share one read
+  (`sharedThumbnail`, on `API.libraryThumbs`): the first makes it, the others
+  wait for it, so a cover asked for again while a slow share is still reading it
+  never starts a second read. An ask whose leader's request ended first makes it
+  itself.
+- **A 2-second answer.** The batch makes its thumbnails apart from the request
+  and waits at most `coverBatchWait` (2 s) for them. A cover still being made
+  then is answered `"pending": true` with `data` `""`, and its read goes on into
+  the thumbnail cache, so the next ask finds it (server#225). These reads run on
+  the server's lifetime (`baseCtx`, so a stop ends them) within the request
+  timeout, and `WaitMediaCaches` waits for them (`API.coverWork`). A request
+  that ends before its answer goes stops its covers. The colours of the covers
+  made after the answer are recorded together once all are made.
 - **Version.** Each thumbnail carries a `version`: `catalog.CoverVersion` of the
   colour record's `Version`, else of its `Art`, else of the source's `Art`. A
   first thumbnail moves the row's version through `RecordCoverColors`.

@@ -615,6 +615,17 @@ Health > Jobs."
 
 ### Delivery
 
+`notify.Service.Emit` returns at once, so a sign-in or a Bridge job's end never waits on
+the database for its event (server#224). The event goes on an ordered queue (`emitQueue`,
+1024 deep) that one background goroutine records, so events are recorded in the order
+they were emitted. A burst past 1024 waits for room and never drops an event. The dedup
+check of [Announced once](#announced-once) runs there too. `Deliver`, for an event already
+recorded with its write (the podcast events), rides the same queue. `Flush` waits until
+everything queued before it is recorded, for a caller that reads the feed next (a failed
+backup, before its run is marked over). At shutdown the launcher calls `Service.Close`
+before the database closes, which records every event still queued. An event emitted after
+that is recorded on its caller's goroutine, after the queue has drained, so the order holds.
+
 The server writes the event and one `notify_outbox` row per subscribed destination in one
 transaction. Each destination receives its oldest pending event first. Other destinations can
 continue while one waits. Delivery resumes at startup and a five-minute sweep finds outstanding

@@ -2458,11 +2458,11 @@ unavailable", from two signals.
 [`GET /admin/libraries/{id}/scan`](api/reference.md#get-apiv1adminlibrariesidscan)
 reports it as `unavailable: true` until a later scan finishes without it.
 
-**A live probe.** `Scanner.RootAvailable(lib, indexed)` backs the `available`
-field of [`GET /admin/libraries`](api/reference.md#get-apiv1adminlibraries).
-It is false when the last scan stopped at the guard, or when the root is
-missing, unreadable, not answering, or empty while `indexed > 0` books are
-still indexed under it.
+**A live probe.** `Scanner.RootsAvailable(libs, indexed)` backs the
+`available` field of
+[`GET /admin/libraries`](api/reference.md#get-apiv1adminlibraries). A root is
+unavailable when the last scan stopped at the guard, or when it is missing,
+unreadable, not answering, or empty while books are still indexed under it.
 
 - The probe (`rootProber`, `internal/library/roots.go`) opens the root and
   reads at most one entry.
@@ -2475,8 +2475,13 @@ still indexed under it.
   every later check while it stays stuck. A dead mount therefore costs one
   timeout, not one per request.
 - Every finished scan drops the cached answer, so the next check looks again.
-- `Scanner.RootsAvailable` fans the probes out in parallel for the list
-  handler, so a dead share costs the whole list at most one timeout.
+- `Scanner.RootStatuses` fans the probes out in parallel, so a dead share
+  costs the whole list at most one timeout. `RootsAvailable` is its availability
+  alone. Health's list ([`GET /admin/system`](api/reference.md#get-apiv1adminsystem))
+  takes each root's availability and disk space from the same probe, so an
+  expired answer costs one new probe a root, not two (server#225). A root that
+  goes offline therefore shows within about 17 seconds: the 15 seconds an
+  answer serves, then the 2-second probe.
 
 The same list also carries each library's `ScanProgress` as `scan`, which is
 what the console polls.

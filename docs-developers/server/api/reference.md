@@ -3840,16 +3840,27 @@ when the client accepts gzip (or `304` on a matching `If-None-Match`).
 
 **Header auth only**, as [`/ebook`](#get-apiv1librariesidebook): `?token=` is
 never read, and a map is at most 16 MiB, so it stays under the request timeout.
-Every request reads the file again: a regular file in a real `.audiosilo` folder,
-never through a link, and read once more when the Bridge renamed a new map in as it
-was opened. The server checks it against the book **now**, never trusting the
-indexed copy for the bytes it sends:
+Every request that sends the map reads the file again: a regular file in a real
+`.audiosilo` folder, never through a link, and read once more when the Bridge
+renamed a new map in as it was opened. The server checks it against the book
+**now**, never trusting the indexed copy for the bytes it sends:
 
 - its head must pass the server's checks;
 - its `ebook.sha256` must be the digest of the book's ebook. The server uses the
   stored digest only while the file on disk still has the signature it was
   computed for, and otherwise hashes the file now;
 - its `audio.files` must be the book's files.
+
+From 2.7.0 a revalidation reads none of the map when it can. When
+`If-None-Match` names the map's ETag as the file is now (a look at the file,
+never through a link) and the index read that very file, the server checks the
+indexed head against the book now (the ebook's digest and the audio files, as
+above) and answers `304` without opening the map. Anything else, such as a
+changed map or one the index has not read yet, gets the full answer. A map that
+no longer fits the book is still `409 readalong_stale`. When the look at the map
+or the ebook gives up on a share that stopped answering, the revalidation
+answers `503 share_not_answering` then, rather than waiting a second time in
+the full answer.
 
 | Status | Meaning |
 |---|---|
@@ -3861,7 +3872,7 @@ indexed copy for the bytes it sends:
 | `404` | `code: "no_readalong"` (`this book has no read-along`): the book has no map, a map that fails its checks, or no ebook; the path is a part of the book, not its own; or the library is a podcast library. `no book at this path` when there is no book there |
 | `409` | `code: "readalong_stale"` with `reason` (`ebook_changed` or `audio_changed`): the map was made for another ebook or other audio; an admin makes it again |
 | `500` | `could not load the read-along`: the file is there but can't be read right now (logged) |
-| `503` | `request timed out`: the book lookup ran past the request timeout; from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the map's read, or the look at or hashing of the book's ebook, has not answered within 10 seconds (a drive or share that stopped answering) |
+| `503` | `request timed out`: the book lookup ran past the request timeout; from 2.7.0 `code: "share_not_answering"` (`Retry-After: 30`) when the map's read or look, or the look at or hashing of the book's ebook, has not answered within 10 seconds, or failed as a share does that a retry may get past (a drive or share that stopped answering) |
 
 ### `GET /api/v1/libraries/{id}/reading-progress`
 
@@ -5306,13 +5317,16 @@ run:
 2. gives each local series (library and folded series name) the community series it
    is (one or more), from its books' works' series named like it (the `/meta` rails' naming rule,
    then give or take a leading article or a trailing "Series"), looked up again
-   after 30 days or when the series gains books;
+   after 30 days or when the series gains books. A work held in several
+   libraries has its series asked for once a run;
 3. asks the metadata service's watch feed, 50 series a request, which series have
    news;
 4. reads `series/{id}` for a series it has never read, one with news, or one read
    over a week ago; a `404` marks the series gone, dropped a week later;
 5. classifies each local series against the community series (below) and replaces
-   its items.
+   its items. A series whose items come out as stored, against community series it
+   was classified against before, is not written again, so a run that finds
+   nothing new writes no items (from 2.7.0).
 
 A failed read keeps what earlier runs stored (a series is replaced only by a read
 that worked), and a failed run is tried again an hour later, up to three times.
@@ -8974,7 +8988,9 @@ Cover thumbnails for many books in one request. This is how the admin console sh
 covers in its grids, without a session token in any image URL. Each cover is
 resolved like [`GET /libraries/{id}/cover`](#get-apiv1librariesidcover): a
 custom cover, then the sidecar image, then embedded art. It never indexes a
-path on demand.
+path on demand. From 2.7.0 it answers once every cover is ready or 2 seconds
+have passed, whichever comes first, so one cover on a slow drive or share never
+holds back the rest (see `pending` below).
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|
@@ -8997,15 +9013,23 @@ Response `200`, one entry per requested book, in request order:
 {
   "covers": [
     { "library_id": 1, "path": "Andy Weir/The Martian", "data": "data:image/jpeg;base64,/9j/4AAQSkZJRg…", "version": "3f9a1c07be" },
-    { "library_id": 1, "path": "Andy Weir/Artemis", "data": "" }
+    { "library_id": 1, "path": "Andy Weir/Artemis", "data": "" },
+    { "library_id": 1, "path": "Andy Weir/Project Hail Mary", "data": "", "pending": true }
   ]
 }
 ```
 
 - `data` is a JPEG thumbnail as a `data:` URL, scaled to fit within `size` x
   `size` (never scaled up; transparency is flattened onto white). It is `""`
-  when the book has no art, the art can't be read or decoded, or no book is
-  indexed at the path (an unknown `library_id` too).
+  when the book has no art, the art can't be read or decoded, no book is
+  indexed at the path (an unknown `library_id` too), or the thumbnail is
+  `pending`.
+- `pending` - from 2.7.0, `true` when the thumbnail was still being made when
+  the answer went, 2 seconds after the request (omitted otherwise). The server
+  goes on making it into its thumbnail cache, so asking again for the book a
+  moment later returns it. An ask for a thumbnail whose read is still going
+  waits for that read and never starts a second one. A request that ends
+  before its answer goes stops its covers.
 - `version` - from 2.5.1, with every thumbnail (omitted when `data` is `""`):
   the [`cover_version`](#get-apiv1adminbooks) the book's admin row has **once
   this request's colour is recorded**. It can differ from the version on the row
@@ -10578,7 +10602,7 @@ What the console's Health > System, Server > About and Server > Logs show. All
 | `metadata.mode` | the mode the server **runs** with, `"remote"` or `"mirror"` (a saved change to the setting waits for a restart) |
 | `metadata.mirror` | mirror mode only (absent in remote mode, and when the server has no metadata service): the local copy's status, the object below |
 | `tls` | the boot `tls.mode` and `tls.hosts`, and the certificates it serves, read from their files (never generated or requested here): the self-signed pair, or one per host from the autocert cache (`issued: false` until Let's Encrypt has issued it). Empty for mode `off`. `error` is set when a certificate file couldn't be read |
-| `libraries[]` | each library's root, whether it answers (the same bounded probe as the scanner's), and `disk` (`total`, `free` to the server, in bytes) or `null` when the root doesn't answer or the OS doesn't say |
+| `libraries[]` | each library's root, whether it answers (the same bounded probe as the scanner's), and `disk` (`total`, `free` to the server, in bytes) or `null` when the root doesn't answer or the OS doesn't say. From 2.7.0 one probe a root gives both: it waits at most 2 seconds and its answer serves for 15 seconds, so a root that goes offline shows here within about 17 seconds |
 | `web_player` | as in the settings envelope |
 | `update` | the [update status](#get-apiv1adminupdate) |
 | `backups` | the backups' `status` as in [`GET /admin/backups`](#get-apiv1adminbackups) (folder, running, last attempt, latest backup, next scheduled one); `null` only for a server built without the backup service (tests), never one the launcher starts |
