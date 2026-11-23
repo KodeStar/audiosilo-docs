@@ -483,6 +483,9 @@ await step('overview', async () => {
     const card = page.getByRole('region', {name: 'Server', exact: true});
     await card.getByText(addresses.away, {exact: true}).waitFor();
     await card.getByText(addresses.home, {exact: true}).waitFor();
+    // The admin still signs in with the password the server printed: the
+    // overview's reminder to replace it is part of the shot.
+    await page.getByText('Your password came from the server log', {exact: true}).waitFor();
     await fitted(page, () => fitViewportTo(page, card), () => shoot(page, 'admin/overview.png'));
   } finally {
     await page.unroute(route);
