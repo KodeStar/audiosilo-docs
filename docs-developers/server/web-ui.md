@@ -1217,9 +1217,9 @@ The review dialog:
   written beside it (`changeParts`);
 - sends the selected scope and the effective `include` and `exclude` item IDs
   to the [apply preview](api/reference.md#post-apiv1adminmatch-runsidpreview).
-  The Apply button shows the returned `apply_count`. It waits for a successful
-  count after a change of scope or picks, and **Try again** retries a failed
-  count. Apply sends the same body and the confirmation shows the run's
+  The Apply button shows the returned `apply_count` and stays disabled until
+  the count for the current scope and picks arrives. **Try again** retries a
+  failed count. Apply sends the same body and the confirmation shows the run's
   `apply_total`.
 
 When the newest run's status changes to one that isn't working, the console

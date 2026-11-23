@@ -49,9 +49,9 @@ listeners chapter recaps and the book's community chapters.
    files: within 2% it matches, within 5% it is close.
 4. If the book was recorded more than once, pick the right **Edition**. Check
    its narrators and length against your files.
-5. Review the fields under **Take**. The server shows the community values
-   for this edition and ticks what a match run would write with **Use
-   community values**. Fields you edited and any cover the book already has
+5. Check the fields under **Take**. The dialog shows this edition's community
+   values and ticks the ones a match run with **Use community values** would
+   write. Fields you edited, and the cover when the book already has one,
    start unticked.
 6. Click **Accept** to save the changes you ticked.
 
@@ -62,21 +62,20 @@ match selected and in view. If the search didn't find it, the dialog adds it at 
 **Current match** instead of a percentage.
 
 The **Series number** follows the main **Series** you choose. If you cleared
-the main series yourself, the default ticks keep it empty. The server leaves
-the proposed main series out of **Other series** too, even when it lists
-other series the book belongs to.
+the main series yourself, the default ticks keep it empty and don't add the
+community's main series under **Other series** either.
 
 If the community no longer lists a series detail that an earlier match wrote,
 the dialog offers **Revert**. Leave it ticked to restore the value from your files.
 
-If your book has no ASIN or ISBN of its own, you can record a new work or
-recording without changing any fields. Untick all the fields and the cover,
-then click **Match to this work**. If your book already has either identifier,
-you can't record a different match with everything unticked.
+If your book has no ASIN or ISBN of its own, you can record the match without
+changing anything else: untick every field and the cover, then click **Match
+to this work**. A book with its own ASIN or ISBN can't record a different
+match this way.
 
 Accepted fields show **Community**. Choose **Revert** beside a community title
-to restore your library's title. It now shows **Edited** and starts unticked
-the next time you compare. To let automatic fills change it again, choose
+to restore your library's title. It now shows **Edited**, so the dialog leaves
+it unticked and fills keep it. To let automatic fills change it again, choose
 **Revert** beside the **Edited** title. Save or discard any unsaved edits before
 you match.
 
@@ -85,7 +84,7 @@ To match many books at once, use **Match automatically** on the Health page
 
 If the search says "meta.audiosilo.app isn't answering", try again in a minute.
 If the dialog says **The comparison didn't load**, click **Try again**.
-You can accept changes once the server returns the comparison.
+**Accept** works once the comparison loads.
 
 If the book isn't in the community database at all, it stays unmatched and
 plays as normal. The database has gaps. When nothing matches, or none of the

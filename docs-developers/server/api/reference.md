@@ -8227,6 +8227,7 @@ the console's CSP doesn't load, so the console shows it through
 
 The dialog requests a [field comparison](#get-apiv1adminbooksmatch-proposal)
 when the admin clicks **Compare fields**.
+
 Accepting a candidate takes up to two existing writes: the fields you take
 from it, the ASIN and ISBN included, with
 [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) and `source: "community"`,
@@ -8242,16 +8243,15 @@ many books at once, see [Bulk community matching](#bulk-community-matching).
 
 ### `GET /api/v1/admin/books/match-proposal`
 
-Admins use this endpoint to preview matching one indexed book to a community
-work. The server uses the same `overwrite` plan as a match run for the chosen
-work and recording.
+Previews matching one indexed book to a community work: the `overwrite` plan a
+match run would make for the chosen work and recording.
 
 | Query parameter | Meaning |
 |---|---|
 | `library_id` | Required. The book's library ID, a positive integer. |
 | `path` | Required. The indexed book's path relative to that library. |
-| `work_id` | Required. The selected candidate's community work ID. |
-| `recording_id` | Optional. The recording ID within that work. Omit it or pass an empty string to compare the work alone. |
+| `work_id` | Required. The selected candidate's community work ID, up to 200 bytes with no ASCII control characters. |
+| `recording_id` | Optional. The recording ID within that work, under the same limits. Omit it or pass an empty string to compare the work alone. |
 | `q`, `asin`, `isbn` | Optional. Pass the search text or identifier used to find the candidate. The server trims these values and accepts up to 300 characters for `q` and 20 bytes each for `asin` and `isbn`. |
 
 The server repeats the [candidate search](#get-apiv1adminlibrariesidbookmatch),
@@ -8273,10 +8273,10 @@ The `200` response is a single JSON object.
 
 | Status | Meaning |
 |---|---|
-| `400` | The library ID, path or work ID is missing or invalid, the recording ID is invalid, or a search parameter is too long. Work and recording IDs allow up to 200 bytes and reject ASCII control characters. |
+| `400` | A parameter is missing, invalid or too long. |
 | `401` | The request lacks valid authentication. |
 | `403` | The caller is signed in without the admin role. |
-| `404` | `book_not_found` means there is no indexed book at the path. `not_found` means the server could not find the work or its requested recording. An unknown library also returns `404`. If community metadata is off, the code is `metadata_off`. |
+| `404` | `book_not_found`: no indexed book at the path. `not_found`: no such work, or no such recording in it. `metadata_off`: community metadata is off. An unknown library is also a `404`. |
 | `502` | The community metadata service is unavailable. |
 
 ### Bulk community matching
@@ -8534,9 +8534,6 @@ stored) is on the working `matching` run, in the list and in
 service has asked it to wait: its progress holds meanwhile, and the console says
 the run is pausing.
 
-The [apply preview](#post-apiv1adminmatch-runsidpreview) adds `apply_count`
-to the run object for the requested scope and picks.
-
 #### `POST /api/v1/admin/match-runs`
 
 `{"library_id"?: 2, "mode"?: "match" | "repick" | "refresh" | "unknown_asin"}` (omitted, or no body at all:
@@ -8713,10 +8710,9 @@ outside `exclude` and pending `review` items in `include`. Both selections omit
 refresh items recorded as having nothing to change under that scope. Apply
 uses the same selection and returns the number it takes in `apply_total`.
 
-If a run is stuck in `applying` with no active worker, the server first
-returns it to `ready` and preserves completed items. The preview then returns
-`200` with the count Apply would take from the remaining items. It does not
-start an apply. A run that is still working returns `409 match_run_not_ready`.
+A [stuck](#bulk-community-matching) `applying` run is settled first, back to
+`ready` with its applied items kept, and the count covers the rest. The preview
+never starts an apply.
 
 | Status | Meaning |
 |---|---|
