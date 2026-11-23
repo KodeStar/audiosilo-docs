@@ -52,9 +52,13 @@ The Bridge makes read-alongs one book at a time.
 ### From the player
 
 As an admin, play the book and open the companion's
-[Text tab](../listening/companion.md#text). When there is no read-along yet, or it
-is out of date, the tab offers **Make read-along**. Confirm, and the tab shows the
-job's progress, then the text.
+[Text tab](../listening/companion.md#text). When there is no read-along yet,
+tap **Make read-along** for the estimate. When it is out of date, the button
+reads **Make the read-along again**. Once you confirm, the tab shows the job's
+progress, then the text.
+
+Offline, the confirmation shows an estimate only if it loaded one a few
+minutes before, and **Make read-along** waits until you reconnect.
 
 ## How long it takes
 

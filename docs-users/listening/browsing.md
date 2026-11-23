@@ -135,6 +135,8 @@ On your own collection you can:
 - **Delete** it. The books stay in your library.
 - Reorder or remove books, from each book's menu in the list view.
 
+If **Share** can't load the people on this server, tap **Retry**. **Save** comes back once the list loads. Offline, **Add to collection**, **Share** and the collection forms work as [With no connection](offline-downloads.md#with-no-connection) describes.
+
 On a collection someone shared with you, **Leave** removes it from your list.
 
 ### Folders

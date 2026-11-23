@@ -1,6 +1,6 @@
 ---
 title: Offline & PWA
-description: "How the player downloads books on native (expo-file-system) and web (the Cache API and a service worker): the registry store and its manifest, failures that keep finished files, the ebook and read-along map in a download, the listening-sync outbox, the offline companion (community metadata kept with a download), keeping the next books ready, the Downloads page, playing local files, and what the PWA layer covers offline."
+description: "How the player downloads books on native (expo-file-system) and web (the Cache API and a service worker): the registry store and its manifest, failures that keep finished files, the ebook and read-along map in a download, the listening-sync outbox, the offline companion (community metadata kept with a download), keeping the next books ready, the Downloads page, playing local files, what the PWA layer covers offline, and how a dialog reads offline."
 ---
 
 Offline support has two halves that meet in the middle:
@@ -1759,3 +1759,31 @@ with nothing to show renders the shared offline state
 offline banner, and everything refetches on reconnect. In the app the queries wait
 for the network the same way
 ([The online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets)).
+
+## Dialogs that read from the server
+
+A surface with server actions over a read asks `useDialogRead(query)`
+(`src/lib/offline-state.ts`). Add to collection (the list and each collection's
+row), Share, the Generate and Make read-along confirmations, and Find shows' access
+check and search ask it. Its `unread` is `useUnreadQuery`'s answer
+([Offline states](state-and-data.md#offline-states-srcliboffline-statets)). So a
+kept answer shows, and the dialog checks it before its skeleton. Its `offline` is
+true while the device has no network or the read is paused, kept data or not. The
+dialog then shows its offline line and disables what needs the server, keyboard
+submits included, with no Retry. A Bridge confirmation shows a kept estimate with
+its queue button disabled. The estimates are not kept on the device, so one shows
+only while the query cache still holds it. A form with no read (a new collection,
+Feed address, Import a list) holds its submit on `useDeviceOnline` alone.
+
+On `unread === 'failed'`, the dialog asks `readRefusalState(error, cid, close)`
+(`src/components/layout/server-refusal-state.tsx`). The server's 401 on the dialog's
+own read (a revoked token, which `/server` never refuses) gets the compact
+**Reconnect** row, and anything else goes to `serverRefusalState`. `close` runs
+before sign-in opens, so no dialog is left under it. A `null` answer means the read's
+own error, with Retry while online.
+
+Two dialogs decide more before that. Add to collection shows one **Reconnect** row
+in place of its list while `useSignedOutConnection` names its connection, not one
+row per collection as each row's read is refused in turn. Share also treats a kept
+people list whose read again failed online as failed. Save replaces every share
+with the picked people, so it waits for a list the server answered.
