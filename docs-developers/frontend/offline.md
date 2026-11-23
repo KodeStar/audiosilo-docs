@@ -838,9 +838,10 @@ Each answer is handled like this:
 
 Rollback processes one book at a time.
 
-1. Just before sending a book, `sending` rechecks and marks only that book's
-   finishes, so a later book's finish that another tab withdraws while an earlier
-   PUT is in flight stays out of the conversion. See
+1. Just before sending a book, `sending` rechecks that book's events for
+   withdrawn finishes and marks only that book's events as out (on the web, its
+   finishes in the stored outbox too). So a later book's finish that another tab
+   withdraws while an earlier `PUT` is in flight stays out of the conversion. See
    [Taking a finish back](#taking-a-finish-back).
 2. `legacySaveOf` orders the remaining events by time and uses the latest
    listen's end. The save is finished if the last finish-state event is a

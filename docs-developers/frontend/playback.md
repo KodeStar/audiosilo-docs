@@ -112,8 +112,9 @@ since there is no native queue. Key points:
   - Play signals `onRemotePlay` before calling the audio element's `play()`. On
     the local route the store records the press time, so the tab can
     [claim playback](#one-tab-plays-at-a-time-web) when sound starts.
-  - Pause, or a refused Play, signals `onPauseAsked` and cancels the pending
-    request, even before the first sound.
+  - Pause, or a refused Play, signals `onPauseAsked`. That cancels a Media
+    Session Play still pending, even before the first sound. A Play pressed in
+    the page keeps its start window.
   - The skip controls use the configured jump intervals. Their seeks go through
     `onRemoteSeek` and `seekInTrack`, which lower the resume floor and save the
     chosen place.
@@ -730,8 +731,9 @@ order of importance:
      the intent.
 
    Collapsing to `loading` shows a spinner and lets the action-armed watchdog
-   guarantee resolution. An explicit pause cancels the pending play. On the web
-   the Media Session handler can signal that pause before the engine starts.
+   guarantee resolution. The store's `pause` clears the start window, so its
+   `paused` reads as `paused`. On the web a Media Session Pause (`onPauseAsked`)
+   cancels only a pending Media Session Play, before the engine starts.
 3. **A surfaced `error` is held against everything except `playing`.** After the
    watchdog, or a real web or Android engine error, lands, the engine keeps
    re-reporting around the dead stream. iOS sends frozen `loading` ticks. Android
@@ -784,9 +786,10 @@ the UI sees during it is `loading`.
 bookmark in a loaded book, `playOn` asks for the move once. If the book is paused
 or stopped when the seek request returns, `toggle(askedAt)` resumes it with the
 original press time. If the transport is still live, `playOnThroughStall` gives
-the move up to 30 s from the request (`SEEK_PLAY_ON_MS`). The watchdog can still
-show Retry after 3 s, but it leaves the engine waiting for that audio, and the
-next `playing` clears the error (rule 3). A new play attempt replaces the
+the move up to 30 s from the moment the seek call returns (`SEEK_PLAY_ON_MS`; on
+the web that is the moment it was asked). The watchdog can still show Retry after
+3 s, but it leaves the engine waiting for that audio, and the next `playing`
+clears the error (rule 3). A new play attempt replaces the
 request. A pause, a new choice of place, the sleep timer's end or the 30 s limit
 stops an engine still waiting in error, and another tab taking over pauses it.
 
@@ -1239,12 +1242,15 @@ loaded book's connection (`givesWayTo`). A pending Media Session Play counts
 as a start. A tab still looking up a book checks for a newer claim before it
 starts the engine.
 
-**Which play is later** (`laterPlay`, pure) reads the clock once. A press dated
-more than 60 s ahead of that reading came before the clock was set back
+**Which play is later** (`laterPlay` in `playing-claim.ts`, pure) compares both
+presses against one clock reading its caller passes in. A press dated more than
+60 s ahead of that reading came before the clock was set back
 (`beforeClockStep`), and loses to any press made since. Otherwise the later
-`askedAt` wins, and in the same millisecond the greater tab id. The store uses this rule to give way, keep the newest rival claim per
-connection and check a pending start (`newerTabPlay`). That check also ignores
-a stored claim whose `sentAt` is more than 60 s ahead of the current clock.
+`askedAt` wins, and in the same millisecond the greater tab id. The same rule
+decides giving way (`givesWayTo`), the newest rival claim kept per connection
+(`tabClaims`) and the check of a pending start (`newerTabPlay`). That check also
+ignores a stored claim whose `sentAt` is more than 60 s ahead of the current
+clock.
 
 **The tab that gives way** (`giveWayTo` in `store.ts`) does six things:
 
