@@ -2478,10 +2478,10 @@ unreadable, not answering, or empty while books are still indexed under it.
 - `Scanner.RootStatuses` fans the probes out in parallel, so a dead share
   costs the whole list at most one timeout. `RootsAvailable` returns only the
   availability. Health's list ([`GET /admin/system`](api/reference.md#get-apiv1adminsystem))
-  takes each root's availability and disk space from the same probe, so an
-  expired answer costs one new probe a root, not two (server#225). A root that
-  goes offline therefore shows within about 17 seconds (the TTL, then the
-  probe's timeout).
+  takes each root's availability and disk space from one look at its probe
+  (server#225). It used to look twice, and an answer that expired between the
+  two looks cost a second probe and its wait. A root that goes offline shows
+  within about 17 seconds (the TTL, then the probe's timeout).
 
 The same list also carries each library's `ScanProgress` as `scan`, which is
 what the console polls.

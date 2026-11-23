@@ -5320,8 +5320,9 @@ run:
 4. reads `series/{id}` for a series it has never read, one with news, or one read
    over a week ago; a `404` marks the series gone, dropped a week later;
 5. classifies each local series against the community series (below) and replaces
-   its items. From 2.7.0 a series whose items and community series are unchanged
-   is not written again, so a run that finds nothing new writes no items.
+   its items. From 2.7.0 a series whose items come out as stored, and whose
+   community series were all classified before, is not written again, so a
+   run that finds nothing new writes no items.
 
 A failed read keeps what earlier runs stored (a series is replaced only by a read
 that worked), and a failed run is tried again an hour later, up to three times.
@@ -10596,7 +10597,7 @@ What the console's Health > System, Server > About and Server > Logs show. All
 | `metadata.mode` | the mode the server **runs** with, `"remote"` or `"mirror"` (a saved change to the setting waits for a restart) |
 | `metadata.mirror` | mirror mode only (absent in remote mode, and when the server has no metadata service): the local copy's status, the object below |
 | `tls` | the boot `tls.mode` and `tls.hosts`, and the certificates it serves, read from their files (never generated or requested here): the self-signed pair, or one per host from the autocert cache (`issued: false` until Let's Encrypt has issued it). Empty for mode `off`. `error` is set when a certificate file couldn't be read |
-| `libraries[]` | each library's root, whether it answers (the same bounded probe as the scanner's), and `disk` (`total`, `free` to the server, in bytes) or `null` when the root doesn't answer or the OS doesn't say. From 2.7.0 both come from one probe per root, the one behind `available` on [`GET /admin/libraries`](#get-apiv1adminlibraries), so a root that goes offline shows here within about 17 seconds |
+| `libraries[]` | each library's root, whether it answers (the same bounded probe as the scanner's), and `disk` (`total`, `free` to the server, in bytes) or `null` when the root isn't available or the OS doesn't say. From 2.7.0 both come from one look per root at the probe behind `available` on [`GET /admin/libraries`](#get-apiv1adminlibraries). That probe's answer is kept for 15 seconds and a new probe waits at most 2, so a root that goes offline shows here within about 17 seconds |
 | `web_player` | as in the settings envelope |
 | `update` | the [update status](#get-apiv1adminupdate) |
 | `backups` | the backups' `status` as in [`GET /admin/backups`](#get-apiv1adminbackups) (folder, running, last attempt, latest backup, next scheduled one); `null` only for a server built without the backup service (tests), never one the launcher starts |

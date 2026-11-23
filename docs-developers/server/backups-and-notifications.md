@@ -431,8 +431,9 @@ The three podcast kinds go to the admins only. The catalog raises them through
 the listener `catalog.SetPodcastNotice` installs (`notify.PodcastListener`).
 `notify.PodcastEvent` turns each `catalog.PodcastNotice` into an event, which
 the catalog records, its dedup key checked, in the same transaction as the
-write that found the news. `notify.Service.Deliver` sends it to the
-destinations after the commit. A crash therefore can't lose the feed's record
+write that found the news. After the commit, `notify.Service.Deliver` queues it
+for the destinations, in turn with the events emitted before it
+([Recording an event](#recording-an-event)). A crash therefore can't lose the feed's record
 of a notice whose flag committed. A crash between the commit and the delivery
 sends the destinations nothing, as there is no record per delivery.
 
