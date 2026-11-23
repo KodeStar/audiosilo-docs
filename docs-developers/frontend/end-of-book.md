@@ -141,7 +141,8 @@ That covers a paused or errored book too, so a lock-screen pause can't read as
 
 1. A book that has really ended is finished first, and leaves Up next. It has
    really ended when the credits opened with `ended`, when it is in the `ended`
-   state, or when it is within `FINISHED_TOLERANCE` of its end.
+   state, or when it is within `FINISHED_TOLERANCE` of its end (`queueEndsBook`,
+   never at the end of a download that ends early).
 2. A book still mid-way is only `stop()`ped. Its place is saved, and it stays
    unfinished, in Up next, with its download.
 3. Then `playNext` calls `advanceTo(next)`.

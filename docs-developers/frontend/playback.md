@@ -936,9 +936,12 @@ stale place is never written. On a `listening_sync` server the hold keeps the
 - The save loop's cut waits, and so does a cut asked by the app going to the
   background, the server coming back or the web page hiding (`cutListeningSpanNow`).
   The hold records that cut as owed (`cutOwed`).
-- A hold that ends with no move (released with a flush, or at its 5 s deadline)
-  saves and makes the owed cut. A move cuts the span itself, so a release after a
-  move makes none. A second hold takes over the first one's owed cut.
+- A hold that ends with no move (released with a flush, or by its timer at the 5 s
+  deadline) saves and makes the owed cut. A move cuts the span itself, so a release
+  after a move makes none. A second hold takes over the first one's owed cut.
+- Where the timer cannot fire (Android pauses JS timers in the background), the
+  first save past the deadline ends the hold as its flush, without the owed cut. The
+  save loop's next tick cuts the span, and the keep stores it again from then on.
 - A sign-out's or a removal's last send cuts the span at once, held or not.
 
 The reconcile moves only when the server's record meets all of these:
@@ -989,11 +992,11 @@ it, or "another device" when the server has no name. The toast has two answers:
   send this device's place. See [Stay wins](#stay-wins).
 
 **The move comes before anything is stored at the old place.** Jump, the book page's
-Play from there and the reconcile's own move (`decide`) all go through
-`answerAfterSpan(ref, answer, move)`. It closes the span heard so far, queues the
-answer behind it, then makes the move right away. The span the close
-reopened (at the engine's place, stamped after the answer) is stored only when no
-move took it. Stored before the move, that copy is what a kill in between would
+Play from there and the reconcile's own move to a server row with a version (`decide`)
+all go through `answerAfterSpan(ref, answer, move)`. It closes the span heard so far,
+queues the answer behind it, and makes the move as soon as the answer is in. The span
+the close reopened (at the engine's place, stamped after the answer) is stored only
+when no move took it. Stored before the move, that copy is what a kill in between would
 recover, and it would move this device's record back to the old place over the row
 just answered. A mirror that cannot be read leaves the acknowledgement
 unwritten, and the move still goes.
@@ -1618,8 +1621,8 @@ this device's places, online or offline:
 
 - `playBook`, before either start: a resume's lookup, and a start at a given place
   (a chapter tap, a bookmark, a deep link) reading the book's speed and finish
-  (`knownProgress`), so a kill in the last seconds that finished the record is seen
-  and the start sends its `unfinish`;
+  (`knownProgress`, read only there), so a record the recovery finished (a kill in
+  the book's last seconds) is seen and the start sends its `unfinish`;
 - Previously on's Resume (`resumeWithOverlap`);
 - the book page's place (`fetchBookProgress`, alongside the server's read);
 - the car's play specs for downloaded books (`playSpecs`).
@@ -1629,8 +1632,7 @@ shared by every reader, counted from the first reader's wait. So Previously on o
 the car, which wait and then start a play, never wait twice. Past the deadline each
 reader reads the places as they are and the recovery lands later, as it would have.
 The recovery is local, but on the web it takes its turn behind every other tab's span
-writes. Home's rows, `knownProgress` elsewhere and a sync answer's `bookPlace` do not
-wait.
+writes. Home's rows and a sync answer's `bookPlace` do not wait.
 
 `mirrorSpanEnd` treats the span's end as the capture it would have been when the
 span was last kept, under the mirror's own rule that the newest record wins:
@@ -1665,8 +1667,9 @@ once. On the web a reload recovers its previous document's span at once too, but
 another tab's span waits.
 
 - **Its own previous document.** While a document has a span stored it holds a Web
-  Lock named for its tab id (`audiosilo-open-span:<id>`), and sessionStorage names
-  that id (`audiosilo.openSpanOwner`). At launch, a span whose owner is the id
+  Lock named for its tab id (`audiosilo-open-span:<id>`). Each launch writes its id to
+  sessionStorage (`audiosilo.openSpanOwner`) once its recovery sweep is done. At
+  launch, a span whose owner is the id
   sessionStorage names, with no lock of that name held, was left by the previous
   document in this tab, and is recovered at once. A duplicated tab inherits the
   sessionStorage, but the live tab it copied still holds the lock, so its span is left
