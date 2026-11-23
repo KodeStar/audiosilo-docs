@@ -102,7 +102,7 @@ backup would go to a place with a warning.
 
 ## How titles are matched
 
-At each check, the Bridge matches each title to a book in the account's library:
+The Bridge checks each unmarked title against the books in the account's library.
 
 1. **By ASIN first**, when the book has one (from a community match, a
    `metadata.json` file, or set in the console).
@@ -121,7 +121,8 @@ it matched. **Back up everything** and **Back up by itself** skip it. Then:
 - **If the book is this title**, give the book this title's ASIN
   ([Editing details](books.md#editing-details) > **ASIN**) and press
   [Check now](#check-now).
-- **If it isn't**, press **Back up** to back the title up as a book of its own.
+- **If it isn't**, mark the title [**Not this book**](#not-this-book). At the next
+  check, the other title can match the book.
 
 ## Backing up a book
 
@@ -190,10 +191,19 @@ an account still lists its titles, but every backup fails, and the Bridge's
 
 ### Not this book
 
-**Not this book** is for a title the Bridge matched to the wrong book, or one you
-never want backed up by itself. The title then counts as not here, and **Back up
-everything** and **Back up by itself** skip it. **Back up** still works for it.
-**Undo Not this book** removes the mark.
+Press **Not this book** if the Bridge matched a title to the wrong book.
+You can also mark a title to keep it out of **Back up everything** and
+**Back up by itself**. A marked title counts as **Not here**.
+
+At the next check, the title stops competing for the book. The Bridge plans a
+destination for the title's own backup. If its name puts it in the wrong book's
+folder, the console asks you to choose a different folder with **Destination...**.
+
+Press **Back up** on the title to save it as a separate book.
+
+If the original match was right, **Undo Not this book** restores it and hides
+the backup plan. The title stays **On this server** after the next check, even
+if you pressed Undo during that check.
 
 ### Choosing a destination
 
@@ -225,6 +235,10 @@ was queued with, even if you edit it here. So **Always one book** on
 and that backup has ended. **Cancel** in
 [**Server > Settings > Bridge > Jobs**](bridge.md#jobs) ends a waiting backup at
 once. A running one ends when the Bridge stops it.
+
+If the library lists a lone `CD1` as its own book and the folder allows separate
+books, you can back up another title beside it in `CD2`. The new disc becomes a
+separate book with its own details. `CD1` keeps its details.
 
 ![The Destination dialog for one title](/img/screenshots/admin/audible-destination.png)
 

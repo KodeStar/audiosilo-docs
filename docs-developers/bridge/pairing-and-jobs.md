@@ -803,7 +803,9 @@ controls the account’s sync switch.
 `POST /admin/bridge/jobs` with `400`) and quiet. Its params are
 `{"account", "template"}` (`template` the account's placement template, omitted
 when empty), with no library or path. It is deduped per account, and it promotes
-an open poll to a person's priority when Check now asks. It runs in the `light`
+an open poll to a person's priority when Check now asks. The Bridge reads the
+account's [rejected titles](../server/api/reference.md#get-apiv1bridgeaudibleaccountsaccounttitles)
+before matching titles and planning their backup destinations. It runs in the `light`
 lane, and gives the slot back while it backfills missing ASINs through the
 server ([Enrichment pacing](audible.md#enrichment-pacing)). A refused poll fails
 with a code in its result. The module's scheduler queues it, and queued polls are
