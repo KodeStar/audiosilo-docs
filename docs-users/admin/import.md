@@ -141,11 +141,10 @@ Activity > Sessions, they show "Imported from Audiobookshelf".
 ## When a fetch fails
 
 **Connect** checks the address and token first and says what's wrong under the
-field. An untrusted certificate on Audiobookshelf's `https://` address gets a
-certificate warning. If you entered an `http://` address, the message explains
-when it redirected to HTTPS and the certificate check failed there. Use the
-address and port Audiobookshelf itself answers on over HTTP on your network,
-for example `http://192.168.1.20:13378`.
+field. If it says Audiobookshelf's certificate isn't trusted (on its
+`https://` address, or on the `https://` one an `http://` address redirects
+to), use the address and port Audiobookshelf answers on over plain HTTP on your
+network, for example `http://192.168.1.20:13378`.
 
 For a fetch that fails later, the import card says why. Check that
 Audiobookshelf is running, that its address works from the AudioSilo server, and

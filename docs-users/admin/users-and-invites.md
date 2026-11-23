@@ -67,11 +67,11 @@ the console at. A notice under **Share** says when that limits who can open it:
   open the console at the server's network address, then make a new invite.
 - **Works on your home network only**: to invite someone elsewhere, set a
   public address.
-- **Their browser will warn about the certificate** can appear on an HTTPS
-  invite when the server uses its own self-signed certificate. Setting an HTTPS
-  public address hides the self-signed notice. With no public address set, a
-  trusted proxy that reports HTTPS also hides it. If the link uses the server's
-  IP address, such as `https://192.168.1.20`, the IP-address warning still appears.
+- **Their browser will warn about the certificate**: the server uses its own
+  self-signed certificate (an HTTPS public address hides this one), or the link
+  is `https://` at an IP address, such as `https://192.168.1.20`, which rarely
+  has a certificate browsers trust. The notice says which. They can continue
+  past the warning, or you can set a public address with a real certificate.
 
 ## The People page
 

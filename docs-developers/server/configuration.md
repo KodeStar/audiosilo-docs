@@ -41,7 +41,7 @@ The console's first-run setup flow is keyed off the database too, through the
 finished. An upgraded server is marked finished (see
 [Data model](data-model.md#server-state)).
 
-A library declared in `config.yaml` doesn't finish the flow.
+A library declared in `config.yaml` or the environment doesn't finish the flow.
 The flow lists it as already added (`from_config` on the admin library row),
 and its naming step can still switch that library's `metadata_source`. That
 choice survives restarts, because the config sync updates only a declared

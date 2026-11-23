@@ -615,10 +615,11 @@ request, the server stores a failure or park as `cancelled` and preserves the ca
 completed job remains `done`. A cancelled podcast job counts against
 the feed's outage only for a definite feed response.
 
-Admin job reads carry `error_code: "server_cancelled"` when the server cancelled
-the job or requested a stop for a recognised reason. The Bridge's job-update
-response carries the reason in `error` and omits this code.
-The console's `cancelledView` displays the following details.
+The console words a cancelled row (`cancelledView` in `generate-model.ts`;
+`CancelledStatus` in `generate-status.tsx`; `en.json` `bridge.jobs.*`). It tells
+a server's reason by the admin reads' `error_code: "server_cancelled"`
+([The job object](../server/api/reference.md#the-job-object)), which the Bridge
+never receives:
 
 - a server reason as it is;
 - else `bridge.jobs.cancelledByAdmin` "Cancelled by an admin." when

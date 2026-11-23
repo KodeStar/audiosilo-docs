@@ -43,7 +43,8 @@ offline or too old, the card says so.
 
 ![The Make a read-along confirmation](/img/screenshots/admin/readalong-dialog.png)
 
-The card shows the job's progress, with **Cancel**. The job also shows in
+The card shows the job's progress, with **Cancel**. If the server cancels the
+job, the card says why. The job also shows in
 [Server > Settings > Bridge > Jobs](bridge.md#jobs). When it is done, the card says how much
 of the text lined up.
 

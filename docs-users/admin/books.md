@@ -89,10 +89,8 @@ If the dialog says **The comparison didn't load**, click **Try again**.
 **Accept** works once the comparison loads.
 
 When nothing matches closely, **Add it** opens the community's
-[Add a book](../community/meta-site.md#adding-a-missing-book) page. If you
-submitted a search, it uses that search. Otherwise it uses the book's ASIN,
-then its ISBN, then its title and author. An ASIN starting with **B0** opens the Audible record.
-An older ASIN or an ISBN starts a catalogue search. An unmatched book still plays.
+[Add a book](../community/meta-site.md#adding-a-missing-book) page with the book
+filled in. An unmatched book still plays.
 
 The community database holds books, their recordings, authors, narrators and
 series. Its users add and correct them, and many entries came from a public

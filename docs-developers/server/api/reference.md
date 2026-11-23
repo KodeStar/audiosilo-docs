@@ -6214,10 +6214,9 @@ The code rides in the `invite_url` **fragment**, so it never reaches server
 logs; the connect page auto-redeems it client-side.
 
 Creation and rotation include `external_https: true` when the configured
-public URL uses HTTPS. Without a public URL, a trusted proxy can supply the
-hint through an unambiguous HTTPS protocol header. The console uses it to
-suppress the self-signed certificate notice. Forwarding headers do not set
-the invite URL, and an HTTPS link to a non-loopback IP still gets a certificate warning.
+public URL uses HTTPS or, with no public URL, a trusted proxy reports HTTPS in
+an unambiguous protocol header. Forwarding headers never change `invite_url`.
+What the console does with it is in [Admin web UI](../web-ui.md#people--people-invites-shares-and-devices).
 
 `404` if the user doesn't exist. `409 code: "kid_account"` (`not available for a kid's
 account`) for a kid household member: a kid holds no invite, only their owner sets up
@@ -6452,9 +6451,8 @@ admin-only fields:
 ```
 
 - `book_count` (int) - books indexed in the library.
-- `from_config` (boolean) is true when the server configuration declares the
-  library by name. The console marks that row **From your config** and locks
-  its name, root and deletion.
+- `from_config` (bool) - whether `config.yaml` or the environment declares the
+  library by name, so its name, root and deletion are locked (`409 config_library`).
 - `available` (bool) - whether the root folder is reachable right now. It is
   `false` when the root is missing, unreadable, or doesn't answer within
   **2 seconds**; when it is an empty folder while books are still indexed
@@ -7219,11 +7217,10 @@ is a `400` too (`too many format or codec values`).
   - `empty_file`: 0 bytes;
   - `probe_failed`: ffprobe couldn't read it.
 
-  For an ffprobe timeout, Health's `GET /admin/books?issue=scan_error` rows
-  also include `scan_error_code: "probe_timeout"`. The same field appears on
-  the admin book detail and re-read responses. The server derives it from the
-  stored `probe_failed` detail, including for existing rows. Other probe
-  failures omit `scan_error_code`.
+  Admin book reads (Health's `GET /admin/books?issue=scan_error` rows, the
+  book detail and the re-read answer) add `scan_error_code: "probe_timeout"`
+  to a `probe_failed` that was an ffprobe timeout
+  ([Read problems](../scanner.md#read-problems)); other problems omit it.
 
   `scan_error_file` is the library-relative file. `scan_error_detail` is the OS's,
   the scan's or ffprobe's own message, and may be empty for `empty_file`. An
@@ -9541,8 +9538,6 @@ The session object, shared by both session routes:
 - `codec` is the book's indexed codec when the session started (`""` unknown);
   `transcoded` is true when a transcode of a file of this book ran for the same
   device during the session (a `HEAD`, which runs no transcode, doesn't count).
-  Live now and Sessions infer **Watch download · AAC** from a non-transcoded
-  session from `audiosilo-watch` on watchOS or Wear OS. Its indexed codec can be MP3.
 - `backfilled` is true for a session made at the upgrade to migration 0021 from
   the players' own listening spans, from before the server recorded sessions:
   `device_id` is `0`, `device_name` `""`, `client` `null` and `codec` `""`. It
@@ -11168,8 +11163,9 @@ server and this request:
   only then is `peer` sent: the address that connected (the proxy), for
   `network.trusted_proxies`. `peer_trusted` says whether that address is
   already trusted.
-- `config_libraries` lists the library names declared in the server configuration.
-  The console reads `from_config` on each admin library row for its badge and controls.
+- `config_libraries` are the names of the libraries `config.yaml` or the
+  environment declares (re-added at every start). Each admin library row also
+  carries `from_config`.
 - `mount_hints` are folders mounted into the server that may hold books, read
   from `/proc/self/mountinfo` on Linux: folders that exist, not system paths
   (`/`, `/proc`, `/sys`, `/tmp`, `/dev`, `/run`, `/boot`, `/snap` and anything

@@ -216,13 +216,11 @@ choose **Always one book** before the library's first scan has read the folder.
 
 **Audio files in this folder** counts the audio files directly inside the folder
 and shows their combined size, and their total length when every file's length
-is known. Sizes under 1 kB are shown in bytes, for example **1 byte** or
-**895 bytes**. The list shows up to 500 files, with a note when there are more.
+is known. The list shows up to 500 files, with a note when there are more.
 
 In a folder with more than 10,000 items, the totals cover the first 10,000 and
-the file list says so. The choices say **at least** for counts of files, books
-or disc folders. The **Separate books** confirmation also says **at least**.
-Folders count first, so a folder holding more
+the file list says so. The counts in the three choices, and the **Separate
+books** confirmation, then say **at least**. Folders count first, so a folder holding more
 than 10,000 other folders can show no audio files at all.
 
 Use the arrow keys to move through the folder tree and Enter to select a folder.

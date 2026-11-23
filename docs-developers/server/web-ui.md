@@ -1306,6 +1306,12 @@ A session's app reads as sent, except AudioSilo's own: the player's
 `AudioSilo` and the watch apps' `audiosilo-watch` both read "AudioSilo", the
 platform saying which (`appLabel`).
 
+A session's playback reads "Direct" or "Transcode" with the session's `codec`,
+the indexed book's ("Direct · MP3"; Sessions leaves the codec out). A watch
+app's session that wasn't transcoded (`watchDownload`: app `audiosilo-watch`,
+platform watchOS or Wear OS) plays its downloaded AAC copy, so both pages read
+"Watch download · AAC" for it, whatever the book's codec.
+
 The chapter under each title is `chapterLabel`
 (`features/activity/live-model.ts`, shared with the Overview's cards and the
 funnel's drop-offs):
@@ -1664,8 +1670,7 @@ A failed Audible job's code reads as a sentence (`audibleJobReason`):
 - an unknown code keeps the Bridge's own text.
 
 A sync cancelled by turning sync off shows the server's reason, "sync with
-Audible was turned off for the account". The admin job's `error_code`
-identifies a server cancellation.
+Audible was turned off for the account" (`error_code: "server_cancelled"`).
 
 **Podcast jobs.** A `podcast.poll` reads "Scheduled by the server" when the
 scheduler queued it: its params carry `scheduled: true`, or, for one queued
@@ -2283,8 +2288,8 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
 (`showFinishCard`). It lists the skipped steps, each a link to
 `/setup?step=<id>`. **Dismiss** sends `dismissed: true`, server-wide, for every
 admin. With the flow finished and dismissed, `printed_password: true` shows
-a **Change password** link to the admin's Sign-in tab. The welcome card with **Add your first library** (no libraries at all)
-is separate and stays.
+a **Change password** link to the admin's Sign-in tab. The welcome card with
+**Add your first library** (no libraries at all) is separate and stays.
 
 Strings are the `setup.*` i18n group, in all six locales. A server upgraded
 from a release without the flow never sees it (migration `0053`, see
