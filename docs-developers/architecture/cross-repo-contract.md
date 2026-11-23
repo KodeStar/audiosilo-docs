@@ -823,7 +823,8 @@ player.
   cache, for the earlier books of a series the caller does not own. It is authed but
   **not** library-scoped, since a work id names nothing on this server.
 - The `metadata` capability on `GET /server` reflects whether either lookup is live.
-- The admin console's match dialog (`GET /admin/libraries/{id}/book/match`) asks
+- The admin console's match dialog (`GET /admin/libraries/{id}/book/match`, and its
+  comparison `GET /admin/books/match-proposal`, which repeats that search) asks
   `metaserve`'s structured `GET /works/match` (see
   [Community metadata matching](#community-metadata-matching)).
 - Community chapters (`internal/chaptercheck`), upcoming releases
