@@ -894,7 +894,11 @@ confirm, not a block.
 At sign-out, `teardownBeforeTokenRevoke` waits for the stop's final span to
 enter the outbox. The outbox finishes its send or rollback transfer before the
 legacy queue gets its final flush (its guard reads:
-[The replay guard](state-and-data.md#the-replay-guard)). Removing the connection
+[The replay guard](state-and-data.md#the-replay-guard)). On a server without
+`listening_sync`, the stop's save of a paused or held place keeps the `updated_at` of
+the capture that took that place (or of the resume row, for a book that has not played
+since it loaded), never the sign-out time, so it cannot outrank another device's newer
+move. A book that was playing at the stop is dated at the stop. Removing the connection
 increments `connectionGeneration` before the purges. An event appended after a
 wait, or a mirror write for a finish or its Undo, checks that number. The same
 account signing in again gets the same connection id, so an orphan appended after
