@@ -25,7 +25,10 @@ the code *testable* in the first place.
   - `testMatch` picks up `**/*.test.ts` and `**/*.test.tsx`;
   - `collectCoverageFrom` covers `src/**/*.{ts,tsx}` but **excludes
     `src/app/**`**. Screens are intentionally out of coverage scope (see
-    [Conventions](#conventions)).
+    [Conventions](#conventions));
+  - `coverageProvider: 'v8'`, because Babel's coverage instruments the code before
+    the React Compiler runs, and the compiler then skips any function with a default
+    parameter or prop, so a coverage run (CI's) would test those uncompiled.
 - **@testing-library/react-native 14** for component and hook tests. Its
   matchers are **built in**. There is no `@testing-library/jest-native`
   dependency; don't add one.
