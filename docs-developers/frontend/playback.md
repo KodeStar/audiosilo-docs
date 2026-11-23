@@ -107,12 +107,17 @@ since there is no native queue. Key points:
 
   The server's `cors_origins` decides whether that load succeeds. CORS mode ignores
   `Cross-Origin-Resource-Policy` ([CORS](../server/api/index.md#cors)).
-- The **Media Session API** wires the lock-screen and notification transport
-  controls. It sets metadata per track, plus `play`, `pause`, `seekbackward` and
-  `seekforward` handlers that use the configured jump intervals. Those seeks go back
-  **through the store** (`onRemoteSeek`, which the store registers to
-  `seekInTrack`), so a lock-screen seek lowers the resume floor and saves like any
-  deliberate seek.
+- The **Media Session API** sets the track metadata and handles the system media
+  controls:
+  - Play signals `onRemotePlay` before calling the audio element's `play()`. On
+    the local route the store records the press time, so the tab can
+    [claim playback](#one-tab-plays-at-a-time-web) when sound starts.
+  - Pause, or a refused Play, signals `onPauseAsked`. That cancels a Media
+    Session Play still pending, even before the first sound. A Play pressed in
+    the page keeps its start window.
+  - The skip controls use the configured jump intervals. Their seeks go through
+    `onRemoteSeek` and `seekInTrack`, which lower the resume floor and save the
+    chosen place.
 - **A browser autoplay refusal is a pause, not an error.** `play()` without a user
   gesture, such as a cold `/player` deep link, rejects with `NotAllowedError`. The
   engine settles its snapshot on `paused` and rethrows the error as
@@ -159,9 +164,8 @@ since there is no native queue. Key points:
     resolves `'refused'`. A move to another file (`loadSeq`) or a seek (`seekSeq`)
     discards it and resolves `'moved'`, since the copy sits at the place before.
 - **A `playing` from an element that is paused by then is not reported.** The
-  browser can queue a `playing` before a pause lands. If the engine reported it,
-  the store would read it as a play begun here and take the connection back from
-  the tab that plays now.
+  browser can queue a `playing` before a pause lands. Reported, the store would
+  read it as a new play and take the connection back from the tab that plays now.
 - A **transcoded** track (`track.transcoded`, web only) is re-requested on every
   seek instead of seeking the element, and its position is reported
   track-absolute (see [Web transcode negotiation](#web-transcode-negotiation-transcodets)).
@@ -727,9 +731,9 @@ order of importance:
      the intent.
 
    Collapsing to `loading` shows a spinner and lets the action-armed watchdog
-   guarantee resolution. A genuine pause from the user or the lock screen always
-   arrives *after* `playing`, when `startingPlayback` is already false, so it still
-   reads as `paused`.
+   guarantee resolution. The store's `pause` clears the start window, so its
+   `paused` reads as `paused`. On the web a Media Session Pause (`onPauseAsked`)
+   cancels only a pending Media Session Play, before the engine starts.
 3. **A surfaced `error` is held against everything except `playing`.** After the
    watchdog, or a real web or Android engine error, lands, the engine keeps
    re-reporting around the dead stream. iOS sends frozen `loading` ticks. Android
@@ -777,6 +781,17 @@ stateDiagram-v2
 
 In the diagram, `connecting` is the store's `startingPlayback` window. The snapshot
 the UI sees during it is `loading`.
+
+**Playing on through a stall.** When the listener presses Play on a chapter or
+bookmark in a loaded book, `playOn` asks for the move once. If the book is paused
+or stopped when the seek request returns, `toggle(askedAt)` resumes it with the
+original press time. If the transport is still live, `playOnThroughStall` gives
+the move up to 30 s from the moment the seek call returns (`SEEK_PLAY_ON_MS`; on
+the web that is the moment it was asked). The watchdog can still show Retry after
+3 s, but it leaves the engine waiting for that audio, and the next `playing`
+clears the error (rule 3). A new play attempt replaces the
+request. A pause, a new choice of place, the sleep timer's end or the 30 s limit
+stops an engine still waiting in error, and another tab taking over pauses it.
 
 ### Resume protection
 
@@ -987,13 +1002,13 @@ picked-up checks above when `placeToMoveTo` finds nothing to move to. The thrott
 - Against a v2.6.0 server the repeat was not seen: after a timeout, a new play or
   seek brought no offer back. The first offer shows as usual.
 
-On a server without `listening_sync`, the auto-move with Undo above stays. Its only offer is
-the loaded book's toast for a save the
-[replay guard](state-and-data.md#the-replay-guard) held (`onHeldSave`,
-`offerLoadedPlace` with `held: true`). There **Stay** also lifts the guard for the
-session and saves this device's place at once (`saveLoadedPlace`). That save and the
-session's later ones go through even when the other device has saved again since the
-offer. A timed-out toast lifts nothing. The book page shows no line there.
+On a server without `listening_sync`, the loaded book can still move forward
+with Undo. When the replay guard holds a save, `onHeldSave` calls
+`offerLoadedPlace` with `held: true`. This offer appears only in the player's
+toast. If it times out, periodic saves stay quiet. The next play or move can
+offer the held row again. Jump releases the session's guard before seeking.
+Stay releases it and saves the current place at once (`saveLoadedPlace`).
+See [The replay guard](state-and-data.md#the-replay-guard).
 
 ### Listening spans (Sync v2)
 
@@ -1209,25 +1224,33 @@ The claims and their answers go over the channel named `audiosilo-playing`
 |---|---|
 | `connectionId` | the connection of the loaded book |
 | `tab` | the tab's id for claims, a random id made when the tab first opens the channel |
-| `askedAt` | when the play was asked for (`playAskedAt`): a press here (`beginPlaybackAttempt`), else the moment the engine began by itself (the OS media controls) |
+| `askedAt` | when the listener requested Play (`playAskedAt`), or when the Cast receiver first reported a play from its own controls |
 | `sentAt` | when the tab began playing, which is when the claim was made |
 
-The store announces a claim on every move into `playing`, before the listening
-span opens (`claimPlaying` in `store.ts`).
+The tab timestamps a book's Play press before looking up its metadata or saved
+place (`bookPlayPressed`). It carries that time through the phone-width player
+route, a seek before resuming and a podcast episode fetch. A direct player link
+uses the time the route opened. The store announces the claim when the requested
+play reaches `playing`, before opening the span (`claimPlaying`). A file
+advance or recovery during the same play reuses the original `askedAt`. After
+a tab gives way, a late load or buffer recovery cannot claim playback again.
+A Cast receiver has no separate signal for its own Play, so the web store takes
+its move into `playing` as a new request.
 
-**Who gives way** (`givesWayTo`, pure). A tab gives way to another tab's claim
-when all of these hold:
+**Who gives way.** A playing or starting tab yields to a newer claim on its
+loaded book's connection (`givesWayTo`). A pending Media Session Play counts
+as a start. A tab still looking up a book checks for a newer claim before it
+starts the engine.
 
-- it plays, or means to (`wantsPlayback`: a play asked for and still starting);
-- its loaded book is on the claim's connection;
-- the claim's play was asked for later than its own. In the same millisecond the
-  greater tab id wins.
-
-"Newest" is when the play was asked for, not which claim arrives last. A tab still
-loading whose play is the newer one keeps going, and the other tab gives way once
-it hears that tab's claim. Of two tabs that start together exactly one stands.
-The rule is per connection, not per book, so two connections may play side by side.
-A tab that is not playing does nothing visible.
+**Which play is later** (`laterPlay` in `playing-claim.ts`, pure) compares both
+presses against one clock reading its caller passes in. A press dated more than
+60 s ahead of that reading came before the clock was set back
+(`beforeClockStep`), and loses to any press made since. Otherwise the later
+`askedAt` wins, and in the same millisecond the greater tab id. The same rule
+decides giving way (`givesWayTo`), the newest rival claim kept per connection
+(`tabClaims`) and the check of a pending start (`newerTabPlay`). That check also
+ignores a stored claim whose `sentAt` is more than 60 s ahead of the current
+clock.
 
 **The tab that gives way** (`giveWayTo` in `store.ts`) does six things:
 
@@ -1242,19 +1265,19 @@ A tab that is not playing does nothing visible.
 3. It closes its listening span there and then, dated no later than the claim's
    `sentAt`, so two tabs never record the same seconds. The pause that follows
    finds no span left, so the span is one event.
-4. It answers the claim with the place its span ended at
+4. If it had reached playback and was up to date, it answers with its last heard place
    ([The tab that gives way says where it stopped](#the-tab-that-gives-way-says-where-it-stopped)).
-5. It drops the play intent and pauses the engine, whatever the snapshot reads.
-   A play asked for a moment ago, whose first engine event has not arrived, must
-   not go on to `playing`. With the intent dropped it would read as a new play
-   and take the connection back.
+5. It clears the play request and pauses the engine, even while the audio loads.
+   A play whose first engine event has not arrived must not go on to `playing`,
+   which would read as a new play and take the connection back. On Cast the
+   store pauses any late `playing` report again until the receiver confirms the
+   pause or the 3 s `CAST_GIVE_WAY_FENCE_MS` runs out.
 6. It tells the listener (`onGaveWayToTab`).
 
 The tab keeps its book, and a play there claims the connection back.
 
-A tab whose stream died (`error`, no Retry out) is not playing, so it gives way to
-nothing and shows no notice. Its engine is paused all the same, because a stream
-that came back by itself would read as a new play and take the connection back.
+A tab whose stream failed also pauses its engine on takeover, without a notice,
+because a stream that came back by itself would read as a new play.
 
 **The notice** (`startOtherTabNotice` in `other-tab-notice.ts`, one of the root's
 services) is a toast, "Playing in another tab" (`player.otherTab.title`).
@@ -1314,7 +1337,7 @@ nothing moves. Another device's record is left to the
 |---|---|
 | is played by a press (`toggle`) | before the engine starts (`catchUpWithOtherTab`) |
 | is retried (`retry`) | by reloading there |
-| began playing by itself (the OS media controls, `!wantsPlayback` at `playing`) | as it plays (`catchUpPlaying`). No span or history opens, and nothing is saved, until it has moved (`catchingUp`) |
+| starts from a Media Session Play or the Cast receiver's own controls | as it plays (`catchUpPlaying`). The store waits for the move before opening a span, recording history or saving the place |
 | is paused and brought to the front | at once, still paused (`showOtherTabsPlace`, on the foreground from `other-tab-notice.ts`). The note stays, so the play that follows reads the place again |
 
 **The move** (`moveToTabPlace`) is the engine's seek, not `seekBook`:
@@ -1324,8 +1347,8 @@ nothing moves. Another device's record is left to the
 - No `jump` or `moved_back` event is sent. The server is never told that the
   listener chose the place the tab was at.
 - The [Undo chip](player-ui.md#undo-a-jump-jump-undots) follows its own rule. It
-  reads the snapshot stream, so a move of more than a minute offers the way
-  back. That Undo is the listener's own `seekBook`.
+  reads the snapshot stream, so a move of more than a minute offers the way back.
+  That Undo is the listener's own `seekBook`.
 - A book the other tab finished starts again from 0, as a `restart` with the
   `unfinish` owed, as a fresh load of a finished book does. Not when this tab is
   at the end itself, and not in a paused tab brought to the front, which stays
@@ -1337,7 +1360,9 @@ nothing moves. Another device's record is left to the
   spans and saves. If it lands after all, the tab takes it then
   (`landTabPlaceLate`), before that report's save tick can cut the span. The floor
   goes to the place and the span opens again there, so it never covers audio
-  nobody heard. Not when the listener moved or another book started meanwhile.
+  nobody heard. A listener seek or book switch clears that pending landing.
+  Stay chooses the current place but cannot recall a seek already sent to the
+  engine. If the seek timed out and later lands, the floor follows it.
   Playing on until the engine reaches the place does not count as landing.
 - On Cast, the receiver can report a move before it reports its position. A Cast
   move to the place counts as that late landing within 10 s (`ASK_SETTLE_MAX_MS`)
@@ -1353,8 +1378,8 @@ it every 15 s, hidden or playing a download too (`placeLoop`,
 [The periodic save's pace](#the-periodic-saves-pace)). Only what such a tab sends
 the server slows, to every 60 s. So a tab that takes over from one still playing
 starts up to 15 s behind it. A paused tab saved as it paused, so its record is its
-exact place. A press is never kept waiting for more. The tab plays at once, and
-moves when it hears where the other tab stopped.
+exact place. The new tab can start at the saved place and move when it hears
+where the other tab stopped.
 
 **The answer** (`GaveWay` in `playing-claim.ts`, sent by `tabClaims().answer` on
 the same channel, over both transports) is told from a claim by its `kind`:
@@ -1369,9 +1394,9 @@ the same channel, over both transports) is told from a claim by its `kind`:
 | `tab` | the tab that gave way |
 | `to`, `askedAt` | the play it answers: the tab that claimed and when that play was asked for |
 
-Only a tab whose own place was the latest answers. A tab that was itself behind
-another tab's play sends nothing: one with the note standing, or one still moving
-to the shared place (`catchingUp`).
+Only a tab that was playing and up to date answers. A tab buffering mid-play
+can give its last heard place. A tab still loading its first audio, behind
+another tab or catching up to the shared place sends no answer.
 
 An answer belongs to a play, not to one claim message. A tab claims on every move
 into `playing`, so one play can claim twice a few milliseconds apart, and the
@@ -1398,17 +1423,21 @@ An answer is ignored when it:
 - answers an older play than the tab's current one, or comes more than 5 s
   (`GAVE_WAY_ANSWER_MS`) after that play's first claim;
 - is for another connection or another book, or comes while a book loads;
-- would move a place the listener chose here (`placeChosen`: an explicit start
-  or a seek, until another tab plays);
+- would move a place the listener chose here (`placeChosen`: an explicit start,
+  a seek or Stay, from the moment it is chosen);
 - comes when yet another tab plays by now;
 - is within 2 s of the place the play began at;
 - says the book was finished. A book is not started again under a listener
   hearing it, and the next resume reads the save.
 
-A play that began by itself is still moving to the mirror's place when the answer
-comes, so the answer waits for that move (`catchingUp`). The web engine places a
-seek made before its metadata where the load starts (`placeAt`), so an answer
-during a load lands there.
+An answer waits for a move to the mirror's place already in progress
+(`catchingUp`). While a download swaps the queue
+([While the track index moves](offline.md#while-the-track-index-moves)), the
+mirror lookup and the answer wait up to 10 s for `swapHold` to clear, then map
+the file and its offset against the settled queue (whole-book seconds when the
+file is gone). A swap that began during the mirror read reads the mirror again.
+A new play or choice of place cancels the old move, and the answer keeps its own
+5 s deadline.
 
 #### Known limits {/* #one-tab-known-limits */}
 

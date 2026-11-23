@@ -253,6 +253,12 @@ back: `undoJumpWithToast` seeks back and confirms. The chip replaces the full
 player's `PlayerStatusLine` and floats above the docked bar over its transport. The
 thresholds and windows are constants at the top of `jump-undo.ts`.
 
+The chip's ten seconds (`UNDO_WINDOW_MS`) run once the book plays or stands at its
+new place. While its book is `loading` or in `error` after the jump (a seek that
+buffers or stalls), the timer stops and the chip stays usable. Its ten seconds start
+again at the book's next settled sample, so a slow jump still offers the way back
+once it lands.
+
 While the sleep timer's grace card is open, the chip gives way everywhere
 (`useUndoVisible` is false, from `useGraceCardOpen`). So the card never moves when
 the chip expires.

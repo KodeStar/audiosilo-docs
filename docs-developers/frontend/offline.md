@@ -721,9 +721,8 @@ seeded before any screen, so an offline cold launch still knows the flag. The ou
 keeps no copy of its own. A flag nobody has read is **unknown**, which records events
 too.
 
-Only `false`, or a rollback this launch, takes the `PUT` path. An older server is
-covered by the rollback below. A `404` that a fresh `/server` confirms turns what
-waited into `PUT` saves, so nothing is lost.
+Only `false`, or a confirmed rollback during this launch, takes the legacy
+progress PUT path. See [Sending](#sending) for how queued events transfer.
 
 ### The three storage documents
 
@@ -818,12 +817,14 @@ Each answer is handled like this:
   is older than the server.
 - A network error, `401`, `403` or `5xx` keeps everything for the next trigger. A
   network error also notes the failure for reachability.
-- A `413` or `too_many_events` halves the chunk. One event alone that still gets a
-  `413` moves to the list as `too_large`.
-- Any other `400` sends that chunk's events one by one, once. One refused alone moves
-  to the list as `invalid`, except a `stay`: a server rolled back under a stale
-  cached `listening_stay` refuses it, so it goes once more as a `jump`, and the
-  cached `/server` is asked again.
+- For `413` or `too_many_events`, the next chunk size is half the number of
+  events actually sent, rounded down. If the request carried one event, that
+  event goes on the couldn't-sync list as `too_large`.
+- For any other `400` on a batch, the outbox retries only the events that
+  went in the request, one at a time. Neither retry includes a finish withdrawn
+  before the send. An event refused on its own (or sent alone to begin with) goes
+  on the list as `invalid`. A `stay` refused alone gets one more
+  try as a `jump`, and the client asks for `/server` again.
 - An event older than 90 days (the server's own bound, `syncRejectAge`) is not sent.
   It moves to the list as `too_old`, so an event that never gets an answer can't hold
   its book "pending" forever.
@@ -831,21 +832,30 @@ Each answer is handled like this:
   without `listening_sync`, and `keepServerAnswer` takes that answer. It first
   rechecks the address and server id ([`acceptsServerAnswer`](connect-and-addresses.md#the-pick-rule-srclibserver-addressts)),
   so a late answer from the old address or one from another server leaves the
-  events queued. A rollback:
-  - marks the connection rolled back for the launch;
-  - makes that `/server` answer the connection's from then on, in the query cache
-    and on the device;
-  - turns the outbox into one legacy `PUT` per book (`legacySavesOf`) and drops it.
-    Each `PUT` takes the newest span's end, finished when the newest finish-state
-    event is a `finish` not older than it;
-  - makes the player save by `PUT` from then on.
+  events queued. On confirmation, the player keeps that server answer in the
+  query cache and on the device, marks the connection rolled back for the launch,
+  and switches to legacy saves.
 
-  Each of those `PUT`s carries the
-  [replay guard](state-and-data.md#the-replay-guard), since no server resolved those
-  spans against its row. A Mark as finished has no span, so its `PUT` takes place,
-  length and speed from the mirror record the finish wrote (`withFinishedPlace`), not
-  0 of 0. The rollback's `PUT`s run as a send, so an Undo's withdrawal
-  ([Taking a finish back](#taking-a-finish-back)) waits for them.
+Rollback processes one book at a time.
+
+1. Just before sending a book, `sending` rechecks that book's events for
+   withdrawn finishes and marks only that book's events as out (on the web, its
+   finishes in the stored outbox too). So a later book's finish that another tab
+   withdraws while an earlier `PUT` is in flight stays out of the conversion. See
+   [Taking a finish back](#taking-a-finish-back).
+2. `legacySaveOf` orders the remaining events by time and uses the latest
+   listen's end. The save is finished if the last finish-state event is a
+   `finish` at or after that listen, or a `finish` with no listen. A finish
+   alone takes its position, duration and speed from the finished mirror record
+   when available (`withFinishedPlace`).
+3. A finish or a deliberate move (`jump`, `moved_back`, `restart` or `stay`)
+   bypasses the replay guard. A `continue` carries the choice forward only if
+   it starts at the preceding span's ending file and position. A fresh resume
+   or a break in that sequence restores the [replay guard](state-and-data.md#the-replay-guard).
+4. If a save is held or cannot reach the server, `saveProgress` requires a
+   durable write to the legacy queue before removing that book's events from
+   the outbox (`requireQueued`). If storage refuses the transfer, the source
+   events stay in the outbox. A successful PUT also retires the source events.
 
 **When a web page goes.** On `pagehide` the web sends what waits with `keepalive`,
 oldest first, up to about 60 KB (`fitKeepalive`). That includes the span closes still
@@ -881,14 +891,18 @@ ask the listener to confirm: "3 listens haven't synced to Home. Sign out anyway?
 count here is every waiting event, a finish too. Signing out purges them. It is a
 confirm, not a block.
 
-A sign-out sends the outbox only once the close of its stop has had its turn
-(`teardownBeforeTokenRevoke`), so the last span goes before the token is revoked
-rather than with the purge. A close or event made for a connection and appended after
-an await is dropped once that connection was removed meanwhile
-(`connectionGeneration`, bumped first thing in the outbox's removal purge). The same
-account signing in again gets the same connection id, so an orphan appended after the
-purge would otherwise be sent for it. The mirror writes of a finish and its Undo check
-the same number.
+At sign-out, `teardownBeforeTokenRevoke` waits for the stop's final span to
+enter the outbox. The outbox finishes its send or rollback transfer before the
+legacy queue gets its final flush (its guard reads:
+[The replay guard](state-and-data.md#the-replay-guard)). On a server without
+`listening_sync`, the stop's save of a paused or held place keeps the `updated_at` of
+the capture that took that place (or of the resume row, for a book that has not played
+since it loaded), never the sign-out time, so it cannot outrank another device's newer
+move. A book that was playing at the stop is dated at the stop. Removing the connection
+increments `connectionGeneration` before the purges. An event appended after a
+wait, or a mirror write for a finish or its Undo, checks that number. The same
+account signing in again gets the same connection id, so an orphan appended after
+the purge would otherwise be sent for it.
 
 **Resume by file.** The mirror's records carry the playing file and the seconds into
 it (`file`, `file_pos`). A resume of this device's own place (`loadInitialProgress`)
