@@ -12459,6 +12459,39 @@ This also applies when a paused account gets a new library.
 open poll, sync and backups are cancelled ("the Audible account was removed"). `204`, whether or not
 the server knew it (the Bridge forgets locally first and may call again).
 
+### `GET /api/v1/bridge/audible/accounts/{account}/titles`
+
+*Bridge token, in the `Authorization` header.* Lists the titles marked **Not
+this book** for this account in ascending ASIN order. A title can have a mark
+even if it has no stored match. Accounts that share a library have separate lists.
+
+| Query parameter | Meaning |
+|---|---|
+| `after` | Omit on the first request. For the next page, pass the previous page's `next` ASIN. The page starts after that ASIN. |
+| `limit` | A positive integer. The default and the maximum are 500; a larger value reads as 500. |
+
+For example, a request with `limit=1` returns this page when more marks follow.
+
+```json
+{
+  "titles": [{ "asin": "B000000001", "rejected": true }],
+  "next": "B000000001"
+}
+```
+
+The last page has `"next": ""`. An account with no marks returns
+`{"titles": [], "next": ""}`.
+
+| Status | Meaning |
+|---|---|
+| `200` | A page of marked titles with `Cache-Control: no-store`. |
+| `400` | `invalid_cursor` if a nonempty `after` is an invalid ASIN. `invalid_request` if a nonempty `limit` is not a positive integer. |
+| `401` | The request lacks a valid Bridge token in the header. |
+| `404` | `unknown_account` if the account ID is invalid or the server has no such account. |
+
+The checks run in this order: an invalid account ID (`404`), then `limit`
+(`400`), then an unknown account (`404`), then `after` (`400`).
+
 ### `PUT /api/v1/bridge/audible/accounts/{account}/titles`
 
 *Bridge token.* A page of one poll's titles: up to 500 a call, strict JSON, at most
@@ -12519,8 +12552,8 @@ the server knew it (the Bridge forgets locally first and may call again).
 - `contested_path` (optional, omitted when none) is the book a
   contested title tied for: a clean book path or `.`, as `match.path`. It is
   stored for the account's library (not when the title's plan names another one:
-  the account was mapped elsewhere while the poll ran) and cleared when a match is
-  stored for the title.
+  the account was mapped elsewhere while the poll ran). An accepted match clears
+  the contest.
 - `planned` is `null` or where a backup of an unmatched title would go, as the
   Bridge planned it during the poll
   ([Planned destinations](../../bridge/audible.md#planned-destinations)):
@@ -12535,8 +12568,9 @@ the server knew it (the Bridge forgets locally first and may call again).
     and bounded).
 
   Anything else is `400 invalid_request` for the whole call, except a `path` over
-  the path limit, which is stored as an `error` plan. A stored match drops the
-  plan, and so does the final call marking the title `gone`.
+  the path limit, which is stored as an `error` plan. A marked title can keep a
+  plan alongside its rejected match. A poll that matches the title or marks it
+  `gone` drops the plan, and so does a completed backup's match.
 - Free text is cleaned and bounded, never refused: `title` (500), `reason` (256),
   each author and series name (200), a position (32); authors past the first 20
   and series past the first 10 are dropped.
@@ -12631,7 +12665,7 @@ content generation: the same ASIN again is a no-op `204`.
 | `204` | stored, or the book had that ASIN already |
 | `400` | `path is too long` (no code) - a `path` over the [length cap](index.md#path-addressed-content-path); `invalid_request` - no `path`, no valid `asin` |
 | `404` | `book_not_found` - no book of a books library indexed at that path |
-| `409` | `asin_set` - the book has another ASIN, or an admin's ASIN edit (a cleared one too): a backfill never goes under one |
+| `409` | `asin_set` if the book has a different ASIN, an admin has edited or cleared its ASIN, or any Audible account has marked this ASIN **Not this book** for this library and book path. The Bridge skips the write. |
 
 ### `GET /api/v1/admin/audible/accounts`
 
@@ -12704,8 +12738,8 @@ queued until the destination is corrected. A failed backup with `code: "exists"`
 | `fold_refusal_reason` | Optional string. The code below explains why the server could not use a completed backup as this title's match. |
 | `fold_refused_at` | Optional string. The UTC time the server recorded the refusal, in RFC 3339 format with up to nine fractional digits. |
 | `needs_attention` | a preorder still not available 14 days after its `release_date`: the account is no longer polled hourly for it |
-| `planned` | where a backup would go, as the Bridge planned it at its last poll (the object the [titles PUT](#put-apiv1bridgeaudibleaccountsaccounttitles) takes); `null` when matched, not planned, or the account is no longer mapped to the plan's library (paused or mapped again: none until its next poll) |
-| `contested` | for a title left unmatched as `contested`, `{library_id, path, with: [{asin, title}]}`: the book it tied for and the account's other titles (not `gone`) contested over that book or matched to it, by title, at most 10; `null` otherwise, or while the account isn't mapped to that library |
+| `planned` | The backup destination from the last poll, in the [titles PUT format](#put-apiv1bridgeaudibleaccountsaccounttitles). The field is `null` for an accepted match, a title with no plan, or an account no longer mapped to the plan's library. |
+| `contested` | For a contested title, `{library_id, path, with: [{asin, title}]}` identifies the book and up to 10 other titles on the account that claimed it, sorted by title. The list excludes gone and rejected titles. The field is `null` if there is no contested book in the account's current library. |
 
 Both refusal fields are omitted when the title has no recorded refusal, in the
 list and in the [title PATCH](#patch-apiv1adminaudibletitlesaccountasin)'s
@@ -12816,8 +12850,11 @@ out is left as it is:
 ```
 
 - `rejected` `true` marks the title "Not this book" (and drops a pending preorder
-  request). `false` clears the mark. A completed backup clears it when the
-  server accepts the book as the title's match.
+  request). The server keeps the rejected match. Sending `false` accepts that
+  match if present, hides its plan and clears its contest. If a poll reports no
+  match after Undo, the server keeps the accepted match through the account's
+  next complete poll (held in memory: a server restart forgets it). A completed backup also
+  clears the mark when the server accepts the new book as the title's match.
 - `dest_path` is where in the account's library its backup goes, `""` for the
   account's placement: a file path, or a folder (a last segment without an audio
   extension) the title's file goes in. At most 1024 bytes, clean (no `..`, no

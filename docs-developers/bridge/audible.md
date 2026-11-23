@@ -303,13 +303,19 @@ template change plans by the new one. A claimed poll runs as claimed.
    console's accounts card asks for a sign-in on the Bridge. The console's Bridge
    jobs list words both codes;
 3. reads the account's library on the server, 500 books a page
-   (`GET /bridge/libraries/{id}/books`, at most 2000 pages);
+   (`GET /bridge/libraries/{id}/books`, at most 2000 pages). It then reads every
+   page of the account's [**Not this book** decisions](../server/api/reference.md#get-apiv1bridgeaudibleaccountsaccounttitles)
+   before matching titles or planning backups. A missing row or a missing
+   `rejected` flag counts as unmarked. An older server answers the first page
+   with `405`, and the poll goes on with no marks. Any other failure, a bare
+   `404` or `404 unknown_account` included, stops the poll before it reports
+   titles or writes an ASIN;
 4. skips records without a usable ASIN, and states the rest from
    `UnavailableReason` and `Preorder`: no reason is `available`, a reason with
    `Preorder` set is `preorder`, any other `unavailable` with the reason. Every
    preorder from the orders carries `audible.PreorderReason` ("Not released yet
    (pre-order)");
-5. matches them with `importjob.BookMatcher` over `[]link.LibraryBook`, then
+5. matches the unmarked titles with `importjob.BookMatcher` over `[]link.LibraryBook`, then
    settles books claimed by several titles with `importjob.KeepBest`. The matcher
    is `audiosilo-server/pkg/match.BestWith` under `match.ImportOptions()`: ASIN
    exact first, then author + series + title tokens. A book in several series is a
@@ -326,10 +332,9 @@ template change plans by the new one. A claimed poll runs as claimed.
    unmatched, Back up everything would download a second copy of a book the
    library already has; as contested, it is skipped. One over-limit path never
    rejects the other matches of the batch;
-6. **plans** each unmatched title (contested included, never a matched one, nor a
-   preorder with no title yet):
-   where a backup would go, `planned` (see [Planned destinations](#planned-destinations)),
-   with no Amazon request;
+6. **plans** a backup destination for each unmatched title, including rejected
+   and contested titles. It skips preorders without a title and makes no Amazon
+   request. See [Planned destinations](#planned-destinations).
 7. PUTs the titles in calls of 500 under **one** poll id (the job, the attempt and a
    random suffix), the last one `final` (an empty library sends one empty final
    call, so every title becomes `gone`), with each title's authors cut to 20;
@@ -420,9 +425,11 @@ The losers go out in two ways:
   not here and names the book and the other titles, and Back up everything skips
   them.
 
-A contested path gets no ASIN backfill, not even from the title that kept it. Not
-this book doesn't settle a contest, because the Bridge never reads `rejected`;
-that is a follow-up.
+While several titles claim a book, the Bridge skips its ASIN backfill. A title
+marked **Not this book** makes no claim at the next poll. If only one claimant
+remains, it can match the book and supply its missing ASIN under the usual rules.
+An older Bridge, which never reads the marks, is covered in the
+[cross-repo contract](../architecture/cross-repo-contract.md#bridge-seam-and-old-clients).
 
 ### Planned destinations
 
@@ -544,7 +551,7 @@ row, so a preorder whose order has left the six-month window is still reported. 
 rows go with the account (`ON DELETE CASCADE`).
 
 **Matching.** A preorder the catalog hasn't described yet (no title) matches by
-ASIN only (`matchTitled`) and gets no planned destination. A preorder that claims
+ASIN only (`pollMatch`) and gets no planned destination. A preorder that claims
 the same book as a library title gives way to the library title, uncontested.
 
 #### Drop rules
@@ -710,9 +717,9 @@ guessed the code.
 - `path` is the **book** path that `POST /bridge/rescan` answered for the placed
   file. A single-file book's path is its file.
 - `files` is what the Bridge placed.
-- `enriched` says whether the book now carries the title's ASIN. It is `false` when
-  the book had one already, when the server refused it (`asin_set`), or when the
-  file joined a book that isn't the title's.
+- `enriched` is `true` when the server accepts the enrichment PUT, including
+  when the book already has that ASIN. It is `false` when the Bridge skips
+  enrichment or the PUT fails.
 
 **Failures** are `audiblejob.Failure` `{"code", "message"}`, sent both as the result
 and as the error. The server reads the code with `bridge.AudibleImportCode`: a
@@ -727,7 +734,7 @@ park's code, else the result's `code`, else an error that starts with a known co
 | `exists` | Something is at the destination (a different file, a folder, a link). Or the destination is inside a book the library already has: its folder is a listed book's, or already holds audio. The Bridge checks this **before** the license, and again at the install |
 | `disk_full` | Before writing a byte, the Bridge found free space short in its temp folder (2.2x the size, less what the partial holds) or at the library's nearest existing folder (1.1x, `transfer.DefaultHeadroom`). Or the download, the decrypt (ffmpeg's words too) or the copy hit ENOSPC/EDQUOT. A free space that can't be read is no refusal |
 | `offline_url_expired` | The presigned download URL answered 401/403/410 again after the one new license |
-| `unknown_account` | The account is not this Bridge's, or is mapped on another server |
+| `unknown_account` | The account is not this Bridge's, or is mapped on another server. Or the server no longer has it when the import re-reads the **Not this book** marks before enriching a joined book (see [Enrichment after placing](#enrichment-after-placing)) |
 | `drm_free` | Audible offers the title only as a DRM-free MP3 (`audible.ErrDRMFree`), which the Bridge doesn't back up yet |
 
 A download over `DownloadOptions.MaxBytes` (`audible.DefaultMaxDownloadBytes`,
@@ -934,16 +941,23 @@ See [Audible disc destinations](../server/api/reference.md#audible-disc-destinat
 
 ### Enrichment after placing
 
-The book the rescan answers decides. `joinedBooks` gives a verdict to each book the
-file could join: at its own path, at its folder, or at a disc set's folder above
-it. The verdict is yes when `importjob.BookMatcher` picks that book for the title
-and it isn't `importjob.SpanMismatch` (the poll's rule).
+The Bridge uses the book path returned by the rescan to decide where to write
+the ASIN.
 
-- A book with a verdict takes the ASIN only when its verdict is yes.
-- Any other book is new, and takes the ASIN. That includes the title's own book,
-  and a pack placed as a pack.
+- For a book listed before placement, `joinedBooks` records whether the title
+  matched that book without a span mismatch or an identical twin. The placement
+  marker keeps that decision for retries. If the decision allows enrichment,
+  the Bridge rereads the account's rejections after the rescan and skips the
+  write if the title is now marked. An older server's `405` reads as no marks.
+  If the re-read fails, the import fails with the book already placed:
+  `unknown_account` when the server no longer has the account, no code for any
+  other failure.
+- A new book can take the title's ASIN. For example, if `CD1` was the only
+  indexed disc and the rescan returns `CD2`, the Bridge gives `CD2` the ASIN.
+  If the rescan instead joins the discs and returns their previously unlisted
+  parent, the Bridge skips enrichment.
 
-The placement marker keeps the verdicts. The one PUT waits out `429`s as the poll's
+The enrichment PUT waits out `429`s as the poll's
 enrichment does (`enrichLimit.Do`), then gives up with `enriched: false`. `asin_set` and
 a moved book are `enriched: false` too, with no failure.
 
@@ -1128,9 +1142,13 @@ These columns hold what the console says of a title the Bridge left unmatched.
   contested title tied for. They are path-keyed with no FK. A move or a join
   carries them like a match's path, and the library's delete clears them.
 
-All three belong to the poll. Each titles PUT writes them, and a stored match
-clears them: the poll's match, a kept `import` match, or `FoldAudibleImport`'s. A
-title the final call marks `gone` loses its plan.
+Each titles PUT writes all three. A poll that matches the title clears them, and
+so does the done fold's match (`FoldAudibleImport`). Undo of **Not this book**
+clears the contest of a title with a kept match.
+A **Not this book** title keeps its rejected match beside a new plan, for Undo
+and to refuse a backup into the rejected book (what Undo does is in the
+[title PATCH](../server/api/reference.md#patch-apiv1adminaudibletitlesaccountasin)).
+A title the final call marks `gone` loses its plan.
 
 The PUT checks `planned` strictly (`checkAudiblePlan`; the rules are in the
 [reference](../server/api/reference.md#put-apiv1bridgeaudibleaccountsaccounttitles)).
@@ -1138,13 +1156,9 @@ The exception is a `path` over `MaxPathBytes` (Audible's long text through a
 template), which is stored as an `error` plan. A contest is stored only for the
 account's library.
 
-`GET /admin/audible/titles` shows:
-
-- `planned`, only while the account is mapped to the plan's library;
-- `contested {library_id, path, with}`, only while the account is mapped to the
-  contest's library. `with` lists the account's other titles (not `gone`)
-  contested over that book or matched to it, at most 10 (`fillContests`, one query
-  a page).
+`GET /admin/audible/titles` shows both only for the account's current library
+([its fields](../server/api/reference.md#get-apiv1adminaudibletitles));
+`fillContests` fills `contested.with`, one query a page.
 
 **Deploy the Bridge with the server.** There is no capability gate; see the
 [cross-repo contract](../architecture/cross-repo-contract.md#16-the-bridge).
@@ -1687,7 +1701,8 @@ The code is in `features/audible/`.
 
 The legal line is on the titles page and in both dialogs.
 
-**Notes on an unmatched title.** Each unmatched title shows `PlannedNote`
+**Notes on a title not on this server.** Each unmatched or **Not this book**
+title shows `PlannedNote`
 (`plannedLine`):
 
 - "Will go to &lt;path&gt;, beside N books of its series" and the like, with
@@ -1704,8 +1719,8 @@ The titles page's **Needs a look** filter lists the titles not on this server th
 a backup can still come of and whose plan warns, preorders first, since a preorder
 backs up on release day without anyone looking (`needsLook`, `lookList`).
 
-There is no `PlannedNote` on an `unavailable` or `gone` title, nor on a matched
-one, a Not this book title included, since a stored match clears the plan.
+There is no `PlannedNote` on an accepted match, nor on an `unavailable` or
+`gone` title.
 
 `ReasonNote` explains `contested` with the other titles and the book linked
 through `bookRoute`, as a plain sentence without data. A reason that is a machine
@@ -1731,6 +1746,7 @@ All in the [API reference](../server/api/reference.md#audible-accounts):
 | `GET /bridge/users` | bridge token | who an account may be mapped to |
 | `PUT /bridge/audible/accounts/{account}` | bridge token | record an account's mapping |
 | `DELETE /bridge/audible/accounts/{account}` | bridge token | the Bridge removed it |
+| `GET /bridge/audible/accounts/{account}/titles` | bridge token | the account's rejected titles, paged by ASIN |
 | `PUT /bridge/audible/accounts/{account}/titles` | bridge token | a page of a poll's titles |
 | `GET /bridge/libraries/{id}/books` | bridge token | a books library's books, paged, for matching |
 | `PUT /bridge/libraries/{id}/enrichment?path=` | bridge token | backfill a matched book's ASIN |
@@ -1745,13 +1761,14 @@ All in the [API reference](../server/api/reference.md#audible-accounts):
 | `POST /admin/audible/titles/{account}/{asin}/backup` | admin, module on | Back up one title |
 | `DELETE /admin/audible/accounts/{account}` | admin | remove an account from the server only |
 
-`audible.import` itself uses no new Bridge route: it reads the library through
-`GET /bridge/libraries/{id}/books`, indexes the placed file with
-[`POST /bridge/rescan`](../server/api/reference.md#post-apiv1bridgerescan) and sets
-the ASIN with the enrichment PUT.
+After [`POST /bridge/rescan`](../server/api/reference.md#post-apiv1bridgerescan),
+`audible.import` uses the returned book path and the
+[enrichment rules](#enrichment-after-placing) to decide whether to send the PUT.
+Before enriching a book it joined, it reads the marks again with
+`GET .../titles`.
 
 The Bridge mirrors the bridge-token routes by hand in `internal/link/audible.go`
-(`Users`, `PutAudibleAccount`, `DeleteAudibleAccount`, `PutAudibleTitles`,
+(`Users`, `PutAudibleAccount`, `DeleteAudibleAccount`, `RejectedAudibleTitles`, `PutAudibleTitles`,
 `LibraryBooks`, `Enrich`; the sync routes are [above](#the-two-bridge-routes)) and decodes
 nothing it doesn't need; the server decodes
 accounts and titles strictly, so the Bridge sends only the documented fields.

@@ -413,7 +413,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `user_unavailable` | `403` | the same two routes when the account's person was disabled, made a kid or a demo account since it was mapped |
 | `invalid_policy` / `invalid_marketplace` | `400` | an Audible account's `policy` (not `all`, `series` or `manual`; the Bridge's PUT or the console's PATCH) or `marketplace` (not one of the metadata regions) |
 | `report_off` | `409` | `POST /admin/match-runs` with mode `unknown_asin` while the unknown-ASIN report is off (from 2.7.0) |
-| `asin_set` | `409` | the Bridge's `PUT /bridge/libraries/{id}/enrichment` for a book that has another ASIN, or an admin's ASIN edit |
+| `asin_set` | `409` | the Bridge's [ASIN enrichment](reference.md#put-apiv1bridgelibrariesidenrichment) refused (another ASIN, an admin's ASIN edit, or a **Not this book** mark) |
 
 ### Codes by area
 

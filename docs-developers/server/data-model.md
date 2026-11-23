@@ -1775,8 +1775,10 @@ Mapping the account to another person turns `sync` off and clears
 - `contest_library_id` and `contest_path` (NULL and `''` for none): the book a
   contested title tied for, with a partial index. Like a match's path, the
   contest is path-keyed with no FK, carried by a move or a join, and cleared
-  with its library. `planned` and the two contest columns are the poll's, and
-  a stored match clears them.
+  with its library. A poll that matches the title clears its plan and contest,
+  as does a completed backup's match. Undo of "Not this book" clears the
+  contest of a title with a kept match.
+  A rejected title can keep both its previous match and a new backup plan.
 - `no_sync`: the console's "Don't sync this book". A poll keeps it, like
   `rejected` and `ignored`. Only the sync reads it; backups never do.
 - `fold_refusal_reason TEXT NOT NULL DEFAULT ''` and `fold_refused_at TEXT`

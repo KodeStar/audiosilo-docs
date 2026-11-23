@@ -102,7 +102,8 @@ backup would go to a place with a warning.
 
 ## How titles are matched
 
-At each check, the Bridge matches each title to a book in the account's library:
+At each check, the Bridge matches each title to a book in the account's library,
+except a title marked [**Not this book**](#not-this-book):
 
 1. **By ASIN first**, when the book has one (from a community match, a
    `metadata.json` file, or set in the console).
@@ -121,7 +122,8 @@ it matched. **Back up everything** and **Back up by itself** skip it. Then:
 - **If the book is this title**, give the book this title's ASIN
   ([Editing details](books.md#editing-details) > **ASIN**) and press
   [Check now](#check-now).
-- **If it isn't**, press **Back up** to back the title up as a book of its own.
+- **If it isn't**, mark the title [**Not this book**](#not-this-book). At the next
+  check, the other title can match the book.
 
 ## Backing up a book
 
@@ -190,10 +192,16 @@ an account still lists its titles, but every backup fails, and the Bridge's
 
 ### Not this book
 
-**Not this book** is for a title the Bridge matched to the wrong book, or one you
-never want backed up by itself. The title then counts as not here, and **Back up
-everything** and **Back up by itself** skip it. **Back up** still works for it.
-**Undo Not this book** removes the mark.
+Press **Not this book** when the Bridge matched a title to the wrong book, or to
+keep a title out of **Back up everything** and **Back up by itself**. The title
+then shows **Not here**. At the next check it stops competing for the book, and
+the Bridge plans where its own backup would go. If that is the wrong book's
+folder, the console asks you to choose another with **Destination...**. **Back
+up** saves the title as a separate book.
+
+If the match was right after all, **Undo Not this book** restores it and hides
+the backup plan. The title stays **On this server**, even if a check was running
+when you pressed Undo.
 
 ### Choosing a destination
 
@@ -215,6 +223,9 @@ the scan would join it into `Author/Book`:
   [folder detection](libraries.md#folder-detection).
 
 Choose a separate folder for the backup instead, such as `Author/New Title`.
+A lone `CD1` listed as its own book doesn't make `Author/Book` a book, so a
+backup into `CD2` beside it is allowed. `CD2` becomes a separate book, and `CD1`
+keeps its details.
 
 Clearing a destination is refused in the same way while the account's template
 names such a disc folder.
