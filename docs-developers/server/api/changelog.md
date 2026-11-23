@@ -21,6 +21,11 @@ Additions:
   `outside_grant`. When true, display the row without requesting artwork or
   linking to the book. An absent field means false. See
   [`GET /household/listening`](reference.md#get-apiv1householdlistening).
+- **A folder's own entry, for an admin.** An admin can pass `detail=1` to
+  [`GET /libraries/{id}/fs`](reference.md#get-apiv1librariesidfs) for a folder
+  below a book library's root. The first page then carries `folder`, the
+  folder's own entry, and each page gives a folder book's files their indexed
+  `duration`. Other callers' listings are unchanged. No capability flag.
 - **Retrying a bookmark.** With capability `bookmark_client_id`, a client can supply a UUID on a
   bookmark create. A fresh save returns 201, a replay for the same book returns the stored row
   with 200, and reuse for another book returns 409 `client_id_conflict`. A malformed UUID returns

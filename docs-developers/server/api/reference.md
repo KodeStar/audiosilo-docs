@@ -1109,7 +1109,7 @@ A transient fault while opening or listing a folder returns 503 `share_not_answe
 | `path` | string | `""` (library root) | directory to list, relative to the root; over 4096 bytes is `400 path is too long` |
 | `offset` | int | `0` | |
 | `limit` | int | `200` | values ≤ 0 or > 500 fall back to 200 |
-| `detail` | int | omitted | An admin can pass `1` for a folder below the root of a book library. Members get the ordinary listing even with `detail=1`. |
+| `detail` | int | omitted | An admin can pass `1` for a folder below the root of a book library. With it, a folder the library's ignore rules skip answers `404`. Members get the ordinary listing even with `detail=1`. |
 
 ```json
 {
@@ -5606,9 +5606,9 @@ listening done since a person last turned sharing on is shown.
   `paused` within 10 minutes (the session gap), else `recent`. The window covers a
   player that saves every 60 s in the background or on a download
   ([data model](../data-model.md#listening-sessions-how-they-are-derived)).
-- `title` comes from the indexed book. A session saved on a disc folder such
-  as `Book/CD1` takes the joined book's title and author if the caller can read
-  it. Otherwise the title falls back to the path's last segment. The server
+- `title` comes from the indexed book. From 2.7.0 a session saved on a disc
+  folder such as `Book/CD1` takes the joined book's title and author if the
+  caller can read it. Otherwise the title falls back to the path's last segment. The server
   uses the session's duration if the index has none. Unknown values for
   `author` and `duration` are `null`.
 - `outside_grant` is an optional boolean. In a book library, the server sends

@@ -642,10 +642,11 @@ metadata is off:
 The screen shows a folder tree per library (`/fs`) and the selected folder's
 detection choice (`…/folder-override`). It saves the choice through
 `setFolderMode` in `src/api/hooks.ts`, which notes the rescan and refetches the
-listings. The tree asks `/fs?detail=1`, so the first page names the folder
-itself (`folder`), which lets a direct link open a folder past its parent's
-first page. `FolderDetail` (`folder-detail.tsx`) totals the later pages up to
-10,000 entries (`TOTALLED`) and lists the first 500 audio files.
+listings. Each folder below the root asks for its first page with
+`/fs?detail=1`, so that page names the folder itself (`folder`), which lets a
+direct link open a folder past its parent's first page. `FolderDetail`
+(`folder-detail.tsx`) reads the later pages until the folder's first 10,000
+entries (`TOTALLED`) are in, totals their audio files and lists the first 500.
 
 `joinChoices` (`features/library/folders/folders-model.ts`) decides which
 choices a folder offers:

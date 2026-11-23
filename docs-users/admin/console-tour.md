@@ -92,9 +92,12 @@ The overview is the console's home page. It shows:
   library's [folder detection](libraries.md#folder-detection).
 - **Server** shows the version, available updates and enabled features.
   **Address** lists the public address for use away from home. A different
-  home address gets its own line marked **home network**. With neither set,
-  the card shows the address you opened, labelled **This browser's address**.
-  You can set both in [Server > Settings > General](server.md#general).
+  home address gets its own line marked **home network**. With no home address
+  set, a home-network address you opened the console at (such as
+  `http://192.168.1.20:8080`) is shown on that line. With neither set and no
+  such address, the card shows the address you opened, with the note "This
+  browser's address. Set the server's own in Server settings." You can set
+  both in [Server > Settings > General](server.md#general).
 
 A notice appears at the top when a library's folder can't be read (see
 [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing)).

@@ -210,7 +210,7 @@ mean for that folder ("Here: 12 books."), then the folder's audio files.
 ![Library > Folders](/img/screenshots/admin/folders.png)
 
 If the folder is a book, **Open book** opens its [book page](books.md#a-books-page).
-On the book's page, **Change detection** takes you back to its folder. You can
+On the book's page, **Change detection** opens its folder here. You can
 choose **Always one book** before the library's first scan has read the folder.
 
 **Audio files in this folder** counts the audio files directly inside the folder
