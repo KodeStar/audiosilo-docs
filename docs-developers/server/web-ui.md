@@ -693,25 +693,32 @@ path facts through metaserve's `works/match`.
   text.
 - **Starting pick.** The dialog starts from the book's `community_match` when
   the search lists it.
-- **Accepting.** The ticked fields, ASIN and ISBN included, are accepted as one
-  `PATCH …/book` with `source: "community"` and
-  `match: {work_id, recording_id, asin, isbn}` (`acceptRequest`). That records
-  the book's match. `asin` and `isbn` are the identifiers the match offers,
-  ticked or not.
-- **A book with no ASIN or ISBN.** A pick other than its recorded match is
-  itself something to accept. With nothing ticked, the button reads "Match to
-  this work" and sends `match` alone.
-- **Cover only.** A cover-only accept sends `match` after the cover, so it
-  records the match too. That includes a cover-only accept of the book's
-  recorded match (work and recording, `isRecorded`), which records its offered
-  identifiers again.
+- **Compare fields.** `useMatchProposal` asks for the selected work and recording
+  with the search that found them. The table shows the server's `values` beside
+  the book's fields. Its default ticks come from `set` and `revert`, the same
+  writes a run plans under `overwrite`. A revert row shows the scanned value.
+  Changing the main series tick uses `alternate_series` for the series number
+  and other series. See the [proposal response](api/reference.md#get-apiv1adminbooksmatch-proposal).
+- **Loading and retry.** Reopening the comparison after an edit requests a
+  fresh proposal. Accept stays disabled while the request is pending or has
+  failed. **Try again** repeats the request.
+- **Accepting fields.** `acceptRequest` sends the ticked sets and reverts in
+  one `PATCH …/book` with `source: "community"` and
+  `match: {work_id, recording_id, asin, isbn}`. The match records the offered
+  identifiers even when their fields are unticked.
+- **Match to this work.** With nothing ticked, `match_alone` enables recording
+  a new work or recording for a book without its own ASIN or ISBN. For the
+  already recorded match, the dialog also allows accepting with nothing ticked
+  when the proposal offers an identifier, so the server remembers it was offered.
 - **Candidates' covers** are thumbnails the server fetched
   (`POST /admin/meta/covers`), batched by URL in `src/api/cover-batch.ts`,
   because the CSP loads no other host's images.
-- **The Cover row.** It is ticked by default only for a book with no art whose
-  preview loaded (`defaultCoverTick`). A ticked Cover row is kept with
-  `PUT …/cover/community` after the fields. If that fails and nothing else was
-  ticked, the dialog stays open.
+- **The Cover row.** The proposal's `cover` flag supplies its default tick
+  unless the cached cover preview failed. The dialog sends a ticked cover to
+  `PUT …/cover/community` after any field writes. With only the cover ticked,
+  it sends the match after the cover succeeds if `match_alone` is true or
+  the book already has that match. If the cover-only request fails, the
+  dialog stays open.
 
 ##### Listen in player
 
@@ -1208,7 +1215,12 @@ The review dialog:
   **Add it** (`AddItLink`), a link to meta.audiosilo.app's Add a book page;
 - lists a change's `match` as "the community match" when no ASIN or ISBN is
   written beside it (`changeParts`);
-- posts the admin's picks as `exclude` and `include` ids.
+- sends the selected scope and the effective `include` and `exclude` item IDs
+  to the [apply preview](api/reference.md#post-apiv1adminmatch-runsidpreview).
+  The Apply button shows the returned `apply_count`. It waits for a successful
+  count after a change of scope or picks, and **Try again** retries a failed
+  count. Apply sends the same body and the confirmation shows the run's
+  `apply_total`.
 
 When the newest run's status changes to one that isn't working, the console
 refetches the book lists, issues, book pages and covers (`invalidateMatches`).
