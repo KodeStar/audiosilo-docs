@@ -12401,7 +12401,7 @@ even if it has no stored match. Accounts that share a library have separate list
 | Query parameter | Meaning |
 |---|---|
 | `after` | Omit on the first request. For the next page, pass the previous page's `next` ASIN. The page starts after that ASIN. |
-| `limit` | A positive integer. The default is 500 titles per page and larger values are capped at 500. |
+| `limit` | A positive integer. The default and the maximum are 500. |
 
 For example, a request with `limit=1` returns this page when more marks follow.
 
@@ -12668,7 +12668,7 @@ queued until the destination is corrected. A failed backup with `code: "exists"`
 | `fold_refusal_reason` | Optional string. The code below explains why the server could not use a completed backup as this title's match. |
 | `fold_refused_at` | Optional string. The UTC time the server recorded the refusal, in RFC 3339 format with up to nine fractional digits. |
 | `needs_attention` | a preorder still not available 14 days after its `release_date`: the account is no longer polled hourly for it |
-| `planned` | The backup destination from the last poll, in the [titles PUT format](#put-apiv1bridgeaudibleaccountsaccounttitles). A rejected match can have a plan. The field is `null` for an accepted match, a title with no plan, or an account no longer mapped to the plan's library. |
+| `planned` | The backup destination from the last poll, in the [titles PUT format](#put-apiv1bridgeaudibleaccountsaccounttitles). The field is `null` for an accepted match, a title with no plan, or an account no longer mapped to the plan's library. |
 | `contested` | For a contested title, `{library_id, path, with: [{asin, title}]}` identifies the book and up to 10 other titles on the account that claimed it, sorted by title. The list excludes gone and rejected titles. The field is `null` if there is no contested book in the account's current library. |
 
 Both refusal fields are omitted when the title has no recorded refusal, in the
@@ -12783,7 +12783,7 @@ out is left as it is:
   request). The server keeps the rejected match. Sending `false` accepts that
   match if present, hides its plan and clears its contest. If a poll reports no
   match after Undo, the server keeps the accepted match through the account's
-  next complete poll. This protection is in memory. A completed backup also
+  next complete poll (held in memory: a server restart forgets it). A completed backup also
   clears the mark when the server accepts the new book as the title's match.
 - `dest_path` is where in the account's library its backup goes, `""` for the
   account's placement: a file path, or a folder (a last segment without an audio

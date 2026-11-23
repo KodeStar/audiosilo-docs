@@ -306,7 +306,10 @@ template change plans by the new one. A claimed poll runs as claimed.
    (`GET /bridge/libraries/{id}/books`, at most 2000 pages). It then reads every
    page of the account's [**Not this book** decisions](../server/api/reference.md#get-apiv1bridgeaudibleaccountsaccounttitles)
    before matching titles or planning backups. A missing row or a missing
-   `rejected` flag counts as unmarked.
+   `rejected` flag counts as unmarked. An older server answers the first page
+   with `405`, and the poll goes on with no marks. Any other failure, a bare
+   `404` or `404 unknown_account` included, stops the poll before it reports
+   titles or writes an ASIN;
 4. skips records without a usable ASIN, and states the rest from
    `UnavailableReason` and `Preorder`: no reason is `available`, a reason with
    `Preorder` set is `preorder`, any other `unavailable` with the reason. Every
@@ -425,15 +428,8 @@ The losers go out in two ways:
 While several titles claim a book, the Bridge skips its ASIN backfill. A title
 marked **Not this book** makes no claim at the next poll. If only one claimant
 remains, it can match the book and supply its missing ASIN under the usual rules.
-
-An older server that supports only the titles PUT answers the first GET with
-`405`. The Bridge then proceeds with no rejections. Every other read error,
-including a bare `404` or `404 unknown_account`, stops the poll before it
-reports titles or writes ASINs.
-
-An older Bridge never reads the marks and can still try to add the title's
-ASIN to the rejected book. The server refuses that write with `409 asin_set`.
-The older Bridge quietly skips it and continues the poll.
+An older Bridge, which never reads the marks, is covered in the
+[cross-repo contract](../architecture/cross-repo-contract.md#bridge-seam-and-old-clients).
 
 ### Planned destinations
 
@@ -956,7 +952,7 @@ the ASIN.
 - A new book can take the title's ASIN. For example, if `CD1` was the only
   indexed disc and the rescan returns `CD2`, the Bridge gives `CD2` the ASIN.
   If the rescan instead joins the discs and returns their previously unlisted
-  parent, the Bridge skips enrichment. It needs no lookup of sibling discs.
+  parent, the Bridge skips enrichment.
 
 The enrichment PUT waits out `429`s as the poll's
 enrichment does (`enrichLimit.Do`), then gives up with `enriched: false`. `asin_set` and
@@ -1143,10 +1139,11 @@ These columns hold what the console says of a title the Bridge left unmatched.
   contested title tied for. They are path-keyed with no FK. A move or a join
   carries them like a match's path, and the library's delete clears them.
 
-The titles PUT can store a plan alongside a rejected match. The server keeps
-that match for Undo and to refuse a backup that lands in the rejected book.
-Undo accepts the kept match, hides its plan and clears its contest. A title
-the final call marks `gone` loses its plan.
+Each titles PUT writes all three, and a poll that matches the title clears them.
+A **Not this book** title keeps its rejected match beside a new plan, for Undo
+and to refuse a backup into the rejected book (what Undo does is in the
+[title PATCH](../server/api/reference.md#patch-apiv1adminaudibletitlesaccountasin)).
+A title the final call marks `gone` loses its plan.
 
 The PUT checks `planned` strictly (`checkAudiblePlan`; the rules are in the
 [reference](../server/api/reference.md#put-apiv1bridgeaudibleaccountsaccounttitles)).
@@ -1154,12 +1151,9 @@ The exception is a `path` over `MaxPathBytes` (Audible's long text through a
 template), which is stored as an `error` plan. A contest is stored only for the
 account's library.
 
-`GET /admin/audible/titles` shows the plan and contest for the account's current library.
-
-- `planned` appears only while the title has no accepted match.
-- `contested` identifies the book by `library_id` and `path`. Its `with` list
-  names up to 10 other titles on the account that claimed the book, excluding
-  gone and rejected titles (`fillContests`).
+`GET /admin/audible/titles` shows both only for the account's current library
+([its fields](../server/api/reference.md#get-apiv1adminaudibletitles));
+`fillContests` fills `contested.with`, one query a page.
 
 **Deploy the Bridge with the server.** There is no capability gate; see the
 [cross-repo contract](../architecture/cross-repo-contract.md#16-the-bridge).
@@ -1702,7 +1696,8 @@ The code is in `features/audible/`.
 
 The legal line is on the titles page and in both dialogs.
 
-**Notes on an unmatched title.** Each unmatched title shows `PlannedNote`
+**Notes on a title not on this server.** Each unmatched or **Not this book**
+title shows `PlannedNote`
 (`plannedLine`):
 
 - "Will go to &lt;path&gt;, beside N books of its series" and the like, with
@@ -1719,9 +1714,8 @@ The titles page's **Needs a look** filter lists the titles not on this server th
 a backup can still come of and whose plan warns, preorders first, since a preorder
 backs up on release day without anyone looking (`needsLook`, `lookList`).
 
-A marked title can show a destination even when its rejected match is still
-stored. The console hides the note for an accepted match or a title that is
-`unavailable` or `gone`.
+There is no `PlannedNote` on an accepted match, nor on an `unavailable` or
+`gone` title.
 
 `ReasonNote` explains `contested` with the other titles and the book linked
 through `bookRoute`, as a plain sentence without data. A reason that is a machine

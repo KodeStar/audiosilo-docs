@@ -1612,10 +1612,10 @@ These Bridge-token routes are **not** behind the module's toggle:
 |---|---|
 | `GET /bridge/users` | Who an account may be mapped to: enabled adults and admins, never a kid, demo or disabled account. |
 | `PUT` and `DELETE /bridge/audible/accounts/{account}` | The mapping. The delete answers `204` whether the account is known or not. |
-| [`GET .../titles`](../server/api/reference.md#get-apiv1bridgeaudibleaccountsaccounttitles) | The Bridge reads the account's **Not this book** marks before matching and planning. |
+| [`GET .../titles`](../server/api/reference.md#get-apiv1bridgeaudibleaccountsaccounttitles) | The account's **Not this book** marks, read before matching and planning. |
 | `PUT .../titles` | Up to 500 a call under one `poll_id`. The last call is `final`, which marks the rest `gone`. |
 | `GET /bridge/libraries/{id}/books` | A books library's books by path, 500 a page, for matching. |
-| `PUT /bridge/libraries/{id}/enrichment?path=` | The Bridge sends the ASIN of an unambiguous match. It skips the write on [`409 asin_set`](../server/api/reference.md#put-apiv1bridgelibrariesidenrichment). |
+| `PUT /bridge/libraries/{id}/enrichment?path=` | An unambiguous match's ASIN. The Bridge skips it on [`409 asin_set`](../server/api/reference.md#put-apiv1bridgelibrariesidenrichment). |
 
 `audible.poll` (feature `audible`, params `{account}`, no library) is internal, quiet
 and deduped per account. The `audible` module's scheduler queues it every
@@ -1804,6 +1804,11 @@ Read-along:
 Audible accounts:
 
 - An older Bridge never advertises `audible.poll`.
+- An older Bridge never reads the **Not this book** marks, so it can try to add a
+  marked title's ASIN to the rejected book. The server answers `409 asin_set`,
+  which every released Bridge skips quietly, and the poll goes on.
+- A newer Bridge against an older server gets `405` from the marks `GET` and polls
+  with no marks. A bare `404` there stops the poll.
 - An older console ignores the `audible` setup item and module.
 - A shipped player ignores the `audible` flag.
 
