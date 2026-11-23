@@ -7,7 +7,8 @@ A book that is **one audio file with no chapter markers** plays as one long
 track, so listeners can't skip between chapters. Your [Bridge](bridge.md) can
 find its chapters **in the narration**. It transcribes the audio and listens for
 the headings the narrator reads out, like "Chapter One" or "Prologue". A book
-with a recent [read-along](making-read-along.md) reuses that transcript instead.
+with a recent [read-along](making-read-along.md) reuses that transcript instead,
+unless the audio or the Bridge's transcription model or language changed since.
 
 Detecting chapters uses no AI agent, so it costs nothing but the time
 transcription takes. [Generating characters and recaps](generating-characters-and-recaps.md)

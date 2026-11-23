@@ -299,7 +299,9 @@ Accounts tab's GitHub App to intake by itself. An issue filed with
 route it (`contrib.IntakeNote`), so the result carries a note for it:
 `intake_notes` in a `sidecars.generate` or `sidecars.contribute` result, keyed
 by dimension, and `intake_note` in a [`meta.correct` result](#result). The
-server stores the notes with the result; the console doesn't show them yet.
+server stores the notes with the result. The console has no message for them
+yet: they appear only in the job's raw result, under **Details** in the jobs
+list.
 
 The failures are worded for the console:
 

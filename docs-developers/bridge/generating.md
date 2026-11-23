@@ -228,13 +228,15 @@ or parked. One run:
      readable `.epub`, else the job fails. `auto` takes a readable one and falls
      back to the audio, logging why: several `.epub` files, or one whose OPF
      doesn't parse, as a DRM-wrapped one doesn't.
-   - **Regenerating from audio** (`fromKeptTranscript`). A finished whole run
+   - **Regenerating from audio** (`fromKeptTranscript`). A done whole run
      of the audio at this path, split by markers or files, with
      [reusable transcripts](#transcript-retention) gives a new engine book that
      starts at `sanitizing`, with its own agent passes, costs and contribution
      history. The earlier run goes in the same write.
    - **Another earlier run.** A [chapters run](chapters.md#a-generate-job-after-a-detect-job)
-     or a done read-along run
+     (done, or cancelled at its transcription or detection) or a done
+     read-along run not transcribed in windows, its transcripts kept and its
+     audio unchanged
      ([Other jobs](readalong.md#the-reuse-table), after the table) is
      **continued**, keeping its transcription. Any other engine book at the
      same source path is deleted first (`deleteEarlier`). The job fails instead
@@ -734,7 +736,9 @@ A generate job reading the audio starts a new engine book at `sanitizing` from a
 done whole run's chapter transcripts, and a
 [chapters job](chapters.md#the-job) starts one at `chapter_detecting` from a
 done read-along's window transcripts. The new run is reused only when all of
-these hold, else the earlier run is cleared and the job starts from scratch:
+these hold, else the earlier run is cleared and the job starts from scratch
+(audio the Bridge can't look at right now, or an earlier run that stays busy,
+fails the job instead, to be tried again):
 
 - retention is on and the earlier job ended within it, checked at the job's
   start, not only by the sweep;
@@ -744,8 +748,9 @@ these hold, else the earlier run is cleared and the job starts from scratch:
   settings now; a setting it never recorded (an older run) doesn't count;
 - every chapter's or window's raw transcript is there and complete.
 
-The other shortcuts (a read-along going on from an earlier run, a chapters job
-writing an earlier run's detected chapters) don't compare the ASR settings.
+The other shortcuts (a read-along going on from an earlier run, a generate job
+continuing a chapters or read-along run, a chapters job writing an earlier
+run's detected chapters) don't compare the ASR settings.
 
 The purge (`scratch.PurgeTranscripts`) deletes the reclaimable scratch (the
 split chapter audio, the agents' staged inputs, the re-transcription clips, an

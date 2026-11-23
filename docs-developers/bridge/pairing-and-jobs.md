@@ -382,7 +382,8 @@ routing note for an issue a maintainer must send to intake
 | `sidecars.generate`, `sidecars.contribute` | `intake_notes`: each affected dimension (`characters`, `recaps`) to its note |
 | `meta.correct` | `intake_note`: one string for the correction issue |
 
-The console doesn't show these notes yet.
+The console has no message for these notes yet: they appear only in the job's
+raw result, under **Details** in the jobs list.
 
 ### Job history
 
