@@ -171,6 +171,10 @@ the `AUDIOSILO_ADMIN_NEXT` switch are gone.
 - i18next, lucide-react, and fontsource (self-hosted Bricolage Grotesque,
   Figtree, JetBrains Mono).
 
+Buttons, checkboxes, switches, tabs and radio cards use `focusRing` from
+`src/components/ui/focus-ring.ts`. It shows a visible ring on keyboard focus
+in both themes.
+
 Each screen is a lazy-loaded chunk, so the first paint carries only the shell
 and the overview. Interface strings work the same way. English is bundled in
 the entry, and it is also the fallback for any missing key. Each other language

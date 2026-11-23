@@ -209,13 +209,25 @@ mean for that folder ("Here: 12 books."), then the folder's audio files.
 
 ![Library > Folders](/img/screenshots/admin/folders.png)
 
-If the folder is a book, **Open book** opens its
-[book page](books.md#a-books-page). A book's page has a **Change detection**
-button that opens its folder here.
+**Audio files in this folder** counts the audio files directly inside the folder
+and shows their combined size. It shows the total length when every counted file
+has a known length. The list shows up to 500 audio files, with a note when there
+are more.
 
-A folder with more than 500 items lists the first 500. **Show more** lists the
-next ones. You can choose **Always one book** for a folder before the library's
-first scan has read it.
+The totals cover the first 10,000 items, including folders. In a larger folder,
+the file list shows a note about this limit. Folders come first, so if they fill
+all 10,000 places, the page shows no audio files or limit note.
+
+Use the arrow keys to move through the folder tree and Enter to select a folder.
+**Show more** loads up to 500 more items. Focus moves to the first new folder
+unless you move to another control while the list loads.
+
+A direct link opens the folder's details even if its parent has more items than
+the tree shows. A link to a missing folder says it isn't there any more.
+
+If the folder is a book, **Open book** opens its [book page](books.md#a-books-page).
+On the book's page, **Change detection** takes you back to its folder. You can
+choose **Always one book** before the library's first scan has read the folder.
 
 ### Books split into disc folders
 

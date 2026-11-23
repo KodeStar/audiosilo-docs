@@ -17,6 +17,10 @@ link here when it has one.
 
 Additions:
 
+- **Household listening.** A row can now carry the optional boolean
+  `outside_grant`. When true, display the row without requesting artwork or
+  linking to the book. An absent field means false. See
+  [`GET /household/listening`](reference.md#get-apiv1householdlistening).
 - **Retrying a bookmark.** With capability `bookmark_client_id`, a client can supply a UUID on a
   bookmark create. A fresh save returns 201, a replay for the same book returns the stored row
   with 200, and reuse for another book returns 409 `client_id_conflict`. A malformed UUID returns

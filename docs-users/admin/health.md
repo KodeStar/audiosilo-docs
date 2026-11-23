@@ -56,8 +56,12 @@ estimated length, and scans don't measure it again until its files change.
 To try sooner, use [**Read the files again**](books.md#a-books-page) on its
 page. Without ffprobe, the book shows **reading it timed out** instead, and the
 next scan tries again.
-A drive or share that stops answering holds up only the libraries on it. The
-other libraries scan as usual.
+
+If a network share stops answering during **Read the files again**, the book
+appears under **Files that couldn't be read**. A background scan that gives up
+on a folder also marks affected books already in the library as unreadable.
+Once the share answers, a successful **Read again** or scan clears the issue.
+Libraries on other drives or shares keep scanning.
 
 ### Working through a list
 
@@ -84,8 +88,9 @@ If you want to keep two narrations, for example, choose **They're different
 books**. This hides the group and deletes nothing. If you later add or remove a
 copy, the books that still match come back as a new group.
 
-Turn on **Include other libraries** to also see matching pairs from two
-libraries. If two copies in your main library both match a third in your kids'
+**Include other libraries** appears only when you have at least two book
+libraries. Turn it on to see matching pairs across libraries.
+If two copies in your main library both match a third in your kids'
 library, you see two pairs. Choosing **They're different books** on one pair
 leaves the other pair, and the group in your main library, still listed.
 

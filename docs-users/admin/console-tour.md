@@ -88,10 +88,11 @@ The overview is the console's home page. It shows:
   **Triage** opens [Library health](health.md).
 - **Books per library**. A count that looks wrong is a cue to check that
   library's [folder detection](libraries.md#folder-detection).
-- **Server**: the version, whether a newer one is out, and which features are
-  on. **Address** shows the server's **Public address** and **Home address**
-  from [General](server.md#general). With neither set, it shows this browser's
-  address.
+- **Server** shows the version, available updates and enabled features.
+  **Address** lists the public address for use away from home. A different
+  home address gets its own line marked **home network**. If the server supplies neither, the
+  card shows the address you opened and labels it **This browser's address**.
+  You can set both addresses in [Server > Settings > General](server.md#general).
 
 A notice appears at the top when a library's folder can't be read (see
 [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing)).
@@ -144,3 +145,6 @@ narrators and shares. The last entry, "Search all books for ...", opens
 [Library > Books](books.md#browsing-books) with what you typed.
 
 ![Searching from the command palette](/img/screenshots/admin/palette-search.png)
+
+When you use the keyboard in the console, a visible focus ring marks the
+current button, checkbox, switch, tab or choice card.
