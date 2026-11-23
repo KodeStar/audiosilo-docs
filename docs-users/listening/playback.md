@@ -17,7 +17,7 @@ While a book plays, a small player stays with you on every screen.
 - In the middle: chapter and skip buttons, play/pause, and a scrubber for the current chapter.
 - On the right: speed, the [sleep timer](sleep-timer.md), bookmark, output, [Cast](chromecast.md), [Up next](up-next.md), and an arrow to the full player.
 
-After a large jump, tap **Back to** above the bar to return to where you were. The button stays available while the jump loads and for 10 seconds after it lands. See [Undo a jump](full-player.md#undo-a-jump).
+After a jump, an [undo button](full-player.md#undo-a-jump) floats just above the bar.
 
 In a narrow window, the player bar hides some of these buttons. The full player still has them. The bookmark button marks where you are. See [Add bookmarks and notes](bookmarks-and-notes.md).
 
@@ -56,7 +56,7 @@ Each device tells the server what you listened to: from where to where, and when
 - **Finished stays finished**, unless you start the book again or [mark it as not finished](end-of-book.md#mark-a-book-finished-yourself).
 - **Listening counts when it happened.** Offline listening shows in your history, Journal and stats at the time you listened, even if it syncs days later.
 
-If you let the question disappear, you keep listening here. When you next press Play or move in the book, the player asks again if the server kept the other place. Choose **Jump** or **Stay** to settle it.
+If you let the question go, you keep listening here. While the server still has the other place, the player asks again the next time you press Play or move in the book. Choosing **Jump** or **Stay** settles it.
 
 Until it reaches the server, your listening waits on the device. Home says how many listens are waiting, and your [account page](account.md#listening-sync) shows the details.
 
@@ -85,7 +85,7 @@ Previous goes back to the start of the chapter. Within the first 3 seconds of a 
 
 On Android, pressing play on your headphones, a Bluetooth device or the car works even after Android has closed the app. It resumes the downloaded book you listened to last, from your latest place, even when that is a different book from the one the app last had open. If the app crashed or was closed mid-book, it starts within about 10 seconds of where you were. A book you stopped or finished stays stopped. After the phone restarts, Android's media controls show a card for that downloaded book, and its play button starts it at your saved place.
 
-If your stream stops, press Play on the phone, your headphones or the car to carry on.
+When playback stops with *Playback stopped. Your place is saved.*, press Play on the phone, your headphones or the car to carry on.
 
 See [Get the apps](mobile-apps.md) for more on the apps.
 
@@ -109,13 +109,13 @@ Many such books can get real chapters, from the community database or from your 
 
 ## Good to know
 
-- **Playing in two browser tabs.** On the same server and account, the latest Play press wins, even while a book is loading. The earlier tab pauses when the new one plays, even if the clock jumped back several minutes. Press Play in the tab showing **Playing in another tab** to pick up the same book where the other tab left off.
+- **One tab plays at a time in a browser.** The tab where you pressed Play last plays, even if it is still loading the book or your computer's clock was set back, and the other pauses and says **Playing in another tab**. Press Play there to take it back. With the same book in both tabs, it carries on where the other got to. Tabs signed in to different servers or accounts can play at once, and your other devices aren't paused.
 - **Older servers** don't combine listening from several devices. The app saves your place as before, and the protections in [Your position follows you](#your-position-follows-you) still apply. On some, **Mark as finished** needs a connection.
 - **When Stay doesn't win.** It doesn't beat listening that went on more than two minutes after it, such as when you chose Stay offline a while ago. It doesn't beat a change made since, such as marking the book finished. Then the usual rules above apply. If another device's Stay got there first, you're asked again straight away.
 - **On servers before 2.7 that combine listening**, Stay wins only if the other device hasn't played on since yours asked, or your place is further on. A question you let go may not come back when you press Play or skip.
 - **MKA books.** An `.mka` book with MP3 inside plays like any MP3 book when your server has ffmpeg (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). On the very first play of a large one, a jump may not land exactly until the server has finished preparing it.
 - **MP3 files recorded at a varying bitrate.** Skips, seeks and chapter jumps land at the place the player shows. If a file holds less audio than its listed length, playback stops with an error where its audio ends, instead of running on into the next file, and the book isn't marked finished. Move back into the file, or on to the next one, then press play or **Retry**.
 - **A book that stopped with an error.** You can still skip, seek or pick a chapter, in the app or on the lock screen. The player shows the new place, and play or **Retry** loads the book there.
-- **A chapter or bookmark takes time to load.** If you pressed Play there while listening, the player waits up to 30 seconds, even if **Retry** appears. It plays from there when the audio arrives, unless you pause or choose another place.
+- **A chapter or bookmark that is slow to load.** If you press Play on one while listening, the player waits for it for up to 30 seconds, even if **Retry** appears, then plays from there. Pause or pick another place to stop waiting.
 - **Very long single files on Android.** A book in one `.m4b` or `.m4a` file over about 41 hours shows a scrubber for the whole file on the lock screen, with no chapter buttons. Its chapters work as usual in the app.
 - **A listen the server turns down**, such as one from a download of a different length, is listed with the reason on your [account page](account.md#listening-sync).

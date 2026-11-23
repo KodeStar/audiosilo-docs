@@ -821,9 +821,9 @@ Each answer is handled like this:
   events actually sent, rounded down. If the request carried one event, that
   event goes on the couldn't-sync list as `too_large`.
 - For any other `400` on a batch, the outbox retries only the events that
-  went in the request, one at a time. Both paths exclude finishes withdrawn
-  before the send. An event refused alone, including an initial request of
-  one, goes on the list as `invalid`. A `stay` refused alone gets one more
+  went in the request, one at a time. Neither retry includes a finish withdrawn
+  before the send. An event refused on its own (or sent alone to begin with) goes
+  on the list as `invalid`. A `stay` refused alone gets one more
   try as a `jump`, and the client asks for `/server` again.
 - An event older than 90 days (the server's own bound, `syncRejectAge`) is not sent.
   It moves to the list as `too_old`, so an event that never gets an answer can't hold
@@ -839,9 +839,9 @@ Each answer is handled like this:
 Rollback processes one book at a time.
 
 1. Just before sending a book, `sending` rechecks and marks only that book's
-   finishes. Another tab can still withdraw a later book's finish while an
-   earlier PUT is in flight. A finish withdrawn before its turn stays out of
-   the conversion. See [Taking a finish back](#taking-a-finish-back).
+   finishes, so a later book's finish that another tab withdraws while an earlier
+   PUT is in flight stays out of the conversion. See
+   [Taking a finish back](#taking-a-finish-back).
 2. `legacySaveOf` orders the remaining events by time and uses the latest
    listen's end. The save is finished if the last finish-state event is a
    `finish` at or after that listen, or a `finish` with no listen. A finish
@@ -892,10 +892,12 @@ confirm, not a block.
 
 At sign-out, `teardownBeforeTokenRevoke` waits for the stop's final span to
 enter the outbox. The outbox finishes its send or rollback transfer before the
-legacy queue gets its final flush. Removing the connection increments
-`connectionGeneration` before the purges. An event appended after a wait,
-or a mirror write for a finish or its Undo, checks that number so it cannot
-write into a later sign-in. See [The replay guard](state-and-data.md#the-replay-guard).
+legacy queue gets its final flush (its guard reads:
+[The replay guard](state-and-data.md#the-replay-guard)). Removing the connection
+increments `connectionGeneration` before the purges. An event appended after a
+wait, or a mirror write for a finish or its Undo, checks that number. The same
+account signing in again gets the same connection id, so an orphan appended after
+the purge would otherwise be sent for it.
 
 **Resume by file.** The mirror's records carry the playing file and the seconds into
 it (`file`, `file_pos`). A resume of this device's own place (`loadInitialProgress`)

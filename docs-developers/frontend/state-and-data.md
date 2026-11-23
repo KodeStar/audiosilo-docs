@@ -2158,11 +2158,12 @@ The offline-safe write path for listening progress:
   ([Playback](playback.md#listening-spans-sync-v2)), and the legacy queue only
   drains what it already held. `pendingSaves` counts both the queue's saves and
   the outbox's listens.
-- **Downloaded books keep the progress list's places.** `allProgressQuery`
-  returns Home's progress rows while `writeMirrors` saves the downloaded books'
-  rows in one background write. It keeps the newest place and skips identical
-  records. An offline resume can then pick up another device's place even if
-  the listener never opened that book's page online.
+- **Downloaded books keep the progress list's places.** When `allProgressQuery`
+  returns Home's progress rows, `writeMirrors` saves the downloaded books' rows in
+  one background write, keeping the newest place and skipping identical records,
+  as `fetchBookProgress` does for one book. An offline resume can then pick up
+  another device's place even if the listener never opened that book's page
+  online. A failed mirror write never fails the list.
 
 ### The place Resume plays
 
@@ -2250,23 +2251,23 @@ instead:
   up, the next check reads the server again. If the listener answered that row
   or came within 30 s of it, a save that still carries the guard needs a fresh
   read before it can pass.
-- **Choosing a place.** `onHeldSave` also runs for a cached hold. The loaded
-  book can offer the row again on the next play or move. Both Jump and Stay
-  release the active session's guard. See [Offering another device's place](playback.md#offering-another-devices-place-sync-v2).
-- **Signing out.** `flushConnectionSaves` waits for the listening outbox to
-  finish transferring any rollback saves, then flushes this connection's legacy
-  queue before token revocation. For each guarded save it makes one guard GET
-  unless a matching hold less than 5 s old still blocks that save
-  (`LAST_CHANCE_RECHECK_MS`). If the read allows it, the client sends a PUT
-  with that capture's `updated_at`. Stopping the loaded book at sign-out can
-  itself make a newer capture, even while paused. If the other device's place
-  still holds the save, the client drops it without a PUT. After a guard read
-  or PUT, `connectionGeneration` prevents a late response from restoring a
+- **The offer.** `onHeldSave` runs for a fresh hold and a cached one. Each
+  listener runs on its own, so one that throws never turns a held save into a
+  queued one. The loaded book offers the row with the usual Jump and Stay toast
+  ([Offering another device's place](playback.md#offering-another-devices-place-sync-v2)).
+- **Signing out.** The legacy queue's last flush before the token is revoked
+  (`flushConnectionSaves`, after the outbox:
+  [Sign-out](offline.md#what-the-listener-sees)) makes one guard read for each
+  guarded save, unless a hold read in the last 5 s still blocks it
+  (`LAST_CHANCE_RECHECK_MS`). A save the read lets through is `PUT`; one still
+  held is dropped with no `PUT`, so the sign-out never moves another device's
+  further place back. `connectionGeneration` keeps a late answer from restoring a
   removed account's queue.
 
-On a `listening_sync` server, the server resolves listening events against
-their `base_version`. A held listen therefore leaves no guarded legacy save
-to check or send at sign-out.
+The guard and the offer share `GUARD_SLACK_S` and `placeKey`. On a
+`listening_sync` server the server resolves each listening event on its
+`base_version`, so a held listen leaves no guarded legacy save to check or send
+at sign-out.
 
 ## Reachability (`src/api/reachability.ts`)
 

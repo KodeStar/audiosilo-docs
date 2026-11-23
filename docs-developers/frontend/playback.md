@@ -108,13 +108,15 @@ since there is no native queue. Key points:
   The server's `cors_origins` decides whether that load succeeds. CORS mode ignores
   `Cross-Origin-Resource-Policy` ([CORS](../server/api/index.md#cors)).
 - The **Media Session API** sets the track metadata and handles the system media
-  controls. Play signals `onRemotePlay` before calling the audio element's
-  `play()`. On the local route the store records the press time, so the tab can
-  [claim playback](#one-tab-plays-at-a-time-web) when sound starts. Pause or a
-  refused Play signals `onPauseAsked` and cancels the pending request, even
-  before the first sound. The skip controls use the configured jump intervals.
-  Their seeks go through `onRemoteSeek` and `seekInTrack`, which lower the
-  resume floor and save the chosen place.
+  controls:
+  - Play signals `onRemotePlay` before calling the audio element's `play()`. On
+    the local route the store records the press time, so the tab can
+    [claim playback](#one-tab-plays-at-a-time-web) when sound starts.
+  - Pause, or a refused Play, signals `onPauseAsked` and cancels the pending
+    request, even before the first sound.
+  - The skip controls use the configured jump intervals. Their seeks go through
+    `onRemoteSeek` and `seekInTrack`, which lower the resume floor and save the
+    chosen place.
 - **A browser autoplay refusal is a pause, not an error.** `play()` without a user
   gesture, such as a cold `/player` deep link, rejects with `NotAllowedError`. The
   engine settles its snapshot on `paused` and rethrows the error as
@@ -160,8 +162,9 @@ since there is no native queue. Key points:
   - A `load` or a `reset` while the copy buffers (`queueSeq`) discards the copy and
     resolves `'refused'`. A move to another file (`loadSeq`) or a seek (`seekSeq`)
     discards it and resolves `'moved'`, since the copy sits at the place before.
-- The browser can queue a `playing` event before a pause lands. The web engine
-  drops that event if the element is already paused when it arrives.
+- **A `playing` from an element that is paused by then is not reported.** The
+  browser can queue a `playing` before a pause lands. Reported, the store would
+  read it as a new play and take the connection back from the tab that plays now.
 - A **transcoded** track (`track.transcoded`, web only) is re-requested on every
   seek instead of seeking the element, and its position is reported
   track-absolute (see [Web transcode negotiation](#web-transcode-negotiation-transcodets)).
@@ -751,16 +754,7 @@ order of importance:
    book paused, and leaving it would strand an endless spinner with no retry
    button.
 
-When the listener presses Play on a chapter or bookmark in a loaded book,
-`playOn` asks for the move once. If the book is paused or stopped when the
-seek request returns, `toggle(askedAt)` resumes it using the original press
-time. If the transport is still live, `playOnThroughStall` gives the move up
-to 30 s from the request
-(`SEEK_PLAY_ON_MS`). The watchdog can still show Retry after 3 s, but it
-leaves the engine waiting for that audio. The next transition to `playing`
-clears the error and ends the wait. A new play attempt supersedes the request.
-A pause, a new choice of place, sleep timer expiry or the 30 s limit stops an
-engine still waiting in error. Another tab taking over also pauses it.
+Keep all of this in shared JS; do not re-add a per-engine native timer.
 
 ```mermaid
 stateDiagram-v2
@@ -785,6 +779,16 @@ stateDiagram-v2
 
 In the diagram, `connecting` is the store's `startingPlayback` window. The snapshot
 the UI sees during it is `loading`.
+
+**Playing on through a stall.** When the listener presses Play on a chapter or
+bookmark in a loaded book, `playOn` asks for the move once. If the book is paused
+or stopped when the seek request returns, `toggle(askedAt)` resumes it with the
+original press time. If the transport is still live, `playOnThroughStall` gives
+the move up to 30 s from the request (`SEEK_PLAY_ON_MS`). The watchdog can still
+show Retry after 3 s, but it leaves the engine waiting for that audio, and the
+next `playing` clears the error (rule 3). A new play attempt replaces the
+request. A pause, a new choice of place, the sleep timer's end or the 30 s limit
+stops an engine still waiting in error, and another tab taking over pauses it.
 
 ### Resume protection
 
@@ -1227,17 +1231,18 @@ uses the time the route opened. The store announces the claim when the requested
 play reaches `playing`, before opening the span (`claimPlaying`). A file
 advance or recovery during the same play reuses the original `askedAt`. After
 a tab gives way, a late load or buffer recovery cannot claim playback again.
+A Cast receiver has no separate signal for its own Play, so the web store takes
+its move into `playing` as a new request.
 
 **Who gives way.** A playing or starting tab yields to a newer claim on its
 loaded book's connection (`givesWayTo`). A pending Media Session Play counts
 as a start. A tab still looking up a book checks for a newer claim before it
 starts the engine.
 
-`laterPlay` compares both press times against the same clock reading. A press
-dated more than 60 s ahead of that reading counts as coming from before the
-clock stepped back. A press after the step wins over one before it. Within
-the same group, the later `askedAt` wins, with the greater tab id breaking a
-tie. The store uses this rule to give way, keep the newest rival claim per
+**Which play is later** (`laterPlay`, pure) reads the clock once. A press dated
+more than 60 s ahead of that reading came before the clock was set back
+(`beforeClockStep`), and loses to any press made since. Otherwise the later
+`askedAt` wins, and in the same millisecond the greater tab id. The store uses this rule to give way, keep the newest rival claim per
 connection and check a pending start (`newerTabPlay`). That check also ignores
 a stored claim whose `sentAt` is more than 60 s ahead of the current clock.
 
@@ -1257,15 +1262,16 @@ a stored claim whose `sentAt` is more than 60 s ahead of the current clock.
 4. If it had reached playback and was up to date, it answers with its last heard place
    ([The tab that gives way says where it stopped](#the-tab-that-gives-way-says-where-it-stopped)).
 5. It clears the play request and pauses the engine, even while the audio loads.
+   A play whose first engine event has not arrived must not go on to `playing`,
+   which would read as a new play and take the connection back. On Cast the
+   store pauses any late `playing` report again until the receiver confirms the
+   pause or the 3 s `CAST_GIVE_WAY_FENCE_MS` runs out.
 6. It tells the listener (`onGaveWayToTab`).
 
 The tab keeps its book, and a play there claims the connection back.
 
-A tab whose stream failed also pauses its engine on takeover, without a notice.
-A Cast receiver has no separate signal for its own Play, so the web store
-accepts its transition to `playing` as a new request. On giving way, the store
-pauses any late `playing` report again until the receiver confirms the pause
-or the 3 s `CAST_GIVE_WAY_FENCE_MS` expires.
+A tab whose stream failed also pauses its engine on takeover, without a notice,
+because a stream that came back by itself would read as a new play.
 
 **The notice** (`startOtherTabNotice` in `other-tab-notice.ts`, one of the root's
 services) is a toast, "Playing in another tab" (`player.otherTab.title`).
@@ -1334,9 +1340,9 @@ nothing moves. Another device's record is left to the
   the next span begins there as a `resume`.
 - No `jump` or `moved_back` event is sent. The server is never told that the
   listener chose the place the tab was at.
-- A move of more than a minute can show the Undo chip. While the jump loads or
-  stalls, the chip remains usable. Its full 10 s starts again at the next settled
-  sample. Undo calls `seekBook`. See [Undo a jump](player-ui.md#undo-a-jump-jump-undots).
+- The [Undo chip](player-ui.md#undo-a-jump-jump-undots) follows its own rule. It
+  reads the snapshot stream, so a move of more than a minute offers the way back.
+  That Undo is the listener's own `seekBook`.
 - A book the other tab finished starts again from 0, as a `restart` with the
   `unfinish` owed, as a fresh load of a finished book does. Not when this tab is
   at the end itself, and not in a paused tab brought to the front, which stays
@@ -1406,21 +1412,26 @@ saved place never goes back. The answer is read against the place the play began
 at (`ownPlay.pos`, moved with each tab place taken), not where it has played to
 since.
 
-An answer applies only to the current play of the same loaded book and
-connection, within 5 s of its first claim (`GAVE_WAY_ANSWER_MS`). The store
-ignores answers during a book load or after another tab takes over.
-`placeChosen` protects an explicit start, a seek or Stay as soon as the
-listener chooses it. A place within 2 s of the play's starting point needs no
-move. The tab ignores a finished answer during playback and reads the saved
-finish on its next resume.
+An answer is ignored when it:
+
+- answers an older play than the tab's current one, or comes more than 5 s
+  (`GAVE_WAY_ANSWER_MS`) after that play's first claim;
+- is for another connection or another book, or comes while a book loads;
+- would move a place the listener chose here (`placeChosen`: an explicit start,
+  a seek or Stay, from the moment it is chosen);
+- comes when yet another tab plays by now;
+- is within 2 s of the place the play began at;
+- says the book was finished. A book is not started again under a listener
+  hearing it, and the next resume reads the save.
 
 An answer waits for a move to the mirror's place already in progress
-(`catchingUp`). If a download is changing the file indexes, both the mirror
-lookup and the answer wait up to 10 s for `swapHold` to clear. The tab maps
-the file and its offset against the settled queue, falling back to whole-book
-seconds if the file is missing. If the swap began during the mirror read, the
-tab reads the mirror again. A new play or choice of place cancels the old
-move. The answer still has to meet its own 5 s deadline.
+(`catchingUp`). While a download swaps the queue
+([While the track index moves](offline.md#while-the-track-index-moves)), the
+mirror lookup and the answer wait up to 10 s for `swapHold` to clear, then map
+the file and its offset against the settled queue (whole-book seconds when the
+file is gone). A swap that began during the mirror read reads the mirror again.
+A new play or choice of place cancels the old move, and the answer keeps its own
+5 s deadline.
 
 #### Known limits {/* #one-tab-known-limits */}
 
