@@ -395,10 +395,14 @@ the book now:
 
 **Serving.**
 [`GET /libraries/{id}/readalong`](../server/api/reference.md#get-apiv1librariesidreadalong)
-reads the file again on every request that sends it and checks it against the book
-now. It never trusts the indexed head for the bytes it sends. A revalidation of an
-unchanged map the index has read is checked from the indexed head and answered `304`
-without reading the map (from 2.7.0). It answers `404 no_readalong` for
+reads the file again for every full answer and checks it against the book now,
+never trusting the indexed head for the bytes it sends. From 2.7.0 a revalidation
+reads none of the map when it can: when `If-None-Match` names the map's ETag as
+the file is now (a look at the file, never through a link) and the index read
+that very file, the indexed head is checked against the book now and the answer
+is `304`. Anything else gets the full answer. A look at the map or the ebook that
+gives up on a share answers `503 share_not_answering` at once, rather than
+waiting a second time in the full answer. It answers `404 no_readalong` for
 none, and `409 readalong_stale` with the reason. It takes header auth only, never
 `?token=`.
 

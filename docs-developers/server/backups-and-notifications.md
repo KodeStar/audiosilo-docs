@@ -613,7 +613,7 @@ stays inside. The bell shows it, but no destination is sent it. The field is in
 text of every `scan_failed` delivery is the generic "See the scan's log in
 Health > Jobs."
 
-### Delivery
+### Recording an event
 
 `notify.Service.Emit` returns at once, so a sign-in or a Bridge job's end never waits on
 the database for its event (server#224). The event goes on an ordered queue (`emitQueue`,
@@ -626,7 +626,9 @@ backup, before its run is marked over). At shutdown the launcher calls `Service.
 before the database closes, which records every event still queued. An event emitted after
 that is recorded on its caller's goroutine, after the queue has drained, so the order holds.
 
-The server writes the event and one `notify_outbox` row per subscribed destination in one
+### Delivery
+
+Recording an event writes it and one `notify_outbox` row per subscribed destination in one
 transaction. Each destination receives its oldest pending event first. Other destinations can
 continue while one waits. Delivery resumes at startup and a five-minute sweep finds outstanding
 work.

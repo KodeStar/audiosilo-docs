@@ -246,10 +246,9 @@ cover, instead of full-size art.
   waiting to be decoded, so a slow mount never has a grid's 60 reads in flight.
   `thumbSem` (4) bounds the decodes themselves.
 - **Shared reads.** Asks for the same thumbnail at the same time share one read
-  (`sharedThumbnail`, on `API.libraryThumbs`): the first makes it, the others
-  wait for it, so a cover asked for again while a slow share is still reading it
-  never starts a second read. An ask whose leader's request ended first makes it
-  itself.
+  (`sharedThumbnail`, on `API.libraryThumbs`), so a cover asked for again while
+  a slow share is still reading it never starts a second read. An ask whose
+  leader's request ended first makes it itself.
 - **A 2-second answer.** The batch makes its thumbnails apart from the request
   and waits at most `coverBatchWait` (2 s) for them. A cover still being made
   then is answered `"pending": true` with `data` `""`, and its read goes on into
