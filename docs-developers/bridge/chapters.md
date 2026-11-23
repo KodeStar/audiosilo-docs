@@ -105,10 +105,11 @@ The stage runs these steps:
    start, for the detection only. Nothing is timed past the window's own audio,
    because a hallucination there would interleave with the next window's words.
 2. **The silences.** The stage uses the ones `splitting` kept beside each window
-   FLAC (`audio.WindowSilences`). When it reuses a read-along's transcripts, it
-   can cut the windows again from the source audio to measure missing silences.
-   For a window without a saved measurement it runs one bounded `silencedetect`
-   over the window and keeps the result the same way, so a Retry decodes nothing.
+   FLAC (`audio.WindowSilences`). When a window has neither (a run that started
+   from a read-along's kept transcripts has no window audio, `audio.WindowHeard`),
+   it first cuts the windows again from the source audio. A window FLAC with no
+   kept silences gets one bounded `silencedetect`, its result kept the same way,
+   so a Retry decodes nothing.
 3. **`chapterdetect.Detect`** (below). When it is not confident, the book parks
    **`chapters_not_detected`** with the detector's reason. Nothing has moved, so
    a Retry detects again.
@@ -246,8 +247,8 @@ Bridge store migration `0005` adds `books.goal`. `''` means the whole pipeline,
 and `chapters` means stop after `chapter_detecting` (`state.GoalChapters`, routed
 once by `state.PathNext`, which the ETA follows).
 
-A goal-chapters book starting from scratch goes `inspecting` -> `splitting` -> `asr` ->
-`chapter_detecting` -> `done`. It holds no series lock, because it makes nothing
+A goal-chapters book starting from scratch goes `inspecting` -> `splitting` ->
+`asr` -> `chapter_detecting` -> `done`. It holds no series lock, because it makes nothing
 a later volume carries on from. It is left out of `FinishedBooks`, so it never
 skews the agent-cost estimates.
 
@@ -266,24 +267,28 @@ strictly and the Bridge reads any object. It resumes and follows its engine book
 exactly as [`sidecars.generate`](generating.md#how-the-bridge-runs-it) does
 (prepare, a resumed job's own book found again, moves followed). A new job:
 
-1. **Checks for conflicting jobs or sidecars.** It refuses:
+1. **Refuses** in three cases:
    - a book whose characters and recaps were made without chapters found in the
      narration (no `chapters` object in its `bridge.json`), because new chapters
      would move their spoiler positions ("Generate the book again to find its
      chapters with them");
    - a book an open generate job follows ("A generate job is already working on
-     this book; its chapters come with it.").
-2. **Writes from an earlier run**, with no new transcription, when an engine book
-   at the source path already has a `chapters_detected.json` current for its
-   manifest and audio. The job writes this list even after transcript retention
-   expires or ASR settings change. If there is no current list, it refuses to
-   clear a finished whole run or a read-along that holds that run's fact notes.
-3. **Reuses a finished read-along's windows** if the book is a single file
-   that inspect treats as markerless. The new job starts at `chapter_detecting`
-   with the raw transcript for each window. If the audio or recorded ASR model
-   or language changed, retention expired, or a required transcript is missing,
-   it starts at `inspecting` and transcribes again. See
-   [Transcript retention](generating.md#transcript-retention).
+     this book; its chapters come with it.");
+   - a finished whole run, which it never clears, or a read-along that went on
+     from one and so holds its notes (`keepsWholeRun`: the notes on disk,
+     `facts/knowledge-final.md`, else any fact pass that ever succeeded on the
+     book, so it survives a restart's rewind of the stage history). Step 2 still
+     writes such a run's chapters when it found them.
+2. **Writes from an earlier run**, with no new transcription
+   (`chaptersFromEarlier`), when an engine book at the source path already has a
+   `chapters_detected.json` current for its manifest and audio. It needs no kept
+   transcript, so it works after retention swept them, and it doesn't compare
+   the ASR settings.
+3. **Starts from a done read-along's transcripts** (`fromKeptTranscript`) on a
+   single file inspect finds markerless: a new engine book at
+   `chapter_detecting`, from the read-along's window transcripts, when they are
+   [reusable](generating.md#transcript-retention). Otherwise the read-along run
+   is cleared and the job transcribes again from `inspecting` (step 5).
 4. **Takes up a cancelled chapters run** (`cancelledChapters`, `resumeChapters`).
    A goal-chapters run on a single file that was **cancelled** at `asr` or
    `chapter_detecting` (`scheduler.IsCancelled`) continues under the engine's

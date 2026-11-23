@@ -259,12 +259,11 @@ Each dimension's gist and issue are guarded against a second filing, across shar
 and across the contributing stage's retries. Before each create, the Bridge
 records a filing marker (`contrib.filing/<book id>/<kind>`), timed by
 `Client.Now`. That is GitHub's clock, learned from the `Date` of its answers, or
-the Bridge's own while GitHub hasn't answered. Before filing the issue, the
-Bridge records its credential source in the marker's `filed_with` field. If a
-retry finds that issue after the sign-in changes, the original source determines
-the routing note. A create GitHub refused, or one that
-never left (`contrib.NothingFiled`), clears its time from the marker. The next
-submit then does one of these:
+the Bridge's own while GitHub hasn't answered. An issue's marker also records
+the credential that files it (`filed_with`), so an issue adopted after the
+sign-in changed gets the routing note of the credential that filed it. A create
+GitHub refused, or one that never left (`contrib.NothingFiled`), clears its time
+from the marker. The next submit then does one of these:
 
 - **Adopts** the gist or issue the user made since the marker, less
   `contrib.FilingSkew` (`GistsSince`, `IssuesSinceBy`). The rows of pages read
@@ -294,12 +293,13 @@ submit then does one of these:
 }
 ```
 
-Both `sidecars.generate` and `sidecars.contribute` can return `intake_notes`,
-keyed by the dimension whose issue needs routing. A maintainer routes issues
-filed with `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or the `gh` CLI token. The
-repository routes issues filed through the Accounts tab's GitHub App
-automatically. The server stores these optional notes with the result.
-The console doesn't display them yet.
+**Intake routing.** Meta's route workflow sends an issue filed through the
+Accounts tab's GitHub App to intake by itself. An issue filed with
+`AUDIOSILO_BRIDGE_GITHUB_TOKEN` or the `gh` CLI's token needs a maintainer to
+route it (`contrib.IntakeNote`), so the result carries a note for it:
+`intake_notes` in a `sidecars.generate` or `sidecars.contribute` result, keyed
+by dimension, and `intake_note` in a [`meta.correct` result](#result). The
+server stores the notes with the result; the console doesn't show them yet.
 
 The failures are worded for the console:
 
@@ -438,9 +438,11 @@ bounds the batch again as meta does. See the workspace CROSS-REPO.md §23 before
 raising a bound or adding a field. The job:
 
 1. **Resolves the GitHub credential** before it reads the work's community record
-   or GitHub's issues. A resumed job returns its saved result at once. A
-   smaller retry checks a previously confirmed issue on GitHub before it needs
-   the community record.
+   or GitHub's issues. Only these come first: a resumed job's kept result, a
+   [smaller retry](#guarded-against-filing-twice-per-request) whose earlier
+   batch has a confirmed issue (its open check resolves the credential itself),
+   a marker with no time to look from (below), and the Bridge's community
+   metadata being off (`errMetaOff`).
    - No credential fails `errNoCredential` ("The Bridge isn't signed in to GitHub:
      sign in on the Bridge's Accounts tab, then suggest the corrections again.").
    - A sign-in that couldn't be refreshed (`contrib.ErrSignInUnrefreshed`) fails
@@ -477,9 +479,9 @@ raising a bound or adding a field. The job:
    - **Evidence / source**;
    - the ticked CC0 dedication.
 5. **Files one issue** on the core repository (audiosilo-meta) with the GitHub
-   token. Meta's `route.yml` labels an issue filed through the Accounts tab's
-   GitHub App. The job reports that a maintainer needs to route an issue filed
-   with `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or the `gh` CLI token.
+   token, and reads no labels back. One filed with
+   `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or the `gh` CLI's token carries an
+   `intake_note` ([Intake routing](#result-and-failures)).
 
 ### Guarded against filing twice, per request
 
@@ -487,11 +489,11 @@ The Bridge keeps a job's result under `meta.correct/<server id>/<job id>`, so a
 resumed job (the same job run again after a restart) returns it.
 
 The filing itself is guarded per **request**, not per job or book. Before
-`CreateIssue`, the Bridge writes a marker `{since, sum, job, filed_with}` into its store under
-`meta.correct.filing/<server id>/<request>`. `since` is GitHub's time from
-`Client.Now`, and `sum` is the `contrib.IssueSum` of the title and body sent.
-`filed_with` records the source of the credential used for filing (`env`,
-`gh` or `device`). A retry uses that source for the recovered issue's intake note.
+`CreateIssue`, the Bridge writes a marker `{since, sum, job, filed_with}` into
+its store under `meta.correct.filing/<server id>/<request>`. `since` is GitHub's
+time from `Client.Now`, `sum` is the `contrib.IssueSum` of the title and body
+sent, and `filed_with` is the credential that files it (`env`, `gh` or
+`device`), which a recovered issue's `intake_note` follows.
 
 **The request key** (`filingKey`) is what the admin asked to change: the sha256 of
 the record and of the changes as a set of `{field, corrected}`, sorted. The record
@@ -512,15 +514,15 @@ the marker:
 
 **Retrying fewer changes.** After the community applies part of a batch, the
 console offers only the fields that still differ. If the retry has no marker
-of its own, the Bridge looks for an earlier batch for the same book and record.
-It must include every remaining field with the same corrected value, plus at
-least one other change. For a confirmed filing, the Bridge checks the issue on
+of its own, the Bridge looks for an earlier batch for the same book and record
+that holds every remaining field with the same corrected value, and at least
+one more change (`smallerRetry`). For a confirmed filing, the Bridge checks the issue on
 GitHub. While it is open, the retry returns the original issue and its full
 change count. If GitHub reports it closed or gone, the Bridge files the
 remaining changes as a new batch.
 
 If the earlier filing lost its reply, the Bridge looks up that batch's marker
-under the rules below. Finding the larger batch's issue restores its original
+as [a run that finds a marker](#a-run-that-finds-a-marker) does. Finding the larger batch's issue restores its original
 change count. If the lookup finds an issue for just the smaller request, the
 retry reports that issue and leaves the larger batch's marker for its own retry.
 
@@ -598,9 +600,10 @@ batch already applied. They come from:
   clears its marker, and the console unticks only the rows the book's newest
   corrections job suggested with the same value, and none when that job failed or
   was cancelled;
-- a new request that adds a field, changes a corrected value, or targets a
-  different record after the community rematches the book's ASIN or ISBN.
-  Any overlapping changes can appear in both issues.
+- a new request that adds a field or changes a corrected value, or one for
+  another record after the community changed which recording or work the
+  book's ASIN or ISBN names (the console resolves the record from a live lookup
+  each time the dialog opens, so the key changes);
 - a refile once the marker is over 24 hours old;
 - the next suggestion after an `otherBatch` that was the run's own issue edited
   since;
@@ -618,11 +621,13 @@ batch already applied. They come from:
   "intake_note": "This issue was filed outside the AudioSilo GitHub App. A maintainer needs to route it to intake manually." }
 ```
 
-`changes` counts the changes in the issue the job reports. In this example it
-stays at two even if only the narrator needs correcting on a smaller retry that
-recovers the open issue. `auto` and `maintainer` describe how each field is
-handled at filing. The optional `intake_note` describes routing for the whole
-issue. The server stores it with the result and the console doesn't show it yet.
+`changes` counts the changes in the issue the job reports: a smaller retry that
+finds the earlier batch's open issue reports that issue's count (2 here, even
+when only the narrator was left to correct). `auto` and `maintainer` are as
+known at filing. `intake_note` is the issue's
+[routing note](#result-and-failures), when it needs one. The Bridge doesn't
+follow the issue past a smaller retry's open check, so a batch meta applies
+only in part isn't reported back (deferred).
 
 ### In the console
 
