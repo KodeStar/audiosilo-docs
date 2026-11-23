@@ -795,6 +795,15 @@ Any query that breaks on it is a 5xx that falls back to `base_url` (the
 [cross-repo contract](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam)
 explains why that works).
 
+The newest schema a server knows is the `query.MaxSchemaVersion` of the
+audiosilo-meta version in its `go.mod`. Server 2.7.0 pins v0.27.0, which reads
+up to schema 14, the schema the data releases carry since 20 November 2026
+([what each version adds](../meta/data-model.md#the-compiled-artifact-and-schema-versioning)).
+Server 2.6.0 pinned v0.25.5, which reads up to 11. The releases moved past 11 on
+18 November 2026, so a 2.6.0 mirror flags its copy from then on. A test in
+`internal/metamirror` pins that the schema the releases carry is understood:
+raise it with the pin when the releases move on.
+
 **Switching back.** A server started in remote mode (with a metadata service)
 deletes `<data>/meta-mirror/` if it exists, and logs that it did. A server with
 no metadata service (an empty or invalid `base_url`) builds no mirror in either
