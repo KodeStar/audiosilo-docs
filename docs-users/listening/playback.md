@@ -37,7 +37,7 @@ AudioSilo saves your place to the server every 15 seconds while you listen, and 
 
 When the app isn't on screen, or the book is downloaded, it saves once a minute to save battery. Your other devices and the admin console can then be up to a minute behind.
 
-If the app closes while a book plays, because you swiped it away or the phone stopped it, your device keeps where you got to. When you open the app again, Resume, the book's page and the car carry on within about 5 seconds of that place, then your other devices catch up. This also works for a book you had only just started. In a browser, reloading the page does the same. A new tab opened within half a minute of the old one closing can start up to 15 seconds back. On older servers that don't combine listening from several devices, the app can start up to 15 seconds back.
+If the app closes while a book plays, because you swiped it away or the phone stopped it, your device keeps where you got to. When you open the app again, Resume, the book's page and the car carry on at most about 5 seconds of playing before that place, then your other devices catch up. This also works for a book you had only just started. In a browser, reloading the page does the same. Two cases can start up to 15 seconds of playing back: a new browser tab opened within half a minute of the old one closing, and an older server that doesn't combine listening from several devices.
 
 The player shows whether your place is **Synced**, or **Saved on this device, will sync** while the server can't be reached.
 
