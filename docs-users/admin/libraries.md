@@ -219,8 +219,8 @@ and shows their combined size, and their total length when every file's length
 is known. The list shows up to 500 files, with a note when there are more.
 
 In a folder with more than 10,000 items, the totals cover the first 10,000 and
-the file list says so. The counts in the three choices, and the **Separate
-books** confirmation, then say **at least**. Folders count first, so a folder holding more
+the file list says so. The counts in the three choices, and the message after
+you choose **Separate books**, then say **at least**. Folders count first, so a folder holding more
 than 10,000 other folders can show no audio files at all.
 
 Use the arrow keys to move through the folder tree and Enter to select a folder.

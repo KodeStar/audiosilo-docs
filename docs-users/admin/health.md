@@ -49,9 +49,10 @@ or modification time changes, or the server restarts.
 
 A slow disk or network share can time out a scan. Its books show **reading it
 timed out** and keep their length and chapters. Each row under **Files that
-couldn't be read**, and the result of **Read again**, says why: **Took too long
-to read as audio** is a timeout, not a damaged file, and **Couldn't be read as
-audio** means the check failed. **Details** has the original message. The next
+couldn't be read**, and the result of **Read again**, says why. A file that
+**took too long to read as audio** timed out, which is not a damaged file. A
+file that **couldn't be read as audio** may be damaged or not an audio file.
+**Details** has the original message. The next
 scan tries a timed-out file again.
 With ffprobe, a very large MP3 that can't be measured in time keeps an
 estimated length, and scans don't measure it again until its files change.
