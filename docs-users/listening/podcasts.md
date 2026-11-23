@@ -53,6 +53,8 @@ A show the library already has is followed at once. A new show takes a moment wh
 
 You need full access to the library to add shows. Kids accounts and the demo can't add or follow shows. If **Add shows** is missing, your server can't fetch podcasts right now. Ask your admin.
 
+If the player can't check whether you can add shows, tap **Retry** when you're online. The message stays visible and **Retry** shows a spinner while the player checks again.
+
 ### Search a podcast directory {/* #searching-a-podcast-directory */}
 
 ![Add shows on Search: results for "kitchen" from Apple Podcasts](/img/screenshots/web-player/find-shows-search.png)
@@ -61,6 +63,10 @@ You need full access to the library to add shows. Kids accounts and the demo can
 2. Tap **Follow** on the show you want.
 
 A show you already follow says **Following** in the results. Tap **Open show** to go to it.
+
+Offline, you can edit your search and read the last results. A line tells you which search they're from, such as *Showing the last results for “kitchen”.* Reconnect to search or follow a result.
+
+If a refresh fails online, the last results stay visible with that label and an error message. Tap **Search again** to refresh them.
 
 Results come from **Apple Podcasts**, or from **Podcast Index** if your admin set it up. The directory sees only the words you searched and your server's address, not yours.
 
@@ -77,6 +83,8 @@ Every podcast has a feed address, usually ending in `.xml` or `/rss`. Find it on
 3. For a paid or members-only feed, turn on **Private feed**.
 4. Tap **Follow**.
 
+You can paste or edit the feed address offline. Leave it in the field and tap **Follow** once you're back online.
+
 ### Import a list from another app {/* #importing-a-list-from-another-app */}
 
 ![Add shows on Import a list: an import part way through](/img/screenshots/web-player/find-shows-import.png)
@@ -86,9 +94,11 @@ Every podcast has a feed address, usually ending in `.xml` or `/rss`. Find it on
 3. Pick the file. It can be up to 1 MB.
 4. Keep the page open while it works.
 
+**Choose a file** needs a connection. If you go offline while picking the file, choose it again after you reconnect.
+
 Your server adds five new shows at a time, so a long list goes in batches. The player sends each batch by itself. If you leave the page, choose the same file again to carry on. Shows already added are skipped.
 
-If your server can't add shows for now, the rest of the list says **Can't be added right now**. Tap **Try again** later to carry on.
+If your server can't add shows for now, the rest of the list says **Can't be added right now**. **Try again** needs a connection, whether you're retrying the import or a single show. You can still tap **Stop** offline while an import is running.
 
 An import can't mark a feed private. Follow that one by its address with **Private feed** on.
 

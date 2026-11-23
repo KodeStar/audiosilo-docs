@@ -45,8 +45,9 @@ You can also start it from:
 
 - **A whole series.** On **Library > Series**, a series card has **Generate for
   the series**. It queues the books without recaps, in reading order.
-- **The player.** On a book's page, an admin sees **Generate characters and
-  recaps** after the other buttons. **Regenerate** is in the book's **⋯** menu.
+- **The player.** On a book's page, an admin sees **Generate characters, recaps
+  and a description** after the other buttons. The book's **⋯** menu offers
+  **Regenerate characters, recaps and the description**.
 
 ### Which books offer it
 
@@ -73,6 +74,11 @@ and while the book's chapters are being found or its results shared.
   of sending a bill.
 - **Also generate for N earlier books in the series first**: earlier books
   without recaps are queued first, because recaps build on the books before.
+
+In the player, you can read the last estimate for this book offline if your
+device already has it. Reconnect to load a missing estimate and to queue the
+job with **Generate**. If the server asks you to sign in again when loading the
+estimate, tap **Reconnect** to close the confirmation and open the sign-in page.
 
 ## Keeping them local, or contributing them
 

@@ -15,6 +15,25 @@ The playback layer consumes the result. A downloaded book plays from local URIs 
 no network. A streaming book hot-swaps onto its local files as soon as its download
 finishes.
 
+## Dialogs that read from the server
+
+`useDialogRead(query)` in `src/lib/offline-state.ts` returns `unread` and
+`offline`. Use `unread` (from `useUnreadQuery`) to decide what to display. A
+cached answer stays readable. With no answer, handle an offline or failed read
+before showing a loading indicator.
+
+Use `offline` to disable actions that need the server and explain why. It is
+true when the device has no network or the query is paused, even with cached
+data. For example, a Bridge confirmation can show the estimate while its
+button to queue the job is disabled.
+
+For a failed dialog read, call `readRefusalState` from
+`src/components/layout/server-refusal-state.tsx`. It offers sign-in when
+AudioSilo answers the dialog's request with a 401 for an ended session.
+It delegates a refused `/server` check to `serverRefusalState`. Pass the
+dialog's close callback so **Reconnect** closes it before opening sign-in.
+When the helper returns `null`, show the read's own error.
+
 ## The `DownloadEngine` interface
 
 `src/downloads/types.ts` defines a storage engine with the same interface on every
