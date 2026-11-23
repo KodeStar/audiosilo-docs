@@ -370,6 +370,21 @@ The Bridge may report a job it holds (`claimed`, `running` or `needs_attention`)
 `running`, `done`, `failed`, `needs_attention` or `cancelled`; it can never put a
 job back in the queue.
 
+### Job results
+
+The server stores the Bridge's `result` JSON as it arrives; each kind's page
+gives its shape. A result that filed a GitHub issue can carry an optional
+routing note for an issue a maintainer must send to intake
+([Intake routing](contributions.md#result-and-failures)):
+
+| Job | Result field |
+|---|---|
+| `sidecars.generate`, `sidecars.contribute` | `intake_notes`: each affected dimension (`characters`, `recaps`) to its note |
+| `meta.correct` | `intake_note`: one string for the correction issue |
+
+The console has no message for these notes yet: they appear only in the job's
+raw result, under **Details** in the jobs list.
+
 ### Job history
 
 When the server enqueues a new job, it applies the kind's history rule

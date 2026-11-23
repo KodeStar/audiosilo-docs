@@ -105,8 +105,11 @@ The stage runs these steps:
    start, for the detection only. Nothing is timed past the window's own audio,
    because a hallucination there would interleave with the next window's words.
 2. **The silences.** The stage uses the ones `splitting` kept beside each window
-   FLAC (`audio.WindowSilences`). Otherwise it runs one bounded `silencedetect`
-   over the window and keeps the result the same way, so a Retry decodes nothing.
+   FLAC (`audio.WindowSilences`). When a window has neither (a run that started
+   from a read-along's kept transcripts has no window audio, `audio.WindowHeard`),
+   it first cuts the windows again from the source audio. A window FLAC with no
+   kept silences gets one bounded `silencedetect`, its result kept the same way,
+   so a Retry decodes nothing.
 3. **`chapterdetect.Detect`** (below). When it is not confident, the book parks
    **`chapters_not_detected`** with the detector's reason. Nothing has moved, so
    a Retry detects again.
@@ -244,8 +247,8 @@ Bridge store migration `0005` adds `books.goal`. `''` means the whole pipeline,
 and `chapters` means stop after `chapter_detecting` (`state.GoalChapters`, routed
 once by `state.PathNext`, which the ETA follows).
 
-A goal-chapters book goes `inspecting` -> `splitting` -> `asr` ->
-`chapter_detecting` -> `done`. It holds no series lock, because it makes nothing
+A goal-chapters book starting from scratch goes `inspecting` -> `splitting` ->
+`asr` -> `chapter_detecting` -> `done`. It holds no series lock, because it makes nothing
 a later volume carries on from. It is left out of `FinishedBooks`, so it never
 skews the agent-cost estimates.
 
@@ -271,11 +274,22 @@ exactly as [`sidecars.generate`](generating.md#how-the-bridge-runs-it) does
      chapters with them");
    - a book an open generate job follows ("A generate job is already working on
      this book; its chapters come with it.");
-   - a finished whole run, which it never clears.
-2. **Writes from an earlier run**, with no new transcription, when an engine book
-   at the source path already has a `chapters_detected.json` current for its
-   manifest.
-3. **Takes up a cancelled chapters run** (`cancelledChapters`, `resumeChapters`).
+   - a finished whole run, which it never clears, or a read-along that went on
+     from one and so holds its notes (`keepsWholeRun`: the notes on disk,
+     `facts/knowledge-final.md`, else any fact pass that ever succeeded on the
+     book, so it survives a restart's rewind of the stage history). Step 2 still
+     writes such a run's chapters when it found them.
+2. **Writes from an earlier run**, with no new transcription
+   (`chaptersFromEarlier`), when an engine book at the source path already has a
+   `chapters_detected.json` current for its manifest and audio. It needs no kept
+   transcript, so it works after retention swept them, and it doesn't compare
+   the ASR settings.
+3. **Starts from a done read-along's transcripts** (`fromKeptTranscript`) on a
+   single file inspect finds markerless: a new engine book at
+   `chapter_detecting`, from the read-along's window transcripts, when they are
+   [reusable](generating.md#transcript-retention). Otherwise the read-along run
+   is cleared and the job transcribes again from `inspecting` (step 5).
+4. **Takes up a cancelled chapters run** (`cancelledChapters`, `resumeChapters`).
    A goal-chapters run on a single file that was **cancelled** at `asr` or
    `chapter_detecting` (`scheduler.IsCancelled`) continues under the engine's
    hold, through `store.ContinueReadalong` with goal `chapters`. `resumesAt`,
@@ -285,10 +299,10 @@ exactly as [`sidecars.generate`](generating.md#how-the-bridge-runs-it) does
    run, its transcription kept". The job clears a run that **failed** for a reason
    of its own, is parked, or can't be trusted (the file replaced, the windows
    gone, swept), so asking again never fails the same way forever.
-4. Otherwise **creates** an engine book with goal `chapters` and no series, and
+5. Otherwise **creates** an engine book with goal `chapters` and no series, and
    follows it. Its progress is generate's without `cost_usd`: `stage`
    `chapter_detecting`, the ETA, and a park's code and hint.
-5. At `done`, **writes** `chapters.json`, merges `bridge.json` (every other field
+6. At `done`, **writes** `chapters.json`, merges `bridge.json` (every other field
    kept, the [`chapters` object](attachments.md#chaptersjson) added or replaced),
    then asks for the attachments rescan.
 

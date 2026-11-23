@@ -188,11 +188,12 @@ Other jobs meet the same engine books:
     reading the audio clears the ebook run first, since generate always replaces
     the book's earlier run. Then it re-keys the audio run to the book's path.
   - A generate job reading the **ebook** leaves the audio run alone.
-- **A `chapters.detect` job clears a read-along run**, rather than refusing it as a
-  whole run. The exception is a read-along that went on from a whole run, since it
-  holds that run's notes. That protection reads the notes on disk
-  (`facts/knowledge-final.md`), else any fact pass that ever succeeded on the book.
-  So it survives a restart's rewind of the stage history.
+- **A `chapters.detect` job starts from a done read-along's window
+  transcripts** at `chapter_detecting` while they are
+  [reusable](generating.md#transcript-retention), and otherwise clears the
+  read-along run, rather than refusing it as a whole run. The exception is a
+  read-along that went on from a whole run, since it holds that run's notes
+  ([the chapters job](chapters.md#the-job)).
 
 ## The `readalong_aligning` stage
 

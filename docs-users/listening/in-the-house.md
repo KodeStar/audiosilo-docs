@@ -20,7 +20,9 @@ If no switch can show because a server can't be reached, the page says which one
 
 ## What you see
 
-**On your Home page**, a **Listening in the house** section appears once someone who shares has listened in the last day. Each card shows their name, the book, the chapter, and whether they're listening now. A green dot means they're listening right now. Tap a card to open the book.
+**On your Home page**, a **Listening in the house** section appears once someone who shares has listened in the last day. Each card shows their name, the book, the chapter when known, and whether they're listening now. A green dot means they're listening right now.
+
+Tap a card to open the book. If only one disc of a joined book was shared with you, you may see a card for that disc. You can't open that book, so its card shows a plain cover, or one already on your device, and tapping it does nothing.
 
 ![Listening in the house on the Home page: one person listening now and one paused, with Sharing settings beside the title](/img/screenshots/web-player/home-house.png)
 
@@ -35,7 +37,7 @@ The cards update about once a minute. Someone whose app [saves once a minute](pl
 - Only people on the same server who share. You never see yourself.
 - Only their most recent book, if they listened in the last 24 hours.
 - Only listening done while their sharing was on.
-- Only books you can open yourself. If you can't open their latest book, that person doesn't appear.
+- Only listening in libraries and folders shared with you. If their latest book is outside them, that person doesn't appear.
 - Never kids accounts, demo accounts or disabled accounts.
 
 ## What is and isn't shared

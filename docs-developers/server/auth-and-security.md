@@ -1683,8 +1683,8 @@ denied test:
   `listening: []`, so you see housemates only while you share too.
   Only the choice is mutual, not the view. Each list passes its own caller's
   scopes and each other person's 24-hour window, so visibility can be one-way:
-  - a housemate whose newest book you can't open doesn't show for you, though
-    you may show for them;
+  - a housemate whose newest session is outside your shares does not appear
+    for you, though you may appear for them.
   - a sharer who hasn't listened in 24 hours sees others without showing up for
     them.
 - **Who can appear.** Other users only (never the caller), enabled, not demo, with
@@ -1702,9 +1702,12 @@ denied test:
   back on within the 24 hours. No session spans the moment sharing is turned on,
   because the first save after it starts a new one (see
   [session grouping](data-model.md#listening-sessions-how-they-are-derived)).
-- **Only books the caller may open.** That newest book passes the **caller's**
-  current scopes (`ScopesAllow`) or the person is dropped; an older in-scope book
-  never stands in for it.
+- **Access to the session path.** The server omits a person if their newest
+  session path falls outside the caller's current scopes (`ScopesAllow`).
+  It never substitutes an older session. A grant on a single disc can admit
+  the row while leaving the joined book outside the grant. In that case the
+  row shows the disc's name and carries `outside_grant: true`. See the
+  [household listening response](api/reference.md#get-apiv1householdlistening).
 - **No device fields.** `HouseListeningRow` has no field for a device, address,
   app or token, unlike the admin-only `LiveSessions`, which must never be reused
   for anything a non-admin sees.
