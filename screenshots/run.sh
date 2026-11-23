@@ -393,16 +393,21 @@ if [ "${SKIP_META:-0}" != "1" ]; then
   # closed port, so even a copy it refused (in the background, after it is
   # healthy) can't be replaced by a real download. Started now so the copy opens
   # (seconds: query.Open reads all of it) while metaserve starts.
-  if [ "${SKIP_ADMIN:-0}" != "1" ] && shot_wanted admin/system-mirror.png; then
+  MIRROR_ARTIFACT="$CACHE/meta.sqlite"
+  if [ "${SKIP_ADMIN:-0}" != "1" ] && shot_wanted admin/system-mirror.png && [ "$MIRROR_META" != "$META" ]; then
+    # An older checkout's tooling may refuse today's community data: that costs
+    # this one shot (it keeps its previous image), never the run.
+    echo "==> building the mirror's artifact from $MIRROR_META"
+    MIRROR_ARTIFACT="$CACHE/mirror-meta.sqlite"
+    if ! (cd "$MIRROR_META" && go run ./cmd/metabuild -data data \
+      --community "$META_COMMUNITY/data" -o "$MIRROR_ARTIFACT"); then
+      echo "  ! couldn't build the mirror's artifact from $MIRROR_META; skipping admin/system-mirror.png"
+      MIRROR_ARTIFACT=""
+    fi
+  fi
+  if [ "${SKIP_ADMIN:-0}" != "1" ] && shot_wanted admin/system-mirror.png && [ -n "$MIRROR_ARTIFACT" ]; then
     echo "==> starting a mirror-mode server on :$MIRROR_PORT (seeded local copy)"
     rm -rf "$MIRROR_DATA" && mkdir -p "$MIRROR_DATA/meta-mirror"
-    MIRROR_ARTIFACT="$CACHE/meta.sqlite"
-    if [ "$MIRROR_META" != "$META" ]; then
-      echo "==> building the mirror's artifact from $MIRROR_META"
-      MIRROR_ARTIFACT="$CACHE/mirror-meta.sqlite"
-      (cd "$MIRROR_META" && go run ./cmd/metabuild -data data \
-        --community "$META_COMMUNITY/data" -o "$MIRROR_ARTIFACT")
-    fi
     MIRROR_TAG="data-v$(date -u +%Y.%m.%d)-$(git -C "$MIRROR_META" rev-parse --short=7 HEAD 2>/dev/null || echo local)-$(git -C "$META_COMMUNITY" rev-parse --short=7 HEAD 2>/dev/null || echo local)"
     ln "$MIRROR_ARTIFACT" "$MIRROR_DATA/meta-mirror/meta-$MIRROR_TAG.sqlite" 2>/dev/null \
       || cp "$MIRROR_ARTIFACT" "$MIRROR_DATA/meta-mirror/meta-$MIRROR_TAG.sqlite"

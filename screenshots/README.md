@@ -145,8 +145,9 @@ audiosilo-meta has moved to a newer schema, set `MIRROR_META` to a checkout of a
 commit the server reads (the pinned commit, or the last one whose
 `internal/build` `SchemaVersion` matches): `run.sh` then builds the mirror's copy from it
 into `.cache/mirror-meta.sqlite`, and `META` still serves the meta site shots. A
-shared clone is enough, for example
-`git clone -s -n ../audiosilo-meta .cache/meta-src && git -C .cache/meta-src checkout <commit>`.
+shared clone is enough, for example, from the docs root (`screenshots/.cache` is ignored)
+`git clone -s -n <your audiosilo-meta clone> screenshots/.cache/meta-src && git -C screenshots/.cache/meta-src checkout <commit>`,
+then `MIRROR_META=screenshots/.cache/meta-src screenshots/run.sh` (a relative path is read from where `run.sh` is started).
 For v2.7.0 that was audiosilo-meta `bf903ab513`, the last schema 11 commit.
 
 The Health shots (`admin/health-*.png`) need issues to show, and the seeded
