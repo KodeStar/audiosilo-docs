@@ -8269,14 +8269,14 @@ The `200` response is a single JSON object.
 | `alternate_series` | When switching the main series checkbox would change which series the book keeps, this object supplies `values`, `set` and optional `revert` for `series_index` and `more_series` under the other choice. |
 | `cover_url`, `cover` | The recording's cover URL, falling back to the work's, or `""` if neither has one. The boolean is true when the plan would take that cover for a book known to have none. |
 | `match` | True when the work or recording differs from the book's recorded match, including when the book has no recorded match. |
-| `match_alone` | True when `match` is true and the book has neither an ASIN nor an ISBN of its own. The dialog can then record the new match with all fields and the cover unticked. |
+| `match_alone` | True when `match` is true and the book has neither an ASIN nor an ISBN from any source, including one an earlier community match wrote. The dialog can then record the new match with all fields and the cover unticked. |
 
 | Status | Meaning |
 |---|---|
 | `400` | A parameter is missing, invalid or too long. |
 | `401` | The request lacks valid authentication. |
 | `403` | The caller is signed in without the admin role. |
-| `404` | `book_not_found`: no indexed book at the path. `not_found`: no such work, or no such recording in it. `metadata_off`: community metadata is off. An unknown library is also a `404`. |
+| `404` | `book_not_found`: no indexed book at the path. `not_found`: no such work, or no such recording in it. A retired work ID that the search doesn't list is also `not_found`, because the lookup follows its redirect to another ID. `metadata_off`: community metadata is off. An unknown library is also a `404`. |
 | `502` | The community metadata service is unavailable. |
 
 ### Bulk community matching
@@ -8609,11 +8609,13 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
 ```
 
 - `proposal.values` is what the best candidate offers for each overridable
-  field, in stored form (a value an override would refuse is left out), as the
-  match dialog's compare table would offer it: its chosen recording is the
-  identifier's, else the closest runtime (a recording selling in the preferred
-  marketplace wins a tie), and its ASIN is that recording's best for this
-  server, named by `asin_region`.
+  field, in stored form (a value an override would refuse is left out). Its
+  chosen recording is the identifier's, else the closest runtime (a recording
+  selling in the preferred marketplace wins a tie), and its ASIN is that
+  recording's best for this server, named by `asin_region`. Its series fields
+  list the work's series in the community's order, the first as the main one.
+  The match dialog's [proposal](#get-apiv1adminbooksmatch-proposal) instead
+  offers the book's own series as the main one when the work is in it.
 - `book` is the book as it is now, with its `duration` in seconds (omitted when
   unknown); `gone: true` when nothing is indexed at the path any more.
 - A review item held for one reason carries it in `detail` alone. From 2.7.0
@@ -8710,9 +8712,9 @@ outside `exclude` and pending `review` items in `include`. Both selections omit
 refresh items recorded as having nothing to change under that scope. Apply
 uses the same selection and returns the number it takes in `apply_total`.
 
-A [stuck](#bulk-community-matching) `applying` run is settled first, back to
-`ready` with its applied items kept, and the count covers the rest. The preview
-never starts an apply.
+Every [stuck](#bulk-community-matching) run is settled first, as before an
+apply. A stuck `applying` run goes back to `ready` with its applied items kept,
+and the count covers the rest. The preview never starts an apply.
 
 | Status | Meaning |
 |---|---|

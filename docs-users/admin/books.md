@@ -68,10 +68,10 @@ community's main series under **Other series** either.
 If the community no longer lists a series detail that an earlier match wrote,
 the dialog offers **Revert**. Leave it ticked to restore the value from your files.
 
-If your book has no ASIN or ISBN of its own, you can record the match without
-changing anything else: untick every field and the cover, then click **Match
-to this work**. A book with its own ASIN or ISBN can't record a different
-match this way.
+If your book has no ASIN or ISBN, not even one an earlier match filled in, you
+can record the match without changing anything else: untick every field and
+the cover, then click **Match to this work**. A book with an ASIN or ISBN
+can't record a different match this way.
 
 Accepted fields show **Community**. Choose **Revert** beside a community title
 to restore your library's title. It now shows **Edited**, so the dialog leaves

@@ -707,7 +707,7 @@ path facts through metaserve's `works/match`.
   `match: {work_id, recording_id, asin, isbn}`. The match records the offered
   identifiers even when their fields are unticked.
 - **Match to this work.** With nothing ticked, `match_alone` enables recording
-  a new work or recording for a book without its own ASIN or ISBN. For the
+  a new work or recording for a book with no ASIN or ISBN from any source. For the
   already recorded match, the dialog also allows accepting with nothing ticked
   when the proposal offers an identifier, so the server remembers it was offered.
 - **Candidates' covers** are thumbnails the server fetched
@@ -1220,7 +1220,9 @@ The review dialog:
   The Apply button shows the returned `apply_count` and stays disabled until
   the count for the current scope and picks arrives. **Try again** retries a
   failed count. Apply sends the same body and the confirmation shows the run's
-  `apply_total`.
+  `apply_total`. A count of 0 keeps Apply disabled, except on a refresh run,
+  where the button reads **Done** and the same apply finishes the run
+  (`finishEmpty`).
 
 When the newest run's status changes to one that isn't working, the console
 refetches the book lists, issues, book pages and covers (`invalidateMatches`).
