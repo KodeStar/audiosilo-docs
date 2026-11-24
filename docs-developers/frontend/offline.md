@@ -748,6 +748,9 @@ or offline. On the next launch `recoverOpenSpan` closes a span a kill left open 
 last stored values. It also brings the mirror's record of its book up to the span's
 end ([What a kill leaves behind](playback.md#what-a-kill-leaves-behind)). On the web:
 
+- A reload recovers its previous document's span at once, never a live duplicated
+  tab's (`audiosilo.openSpanOwner` in sessionStorage and a Web Lock;
+  [how](playback.md#on-the-web-the-recovery-can-wait-30-s)).
 - Another tab's span is left to that tab while it is live, which means kept within
   30 s of now (`LIVE_SPAN_MS`). For a tab on an older build, with no `owner`, it
   means its end is under 45 s old.
@@ -1548,7 +1551,8 @@ sets it from the engine's own order (`noteDownloadEnd`), and leaves it alone for
 order made only of the download's own files (a JS restart after an offline start).
 
 **A partial queue.** A queue built from the download that lacks the book's last
-file is partial (`partialQueues` in `store.ts`):
+file is partial (`BookQueue.partial`, `{ bookDuration }`, set by `playBook` and the
+adoption):
 
 - `playBook` reads `endsBefore`. Started with no server to stream from (the device
   offline, `isDeviceOnline`; no client for the connection; or the server marked
@@ -1576,7 +1580,9 @@ Its end is the downloaded part's, so:
   `playing` and the [stall watchdog](playback.md#the-stall--error-watchdog) would call
   it an error. It shows the notice again.
 - The end credits' Play never finishes such a book by its place
-  (`selectEndsPartial`): it stops, unfinished.
+  (`queueEndsBook`): it stops, unfinished. Every check of whether a place ends the
+  book goes through `placeEndsBook` (`queueEndsBook` for a queue), which never reads
+  a partial queue's end as the book's.
 - **Online again in the same session it streams on** (`playOnPastPart`). A Play
   pressed at that end, or the engine reaching it with the device online and the
   server marked reachable, asks the server's chapters (for up to
@@ -1598,7 +1604,7 @@ Its end is the downloaded part's, so:
 **A partial queue's length.** Its own audio is the downloaded part's, more than 10 s
 off the indexed book's whenever a whole file is missing, so the server refused every
 listen over it (`duration_mismatch`). Each partial queue carries the book's length on
-its server instead (`partialQueues` maps it):
+its server instead (`queue.partial.bookDuration`):
 
 - `DownloadManifest.bookDuration`, kept beside `endsBefore` from the chapters answer
   that set it (`withBookEnd`);
@@ -1607,8 +1613,11 @@ its server instead (`partialQueues` maps it):
 - else 0, unknown.
 
 A span sends it as its `duration` (0 sends none, and the server then checks none), and
-a mirror save as its `duration`, so a percent read from the mirror is of the book. The
-player's percent reads the same length (`selectBookLength`), as Home does.
+a mirror save as its `duration` (`bookLengthOf`: the book's length when known, else
+the queue's), so a percent read from the mirror is of the book. The player's percent
+reads the same length (`selectBookLength`), as Home does. Marking such a book
+finished records that length as both its position and its duration, so it reads
+100% of the whole book ([`finishBook()`](end-of-book.md#finishbook)).
 
 **Listens refused earlier are sent again.** Each `flushAllOutboxes` runs
 `resendMismatched`: a listen on the couldn't-sync list refused `duration_mismatch`

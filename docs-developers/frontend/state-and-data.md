@@ -2092,7 +2092,8 @@ The offline-safe write path for listening progress:
   before touching the network. The mirror is never pruned on sync; it is the
   resume fallback when the server can't be reached. While a book plays, the
   mirror is written every 15 s, even when the save itself runs every 60 s. A span
-  that a kill left open brings it forward at the next launch (`mirrorSpanEnd`).
+  that a kill left open brings it forward at the next launch, or gives a book its
+  first record (`mirrorSpanEnd`, [What a kill leaves behind](playback.md#what-a-kill-leaves-behind)).
   A server's row in the mirror is marked `server_clock` (`progressToSave`) and
   compared on this device's clock, its stamp moved back by the connection's known
   skew (`localTimeOf`). Without that, a server clock running ahead let a row read
@@ -2176,7 +2177,9 @@ The offline-safe write path for listening progress:
 The book's page, Home and every other reader of a book's saved place show the place
 Resume would play from, never only the server's row. So a page never shows another
 device's older row while Resume starts at this device's newer place, and Home's
-percent after an offline run is the player's.
+percent after an offline run is the player's. The readers a play starts from (the
+book page's `fetchBookProgress` among them) first wait up to 2 s for a span a kill
+left open to reach the mirror ([the place readers](playback.md#what-a-kill-leaves-behind)).
 
 - **`bookPlace(server, cid, lib, path)`** (`progress-sync.ts`) is the resume lookup's
   pick of the server's row and this device's own records (the mirror and the offline
