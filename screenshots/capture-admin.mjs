@@ -654,8 +654,13 @@ await step('series', async () => {
   const holmes = await bookBy(HOLMES_MATCH.author, HOLMES_MATCH.title);
   const edit = holmes ? `/admin/libraries/${holmes.library_id}/book${pathQuery(holmes.path)}` : '';
   const shelf = page.getByRole('list', {name: 'Books of Sherlock Holmes', exact: true});
+  // A failed ASIN edit starts no chapter check to wait on: it is reverted at once.
+  let edited = false;
   try {
-    if (edit) await api(token, 'PATCH', edit, {set: {asin: HOLMES_MATCH.asin}});
+    if (edit) {
+      await api(token, 'PATCH', edit, {set: {asin: HOLMES_MATCH.asin}});
+      edited = true;
+    }
     else console.log(`  ! no "${HOLMES_MATCH.title}": the series shot shows no gaps`);
     // Taller, so the Sherlock Holmes card's shelf (the second card) fits.
     await page.setViewportSize({width: 1440, height: 1400});
@@ -672,7 +677,8 @@ await step('series', async () => {
     await shoot(page, 'admin/series.png');
   } finally {
     try {
-      if (edit) await restoreSeriesAsin(api, token, edit);
+      if (edited) await restoreSeriesAsin(api, token, edit);
+      else if (edit) await revertCaptureAsin(api, token, edit);
     } finally {
       await page.setViewportSize(DESKTOP_CONTEXT.viewport);
     }
