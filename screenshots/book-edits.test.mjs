@@ -25,9 +25,8 @@ test('Hound cleanup reports the second failure to the capture step', async () =>
   assert.equal(attempts, 2);
 });
 
-test('Series keeps the ASIN until the shelf settles and the book has finished checking', async (t) => {
+test('Series keeps the ASIN until the chapter check has stayed settled for 30 s', async (t) => {
   t.mock.timers.enable({apis: ['Date', 'setTimeout']});
-  let gaps = 'Book 4 (missing)';
   let detail = {community_checking: false, community_chapters: null};
   const patches = [];
   const api = async (_token, method, path, body) => {
@@ -35,27 +34,27 @@ test('Series keeps the ASIN until the shelf settles and the book has finished ch
     if (method === 'GET') return detail;
     patches.push(body);
   };
-  const done = restoreSeriesAsin(api, 'admin', book, async () => gaps);
+  const done = restoreSeriesAsin(api, 'admin', book);
   async function tick(ms) {
     await nextTurn();
     t.mock.timers.tick(ms);
     await nextTurn();
   }
 
-  await tick(30_000); // The shelf is quiet, but the chapter check has not started.
+  await tick(31_000); // No check recorded yet: a queued check still says checking=false.
   assert.deepEqual(patches, []);
-  gaps = 'Book 2 (missing), Book 4 (missing)';
   detail = {community_checking: false, community_chapters: {stale: false}};
   await tick(1000);
-  await tick(29_000);
-  assert.deepEqual(patches, []); // The changed shelf starts a new quiet interval.
-  detail.community_chapters.stale = true;
-  await tick(1000);
+  await tick(20_000);
   assert.deepEqual(patches, []);
+  detail.community_chapters.stale = true; // The book changed again: a new quiet interval.
+  await tick(1000);
   detail = {community_checking: true, community_chapters: {stale: false}};
   await tick(1000);
-  assert.deepEqual(patches, []);
   detail.community_checking = false;
+  await tick(1000);
+  await tick(29_000);
+  assert.deepEqual(patches, []);
   await tick(1000);
   await done;
   assert.deepEqual(patches, [revert]);
@@ -68,7 +67,7 @@ test('Series still reverts the ASIN when the wait times out', async (t) => {
     if (method === 'GET') return {community_checking: true};
     patches.push(body);
   };
-  const done = assert.rejects(restoreSeriesAsin(api, 'admin', book, async () => ''), /timed out/);
+  const done = assert.rejects(restoreSeriesAsin(api, 'admin', book), /timed out/);
   await nextTurn();
   t.mock.timers.tick(90_000);
   await done;
@@ -83,14 +82,14 @@ test('a stalled book status read is aborted and the Series cleanup can still PAT
     return new Response(null, {status: 204});
   });
   const api = apiClient('http://localhost');
-  await assert.rejects(restoreSeriesAsin(api, 'admin', book, async () => '', 50), /timed out/);
+  await assert.rejects(restoreSeriesAsin(api, 'admin', book, 50), /timed out/);
   assert.deepEqual(requests.map((r) => r.method), ['GET', 'PATCH']);
   assert.equal(requests[0].signal.aborted, true);
   assert.deepEqual(JSON.parse(requests[1].body), revert);
   assert.equal(requests[1].signal, undefined);
 });
 
-test('Series retries a missed read and accepts an empty shelf after an offline chapter check', async (t) => {
+test('Series retries a missed read and accepts an offline chapter check', async (t) => {
   t.mock.timers.enable({apis: ['Date', 'setTimeout']});
   let reads = 0;
   const patches = [];
@@ -99,7 +98,7 @@ test('Series retries a missed read and accepts an empty shelf after an offline c
     if (++reads === 1) throw new Error('connection reset');
     return {community_checking: false, community_check_failed: true};
   };
-  const done = restoreSeriesAsin(api, 'admin', book, async () => '');
+  const done = restoreSeriesAsin(api, 'admin', book);
   await nextTurn();
   t.mock.timers.tick(1000);
   await nextTurn();

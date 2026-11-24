@@ -654,10 +654,6 @@ await step('series', async () => {
   const holmes = await bookBy(HOLMES_MATCH.author, HOLMES_MATCH.title);
   const edit = holmes ? `/admin/libraries/${holmes.library_id}/book${pathQuery(holmes.path)}` : '';
   const shelf = page.getByRole('list', {name: 'Books of Sherlock Holmes', exact: true});
-  const readGaps = (timeout) => shelf.evaluate(
-    (list) => Array.from(list.querySelectorAll('[data-gap]'), (spine) => spine.getAttribute('aria-label')).join('\n'),
-    undefined, {timeout},
-  );
   try {
     if (edit) await api(token, 'PATCH', edit, {set: {asin: HOLMES_MATCH.asin}});
     else console.log(`  ! no "${HOLMES_MATCH.title}": the series shot shows no gaps`);
@@ -676,7 +672,7 @@ await step('series', async () => {
     await shoot(page, 'admin/series.png');
   } finally {
     try {
-      if (edit) await restoreSeriesAsin(api, token, edit, readGaps);
+      if (edit) await restoreSeriesAsin(api, token, edit);
     } finally {
       await page.setViewportSize(DESKTOP_CONTEXT.viewport);
     }
