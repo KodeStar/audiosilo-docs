@@ -368,7 +368,11 @@ fails the job and leaves the account's row as it was.
 `match.ImportOptions()` over the candidates past the person gate. The options turn
 on every opt-in rule of the server's `pkg/match` (the table is in
 [the server's `pkg/match`](../server/overview.md#matching-titles-and-series)); the server's own
-callers keep the default rules. `BookMatcher.MatchScored` hands the winning score
+callers keep the default rules. The Bridge builds against a pinned server commit,
+so it reads the options as that commit wrote them: until its pin moves past
+server 2.7.0, `DropUnabridged` removes only `(Unabridged)` and
+`WordlessFallback` checks a series-named candidate's number only when the query
+states one. `BookMatcher.MatchScored` hands the winning score
 (`match.ScoreASIN` for an ASIN match) to the contested rule.
 
 #### Series positions in the books listing
@@ -412,7 +416,8 @@ An ASIN match is never held back by any of this.
    when the book's folder code states it (`folderCodeIs`: the main series'
    initials and the same single number). That check keeps the listing's rules
    from before server 2.7.0: a suffix (`DH06-2019`, `DH06-07x`) gives no
-   number, and `C` must be one of the initials like any other letter. A
+   number, `C` must be one of the initials like any other letter, and a pack
+   word or a doubled code (`DH01 - Omnibus`, `DH01-DH03`) still states 1. A
    franchise's number says nothing. A range or a missing number on either side
    neither agrees nor disagrees.
 3. Then the single best score keeps the match.
