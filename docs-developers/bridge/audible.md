@@ -686,10 +686,11 @@ fields and upper-cases the ASIN.
 Both are copied in at queue time, so editing either later never changes a queued
 job.
 
-**Progress** is `{"step", "message", "message_code", "done", "total"}`
-([Job progress](pairing-and-jobs.md#job-progress)). A park on a library that is
-not mapped and writable has the progress code `library_not_writable`. `step` runs
-through these in order:
+**Progress** is `{"step", "message", "message_code", "message_params", "done",
+"total"}` ([Job progress](pairing-and-jobs.md#job-progress)). A park on a library
+that is not mapped and writable has the progress code `library_not_writable`,
+with the library's name as `message_params.library`. `step` runs through these
+in order:
 
 1. `license`, also while the job waits for the account's gate or the mapping check;
 2. `download`;

@@ -12289,7 +12289,7 @@ result, an error. Every report renews the lease.
 {
   "attempt": 1,
   "state": "running",
-  "progress": { "step": "stat", "message": "Comparing the files", "message_code": "comparing_files", "done": 2, "total": 4 }
+  "progress": { "step": "stat", "message": "Comparing the files", "message_code": "comparing_files", "total": 4 }
 }
 ```
 
