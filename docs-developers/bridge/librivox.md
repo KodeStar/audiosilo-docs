@@ -1,6 +1,6 @@
 ---
 title: Add from LibriVox
-description: "How an admin adds a LibriVox recording to a books library: the three admin routes, the librivox.fetch job (params, progress, result, failure codes), the book's identity recorded by the server's fold, the archive.org-only fetch, placement and names, staging, resume and the 7-day sweep, and .audiosilo/librivox.json."
+description: "How an admin adds a LibriVox recording to a books library: the three admin routes, the librivox.fetch job (params, progress, result, failure codes), the book's identity recorded by the server's fold, the archive.org-only fetch, placement and names, staging, resume, the pairing rule and the 7-day sweep, and .audiosilo/librivox.json."
 ---
 
 An admin searches the community metadata database's LibriVox works, picks a
@@ -302,11 +302,29 @@ the mount's `os.Root`:
 The mapping is checked again before each section, before the cover and marker,
 and before the rename.
 
+**Bound to its pairing.** A run writes to the library only while the Bridge is
+still paired as when it claimed the job (`stillPaired`, `jobs.Job.Under`): the
+same server and the same pairing. Unpairing on the Bridge's own page ends the
+pairing, and pairing again after that is a new one, even with the same server.
+Pairing with another server is a new one too, and its libraries can share this
+one's ids. A token the server refuses meanwhile ends nothing, and neither does
+pairing the same server again after that refusal with no unpair between (the
+pairing keeps its id).
+
+The run asks before its first write and in every mapping look above, parked
+ones included. Once the pairing has ended, the run ends (`errPairingGone`) and
+writes nothing more. On the way out it removes its own staging folder, through
+the mount it took at the claim, and then its state, whatever ended the run, so a
+claim under the next pairing starts clean. A folder it can't remove keeps its
+state. A run that finds the pairing gone at its first mapping look, before it
+has read its state, ends without touching either.
+
 The state file records the library, the paired server's id, the parent, the
 destination, the partials' validators and, once placed, the count and bytes. So:
 
-- a stop, or a lost claim, keeps the staging folder and the state, and the next
-  attempt follows them instead of planning again;
+- while the pairing stands, a stop or a lost claim keeps the staging folder and
+  the state, and the next attempt follows them instead of planning again. Once the
+  pairing has ended, they are removed (above);
 - once placed, the state is the placement marker: a failed rescan keeps the book,
   and the retry goes on from the rescan;
 - a placement the state never recorded (a kill between the rename and the state's
@@ -337,19 +355,33 @@ and the check. The sweep:
   holds (`store.OpenServerJobs`), such as a recovered job waiting for its lane. If
   it can't read those rows, it sweeps nothing;
 - keeps a state whose library isn't a checked writable mapping now, or whose
-  staging folder can't be removed. When the library's mapping is gone (the server
-  no longer lists the library, or the check finds it unmapped), the state records
-  when that was seen (`Unmapped`) and ends 7 days later, its staging folder left in
-  place. A run that finds the library mapped again forgets the time. An
-  unwritable library's mapping is not gone;
+  staging folder can't be removed. When the library's mapping is gone, the state
+  records when that was seen (`Unmapped`) and ends 7 days later, its staging
+  folder left in place. A run, or a sweep whose check finds the library mapped
+  again (writable or not), forgets the time; the state keeps its age;
 - otherwise removes the state, its staging folder and the author folder it made.
   For a placed book or another server's state it drops only the state file;
 - removes other old regular files in the state folder, never a folder.
 
+A mapping counts as gone (`mappingGone`) only on a definite answer:
+
+- the server no longer lists the library, or
+- the last check that stands found it unmapped, and either no mapping is
+  configured for the library any more, or its folder (the same one the check
+  looked at) answers within 5 seconds and lists at least one entry
+  (`holdsAnything`), so it is there and isn't the library's.
+
+A check the server didn't answer, a folder that is missing, unreadable, slow or
+empty (a share that isn't mounted leaves an empty mount point) doesn't start the
+clock. An unwritable library's mapping is not gone either.
+
 **Stray staging folders.** A staging folder whose state is gone is out of the
 sweep's reach. Once a day (`strayWalkEvery`), `sweepStrays` looks in the root and
 author folders of every checked writable books library, each folder read bounded
-(`fsutil.ReadDirWithin`), for folders named exactly `.audiosilo-librivox-<id>`. It
+(`fsutil.ReadDirWithin`), for folders named exactly `.audiosilo-librivox-<id>`.
+The author folders' reads share a limit of 2 minutes per library
+(`strayWalkTime`), and the walk takes them in a random order, so a library walked
+only part of the way on a slow mount gets other folders looked at next time. It
 removes one only when all of these hold:
 
 - no state in any library, run or held job knows the project (`projectKnown`);
@@ -359,16 +391,22 @@ removes one only when all of these hold:
   symlink;
 - its newest entry is older than 7 days.
 
-The mapping is checked again first, and the author folder is never removed.
+First the sweep holds the project in every library (`beginProject`), so no fetch
+of it starts anywhere between the look that finds it unknown and the removal:
+another library's mount may reach the same folder. A fetch of the project waits
+meanwhile, and one already held makes the sweep leave the folder for the next
+walk. The mapping is checked again then, and the author folder is never removed.
 `clearStray` opens the folder once, through the mount's root, as a root of its own,
 and looks and removes through that, so nothing outside it can go. It removes what
 it saw, each file by its name and a folder only when empty, never recursively. So a
 file put there since the look stays, and a folder renamed away or replaced by a
-symlink is left. The look and the removal hold the project's reservation, and the
-sweep waits a bounded time for them. A library that hangs after the walk listed it
-is left for the next walk. Until a hung removal ends, a new fetch of that recording
-waits about two minutes and then fails "the Bridge is already adding this recording
-to this library".
+symlink is left. The look and the removal run aside, and the sweep waits up to a
+minute for them (`strayWorkWait`). If the mount hangs past that, the sweep gives
+the removal up and frees the project at once: the removal removes nothing more
+once the mount answers (only a single removal already under way may still land),
+the library is left for the next walk, and a new fetch of that recording runs
+rather than waiting and failing "the Bridge is already adding this recording to
+this library".
 
 ## `.audiosilo/librivox.json`
 

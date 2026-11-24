@@ -755,6 +755,17 @@ A parked job releases its download slot. It reclaims a slot and rechecks the
 mapping before proceeding. A job waiting for the same account releases its own
 slot only while the account holder has none (`Reporter.HoldsSlot`).
 
+**Bound to its pairing.** Each of those mapping looks, the one before the license
+and the one before placing, a parked wait included, first asks whether the Bridge
+is still paired as when it claimed the job (`jobs.Job.Under` against
+`ImportOptions.Pairing`): the same server and the same pairing, the rule
+[a LibriVox fetch](librivox.md#staging-resume-and-cleanup) follows. Unpairing on
+the Bridge's own page ends the pairing; a token the server refuses does not. Once
+the pairing has ended, the import ends (`errImportPairingGone`) without writing to
+the library listed now, which may be another server's library with the same id.
+It removes its decrypted copy and its partial download, even when its claim was
+stopped or lost meanwhile, since no claim under another pairing may use them.
+
 ### The steps on the Bridge
 
 `audiblejob.Importer.Run` (`import.go`) runs these steps:
@@ -849,11 +860,12 @@ restart. The importer licenses once more, and a second one fails
 `offline_url_expired`.
 
 **Partial download.** A shutdown, interrupted claim after a token refusal, or
-lost lease keeps the encrypted partial and its state. Cancellation or a failed
-attempt removes them.
+lost lease keeps the encrypted partial and its state, unless the import ended
+because its pairing ended. Cancellation, a failed attempt or an ended pairing
+removes them.
 
 **Completed decrypt.** A shutdown, a token refusal or a lost lease keeps the
-ready file and its metadata. So does every failure except the three below,
+ready file and its metadata, unless the import ended because its pairing ended. So does every failure except the three below,
 such as `exists`, `not_writable`, a network error, a rate limit or a 404 for
 the job at the lease check (a proxy answers one while the server restarts). On
 the next claim for that account and title, `readStaged` checks the record
