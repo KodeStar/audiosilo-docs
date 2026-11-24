@@ -613,13 +613,20 @@ async function waitReaderBar(page, hidden, timeout = 15000) {
 // Shows the reader's top bar with a click in the middle of the page when it is hidden, so
 // its buttons can be clicked (and shot) within the bar's 4 s.
 async function showReaderBar(page) {
+  // A bar in mid-slide (either way) finishes first, so the click shows it rather than hiding it.
+  await page.waitForFunction(
+    (sel) => {
+      const box = document.querySelector(sel)?.getBoundingClientRect();
+      return !box || box.bottom <= 0 || box.top >= 0;
+    },
+    READER_BAR,
+    {timeout: 15000},
+  );
   const off = await page.evaluate((sel) => {
     const bar = document.querySelector(sel);
     return !!bar && bar.getBoundingClientRect().top < 0;
   }, READER_BAR);
   if (off) {
-    // A hiding bar in mid-slide finishes first, so the click shows it rather than hiding it.
-    await waitReaderBar(page, true);
     const box = await tid(page, 'reader-page').boundingBox();
     if (!box) throw new Error('no reader page to click');
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
@@ -782,6 +789,7 @@ async function captureWide(name, viewport, shots) {
         await stave.click({timeout: 8000});
         // Moved: the place line changes once the stave's page is laid out.
         for (let i = 0; i < 60 && (await where.textContent().catch(() => opened)) === opened; i++) await sleep(250);
+        // The pointer leaves the stave's place now, so no hover is still fading at the shot.
         await page.mouse.move(0, 0);
         if (wanted(shots.readerImmersive)) {
           // The jump was a page turn: the bar slid off, the page alone.
@@ -797,9 +805,7 @@ async function captureWide(name, viewport, shots) {
           await showReaderBar(page);
           await contents.click({timeout: 8000});
           await firstVisible(page.locator('[aria-current="location"]')).waitFor({timeout: 8000});
-          await sleep(SETTLE_MS);
-          await page.mouse.move(0, 0);
-          await shoot(page, shots.readerContents);
+          await settleShoot(page, shots.readerContents, SETTLE_MS);
           // Escape closes only the sheet (the bar's wait starts again).
           await page.keyboard.press('Escape');
           await firstVisible(page.locator('[aria-current="location"]')).waitFor({state: 'hidden', timeout: 8000});
@@ -1330,8 +1336,8 @@ async function captureReadalong() {
             await follow.click({timeout: 8000});
             await follow.waitFor({state: 'hidden', timeout: 15000});
             await sleep(4000);
-            // The top bar hides 4 s after the last press on the reader (immersive mode):
-            // the page alone, so the shot never catches it in mid-slide.
+            // The top bar (immersive mode) has hidden by now, its 4 s run out or the reader's
+            // own turn hid it: the page alone, so the shot never catches it in mid-slide.
             await waitReaderBar(page, true);
             await settleShoot(page, READALONG_SHOTS.reader, SETTLE_MS);
           } finally {
