@@ -431,10 +431,10 @@ Every pull request touching `data/**` is checked twice:
 
   It also uses the plain `pull_request` trigger by design. `pull_request_target` is
   forbidden here as the "pwn request" pattern. So a fork pull request's own run
-  gets a neutral skip notice, and fork secrets are never reached. Its data is
-  verified on the steward's mirror of it instead (see
-  [A pull request from a fork](#a-pull-request-from-a-fork)), or after a
-  maintainer pushes its branch to the repo. The workflow passes the diff to the
+  gets a neutral skip notice, and fork secrets are never reached. The steward's
+  mirror of it is verified instead (see
+  [A pull request from a fork](#a-pull-request-from-a-fork)), or a maintainer
+  pushes its branch to the repo. The workflow passes the diff to the
   model as untrusted data and never executes it.
 
   When a rebase leaves what it judged unchanged, the workflow re-applies the last
@@ -455,51 +455,6 @@ The one place that verdict is *not* advisory is the
 merge themselves once the required checks pass and `ai-verified` is applied. Every
 other batch import, opened by a person or composed from the "Import a library"
 form, still needs a maintainer's approval however green it is.
-
-## A pull request from a fork
-
-A pull request from your fork runs its checks without the repository's
-secrets, so its `ai-verify` run is a skip and it cannot pass the merge gate by
-itself. With fork mirroring on (`SYNC_STEWARD_FORKS`), the maintainer's
-[steward](./steward.md#pull-requests-from-forks) carries it there for you. The
-same applies in audiosilo-meta-community, through that repository's own gate.
-
-1. **It checks your head.** If every commit changes nothing but plain
-   `data/**/*.json` files, the steward pushes your head unchanged to a
-   `steward/fork-N` branch in the repository.
-2. **A mirror pull request appears.** It has your title followed by
-   "(mirrored from #N)", N being your pull request's number. It credits you
-   and links back, and your pull request gets one comment pointing at it.
-3. **The mirror goes through the usual gate.** The checks and `ai-verify` run
-   on it. If it is flagged or red, the steward fixes the data on the mirror, as
-   for any other data pull request. A large change may land in parts.
-4. **The mirror merges.** It merges squashed, with the steward's own commit
-   message, which credits you in plain prose ("Contributed by @you in #N.").
-   Your commit messages are not carried, so a closing keyword in one closes no
-   issue.
-5. **Your pull request is closed as superseded.** Once everything you changed
-   is on `main`, the steward closes it with a link to the mirror and its merge
-   commit. If GitHub already shows it merged, it is left as merged.
-
-If you push again while the mirror is open, your new head is checked again and
-replaces the mirror's content (a steward fix on your earlier head is dropped).
-If you close your pull request, the steward closes the mirror too.
-
-**When a fork is not mirrored.** The steward leaves one comment saying why, and
-your pull request waits for a maintainer. That happens when:
-
-- any commit touches a file outside `data/`, even one a later commit reverts;
-- any commit writes something under `data/` that is not a plain `.json` file: a
-  script, a dotfile, a symbolic link, a submodule or an executable bit;
-- the change carries something that looks like a secret, in a commit's diff or
-  its message;
-- the change is too large to read whole: over 3000 files, 16 MiB of data
-  changes or 1 MiB of commit text.
-
-To try again, rewrite your branch so no commit touches anything but data JSON
-and push. The new head is judged afresh. A pull request into a branch other
-than `main` is never mirrored, and with fork mirroring off every fork pull
-request waits for a maintainer.
 
 ## The Go gate in CI
 
@@ -591,6 +546,48 @@ as a failure.
 The [sync bot](sync-bot.md) gates its merge on `check` (with `compose`, `site` and
 `verify`) by name, and hands the tail of a failed `check` log to its resolver.
 Renaming or dropping `check` leaves both waiting for a check that never comes.
+
+## A pull request from a fork
+
+Because a fork's `ai-verify` run is a skip, a pull request from your fork
+cannot pass the merge gate by itself. When the maintainer has fork mirroring
+on, the [steward](./steward.md#pull-requests-from-forks) copies it
+into a mirror pull request that goes through the gate for you. The same
+applies in audiosilo-meta-community, through that repository's own gate.
+
+1. **The steward checks your head.** If every commit changes nothing but plain
+   `data/**/*.json` files, the steward pushes your head unchanged to a
+   `steward/fork-N` branch in the repository.
+2. **A mirror pull request appears.** It has your title followed by
+   "(mirrored from #N)", N being your pull request's number. It credits you
+   and links back, and your pull request gets one comment pointing at it.
+3. **The mirror goes through the usual gate.** The checks and `ai-verify` run
+   on it. If it is flagged or red, the steward fixes the data on the mirror, as
+   for any other data pull request. A large change may land in parts.
+4. **The mirror merges.** It merges squashed, with the steward's own commit
+   message, which credits you in plain prose ("Contributed by @you in #N.").
+   Your commit messages are not carried, so a closing keyword in one closes no
+   issue.
+5. **Your pull request is closed as superseded.** Once everything you changed
+   is on `main`, the steward closes it with a link to the mirror and its merge
+   commit. If GitHub already shows it merged, it is left as merged.
+
+If you push again while the mirror is open, your new head is checked again and
+replaces the mirror's content (a steward fix on your earlier head is dropped).
+If you close your pull request, the steward closes the mirror too.
+
+**When a fork is not mirrored.** The steward leaves one comment saying why, and
+your pull request waits for a maintainer. That happens when:
+
+- any commit touches a file outside `data/`, even one a later commit reverts;
+- any commit writes something under `data/` that is not a plain `.json` file: a
+  script, a dotfile, a symbolic link, a submodule or an executable bit;
+- the change is too large for the steward to read whole (the bounds are on
+  [the steward's page](./steward.md#pull-requests-from-forks)).
+
+To try again, rewrite your branch so no commit touches anything but plain
+`data/**/*.json` files, and push. The new head is judged afresh. A pull request
+into a branch other than `main` is never mirrored.
 
 ## Bulk importers: metaimport
 
