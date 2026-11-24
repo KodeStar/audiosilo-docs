@@ -234,8 +234,8 @@ where a deliberate exception goes:
 The external-anchor check fails the build when a User Guide heading that the
 player, server, Bridge, site or metadata repo links to has no explicit id, so
 renaming it can't break the link, or when two headings on a page share an
-explicit id. Its snapshot only grows (a shipped app may still use an old
-link); adding to it and removing an entry:
+explicit id. Its sync only adds to the snapshot (a shipped app may still use
+an old link); adding to it, and removing an entry by hand:
 [Maintaining these docs](documentation.md).
 
 ## The green-baseline lint policy

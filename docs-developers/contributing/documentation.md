@@ -229,7 +229,8 @@ headings use a colon or rephrase rather than a dash, so their anchors stay clean
 Moving or renaming a page file needs a redirect, so prefer changing only its `title:`.
 The build fails when a heading another repo links to loses its explicit id (the
 `prebuild`'s `scripts/external-anchors.mjs`, against the snapshot
-`scripts/external-anchors.json`). After such a link changes in another repo,
+`scripts/external-anchors.json`), and when two headings on one page share an
+explicit id. After such a link is added or changed in another repo,
 fetch that repo and run `npm run anchors:sync`: it reads the sibling repos at
 their `origin` branch, next to the main checkout (`-- --workspace <dir>` for
 another folder), and needs no network. The sync only adds links, since a
