@@ -763,8 +763,10 @@ is still paired as when it claimed the job (`jobs.Job.Under` against
 the Bridge's own page ends the pairing; a token the server refuses does not. Once
 the pairing has ended, the import ends (`errImportPairingGone`) without writing to
 the library listed now, which may be another server's library with the same id.
-It removes its decrypted copy and its partial download, even when its claim was
-stopped or lost meanwhile, since no claim under another pairing may use them.
+However an import ends once its pairing has ended (at a mapping look, a stop, a
+lost claim or a failure), it removes its decrypted copy and its partial
+download, since no claim under another pairing may use them: `run`'s cleanup
+asks `jobs.Job.Under` again.
 
 ### The steps on the Bridge
 
@@ -859,13 +861,14 @@ and then finishes. A `401`/`403`/`410` means the URL expired over a long wait or
 restart. The importer licenses once more, and a second one fails
 `offline_url_expired`.
 
-**Partial download.** A shutdown, interrupted claim after a token refusal, or
-lost lease keeps the encrypted partial and its state, unless the import ended
-because its pairing ended. Cancellation, a failed attempt or an ended pairing
-removes them.
+**Partial download.** While the pairing that claimed the job stands, a
+shutdown, an interrupted claim after a token refusal, or a lost lease keeps the
+encrypted partial and its state. Cancellation, a failed attempt or an ended
+pairing removes them.
 
-**Completed decrypt.** A shutdown, a token refusal or a lost lease keeps the
-ready file and its metadata, unless the import ended because its pairing ended. So does every failure except the three below,
+**Completed decrypt.** While the pairing that claimed the job stands, a
+shutdown, a token refusal or a lost lease keeps the ready file and its metadata.
+So does every failure except the three below,
 such as `exists`, `not_writable`, a network error, a rate limit or a 404 for
 the job at the lease check (a proxy answers one while the server restarts). On
 the next claim for that account and title, `readStaged` checks the record
@@ -873,7 +876,7 @@ against the file, the server and the pairing (the size and modification time
 exactly). A valid stage skips the Audible title lookup, license, download and
 decrypt, and plans the destination again.
 
-Only cancellation, a dropped pairing, a success, or `unknown_account`,
+Only cancellation, an ended pairing, a success, or `unknown_account`,
 `unknown_title` or `no_rights` (`bookRefused`) removes the stage. A failed
 title nobody backs up again keeps its stage until the start-up sweep below. For
 a job that ends before running, `Importer.Abandon` removes the files unless the

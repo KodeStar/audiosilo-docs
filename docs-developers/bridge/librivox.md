@@ -311,8 +311,10 @@ one's ids. A token the server refuses meanwhile ends nothing, and neither does
 pairing the same server again after that refusal with no unpair between (the
 pairing keeps its id).
 
-The run asks before its first write and in every mapping look above, parked
-ones included. Once the pairing has ended, the run ends (`errPairingGone`) and
+The run asks before its first write, in every mapping look above (parked ones
+included), and once more right before the rename, after the staging folder is
+swept to the manifest's files, since that sweep can take a while on a slow mount.
+Once the pairing has ended, the run ends (`errPairingGone`) and
 writes nothing more. On the way out it removes its own staging folder, through
 the mount it took at the claim, and then its state, whatever ended the run, so a
 claim under the next pairing starts clean. A folder it can't remove keeps its
@@ -366,14 +368,18 @@ and the check. The sweep:
 A mapping counts as gone (`mappingGone`) only on a definite answer:
 
 - the server no longer lists the library, or
-- the last check that stands found it unmapped, and either no mapping is
-  configured for the library any more, or its folder (the same one the check
-  looked at) answers within 5 seconds and lists at least one entry
-  (`holdsAnything`), so it is there and isn't the library's.
+- the last check that stands found it unmapped, looking at the folder the
+  library mounts at now, and that folder either:
+  - answers within 5 seconds and lists at least one entry (`holdsAnything`), so
+    it is there and isn't the library's; or
+  - is missing, while no mapping is configured for the library, so the folder is
+    the server's own path ([the fallback](mappings.md#where-the-bridge-looks)).
 
-A check the server didn't answer, a folder that is missing, unreadable, slow or
-empty (a share that isn't mounted leaves an empty mount point) doesn't start the
-clock. An unwritable library's mapping is not gone either.
+None of these starts the clock: a check the server didn't answer, a check of
+another folder than the library's mount now, a folder that is unreadable or
+slow, one that is empty (a share that isn't mounted leaves an empty mount point,
+at the server's own path too), or one that is missing while a mapping is
+configured. An unwritable library's mapping is not gone either.
 
 **Stray staging folders.** A staging folder whose state is gone is out of the
 sweep's reach. Once a day (`strayWalkEvery`), `sweepStrays` looks in the root and
