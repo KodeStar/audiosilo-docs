@@ -430,11 +430,12 @@ Every pull request touching `data/**` is checked twice:
   blocks a merge**.
 
   It also uses the plain `pull_request` trigger by design. `pull_request_target` is
-  forbidden here as the "pwn request" pattern. So a fork pull request's own run
-  gets a neutral skip notice, and fork secrets are never reached. The steward's
-  mirror of it is verified instead (see
+  forbidden here as the "pwn request" pattern. So its job does not run on a fork
+  pull request at all (the check shows as skipped), and fork secrets are never
+  reached. The steward's mirror of it is verified instead (see
   [A pull request from a fork](#a-pull-request-from-a-fork)), or a maintainer
-  pushes its branch to the repo. The workflow passes the diff to the
+  pushes its branch to the repo or runs the workflow by hand for it (a manual
+  dispatch runs from `main`, with the secret). The workflow passes the diff to the
   model as untrusted data and never executes it.
 
   When a rebase leaves what it judged unchanged, the workflow re-applies the last
@@ -450,11 +451,15 @@ Every pull request touching `data/**` is checked twice:
   session limit there from stalling every verdict. With neither secret the
   script writes a skip, which is a failed check.
 
-The one place that verdict is *not* advisory is the
-[series-completion bot](./sync-bot.md). Its bounded, `data/`-only batch imports
-merge themselves once the required checks pass and `ai-verified` is applied. Every
-other batch import, opened by a person or composed from the "Import a library"
-form, still needs a maintainer's approval however green it is.
+Two merges wait on that verdict instead of on a person. The
+[series-completion bot](./sync-bot.md)'s bounded, `data/`-only batch imports
+merge themselves once the required checks pass and `ai-verified` is applied. The
+[steward](./steward.md) merges every other data pull request into `main` on the
+maintainer's behalf through the same gate, `ai-verified` on the exact head
+included. That covers a batch import opened by a person or composed from the
+"Import a library" form (a large one in parts) and a fork's mirror. A pull
+request the steward does not merge, such as a fork it cannot mirror, still needs
+a maintainer's approval however green it is.
 
 ## The Go gate in CI
 
