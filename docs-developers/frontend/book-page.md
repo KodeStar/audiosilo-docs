@@ -162,7 +162,7 @@ again. Nor is a place whose toast timed out
 | Up next menu | `queue` | Play next (at position 0, with an Undo that puts it back where it was); Add to the end / Remove from Up next (`useQueueActions`) |
 | Favourite | - | ink, never pink |
 | Add to collection | `collections`, not stacked | the book menu's dialog. When stacked it is the menu's own item instead |
-| `BookActionsMenu` | its items' own | `omit` (`MENU_OMIT`, `['play', 'queue', 'collect', 'download']`) leaves Mark as finished / not finished and More in this series. Stacked, it also keeps Add to collection (`MENU_OMIT_PHONE` is the same list without `'collect'`). It renders nothing when that leaves no item. For an admin whose book has generated characters or recaps it adds **Regenerate characters, recaps and the description** (`extra`), then each active [player module's](state-and-data.md#player-modules-srcmodules) `bookActions` (none yet) |
+| `BookActionsMenu` | its items' own | `omit` (`MENU_OMIT`, `['play', 'queue', 'collect', 'download']`) leaves Mark as finished / not finished and More in this series. Stacked, it also keeps Add to collection (`MENU_OMIT_PHONE` is the same list without `'collect'`). It renders nothing when that leaves no item. For an admin whose book shows characters or recaps generated on this server (`generateOffer`'s `regenerate`, see [Who sees it](#who-sees-it)) it adds **Regenerate characters, recaps and the description** (`extra`), then each active [player module's](state-and-data.md#player-modules-srcmodules) `bookActions` (none yet) |
 | Generate characters and recaps | `useGenerate`'s `offer === 'generate'` | an outline button after the others (its own row when stacked), for an admin a Bridge can generate for (see [Generating characters and recaps](#generating-characters-and-recaps)) |
 
 When the hero is stacked (under 600 measured), the primary takes its own row and the
@@ -199,6 +199,10 @@ characters and recaps for this book" with **See characters**. That button select
 Characters tab and scrolls the page to the tabs (`openCharacters`, not animated under
 reduced motion). `generateOffer` never gives `covered` without `mayGenerate`, so a
 listener never sees the line.
+
+`regenerate` follows the shared [generated and shown](../bridge/generating.md#who-sees-the-action)
+rule (`generatedShown` in `bridge-model.ts`: `generated.characters` with a non-empty
+`characters` list, or `generated.recaps` with a non-empty `recaps` list).
 
 No offer shows until the book's `/meta` and its jobs are known (`metaAnswered`; a
 failed lookup is no answer). No offer shows while a job shows its status either.
@@ -256,7 +260,11 @@ The player never contributes.
   narration."), and when it tries again by itself. A book waiting for an ASR worker or for confirmation that it can share (`share_unconfirmed`)
   says "It carries on by itself" (`parkEndsByItself`); any other park says "Open the
   console to fix it".
-- **Failed:** the error and Try again.
+- **Failed:** the error and Try again. Once the community has both characters and
+  recaps (`communityCovers`, read after `/meta` answers), the covered line replaces
+  a failed job, since nothing is left to try: `statusJob(jobs, true)` drops it for a
+  covered book, and `GenerateStatus` renders nothing while `model.covered`. An open
+  job always shows its status, since it can be cancelled.
 
 `useBridgeJobs` polls the book's jobs every 10 seconds while one is claimed or running,
 and every minute while one is parked. It polls only while the surface is focused and
@@ -312,10 +320,16 @@ The gate is `listeningProgressFor` over the corrected chapter starts and
 
 - `BookChaptersTab`, or five skeleton rows while the list is empty.
 - The community tabs, with their `Attribution` (`communityCredit`; none for a
-  dimension generated on this server). A tab whose content came from the server's own
+  dimension generated on this server; linked as in
+  [Credits](player-ui.md#panels)). A tab whose content came from the server's own
   files gets a `GeneratedMark` ("Generated on this server") at its head. The Recaps
   tab places its chips and credit by `recapMarks` (see
   [Enriched book metadata](state-and-data.md#enriched-book-metadata)).
+- The earlier books (`PreviousBooksSection`, under Recaps and Characters) are other
+  works. Each opened row ends with that work's own CC BY-SA credit
+  (`communityCredit(work, ...)` of its `/meta/work` answer, linking that work's
+  page), never the current book's. The current book may have no credit at all,
+  when everything shown for it was generated.
 - `BookmarksSection` and `NotesSection`, both `AnnotationSection` (see
   [Bookmarks and notes](annotations.md)).
 - `HistorySection`, `BookMetaSeriesTab` and `BookDetailsTab`.

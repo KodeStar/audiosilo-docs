@@ -10,7 +10,7 @@ They come from the community database, [AudioSilo Meta](../community/meta-site.m
 - **Characters** has a card for each person: name, role, other names they go by, and the chapter they first appear in. Tap a card to read its short description.
 - **Recaps** has short "what's happened up to here" summaries, each labelled with the chapter it's safe to read after. Some books also have a whole-book summary, kept behind a **Spoiler** row until you finish.
 
-A line under each tab credits the people who wrote them.
+A line under each tab credits the people who wrote them. Tap the credit to open the book's page on AudioSilo Meta. Tap the licence, **CC BY-SA 4.0**, to read what it allows.
 
 ## Nothing gets spoiled before you reach it
 
@@ -28,7 +28,7 @@ Chapter numbers here come from the community database, and can differ a little f
 
 ## Catching up on earlier books in a series
 
-For a book in a series, both tabs end with **Previous books**: a row for each earlier book. Open one to see that book's summary under Recaps, or its characters under Characters.
+For a book in a series, both tabs end with **Previous books**: a row for each earlier book. Open one to see that book's summary under Recaps, or its characters under Characters. Each opened row has its own credit line, which opens that earlier book's page on AudioSilo Meta.
 
 ## Series with more than one reading order
 
@@ -41,7 +41,7 @@ Some series can be read in more than one order, such as The Chronicles of Narnia
 
 ## Generated on this server
 
-For a book the community database doesn't cover, an admin can have the server's [Bridge](../admin/bridge.md) write characters and recaps (see [Generate characters and recaps](../admin/generating-characters-and-recaps.md)). They appear in the same tabs, follow the same spoiler rules, and carry a **Generated on this server** mark.
+For a book the community database doesn't cover, an admin can have the server's [Bridge](../admin/bridge.md) write characters and recaps (see [Generate characters and recaps](../admin/generating-characters-and-recaps.md)). They appear in the same tabs, follow the same spoiler rules, and carry a **Generated on this server** mark instead of a credit.
 
 ![A book's Recaps tab with recaps generated on the server, the whole-book summary kept closed, and Show anyway](/img/screenshots/web-player/book-recaps-generated.png)
 

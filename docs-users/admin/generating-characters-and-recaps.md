@@ -32,8 +32,10 @@ The book doesn't need to be matched with community metadata.
 ## Generate for a book {/* #where-to-start-it */}
 
 1. Open the book's page in the console. Its **Community metadata** card has
-   **Generate characters and recaps**. Once a book has generated ones, the
-   button reads **Regenerate**.
+   **Generate characters and recaps**. The button reads **Regenerate** once the
+   book shows characters or recaps your Bridge wrote. It still reads
+   **Generate** when the community database already covers what your Bridge
+   wrote, or when your Bridge only wrote a whole-book summary.
 2. Press the button. A [confirmation](#the-confirmation) shows what the run will
    take.
 3. Press **Generate**.
@@ -44,17 +46,20 @@ progress.
 You can also start it from:
 
 - **A whole series.** On **Library > Series**, a series card has **Generate for
-  the series**. It queues the books without recaps, in reading order.
+  the series**. It queues the books without recaps, in reading order. A book with
+  only a whole-book summary counts as one without recaps.
 - **The player.** On a book's page, an admin sees **Generate characters, recaps
-  and a description** after the other buttons. The book's **⋯** menu offers
-  **Regenerate characters, recaps and the description**.
+  and a description** after the other buttons. Once generated ones show, the
+  book's **⋯** menu offers **Regenerate characters, recaps and the description**
+  instead.
 
 ### Which books offer it
 
 The button shows while the community database lacks characters, chapter recaps
 or both for the book. Your generated ones only ever fill what the community
 database is missing. When it already has both, there is no button, and a line
-says so instead.
+says so instead. In the player, that line also replaces an old failed job and its
+**Try again**, since there is nothing left to generate.
 
 The button is also hidden while the book's job runs, while the Bridge is offline,
 and while the book's chapters are being found or its results shared.

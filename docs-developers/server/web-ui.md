@@ -1867,7 +1867,10 @@ The book page's Community card ends with **`GenerateSection`**. It shows:
   are asked whenever the server reports the `bridge` capability at all, so a
   job stays visible while the Bridge is away.
 - **The action**, from the brief estimate (`generateAction`): `generate`,
-  `regenerate` or `covered`. The player follows the same offer rule (see
+  `regenerate` or `covered`. `regenerate` needs a part generated here that shows
+  (`generatedShown`: `has.local` without `has.community`), so a file the community
+  masks, or a `recaps.json` holding only a summary, still offers Generate
+  unless the book is `covered`. Share uses the same rule (`shareDimensions`). The player follows the same offer rule (see
   [Who sees the action](../bridge/generating.md#who-sees-the-action)).
 - **For `covered`**, in place of the action: "The community already has
   characters and recaps for this book." with **See them**. That scrolls to the
@@ -1877,6 +1880,9 @@ The book page's Community card ends with **`GenerateSection`**. It shows:
 
 - the source, length, transcription and agent cost for every book it queues;
 - where the results go;
+- "This replaces the characters and recaps generated before." whenever
+  `has.local` has characters or recaps, one the community masks included (a
+  `recaps.json` holding only a summary shows no line);
 - a contribute switch, on by default, only while the `contributions` flag is on
   and the estimate's `can_contribute` (`contributeOffered`);
 - the earlier books, ticked;
@@ -1889,7 +1895,7 @@ a partial failure.
 **For a series.** Each series card (`features/library/series/`) offers
 **Generate for the series** once its books are loaded. `SeriesGenerateDialog`
 asks every book's brief estimate, four at a time. It queues the books with no
-recaps and no open job, earliest first, and counts the ones it leaves out.
+recaps (a generated summary alone is none) and no open job, earliest first, and counts the ones it leaves out.
 
 **Books another job holds.** The series batch and the dialog pass over a book
 by name (`GENERATE_SKIPS`), rather than stopping, when it is refused:

@@ -187,7 +187,7 @@ Tap a result to open it. Going back returns you to the same results.
 
 ### Characters only once you've met them
 
-Character search can't spoil anything. It only looks at books you've started or finished, and only names characters you've already reached. It uses the [same rule as the Characters tab](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). A quiet line counts any matches it hid. Character search needs community metadata switched on for your server.
+Character search can't spoil anything. It only looks at books you've started or finished, and only names characters you've already reached. It uses the [same rule as the Characters tab](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). A quiet line counts any matches it hid. A credit line under the characters links to the book's page on AudioSilo Meta. When the characters come from more than one book, each book gets its own line, which names it. Character search needs community metadata switched on for your server.
 
 ### Quick search in the web player
 
