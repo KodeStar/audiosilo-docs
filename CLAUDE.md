@@ -31,9 +31,9 @@ change; deliberate exceptions in `scripts/stale-names-allow.json`); the
 external-anchor check (`scripts/external-anchors.mjs`) fails when a User Guide
 heading another repo links to (snapshot `scripts/external-anchors.json`) has
 no explicit id `{/* #id */}`, or a page gives two headings one id (add links
-with `npm run anchors:sync` after such a link changes; it reads the sibling
-repos at their fetched `origin` branch, `-- --workspace <dir>` for another
-folder, and only adds: remove an entry by hand, with the reason in the commit). `npm start` for the live dev loop.
+with `npm run anchors:sync`, which never removes one; see
+`docs-developers/contributing/documentation.md`). `npm start` for the live dev
+loop.
 Node 24 (workspace convention; `.nvmrc` in the sibling repos).
 
 ## Rules
