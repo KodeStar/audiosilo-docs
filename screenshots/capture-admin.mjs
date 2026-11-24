@@ -11,8 +11,8 @@
 // metadata edit, a scan schedule and skip rules on the seeded library) so the
 // console looks lived-in. Three more listeners sign in with a password (and one
 // of them also plays through a personal API key) and keep saving progress in the
-// background while the shots are taken, which is what
-// makes real listening sessions (Activity, Live now, Sessions, Devices); those
+// background while the shots are taken, which is what makes real listening
+// sessions (Activity, Live now, Sessions, Devices); those
 // screens are captured last, once each listener has a few minutes of listening.
 // It also names the server and adds a trusted proxy through PATCH
 // /admin/settings, so the top bar and Server > Settings show values, makes a
@@ -57,6 +57,7 @@ import {
   silence,
   sleep,
   shoot,
+  sqlQuote,
   sqliteAt,
   stamp,
   step,
@@ -324,7 +325,6 @@ const LISTENERS = [
   {username: 'theo', device: 'Pixel 8', client: 'AudioSilo/1.4.2 (android)', speed: 1, at: 0.58, transcode: true},
   {username: 'nora', device: "Nora's Apple Watch", client: 'audiosilo-watch/2.6.0 (watchos)', speed: 1, at: 0.12, pauseEarly: true},
 ];
-// Maya's speaker script: her API key's label is the session's device name.
 const KEY_LISTENER = {username: 'maya', device: 'Living room speaker', speed: 1, at: 0.4, deviceId: 'maya-speaker'};
 let mayaId = null;
 let heartbeats = null;
@@ -400,13 +400,11 @@ await step('provision listening sessions', async () => {
   abort.abort();
   if (!stream?.ok) console.log(`  ! transcoded stream not available (${stream?.status ?? 'no response'})`);
   await api(theo.token, 'POST', '/auth/tokens', {label: 'Home Assistant'}).catch(() => {});
-  // Maya's speaker key, on a book none of the others plays (books[5] is one she finished).
+  // books[5] is the one maya finished (below), so her speaker plays books[6].
   try {
     const key = await api(LISTENERS[0].token, 'POST', '/auth/tokens', {label: KEY_LISTENER.device});
-    KEY_LISTENER.token = key.token;
-    KEY_LISTENER.book = books[6];
-    KEY_LISTENER.pos = KEY_LISTENER.book.duration * KEY_LISTENER.at;
-    LISTENERS.push(KEY_LISTENER);
+    const book = books[6];
+    LISTENERS.push(Object.assign(KEY_LISTENER, {token: key.token, book, pos: book.duration * KEY_LISTENER.at}));
   } catch (e) {
     console.log(`  ! maya's speaker key not provisioned: ${e.message}`);
   }
@@ -427,7 +425,7 @@ await step('provision listening sessions', async () => {
   heartbeats = setInterval(() => {
     for (const l of LISTENERS) {
       if (l.pauseEarly && Date.now() > listenUntil - PAUSE_EARLY_MS) continue;
-      saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.username}: ${e.message}`));
+      saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.device}: ${e.message}`));
     }
   }, HEARTBEAT_MS);
 
@@ -573,14 +571,13 @@ await step('book: dormant chapter renames', async () => {
   const detail = await api(token, 'GET', `/admin/libraries/${book.library_id}/book${pathQuery(book.path)}`);
   const inFiles = (detail.chapters ?? []).filter((c) => c.file_path.startsWith(`${book.path}/`)).slice(1, 3);
   if (inFiles.length < 2) throw new Error('A Christmas Carol needs three chapters in files of its folder');
-  const q = (s) => `'${String(s).replaceAll("'", "''")}'`;
   const rows = inFiles.map((c, i) => ({
     file: c.file_path.slice(book.path.length + 1),
     startMS: Math.round((c.start + 4.5 + i) * 1000),
     title: STAVES[i],
   }));
   sqlite(rows.map((r) => `INSERT OR REPLACE INTO chapter_overrides (library_id, path, file, start_ms, title, updated_by, updated_at)
-    VALUES (${book.library_id}, ${q(book.path)}, ${q(r.file)}, ${r.startMS}, ${q(r.title)},
+    VALUES (${book.library_id}, ${sqlQuote(book.path)}, ${sqlQuote(r.file)}, ${r.startMS}, ${sqlQuote(r.title)},
       (SELECT id FROM users WHERE username = 'admin'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-30 days'));`).join('\n'));
   try {
     await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
@@ -590,8 +587,8 @@ await step('book: dormant chapter renames', async () => {
     await sleep(800);
     await shoot(page, 'admin/book-dormant-renames.png', {clip: around([await card.boundingBox()])});
   } finally {
-    sqlite(rows.map((r) => `DELETE FROM chapter_overrides WHERE library_id = ${book.library_id} AND path = ${q(book.path)}
-      AND file = ${q(r.file)} AND start_ms = ${r.startMS};`).join('\n'));
+    sqlite(rows.map((r) => `DELETE FROM chapter_overrides WHERE library_id = ${book.library_id} AND path = ${sqlQuote(book.path)}
+      AND file = ${sqlQuote(r.file)} AND start_ms = ${r.startMS};`).join('\n'));
   }
 });
 
