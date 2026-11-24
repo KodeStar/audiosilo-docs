@@ -13,7 +13,7 @@ transition records `finished: true`.
 
 The exception is the end of a download that lacks the book's last file, played with
 no server to stream it from: that `ended` is a pause, never a finish, and the end
-credits' Play never finishes it (`selectEndsPartial`). See
+credits' Play never finishes it (`queueEndsBook`). See
 [A download that ends early](offline.md#a-download-that-ends-early).
 
 Five pieces then take over:
@@ -44,7 +44,9 @@ natural end and the player's *Mark as Finished* menu item use it. It:
    title, author and cover;
 2. clears playback intent and stops the save loop;
 3. does one forced `persist({ forceFinished: true })`. This is the last write,
-   and the server is last-write-wins;
+   and the server is last-write-wins. It records the book's length as both the
+   position and the duration (`bookLengthOf`; for a download that ends early,
+   [its length](offline.md#a-download-that-ends-early)), so the book reads 100%;
 4. invalidates the connection's `allProgress` query;
 5. **nulls `nowPlaying`**, which hides the mini player, and resets the snapshot.
 
@@ -139,7 +141,8 @@ That covers a paused or errored book too, so a lock-screen pause can't read as
 
 1. A book that has really ended is finished first, and leaves Up next. It has
    really ended when the credits opened with `ended`, when it is in the `ended`
-   state, or when it is within `FINISHED_TOLERANCE` of its end.
+   state, or when it is within `FINISHED_TOLERANCE` of its end (`queueEndsBook`,
+   never at the end of a download that ends early).
 2. A book still mid-way is only `stop()`ped. Its place is saved, and it stays
    unfinished, in Up next, with its download.
 3. Then `playNext` calls `advanceTo(next)`.

@@ -431,8 +431,9 @@ The three podcast kinds go to the admins only. The catalog raises them through
 the listener `catalog.SetPodcastNotice` installs (`notify.PodcastListener`).
 `notify.PodcastEvent` turns each `catalog.PodcastNotice` into an event, which
 the catalog records, its dedup key checked, in the same transaction as the
-write that found the news. `notify.Service.Deliver` sends it to the
-destinations after the commit. A crash therefore can't lose the feed's record
+write that found the news. After the commit, `notify.Service.Deliver` queues it
+for the destinations, in turn with the events emitted before it
+([Recording an event](#recording-an-event)). A crash therefore can't lose the feed's record
 of a notice whose flag committed. A crash between the commit and the delivery
 sends the destinations nothing, as there is no record per delivery.
 
@@ -613,9 +614,22 @@ stays inside. The bell shows it, but no destination is sent it. The field is in
 text of every `scan_failed` delivery is the generic "See the scan's log in
 Health > Jobs."
 
+### Recording an event
+
+`notify.Service.Emit` returns at once, so a sign-in or a Bridge job's end never waits on
+the database for its event (server#224). The event goes on an ordered queue (`emitQueue`,
+1024 deep) that one background goroutine records, so events are recorded in the order
+they were emitted. A burst past 1024 waits for room and never drops an event. The dedup
+check of [Announced once](#announced-once) runs there too. `Deliver`, for an event already
+recorded with its write (the podcast events), rides the same queue. `Flush` waits until
+everything queued before it is recorded, for a caller that reads the feed next (a failed
+backup, before its run is marked over). At shutdown the launcher calls `Service.Close`
+before the database closes, which records every event still queued. An event emitted after
+that is recorded on its caller's goroutine, after the queue has drained, so the order holds.
+
 ### Delivery
 
-The server writes the event and one `notify_outbox` row per subscribed destination in one
+Recording an event writes it and one `notify_outbox` row per subscribed destination in one
 transaction. Each destination receives its oldest pending event first. Other destinations can
 continue while one waits. Delivery resumes at startup and a five-minute sweep finds outstanding
 work.

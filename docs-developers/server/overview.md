@@ -445,7 +445,8 @@ that adds one must stop using the cache.
 The summary's key also takes the kinds it counts and the libraries that are
 offline right now. The server finds those with a filesystem probe made before
 the lookup, and keeps the probe's answer for up to 15 seconds. A root that goes
-away therefore shows within 15 seconds, with no write. Uncached, the summary and
+away therefore shows within about 17 seconds (the 15, then the probe's 2-second
+timeout), with no write. Uncached, the summary and
 the facets take about 100 ms each on a 5,000-book library. From the cache they
 take about a millisecond.
 

@@ -154,9 +154,10 @@ When the server cancelled it, the job says why, for example that its module was
 turned off. The details of an Audible sync also show if it waited for Audible or
 found sync switched off.
 
-![A cancelled Verify job with Comparing the files as its last step](/img/screenshots/admin/bridge-jobs-cancelled.png)
+![Two cancelled jobs: a community share the server cancelled because its module was turned off, and a Verify job an admin cancelled with Comparing the files as its last step](/img/screenshots/admin/bridge-jobs-cancelled.png)
 
-This Verify job stopped while the Bridge was comparing the files.
+The server cancelled the share when the Contributions module was turned off. An
+admin cancelled the Verify job while the Bridge was comparing the files.
 
 A job that **Needs attention** says why, with **Open in the Bridge**. There,
 **Retry** sends it on once you've fixed the cause. See

@@ -24,7 +24,7 @@ Open **Health** in the top bar, or click **Triage** on the overview's **Needs
 attention** card. Each kind of issue has a card with how many books are in it.
 Click a card to open its list.
 
-![Health > Issues](/img/screenshots/admin/health-issues.png)
+![Health > Issues: a file that took too long to read as audio, with its details open](/img/screenshots/admin/health-issues.png)
 
 **Check again** rescans every library, and the issues update as each finishes.
 

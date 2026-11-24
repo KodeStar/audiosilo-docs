@@ -1595,6 +1595,7 @@ const FIND_SHOTS = {
   address: 'web-player/find-shows-address.png',
   import: 'web-player/find-shows-import.png',
   phone: 'web-player/phone-find-shows.png',
+  lastResults: 'web-player/find-shows-last-results.png',
 };
 const FIND_QUERY = 'kitchen';
 // A feed address as the server shows it in a request or an import row (its origin only).
@@ -1813,6 +1814,44 @@ async function captureFindShows(ctx, pod, cid) {
     }
   } finally {
     await desk.close();
+  }
+  if (wanted(FIND_SHOTS.lastResults)) {
+    // A search the directory answered once, read again when the browser comes back
+    // online after its 15 minutes were up, and the directory timing out then: the
+    // page keeps the one result with its last-results line, the error and Search
+    // again. Its own context, so the clock and the failing answer stay out of the
+    // other shots.
+    const again = await sameDevice(ctx);
+    try {
+      const first = stand.directory.results.find((r) => r.title === newResult(pod).title);
+      await routeFindShows(again, pod, {...stand, directory: {...stand.directory, results: [first]}});
+      let asked = 0;
+      await again.route(
+        (url) => url.origin === new URL(BASE).origin && url.pathname === '/api/v1/podcasts/discovery/search',
+        (route) =>
+          asked++ === 0
+            ? route.fallback()
+            : route.fulfill({status: 504, json: {error: 'The directory did not answer in time.', code: 'discovery_timeout'}}),
+      );
+      const p = await again.newPage();
+      await step('podcasts: find shows last results', async () => {
+        await searchAndFollow(p, {follow: false});
+        // The page's clock from here on, moved past the results' 15 minutes.
+        await p.clock.install();
+        await p.clock.fastForward('16:00');
+        await again.setOffline(true);
+        await sleep(1000);
+        await again.setOffline(false);
+        await tid(p, 'directory-search-error').waitFor({timeout: 15000});
+        await p.getByText(`Showing the last results for “${FIND_QUERY}”.`).waitFor({timeout: 8000});
+        await imagesLoaded(p, '/podcasts/discovery/artwork');
+        await sleep(SETTLE_MS);
+        await p.mouse.move(0, 0);
+        await shoot(p, FIND_SHOTS.lastResults);
+      });
+    } finally {
+      await again.close();
+    }
   }
   if (wanted(FIND_SHOTS.phone)) {
     const phone = await sameDevice(ctx, {viewport: PHONE});

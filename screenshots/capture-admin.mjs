@@ -68,6 +68,15 @@ import {
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
+
+// The books list in the server's order (by author), with one author's books in
+// title order. The server breaks an author tie by row id, which follows the
+// scan, so without this Jack London's two books traded listeners between runs.
+const byAuthorThenTitle = (books) => {
+  const firstAt = new Map();
+  books.forEach((b, i) => firstAt.has(b.author) || firstAt.set(b.author, i));
+  return [...books].sort((a, b) => firstAt.get(a.author) - firstAt.get(b.author) || a.title.localeCompare(b.title));
+};
 const PASSWORD = process.env.ADMIN_PASSWORD;
 const MIRROR_ORIGIN = (process.env.MIRROR_ORIGIN || '').replace(/\/$/, '');
 const MIRROR_PASSWORD = process.env.MIRROR_PASSWORD || '';
@@ -143,7 +152,7 @@ await step('provision listener + share', async () => {
   if (libId) {
     // A little listening so the overview's "Listening now" and the person
     // cards have something to show.
-    const books = (await api(token, 'GET', `/libraries/${libId}/books?limit=3`))?.books ?? [];
+    const books = byAuthorThenTitle((await api(token, 'GET', `/libraries/${libId}/books?limit=3`))?.books ?? []);
     for (const [i, frac] of [[0, 0.42], [1, 0.77]]) {
       const b = books[i];
       if (!b) continue;
@@ -296,16 +305,21 @@ await step('provision notification destinations', async () => {
 // Live now and the overview have sessions), then keeps saving every 15 s. The
 // Activity shots wait until LISTEN_MINUTES (default 8) have passed, so the
 // charts and totals have twenty-odd minutes of listening to show. Nora
-// stops 90 s before then, so Live now shows her as paused; Theo's device fetches
+// stops 3 minutes before then (Live now reads a session as playing for 150 s
+// after its last save), so Live now shows her as paused; she listens on an
+// AudioSilo Apple Watch (its app id and platform), so Live now and Sessions read
+// her session as the watch's downloaded AAC copy. Theo's device fetches
 // a transcoded stream first, so his session counts as transcoded, and he has a
 // personal API key that was never used.
 const HEARTBEAT_MS = 15000;
+// Nora's last save, before the Activity shots: past the server's 150 s playing window.
+const PAUSE_EARLY_MS = 3 * MIN;
 const LISTEN_MS = Number(process.env.LISTEN_MINUTES || 8) * 60000;
 let listenUntil = 0;
 const LISTENERS = [
   {username: 'maya', device: "Maya's iPhone", client: 'AudioSilo/1.4.2 (ios)', speed: 1.25, at: 0.31},
   {username: 'theo', device: 'Pixel 8', client: 'AudioSilo/1.4.2 (android)', speed: 1, at: 0.58, transcode: true},
-  {username: 'nora', device: "Nora's iPad", client: 'AudioSilo/1.3.0 (ios)', speed: 1, at: 0.12, pauseEarly: true},
+  {username: 'nora', device: "Nora's Apple Watch", client: 'audiosilo-watch/2.6.0 (watchos)', speed: 1, at: 0.12, pauseEarly: true},
 ];
 let mayaId = null;
 let heartbeats = null;
@@ -344,7 +358,7 @@ await step('provision listening sessions', async () => {
   if (!library) throw new Error('no library');
   listenUntil = Date.now() + LISTEN_MS;
   // Books 0 and 1 carry the admin's own progress (above); the listeners take the next ones.
-  const books = ((await api(token, 'GET', `/libraries/${library.id}/books?limit=12`))?.books ?? [])
+  const books = byAuthorThenTitle((await api(token, 'GET', `/libraries/${library.id}/books?limit=12`))?.books ?? [])
     .filter((b) => b.duration > 0);
   if (books.length < 6) throw new Error(`only ${books.length} books to listen to`);
   for (const [i, l] of LISTENERS.entries()) {
@@ -397,7 +411,7 @@ await step('provision listening sessions', async () => {
 
   heartbeats = setInterval(() => {
     for (const l of LISTENERS) {
-      if (l.pauseEarly && Date.now() > listenUntil - 90000) continue;
+      if (l.pauseEarly && Date.now() > listenUntil - PAUSE_EARLY_MS) continue;
       saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.username}: ${e.message}`));
     }
   }, HEARTBEAT_MS);
@@ -478,6 +492,9 @@ await step('overview', async () => {
     const card = page.getByRole('region', {name: 'Server', exact: true});
     await card.getByText(addresses.away, {exact: true}).waitFor();
     await card.getByText(addresses.home, {exact: true}).waitFor();
+    // The admin still signs in with the password the server printed: the
+    // overview's reminder to replace it is part of the shot.
+    await page.getByText('Your password came from the server log', {exact: true}).waitFor();
     await fitted(page, () => fitViewportTo(page, card), () => shoot(page, 'admin/overview.png'));
   } finally {
     await page.unroute(route);
@@ -822,11 +839,33 @@ await step('shares', async () => {
   }
 });
 
+// A probe that runs out of time needs a slow disk, so the Inbox's empty file is
+// stored as a timed-out read for this shot (the scanner's probe_failed code with
+// ffprobe's time-out message, which the console reads as a time-out) and put back
+// right after: the category still counts two files.
+const LOST_CHAPTER = 'Unknown Author/The Lost Chapter';
+const TIMED_OUT = 'ffprobe timed out after 30s';
 await step('health issues', async () => {
-  await open(page, '/health/issues?issue=scan_error');
-  await page.getByRole('list', {name: "Files that couldn't be read"}).waitFor({timeout: 8000}).catch(() => {});
-  await sleep(800);
-  await shoot(page, 'admin/health-issues.png');
+  if (!wanted('admin/health-issues.png')) return;
+  if (!inbox) throw new Error('the Inbox library is required');
+  const where = `library_id = ${Number(inbox.id)} AND rel_path = '${LOST_CHAPTER}'`;
+  const stored = sqlite(
+    `SELECT 'scan_error = ' || quote(scan_error) || ', scan_error_detail = ' || quote(scan_error_detail) FROM books WHERE ${where};`,
+  ).trim();
+  if (!stored) throw new Error('The Lost Chapter is not indexed');
+  sqlite(`UPDATE books SET scan_error = 'probe_failed', scan_error_detail = '${TIMED_OUT}' WHERE ${where};`);
+  try {
+    await open(page, '/health/issues?issue=scan_error');
+    const list = page.getByRole('list', {name: "Files that couldn't be read"});
+    const row = list.getByRole('listitem').filter({hasText: 'The Lost Chapter'});
+    await row.getByText(/took too long to read as audio/).waitFor({timeout: 8000});
+    await row.getByRole('button', {name: 'Details', exact: true}).click();
+    await row.getByText(TIMED_OUT).waitFor({timeout: 8000});
+    await page.mouse.move(0, 0);
+    await fitted(page, () => fitViewportToPage(page, 900, 1800), () => shoot(page, 'admin/health-issues.png'));
+  } finally {
+    sqlite(`UPDATE books SET ${stored} WHERE ${where};`);
+  }
 });
 
 await step('match automatically', async () => {
@@ -933,14 +972,19 @@ await step('health: system in mirror mode', async () => {
   // few seconds). Any other state but ready means the server refused it and
   // is after a real one ("empty", then a check half a minute after start, which
   // run.sh's dead proxy fails): stop at once, with its metadata switched off.
+  // So does a ready copy with a newer schema than the server reads: Health would
+  // show it as Needs attention.
   const mapi = apiClient(MIRROR_ORIGIN);
   const {token: mtoken} = await mapi(null, 'POST', '/auth/login', {username: 'admin', password: MIRROR_PASSWORD});
   await markSetUp(mapi, mtoken);
   for (const until = Date.now() + 30000; ; await sleep(500)) {
     const m = await mapi(mtoken, 'GET', '/admin/meta/mirror');
-    if (m.state === 'ready') break;
-    if (m.state !== 'opening' || Date.now() > until) {
+    if (m.state === 'ready' && !m.schema_newer) break;
+    if (m.state !== 'opening' || m.schema_newer || Date.now() > until) {
       await mapi(mtoken, 'PATCH', '/admin/settings', {metadata: {enabled: false}}).catch(() => {});
+      if (m.schema_newer) {
+        throw new Error(`the seeded copy's schema ${m.schema_version} is newer than this server reads: set MIRROR_META (see README.md)`);
+      }
       throw new Error(`the seeded local copy isn't answering: ${JSON.stringify(m)}`);
     }
   }
@@ -1358,10 +1402,29 @@ await step('settings: bridge', async () => {
         await api(token, 'POST', `/admin${route}/cancel`);
         // The server records a late failure of a cancelled claim as Cancelled.
         await api(bridge, 'PATCH', route, {attempt: claim.attempts, state: 'failed'}, BRIDGE_CLIENT);
+        // A cancellation of the server's own: a share the stand-in is filing when the
+        // Contributions module goes off is asked to stop at its next report, with the
+        // server's reason, and its failure then ends it as Cancelled. The module is
+        // on only for this (the modules shot before shows it off); it is turned on
+        // again below.
+        await api(token, 'PATCH', '/admin/settings', {modules: {contributions: true}});
+        await api(token, 'POST', '/admin/bridge/jobs', {kind: 'sidecars.contribute', library_id: seeded.id,
+          path: 'Jack London/The Scarlet Plague', params: {}});
+        const share = await api(bridge, 'GET', '/bridge/jobs/next?wait=5&kind=sidecars.contribute', undefined, BRIDGE_CLIENT);
+        if (!share) throw new Error('the share job was not handed out');
+        const shareRoute = `/bridge/jobs/${share.id}`;
+        // The progress a real Bridge's share reports (generate/contributejob.go).
+        const contributing = {attempt: share.attempts, state: 'running',
+          progress: {step: 'sharing', message: 'Sharing with the community'}};
+        await api(bridge, 'PATCH', shareRoute, contributing, BRIDGE_CLIENT);
+        await api(token, 'PATCH', '/admin/settings', {modules: {contributions: false}});
+        await api(bridge, 'PATCH', shareRoute, contributing, BRIDGE_CLIENT);
+        await api(bridge, 'PATCH', shareRoute, {attempt: share.attempts, state: 'failed'}, BRIDGE_CLIENT);
         await open(page, '/server?topic=bridge');
         const card = page.locator('[aria-labelledby="bridge-jobs-title"]');
         await card.getByLabel('Show jobs').selectOption('cancelled');
         await card.getByText(/Last step: Comparing the files/).waitFor({timeout: 15000});
+        await card.getByText('Its module was turned off.', {exact: true}).waitFor({timeout: 15000});
         await card.scrollIntoViewIfNeeded();
         await page.mouse.move(0, 0);
         await shoot(page, 'admin/bridge-jobs-cancelled.png', {clip: around([await card.boundingBox()])});
@@ -1751,6 +1814,7 @@ await step('activity overview', async () => {
 await step('activity: live now', async () => {
   await open(page, '/activity/live');
   await page.getByText('Playing', {exact: true}).first().waitFor({timeout: 15000});
+  await page.getByText('Watch download · AAC', {exact: true}).waitFor({timeout: 15000});
   await sleep(800);
   await shoot(page, 'admin/activity-live.png');
 });
@@ -1758,6 +1822,7 @@ await step('activity: live now', async () => {
 await step('activity: sessions', async () => {
   await open(page, '/activity/sessions');
   await page.getByRole('table').waitFor({timeout: 15000});
+  await page.getByText('Watch download · AAC', {exact: true}).first().waitFor({timeout: 15000});
   await shoot(page, 'admin/activity-sessions.png');
 });
 
