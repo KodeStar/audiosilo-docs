@@ -109,13 +109,14 @@ with community metadata** (or **Compare with community**) or run
 - the book's tagged title, author and series, and its length
 - its ASIN or ISBN and any search terms you type
 - up to three names from its path (the author, series and book folders), never
-  the full path.
+  the full path
 
 On server version 2.6.0 or later, matching also uses narrators and language.
 If the book has no ASIN or ISBN, matching can use one from its tags.
 
 Server version 2.7.0 or later tries identifiers from an
-[Audiobookshelf import](import.md#match-your-books-after-an-import) before those in the book's tags.
+[Audiobookshelf import](import.md#match-your-books-after-an-import) before those
+in the book's tags.
 If the search misses the book's current match, the dialog can look it up by its
 community ID.
 
