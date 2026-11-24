@@ -107,14 +107,20 @@ with community metadata** (or **Compare with community**) or run
 [Match automatically](health.md#matching-every-book-at-once):
 
 - the book's tagged title, author, series, narrators and language, and its
-  length;
-- its ASIN or ISBN, else one from its tags or an
-  [Audiobookshelf import](import.md#match-your-books-after-an-import), and what
-  you type;
+  length
+- its ASIN or ISBN, else one from an
+  [Audiobookshelf import](import.md#match-your-books-after-an-import) or its
+  tags, and any search terms you type
 - up to three names from its path (the author, series and book folders), never
-  the full path;
-- the community book it is already matched to, if any, so the dialog can show
-  it.
+  the full path
+- the community ID of the book's current match, if any, so the dialog can show
+  it and [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
+  can find it when its ASIN or ISBN isn't recognised
+
+A server older than version 2.6.0 sends no narrators, language or identifiers
+from tags, and Fill in matched books sends no community ID. Identifiers from an
+Audiobookshelf import, and the community ID in the dialog, need version 2.7.0
+or later.
 
 It sends nothing about your server or who listens. With a
 [local copy](server.md#keeping-a-local-copy), lookups use the copy when it can

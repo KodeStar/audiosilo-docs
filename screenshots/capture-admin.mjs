@@ -37,6 +37,7 @@ import http from 'node:http';
 import {cp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
+import {restoreSeriesAsin, revertCaptureAsin} from './book-edits.mjs';
 import {captureFolders, captureLibraryReport} from './library-report.mjs';
 import {
   CACHE,
@@ -646,15 +647,21 @@ await step('authors', async () => {
 });
 
 // A matched book for the Series shot (HOLMES_MATCH): the Sherlock Holmes card shows the
-// books it lacks as dashed gaps; the edit is reverted right after.
+// books it lacks as dashed gaps.
 
 await step('series', async () => {
   if (!wanted('admin/series.png')) return;
   const holmes = await bookBy(HOLMES_MATCH.author, HOLMES_MATCH.title);
   const edit = holmes ? `/admin/libraries/${holmes.library_id}/book${pathQuery(holmes.path)}` : '';
-  if (edit) await api(token, 'PATCH', edit, {set: {asin: HOLMES_MATCH.asin}});
-  else console.log(`  ! no "${HOLMES_MATCH.title}": the series shot shows no gaps`);
+  const shelf = page.getByRole('list', {name: 'Books of Sherlock Holmes', exact: true});
+  // A failed ASIN edit starts no chapter check to wait on: it is reverted at once.
+  let edited = false;
   try {
+    if (edit) {
+      await api(token, 'PATCH', edit, {set: {asin: HOLMES_MATCH.asin}});
+      edited = true;
+    }
+    else console.log(`  ! no "${HOLMES_MATCH.title}": the series shot shows no gaps`);
     // Taller, so the Sherlock Holmes card's shelf (the second card) fits.
     await page.setViewportSize({width: 1440, height: 1400});
     await open(page, '/library/series');
@@ -663,14 +670,18 @@ await step('series', async () => {
     // shortly after a scan, and from the cover fans' thumbnails just loaded: load the
     // page again so the spines have them.
     await open(page, '/library/series');
-    if (edit) await page.locator('.spine-date').first().waitFor({timeout: 20000}).catch(() => {
+    if (edit) await shelf.locator('.spine-date').first().waitFor({timeout: 20000}).catch(() => {
       console.log('  ! no dated gap showed (the live catalogue may be unreachable)');
     });
     await sleep(2000);
     await shoot(page, 'admin/series.png');
   } finally {
-    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
-    if (edit) await api(token, 'PATCH', edit, {revert: ['asin']}).catch((e) => console.log(`  ! the ASIN edit stayed: ${e.message}`));
+    try {
+      if (edited) await restoreSeriesAsin(api, token, edit);
+      else if (edit) await revertCaptureAsin(api, token, edit);
+    } finally {
+      await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+    }
   }
 });
 
@@ -1269,12 +1280,12 @@ await step('book: recorded community match', async () => {
     .flatMap((c) => (c.recordings ?? []).filter((r) => r.asins?.length).map((r) => ({work: c.work_id, recording: r.id, asin: r.asins[0]})))
     .at(0);
   if (!pick) throw new Error('no candidate with an ASIN (is meta.audiosilo.app reachable?)');
-  await api(token, 'PATCH', at, {
-    source: 'community',
-    set: {asin: pick.asin},
-    match: {work_id: pick.work, recording_id: pick.recording},
-  });
   try {
+    await api(token, 'PATCH', at, {
+      source: 'community',
+      set: {asin: pick.asin},
+      match: {work_id: pick.work, recording_id: pick.recording},
+    });
     await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
     const card = page.locator('[aria-labelledby="community-title"]').first();
     await card.getByRole('button', {name: 'Unlink'}).waitFor({timeout: 15000});
@@ -1282,7 +1293,7 @@ await step('book: recorded community match', async () => {
     await sleep(800);
     await shoot(page, 'admin/book-community-match.png', {clip: around([await card.boundingBox()])});
   } finally {
-    await api(token, 'PATCH', at, {match: {work_id: ''}});
+    await revertCaptureAsin(api, token, at, {unlink: true});
   }
 });
 

@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 
-import {codeSpans, configKeysFrom, routeKnown, routesFrom, staleNames} from './stale-names.mjs';
+import {allowList, codeSpans, configKeysFrom, routeKnown, routesFrom, staleNames} from './stale-names.mjs';
 
 const ROUTES = [
   '/',
@@ -178,4 +178,30 @@ test('staleNames: each alternative of a/b|c is checked', () => {
   assert.deepEqual(staleNames('docs-developers/server/x.md', page, NAMES), [
     {line: 1, kind: 'route', name: '/libraries/{id}/nope'},
   ]);
+});
+
+test('allow-list literals stay exact and patterns match the whole name', () => {
+  const pattern = 'pattern:(?:/api/v1)?/works/(?:match|\\{id\\})';
+  const unused = 'pattern:/elsewhere/.+';
+  const allow = allowList({
+    'metadata.health': 'response field',
+    '/works/one': 'one exact route',
+    [pattern]: 'metadata service routes',
+    [unused]: 'unused pattern',
+  });
+  assert.equal(allow.allows('metadata.health'), true);
+  assert.equal(allow.allows('metadataXhealth'), false);
+  assert.equal(allow.allows('constructor'), false);
+  assert.equal(allow.allows('/works/one'), true);
+  assert.ok(allow.unused.has(pattern));
+  assert.equal(allow.allows('/works/{id}'), true);
+  assert.equal(allow.allows('/api/v1/works/match'), true);
+  assert.equal(allow.allows('/other/works/match'), false);
+  assert.equal(allow.allows('/works/serach'), false);
+  assert.equal(allow.allows('/works/{id}/typo'), false);
+  assert.deepEqual([...allow.unused], [unused]);
+});
+
+test('an invalid allow-list pattern fails when the list is loaded', () => {
+  assert.throws(() => allowList({'pattern:[': 'broken pattern'}), SyntaxError);
 });
