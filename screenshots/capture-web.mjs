@@ -3057,6 +3057,29 @@ if (wanted(...Object.values(PROXY_SHOTS))) {
 
 // ── Unauthenticated screens ─────────────────────────────────────────────────
 console.log('== public screens ==');
+// Settings > Accounts and devices with a server that was reset: the player reads another
+// install's id from /server (the capture stands in a different `server_id`, `routeServerInfo`),
+// so its connection badges "Server reset" with Reconnect beside it. Its own context: the flag
+// is the player's in-memory state, gone with the context.
+const ACCOUNTS_SHOT = 'web-player/settings-accounts.png';
+if (wanted(ACCOUNTS_SHOT)) {
+  await step('settings accounts: server reset', async () => {
+    const ctx = await newCaptureContext({storageState: AUTH});
+    try {
+      await routeServerInfo(ctx, (info) => {
+        info.server_id = 'another-install';
+      });
+      const page = await ctx.newPage();
+      await page.goto(BASE + 'settings?section=accounts', {waitUntil: 'networkidle', timeout: 45000});
+      await firstVisible(page.getByText('Server reset', {exact: true})).waitFor({timeout: 20000});
+      await page.mouse.move(0, 0);
+      await settleShoot(page, ACCOUNTS_SHOT, SETTLE_MS);
+    } finally {
+      await ctx.close();
+    }
+  });
+}
+
 // The connect flow on a fresh browser: the start screen with the probe card (the served
 // player finds its own server, nothing typed), then a first connection (the admin, by
 // username and password: a real account, so the account page has its Password card and

@@ -61,9 +61,9 @@ Choose **Light**, **Dark**, or **System** to follow your device. On a tablet or 
 
 ## Language
 
-Choose English, Español, Français, Deutsch, Português or Italiano, or **System** to follow your device.
+Choose English, Español, Français, Deutsch, Português (European Portuguese) or Italiano, or **System** to follow your device.
 
-Dates and numbers follow your device's region for that language. English on a British phone reads **12 Nov 2026**, and on an American one **Nov 12, 2026**. A language that isn't your device's keeps its own style: German chosen on an English phone shows German dates.
+Dates and numbers follow your device's region for that language. English on a British phone reads **12 Nov 2026**, and on an American one **Nov 12, 2026**. A language that isn't your device's keeps its own style: German chosen on an English phone shows German dates. Times such as **3 hours ago** follow the same rule. If you change your device's region, the app uses it from the next time you come back to the app.
 
 ## Household
 
@@ -73,8 +73,10 @@ Dates and numbers follow your device's region for that language. English on a Br
 
 The servers you're signed in to on this device. Tap one to open your [account on that server](account.md).
 
+![Accounts and devices on a computer: a server marked Server reset, with Reconnect and the bin button beside it](/img/screenshots/web-player/settings-accounts.png)
+
 - **Add a server** connects another. Home and search then combine them. The web player can't do this. See [Connect the app to your server](connecting.md).
-- A server that signed this device out shows **Signed out**, with **Reconnect** beside it. Tap **Reconnect** to sign in again.
+- A server that signed this device out shows **Signed out**, with **Reconnect** beside it. A server that was rebuilt from scratch shows **Server reset** instead. Tap **Reconnect** to sign in again.
 - The bin button removes a server from this device.
 
 :::warning
