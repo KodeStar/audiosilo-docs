@@ -1,6 +1,6 @@
 ---
 title: The ebook reader
-description: "The player's EPUB reader (src/reader/, the /read route): the reader document built from vendored foliate-js in a web and an app variant, the sandboxed web host, the apps' WebView host and its chunked transfer, the EPUB cache and the EPUB in downloads, the message protocol, the reading-place queue with Sync v2's base_version, the Jump there offer and Read on the book page; read-along: the map, its messages both ways, following the narration and the full-screen reader's Follow narration."
+description: "The player's EPUB reader (src/reader/, the /read route): the reader document built from vendored foliate-js in a web and an app variant, the sandboxed web host, the apps' WebView host and its chunked transfer, the EPUB cache and the EPUB in downloads, the message protocol, the reading-place queue with Sync v2's base_version, the Jump there offer, Read on the book page, immersive mode and Reading settings; read-along: the map, its messages both ways, following the narration and the full-screen reader's Follow narration."
 ---
 
 A book whose folder holds its EPUB gets **Read the ebook** on its page. The reader
@@ -318,7 +318,7 @@ The top bar holds:
 - close;
 - the title;
 - the section label and percentage;
-- Play or Pause, while the reader follows the narration;
+- Play or Pause, while the book is the one in the player (`narration.narrating`);
 - Contents, a `Sheet` of the TOC. The current entry is the first one named as the
   section on screen. It is bold on a muted row with `aria-current="location"`, and
   the list opens scrolled to it.
@@ -369,7 +369,8 @@ hides while the listener reads. `useReaderChrome` runs pure rules (`mayHide`,
 `nextChrome`, `settleChrome`, `chromeTimerRuns`) with one timer:
 
 - The bar hides `CHROME_HIDE_MS` (4 s) after it shows or after the last press on it
-  (each one bumps the state's `epoch`, which restarts the wait).
+  (each one bumps the state's `epoch`, which restarts the wait). A hold that ends (the
+  Contents or the menu closed, focus gone) starts the wait again too.
 - It hides at once on the reader's own page turn: a `progress` that is not the
   landing, not a relayout and not the narration's while the reader follows. A turn
   away from followed narration counts (`onFollowing`).
