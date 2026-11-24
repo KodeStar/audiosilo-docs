@@ -7876,8 +7876,9 @@ book path).
   - Swapped means the title is the author folder's name, or the author, cleaned of
     series and numbering, is the path's title. A tag that matches its own path
     fact is never swapped (`Dune/Dune` by Frank Herbert).
-  - A junk title (`Unknown`, `Untitled`, `Track 01`, `03`) or a junk author
-    (`Unknown`, `Various Artists`) is replaced on its own.
+  - A junk title (`Unknown`, `Untitled`, `Track 01`, `03`) or a generic author
+    credit (`model.IsGenericCredit`: `Unknown Artist`, `Various Artists`,
+    `Anonymous`, `Uncredited`) is replaced on its own.
   - A fact the path doesn't give keeps the tag's value.
   - A path with no title (`Stormlight Archive/03`, or
     `Bruno Miller; Dark Road; Book 01-05`) gives the series and its position or
@@ -8316,48 +8317,9 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   `br`), as the service lists them; a publisher-direct ASIN sold under one id
   in several stores appears once per region. `asin_region` names the store of
   `asins[0]`.
-- `default_recording_id` is the recording the book most likely is
-  (`meta.DefaultRecording`). The dialog starts on the recorded work and edition
-  when available. Otherwise it uses the candidate's default recording, as a bulk
-  run does. The server picks:
-  1. the recording an identifier named;
-  2. else, among the recordings one of the book's narrators reads that fit its
-     length (`meta.PlausibleRuntimeOff`; all of them when none does), the one
-     whose runtime is closest to the book's. A recording selling in the preferred
-     marketplace wins a tie.
-
-  An ASIN an identifier hit was found by leads its marketplace's in `asins`, so a
-  book the store lists under two keeps its tags' when that store is the preferred
-  one.
-
-  **Dramatizations.** A plain book never takes a dramatization this way, with
-  these exceptions:
-  - an identifier or one of its narrators names it;
-  - from 2.6.0, the work holds only dramatizations and one is within
-    max(1%, 2 minutes) of the book's length, which says the book is that
-    production (see [the contract](../../architecture/cross-repo-contract.md)).
-
-  A book is not plain when its title, series, folders, typed text or narrator
-  credit says it is a dramatization (`GraphicAudio`, `full cast`, `dramatized`).
-  From 2.6.0 its author credit can say so too
-  (`Michael J. Sullivan - Graphic Audio`), or a genre that names a dramatized form
-  (`Radio Drama`, `Audio-Drama`, `Audio Play`, `Hörspiel`;
-  `meta.MatchQuery.statesDramatization`). When a work
-  holds only dramatizations of other lengths, this field is absent and
-  `dramatization_only: true` is set, so the dialog preselects no recording.
-
-  **The length check in a match run** (from 2.6.0). A match run then checks the
-  length (`meta.FitRecording`); a refresh or a repick never does, because its
-  identifier is the book's own. The check applies when the recording is more than
-  10% (`meta.PlausibleRuntimeOff`) off the book's length, none of the book's
-  narrators reads it, and another recording of the same work is within 10%. The run
-  then proposes the recording this rule picks among those, `auto` when it has an
-  ASIN or ISBN (an identifier hit whose length now fits). A hint, from the tags or
-  an Audiobookshelf import, can name another edition of the right work.
-  - A narrator reading the named recording keeps it: `auto` within 20%, else held
-    as `length_differs` (see [the run's items](#get-apiv1adminmatch-runsiditems)).
-  - A plain book never moves onto a dramatization the rule above refuses.
-  - The dialog keeps the identifier's recording.
+  When an identifier lookup finds an ASIN, that ASIN comes first among those
+  for its marketplace.
+- For the edition the server proposes, see [Default recording](#default-recording).
 - No hits is `200 { "candidates": [] }`.
 
 `cover_url` is an image on its own host (Audible's CDN, Open Library), which
@@ -8379,6 +8341,50 @@ many books at once, see [Bulk community matching](#bulk-community-matching).
 | `400` | `query too long`; `invalid library id`; `path is required` |
 | `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` |
 | `502` | `metadata service unavailable` - the community service failed (including a `503` or `5xx` from `works/match`) and no candidate could be returned. Partial failures still return what was found: on the fallback, if the identifier lookup or the text search fails but the other leg yields candidates, those are returned, and a candidate whose work fails to load is left out. When nothing is returned, any failure along the way (either leg, or loading a hit's work) is a `502`, not an empty list - the failed leg may well have found the book |
+
+#### Default recording
+
+On server version 2.7.0 or later, `meta.ProposedRecording` sets each
+candidate's `default_recording_id`, and a match run proposes the same recording
+for that candidate. The dialog opens on the book's recorded
+match if it has one, otherwise on the proposed edition.
+
+- **Identifier hit.** `recording_id` identifies the recording the lookup found.
+  A typed ASIN or ISBN keeps that recording, as does a book's own identifier
+  during a refresh, a repick or an `unknown_asin` run.
+- **Tag or import hint.** If the hit came from a file tag or an Audiobookshelf
+  import, `meta.FitRecording` checks the length. When the difference exceeds
+  10% of the book's runtime, it prefers an eligible edition of the same work
+  within 10%. It keeps the original if a named reader agrees, either length
+  is unknown or no replacement fits. The lookup's `recording_id` can therefore
+  differ from `default_recording_id`.
+- **No identifier names a recording.** `meta.DefaultRecording` gives priority
+  to a reader or ensemble credited on both the book and the recording
+  (`meta.ReadBy`) when the difference is at most 20% or either length is
+  unknown. Within that group, or among all eligible recordings if none
+  qualifies, it favours the closest known length. The preferred marketplace
+  breaks a tie.
+
+For both the hint check and narrator priority, `meta.PersonNarrator` accepts
+a named reader or ensemble such as “The Hollywood Theater of the Ear”.
+It excludes generic and production credits on either side, including “Various”,
+“BBC Full-Cast Dramatisation” and “the Full Cast Family”.
+
+**Dramatizations.** The search text, title, series, folder names, author or
+narrator credits, or a genre such as “Radio Drama” can say the book is a
+dramatization (`meta.MatchQuery.statesDramatization`). For a plain book (no
+such statement), an identifier can name a production, and so can a qualifying
+named reader, a plain reading winning when that reader qualifies for both. A
+hint names only its own recording: when `meta.FitRecording` replaces an
+off-length hint, in the dialog or a run, the replacement follows the
+plain-book rule.
+
+For a plain book whose work offers only dramatizations, runtime alone can
+identify one. The allowed difference is the greater of two minutes and 1% of
+the book's length, capped at 15% of that length (`lengthSays`). If none
+qualifies, the server omits `default_recording_id` and returns
+`dramatization_only: true`. The dialog can offer the work alone and the run
+holds it for review.
 
 ### `GET /api/v1/admin/books/match-proposal`
 
@@ -8525,10 +8531,25 @@ Each book's **outcome**:
 
 | Outcome | Meaning |
 |---|---|
-| `auto` | Confident (`matchrun.Classify`): the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN (from 2.6.0, one with neither on firmer ground: see below the table), and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition), or, from 2.6.0, within **20%** (`meta.NarratedRuntimeOff`) when the book's narrator reads it (`matchrun.narratorReads`: `reasons.narrator` is `full` and the proposed recording's own credit names one of the book's narrators, `meta.ReadBy`; a placeholder credit such as `Full Cast`, `GraphicAudio`, `Various` or `Unknown` never counts, `meta.PersonNarrator`, as it agrees with every recording carrying it). An identifier hit (`reasons.identifier`: in a match run always a hint, an Audiobookshelf import's or the tags') needs no lead, unless the next candidate is one too (`review`; a guard, as metaserve names one work per request today). From 2.7.0 the book must also agree with it (`matchrun.identifierAgrees`): `reasons.title`, when judged, at least **0.65** (`IdentifierTitleAgree`), or at least **0.9** (`IdentifierTitleSame`) when `reasons.series` is `conflict`, as the same title at another position is the series numbered another way (a conflict with no title judged is held). Else `review`. So a wrong hinted ASIN naming a book with a similar title within 10% of the length is still `auto`, and so, from 2.6.0, is one naming another edition of the right work when a recording of it within 10% takes its place (`meta.FitRecording`, [the dialog's rule](#get-apiv1adminlibrariesidbookmatch)). Applied unless the admin leaves it out. A repick's offers are all `auto`. |
+| `auto` | The best candidate scores at least **90**, normally leads the next by at least **10**, and meets the identifier and length checks below (`matchrun.Classify`). It starts selected for apply. A repick's offers are all `auto`. |
 | `review` | The admin must include the candidate to apply it. The score or lead can be too low, or the run can hold the candidate for a specific reason. The [review item](#get-apiv1adminmatch-runsiditems) gives the hold reasons. |
 | `none` | No candidate; or, in a match run, a best candidate scoring under **60** (`matchrun.ReviewFloor`) on metaserve's scale, with `detail: "weak_match"` (`DetailWeakMatch`), its `score` kept for the review's wording and its `proposal` empty (from 2.6.0). A candidate without `reasons` (an older metaserve's fallback search, on another scale) stays `review`. The match dialog has no such floor: it lists up to six search hits however low they scored, plus any added recorded match. |
 | `error` | The service failed for this book (`detail: "metadata_unavailable"`), from 2.7.0 also when the best candidate's work can't be read for any reason but a `404` (a gone work gives way to the next). [Ten in a row](#what-a-run-asks-of-the-community-service) stop the run. |
+
+For a [proposed recording](#default-recording) with an ASIN or ISBN, the
+two known lengths must agree within **10%** of the book's runtime. The limit
+is **20%** when `reasons.narrator` is `full` and `matchrun.narratorReads`
+confirms the credit on that recording. The length check passes if either
+length is unknown.
+
+An identifier hit needs no score lead unless the runner-up is also an
+identifier hit, in which case the run holds it for review. On server version
+2.7.0 or later, `matchrun.identifierAgrees` also checks the book against the
+hit. When `metaserve` scored the title, `reasons.title` must be at least
+**0.65** (`IdentifierTitleAgree`). A series position conflict requires a title
+score of at least **0.9** (`IdentifierTitleSame`), so a conflict with no title
+score goes to review. A wrong hint pointing to a similarly titled book
+of the right length can still qualify.
 
 **A store listing with no ASIN or ISBN** (from 2.6.0, LibraForge E6,
 `matchrun.anchorFits`). Nothing else names its edition, so it is `auto` only when
@@ -8774,7 +8795,7 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
     proposed work came from the
     [second search without the identifier](#what-a-run-asks-of-the-community-service).
   - `dramatization_only` (from 2.6.0) means the work offers only dramatizations
-    and the run could not select one for this book. The proposal has no
+    and [none fits this book](#default-recording). The proposal has no
     recording, so nothing is attached unasked.
   - `length_differs` (from 2.4.0; a match run's or a refresh's) means the
     recording and book differ in length by more than 10%, or 20% when the book's
@@ -8884,27 +8905,35 @@ book gets, under each **scope**:
 | `fill` | Also every field the book has empty, and the community cover when it has no cover (a checked book with none, and no custom cover). Replaces only one thing the book has: a title that is the community's plus clutter (`matchrun.tidyTitle`, below). |
 | `overwrite` | Also every field whose value differs, as accepting the dialog's default ticks does; the cover only when it has none. The book's series are **replaced** by the community's for its recording (the [series rules](#series-rules)): a `series`, `series_index` or `more_series` value the community wrote earlier that it no longer offers (a series it deleted or merged, an edition or a translation) is reverted to what the files say. |
 
-**Title tidy** (`matchrun.tidyTitle`). It applies under `fill` only, to any applied
-item of a match or refresh run. The review lists it, as `changes` comes from the
-same `Plan`. The community title goes over the book's when the book's title isn't
-an admin edit and, with the community title's words taken out, what is left of it
-is only:
+**Title tidy.** Under `fill`, `matchrun.tidyTitle` can replace a file title
+with the community title in a match or refresh. The review shows the same
+change that apply will write. A title marked `edited`, including one an admin
+[reverted from a community title](#patch-apiv1adminlibrariesidbook), stays as it is.
 
-- the community subtitle;
-- the series names, the community's and the book's own, as `match.SeriesForms`
-  spells them;
-- `clutterWords`: book, vol, volume, no, unabridged, novel, edition, series,
-  audiobook, store labels such as litrpg and fantasy, and the joining words of,
-  the, a, an;
-- numbers that are the positions (the community's and the book's own, in every
-  series) or that the community title states (`statedNumbers`: digits, ordinals,
-  number words, roman numerals).
+The community title's words must appear together, in order. On server
+version 2.7.0 or later, Fill can remove these additions:
 
-Any other word or number keeps the file's title. "part" names a split of the book,
-"abridged" another edition, and "Book 2" of a work at position 1 another volume. A
-title of the community's words and nothing more is replaced only when it is all in
-one case. A title marked `edited` after an admin
-[reverts a community title](#patch-apiv1adminlibrariesidbook) is kept on later fills.
+- The community subtitle, a series name from the book or the community
+  (`match.SeriesForms`), and the labels in `clutterWords`: unabridged, edition,
+  series, audiobook, audio.
+- A number stated in the community title or a series position on either side
+  (`statedNumbers`). A label in `numberLabels` (book, bk, vol, volume, no, nr,
+  number, episode and plurals) must be followed by such a number. Digits,
+  ordinals, number words and Roman numerals count.
+- A one- to three-digit file-order prefix followed by a spaced dash
+  (`fileOrder`), even if it differs from the series position, unless the
+  community title starts with that number.
+- A numbered “Part” immediately repeated after a community title ending in
+  that same part.
+- A genre note after the title: words from `genreFluff` (litrpg, gamelit,
+  progression, cultivation, epic, fantasy, adventure, novel, novella) and the
+  joining words in `noteJoiners` (a, an, the, of). The same words elsewhere
+  keep the file title.
+
+Any other word or number keeps the file title, including “Abridged” or a
+different part. If only the styling differs, Fill uses the community title
+only when the file title is all uppercase or all lowercase. See the
+[before and after examples](/users/admin/health#tidied-titles).
 
 The rules an apply follows:
 
@@ -10027,8 +10056,9 @@ the target user can access (a match only among the others is `no_access`):
    wins; a tie falls through.
 2. **ASIN**, then **ISBN** (normalised; the first accessible book in library
    order).
-3. **Title, author and series**: `pkg/match.Best` among the books of an author
-   whose normalised name contains, or is contained in, the item's.
+3. **Title, author and series.** The importer applies the
+   [default title and series rules](../overview.md#matching-titles-and-series)
+   among matching authors. One normalised author name must contain the other.
 
 Path and title matches also need the lengths to agree (within 5% of the
 longer, plus 2 minutes; an unknown length agrees with anything). An item ABS
@@ -12854,22 +12884,38 @@ The effective values: `authors` and `narrators` split as the server splits credi
 its position as stored (`"3"`, `"1-3"`, `""`); `duration` in seconds. `next` is
 `null` on the last page.
 
-When the main series has no position, this listing takes it from a code at the
-start of the book's folder name, or its file name for a single-file book
-(`metadata.FolderCodePosition`, called by `bridgeSeries`): one to five letters, an
-optional space, then a number of one to three digits with an optional decimal part,
-or two such numbers joined by a hyphen or an en dash. The code must end where a
-word does (`DF15.5x` gives none). The letters must be the series' initials (case
-aside), all or some in order:
+When the main series has a name and no position, `bridgeSeries` fills it from
+a code leading the last segment of the book's path, its folder or a single-file
+book's file name (`metadata.FolderCodePosition`). Only this listing reads
+folder codes; the scan's positions and every other route don't (see
+[the Bridge's matching rules](../../bridge/audible.md#matching-rules)).
 
-- `DH06 - Land of Magic` in "Dragon Heart" is `"6"`, `DF15.5 Brief Cases` in
-  "Dresden Files" `"15.5"`, `BDM01 - ...` in "Beneath the Dragoneye Moons" `"1"`;
-- a range code goes out as the range: `LAM05-06` is `"5-6"`;
-- `HALO 07` in "Halo" (a franchise's own numbering), a number of 0, an inverted
-  range (`LAM06-05`) and a third joined number (`LAM05-06-07`) give none.
+The code is one to five letters, an optional space, then a number of one to
+three digits with an optional decimal part, or two such numbers joined by a
+hyphen or an en dash with no spaces. It must end where a word does
+(`DF15.5x` gives none). The letters must be the series' initials, all or some
+in order, case aside.
 
-Only this listing reads folder codes; the scan's positions and every other route
-don't (see [the Bridge's matching rules](../../bridge/audible.md#matching-rules)).
+| Folder or file name | Series | Position |
+|---|---|---|
+| `DH06 - Land of Magic` | Dragon Heart | `"6"` |
+| `DF15.5 Brief Cases` | Dresden Files | `"15.5"` |
+| `LAM05-06 - Omnibus` | Legend of the Arch Magus | `"5-6"`. A range stays a range, beside a pack word too. |
+| `HALO 07 - Evolutions` | Halo | `""`. The letters are not the series' initials (a franchise's own numbering). |
+| `LAM00`, `LAM06-05`, `LAM05-06-07` | Legend of the Arch Magus | `""`. A zero, an inverted range and a third joined number give none. |
+
+On server version 2.7.0 or later:
+
+- `C` is an explicit volume marker in any named series: `C02-03` in Dragon
+  Heart is `"2-3"`.
+- A year (1900 to 2099) or a number with one letter after the code labels it
+  and is no range end: `DH06-2019` and `DH06-07x` are `"6"`.
+- A single code on a name with a pack word gives none (`packWord`: omnibus,
+  collection, box set, boxset, boxed set, or `Books N-M`, whole words, case
+  aside). `LAM05-06a - Omnibus`, `DH01 - Books 1-3` and `C02 - Box Set` are
+  `""`.
+- The code written again on the range's end gives none (`repeatsCode`):
+  `DH01-DH03` and `DH01 - DH03 Omnibus` are `""`.
 
 | Status | Meaning |
 |---|---|

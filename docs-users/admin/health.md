@@ -159,8 +159,10 @@ ticks. It leaves out matches you unticked or matched by hand.
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
 A confident match scores at least 90% and usually leads the next candidate by
-at least 10 points. Its length must also be close to the book's. Other matches
-go to **To review**. A row there marked **Held for review** lists the reasons
+at least 10 points. Its length must also be close to the book's. The run picks
+the edition the way the Match dialog does, as
+[Which edition a match suggests](books.md#which-edition-a-match-suggests)
+describes. Other matches go to **To review**. A row there marked **Held for review** lists the reasons
 that apply to that book. You may see more than one.
 
 - An ASIN or ISBN from the book's tags or an Audiobookshelf import
@@ -169,7 +171,8 @@ that apply to that book. You may see more than one.
 - That identifier names another book, so the run searched again without it,
   using the book's title, author and other details. Check what it found even if
   the score is high.
-- The community has only a dramatization, and your book doesn't say it is one.
+- The community lists only dramatizations, and the server could not identify
+  one as your recording.
 - The recording differs from your book's length by more than 10%, or 20% when
   your book's narrator reads it. The row shows both lengths. If your files
   change, the length warning disappears once they fall within the run's margin.
@@ -256,10 +259,19 @@ length within 2%. Otherwise it goes to **To review**.
 
 ### Tidied titles
 
-**Fill in what's missing** replaces a title only when it is the community
-database's title plus clutter, such as the series name, a book number or "Unabridged".
-"Emergence: The Mystic Knight, Book 1 (Unabridged)" becomes "Emergence". A
-title you edited yourself is never tidied.
+**Fill in what's missing** can replace a file title that adds a series name,
+book number, edition label or genre note to the community title. The review
+shows the proposed title. A title you edited yourself stays as you wrote it.
+
+| Title in your files | Title after Fill | Why |
+|---|---|---|
+| `Emergence: The Mystic Knight, Book 1 (Unabridged)` | `Emergence` | The rest is the series, its number and an edition label. |
+| `Dune: An Epic Fantasy` | `Dune` | The extra words name a genre. |
+| `20 - Hilldiggers` | `Hilldiggers` | A number and a dash at the start only order the files. |
+| `The Verity: Part One: Part One` | `The Verity: Part One` | The part is repeated. A different part stays. |
+| `Book of the Dead` | `Book of the Dead`, even when the community title is `Dead` | The other words belong to the title. |
+
+The last three rows need server version 2.7.0 or later.
 
 ### Which ASIN a match takes
 

@@ -893,28 +893,17 @@ and inlines the whole work, which the run reads the same way. One that ignores
 
 ### Dramatizations
 
-A dramatization is a recording of its book. So a plain book matches the work but
-never takes that recording.
-
-- `works/match` names none by length.
-- The server's `meta.DefaultRecording` keeps the same rule by hand. A recording
-  counts as a dramatization by its publisher or full-cast credit, or by the work's
-  label only when the recording states no publisher. So a server asking an older
-  `metaserve` is safe too.
-
-From 2.6.0 the server alone goes further. None of these needs a `metaserve` change:
-
-- A book's author credit or genre can state a dramatization.
-- A work holding only dramatizations gives a plain book the one its length names.
-- A match run trades an off-length recording (mostly a tag hint's) for one of the
-  same work that fits (`meta.FitRecording`).
-
-The rules are in
-[`GET /admin/libraries/{id}/book/match`](../server/api/reference.md#get-apiv1adminlibrariesidbookmatch).
-
-Otherwise a run holds for review a plain book whose work holds only dramatizations
-(item `detail: "dramatization_only"`, no identifier to attach). The candidate's
-additive `dramatization_only` makes the console's dialog preselect no recording.
+`works/match` can return a dramatization's work for a plain book and leave the
+recording open ([how it identifies dramatizations](../meta/api.md#dramatizations)).
+The server then picks the recording itself: the Match dialog and a match run
+both take `meta.ProposedRecording`, by the
+[recording selection rules](../server/api/reference.md#default-recording), which
+can use the book's own length and narrator credit. The server's `meta` package
+keeps metaserve's dramatization rule by hand (below), so none of this needs a
+`metaserve` change and an older `metaserve` is safe. When no recording fits, the
+candidate carries the additive `dramatization_only: true`, the console
+preselects none and a run holds the book for review (item
+`detail: "dramatization_only"`).
 
 Which statement speaks for which recording:
 

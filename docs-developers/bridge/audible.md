@@ -340,7 +340,7 @@ template change plans by the new one. A claimed poll runs as claimed.
    call, so every title becomes `gone`), with each title's authors cut to 20;
 8. **backfills ASINs** (`PUT /bridge/libraries/{id}/enrichment`) for each matched
    book without one. It skips:
-   - a book that is [contested](#matching-rules), because nothing durable is
+   - a book that is [contested](#contested-books), because nothing durable is
      derived from a doubtful match;
    - a preorder title, which is not out yet, so the book is another edition;
    - a match by words to a book with an identical twin in the library
@@ -367,14 +367,23 @@ fails the job and leaves the account's row as it was.
 `BookMatcher` runs the ASIN step over every candidate, then `match.BestWith` under
 `match.ImportOptions()` over the candidates past the person gate. The options turn
 on every opt-in rule of the server's `pkg/match` (the table is in
-[the server's `pkg/match`](../server/overview.md#pkgmatch-public)); the server's own
-callers keep the default rules. `BookMatcher.MatchScored` hands the winning score
+[the server's `pkg/match`](../server/overview.md#matching-titles-and-series)); the server's own
+callers keep the default rules. The Bridge builds against a pinned server commit,
+so it reads the options as that commit wrote them: until its pin moves past
+server 2.7.0, `DropUnabridged` removes only `(Unabridged)` and
+`WordlessFallback` checks a series-named candidate's number only when the query
+states one. `BookMatcher.MatchScored` hands the winning score
 (`match.ScoreASIN` for an ASIN match) to the contested rule.
 
-**Positions.** The books listing sends each series' position as a string. It fills
-an empty main series position from a code leading the book's folder name:
-`DH06 - ...` is `"6"`, and `LAM05-06` the range `"5-6"` (the full rule is at
-[`GET /bridge/libraries/{id}/books`](../server/api/reference.md#get-apiv1bridgelibrariesidbooks)).
+#### Series positions in the books listing
+
+The server's books listing fills an empty main series position from a code
+leading the book's folder or file name (`DH06 - ...` in Dragon Heart is `"6"`,
+`LAM05-06 - Omnibus` is `"5-6"`). The scan and every other route keep the
+position empty. The rules are under
+[`GET /bridge/libraries/{id}/books`](../server/api/reference.md#get-apiv1bridgelibrariesidbooks).
+
+#### Matching a range
 
 On the Bridge, a book with a range position in any of its series spans books:
 
@@ -392,7 +401,9 @@ On the Bridge, a book with a range position in any of its series spans books:
 
 An ASIN match is never held back by any of this.
 
-**Contested books.** `importjob.KeepBest` settles a path claimed by several titles
+#### Contested books
+
+`importjob.KeepBest` settles a path claimed by several titles
 (`Claim{Path, Score, Work, Agrees, Disagrees}`):
 
 1. An ASIN match (`match.ScoreASIN`) keeps it.
@@ -402,10 +413,13 @@ An ASIN match is never held back by any of this.
    `importjob.PositionAgrees(rec, b)` compares the title's `SeriesPosition`, as
    one number, against the book's position in the title's series, else the book's
    main series' position. That one counts only when the title names no series, or
-   when the number is the folder code leading the book's folder, its letters the
-   series' initials as the server reads one (`folderCodeIs` ports the server's
-   `metadata.FolderCodePosition`). A franchise's number says nothing. A range or no
-   number on either side is neither.
+   when the book's folder code states it (`folderCodeIs`: the main series'
+   initials and the same single number). That check keeps the listing's rules
+   from before server 2.7.0: a suffix (`DH06-2019`, `DH06-07x`) gives no
+   number, `C` must be one of the initials like any other letter, and a pack
+   word or a doubled code (`DH01 - Omnibus`, `DH01-DH03`) still states 1. A
+   franchise's number says nothing. A range or a missing number on either side
+   neither agrees nor disagrees.
 3. Then the single best score keeps the match.
 4. A tie for the best keeps none, unless every tied title is the same work
    (`WorkKey`: the folded title, the folded authors in any order and the series

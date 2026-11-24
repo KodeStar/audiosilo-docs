@@ -108,7 +108,7 @@ except a title marked [**Not this book**](#not-this-book):
 1. **By ASIN first**, when the book has one (from a community match, a
    `metadata.json` file, or set in the console).
 2. **Then by title and author**, with the series and number to help. These show
-   **Matched by title**.
+   **Matched by title**. See [Folder codes for Audible matching](../getting-started/organizing-your-library.md#folder-codes-for-audible-matching).
 
 When a book matched by title has no ASIN yet, the Bridge gives it the title's
 ASIN, so later checks match it exactly.

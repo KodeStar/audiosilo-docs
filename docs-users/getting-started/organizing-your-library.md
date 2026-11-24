@@ -76,6 +76,23 @@ AudioSilo takes each book's details from these sources:
 
 By default tags win, and folder names fill in what the tags leave empty. You can [use folder names first](../admin/libraries.md#where-book-details-come-from) or [edit a book's details](../admin/books.md).
 
+### Folder codes for Audible matching
+
+When a book has a series but no series number, a code at the start of its
+folder or file name can give the number for
+[Audible matching](../admin/audible.md#how-titles-are-matched). A code is the
+series' initials and the book number: `DH06` is book 6 in Dragon Heart. For an
+omnibus, write the initials once and give both ends: `DH01-03 - Omnibus` is
+books 1 to 3. The book's series number in the console stays empty.
+
+On server version 2.7.0 or later:
+
+- `C06` is book 6 in any series.
+- A year or a number with a letter after the code doesn't change it:
+  `DH06-2019` and `DH06-07x` are book 6.
+- A doubled code like `DH01-DH03`, or a single code beside a word like
+  "Box Set", "Omnibus" or "Collection", gives no number.
+
 ### Names like `Author; Series; Book 04; Title`
 
 A file or folder named `Mark Tufo; Indian Hill; Book 02; Bastion` gives "Bastion", book 2 of Indian Hill.
