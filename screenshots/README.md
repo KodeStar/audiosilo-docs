@@ -169,8 +169,8 @@ read (`probe_failed` with ffprobe's "timed out after 30s" message), opens that r
 Two book-page shots stage what a scratch server can't produce. For
 `admin/book-dormant-renames.png` the script writes two `chapter_overrides` rows
 (SQLite) for A Christmas Carol, a few seconds past where its second and third
-chapters start, so no chapter starts there, as renames made before a re-encode moved the chapter
-marks would be; the rows are deleted right after the shot. For
+chapters start, so no chapter starts there, as renames made before a re-encode
+moved the chapter marks would be; the rows are deleted right after the shot. For
 `admin/book-still-reading.png` the book's Re-read runs for real, and its answer
 reaches the console as a slow share's `202 {"still_reading": true}` (a
 Playwright route), since the seeded library is read in milliseconds.
@@ -230,7 +230,8 @@ and keeps saving every 15 s in the background. Theo's device fetches a
 `?transcode=1` stream first (so his session counts as transcoded) and has an
 unused personal API key; maya also plays a seventh book through a personal API
 key of hers labelled "Living room speaker", with no `X-AudioSilo-Client` (so
-`admin/activity-apps.png` and Live now show a **Personal API key** row); maya adds two household members through the player's API
+`admin/activity-apps.png` and Live now show a **Personal API key** row); maya
+adds two household members through the player's API
 (`POST /me/household/members` as maya, after the listening is set up and only when
 those two shots are wanted: ivy, a kid on "Ivy's books", one of maya's collections,
 and dan, a grown-up on everything), which `admin/people.png` shows as maya's

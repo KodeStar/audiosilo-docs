@@ -602,8 +602,8 @@ await step('book: re-read still going', async () => {
   if (!firstBook) throw new Error('no book was provisioned');
   const route = '**/api/v1/admin/libraries/*/book/rescan?**';
   await page.route(route, async (r) => {
-    const res = await r.fetch();
-    await r.fulfill({response: res, status: 202, json: {still_reading: true}});
+    await r.fetch(); // the real Re-read; only its answer is replaced
+    await r.fulfill({status: 202, json: {still_reading: true}});
   });
   try {
     await open(page, bookRoute(firstBook), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
