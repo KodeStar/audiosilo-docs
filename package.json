@@ -5,7 +5,7 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
-    "prebuild": "node scripts/check-admonitions.mjs && node --test scripts/stale-names.test.mjs && node scripts/stale-names.mjs",
+    "prebuild": "node scripts/check-admonitions.mjs && node --test scripts/stale-names.test.mjs screenshots/book-edits.test.mjs && node scripts/stale-names.mjs",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
