@@ -115,7 +115,8 @@ If the Bridge stops part way, it picks up where it left off. Sections it already
 downloaded are kept, and a section cut off part way usually resumes. That holds
 when archive.org stops answering too, so adding the book again later carries on.
 If you [unpair the Bridge on its own page](bridge.md#unpairing) while it adds a
-book, the book is not added, and adding it again starts from the beginning.
+book, it stops and removes what it downloaded. The next Bridge you pair adds the
+book again from the beginning.
 
 A download left unfinished and unused for 7 days is cleared from the Bridge's
 hidden folder. Once a day, the Bridge also removes a leftover hidden download
