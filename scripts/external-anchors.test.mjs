@@ -39,11 +39,12 @@ test('a renamed heading keeps its published link with an explicit id', (t) => {
 });
 
 test('every User Guide page is routed by its file name', () => {
-  // checkAnchors maps a link to its file; a slug or id front matter would move the page.
+  // checkAnchors maps a link to its file; a slug or id front matter, or a number
+  // prefix Docusaurus strips (01-intro.md), would move the page.
   const pages = globSync('**/*.{md,mdx}', {cwd: join(ROOT, 'docs-users')});
   const moved = pages.filter((page) => {
     const front = readFileSync(join(ROOT, 'docs-users', page), 'utf8').match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
-    return page !== 'index.md' && /^(slug|id):/m.test(front);
+    return /(^|\/)\d+[-_.]/.test(page) || (page !== 'index.md' && /^(slug|id):/m.test(front));
   });
   assert.deepEqual(moved, []);
 });
@@ -58,11 +59,13 @@ test('a generated id or an example of the explicit id cannot satisfy the check',
     '## Another heading {/* #private */}',
   ].join('\n\n')});
   assert.deepEqual(checkAnchors(['/users/faq#privacy'], dir), [
-    '/users/faq#privacy: missing explicit heading id',
+    '/users/faq#privacy: missing explicit heading id; another repo links here, so end the heading with {/* #privacy */}',
   ]);
 });
 
 test('a missing page fails even when another page declares the id', (t) => {
   const dir = guide(t, {'questions.md': '## Privacy {/* #privacy */}'});
-  assert.deepEqual(checkAnchors(['/users/faq#privacy'], dir), ['/users/faq#privacy: page missing']);
+  assert.deepEqual(checkAnchors(['/users/faq#privacy'], dir), [
+    '/users/faq#privacy: page missing; another repo links here, so restore the page or redirect it and change that link',
+  ]);
 });
