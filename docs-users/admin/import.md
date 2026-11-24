@@ -78,10 +78,10 @@ also press **Change** during review to pick another cutoff and recount.
 The import matches books by their folder path first, then by ASIN or ISBN,
 then by title and author.
 
-On server version 2.7.0 or later, a shared series title alone cannot put
-listening history for `The Expanse Box Set`, `The Expanse 1-3` or
-`The Expanse 2` on volume 1. An edition year in brackets is fine.
-For example, `Dune (2021 Edition)` can still match `Dune`.
+On server version 2.7.0 or later, a box set or a later volume no longer
+matches a first book titled only with the series name. `The Expanse Box Set`,
+`The Expanse 1-3` and `The Expanse 2` don't match a book 1 called
+`The Expanse`. `Dune (2021 Edition)` still matches `Dune`.
 
 The review gives a reason for each skipped book.
 

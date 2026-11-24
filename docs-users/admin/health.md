@@ -158,11 +158,11 @@ ticks. It leaves out matches you unticked or matched by hand.
 
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
-For how the run chooses among recordings, see
-[Which edition a match suggests](books.md#which-edition-a-match-suggests).
 A confident match scores at least 90% and usually leads the next candidate by
-at least 10 points. Its length must also be close to the book's. Other matches
-go to **To review**. A row there marked **Held for review** lists the reasons
+at least 10 points. Its length must also be close to the book's. The run picks
+the edition the way the Match dialog does, as
+[Which edition a match suggests](books.md#which-edition-a-match-suggests)
+describes. Other matches go to **To review**. A row there marked **Held for review** lists the reasons
 that apply to that book. You may see more than one.
 
 - An ASIN or ISBN from the book's tags or an Audiobookshelf import
@@ -259,18 +259,19 @@ length within 2%. Otherwise it goes to **To review**.
 
 ### Tidied titles
 
-**Fill in what's missing** can tidy a file title that adds a series name,
-book number or edition label to the community title. The review shows the
-proposed title. A title you edited yourself stays as you wrote it.
+**Fill in what's missing** can replace a file title that adds a series name,
+book number, edition label or genre note to the community title. The review
+shows the proposed title. A title you edited yourself stays as you wrote it.
 
-On server version 2.7.0 or later, these examples show what Fill keeps.
+| Title in your files | Title after Fill | Why |
+|---|---|---|
+| `Emergence: The Mystic Knight, Book 1 (Unabridged)` | `Emergence` | The rest is the series, its number and an edition label. |
+| `20 - Hilldiggers` | `Hilldiggers` | A number and a dash at the start only order the files. |
+| `The Verity: Part One: Part One` | `The Verity: Part One` | The part is repeated. A different part stays. |
+| `Dune: An Epic Fantasy` | `Dune` | The extra words name a genre. |
+| `Book of the Dead` | `Book of the Dead`, even when the community title is `Dead` | The other words belong to the title. |
 
-| Title in your files | Title after Fill |
-|---|---|
-| `20 - Hilldiggers` | `Hilldiggers`. The leading number orders files and can differ from the series number. |
-| `The Verity: Part One: Part One` | `The Verity: Part One`. The community title already ends in that part. A different part stays. |
-| `Dune: An Epic Fantasy` | `Dune`. The extra words describe the genre. |
-| `Book of the Dead` | `Book of the Dead`. Even if the community title is `Dead`, the other words belong to the title. |
+The last four rows need server version 2.7.0 or later.
 
 ### Which ASIN a match takes
 
