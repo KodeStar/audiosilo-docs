@@ -84,7 +84,7 @@ Already running `ghcr.io/kodestar/audiosilo-server` on Unraid? The data is the s
 
 1. Note any `AUDIOSILO_*` variables the old container sets. They don't move on their own. (Skip `AUDIOSILO_WEB_DIR`: this image has the player built in.)
 2. Stop and remove the old container. Its data stays in its folder.
-3. In that folder, edit `config.yaml` and change every path that starts with `/data/` to `/config/`. `tls.cache_dir` (`/data/certs`) is always one of them.
+3. In that folder, edit `config.yaml` and change every path that starts with `/data/` to `/config/`. A file an older version wrote has `tls.cache_dir` (`/data/certs`) among them. A newer one holds only the settings you changed, so it may have none.
 4. Install this app with **Appdata** pointing at that folder, and add back the variables from step 1.
 5. For your books, either set the **Audiobooks** container path to `/library`, or keep `/audiobooks` and change the library's folder to `/audiobooks` in the admin console.
 

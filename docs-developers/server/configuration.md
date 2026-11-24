@@ -25,11 +25,30 @@ instead. See
   itself comes from the `--data` flag. There is **no environment variable for
   the data dir**.
 - **First run**: when the file does not exist, `config.Load` returns secure
-  defaults with `firstRun=true`, and `internal/launcher` persists them via
-  `Config.Save`. The file is written `0600`,
-  the data dir created `0700`.
+  defaults with `firstRun=true`, `internal/launcher` mints the `server_id`, and
+  `Config.Save` writes the file. Since every other setting is still at its
+  default, that file holds little more than `server_id`. The file is written
+  `0600`, the data dir created `0700`. The launcher also saves once when it
+  mints a `server_id` for an older install that has none.
+- **Only what differs from the defaults is written** (from 2.7.0,
+  `Config.savedYAML`). `Config.Save`, at first run and at every console save,
+  leaves out each key whose value equals `config.Default`'s, and a section left
+  with none. `config.Load` starts from the defaults, so a key that isn't in the
+  file is read as the current release's default, and a later release's new
+  default reaches an existing install. A key an owner sets by hand to its
+  default value is read the same way, and is dropped from the file at the next
+  save. A file written by an older release, which held every setting, sheds the
+  keys equal to the running release's defaults the next time the server saves
+  it. A value an older release wrote as its default, and a later release changed,
+  no longer equals the default, so it stays in the file (delete the line to
+  follow the new default). The other rules stay as they were: a key an
+  `AUDIOSILO_*` variable sets keeps the file's own value
+  ([Environment variables](#environment-variables)), `tls.cache_dir` at its
+  default is never written, and the Podcast Index key and secret are never
+  written at all. To change a setting that isn't in the file, add its key;
+  `config.example.yaml` lists every key with its default.
 - **Annotated template**: `config.example.yaml` in the repo root mirrors this
-  reference.
+  reference, every key with its default.
 
 :::note
 First-run **admin bootstrap** is keyed off the database (does an admin
@@ -261,7 +280,7 @@ plain `http` behind TLS). Set `lan_url` to give the apps a home address; a confi
 |---|---|---|
 | `tls.mode` | `off` \| `selfsigned` \| `autocert`, default `selfsigned` | `off` = plain HTTP (use behind a TLS-terminating proxy); `selfsigned` = generate & persist a self-signed cert (LAN default); `autocert` = Let's Encrypt via ACME |
 | `tls.hosts` | []string, `[]` | autocert: hostnames to obtain certificates for. **Required when mode is `autocert`** |
-| `tls.cache_dir` | string, `<data>/certs` | autocert: certificate cache directory (re-defaulted to `<data>/certs` whenever empty). The default is never written to `config.yaml`, so a data folder moved elsewhere (Docker's `/data` to the LinuxServer.io image's `/config`) takes its certificates with it. A `config.yaml` written before 2.7.0 keeps its absolute path until that line is deleted; one an admin set elsewhere is kept |
+| `tls.cache_dir` | string, `<data>/certs` | autocert: certificate cache directory (re-defaulted to `<data>/certs` whenever empty). The default is never written to `config.yaml`, so a data folder moved elsewhere (Docker's `/data` to the LinuxServer.io image's `/config`) takes its certificates with it. A `config.yaml` written before 2.7.0 keeps its absolute path until that line is deleted, or until the server saves the file while the path is still `<data>/certs`; one an admin set elsewhere is kept |
 | `tls.home_http` | bool, `true` | selfsigned only: the bind port also answers plain HTTP to home-network clients, see [Home HTTP](#home-http-tlshome_http). Ignored in the other modes |
 | `tls.cert_file` / `tls.key_file` | string, `""` | selfsigned: explicit paths for the persisted cert and key. Empty means `<data>/selfsigned-cert.pem` and `<data>/selfsigned-key.pem` |
 
@@ -339,7 +358,8 @@ bucket is answered `429 rate limit exceeded`.
 **Only what you set is kept.** A rate or burst left out, or `0`, is the
 release's default (`RateLimitConfig.Effective`, the `config.Default*RateLimit`
 values above). The fields are `omitempty`, so an unset value is never written
-into `config.yaml`, and a later release's defaults reach an existing install.
+into `config.yaml`, and a later release's defaults reach an existing install
+(from 2.7.0 every section works this way: see [The config file](#the-config-file)).
 Set one only to change it. Each has a variable (see
 [Environment variables](#environment-variables)), and none has a console setting.
 
@@ -1141,7 +1161,8 @@ environment was applied (`Config.file`). Two things follow:
   (`409 setting_locked`).
 - `Config.Save` writes `config.yaml`'s own value for those keys, never the
   environment's. A value supplied by a variable therefore never ends up in the
-  file, and removing the variable later brings the file's value back.
+  file, and removing the variable later brings the file's value back (or the
+  default, when the file has none).
 
 ## Changing settings at runtime
 
@@ -1319,7 +1340,9 @@ most 50 entries.
 
 `Config.Save` writes the saved config, but keeps `config.yaml`'s own value for
 every key the environment set (as above), so a console save never writes an
-environment variable's value into the file.
+environment variable's value into the file. It writes only the keys that differ
+from the defaults (see [The config file](#the-config-file)), so setting a value
+back to its default in the console removes its key from the file.
 
 ## Update check
 
@@ -1480,7 +1503,7 @@ tools.
 
 | Path | What it is |
 |---|---|
-| `<data>/config.yaml` | This configuration (written on first run) |
+| `<data>/config.yaml` | This configuration: only the settings that differ from the defaults, written on first run and at each console save |
 | `<data>/audiosilo.db` | The SQLite index. It is rebuildable, because the filesystem is the source of truth (see [Data model](data-model.md)) |
 | `<data>/certs/` | autocert certificate cache |
 | `<data>/selfsigned-cert.pem`, `<data>/selfsigned-key.pem` | Persisted self-signed certificate (mode `selfsigned`, default paths) |
