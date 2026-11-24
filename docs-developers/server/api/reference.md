@@ -7876,10 +7876,9 @@ book path).
   - Swapped means the title is the author folder's name, or the author, cleaned of
     series and numbering, is the path's title. A tag that matches its own path
     fact is never swapped (`Dune/Dune` by Frank Herbert).
-  - A generic title such as `Track 01` can take the title from the path.
-    On server version 2.7.0 or later, the author can independently come from
-    the path when `model.IsGenericCredit` recognises a credit such as
-    `Various Artists`, `Anonymous` or `Uncredited`.
+  - A junk title (`Unknown`, `Untitled`, `Track 01`, `03`) or a generic author
+    credit (`model.IsGenericCredit`: `Unknown Artist`, `Various Artists`,
+    `Anonymous`, `Uncredited`) is replaced on its own.
   - A fact the path doesn't give keeps the tag's value.
   - A path with no title (`Stormlight Archive/03`, or
     `Bruno Miller; Dark Road; Book 01-05`) gives the series and its position or
@@ -8345,10 +8344,10 @@ many books at once, see [Bulk community matching](#bulk-community-matching).
 
 #### Default recording
 
-On server version 2.7.0 or later, `meta.ProposedRecording` sets each candidate's
-`default_recording_id` and chooses the recording a match run proposes for that
-candidate. The dialog opens on a previously recorded match when available.
-Otherwise it selects the proposed edition.
+On server version 2.7.0 or later, `meta.ProposedRecording` sets each
+candidate's `default_recording_id`, and a match run proposes the same recording
+for that candidate. The dialog opens on the book's recorded
+match if it has one, otherwise on the proposed edition.
 
 - **Identifier hit.** `recording_id` identifies the recording the lookup found.
   A typed ASIN or ISBN keeps that recording, as does a book's own identifier
@@ -8372,11 +8371,12 @@ It excludes generic and production credits on either side, including “Various�
 “BBC Full-Cast Dramatisation” and “the Full Cast Family”.
 
 **Dramatizations.** The search text, title, series, folder names, author or
-narrator credits, or a genre such as “Radio Drama” can identify the book as a
-dramatization (`meta.MatchQuery.statesDramatization`). For a book with no such
-indication, an identifier can name a specific production. A qualifying named
-reader can also identify it, with a plain reading preferred when that reader
-qualifies for both. A hint identifies only its own recording.
+narrator credits, or a genre such as “Radio Drama” can say the book is a
+dramatization (`meta.MatchQuery.statesDramatization`). For a plain book (no
+such statement), an identifier can name a production, and so can a qualifying
+named reader, a plain reading winning when that reader qualifies for both. A
+hint names only its own recording: when the run replaces an off-length hint,
+the replacement follows the plain-book rule.
 
 For a plain book whose work offers only dramatizations, runtime alone can
 identify one. The allowed difference is the greater of two minutes and 1% of
@@ -8544,9 +8544,10 @@ length is unknown.
 An identifier hit needs no score lead unless the runner-up is also an
 identifier hit, in which case the run holds it for review. On server version
 2.7.0 or later, `matchrun.identifierAgrees` also checks the book against the
-hit. When judged, `reasons.title` must be at least **0.65**. A series position
-conflict requires a title score of at least **0.9**, so a conflict with no
-title score goes to review. A wrong hint pointing to a similarly titled book
+hit. When `metaserve` scored the title, `reasons.title` must be at least
+**0.65** (`IdentifierTitleAgree`). A series position conflict requires a title
+score of at least **0.9** (`IdentifierTitleSame`), so a conflict with no title
+score goes to review. A wrong hint pointing to a similarly titled book
 of the right length can still qualify.
 
 **A store listing with no ASIN or ISBN** (from 2.6.0, LibraForge E6,
@@ -8793,7 +8794,7 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
     proposed work came from the
     [second search without the identifier](#what-a-run-asks-of-the-community-service).
   - `dramatization_only` (from 2.6.0) means the work offers only dramatizations
-    and the run could not select one for this book. The proposal has no
+    and [none fits this book](#default-recording). The proposal has no
     recording, so nothing is attached unasked.
   - `length_differs` (from 2.4.0; a match run's or a refresh's) means the
     recording and book differ in length by more than 10%, or 20% when the book's
@@ -8912,16 +8913,21 @@ On server version 2.7.0 or later, the community title's words must appear
 together, in order. Fill can remove these additions:
 
 - The community subtitle, a series name from the book or the community
-  (`match.SeriesForms`), and format labels such as “Unabridged”.
+  (`match.SeriesForms`), and the labels in `clutterWords`: unabridged, edition,
+  series, audiobook, audio.
 - A number stated in the community title or a series position on either side
-  (`statedNumbers`). A label such as “Book” or “Volume” must be followed by
-  such a number. Digits, ordinals, number words and Roman numerals count.
-- A one- to three-digit file-order prefix followed by a spaced dash, even if
-  it differs from the series position.
+  (`statedNumbers`). A label in `numberLabels` (book, bk, vol, volume, no, nr,
+  number, episode and plurals) must be followed by such a number. Digits,
+  ordinals, number words and Roman numerals count.
+- A one- to three-digit file-order prefix followed by a spaced dash
+  (`fileOrder`), even if it differs from the series position, unless the
+  community title starts with that number.
 - A numbered “Part” immediately repeated after a community title ending in
   that same part.
-- A trailing genre note, including its joining words. Genre words and articles
-  elsewhere can belong to the title.
+- A genre note after the title: words from `genreFluff` (litrpg, gamelit,
+  progression, cultivation, epic, fantasy, adventure, novel, novella) and the
+  joining words in `noteJoiners` (a, an, the, of). The same words elsewhere
+  keep the file title.
 
 Any other word or number keeps the file title, including “Abridged” or a
 different part. If only the styling differs, Fill uses the community title
@@ -12877,9 +12883,38 @@ The effective values: `authors` and `narrators` split as the server splits credi
 its position as stored (`"3"`, `"1-3"`, `""`); `duration` in seconds. `next` is
 `null` on the last page.
 
-For a missing main series position, `bridgeSeries` can return a position
-from the book's folder or filename. See the
-[folder-code rules and returned values](../../bridge/audible.md#series-positions-in-the-books-listing).
+When the main series has a name and no position, `bridgeSeries` fills it from
+a code leading the last segment of the book's path, its folder or a single-file
+book's file name (`metadata.FolderCodePosition`). Only this listing reads
+folder codes; the scan's positions and every other route don't (see
+[the Bridge's matching rules](../../bridge/audible.md#matching-rules)).
+
+The code is one to five letters, an optional space, then a number of one to
+three digits with an optional decimal part, or two such numbers joined by a
+hyphen or an en dash with no spaces. It must end where a word does
+(`DF15.5x` gives none). The letters must be the series' initials, all or some
+in order, case aside.
+
+| Folder or file name | Series | Position |
+|---|---|---|
+| `DH06 - Land of Magic` | Dragon Heart | `"6"` |
+| `DF15.5 Brief Cases` | Dresden Files | `"15.5"` |
+| `LAM05-06 - Omnibus` | Legend of the Arch Magus | `"5-6"`. A range stays a range, beside a pack word too. |
+| `HALO 07 - Evolutions` | Halo | `""`. The letters are not the series' initials (a franchise's own numbering). |
+| `LAM00`, `LAM06-05`, `LAM05-06-07` | Legend of the Arch Magus | `""`. A zero, an inverted range and a third joined number give none. |
+
+On server version 2.7.0 or later:
+
+- `C` is an explicit volume marker in any named series: `C02-03` in Dragon
+  Heart is `"2-3"`.
+- A year (1900 to 2099) or a number with one letter after the code labels it
+  and is no range end: `DH06-2019` and `DH06-07x` are `"6"`.
+- A single code on a name with a pack word gives none (`packWord`: omnibus,
+  collection, box set, boxset, boxed set, or `Books N-M`, whole words, case
+  aside). `LAM05-06a - Omnibus`, `DH01 - Books 1-3` and `C02 - Box Set` are
+  `""`.
+- The code written again on the range's end gives none (`repeatsCode`):
+  `DH01-DH03` and `DH01 - DH03 Omnibus` are `""`.
 
 | Status | Meaning |
 |---|---|

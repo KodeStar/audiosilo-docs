@@ -2448,9 +2448,9 @@ neither of its own, after an import's (see
 the community database knows is then confident when its length fits and the book
 agrees with its title (see
 [Bulk community matching](api/reference.md#bulk-community-matching)). It
-becomes the book's ASIN only by an apply. A match run may propose another
+becomes the book's ASIN only by an apply. The dialog and a match run may propose another
 recording of the hint's work that fits the book's length better
-([`default_recording_id`](api/reference.md#get-apiv1adminlibrariesidbookmatch)).
+([`default_recording_id`](api/reference.md#default-recording)).
 `tag_language` also counts toward the library's derived language
 (`catalog.LanguageCounts`), which a book stating none is matched in.
 

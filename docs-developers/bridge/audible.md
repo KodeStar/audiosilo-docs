@@ -340,7 +340,7 @@ template change plans by the new one. A claimed poll runs as claimed.
    call, so every title becomes `gone`), with each title's authors cut to 20;
 8. **backfills ASINs** (`PUT /bridge/libraries/{id}/enrichment`) for each matched
    book without one. It skips:
-   - a book that is [contested](#matching-rules), because nothing durable is
+   - a book that is [contested](#contested-books), because nothing durable is
      derived from a doubtful match;
    - a preorder title, which is not out yet, so the book is another edition;
    - a match by words to a book with an identical twin in the library
@@ -373,28 +373,11 @@ callers keep the default rules. `BookMatcher.MatchScored` hands the winning scor
 
 #### Series positions in the books listing
 
-When the main series has a name and its position is empty, the server can
-supply one in the [Bridge books listing](../server/api/reference.md#get-apiv1bridgelibrariesidbooks).
-`bridgeSeries` calls `metadata.FolderCodePosition` on the last folder or file
-name. This fallback applies only to the listing.
-
-On server version 2.7.0 or later, the code starts with one to five letters,
-optionally a space, then one to three digits with an optional decimal part.
-The letters must match all or some of the series initials in order, ignoring
-case. A single `C` is an explicit volume marker in any named series.
-
-| Leading code or folder name | Position in the listing |
-|---|---|
-| `DH06-2019`, `DH06-07x` in Dragon Heart | `"6"`. A year from 1900 through 2099 or a number followed by one letter leaves the starting volume. |
-| `DF15.5 Brief Cases` in Dresden Files | `"15.5"`. The code ends at a word boundary. |
-| `C02-03` in Dragon Heart | `"2-3"`. A hyphen or en dash can join two numbers without spaces. |
-| `LAM05-06 - Omnibus` in Legend of the Arch Magus | `"5-6"`. A valid range keeps both ends even when the name describes a pack. |
-| `LAM05-06a - Omnibus`, `DH01 - Books 1-3`, `C02 - Box Set` | Empty. A single code gives no position beside “omnibus”, “collection”, “box set”, “boxset”, “boxed set” or a span such as “Books 1-3”. These match whole words, ignoring case. |
-| `DH01-DH03` in Dragon Heart | Empty. Repeating the code letters at the range end gives no position. |
-
-A zero start, a range with equal or descending ends, a third joined number,
-or letters that do not fit the series (such as `HALO 07` in Halo) also give
-an empty position.
+The server's books listing fills an empty main series position from a code
+leading the book's folder or file name (`DH06 - ...` in Dragon Heart is `"6"`,
+`LAM05-06 - Omnibus` is `"5-6"`). The scan and every other route keep the
+position empty. The rules are under
+[`GET /bridge/libraries/{id}/books`](../server/api/reference.md#get-apiv1bridgelibrariesidbooks).
 
 #### Matching a range
 
@@ -426,11 +409,12 @@ An ASIN match is never held back by any of this.
    `importjob.PositionAgrees(rec, b)` compares the title's `SeriesPosition`, as
    one number, against the book's position in the title's series, else the book's
    main series' position. That one counts only when the title names no series, or
-   when the Bridge's own `folderCodeIs` confirms it. That check looks for the
-   main series' initials followed by the same single number. It rejects a
-   joined numeric suffix and requires even `C` to match an initial. Updating
-   the server changes the listing independently of this Bridge check. A range
-   or missing number on either side gives neither agreement nor disagreement.
+   when the book's folder code states it (`folderCodeIs`: the main series'
+   initials and the same single number). That check keeps the listing's rules
+   from before server 2.7.0: a suffix (`DH06-2019`, `DH06-07x`) gives no
+   number, and `C` must be one of the initials like any other letter. A
+   franchise's number says nothing. A range or a missing number on either side
+   neither agrees nor disagrees.
 3. Then the single best score keeps the match.
 4. A tie for the best keeps none, unless every tied title is the same work
    (`WorkKey`: the folded title, the folded authors in any order and the series

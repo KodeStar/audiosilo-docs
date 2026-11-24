@@ -893,15 +893,16 @@ and inlines the whole work, which the run reads the same way. One that ignores
 
 ### Dramatizations
 
-A dramatization belongs to the same work as a plain reading. The community
-service can return that work while leaving the recording open. See
-[how `works/match` identifies dramatizations](../meta/api.md#dramatizations).
-
-On server version 2.7.0 or later, the Match dialog and a match run both use
-`meta.ProposedRecording` to select an edition. The server can use its local
-audio length even when the community service names no recording. The
-[recording selection rules](../server/api/reference.md#default-recording)
-define when the server can use a dramatization and when it offers the work alone.
+`works/match` can return a dramatization's work for a plain book and leave the
+recording open ([how it identifies dramatizations](../meta/api.md#dramatizations)).
+The server then picks the recording itself: the Match dialog and a match run
+both take `meta.ProposedRecording`, by the
+[recording selection rules](../server/api/reference.md#default-recording), which
+can use the book's own length and narrator credit. The server's `meta` package
+keeps metaserve's dramatization rule by hand (below), so none of this needs a
+`metaserve` change and an older `metaserve` is safe. When no recording fits, the
+candidate carries the additive `dramatization_only: true` and the console
+preselects none.
 
 Which statement speaks for which recording:
 
