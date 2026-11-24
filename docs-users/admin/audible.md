@@ -100,7 +100,7 @@ backup would go to a place with a warning.
 | **Unavailable** | Audible won't let it be downloaded, such as a podcast; the row says why |
 | **No longer in the library** | it was in the account before but isn't now |
 
-## How titles are matched
+## How titles are matched {/* #how-titles-are-matched */}
 
 At each check, the Bridge matches each title to a book in the account's library,
 except a title marked [**Not this book**](#not-this-book):
@@ -161,7 +161,7 @@ into. If you marked the right book by mistake, **Undo Not this book** accepts
 that match and clears the message. A check that finds the same match, or moving
 the matched book, keeps it.
 
-### When a backup fails
+### When a backup fails {/* #when-a-backup-fails */}
 
 The reason under the title says what to do. After fixing the problem, press
 **Back up** again.
@@ -322,7 +322,7 @@ Audible**.
 Audible only keeps about six months of orders, so a preorder made earlier than that
 may not be listed until it comes out.
 
-## Syncing listening places
+## Syncing listening places {/* #syncing-listening-places */}
 
 With sync on, Audible and AudioSilo keep the same listening place. When you
 listen in the Audible app, your place here moves on, and the other way round.
@@ -346,7 +346,7 @@ Sometimes the Audible app uploads an older place it still held over the one the
 Bridge wrote. The next sync writes your place to Audible again, once. If you then
 go back in the Audible app on purpose, that place is left alone.
 
-### When it stops
+### When it stops {/* #when-it-stops */}
 
 The account card's **Sync** row says whether sync is on and when it last ran, or
 why it stopped:
@@ -358,7 +358,7 @@ why it stopped:
 - **Off** after you changed who the account belongs to: turn it on again for the
   new person.
 
-### Don't sync this book
+### Don't sync this book {/* #dont-sync-this-book */}
 
 **Don't sync** on a title keeps that one book out of the sync, both ways. The
 title shows **Not synced**; **Sync again** undoes it.

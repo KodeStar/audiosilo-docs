@@ -30,7 +30,7 @@ cover, community match, chapters, genre, tag, length and more.
 
 Each view has its own address, so you can bookmark a filtered list.
 
-## Matching with community metadata
+## Matching with community metadata {/* #matching-with-community-metadata */}
 
 When [community metadata](server.md#community-metadata) is on, you can match a
 book to its entry in the free community database at
@@ -120,7 +120,7 @@ It sends nothing about your server or who listens. With a
 [local copy](server.md#keeping-a-local-copy), lookups use the copy when it can
 answer, but can still fall back to asking online.
 
-### Books matched to a store listing
+### Books matched to a store listing {/* #books-matched-to-a-store-listing */}
 
 The community database holds some books as a store listing with no ASIN or
 ISBN. A match to one of them still counts. The book shows as **Matched**, and
@@ -404,7 +404,7 @@ With the Contributions module on, it can
   **Add to a share** adds it to one. A book in no share is only for admins and
   the people in an admin's household.
 
-## Changing many books at once
+## Changing many books at once {/* #changing-many-books-at-once */}
 
 1. In **Library > Books**, press **Select**, or tick a cover's checkbox.
 2. Click books to select them. **Shift-click** selects a run, and **Select
@@ -444,7 +444,7 @@ folder follows them again. Undo skips a book whose name someone has changed or
 reverted since, or that a scan found had moved, and restores the others. The
 message lists up to three skipped paths and counts any others.
 
-## Series
+## Series {/* #series */}
 
 **Library > Series** has a card for each series, with its books as spines in
 series order. Click a spine to open that book. Type in **Find a series or

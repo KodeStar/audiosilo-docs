@@ -49,7 +49,7 @@ A **New** badge marks a preorder or new release your server first listed in the 
 
 If you use more than one server, the list combines them. Each book names the server that's missing it, so you may already have it on another server.
 
-## Add to your calendar
+## Add to your calendar {/* #add-to-your-calendar */}
 
 The **Add to your calendar** card, under the list, gives you a private link for your calendar app. Each release shows as an all-day event on its release day, and the calendar keeps itself up to date.
 

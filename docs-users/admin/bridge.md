@@ -167,7 +167,7 @@ A job that **Needs attention** says why, with **Open in the Bridge**. There,
 queues it again after about two minutes. A job that keeps failing this way fails
 after the third try.
 
-## Share with the community
+## Share with the community {/* #share-with-the-community */}
 
 When characters and recaps were kept on this server, you can still send them to
 the community database later. The book's **Community metadata** card
@@ -181,7 +181,7 @@ generates nothing again, so the agent costs nothing. Each part the community
 database still lacks becomes a submission for review. Once done, the card links
 to each one.
 
-## Suggest corrections
+## Suggest corrections {/* #suggest-corrections */}
 
 When you [edit a matched book's details](books.md#editing-details) and your values
 differ from the community database, you can suggest them as corrections. The book's

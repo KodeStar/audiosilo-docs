@@ -37,7 +37,7 @@ Have AudioSilo start a [sleep timer](sleep-timer.md) for you at night.
 
 See [Starting a timer automatically at night](sleep-timer.md#starting-a-timer-automatically-at-night).
 
-## Up next and downloads
+## Up next and downloads {/* #up-next-and-downloads */}
 
 What happens when a book ends (see [The end of a book](end-of-book.md)), and what AudioSilo downloads for you. The download settings also appear on the Downloads page.
 

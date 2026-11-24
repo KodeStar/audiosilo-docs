@@ -227,6 +227,7 @@ Guide pages and headings. When you rename a heading, keep its old anchor with
 an explicit id: `## Download a book {/* #downloading-a-book */}`. Cross-referenced
 headings use a colon or rephrase rather than a dash, so their anchors stay clean.
 Moving or renaming a page file needs a redirect, so prefer changing only its `title:`.
+Keep explicit heading IDs when editing the User Guide and run `npm run anchors:sync` after a link to a guide heading changes in a sibling repo.
 
 The Developer Docs follow rules 2, 3, 6, 7 and 9 too, and the "Keep links
 working" note. They may name code. Under rule 7 they keep a version only where

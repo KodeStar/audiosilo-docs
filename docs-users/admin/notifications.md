@@ -54,7 +54,7 @@ the server restarts, it carries on with the messages still waiting, in order for
 each destination. A destination can get a message twice if the server stops just
 after sending it.
 
-## What to send
+## What to send {/* #what-to-send */}
 
 The **What to send** table has a row per event and a column per destination.
 Tick a box to send that event there. It saves as you tick.

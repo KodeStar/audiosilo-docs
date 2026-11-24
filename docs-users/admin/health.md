@@ -82,7 +82,7 @@ The Bridge is looking for chapters in the narration of **A Long Lecture**.
 - Tick several rows (or **Select all**) to act on them together from the bar at
   the bottom. **Shift-click** selects a run.
 
-### Duplicates
+### Duplicates {/* #duplicates */}
 
 **Likely duplicates** shows possible copies in the same library side by side.
 When AudioSilo suggests a copy to keep, it prefers the better format (M4B/AAC
@@ -130,7 +130,7 @@ If a library's folder can't be read, a notice says "*name* is offline. Nothing
 was deleted." Once the folder is back, **Retry** scans it. See
 [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing).
 
-## Matching every book at once
+## Matching every book at once {/* #matching-every-book-at-once */}
 
 **Not matched to community metadata** has a **Match automatically** card above
 its list. It looks up every book in the list in one pass. Nothing changes until
@@ -269,7 +269,7 @@ the one from your **Audible marketplace** (in
 marketplace is set, **Use *country* ASINs** switches books matched earlier to
 your store's ASIN.
 
-### Filling in books that are already matched
+### Filling in books that are already matched {/* #filling-in-books-that-are-already-matched */}
 
 **Fill in matched books** offers the community database's latest details for books that
 are already matched. Use it for books that got an ASIN without their details,

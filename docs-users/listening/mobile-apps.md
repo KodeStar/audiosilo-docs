@@ -48,7 +48,7 @@ To add it:
 
 While a sleep timer runs, it also shows on the lock screen. See [the sleep timer](sleep-timer.md#on-the-lock-screen-iphone). There are no widgets on Android yet.
 
-## Android without Google Play
+## Android without Google Play {/* #android-without-google-play */}
 
 Each app release on GitHub includes the Android app as an APK file, like `AudioSilo-2.5.0.apk`. It's the same app as on Google Play, and it often arrives a few days sooner.
 

@@ -67,7 +67,7 @@ Trusted proxies matter. Without them, the server sees every visitor as the proxy
 Only turn HTTPS off behind a proxy that handles HTTPS. Plain HTTP open to the internet sends passwords and audio unencrypted.
 :::
 
-### Behind a sign-in proxy
+### Behind a sign-in proxy {/* #behind-a-sign-in-proxy */}
 
 A sign-in proxy (Cloudflare Access, Authentik, Authelia and the like) turns away requests without its sign-in. In a browser you sign in to the proxy, so the web player works as it is. The iOS and Android apps can't show that sign-in page. Instead they send the headers the proxy accepts, such as a Cloudflare Access service token, with their requests to the server's `https://` address.
 

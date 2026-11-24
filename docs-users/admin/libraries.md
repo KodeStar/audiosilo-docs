@@ -87,7 +87,7 @@ card and in the setup flow. The console locks its name, folder and **Delete
 library...** action. To change its name or folder, edit the file and restart.
 You can still change its scan settings here.
 
-## Rescanning
+## Rescanning {/* #rescanning */}
 
 Click **Rescan** on a library after you add, remove, rename or re-tag files. You
 can keep working while it runs, and a message says when it has finished. The
@@ -148,7 +148,7 @@ case don't matter.
 Saving rescans the library. The scan removes skipped books from the library,
 but your files stay where they are.
 
-## Where book details come from
+## Where book details come from {/* #where-book-details-come-from */}
 
 **Book details come from** (in **⋯ > Edit library...**) decides where books
 take their title, author, series and series number from:

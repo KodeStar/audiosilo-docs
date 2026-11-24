@@ -31,7 +31,7 @@ The **output** button in the full player and on the player bar sends the sound s
 
 For a Chromecast, a TV with Google Cast or a Nest speaker, use the **Cast** button instead. See [Chromecast](chromecast.md). Your place keeps syncing either way.
 
-## Your position follows you
+## Your position follows you {/* #your-position-follows-you */}
 
 AudioSilo saves your place to the server every 15 seconds while you listen, and straight away when you pause, seek or stop. So a book you start on your phone opens in the web player at the same place.
 
@@ -48,7 +48,7 @@ Four rules protect your place:
 - **You pick up another device's place.** If a book is still loaded here and you've listened further elsewhere, the player jumps to the newer place and says so, with **Undo**. When you press play in the app after a pause of a minute or more, the app asks your server for your latest place first, so you don't hear the old one. The play button shows a spinner while it waits, for at most 1.5 seconds.
 - **Auto-rewind.** After a pause, playback backs up a few seconds so you catch the sentence again. Change it in [Settings](settings.md#playback).
 
-## Listening on more than one device
+## Listening on more than one device {/* #listening-on-more-than-one-device */}
 
 Each device tells the server what you listened to: from where to where, and when. The server puts it together, so:
 
@@ -109,7 +109,7 @@ To change their length, set **Chapter length (unchaptered)** in [Settings](setti
 
 Many such books can get real chapters, from the community database or from your server's Bridge (see [Detect chapters](../admin/chapter-detection.md)). See [Use the book page](book-page.md#chapters).
 
-## Good to know
+## Good to know {/* #good-to-know */}
 
 - **One tab plays at a time in a browser.** The tab where you pressed Play last plays, even if it is still loading the book or your computer's clock was set back by more than a minute, and the other pauses and says **Playing in another tab**. Press Play there to take it back. With the same book in both tabs, it carries on where the other got to. Tabs signed in to different servers or accounts can play at once, and your other devices aren't paused.
 - **Older servers** don't combine listening from several devices. The app saves your place as before, and the protections in [Your position follows you](#your-position-follows-you) still apply. On some, **Mark as finished** needs a connection.

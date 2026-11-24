@@ -81,7 +81,7 @@ To have the agent wait instead, set
 `AUDIOSILO_BRIDGE_AGENT_REQUIRE_GROUP: "true"` on the Bridge. The **Accounts** tab
 then says why the agent isn't ready.
 
-## Audible
+## Audible {/* #audible */}
 
 The **Audible** card signs the Bridge in to one or more Audible accounts. The
 Bridge finds the books already in your library and backs up the titles you choose.

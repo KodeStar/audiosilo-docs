@@ -41,7 +41,7 @@ Following a show puts its new episodes on your Home and tells the server to keep
 
 Your server checks the shows people follow by itself. To look now, tap **Check for new episodes** on the show's page. When the check is done, the line beside the button says how many new episodes it found, or **No new episodes**. Before you check, that line says when your server last checked the show.
 
-## Adding shows
+## Adding shows {/* #adding-shows */}
 
 You can add shows yourself in three ways: search a podcast directory, paste a feed's address, or import a list from another podcast app.
 
@@ -143,7 +143,7 @@ An episode leaves Up next when it ends. With **auto-play** on, the next item in 
 
 To hear a show's episodes in a row, add them to Up next. While an episode plays, Up next suggests the show's **Next episode**.
 
-## Download an episode
+## Download an episode {/* #download-an-episode */}
 
 A downloaded episode plays with no connection to your server, like a [downloaded book](offline-downloads.md). This works in the iOS and Android apps and in the web player.
 

@@ -135,7 +135,7 @@ The **App links** card lets invite links on your own domain open the installed
 app directly. It only helps with an app build made for your domain, so most
 servers leave it empty.
 
-### Community metadata
+### Community metadata {/* #community-metadata */}
 
 ![Community metadata settings with Check now and the last upcoming releases check, and the notice that the server will try the report again in about a week](/img/screenshots/admin/settings-metadata.png)
 
@@ -199,7 +199,7 @@ The other settings on this topic:
 **Check now** appears when both **Look up community metadata** and **Check for
 upcoming releases** are on. The missing-books report also needs community metadata.
 
-#### Helping complete the community database
+#### Helping complete the community database {/* #helping-complete-the-community-database */}
 
 Turn on **Help complete the community database** to report which of your books
 the community database is missing. Once a day, the server sends AudioSilo Meta
@@ -221,7 +221,7 @@ Good to know:
 A line under the switch shows the last report and, after a refusal, when the server will try again. Switching it on runs a check straight away, unless one ran in the last day or the service asked for a quiet week. A report that stopped part way says how many ASINs it sent. The server
 tries the rest again the next day.
 
-#### Keeping a local copy
+#### Keeping a local copy {/* #keeping-a-local-copy */}
 
 The **Source** card chooses where lookups are answered:
 
@@ -251,7 +251,7 @@ How it behaves:
 - Switching back to **Ask the metadata service for each book** deletes the copy
   at the next start.
 
-### Transcoding
+### Transcoding {/* #transcoding */}
 
 **Transcoding** shows whether the server found **ffmpeg** and **ffprobe**.
 Nothing here can be changed in the console.
@@ -284,7 +284,7 @@ kids and grown-ups people add from the player, with no invite from you.
 To stop one person adding members, see
 [Household members](users-and-invites.md#household-members).
 
-### Demo mode
+### Demo mode {/* #demo-mode */}
 
 The **Demo mode** card runs a public demo from this server (see
 [Demo](../demo.md)):
@@ -295,7 +295,7 @@ The **Demo mode** card runs a public demo from this server (see
 - **Most guests at once** - `0` means no limit; empty means 200.
 - **Remove idle guests after** - like `30m` or `24h`; empty means 24 hours.
 
-### Modules
+### Modules {/* #modules */}
 
 ![Server settings, Modules](/img/screenshots/admin/settings-modules.png)
 
