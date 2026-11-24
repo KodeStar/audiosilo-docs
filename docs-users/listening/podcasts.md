@@ -68,6 +68,8 @@ Results come from **Apple Podcasts**, or from **Podcast Index** if your admin se
 
 Offline, or when a search can't be refreshed, its last results stay on screen with a line that says so. If the refresh failed, tap **Search again**.
 
+![Add shows after a refresh of "kitchen" failed: the last results line, the directory's error and Search again above the one result](/img/screenshots/web-player/find-shows-last-results.png)
+
 ![Add shows on a phone: the search results](/img/screenshots/web-player/phone-find-shows.png)
 
 ### Follow a feed by its address {/* #following-a-feed-by-its-address */}
