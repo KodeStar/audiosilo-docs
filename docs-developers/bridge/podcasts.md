@@ -744,9 +744,10 @@ their one written copy.
 | `podcastDiscoveryProviders()` | `GET /podcasts/discovery/providers` |
 | `searchPodcastDirectory({q, provider, country?, limit?})` | `GET /podcasts/discovery/search`; `country` is sent only with `provider=itunes` |
 | `discoveryArtworkUrl(rel)` | no request: the artwork route rebuilt from the result's 64-hex `id` with the media token (`?id=&token=`); `null`, an absolute URL, another route or a bad id gives `null` (the placeholder) |
-| `followPodcastByUrl(libraryId, feedUrl, {private})` | `POST /podcasts/follow` with exactly `{library_id, feed_url}`, plus `private: true` only when set |
+| `followPodcastByUrl(libraryId, feedUrl, {private, title})` | `POST /podcasts/follow` with exactly `{library_id, feed_url}`, plus `private: true` only when set and `title` (trimmed) only when given |
+| `dismissPodcastRequest(id)` | `DELETE /podcasts/requests/{id}`, `204`; the server's own `404 request_not_found` (not a proxy's) also resolves, since that request is gone |
 | `checkPodcast(libraryId, path)` | `POST /podcasts/check` with exactly `{library_id, path}` |
-| `importOpml(libraryId, body)` | `POST /podcasts/opml/import?library_id=` with the raw bytes (a `Blob` on the web, a `Uint8Array` on a device; `send()`'s `raw` body), always `Content-Type: text/x-opml`, no compression, a timeout of at least 45 s (the client's own when longer; the server's import budget is 30 s) |
+| `importOpml(libraryId, body)` | `POST /podcasts/opml/import?library_id=` with the raw bytes (a `Blob` on the web, a `Uint8Array` on a device; `send()`'s `raw` body), always `Content-Type: text/x-opml`, no compression, a timeout of 330 s (`OPML_IMPORT_TIMEOUT_MS`), past the server's 5 minute import bound, by which it always answers |
 | `exportOpml()` | `GET /podcasts/opml/export` with the `Authorization` header (no `?token=` link exists); the counts read through `Headers.get`, so Go's `X-Opml-*` spelling matches, and a missing or non-numeric one is `null` |
 
 `ApiError` gains an optional `retryAfterSeconds`. It is `Retry-After` when that
@@ -770,7 +771,13 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   reuses the held results.
 - `useFollowPodcastByUrl` and `useCheckPodcast` are
   `useCapabilityMutation('podcasts', ...)`. `useExportOpml` is
-  `useCapabilityMutation('podcast_opml', ...)`.
+  `useCapabilityMutation('podcast_opml', ...)`, and `useDismissPodcastRequest`
+  `useCapabilityMutation('podcast_request_dismiss', ...)`, which takes the
+  request out of the cached `['myPodcasts', cid]` once it resolves.
+  - `useFollowPodcastByUrl` sends `title` only while the connection's
+    `podcast_request_dismiss` is `true`. The server's decoder refuses unknown
+    fields, so an older server would answer the follow `400` and follow
+    nothing; with the flag unknown the follow goes without it.
   - A `200 following` goes into the cached show list (`storeFollowing`), and
     `['myPodcasts', cid]` is read again. The show list is read again when it lacks
     the show.
@@ -799,6 +806,8 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
     there.
   - Export needs `podcast_opml` and not the demo. It works with the module off.
   - Check for new episodes is for a followed show, under the same rule as adding.
+  - Dismiss on a follow request needs `podcast_request_dismiss`, which works with
+    the module off. The same flag gates the follow's `title` (above).
 
   The flags don't describe the caller, so the refusals (`kid_account`,
   `demo_account`, `no_library_access`, `module_off`, `discovery_off`,
@@ -818,11 +827,17 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   - A `429` shows its `Retry-After` wait when it has one.
 - **Artwork** loads only through the server's proxy (`discoveryArtworkUrl`),
   lazily as the list windows rows in. An image can't see the status, and the route
-  refuses any extra parameter, so there is no cache buster. A failed load mounts
-  the image again with the same URL after 3, 10 and 30 seconds
-  (`artworkRetryDelay`, four tries in all), then keeps the placeholder. A load can
-  fail because the server fetches uncached images a few at a time, and answers
-  `429`/`503`. An expired id is a `404` every time.
+  refuses any extra parameter, so there is no cache buster. A load can fail
+  because the server fetches uncached images a few at a time, and answers
+  `429`/`503`. So a failed load asks the same URL once with a `GET`
+  (`probeDiscoveryArtwork`; the route answers `HEAD` with `405`) and reads the
+  answer (`probeArtwork` in `artwork-retry.ts`). The image then mounts again with
+  the same URL (`artworkRetryDelay`, four tries in all, then the placeholder):
+  - at once when the probe got the image;
+  - never after a refusal no wait mends, such as a `404` (an expired id);
+  - after a `429`/`503`'s `Retry-After` when that is longer than the schedule's
+    wait, at most 60 s, never shorter;
+  - otherwise after 3, 10 and 30 seconds.
 - **Follow by address** checks the address first: http or https with a host, at
   most 2,048 bytes. So a bad address sends nothing. A result's Follow is the same
   call with its `feed_url`.
@@ -831,9 +846,10 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   `null` gives "Exported your shows", and `413 opml_export_limit` has its own
   message. How the file is saved is in
   [Entry points](../frontend/podcasts.md#entry-points).
-- **Check for new episodes** refreshes once after the `202`, with no polling,
-  since a check is not a follow request. `429 checked_recently` and
-  `bridge_unavailable` have their own wording. The button and its timer are in
+- **Check for new episodes** never polls the poll job, which is not a follow
+  request. After the `202` it reads the show list every 3 s until the show's
+  `status.last_checked` moves (two minutes at most), then the show's episodes.
+  `429 checked_recently` and `bridge_unavailable` have their own wording. The button and its timer are in
   [Check for new episodes](../frontend/podcasts.md#check-for-new-episodes).
 - **Copy** never shows the server's English and never says "Bridge". It covers
   all six locales.
@@ -888,10 +904,19 @@ these hold:
 The panel reads each queued row's request live. So the import reads done ("All
 done.") only once none is still being added and none failed.
 
+**Row names.** The server's answer never echoes the list, so the rows are named
+from the picked bytes (`outlineEntries` in `opml-feeds.ts`: an outline's `title`,
+else its `text`, in the same walk as the addresses). `useOpmlImport` also
+remembers each follow request it saw end while the import is the page's
+(`rememberEnded`). A row whose request was dismissed since, in the requests list
+or on another device, keeps the state it ended in (`withEndedRequests`) and is
+never read as queued again.
+
 **A row that could not be added** has its own **Try again**. That is an `error`
 row, `recently_failed` included, or a row whose request ended `cancelled`. Try
 again is a single `POST /podcasts/follow` by address, which the server always
-tries again.
+tries again. It sends the row's name from the list as `title`, under the same
+flag rule as any follow.
 
 - The server reports only a redacted label, so the address comes from the picked
   bytes. `outlineFeeds` in `opml-feeds.ts` counts outlines as the server's parser
@@ -906,8 +931,15 @@ tries again.
 - A wave that moves no row out of `limited` stops as `stalled` (Try again).
 - `429 opml_rate_limited` and `503 opml_busy` wait their `Retry-After`, else 30 s
   and 2 s. Five such answers in a row stop the import.
-- Any other refusal stops as `failed` with its code. A network failure or a
-  timeout stops as `failed` with none.
+- Any other refusal stops as `failed` with its code.
+- An upload with no answer (a network failure, the client's 330 s timeout, a
+  gateway's `502`/`504`: `isServerAwayError`) stops as `failed` with the player's
+  own `no_answer`. The server carries an import on when its upload is given up,
+  so this never says the list failed: the copy says the server may still be
+  adding the shows, and the shows and follow requests are read again.
+- The server's own `503` with no code (its 5 minute bound, or it stopping) stops
+  as `failed` with `server_timeout`: the rows it reached are done, and Try again
+  adds the rest.
 - Try again re-uploads, which is safe: rows already done answer
   `already_following` or `already_queued`. The server gives back the rate-limit
   token of an import it answered `503 opml_busy` or `400 invalid_opml`, so that

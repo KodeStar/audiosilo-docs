@@ -2137,8 +2137,15 @@ and client gates. Artwork takes a media `?token=`.
 - It counts omissions in `X-OPML-Exported`, `X-OPML-Omitted-Private` and
   `X-OPML-Omitted-Unavailable`.
 
+From 2.7.0 a follow request carries the show's name (`Request.title`): from a
+follow's optional `title`, or from an imported outline, never for a private feed.
+The listener dismisses their own failed or cancelled request with
+`DELETE /podcasts/requests/{id}` (core, not the module's). Both come with the
+flag `podcast_request_dismiss`, and the player sends `title` only while it is
+`true`, since an older server refuses the unknown field.
+
 An open subscribe is reused only at the same privacy (`409 privacy_conflict`). The
-optional flags are `podcast_discovery` and `podcast_opml`. The exact shapes and the
+optional flags are `podcast_discovery`, `podcast_opml` and `podcast_request_dismiss`. The exact shapes and the
 player's rules (search on submit, artwork through the proxy only, the import waves,
 export with the `Authorization` header) are in
 [Player: discovery and OPML](../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2)

@@ -694,6 +694,7 @@ therefore never staler than one built fresh, and nothing on the wire changes
     "podcast_fetch": true,
     "podcast_discovery": false,
     "podcast_opml": true,
+    "podcast_request_dismiss": true,
     "queue": true,
     "collections": true,
     "user_stats": true,
@@ -840,6 +841,7 @@ client gate.
 | `podcast_fetch` | optional. `true` means the server supports the [on-demand, status and Retry protocol](reference.md#podcast-fetch-status-and-retry), even when the module is off or the Bridge is offline. An older server omits it |
 | `podcast_discovery` | directory search. `true` when directory search was enabled at start (`podcasts.discovery.enabled`) **and** the Podcasts module is on, whatever the Bridge's state or a directory key. Sent `false` otherwise. Absent on older servers, so treat absent as unsupported |
 | `podcast_opml` | OPML import and export. Always `true`: the server speaks the protocol even offline or with the module off. The import still needs the module, and the export does not. Absent on older servers, so treat absent as unsupported |
+| `podcast_request_dismiss` | from 2.7.0, always `true`: a listener can [dismiss their own failed or cancelled follow request](reference.md#dismissing-a-follow-request), even with the module off, and `POST /podcasts/follow` takes an optional `title`. An older server omits the flag and answers a follow carrying `title` with `400`, so send `title` only when the flag is `true` |
 
 Keep `podcast_fetch` separate from the live `podcasts` module flag
 ([managed modules](#managed-modules)). Ready media and status reads stay core.

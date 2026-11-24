@@ -174,6 +174,8 @@ The book was moved, renamed or removed since the link was made, or you can't see
 
 An episode marked **Plays on demand** downloads first, which can take a minute or two. If it stops with a message, see [Playing an episode](./listening/podcasts.md#playing-an-episode). Your admin can check that **Podcasts** is on in **Server > Settings > Modules** and the [Bridge](./admin/bridge.md) is online.
 
+If the episode says your server can't read this show's folder, the server can't get any of its episodes. Ask the person who runs your server to check that folder's permissions. Trying again won't help until they do.
+
 No podcasts at all? Update the app, and ask your admin whether you can see the podcast library.
 
 ### An episode download says the server couldn't get it

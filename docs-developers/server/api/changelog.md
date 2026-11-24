@@ -60,6 +60,20 @@ Additions:
   podcast show ([Podcast read routes](reference.md#podcast-read-routes)).
   Neither this nor `generated_parts` has a capability flag. A client reads each
   field when it is there.
+- **Naming and dismissing follow requests.** `POST /podcasts/follow` takes an
+  optional `title` beside `feed_url` (cleaned to one line of at most 1,000
+  bytes, any URL in it redacted, never kept for a private feed), and an OPML
+  import labels each public request it queues with the outline's title. A
+  request row on `GET /me/podcasts` and in the follow's `202` carries it as
+  `title`, `null` when there is none.
+  [`DELETE /podcasts/requests/{id}`](reference.md#dismissing-a-follow-request)
+  hides the caller's own failed or cancelled request from their list: `204`,
+  `403 demo_account` or `no_library_access` (the podcast client gate),
+  `404 request_not_found` (also for another user's request) and
+  `409 request_open` (open, done, or its outcome not recorded yet). It works
+  with the Podcasts module off. Capability `podcast_request_dismiss`, which
+  also marks a server whose follow takes `title`: an older one refuses the
+  field with `400`.
 - **Cover versions on rows that name a book.** `cover_version` on progress,
   favourite, folder and household rows (server#215): the book's own
   [`cover_version`](reference.md#get-apiv1librariesidbooks), omitted when the

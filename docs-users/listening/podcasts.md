@@ -39,7 +39,7 @@ Tap **Follow** on a show's page. Tap it again to unfollow.
 
 Following a show puts its new episodes on your Home and tells the server to keep fetching them. Everyone who follows a show shares the same downloaded episodes.
 
-Your server checks the shows people follow by itself. To look now, tap **Check for new episodes** on the show's page.
+Your server checks the shows people follow by itself. To look now, tap **Check for new episodes** on the show's page. When the check is done, the line beside the button says how many new episodes it found, or **No new episodes**. Before you check, that line says when your server last checked the show.
 
 ## Adding shows
 
@@ -49,7 +49,9 @@ You can add shows yourself in three ways: search a podcast directory, paste a fe
 2. Tap **Add shows**.
 3. Choose **Search**, **Feed address** or **Import a list**.
 
-A show the library already has is followed at once. A new show takes a moment while your server fetches it. Until then it's listed under **Shows being added**, which says why if it couldn't be added.
+A show the library already has is followed at once. A new show takes a moment while your server fetches it. Until then it's listed under **Shows being added**, by its name when the directory or your list gave one, and by its address otherwise. If it couldn't be added, the list says why.
+
+To clear a show that couldn't be added, or one that was cancelled, tap the **X** beside it.
 
 You need full access to the library to add shows. Kids accounts and the demo can't add or follow shows. If **Add shows** is missing, your server can't fetch podcasts right now. Ask your admin.
 
@@ -83,6 +85,8 @@ Every podcast has a feed address, usually ending in `.xml` or `/rss`. Find it on
 3. For a paid or members-only feed, turn on **Private feed**.
 4. Tap **Follow**.
 
+A show the library already has says you follow it, with **Open show**. A new one says **Adding the show** until your server has fetched it. Then the line says you follow it, or why it couldn't be added, or that adding it was cancelled.
+
 ### Import a list from another app {/* #importing-a-list-from-another-app */}
 
 ![Add shows on Import a list: an import part way through](/img/screenshots/web-player/find-shows-import.png)
@@ -92,7 +96,9 @@ Every podcast has a feed address, usually ending in `.xml` or `/rss`. Find it on
 3. Pick the file. It can be up to 1 MB.
 4. Keep the page open while it works.
 
-Your server adds five new shows at a time, so a long list goes in batches. The player sends each batch by itself. If you leave the page, choose the same file again to carry on. Shows already added are skipped.
+Each show is listed by its name from your list, when the list gives one. Your server adds five new shows at a time, so a long list goes in batches. The player sends each batch by itself. If you leave the page, choose the same file again to carry on. Shows already added are skipped.
+
+A long batch can take your server a few minutes. If it doesn't answer in time, the page says your server may still be adding the shows. Look in **Shows** in a few minutes, or tap **Try again**.
 
 If your server can't add shows for now, the rest of the list says **Can't be added right now**. Tap **Try again** later to carry on.
 
@@ -129,7 +135,7 @@ If the server can't get the episode, the player says why and offers **Try again*
 
 ![The player explaining that the episode is too large for the server, with Try again and Cancel](/img/screenshots/web-player/episode-fetch-retry.png)
 
-**Try again** asks the server to fetch the episode again.
+**Try again** asks the server to fetch the episode again. If your server can't read the show's folder, the player offers no **Try again**. See [Troubleshooting](../troubleshooting.md#a-podcast-episode-wont-start).
 
 ### When an episode ends
 
