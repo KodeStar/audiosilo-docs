@@ -557,18 +557,18 @@ The Add shows shots (`web-player/find-shows-search.png`, `find-shows-address.png
 browser context of its own (the same signed-in storage). Every way in ends in a follow,
 which needs an online Bridge, and a search would reach Apple, so those contexts stand in
 for the server with Playwright routes (`routeFindShows` in `capture-web.mjs`): `/server`
-says `podcasts`, `podcast_discovery`, `podcast_opml` and `podcast_request_dismiss`; the directory's providers,
-search and artwork answer from `fixtures/podcasts.json`'s `directory` (made-up shows, one
-of them the seeded The Slow Kitchen; `seed-podcasts.mjs` draws their artwork into
-`.cache/podcast-directory`, beside the podcast root, so the scan never sees it); a follow
-by address answers 200 following for a seeded show's feed and 202 with a new request for
-any other, named by the `title` the follow sent; `/me/podcasts` is the real answer with
-the pass's made-up follow requests (one followed by address being added, and one a
-directory result named that failed, so it shows its name and Dismiss); and the OPML import answers one first wave (two
-following, five being added, a duplicate, an invalid entry, one passed over because
-its follow failed within the hour (`recently_failed`, naming that failed request, so it
-shows that request's reason) and three waiting) while its five requests stay open, so
-the page holds on its "Waiting for the shows being added" line. The import and podcast
+says `podcasts`, `podcast_discovery`, `podcast_opml` and `podcast_request_dismiss`; the
+directory's providers, search and artwork answer from `fixtures/podcasts.json`'s
+`directory` (made-up shows, one of them the seeded The Slow Kitchen; `seed-podcasts.mjs`
+draws their artwork into `.cache/podcast-directory`, beside the podcast root, so the scan
+never sees it); a follow by address answers 200 following for a seeded show's feed and 202
+with a new request for any other, named by the `title` the follow sent; `/me/podcasts` is
+the real answer with the pass's made-up follow requests (one added by address and still
+being added, and one failed request named from a directory result, so it shows its name
+and Dismiss); and the OPML import answers one first wave (two following, five being
+added, a duplicate, an invalid entry, one passed over because its follow failed within
+the hour (`recently_failed`, naming that failed request, so it shows that request's
+reason) and three waiting) while its five requests stay open, so the page holds on its "Waiting for the shows being added" line. The import and podcast
 show shots grow the viewport to the end of the list (`fitViewportTo` in `lib.mjs`), and
 the search shots wait for the directory artwork to load (`imagesLoaded`). For
 `web-player/find-shows-last-results.png` the search answers one result once and
