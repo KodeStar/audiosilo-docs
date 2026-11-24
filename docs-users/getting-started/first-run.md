@@ -221,7 +221,7 @@ On a new server with this set, the message the server prints on its first start 
 
 The data folder (`--data`, or `/data` under Docker) holds:
 
-- `config.yaml`: the server's settings, written by the admin console.
+- `config.yaml`: the server's settings, written by the admin console. It holds only the settings that differ from the defaults, so on a new server it has little more than the server's ID.
 - `audiosilo.db`: accounts, listening progress, bookmarks and the index of your books. Back this up.
 - `backups/`: the server's [backups](../admin/backups.md) of `audiosilo.db`, unless you set another backups folder.
 - `certs/` and `selfsigned-*.pem`: certificates.

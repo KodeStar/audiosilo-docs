@@ -31,7 +31,14 @@ moment you flip them. The console warns you before you leave a card with
 unsaved changes.
 
 Your changes are written to `config.yaml` in the server's data folder, so they
-last across restarts.
+last across restarts. The file holds only the settings that differ from the
+defaults. A setting you leave at its default isn't in it, so when a later
+version changes that default, your server follows. Set a value back to its
+default and its line leaves the file the next time the server saves it.
+
+To change a setting in the file yourself, add its key if it isn't there. The
+[configuration reference](/developers/server/configuration) lists every key and
+its default, as does `config.example.yaml` in the server's source.
 
 ### When a change takes effect
 
@@ -55,9 +62,9 @@ starting the program again.
 :::warning[If the server won't start after a change]
 A port that something else uses, or a Let's Encrypt name that doesn't point at
 the server, can stop it from starting. Open `config.yaml` in the data folder,
-put the old value back (the keys are in the
-[configuration reference](/developers/server/configuration)), and start it
-again.
+put the old value back, or delete the line to go back to the default (the keys
+are in the [configuration reference](/developers/server/configuration)), and
+start it again.
 :::
 
 ### Settings set somewhere else

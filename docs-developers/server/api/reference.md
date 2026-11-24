@@ -1924,8 +1924,9 @@ Every key is always present; `results` is `[]` when nothing matched.
 `query` echoes the cleaned search text and `country` is `null` for Podcast
 Index. In each result:
 
-- `title` and `author` are plain text (controls stripped, at most 500
-  characters; `author` is `""` when the directory gave none). Never HTML. A
+- `title` and `author` are plain text on one line (each control character
+  becomes a space, trimmed, at most 1,000 bytes cut at a character's boundary;
+  `author` is `""` when the directory gave none). Never HTML. A
   row without a title is dropped.
 - `feed_url` is the normalized public feed URL, the value to follow. Rows
   whose feed looks private (a query, user info, a token-like path, a
@@ -2225,8 +2226,9 @@ a valid, empty document. The body is deterministic OPML 2.0:
 ```
 
 UTF-8, LF line endings, two-space indent, flat outlines with `type`, `text`,
-`title` and `xmlUrl` in that order (titles control-stripped, at most 500
-characters, `Podcast` when empty), sorted by URL bytes. A public URL followed
+`title` and `xmlUrl` in that order (titles on one line, each control
+character a space, trimmed, at most 1,000 bytes cut at a character's boundary,
+`Podcast` when empty), sorted by URL bytes. A public URL followed
 in several libraries is written once, titled from the lowest library id then
 show path. No date, user or server name is written, and nothing but the
 subscription: no progress, policies, pending requests or files.

@@ -17,7 +17,7 @@ Both need a domain name, such as `books.example.com`, pointing at your home.
 3. **Turn on HTTPS** with [Let's Encrypt](#a-real-certificate-with-autocert-lets-encrypt) or a [reverse proxy](#behind-a-reverse-proxy).
 4. **Set the public address** so invite links and QR codes use it (see [Tell the server its public address](#tell-the-server-its-public-address)).
 
-You can change these settings in the admin console under [Server > Settings](../admin/server.md#settings), or in `config.yaml` in the data folder. HTTPS settings apply at the next restart. An `AUDIOSILO_*` environment variable wins over both, and the console then shows that setting as locked.
+You can change these settings in the admin console under [Server > Settings](../admin/server.md#settings), or in `config.yaml` in the data folder. That file holds only the settings that differ from the defaults, so add a key that isn't there yet (the [configuration reference](/developers/server/configuration) lists them all). HTTPS settings apply at the next restart. An `AUDIOSILO_*` environment variable wins over both, and the console then shows that setting as locked.
 
 ## Ports and firewalls
 
