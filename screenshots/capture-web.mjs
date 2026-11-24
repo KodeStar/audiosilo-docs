@@ -54,6 +54,7 @@ import {
   signInWithPassword,
   sleep,
   slug,
+  sqlQuote,
   sqliteAt,
   stamp,
   step,
@@ -234,7 +235,6 @@ function seedListeningYear(userId, libraryId, books) {
   if (!books.length) throw new Error('no seeded books to listen to');
   let state = 20261008;
   const rand = () => ((state = (state * 1103515245 + 12345) % 2147483648) / 2147483648);
-  const q = (v) => `'${String(v).replace(/'/g, "''")}'`;
   const rows = [];
   const now = Date.now();
   // Every day of the last year but today (the warm-up's own listening is today's): most
@@ -259,8 +259,8 @@ function seedListeningYear(userId, libraryId, books) {
       const startPos = Math.round(rand() * 1800);
       const listened = minutes * 60;
       rows.push(
-        `(${userId}, ${libraryId}, ${q(b.rel_path)}, ${SEEDED_TOKEN}, 'Pixel 9', 'AudioSilo', '1.3.0', 'android', ` +
-          `${q(new Date(at).toISOString())}, ${q(new Date(at + listened * 1000).toISOString())}, ` +
+        `(${userId}, ${libraryId}, ${sqlQuote(b.rel_path)}, ${SEEDED_TOKEN}, 'Pixel 9', 'AudioSilo', '1.3.0', 'android', ` +
+          `${sqlQuote(new Date(at).toISOString())}, ${sqlQuote(new Date(at + listened * 1000).toISOString())}, ` +
           `${startPos}, ${startPos + listened}, ${Math.max(b.duration ?? 0, startPos + listened)}, 1, ${listened})`,
       );
     }

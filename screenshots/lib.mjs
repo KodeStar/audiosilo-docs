@@ -204,6 +204,9 @@ export const submitSignIn = async (p, password) => {
   await p.getByRole('button', {name: 'Sign in', exact: true}).click();
 };
 
+// A value as an SQL string literal, for the statements sqliteAt runs.
+export const sqlQuote = (v) => `'${String(v).replaceAll("'", "''")}'`;
+
 // A sqlite3 CLI runner for one database: waits out a busy writer, throws with
 // sqlite3's own message, and returns its output.
 export const sqliteAt = (db) => (sql) => {
