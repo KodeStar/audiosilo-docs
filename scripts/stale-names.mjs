@@ -23,7 +23,9 @@
 // pages (docs-developers/bridge/, docs-developers/meta/): those name their own
 // services' routes and settings. A name a page means to keep (a planned
 // route, another repo's variable) goes in scripts/stale-names-allow.json with
-// why. npm run names:sync re-pins after a server change.
+// why, as the exact name or as a `pattern:` key (a regular expression over the
+// whole name) for a family of names. npm run names:sync re-pins after a server
+// change.
 
 import {execFileSync} from 'node:child_process';
 import {readFileSync, realpathSync, writeFileSync} from 'node:fs';
@@ -274,28 +276,42 @@ export function staleNames(file, text, names) {
 
 // ---- the commands ---------------------------------------------------------
 
+const PATTERN = 'pattern:';
+
+/** Exact keys take precedence. A pattern: key is a regular expression over the whole name. */
+export function allowList(entries) {
+  const keys = Object.keys(entries);
+  const unused = new Set(keys);
+  const patterns = keys
+    .filter((key) => key.startsWith(PATTERN))
+    .map((key) => ({key, re: new RegExp(`^(?:${key.slice(PATTERN.length)})$`, 'u')}));
+  return {
+    unused,
+    allows(name) {
+      const key = Object.hasOwn(entries, name) ? name : patterns.find(({re}) => re.test(name))?.key;
+      if (key === undefined) return false;
+      unused.delete(key);
+      return true;
+    },
+  };
+}
+
 function lint() {
   const names = JSON.parse(readFileSync(SNAPSHOT, 'utf8'));
-  const allow = JSON.parse(readFileSync(ALLOW, 'utf8'));
+  const allow = allowList(JSON.parse(readFileSync(ALLOW, 'utf8')));
   const files = docsPages('stale-names');
-  const used = new Set();
   let failures = 0;
   for (const file of files) {
     const text = readFileSync(join(ROOT, file), 'utf8');
     for (const h of staleNames(file, text, names)) {
-      if (h.name in allow) {
-        used.add(h.name);
-        continue;
-      }
+      if (allow.allows(h.name)) continue;
       failures++;
       console.error(`${file}:${h.line}: ${h.kind} \`${h.name}\` is not in ${REPO}@${names.ref.slice(0, 12)}`);
     }
   }
-  for (const name of Object.keys(allow)) {
-    if (!used.has(name)) {
-      failures++;
-      console.error(`scripts/stale-names-allow.json: \`${name}\` is named by no page now (or the server has it): remove it`);
-    }
+  for (const key of allow.unused) {
+    failures++;
+    console.error(`scripts/stale-names-allow.json: \`${key}\` is named by no page now (or the server has it): remove it`);
   }
   if (failures > 0) {
     console.error(

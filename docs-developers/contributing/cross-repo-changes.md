@@ -74,11 +74,12 @@ re-pins to its merge commit:
    diff: it is the wire change as the player will see it. The server's gate
    fails until the golden matches.
 2. **Merge the server pull request.**
-3. **The player.** Run `npm run wire:sync` (it reads `../audiosilo-server` at
-   `origin/main`; `-- --server <dir> --ref <rev>` for another checkout or
-   commit). It copies the goldens into `src/api/__wire__/` and pins the merge
-   commit in `source.json`. Then change `types.ts` until the parity test
-   passes: a new field as an optional one (older servers don't send it), a
+3. **The player.** Run `npm run wire:sync` (it fetches `../audiosilo-server`
+   and copies its `origin/main`; `-- --server <dir> --ref <rev>` for another
+   checkout or commit). It copies the goldens into `src/api/__wire__/` and pins
+   the commit in `source.json`. Then change `types.ts` until the parity test
+   passes: a new field as an optional one (older servers don't send it), a new
+   golden as an `ENVELOPES` entry naming the type `client.ts` reads it as, a
    field the player deliberately skips in the test's `UNMIRRORED` list with the
    reason. CI's `npm run wire:check` fails while the copy and the pinned
    commit's goldens differ.

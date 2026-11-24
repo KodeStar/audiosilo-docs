@@ -1,6 +1,6 @@
 ---
 title: The steward
-description: "The maintainer's reviewer inside audiosilo-meta-sync. It merges ready data pull requests on audiosilo-meta through the series-completion bot's own gate, fixes flagged or red ones with a sandboxed agent, and researches the data issues intake could not finish."
+description: "The maintainer's reviewer inside audiosilo-meta-sync. It merges ready data pull requests on audiosilo-meta through the series-completion bot's own gate (a fork's through a mirror branch), fixes flagged or red ones with a sandboxed agent, handles Dependabot updates, and researches the data issues intake could not finish."
 ---
 
 ## What it is
@@ -11,8 +11,11 @@ The steward is a second service inside the
 steward reviews **everyone else's** data pull requests and data issues on
 [audiosilo-meta](./overview.md) on the maintainer's behalf. It merges what is
 ready, fixes what is not, and answers the issues the intake bot could not
-finish. Nothing in its scope waits for a person, and nothing it touches is
-closed and forgotten.
+finish. A fork's data pull request reaches the gate through a mirror (see
+[Pull requests from forks](#pull-requests-from-forks)), and in the repositories
+its configuration names the steward also merges Dependabot updates (see
+[Dependabot pull requests](#dependabot-pull-requests)). Nothing in its scope
+waits for a person, and nothing it touches is closed and forgotten.
 
 The policy side is the "The steward" section of the repo's `GOVERNANCE.md`.
 This page is the mechanism.
@@ -52,8 +55,9 @@ The steward classifies every open pull request on audiosilo-meta on each tick
 |---|---|
 | The sync bot's own (`bot-sync`, `sync/` branch) | Nothing. |
 | Draft | Nothing, and it never pushes to or deletes the branch. |
-| Code: any file outside `data/`, or a symlink or submodule in the tree | Never merged, never pushed to. The steward posts one agent-written review per head, and a maintainer decides. |
-| Fork, or a base other than `main` | Listed on the report. `ai-verify` cannot run on a fork, so it can never pass the gate. |
+| Code from a branch of the repository: any file outside `data/`, or a symlink or submodule in the tree | Never merged, never pushed to. The steward posts one agent-written review per head, and a maintainer decides. |
+| Fork into `main` | Mirrored to a `steward/fork-N` pull request when `SYNC_STEWARD_FORKS=on` and the head is eligible, otherwise listed on the report (see [Pull requests from forks](#pull-requests-from-forks)). A fork that changes code gets no agent review: with the switch on, one comment says why it is not mirrored. |
+| A base other than `main` | Listed on the report. |
 | Oversize: a data change larger than the merge review bound | Split into parts within the bound, each merged through the gate (see [Splitting an oversize pull request](#splitting-an-oversize-pull-request)). |
 | Data | Merged through [the gate](#the-gate), or fixed. |
 
@@ -195,6 +199,72 @@ then does the steward close the original with a link.
 - **A person merges the original first.** The superseding pull request is left
   open and handled as usual, since it may carry a fix `main` lacks.
 
+### Pull requests from forks
+
+A fork's own checks run without the repository's secrets and `ai-verify` does
+not run on it at all, so its pull request cannot pass the gate. With
+`SYNC_STEWARD_FORKS=on` the steward carries it there through a **mirror**. With
+it off (the default), a fork is listed on the report and waits for a maintainer.
+A mirror already open carries on as an ordinary steward pull request with the
+head it holds: a later push to the fork is neither judged nor carried over, so
+the mirror may merge the earlier head, and the fork then stays open.
+
+**Which heads are eligible.** Before any push, the service (never the agent)
+checks the fork's exact head against its merge base with `main`. The head is
+eligible only when:
+
+- it changes something;
+- every path it changes, and every path any of its commits writes, is a regular
+  file (mode 100644, or a removal) plainly named `data/**/*.json`. A dotfile, a
+  script, `data/go.mod` or an executable bit makes it ineligible. A rebase
+  replays each commit, so a file one commit adds and a later one removes makes
+  it ineligible too;
+- the tree outside `data/` is the merge base's entry for entry, so `.github/`,
+  the code and the scripts CI runs are `main`'s, never the contributor's;
+- `data/` holds no symbolic link or submodule;
+- every commit between the two was read (a history the fetch cut short is
+  refused);
+- the change fits the read bounds: 3000 changed files, 16 MiB of data diff and
+  1 MiB of commit text;
+- a secret scan over every commit's patch, author, committer and message finds
+  none of the service's secrets.
+
+**The mirror.** An eligible head is pushed unchanged to `steward/fork-N`, and
+the steward opens a pull request with the fork's title followed by
+"(mirrored from #N)". Its body credits the contributor and links the fork's
+pull request, and copies nothing else from the fork's body. A closing keyword
+in the title is neutralized ("Fixes #12" reads "ref #12"). The fork gets one
+comment pointing at the mirror.
+
+From then on the mirror is an ordinary steward pull request: rebased, fixed,
+split and merged through [the gate](#the-gate) like any other, under the
+[community layer](#the-community-layer)'s delete-only rule in that repository.
+When the steward merges it whole, it merges **squashed** (never as a merge
+commit), with the steward's own commit message, which credits the contributor in
+plain prose ("Contributed by @login in #N."). The fork's commit messages do not
+reach `main` that way, so neither they nor the mirror's merge close an issue. A
+mirror carried in parts merges part by part, with no credit line, and ends as
+the next list says.
+
+What happens next:
+
+- **The contributor pushes again.** The new head is checked again. An eligible
+  one is rebuilt onto the mirror's branch and judged afresh by the gate; a
+  steward fix on the earlier head is dropped, and the mirror says so.
+- **The new head is not eligible.** No push, one comment per head saying why,
+  and the fork stays open for a maintainer. An open mirror of an earlier head
+  is withdrawn: closed with its branch deleted.
+- **The contributor closes the fork unmerged.** The mirror is withdrawn the
+  same way. Reopening the fork mirrors it again.
+- **The mirror closes without merging whole.** A maintainer closed it, or its
+  split carried it to `main` in parts. The steward does not open it again for
+  that head, and does not close the fork: the fork gets one comment and waits
+  for a maintainer. A new push is judged afresh.
+- **The mirror merges.** Once every entry the fork changed is verified on
+  `main`, the steward closes the fork's pull request as superseded, with a
+  comment linking the mirror and its merge commit. A fork GitHub already shows
+  as merged is left as it is.
+
 ### Attempts and backoff
 
 Attempts back off (immediately, then 1 hour, 4 hours, 12 hours, then daily) and
@@ -309,6 +379,50 @@ key or a collision stays blocked until that is settled.
   any of its keys (a person's hand re-key landed first), or when only collisions
   are left, as long as it is still a plain data pull request.
 
+## Dependabot pull requests
+
+With `SYNC_STEWARD_DEPENDABOT_REPOS` naming repositories, the steward also
+handles their Dependabot pull requests, through a gate of its own:
+
+- **Eligible** means it was opened by `dependabot[bot]` from a branch of the
+  repository itself into its default branch and is not a draft, every commit
+  is Dependabot's, committed and signed by GitHub, and every file is a
+  dependency manifest, lockfile, Dockerfile, compose file, workflow or
+  `action.yml`. In the data and community repositories an
+  ineligible one is reviewed as code like any other; elsewhere it is listed
+  with the reason.
+- A **patch or minor** update merges once every check suite and check run on
+  its exact head passed, no commit status failed or is pending, GitHub calls it
+  `clean`, the head has sat still for two minutes, and it is up to date with
+  its base. One with no CI on its head (no check suite holding a check run, or
+  every run skipped) is never merged. At most one merges per repository per
+  tick.
+- A **major** update, or one whose metadata states no update type (a Docker
+  tag, say), is reviewed by the sandboxed agent first, read-only, and merges
+  only on a safe verdict.
+- **Red CI** is re-run once, then `@dependabot recreate`, then listed as stuck.
+
+**Behind or conflicting.** A branch that is behind or conflicts gets
+`@dependabot rebase` once per head, and a conflict that outlives it gets
+`@dependabot recreate`. A branch still only behind 30 minutes after its rebase
+was asked is listed as stuck.
+
+One exception, in the data and community repositories only (the maintainer's
+decision of 2026-11-24): a head that is ready except for being behind merges as
+it is, when it changes nothing under `data/` and `main` has changed only `data/`
+since the merge base. The two changes cannot overlap, so the tree outside
+`data/` that lands is exactly the one its CI passed on, and `data/` is
+`main`'s. The steward reads `main`'s net change since the merge base, and skips
+the exception when GitHub's comparison lists nothing or may be cut short (more
+than 250 commits, or 300 files or more). Any other case, such as `main`
+changing `.github/` or `go.mod`, a head that changes `data/`, or GitHub calling
+it `behind` because branch protection requires an up-to-date branch, goes
+through the rebase steps above.
+
+The steward never updates a Dependabot branch itself. That update would run as
+the steward's token, and the branch's next CI would get the repository's full
+secrets instead of Dependabot's restricted set.
+
 ## Issues
 
 An issue is in scope only if it carries `data` or a `data:*` label. The steward
@@ -393,6 +507,8 @@ whenever it changes.
 | `SYNC_STEWARD_MAX_ENTRIES` | `25` | The most entries one steward-authored change may touch. |
 | `SYNC_STEWARD_MERGE_MAX_ENTRIES` | `100` | The largest data pull request the steward merges whole. A larger one is split into parts of at most this many entries. |
 | `SYNC_STEWARD_COMMUNITY_REPO` | - | Optional `owner/name` of the community layer (`KodeStar/audiosilo-meta-community`) the steward also looks after, through that repository's own gate. The PAT needs the same permissions on it. |
+| `SYNC_STEWARD_FORKS` | `off` | `on` mirrors eligible fork pull requests (see [Pull requests from forks](#pull-requests-from-forks)), in the community repository too. |
+| `SYNC_STEWARD_DEPENDABOT_REPOS` | - | Optional comma-separated `owner/name` list of repositories whose Dependabot pull requests the steward handles (see [Dependabot pull requests](#dependabot-pull-requests)). The PAT needs Contents, Pull requests, Actions, Workflows and Issues read and write, and Commit statuses read, on each. |
 | `SYNC_STEWARD_REPORT_ISSUE` | - | Optional `owner/repo#n` whose body carries the report. |
 | `SYNC_STEWARD_MIN_AVAILABLE_MB` | `3072` | An agent task starts only when at least this much memory is available: the host's, or the container limit's headroom. |
 | `SYNC_STEWARD_DAILY_AGENT_RUNS` | `24` | The most agent runs the steward starts per UTC day (`0` = no cap). |
