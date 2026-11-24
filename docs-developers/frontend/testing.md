@@ -26,9 +26,12 @@ the code *testable* in the first place.
   - `collectCoverageFrom` covers `src/**/*.{ts,tsx}` but **excludes
     `src/app/**`**. Screens are intentionally out of coverage scope (see
     [Conventions](#conventions));
-  - `coverageProvider: 'v8'`, because Babel's coverage instruments the code before
-    the React Compiler runs, and the compiler then skips any function with a default
-    parameter or prop, so a coverage run (CI's) would test those uncompiled.
+  - with the compiler on, the transform adds `babel-plugin-react-compiler` as a
+    plugin (with `babel-preset-expo`'s options) rather than through the preset, so it
+    runs before `--coverage`'s counters are added. Through the preset it ran after
+    them, and it skips any function the counters wrapped (every default parameter or
+    prop), so a coverage run (CI's) tested those uncompiled. V8 coverage was tried
+    and does not fit a CI runner (over 20 GB for the suite).
 - **@testing-library/react-native 14** for component and hook tests. Its
   matchers are **built in**. There is no `@testing-library/jest-native`
   dependency; don't add one.
