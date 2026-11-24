@@ -281,8 +281,12 @@ becomes an `ApiError` (a 404 is the screen's `missing`).
   part).
 - **Held to 512 MB in all.** After each fetch `trimCache` holds the whole cache,
   every connection's copies together, to `MAX_EBOOK_BYTES`, so one book of the
-  largest size the reader opens always fits. The copies fetched longest ago
-  (`modificationTime`) go first, never the one just fetched or a live part. A copy
+  largest size the reader opens always fits. The copies opened longest ago go
+  first, never the one just fetched or a live part. An open of a cached copy (never
+  the download's own) writes the book folder's `opened` mark, whose
+  `modificationTime` is the copy's last open. A copy with no mark goes by its own
+  `modificationTime`, its fetch. A folder the trim leaves empty goes too, and so do
+  its parents up to the cache's root, unless a fetch is writing under them. A copy
   dropped is fetched again on its next open.
 - **Dropped with its connection**: `clearEbookCache(connectionId)` deletes the
   connection's folder. `reading-progress.ts`'s `onConnectionRemoved` calls it when
@@ -299,10 +303,11 @@ becomes an `ApiError` (a 404 is the screen's `missing`).
   local copy is, a downloaded `book.epub` included. A fetch that comes out longer than that is not
   kept.
 - When free space (`engine.storageEstimate`) is less than the server's size, the
-  cache drops its copies fetched longest ago until there is room.
-  If that is not enough, the open is an `EbookStorageError` before any fetch. So
-  is a fetch the disk refused (a download failure of kind `storage`), or a cache
-  folder or move that failed. None leaves a partial file.
+  cache drops its copies opened longest ago until there is room. When dropping every
+  copy it may drop would still not make the room, it drops none, and the open is an
+  `EbookStorageError` before any fetch. So is a fetch the disk refused (a download
+  failure of kind `storage`), or a cache folder or move that failed. None leaves a
+  partial file.
 
 ## The screen
 

@@ -156,7 +156,9 @@ A private feed is a show only its followers can see, such as a paid feed. Its ad
 
 Nobody else sees a private show, admins included. So a library can look empty to you while other people have shows in it. Private feeds are never exported.
 
-If the Bridge loses a private feed's address, the server can't check the show any more, and the show's page asks you to follow it again. [Follow the feed by its address](#following-a-feed-by-its-address) with **Private feed** on, and the checks start again.
+If the Bridge loses a private feed's address, the server can't check the show any more. The show's page asks you to follow it again. [Follow the feed by its address](#following-a-feed-by-its-address) with **Private feed** on, and the checks start again.
+
+The page asks only when you can follow shows right now. On a kid's account, or while the server's podcasts are off or its Bridge is offline, the page says **Last check failed** instead.
 
 ## Good to know
 
