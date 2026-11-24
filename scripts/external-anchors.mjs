@@ -67,11 +67,12 @@ function explicitIds(file) {
 // other page sets slug or id front matter (a moved page gets a redirect).
 export function checkAnchors(targets, usersDir) {
   const errors = [];
-  const pages = new Map(); // file -> its explicit ids, each page read once
+  const pages = new Map(); // file -> its explicit ids
   for (const page of globSync('**/*.{md,mdx}', {cwd: usersDir}).sort()) {
     const file = join(usersDir, page);
-    pages.set(file, explicitIds(file));
-    for (const id of pages.get(file).repeated) {
+    const found = explicitIds(file);
+    pages.set(file, found);
+    for (const id of found.repeated) {
       errors.push(`${page}: two headings have the explicit id #${id}; give one of them another id`);
     }
   }
@@ -92,9 +93,14 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   const {values} = parseArgs({options: {sync: {type: 'boolean'}, workspace: {type: 'string'}}});
   if (values.sync) {
     const kept = JSON.parse(readFileSync(snapshot, 'utf8'));
-    const targets = mergeTargets(kept, collectAnchors(values.workspace ?? defaultWorkspace()));
+    const found = collectAnchors(values.workspace ?? defaultWorkspace());
+    const targets = mergeTargets(kept, found);
     writeFileSync(snapshot, JSON.stringify(targets, null, 2) + '\n');
     console.log(`external-anchors.json: ${targets.length} targets, ${targets.length - kept.length} added`);
+    const unlinked = kept.filter((target) => !found.includes(target));
+    if (unlinked.length) {
+      console.log(`Kept, though no repo's origin links to them now (remove by hand once no shipped app does):\n${unlinked.join('\n')}`);
+    }
   } else {
     const targets = JSON.parse(readFileSync(snapshot, 'utf8'));
     const errors = checkAnchors(targets, join(ROOT, 'docs-users'));
