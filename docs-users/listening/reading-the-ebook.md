@@ -52,7 +52,7 @@ The top bar hides while you read, so only the page is on screen. It hides 4 seco
 ![The reader with its top bar hidden: only the page of the book](/img/screenshots/web-player/reader-immersive.png)
 
 - **Tap the middle of the page** to show the top bar. Tap the middle again to hide it.
-- **On a keyboard**, press **Tab**. The bar stays while the keyboard is on one of the reader's buttons.
+- **On a keyboard**, press **Tab**, or **Shift+Tab** once you've clicked into the text. The bar stays while the keyboard is on one of the reader's buttons.
 
 The bar stays on screen while **Contents** or **Reading settings** is open, and while VoiceOver or TalkBack is on.
 
