@@ -398,6 +398,15 @@ the toast's Show agree.
 
 **Credits.** `Attribution` (`companion-pieces.tsx`) puts the server's `attribution`
 under every community block. The credit is the server's and is never composed here.
+Both its parts are links (`CaptionLink`): "Community notes from ..." opens the work's
+page on the metadata site (`attribution.source_url`, where CC BY-SA asks the material
+be linked; its screen-reader name is `player.companion.creditSource`) and the licence
+opens its deed (`license_url`). A part whose URL is missing or not http(s) is plain
+text. On the web the link opens a new tab, on a phone the in-app browser
+(`openExternalUrl`). That covers every `Attribution`: the book page's Characters and
+Recaps tabs and their earlier books' rows (each crediting its own work), the companion's
+Who's who and Story so far, About, and Previously on. Search's character credits and the
+end credits' Community row follow the same rule.
 A dimension generated on this server gets the "Generated on this server" mark
 instead (`communityCredit`, `GeneratedMark`). Story so far places its chips by
 `recapMarks` (see [Enriched book metadata](state-and-data.md#enriched-book-metadata)):

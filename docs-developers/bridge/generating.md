@@ -54,23 +54,39 @@ series batch has its own rule ([Queueing it](#queueing-it)).
 | The community has | Generated here | Offered |
 |---|---|---|
 | both characters and a recap list | either or none | no action: "The community already has characters and recaps for this book", with a link to them (`covered`) |
-| one of them, or neither | characters or recaps | **Regenerate** |
-| one of them, or neither | none | **Generate** |
+| one of them, or neither | characters or a recap list the community lacks, so they show | **Regenerate** |
+| one of them, or neither | none that shows | **Generate** |
 
-A whole-book summary alone isn't recaps here: a community work with only a
-`recap_summary` keeps it, and generated recaps fill the list beside it (see
+**Generated and shown** is the one rule both UIs read: a part counts for
+Regenerate when the book has the generated file **and** the community lacks that
+part, so `/meta` lays it in. A file the community's own part masks shows nowhere,
+so it is no reason for Regenerate (nor anything to share): a book whose only
+generated file is masked offers Generate. A whole-book summary alone isn't
+recaps here, on either side: a community work with only a `recap_summary` keeps
+it, and generated recaps fill the list beside it (see
 [generated content](../server/api/reference.md#generated-content) for how
-`work.generated.recap_summary` keeps the summary's credit).
+`work.generated.recap_summary` keeps the summary's credit); a generated
+`recaps.json` with only a summary counts as no recaps, so the book offers
+Generate.
 
-The console decides from the estimate's `has` (`generateAction`: `has.community`
-is the community's own coverage, `has.local` the generated files), the player
-from the book's `/meta` work (`generateOffer`: a dimension counts as the
-community's when it has entries and `work.generated` doesn't name it).
+The console decides from the estimate's `has` (`generateAction` through
+`generatedShown`: `has.local[d] && !has.community[d]`, where `has.community` is
+the community's own coverage and `has.local` every generated file, masked ones
+included). The player decides from the book's `/meta` work (`generateOffer`:
+`work.generated.characters`, or `work.generated.recaps` with a non-empty
+`recaps` list; a masked file never reaches `/meta`). The server pins the two
+readings together (`TestGeneratedShownAgrees`). `has.local` keeps the masked
+files because other checks need them: the dialog's "This replaces the
+characters and recaps generated before" shows whenever the book has either file
+(a job rewrites a masked one too), and Write a description reads them.
 
 The console's covered line links to the book page's Characters and recaps card;
 the player's, shown only to an admin `mayGenerate` allows, opens the book page's
 Characters tab. The companion's empty Who's who and Story so far never show the
-line: an empty panel means the community lacks that half.
+line: an empty panel means the community lacks that half. In the player, a
+failed generate job gives way to the covered line once the community has both
+(no Try again: nothing is left to generate), while an open job still shows its
+status, since it can be cancelled.
 
 The other guards (a job open, the Bridge offline, the four gates above) are
 unchanged. A `chapters.detect` or `sidecars.contribute` job queued or
@@ -119,7 +135,8 @@ the estimate's `can_contribute` is true, and starts on `issue`.
 order, earliest first. Job ids ascend and the claim takes the oldest queued job,
 so the Bridge picks them up in that order. The console's series dialog asks each
 book's brief estimate first (four at a time) and leaves out the books that
-already have recaps (community or generated), those with an open job, and those
+already have recaps (community, or a generated recap list: a summary alone is
+none, so such a book is queued), those with an open job, and those
 it couldn't check; the book dialogs' **Also generate for N earlier books first**
 queues the estimate's `earlier` before the book itself.
 
@@ -147,10 +164,12 @@ The server costs the run from the figures in the Bridge's last heartbeat
 - **`has.community`** is what the book's community work carries
   (`meta.Service.Coverages`: the cached enrichment, else the console's bounded
   lookup), with `has.community_unknown` set when that couldn't be had right now;
-  **`has.local`** is what its indexed attachments carry.
+  **`has.local`** is what its indexed attachments carry, a file the community
+  masks included, and recaps only with a recap list (`catalog.BookAttachmentParts`).
 - **`earlier`** is the books of the same library before this one in its first
   numbered series (any spelling of it, `catalog.EarlierInSeries`), with no
-  generated recaps and, metadata on, no community recaps either (a book the
+  generated recap list (a book whose `recaps.json` holds only a summary is
+  listed) and, metadata on, no community recaps either (a book the
   community couldn't be asked about is left out, never offered on a guess): the
   nearest 10, among at most the nearest 30 checked, in reading order, each with
   its own `asr_hours` and `agent_cost_usd` from its audio.

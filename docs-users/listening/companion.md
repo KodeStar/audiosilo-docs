@@ -25,7 +25,7 @@ Both tabs only show what you've heard. They follow [where you are as you listen]
 
 When the book reaches someone new, a message tells you, such as *"New in Who's who: Teft, Rock"*. Tap **Show** to open Who's who.
 
-A line under both tabs credits the people who wrote them.
+A line under both tabs credits the people who wrote them. Tap it to open the book's page on AudioSilo Meta, or tap the licence to read it.
 
 ## Text
 

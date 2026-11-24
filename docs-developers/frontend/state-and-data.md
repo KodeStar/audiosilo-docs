@@ -687,7 +687,9 @@ Account's signed-in devices and API keys). The pages that read every server list
   - `BookMetaWork.community_description` and `attribution`
     (`BookMetaAttribution`). The server writes the CC BY-SA credit. A screen that
     shows community content must render it beside that content and never compose
-    it; the series page and Search's character group do. `community_description`
+    it, linking its `source_url` (`Attribution`, `CaptionLink`); the series page and
+    Search's character group do. An earlier book's row on the book page credits that
+    work's own `attribution`, never the current book's. `community_description`
     feeds the book page's About card (`aboutContent`).
   - `BookMetaRecording.chapter_count`, which has no reader yet.
   - `BookMetaRecording.librivox` (`BookMetaLibrivox { id, url?, zip_url? }`), only
@@ -1101,7 +1103,12 @@ its credit.
 - When the parts differ, the generated one wears its own chip. The list's chip
   sits under its Story so far heading, and appears again in Story so far over the
   recaps that **Show anyway** reveals.
-- The credit ends the panel whenever a community part shows.
+- On the book page, when the earlier books' recaps follow (`shown.previous`, the
+  community's), the generated parts wear their own chips too, never one heading the
+  panel.
+- The credit ends the panel whenever a community part of this book shows. The
+  earlier books' recaps add none here: each opened row carries its own work's
+  credit.
 
 `seriesRails(series, currentWorkId, picks)` builds one rail per family, showing
 the picked reading order, and drops the current work from it. It drops a rail
@@ -1430,8 +1437,11 @@ palette. Each group carries its own `GroupState` (`supported`, `isLoading`,
   It is not counted again for another book that hasn't reached it.
 
 The counted remainder is the `hidden` number behind "2 more matches after your
-place in the book". The result carries the CC BY-SA `attributions` of the books
-its hits come from, rendered beside the group.
+place in the book". Each hit carries its book's CC BY-SA `attribution`, and
+`characterCredits(hits)` credits the rows on screen only (the first 8 until Show
+all), once per credit, licence and source page. Each credit is its own line beside
+the group: the credit links the work's page (`source_url`) and the licence its deed,
+and the line names its book when there are several, since they read alike.
 
 ### Podcasts
 
