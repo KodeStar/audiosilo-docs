@@ -672,7 +672,12 @@ yet".
 The book page lives at `/admin/library/book?library=&path=` and runs on
 `GET`/`PATCH /admin/libraries/{id}/book`. It holds:
 
-- click-to-edit fields with provenance and revert;
+- click-to-edit fields with provenance and revert. The Revert button's hint
+  (its title, and its accessible description) names the value a revert restores
+  and its layer (`details-card.tsx`): the field's `enrichment` as Community,
+  else `scanned` by its `scanned_source` (Audiobookshelf file, Folder and file
+  names, File tag), else "Empty once reverted". The button's label and its
+  toasts don't name a source;
 - `genres` and `tags` as chips, edited with `components/label-input.tsx`;
 - `abridged` as a three-way `NativeSelect`;
 - a save bar with a diff, and chapter renames;

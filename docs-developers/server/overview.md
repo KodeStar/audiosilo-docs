@@ -545,9 +545,17 @@ AudioSilo keeps their history. The package holds:
 - the read-only ABS client (`abs.go`). It checks `/status` before it sends the
   token, follows same-host redirects only, caps response sizes and returns fixed
   error sentences.
-- the normalised payload kept on the import (`payload.go`);
+- the normalised payload kept on the import (`payload.go`). A minified item's
+  `seriesName` (several series joined by ", ") gives its first series, read by
+  the scanner's own parser for a `metadata.json` series
+  (`metadata.SplitABSSeries`, see
+  [The Audiobookshelf layer](data-model.md#the-audiobookshelf-layer)), so
+  "The #1 Ladies Detective Agency" stays one series name;
 - the path, ASIN, ISBN and title matcher (`match.go`), which uses
-  `pkg/match.Best` for the fuzzy tier;
+  `pkg/match.Best` for the fuzzy tier. The title tier compares an item's series
+  sequence only when it is a plain decimal within a book's position range
+  (`sequenceNumber`: digits and dots, 0 to 100000), so `NaN`, `Inf`, `1e3`, a
+  range or a lettered sequence gives no position to compare;
 - the pure planner that the review and the apply share (`plan.go`);
 - the `Service` that runs the background fetch, the cutoff change, the apply and
   the undo (`service.go`).
