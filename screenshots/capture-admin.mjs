@@ -68,6 +68,15 @@ import {
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
+
+// The books list in the server's order (by author), with one author's books in
+// title order. The server breaks an author tie by row id, which follows the
+// scan, so without this Jack London's two books traded listeners between runs.
+const byAuthorThenTitle = (books) => {
+  const firstAt = new Map();
+  books.forEach((b, i) => firstAt.has(b.author) || firstAt.set(b.author, i));
+  return [...books].sort((a, b) => firstAt.get(a.author) - firstAt.get(b.author) || a.title.localeCompare(b.title));
+};
 const PASSWORD = process.env.ADMIN_PASSWORD;
 const MIRROR_ORIGIN = (process.env.MIRROR_ORIGIN || '').replace(/\/$/, '');
 const MIRROR_PASSWORD = process.env.MIRROR_PASSWORD || '';
@@ -143,7 +152,7 @@ await step('provision listener + share', async () => {
   if (libId) {
     // A little listening so the overview's "Listening now" and the person
     // cards have something to show.
-    const books = (await api(token, 'GET', `/libraries/${libId}/books?limit=3`))?.books ?? [];
+    const books = byAuthorThenTitle((await api(token, 'GET', `/libraries/${libId}/books?limit=3`))?.books ?? []);
     for (const [i, frac] of [[0, 0.42], [1, 0.77]]) {
       const b = books[i];
       if (!b) continue;
@@ -349,7 +358,7 @@ await step('provision listening sessions', async () => {
   if (!library) throw new Error('no library');
   listenUntil = Date.now() + LISTEN_MS;
   // Books 0 and 1 carry the admin's own progress (above); the listeners take the next ones.
-  const books = ((await api(token, 'GET', `/libraries/${library.id}/books?limit=12`))?.books ?? [])
+  const books = byAuthorThenTitle((await api(token, 'GET', `/libraries/${library.id}/books?limit=12`))?.books ?? [])
     .filter((b) => b.duration > 0);
   if (books.length < 6) throw new Error(`only ${books.length} books to listen to`);
   for (const [i, l] of LISTENERS.entries()) {
