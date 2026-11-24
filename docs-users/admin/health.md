@@ -64,7 +64,8 @@ If a network share stops answering during **Read the files again**, the book
 appears under **Files that couldn't be read**. A scan that gives up on a folder
 lists the books in it there too. Once the share answers, **Read again** on the
 row, or the next scan, clears them. Libraries on other drives or shares keep
-scanning.
+scanning. On a slow share, **Read again** can say **Still reading**. The server then
+finishes the read on its own, as on [a book's page](books.md#a-books-page).
 
 ### Working through a list
 

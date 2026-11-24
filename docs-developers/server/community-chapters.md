@@ -309,7 +309,11 @@ only titles that changed are written.
 Chapter renames (`chapter_overrides`, keyed by file and start) apply after the
 source, except over an edited list. Renaming a community chapter therefore works
 like any rename, and switching back restores the files' chapters with their own
-renames.
+renames. A rename whose chapter the book no longer has (its files re-encoded with
+moved chapter marks, say) is kept and applies again if that chapter comes back.
+From 2.7.0 the console's book page lists such renames
+([`dormant_renames`](api/reference.md#get-apiv1adminlibrariesidbook), the rows
+that match no chapter by `chapterOverrideMatch`).
 
 ## Generated chapters
 

@@ -5246,7 +5246,10 @@ The fields mean what they mean in the admin's
 - `finished_books` - the books the caller finished in the period,
   newest first, up to 100.
 - `playback` and `clients` - the caller's listening by codec and transcoding,
-  and the caller's devices that listened, by app build.
+  and the caller's devices that listened, by app build. `clients` is never split
+  by API key: a key that named no app counts in the `app: ""` row, and no row has
+  the `api_key` field the admin
+  [Activity page](#range-listening-activity) adds.
 
 **Only the caller, and only what they can open now.** Nothing about other
 people is computed or sent: no `listeners`, `by_user`, `top_users`, funnel,
@@ -7310,6 +7313,10 @@ The facet panel for the same filter parameters as
 applied but its own**, so a facet shows what each choice would give; `total` is
 the count with all filters applied.
 
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `only` | string | - | from 2.7.0: `total` answers `{"total": 812}` alone, the count with all filters applied, without counting a facet (the console's "N this week" on Books). Any other value is `400 only must be total` |
+
 ```json
 {
   "total": 812,
@@ -7725,6 +7732,15 @@ book path).
   and whether an edit renames it (never while an edited list applies: its titles
   are its own). Each carries its `file_path`, in-file `start` and `end`, and
   `book_offset`.
+- `dormant_renames` - from 2.7.0, the chapter renames that rename no chapter
+  the book has now: each was made for a chapter at a file and start the files
+  no longer have (re-encoded with moved chapter marks, say). Each is
+  `{file, start, title}`: the file relative to the book (`""` for a single-file
+  book's own file), the chapter's start in seconds in that file, and the title
+  it gives. A rename is kept and applies again if its chapter comes back.
+  Omitted when there are none, and while an edited list applies (`chapter_edit`
+  `state: "applied"`: its titles are the edit's, so every rename waits). The
+  console lists them in a notice on the Chapters card.
 - `files` - each audio file (a single-file book lists itself), with its own
   `codec` and a derived `bitrate` in bits per second (`0` when the duration is
   unknown).
@@ -8699,7 +8715,8 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   list the work's series in the community's order, the first as the main one.
   The match dialog's [proposal](#get-apiv1adminbooksmatch-proposal) instead
   offers the book's own series as the main one when the work is in it.
-- `book` is the book as it is now, with its `duration` in seconds when known.
+- `book` is the book as it is now, with its `duration` in seconds when known,
+  and from 2.7.0 its [`cover_version`](#get-apiv1librariesidbooks).
   For `outcome: "none"`, it includes the current `asin` and `isbn` when present.
   The item has `gone: true` when nothing is indexed at the path any more.
 - `identifier_unknown: true` on a refresh item means the identifier lookup
@@ -9196,7 +9213,8 @@ a scan last finished.
   (for `duplicate`, the number of **groups**); `ignored` - how many an admin
   ignored (groups for `duplicate`).
 - `samples` - up to three books to show (the newest, or each group's first
-  copy), `[]` when none.
+  copy), `[]` when none. From 2.7.0 each carries its book's
+  [`cover_version`](#get-apiv1librariesidbooks) for the console's cover URLs.
 - `offline` - libraries whose root can't be read right now (the same probe as
   `available` on [`GET /admin/libraries`](#get-apiv1adminlibraries)), with
   their indexed `books` and how many people have `listeners` progress in them:
@@ -9392,16 +9410,23 @@ returns its book page, the same body as
 required. It runs outside the job queue (one book is quick), so it never waits
 behind a library scan. The re-read runs detached from the request, for up to 10
 minutes (and never past server shutdown), so on a slow share it is still saved
-even if the response times out; the book's next look shows it. The console uses
+even if the response times out; the book's next look shows it. From 2.7.0 a
+re-read still going 5 seconds before the request timeout (25 seconds in) is
+answered `202` `{"still_reading": true}` and goes on: it is saved when it ends,
+and a failure after that answer goes to the server log as a warning. Another
+read of the book already under way (a second click, a scan's) is waited on for
+as long as it moves on, then the re-read reads the book itself, so a change
+made since that read began is picked up. The console uses
 it for "Read the files again" on a book's page and "Read again" on Health's
-unreadable files.
+unreadable files, and says "Still reading" on a `202`.
 
 | Status | Meaning |
 |---|---|
 | `200` | the book page, re-read; check `book.scan_error` to see whether the problem is gone |
+| `202` | from 2.7.0: `{"still_reading": true}`, the re-read is still going and is saved when it ends; read the book page again later |
 | `400` | `invalid library id`; `path is required` |
 | `404` | `library not found`; `code: "not_indexable"` - there is no book at that path any more (gone from disk, not a book, or skipped by the library's ignore rules) |
-| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the re-read, instead of a `500`; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book, held on a share that stopped answering, has not returned in time, when one of the re-read's looks at the share waited 10 seconds, or when the re-read kept the book as stored because a file did not answer |
+| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the re-read, instead of a `500`; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book, held on a share that stopped answering, stops moving on, when one of the re-read's looks at the share waited 10 seconds, or when the re-read kept the book as stored because a file did not answer |
 
 ### `GET /api/v1/admin/jobs`
 
@@ -9567,6 +9592,7 @@ The session object, shared by both session routes:
   "device_id": 57,
   "device_name": "Pixel 9",
   "client": { "app": "AudioSilo", "version": "1.4.2", "platform": "android" },
+  "cover_version": "3f9a1c07be",
   "started_at": "2026-10-04T19:02:11.000Z",
   "last_at": "2026-10-04T19:41:56.000Z",
   "start_position": 10620.4,
@@ -9593,6 +9619,14 @@ The session object, shared by both session routes:
   `client` are copied onto the session when it is recorded, so they survive the
   device's sign-out. `client` is `null` for an app that never named itself
   (players released before the header).
+- `api_key` - from 2.7.0, `true` when the device is a personal API key (read
+  from its token while the token is kept; omitted otherwise). `device_name` is
+  then the key's label. A script on a key usually sends no app header, so the
+  console names its app "Personal API key" rather than "Unknown app".
+- `cover_version` - from 2.7.0, the book's
+  [`cover_version`](#get-apiv1librariesidbooks), the same value its book row
+  sends, for the console's cover URLs; omitted when the path is no indexed book
+  (any more).
 - Times are UTC with milliseconds. `started_at` is the first save of the
   session, `last_at` the newest.
 - `start_position` / `position` are the book positions (seconds) at the first
@@ -9749,7 +9783,9 @@ by shares (admin view).
 ```
 
 The [progress fields](#get-apiv1meprogress) plus `title` / `author` (`""` when
-not indexed) and the dates. `started_at` is the time of the first save (`null`
+not indexed) and the dates. From 2.7.0 each row carries its book's
+`cover_version`, as on `GET /me/progress` (omitted when the path is no indexed
+book). `started_at` is the time of the first save (`null`
 for rows saved before the server recorded it). `finished_at` is the time of the
 save that last marked it finished, or of the admin edit that did. It is `null`
 while unfinished, and finished rows from before were given their last save time. `400 invalid user id`; `404 user not found`.
@@ -10167,13 +10203,16 @@ a cross-user "currently listening" feed (up to 200 rows, newest first; `title`/
       "position": 12043.6,
       "duration": 88347.4,
       "finished": false,
-      "updated_at": "2026-07-01T19:42:07Z"
+      "updated_at": "2026-07-01T19:42:07Z",
+      "cover_version": "3f9a1c07be"
     }
   ]
 }
 ```
 
-Each `libraries[]` entry carries its `kind` (`books` or `podcasts`, from
+From 2.7.0 a `listening` row carries its book's
+[`cover_version`](#get-apiv1librariesidbooks), omitted when the path is no
+indexed book. Each `libraries[]` entry carries its `kind` (`books` or `podcasts`, from
 2.4.0), so the dashboard's "Books per library" lists books libraries only.
 
 #### `?range=`: listening activity
@@ -10181,11 +10220,17 @@ Each `libraries[]` entry carries its `kind` (`books` or `podcasts`, from
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `range` | string | - | `7d`, `30d`, `90d`, `1y` (365 days) ending now; a calendar year such as `2025` (from 2000 to this year; the current year ends now); or `year`, the current calendar year in **server** time. An empty value means `30d` |
+| `parts` | string | - | from 2.7.0, with `range`: `listening` answers the period's listening alone (below). Any other value is `400 parts must be listening` |
 
 With `range` present the response is **only** an **`activity`** object
 (`{"activity": {…}}`), the Activity page for the period, without the overview
 fields above; without it the response is exactly the one above. An unknown range is
-`400` `code: "invalid_range"`. Days, hours and weekdays are counted in the
+`400` `code: "invalid_range"`. With `&parts=listening` the `activity` object has
+only the period and its listening (`range` to `utc_offset`, `totals`,
+`estimated`, `previous`, `days`, `hour_weekday`, the `top_*` lists, `playback`,
+`peak_concurrent` and `clients`): `funnel`, `drop_offs`, `growth`, `storage`,
+`coverage` and `inactive_users` are left out and not computed. The console's
+Year in listening asks for it. Days, hours and weekdays are counted in the
 **server's** time zone.
 
 ```json
@@ -10206,19 +10251,21 @@ fields above; without it the response is exactly the one above. An unknown range
     "hour_weekday": [ [0, 0, "… 24 values …"], "… 7 rows, Monday first …" ],
     "top_books": [ { "library_id": 1, "path": "Brandon Sanderson/Mistborn/The Final Empire",
                      "title": "The Final Empire", "author": "Brandon Sanderson",
-                     "listened": 38211.0, "listeners": 2 } ],
+                     "listened": 38211.0, "listeners": 2, "cover_version": "3f9a1c07be" } ],
     "top_authors":   [ { "name": "Brandon Sanderson", "listened": 61022.4, "books": 3 } ],
     "top_narrators": [ { "name": "Michael Kramer", "listened": 61022.4, "books": 3 } ],
     "top_users": [ { "user_id": 4, "username": "sam", "listened": 201330.2,
                      "sessions": 96, "books": 9, "finished": 2 } ],
     "funnel": { "started": 31, "reached_25": 22, "reached_50": 15, "reached_75": 9, "finished": 6 },
     "drop_offs": [ { "library_id": 1, "path": "Old Books/The Long One", "title": "The Long One",
-                     "chapter_index": 3, "chapter": "Chapter 4", "listeners": 2, "scan_error": false } ],
+                     "chapter_index": 3, "chapter": "Chapter 4", "listeners": 2, "scan_error": false,
+                     "cover_version": "9d04e6b2a1" } ],
     "playback": [ { "transcoded": false, "codec": "aac", "listened": 380112.5, "sessions": 190 },
                   { "transcoded": true, "codec": "opus", "listened": 32268.0, "sessions": 24 } ],
     "peak_concurrent": { "streams": 3, "at": "2026-09-21T20:14:03Z" },
     "clients": [ { "app": "AudioSilo", "version": "1.4.2", "platform": "ios", "devices": 3 },
-                 { "app": "", "version": "", "platform": "", "devices": 1 } ],
+                 { "app": "", "version": "", "platform": "", "devices": 1 },
+                 { "app": "", "version": "", "platform": "", "api_key": true, "devices": 1 } ],
     "growth": [ { "date": "2026-09-04T19:42:08Z", "books": 1270 },
                 { "date": "2026-10-04T19:42:08Z", "books": 1284 } ],
     "storage": {
@@ -10270,7 +10317,9 @@ and only the part inside the period counts.
   names to books by the whole value); `books` counts distinct books.
   `top_users[].finished` counts that person's books finished in the period and
   `top_users[].books` the books they listened to or finished in it, counted
-  like `totals`.
+  like `totals`. From 2.7.0 a `top_books` entry carries its book's
+  [`cover_version`](#get-apiv1librariesidbooks), omitted when the path is no
+  indexed book (any more).
 - `funnel` - people x books with a progress save in the period, by how far each
   got (the current position, so a restarted book counts where it is now; a
   finished book counts as 100%).
@@ -10278,7 +10327,9 @@ and only the part inside the period counts.
   book: unfinished progress with no save for 30 days. `chapter_index` is
   0-based; `chapter` is its title tidied as on a live session (`""` when it
   names nothing, where the console says "Chapter `chapter_index` + 1");
-  `scan_error` says the book has a read problem the Health page lists.
+  `scan_error` says the book has a read problem the Health page lists; from
+  2.7.0 `cover_version` is the book's
+  [`cover_version`](#get-apiv1librariesidbooks).
   Independent of the period.
 - `playback` - listening by how it played: direct or `transcoded`, per `codec`
   (`""` unknown), with `listened` in the period and `sessions` started in it.
@@ -10287,7 +10338,12 @@ and only the part inside the period counts.
 - `clients` - the devices that listened in the period (raw sessions only),
   counted once per app build, using the app each session recorded at the time
   (a later upgrade doesn't rewrite the past). `app: ""` is a client that never
-  named itself (released before the header).
+  named itself (released before the header). From 2.7.0 the personal API keys
+  that named no app are their own row with `api_key: true` (omitted on every
+  other row), which the console calls "Personal API key"; a key whose script
+  sends an app header counts under that app. This split is admin-only:
+  [`GET /me/stats`](#get-apiv1mestats)'s `clients` never has an `api_key` row or
+  field.
 - `growth` - the number of books indexed now that had appeared on disk by each
   sample `date` (RFC 3339): daily for a period up to a month, weekly up to a
   quarter, monthly beyond, ending at `to`. Books removed since aren't counted

@@ -195,6 +195,12 @@ signed in. The **⋯** menu has **Read the files again**, which re-reads the
 book's files at once. Use it after you fix its tags or to measure its length
 again.
 
+On a slow disk or network share, the read can take longer than the console
+waits for an answer. The console then says **Still reading**. The server goes
+on reading, and the book's page shows the result once the files are read.
+
+![A book's page with the Still reading message after Read the files again](/img/screenshots/admin/book-still-reading.png)
+
 Further down are the book's files, its ebook and
 [Read-along](making-read-along.md#the-read-along-card) card if it has one, and
 its path on disk.
@@ -253,6 +259,13 @@ You can also take a cover from community metadata when you
 The **Chapters** card shows the book's chapters as a timeline and a list.
 Click a chapter's title to rename it. A revert button puts the file's title
 back.
+
+A rename belongs to the chapter's start time in its file. If the book's files
+change and no chapter starts there any more, the card lists the rename as
+waiting for its chapter. The server keeps it, and the rename comes back if its
+chapter does.
+
+![The Chapters card of A Christmas Carol with two chapter renames waiting for their chapters](/img/screenshots/admin/book-dormant-renames.png)
 
 #### Edit chapter times and titles
 

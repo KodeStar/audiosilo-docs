@@ -35,12 +35,15 @@ Below the tiles:
 - **How it played**: how much listening played directly and how much was
   transcoded.
 - **Apps in use**: the apps and versions people listen with. A notice points out
-  devices running an older build.
+  devices running an older build. Personal API keys whose scripts don't name
+  their app share one **Personal API key** row.
 - **Library growth** and **Storage and coverage**: how your collection grew,
   the space it takes, and how many books are matched, have chapters and have a
   cover.
 
 A notice lists anyone who hasn't been active for 60 days.
+
+![Apps in use with the AudioSilo apps, the watch and a Personal API key row](/img/screenshots/admin/activity-apps.png)
 
 ## Live now
 
@@ -166,3 +169,5 @@ when the account is deleted.
 - Listening imported from Audiobookshelf counts like any other, except in
   **Apps in use** and **How it played**.
 - An app too old to name itself to the server shows as "Unknown app".
+- A script on a personal API key that doesn't name its app shows as
+  **Personal API key**, with the key's name as the device.
