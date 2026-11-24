@@ -96,7 +96,7 @@ If the server has no books yet, an admin sees **Open the admin console** to [add
 
 The app remembers every server you've used. The connect screen lists them under **Reconnect**, so you only re-enter your code or password, never the address.
 
-If the server signs this device out, a **Reconnect** button appears at the top of the screen or on the page you were using. Tap it to sign in to that server again. It shows even while you're offline, but signing in needs a connection.
+If the server signs this device out, a **Reconnect** button appears at the top of the screen or on the page you were using. Tap it to sign in to that server again. It shows even while you're offline, but signing in needs a connection. If the server was rebuilt from scratch, its row in [Accounts and devices](settings.md) says **Server reset**, and **Reconnect** signs you in to the new one.
 
 A dialog that can't load because the server signed you out, such as **Add to collection**, **Share**, or an admin's **Generate** or **Make read-along** confirmation, shows **Reconnect** in its place. Tapping it closes the dialog and opens sign-in.
 
