@@ -1428,8 +1428,10 @@ durable local mirror and the offline queue (see [Playback](playback.md)).
 A downloaded book's server place is kept in that mirror, so a book downloaded at 70%
 opens offline at 70%, not 0:
 
-- The download's start seeds the mirror from a `getProgress`, else from the cached
-  `qk.progress` (`keepServerPlace`).
+- The download's start reads the server's place (`fetchServerProgress`, which
+  writes it to the mirror once the book has a downloads entry). When that read
+  fails, the cached `qk.progress` row seeds the mirror instead
+  (`keepCachedServerPlace`).
 - `fetchBookProgress` writes each online answer for a book kept offline
   (`setKeptOfflineCheck`, `writeMirror(progressToSave(...))`). The write keeps the
   newest record, so a newer local save is never regressed.
