@@ -755,18 +755,16 @@ A parked job releases its download slot. It reclaims a slot and rechecks the
 mapping before proceeding. A job waiting for the same account releases its own
 slot only while the account holder has none (`Reporter.HoldsSlot`).
 
-**Bound to its pairing.** Each of those mapping looks, the one before the license
-and the one before placing, a parked wait included, first asks whether the Bridge
-is still paired as when it claimed the job (`jobs.Job.Under` against
-`ImportOptions.Pairing`): the same server and the same pairing, the rule
-[a LibriVox fetch](librivox.md#staging-resume-and-cleanup) follows. Unpairing on
-the Bridge's own page ends the pairing; a token the server refuses does not. Once
-the pairing has ended, the import ends (`errImportPairingGone`) without writing to
+**Bound to its pairing.** Before each mapping look (before the license and
+before placing, parked waits included), the importer checks that the Bridge still
+holds the pairing it claimed the job under (`jobs.Job.Under` against
+`ImportOptions.Pairing`; [what ends a pairing](pairing-and-jobs.md#resuming-after-a-restart)),
+as [a LibriVox fetch](librivox.md#staging-resume-and-cleanup) does. Once the
+pairing has ended, the import ends (`errImportPairingGone`) without writing to
 the library listed now, which may be another server's library with the same id.
-However an import ends once its pairing has ended (at a mapping look, a stop, a
-lost claim or a failure), it removes its decrypted copy and its partial
-download, since no claim under another pairing may use them: `run`'s cleanup
-asks `jobs.Job.Under` again.
+However it then ends (at a mapping look, a stop, a lost claim or a failure), it
+removes its decrypted copy and its partial download, since no claim under
+another pairing may use them. `run`'s cleanup asks `jobs.Job.Under` again.
 
 ### The steps on the Bridge
 
@@ -861,13 +859,12 @@ and then finishes. A `401`/`403`/`410` means the URL expired over a long wait or
 restart. The importer licenses once more, and a second one fails
 `offline_url_expired`.
 
-**Partial download.** While the pairing that claimed the job stands, a
-shutdown, an interrupted claim after a token refusal, or a lost lease keeps the
-encrypted partial and its state. Cancellation, a failed attempt or an ended
+**Partial download.** A shutdown, an interrupted claim after a token refusal,
+or a lost lease keeps the encrypted partial and its state. Cancellation, a failed attempt or an ended
 pairing removes them.
 
-**Completed decrypt.** While the pairing that claimed the job stands, a
-shutdown, a token refusal or a lost lease keeps the ready file and its metadata.
+**Completed decrypt.** A shutdown, a token refusal or a lost lease keeps the
+ready file and its metadata.
 So does every failure except the three below,
 such as `exists`, `not_writable`, a network error, a rate limit or a 404 for
 the job at the lease check (a proxy answers one while the server restarts). On

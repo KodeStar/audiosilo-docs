@@ -232,3 +232,5 @@ last heard from. You add and remove workers on the Bridge's own page.
 next call. Its jobs stay, and queued ones wait for the next Bridge you pair.
 
 Unpair here, in the console. Unpairing on the Bridge's own page makes it forget the server and stop work from that pairing. Pairing again starts a new connection.
+
+A book the Bridge was adding from LibriVox or backing up from Audible when you unpaired it on its own page is not added. The Bridge drops it and removes what it downloaded for it.

@@ -725,9 +725,13 @@ they were:
 If the admin who paired the Bridge loses the admin role, the server refuses that Bridge’s token. Restoring the role lets the same pairing work again.
 
 A refused token stops the running job. The Bridge can resume it after a temporary refusal of the
-same pairing. Forgetting the link or pairing again ends the old claims, even on the same server.
-The Bridge reads `GET /api/v1/server` for the server ID, binds each claim to its pairing and
-releases work before recording it lost. It never reports an old result on the new link.
+same pairing: pairing the same server again after a refusal, with no unpair between, keeps the
+pairing and its ID. Forgetting the link (unpairing on the Bridge's own page) ends the pairing, and
+pairing after that is a new one, even with the same server, so the old claims end. A pairing with
+another server is a new one too, and its libraries can share the old server's library ids.
+The Bridge reads `GET /api/v1/server` for the server ID, binds each claim to its pairing
+(`jobs.Job.Under`) and releases work before recording it lost. It never reports an old result on
+the new link.
 
 ### Kinds are allow-listed twice
 
