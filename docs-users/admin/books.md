@@ -115,9 +115,9 @@ dialog, it selects the edition that identifier names.
   its length is within 20% of yours. Credits such as “Various”, “Full Cast”
   and “GraphicAudio” don't count as a narrator.
 - If the community lists only dramatizations and your book doesn't say it is
-  one, the server picks one only when its length is within two minutes or 1%
-  of yours, whichever is greater, and never more than 15%. Otherwise the
-  dialog selects no edition.
+  one, the server picks one when your book's narrator reads it, as above, or
+  when its length is within two minutes or 1% of yours, whichever is greater,
+  and never more than 15%. Otherwise the dialog selects no edition.
 
 ### What matching sends
 

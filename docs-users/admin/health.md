@@ -266,12 +266,12 @@ shows the proposed title. A title you edited yourself stays as you wrote it.
 | Title in your files | Title after Fill | Why |
 |---|---|---|
 | `Emergence: The Mystic Knight, Book 1 (Unabridged)` | `Emergence` | The rest is the series, its number and an edition label. |
+| `Dune: An Epic Fantasy` | `Dune` | The extra words name a genre. |
 | `20 - Hilldiggers` | `Hilldiggers` | A number and a dash at the start only order the files. |
 | `The Verity: Part One: Part One` | `The Verity: Part One` | The part is repeated. A different part stays. |
-| `Dune: An Epic Fantasy` | `Dune` | The extra words name a genre. |
 | `Book of the Dead` | `Book of the Dead`, even when the community title is `Dead` | The other words belong to the title. |
 
-The last four rows need server version 2.7.0 or later.
+The last three rows need server version 2.7.0 or later.
 
 ### Which ASIN a match takes
 
