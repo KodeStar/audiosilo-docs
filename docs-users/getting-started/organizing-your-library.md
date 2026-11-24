@@ -76,6 +76,19 @@ AudioSilo takes each book's details from these sources:
 
 By default tags win, and folder names fill in what the tags leave empty. You can [use folder names first](../admin/libraries.md#where-book-details-come-from) or [edit a book's details](../admin/books.md).
 
+### Folder codes for Audible matching
+
+If the main series number is missing, the server can read it from the folder
+or filename for [Audible matching](../admin/audible.md#how-titles-are-matched).
+That number appears only in the list the Bridge receives.
+
+On server version 2.7.0 or later, `DH06-2019` and `DH06-07x` both mean book
+6 in Dragon Heart. You can also use `C06` for book 6 in any named series.
+
+For an omnibus, write the initials once and give both ends.
+`DH01-03 - Omnibus` covers books 1 to 3. A doubled code like `DH01-DH03` or
+a single code like `DH01 - Box Set` leaves the position blank.
+
 ### Names like `Author; Series; Book 04; Title`
 
 A file or folder named `Mark Tufo; Indian Hill; Book 02; Bastion` gives "Bastion", book 2 of Indian Hill.

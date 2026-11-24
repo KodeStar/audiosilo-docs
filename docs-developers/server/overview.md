@@ -126,20 +126,36 @@ many `Best` calls (the listening import's per-author pools). `scan.go` holds
 hand-written scanners for the package's title patterns, and `scan_test.go`
 checks them against the regular expressions they replace.
 
-`BestWith` is `Best` under opt-in `Options`, and it also returns the winning
-score (`ScoreASIN`, 10, for an ASIN match). The zero `Options` gives `Best`'s
-behaviour, which every server caller keeps. `ImportOptions()` turns on every
-rule. It is meant for matching a store's whole catalog onto a library where both
-sides are mostly right but spelled differently. Only the Bridge's Audible
-matcher uses it (see
-[the Bridge's matching rules](../bridge/audible.md#matching-rules)).
+#### Matching titles and series
+
+On server version 2.7.0 or later, `CleanTitle` removes a series name on word
+boundaries along with any article (“a”, “an” or “the”) immediately before it
+and separator immediately after it. With series `Orchard Cycle`, the title
+`The Orchard Cycle: Books 1-3` becomes `Books 1-3`. The matcher checks for a
+genre subtitle before and after removing the series, so `Mort: A Discworld Novel`
+cleans to `Mort`.
+
+The Audiobookshelf listening import uses the default options. When matching
+title words against a candidate named for its series, the matcher uses the
+candidate's volume number, or 1 if it has none. An explicit query sequence
+must agree. Without one, a conflicting number outside brackets, a range even
+inside brackets, or extra words left after title cleanup prevent a match on
+the series name alone.
+For example, `The Expanse Box Set`, `The Expanse (1–3)` and `The Expanse 2`
+cannot claim volume 1 this way. `Dune (2021 Edition)` can still match `Dune`.
+
+`BestWith` accepts opt-in `Options` and returns the winning score
+(`ScoreASIN`, 10, for an ASIN match). The zero value uses the same rules as
+`Best`. The [Bridge Audible matcher](../bridge/audible.md#matching-rules)
+uses `ImportOptions()`, which enables all four options. Its behaviour depends
+on the version of `pkg/match` built into the Bridge.
 
 | Option | Rule |
 |---|---|
 | `SeriesMarker` | a candidate title with no position confirms the query's number when it names its place right after the series, `<series>[ Series][,:-( ]Book N` ("Iron Will: Dragon Heart Series, Book 2" is Dragon Heart 2). It only confirms, never vetoes; "Book 1-3" is no marker |
 | `ExactTitle` | the same title by the same person (case, spacing, punctuation, bracketed groups and edition words aside) adds a bonus to the pair's score that clears the match threshold on its own. So it matches across differently named series, and the series and number still rank two same-titled candidates. Not when a side's title is just its series name and number, which every volume shares |
-| `WordlessFallback` | a cleaned title left with no word and no digit ("The" of "The Mayor of Noobtown" in series "Mayor of Noobtown") falls back to the uncleaned one. When a candidate's title is just its series name and the query has a number, the numbers must agree (a candidate with none counts as 1) |
-| `DropUnabridged` | "(Unabridged)" is removed before a genre tail is judged ("The Primal Hunter 15: A LitRPG Adventure (Unabridged)" is volume 15) |
+| `WordlessFallback` | When cleaning leaves only words that the matcher ignores and no digits, it uses the original title without bracketed groups. For example, removing the series from `Mayor of Noobtown, The` leaves only `The`. For a series-named candidate, a query number from the sequence or title must agree. |
+| `DropUnabridged` | The matcher removes every parenthesized or square-bracketed group, including nested groups, before checking for a genre subtitle. In `Primal Hunter 15: A LitRPG Adventure [Retail (UK)]` it recognizes volume 15. A substantive subtitle outside the brackets survives. |
 
 ### `internal/coverage` and `internal/upcoming`
 

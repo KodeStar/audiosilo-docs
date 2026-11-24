@@ -47,8 +47,8 @@ listeners chapter recaps and the book's community chapters.
 3. Under **Possible matches**, pick the right one and click **Compare fields**.
    Each match shows how closely it fits and how its length compares with your
    files: within 2% it matches, within 5% it is close.
-4. If the book was recorded more than once, pick the right **Edition**. Check
-   its narrators and length against your files.
+4. If the book has several recordings, check the suggested **Edition** against
+   your files. You can choose another edition by its narrators and length.
 5. Check the fields under **Take**. The dialog shows this edition's community
    values and ticks the ones a match run with **Use community values** would
    write. Fields you edited, and the cover when the book already has one,
@@ -99,6 +99,26 @@ Audible catalogue. When a recording sells in several Audible stores, the
 [Which ASIN a match takes](health.md#which-asin-a-match-takes)). Every unmatched
 book is listed under **Not matched to community metadata** in
 [Library health](health.md#the-kinds-of-issue).
+
+### Which edition a match suggests
+
+On server version 2.7.0 or later, the Match dialog and **Match automatically**
+suggest the same edition for a new match. If you enter an ASIN or ISBN in the
+dialog, it selects the edition that identifier names.
+
+- An ASIN or ISBN from a file tag or an Audiobookshelf import is a hint.
+  If its edition differs from your files' length by more than 10%, another
+  edition of the same book within 10% can take its place. If both credits name
+  the same narrator, the hinted edition stays selected.
+- Without an identifier naming the edition, the server favours a recording by
+  your book's narrator when its length is within 20% of yours or either length
+  is unknown. A named ensemble counts too. Credits such as “Various”,
+  “Full Cast” and “GraphicAudio” do not identify a reader.
+- If your book has no sign of a dramatization and the community lists only
+  dramatizations, length alone can identify one. The allowed difference is
+  two minutes or 1% of your files' length, whichever is greater, up to a
+  maximum of 15%. If nothing identifies a recording, the dialog offers the
+  book with no edition selected.
 
 ### What matching sends
 

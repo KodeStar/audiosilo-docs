@@ -158,6 +158,8 @@ ticks. It leaves out matches you unticked or matched by hand.
 
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
+For how the run chooses among recordings, see
+[Which edition a match suggests](books.md#which-edition-a-match-suggests).
 A confident match scores at least 90% and usually leads the next candidate by
 at least 10 points. Its length must also be close to the book's. Other matches
 go to **To review**. A row there marked **Held for review** lists the reasons
@@ -169,7 +171,8 @@ that apply to that book. You may see more than one.
 - That identifier names another book, so the run searched again without it,
   using the book's title, author and other details. Check what it found even if
   the score is high.
-- The community has only a dramatization, and your book doesn't say it is one.
+- The community lists only dramatizations, and the server could not identify
+  one as your recording.
 - The recording differs from your book's length by more than 10%, or 20% when
   your book's narrator reads it. The row shows both lengths. If your files
   change, the length warning disappears once they fall within the run's margin.
@@ -256,10 +259,18 @@ length within 2%. Otherwise it goes to **To review**.
 
 ### Tidied titles
 
-**Fill in what's missing** replaces a title only when it is the community
-database's title plus clutter, such as the series name, a book number or "Unabridged".
-"Emergence: The Mystic Knight, Book 1 (Unabridged)" becomes "Emergence". A
-title you edited yourself is never tidied.
+**Fill in what's missing** can tidy a file title that adds a series name,
+book number or edition label to the community title. The review shows the
+proposed title. A title you edited yourself stays as you wrote it.
+
+On server version 2.7.0 or later, these examples show what Fill keeps.
+
+| Title in your files | Title after Fill |
+|---|---|
+| `20 - Hilldiggers` | `Hilldiggers`. The leading number orders files and can differ from the series number. |
+| `The Verity: Part One: Part One` | `The Verity: Part One`. The community title already ends in that part. A different part stays. |
+| `Dune: An Epic Fantasy` | `Dune`. The extra words describe the genre. |
+| `Book of the Dead` | `Book of the Dead`. Even if the community title is `Dead`, the other words belong to the title. |
 
 ### Which ASIN a match takes
 
