@@ -901,8 +901,9 @@ both take `meta.ProposedRecording`, by the
 can use the book's own length and narrator credit. The server's `meta` package
 keeps metaserve's dramatization rule by hand (below), so none of this needs a
 `metaserve` change and an older `metaserve` is safe. When no recording fits, the
-candidate carries the additive `dramatization_only: true` and the console
-preselects none.
+candidate carries the additive `dramatization_only: true`, the console
+preselects none and a run holds the book for review (item
+`detail: "dramatization_only"`).
 
 Which statement speaks for which recording:
 

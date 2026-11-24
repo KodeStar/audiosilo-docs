@@ -8375,8 +8375,9 @@ narrator credits, or a genre such as “Radio Drama” can say the book is a
 dramatization (`meta.MatchQuery.statesDramatization`). For a plain book (no
 such statement), an identifier can name a production, and so can a qualifying
 named reader, a plain reading winning when that reader qualifies for both. A
-hint names only its own recording: when the run replaces an off-length hint,
-the replacement follows the plain-book rule.
+hint names only its own recording: when `meta.FitRecording` replaces an
+off-length hint, in the dialog or a run, the replacement follows the
+plain-book rule.
 
 For a plain book whose work offers only dramatizations, runtime alone can
 identify one. The allowed difference is the greater of two minutes and 1% of
@@ -8909,8 +8910,8 @@ with the community title in a match or refresh. The review shows the same
 change that apply will write. A title marked `edited`, including one an admin
 [reverted from a community title](#patch-apiv1adminlibrariesidbook), stays as it is.
 
-On server version 2.7.0 or later, the community title's words must appear
-together, in order. Fill can remove these additions:
+The community title's words must appear together, in order. On server
+version 2.7.0 or later, Fill can remove these additions:
 
 - The community subtitle, a series name from the book or the community
   (`match.SeriesForms`), and the labels in `clutterWords`: unabridged, edition,
