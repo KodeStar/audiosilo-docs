@@ -191,7 +191,8 @@ not the module and the Bridge are available. The other three:
 | `podcast_request_dismiss` | always `true` (from 2.7.0) | [dismissing a follow request](#dismissing-a-follow-request), which works with the module off, and the optional `title` on [`POST /podcasts/follow`](#podcast-actions) |
 
 All three describe the server's configuration, not the caller's permissions. The
-routes still refuse a kid, a demo account or an unrecognized client.
+routes still refuse a demo account or an unrecognized client, and the module's
+routes a kid too.
 
 The reader and read-along, always `true` on a server that has them and absent on
 an older one:
@@ -1528,7 +1529,7 @@ filtered out returns **empty lists**, not `403`. A hidden individual show is
 |---|---|
 | `GET /api/v1/libraries/{id}/podcasts` | `200 {shows: [Show]}`; visible shows in title order, cap 2,000 |
 | `GET /api/v1/libraries/{id}/podcasts/episodes` | `200 {episodes: [Episode], next_cursor: string \| null}` |
-| `GET /api/v1/me/podcasts` | `200 {shows: [Show], requests: [Request]}`; followed visible shows plus the caller's open subscribe requests and those ended within seven days, in accessible podcast libraries |
+| `GET /api/v1/me/podcasts` | `200 {shows: [Show], requests: [Request]}`; followed visible shows plus the caller's open subscribe requests and those ended within seven days that they have not [dismissed](#dismissing-a-follow-request), in accessible podcast libraries |
 
 Episodes require `show=<show path>`. `order` is `newest` (default) or `oldest`;
 `limit` defaults to 50 and must be 1 through 200 (`400 invalid_request` otherwise).
@@ -2222,7 +2223,8 @@ slots. Only a failure of the feed itself counts (its address, its answer, the
 network): a request that ended `request_expired` (a server restart),
 `bridge_lost`, `library_not_writable`, `not_podcast_library`, `write_failed`,
 `feed_secret_missing` or `identity_changed` does not (`notFeedFailures` in
-`internal/bridge`), nor one the caller has asked again since. A single [`POST /podcasts/follow`](#podcast-actions) by
+`internal/bridge`), nor one the caller has asked again since or
+[dismissed](#dismissing-a-follow-request). A single [`POST /podcasts/follow`](#podcast-actions) by
 address always retries; that is the player's Try again. Older players show the
 row as a plain error.
 

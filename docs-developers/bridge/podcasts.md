@@ -747,7 +747,7 @@ their one written copy.
 | `followPodcastByUrl(libraryId, feedUrl, {private, title})` | `POST /podcasts/follow` with exactly `{library_id, feed_url}`, plus `private: true` only when set and `title` (trimmed) only when given |
 | `dismissPodcastRequest(id)` | `DELETE /podcasts/requests/{id}`, `204`; the server's own `404 request_not_found` (not a proxy's) also resolves, since that request is gone |
 | `checkPodcast(libraryId, path)` | `POST /podcasts/check` with exactly `{library_id, path}` |
-| `importOpml(libraryId, body)` | `POST /podcasts/opml/import?library_id=` with the raw bytes (a `Blob` on the web, a `Uint8Array` on a device; `send()`'s `raw` body), always `Content-Type: text/x-opml`, no compression, a timeout of 330 s (`OPML_IMPORT_TIMEOUT_MS`), past the server's 5 minute import bound, by which it always answers |
+| `importOpml(libraryId, body)` | `POST /podcasts/opml/import?library_id=` with the raw bytes (a `Blob` on the web, a `Uint8Array` on a device; `send()`'s `raw` body), always `Content-Type: text/x-opml`, no compression, a timeout of at least 330 s (`OPML_IMPORT_TIMEOUT_MS`; the client's own when longer), past the server's 5 minute import bound, by which it always answers |
 | `exportOpml()` | `GET /podcasts/opml/export` with the `Authorization` header (no `?token=` link exists); the counts read through `Headers.get`, so Go's `X-Opml-*` spelling matches, and a missing or non-numeric one is `null` |
 
 `ApiError` gains an optional `retryAfterSeconds`. It is `Retry-After` when that
@@ -933,10 +933,11 @@ flag rule as any follow.
   and 2 s. Five such answers in a row stop the import.
 - Any other refusal stops as `failed` with its code.
 - An upload with no answer (a network failure, the client's timeout, a
-  gateway's `502` or `504`, by `isServerAwayError`) stops as `failed` with the
-  player's own `no_answer`. The server carries on with an import whose upload was
-  given up, so the copy never says the list failed. It says the server may still
-  be adding the shows, and the player reads the shows and follow requests again.
+  gateway's `502`, `504` or `520` to `524`, by `isServerAwayError`) stops as
+  `failed` with the player's own `no_answer`. The server carries on with an
+  import whose upload was given up, so the copy never says the list failed. It
+  says the server may still be adding the shows, and the player reads the shows
+  and follow requests again.
 - The server's own `503` with no code (its 5 minute bound, or it stopping) stops
   as `failed` with `server_timeout`. The rows it reached are done, and Try again
   adds the rest.

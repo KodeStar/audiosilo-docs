@@ -607,8 +607,9 @@ is `allowed`.
 After a `202` the button reads "Asked the server to check" while the check runs.
 The listener can't read the poll job, so the player watches the show. It reads
 the show list every 3 s (`CHECK_POLL_MS`) until the show's `status.last_checked`
-moves, then reads the show's episodes again. It stops after two minutes
-(`CHECK_WAIT_MS`), or when the page closes.
+moves, then reads the show's episodes again. It stops waiting after two minutes
+(`CHECK_WAIT_MS`), reading the show list and episodes once more, or when the
+page closes.
 
 A caption beside the button says what the check found once it ended: `{{count}}
 new episodes` (the show's `episode_count` now, less its count when the check was

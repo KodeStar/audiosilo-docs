@@ -62,8 +62,9 @@ Additions:
   field when it is there.
 - **Naming and dismissing follow requests.** `POST /podcasts/follow` takes an
   optional `title` beside `feed_url`, and an OPML import labels each public
-  request it queues with the outline's title. A request row carries it as
-  [`title`](reference.md#podcast-follow-requests), `null` when there is none.
+  request it queues with the outline's title (else its text). A request row
+  carries it as [`title`](reference.md#podcast-follow-requests), `null` when
+  there is none.
   [`DELETE /podcasts/requests/{id}`](reference.md#dismissing-a-follow-request)
   hides the caller's own failed or cancelled request from their list, also with
   the Podcasts module off. The capability is `podcast_request_dismiss`. It also
