@@ -1869,8 +1869,8 @@ The book page's Community card ends with **`GenerateSection`**. It shows:
 - **The action**, from the brief estimate (`generateAction`): `generate`,
   `regenerate` or `covered`. `regenerate` needs a part generated here that shows
   (`generatedShown`: `has.local` without `has.community`), so a file the community
-  masks, or a `recaps.json` holding only a summary, leaves Generate; Share uses the
-  same rule (`shareDimensions`). The player follows the same offer rule (see
+  masks, or a `recaps.json` holding only a summary, still offers Generate. Share
+  uses the same rule (`shareDimensions`). The player follows the same offer rule (see
   [Who sees the action](../bridge/generating.md#who-sees-the-action)).
 - **For `covered`**, in place of the action: "The community already has
   characters and recaps for this book." with **See them**. That scrolls to the
@@ -1881,8 +1881,7 @@ The book page's Community card ends with **`GenerateSection`**. It shows:
 - the source, length, transcription and agent cost for every book it queues;
 - where the results go;
 - "This replaces the characters and recaps generated before." whenever the book
-  has either file (`has.local`), one the community masks included, since the job
-  rewrites it;
+  has either file (`has.local`), one the community masks included;
 - a contribute switch, on by default, only while the `contributions` flag is on
   and the estimate's `can_contribute` (`contributeOffered`);
 - the earlier books, ticked;

@@ -687,9 +687,8 @@ Account's signed-in devices and API keys). The pages that read every server list
   - `BookMetaWork.community_description` and `attribution`
     (`BookMetaAttribution`). The server writes the CC BY-SA credit. A screen that
     shows community content must render it beside that content and never compose
-    it, linking its `source_url` (`Attribution`, `CaptionLink`); the series page and
-    Search's character group do. An earlier book's row on the book page credits that
-    work's own `attribution`, never the current book's. `community_description`
+    it (`Attribution`, linked as in [Credits](player-ui.md#panels)); the series page
+    and Search's character group do. `community_description`
     feeds the book page's About card (`aboutContent`).
   - `BookMetaRecording.chapter_count`, which has no reader yet.
   - `BookMetaRecording.librivox` (`BookMetaLibrivox { id, url?, zip_url? }`), only
@@ -1440,8 +1439,8 @@ The counted remainder is the `hidden` number behind "2 more matches after your
 place in the book". Each hit carries its book's CC BY-SA `attribution`, and
 `characterCredits(hits)` credits the rows on screen only (the first 8 until Show
 all), once per credit, licence and source page. Each credit is its own line beside
-the group: the credit links the work's page (`source_url`) and the licence its deed,
-and the line names its book when there are several, since they read alike.
+the group, linked as in [Credits](player-ui.md#panels), and names its book when there
+are several, since they read alike.
 
 ### Podcasts
 

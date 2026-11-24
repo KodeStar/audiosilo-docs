@@ -398,10 +398,10 @@ the toast's Show agree.
 
 **Credits.** `Attribution` (`companion-pieces.tsx`) puts the server's `attribution`
 under every community block. The credit is the server's and is never composed here.
-Both its parts are links (`CaptionLink`): "Community notes from ..." opens the work's
-page on the metadata site (`attribution.source_url`, where CC BY-SA asks the material
-be linked; its screen-reader name is `player.companion.creditSource`) and the licence
-opens its deed (`license_url`). A part whose URL is missing or not http(s) is plain
+Both its parts are links (`CaptionLink`). "Community notes from ..." opens the work's
+page on the metadata site (`attribution.source_url`), since CC BY-SA asks for a link
+to the material where one is practical; its screen-reader name is
+`player.companion.creditSource`. The licence opens its deed (`license_url`). A part whose URL is missing or not http(s) is plain
 text. On the web the link opens a new tab, on a phone the in-app browser
 (`openExternalUrl`). That covers every `Attribution`: the book page's Characters and
 Recaps tabs and their earlier books' rows (each crediting its own work), the companion's
