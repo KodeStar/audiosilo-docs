@@ -1052,8 +1052,10 @@ There is no OpenAPI spec and no codegen. The player mirrors these JSON shapes by
 hand in `audiosilo-frontend/src/api/types.ts`, and the Bridge mirrors them in its
 `internal/link`. **Any wire change is therefore a multi-repo change**: the
 handler, the mirrored types and the tests on both sides move together. The
-shapes of the player's main envelopes are recorded in
-`internal/api/testdata/wire/` and checked by `TestWireGolden`: see
+server checks the shapes of the player's main envelopes against
+`internal/api/testdata/wire/` with `TestWireGolden`. The player uses
+`npm run wire:sync` to pin a copy and checks its response types against
+those shapes. See
 [The order for a wire change](../../contributing/cross-repo-changes.md#the-order-for-a-wire-change).
 See the [cross-repo contract](../../architecture/cross-repo-contract.md) before
 touching a payload.

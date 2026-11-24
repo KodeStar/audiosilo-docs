@@ -60,7 +60,12 @@ lands, run `npm run names:sync` (it reads `../audiosilo-server` at `origin/main`
 `-- --server <dir> --ref <rev>` for another), then fix the pages it reports. A
 name a page keeps on purpose, such as a planned route, the metadata service's
 routes or another repo's variable, goes in `scripts/stale-names-allow.json` with
-the reason. An entry no page needs any more fails the check too.
+the reason. A plain key matches that name exactly. For a family of names,
+prefix the key with `pattern:` and supply a regular expression. For example,
+`pattern:(?:/api/v1)?/works/[^/]+` covers one path segment after `/works/`
+with either spelling of the API prefix. The expression must match the whole
+name. An exact entry takes precedence, then the first matching pattern in
+file order. The check reports unused entries of either kind.
 
 Search (the `@easyops-cn/docusaurus-search-local` theme) builds its index
 during `npm run build`, so the search box returns nothing under `npm start`.
