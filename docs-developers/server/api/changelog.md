@@ -60,6 +60,17 @@ Additions:
   podcast show ([Podcast read routes](reference.md#podcast-read-routes)).
   Neither this nor `generated_parts` has a capability flag. A client reads each
   field when it is there.
+- **Cover versions on rows that name a book.** `cover_version` on progress,
+  favourite, folder and household rows (server#215): the book's own
+  [`cover_version`](reference.md#get-apiv1librariesidbooks), omitted when the
+  path is no indexed book. It is on the rows of
+  [`GET /me/progress`](reference.md#get-apiv1meprogress) only, not on a single
+  book's progress, a save's answer or a sync answer, and a `PUT` that sends it
+  back is accepted with the value ignored. Also on
+  [`GET /me/favourites`](reference.md#get-apiv1mefavourites), a book's entry in
+  [`GET /libraries/{id}/fs`](reference.md#get-apiv1librariesidfs) and a
+  [`GET /household/listening`](reference.md#get-apiv1householdlistening) row.
+  No capability flag.
 - **A Stay in listening sync.** A listen's `start` on `POST /me/listening/sync`
   can be `stay` ([A Stay](reference.md#a-stay)). Capability `listening_stay`.
   Without it, send `jump`: an older server refuses a `stay` event as `invalid`.
