@@ -430,9 +430,12 @@ Every pull request touching `data/**` is checked twice:
   blocks a merge**.
 
   It also uses the plain `pull_request` trigger by design. `pull_request_target` is
-  forbidden here as the "pwn request" pattern. So a fork pull request gets a
-  neutral skip notice until a maintainer pushes its branch to the repo or re-runs
-  it, and fork secrets are never reached. The workflow passes the diff to the
+  forbidden here as the "pwn request" pattern. So its job does not run on a fork
+  pull request at all (the check shows as skipped), and fork secrets are never
+  reached. The steward's mirror of it is verified instead (see
+  [A pull request from a fork](#a-pull-request-from-a-fork)), or a maintainer
+  pushes its branch to the repo or runs the workflow by hand for it (a manual
+  dispatch runs from `main`, with the secret). The workflow passes the diff to the
   model as untrusted data and never executes it.
 
   When a rebase leaves what it judged unchanged, the workflow re-applies the last
@@ -448,11 +451,15 @@ Every pull request touching `data/**` is checked twice:
   session limit there from stalling every verdict. With neither secret the
   script writes a skip, which is a failed check.
 
-The one place that verdict is *not* advisory is the
-[series-completion bot](./sync-bot.md). Its bounded, `data/`-only batch imports
-merge themselves once the required checks pass and `ai-verified` is applied. Every
-other batch import, opened by a person or composed from the "Import a library"
-form, still needs a maintainer's approval however green it is.
+Two merges wait on that verdict instead of on a person. The
+[series-completion bot](./sync-bot.md)'s bounded, `data/`-only batch imports
+merge themselves once the required checks pass and `ai-verified` is applied. The
+[steward](./steward.md) merges every other data pull request into `main` on the
+maintainer's behalf through the same gate, `ai-verified` on the exact head
+included. That covers a batch import opened by a person or composed from the
+"Import a library" form (a large one in parts) and a fork's mirror. A pull
+request the steward does not merge, such as a fork it cannot mirror, still needs
+a maintainer's approval however green it is.
 
 ## The Go gate in CI
 
@@ -544,6 +551,62 @@ as a failure.
 The [sync bot](sync-bot.md) gates its merge on `check` (with `compose`, `site` and
 `verify`) by name, and hands the tail of a failed `check` log to its resolver.
 Renaming or dropping `check` leaves both waiting for a check that never comes.
+
+## A pull request from a fork
+
+Because `ai-verify` does not run on a fork, a pull request from your fork
+cannot pass the merge gate by itself. When the maintainer has fork mirroring
+on, the [steward](./steward.md#pull-requests-from-forks) copies it
+into a mirror pull request that goes through the gate for you. The same
+applies in audiosilo-meta-community, through that repository's own gate.
+
+1. **The steward checks your head.** If every commit changes nothing but plain
+   `data/**/*.json` files, the steward pushes your head unchanged to a
+   `steward/fork-N` branch in the repository.
+2. **A mirror pull request appears.** It has your title followed by
+   "(mirrored from #N)", N being your pull request's number. It credits you
+   and links back, and your pull request gets one comment pointing at it.
+3. **The mirror goes through the usual gate.** The checks and `ai-verify` run
+   on it. If it is flagged or red, the steward fixes the data on the mirror, as
+   for any other data pull request.
+4. **The mirror merges.** It merges squashed, with the steward's own commit
+   message, which credits you in plain prose ("Contributed by @you in #N.").
+   Your commit messages are not carried, so a closing keyword in one closes no
+   issue.
+5. **Your pull request is closed as superseded.** Once everything you changed
+   is on `main`, the steward closes it with a link to the mirror and its merge
+   commit. If GitHub already shows it merged, it is left as merged.
+
+A change larger than the steward merges whole is usually carried in parts: the
+mirror is split, each part merges through the gate, and the mirror is closed
+once every part has landed. Steps 4 and 5 then do not happen. The parts carry
+no credit line, and your pull request stays open for a maintainer with one
+comment saying its mirror closed without merging. The same holds when a
+maintainer closes the mirror. A new push is judged afresh.
+
+If you push again while the mirror is open, your new head is checked again and
+replaces the mirror's content (a steward fix on your earlier head is dropped).
+If you close your pull request, the steward closes the mirror too, and reopening
+it mirrors it again. While the maintainer has mirroring off, a new push is not
+checked or carried over: an open mirror goes on with the head it holds, and may
+merge with it, and your pull request then stays open for a maintainer.
+
+**When a fork is not mirrored.** With mirroring on, the steward leaves one
+comment saying why, and your pull request waits for a maintainer. That happens
+when:
+
+- any commit touches a file outside `data/`, even one a later commit reverts;
+- any commit writes something under `data/` that is not a plain `.json` file: a
+  script, a dotfile, a symbolic link, a submodule or an executable bit;
+- the change is too large for the steward to read whole (the bounds are on
+  [the steward's page](./steward.md#pull-requests-from-forks)), or its commits
+  since it parted from `main` could not all be read;
+- it changes nothing against `main`;
+- it carries one of the steward's own secrets.
+
+To try again, rewrite your branch so no commit touches anything but plain
+`data/**/*.json` files, and push. The new head is judged afresh. A pull request
+into a branch other than `main` is never mirrored.
 
 ## Bulk importers: metaimport
 

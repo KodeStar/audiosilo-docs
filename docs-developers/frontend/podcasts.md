@@ -192,7 +192,11 @@ library. The page has:
 - the chapters, through `BookChaptersTab` with `episode`. Its card reads "The whole
   episode", its parts notice speaks of the episode, and its `id3_chap` caption reads
   "Chapters from the episode file";
-- `usePodcastFetchStatus` while the episode is not on its server.
+- `usePodcastFetchStatus` while the episode is not on its server. From 2.7.0 the
+  server's `409 show_unreadable` (it can't read the show's folder) reads as an
+  `unavailable` status with that code (`unreadableShowStatus` in `hooks.ts`), so
+  the page says why ("Your server can't read this show's folder..."), as in
+  [Phases](#phases), where the read used to fail.
 
 When `timeline_changed === true` and the listener has a position, a Notice says the
 audio changed and the place is kept. Nothing is rescaled.
@@ -268,6 +272,8 @@ player route checks `useIsDownloaded`.
 
 The phases are `probing` (the stream is being asked), `waiting` (queued or on its
 way), `failed`, `unavailable`, `refused` (`409 fetch_limit`) and `starting`.
+A `409 show_unreadable` ends a fetch `unavailable` with that reason and no Try
+again: a download would meet the same refusal, so it needs the server's admin.
 
 The wire rules are in [Bridge podcasts](../bridge/podcasts.md#player-phase-2d-1):
 probe once, and poll every `max(2, Retry-After)` seconds. On a network error, `429`
@@ -426,7 +432,9 @@ form, the results and, as its footer, the follow requests. The form has a provid
 - the title, author and episode count;
 - `View on {{provider}}` (`provider_url`, opened outside the app);
 - **Follow**. It becomes **Adding** on a `202` (a request), or **Following** with
-  **Open show** on a `200`.
+  **Open show** on a `200`. The follow sends the result's `title`, so its request
+  row is named (on a server with `podcast_request_dismiss` only, see
+  [the hooks](../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2)).
 
 A show the listener already follows in this library reads **Following** with
 **Open show** from the start. `DirectorySearch` reads the library's shows
@@ -463,7 +471,16 @@ feed..."), and **Follow**.
   but the library already has the show as a public feed, it says `followingPublic`
   instead ("It was already in this library as a public feed, so it isn't
   private.").
-- A `202` says the show appears in Shows once it's ready.
+- A `202` says "Adding the show. It appears in Shows once it's ready." It keeps
+  the request's id and reads it live from the follow requests (`requestEnd`), so
+  the line turns into the end:
+  - `You follow {{title}}.` with Open show once it ended `done`, named as its
+    request row is (`requestLabel`);
+  - "Couldn't add the show." and the request's reason (`requestReasonKey`) once it
+    failed;
+  - "Adding the show was cancelled." once cancelled;
+  - nothing once the list no longer holds it (dismissed, or past the list's
+    week). It never reads "Adding" again.
 
 #### Follow requests
 
@@ -471,12 +488,19 @@ feed..."), and **Follow**.
 "Shows being added". They list every open request, then the ten newest ended ones.
 Each has:
 
-- its redacted feed label;
+- its name (`requestLabel`): the added show's title from the library's show list,
+  else the request's `title` (a directory result's, or an imported list's), else
+  its redacted feed label. The feed label sits under a name as a caption;
 - its state (`requestStateKey`): Waiting for its turn, Adding, Added, Couldn't add,
   or Cancelled;
 - the Private feed badge;
 - the reason for a failed one (`requestReasonKey`);
-- Open show once done.
+- Open show once done;
+- **Dismiss** (a close button, labelled `Dismiss {{title}}`) on a `failed` or
+  `cancelled` row, with capability `podcast_request_dismiss`
+  (`useDismissPodcastRequest`). The row leaves the list on a `204`, and on the
+  server's `404 request_not_found` too. Any other failure toasts "Couldn't dismiss
+  that. Try again."
 
 It polls through `useFollowRequests` only while one is open and the page is
 focused.
@@ -508,7 +532,19 @@ Once a file is picked, the panel shows:
   `unavailable` rows (`canRetryImport`);
 - one row per subscription, by `outline_index`.
 
-**The rows.** Each row reads `Entry {{index}}` and a state (`importRowKey`):
+A failed upload's line reads through `importFailureKey`. `no_answer` (which
+failures count is in [Stopping](../bridge/podcasts.md#the-import-waves)) reads
+"Your server didn't answer in time, but it may still be adding the list's shows.
+Look in Shows in a few minutes, or try again: shows already added are skipped."
+`server_timeout` reads "Your server stopped before the end of the list. Shows
+already added stay. Try again to add the rest."
+
+**The rows.** Each row reads `Entry {{index}}`, its name and a state
+(`importRowKey`). The name is the list's own (`outlineEntries`: the outline's
+`title`, else its `text`), with any web address in it redacted as the server
+redacts a follow's title (`feed-redact.ts`, read as the file is read, so Try again
+sends the redacted name too). A name that is only an address gives way to the
+show's folder, else the row's redacted address. The state is one of:
 Following, Already following, Being added, In the list twice, No usable feed
 address, Waiting for the next batch, Can't be added right now, Couldn't add, or
 Cancelled.
@@ -522,8 +558,10 @@ Cancelled.
 - A row that is Couldn't add or Cancelled, and whose address the file holds
   (`outlineFeeds`, `rowFeedUrl` in `opml-feeds.ts`), has its own **Try again**
   (`canRetryRow`, `retryRow`). That is a single follow by that address, which the
-  server always tries again. Its answer stands over the waves' row
-  (`withRetries`).
+  server always tries again. It sends the list's name for the show as `title`.
+  Its answer stands over the waves' row (`withRetries`).
+- A queued row whose request was dismissed since it ended (in the requests list,
+  or on another device) keeps the state it ended in (`withEndedRequests`).
 - A row's Private feed badge shows only when it has a usable feed (not `invalid` or
   `duplicate`, and `feed` set).
 - A row with no label shows only its entry and status.
@@ -568,10 +606,22 @@ without a public address left out. A refusal is a toast by `exportErrorKey`.
 beside Follow. It shows only for a followed show, and only when `useAddShowsAccess`
 is `allowed`.
 
-A `202` toasts "Checking for new episodes". 15 seconds later (`CHECK_REFRESH_MS`,
-with the timer cleared on unmount) it invalidates the show list and the show's
-episodes once. Refusals read through `checkErrorKey`, such as "Checked less than a
-minute ago. Try again shortly." for `checked_recently`.
+After a `202` the button reads "Asked the server to check" while the check runs.
+The listener can't read the poll job, so the player watches the show. It reads
+the show list every 3 s (`CHECK_POLL_MS`) until the show's `status.last_checked`
+moves, then reads the show's episodes again. It stops waiting after two minutes
+(`CHECK_WAIT_MS`), reading the show list and episodes once more, or when the
+page closes.
+
+A caption beside the button says what the check found once it ended: `{{count}}
+new episodes` (the show's `episode_count` now, less its count when the check was
+asked) or "No new episodes". A failed check has no caption, since the show page's
+own line says it failed. Otherwise, while no check runs, it reads
+`Checked {{when}}`, the relative time of `last_checked`. A retention prune in the
+same poll can make the count read low; it never reads below "No new episodes".
+
+Refusals read through `checkErrorKey`, such as "Checked less than a minute ago.
+Try again shortly." for `checked_recently`.
 
 All copy for these screens is under `podcasts.find.*`, `podcasts.import.*`,
 `podcasts.export.*`, `podcasts.check.*` and `podcasts.requests.*` in all six
