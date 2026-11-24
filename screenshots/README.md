@@ -148,7 +148,9 @@ into `.cache/mirror-meta.sqlite`, and `META` still serves the meta site shots. A
 shared clone is enough, for example, from the docs root (`screenshots/.cache` is ignored)
 `git clone -s -n <your audiosilo-meta clone> screenshots/.cache/meta-src && git -C screenshots/.cache/meta-src checkout <commit>`,
 then `MIRROR_META=screenshots/.cache/meta-src screenshots/run.sh` (a relative path is read from where `run.sh` is started).
-For v2.7.0 that was audiosilo-meta `bf903ab513`, the last schema 11 commit.
+Server 2.7.0 pins audiosilo-meta v0.27.0 (schema 14), so for its shots the current
+audiosilo-meta checkout works and `MIRROR_META` can stay unset. (Before that pin, the wave 4
+shots used `bf903ab513`, the last schema 11 commit.)
 
 The Health shots (`admin/health-*.png`) need issues to show, and the seeded
 library has almost none. After the other admin shots, `capture-admin.mjs`
