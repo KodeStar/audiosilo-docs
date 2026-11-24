@@ -1,6 +1,6 @@
 {
   "repo": "KodeStar/audiosilo-server",
-  "ref": "6e5961b196511fa7e7558241f3fc00c33a3b26e6",
+  "ref": "25d22cda443eee1d79a051e0142f0845f3b6f454",
   "capabilities": [
     "addresses",
     "admin_ui",
@@ -30,6 +30,7 @@
     "podcast_discovery",
     "podcast_fetch",
     "podcast_opml",
+    "podcast_request_dismiss",
     "podcasts",
     "progress_edit",
     "queue",
@@ -273,6 +274,7 @@
     "/api/v1/podcasts/follow",
     "/api/v1/podcasts/opml/export",
     "/api/v1/podcasts/opml/import",
+    "/api/v1/podcasts/requests/{id}",
     "/api/v1/search",
     "/api/v1/server",
     "/assets/",
@@ -473,6 +475,7 @@
     "capabilities.podcast_discovery",
     "capabilities.podcast_fetch",
     "capabilities.podcast_opml",
+    "capabilities.podcast_request_dismiss",
     "capabilities.podcasts",
     "capabilities.progress_edit",
     "capabilities.queue",

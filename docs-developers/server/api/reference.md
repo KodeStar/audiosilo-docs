@@ -72,6 +72,7 @@ else and gate features on the flags.
     "podcast_fetch": true,
     "podcast_discovery": false,
     "podcast_opml": true,
+    "podcast_request_dismiss": true,
     "ebooks": true,
     "readalong": true,
     "upcoming": true,
@@ -177,19 +178,21 @@ Household members, always `true` on a server that has it and absent on an older 
 The flag never depends on the caller or on the admin's switches. Whether **this**
 caller may add a member is the members list's `allowed`.
 
-Podcasts have three core flags, each absent on an older server (treat absent as
+Podcasts have four core flags, each absent on an older server (treat absent as
 unsupported). `podcast_fetch` is always `true`. It gates
 [on-demand fetch, status and Retry](#podcast-fetch-status-and-retry) and the
 optional `fetch:Status` on episodes and `Book.episode`. It stays true whether or
-not the module and the Bridge are available. The other two:
+not the module and the Bridge are available. The other three:
 
 | Flag | Value | Gates |
 |---|---|---|
 | `podcast_discovery` | `podcasts.discovery.enabled` at start **and** the Podcasts module's toggle on; sent `false` otherwise. It does not depend on the Bridge or on a directory key | [directory search](#podcast-discovery) (check `providers` for Podcast Index) |
 | `podcast_opml` | always `true` | the [OPML import and export](#opml-import-and-export) protocol, even offline or module-off; the import still needs the module (`404 module_off`), the export does not |
+| `podcast_request_dismiss` | always `true` (from 2.7.0) | [dismissing a follow request](#dismissing-a-follow-request), which works with the module off, and the optional `title` on [`POST /podcasts/follow`](#podcast-actions) |
 
-Both describe the server's configuration, not the caller's permissions. The
-routes still refuse a kid, a demo account or an unrecognized client.
+All three describe the server's configuration, not the caller's permissions. The
+routes still refuse a demo account or an unrecognized client, and the module's
+routes a kid too.
 
 The reader and read-along, always `true` on a server that has them and absent on
 an older one:
@@ -1526,7 +1529,7 @@ filtered out returns **empty lists**, not `403`. A hidden individual show is
 |---|---|
 | `GET /api/v1/libraries/{id}/podcasts` | `200 {shows: [Show]}`; visible shows in title order, cap 2,000 |
 | `GET /api/v1/libraries/{id}/podcasts/episodes` | `200 {episodes: [Episode], next_cursor: string \| null}` |
-| `GET /api/v1/me/podcasts` | `200 {shows: [Show], requests: [Request]}`; followed visible shows plus the caller's open subscribe requests and those ended within seven days, in accessible podcast libraries |
+| `GET /api/v1/me/podcasts` | `200 {shows: [Show], requests: [Request]}`; followed visible shows plus the caller's open subscribe requests and those ended within seven days that they have not [dismissed](#dismissing-a-follow-request), in accessible podcast libraries |
 
 Episodes require `show=<show path>`. `order` is `newest` (default) or `oldest`;
 `limit` defaults to 50 and must be 1 through 200 (`400 invalid_request` otherwise).
@@ -1771,7 +1774,7 @@ A **Request**:
 ```json
 {
   "id": 81, "library_id": 3, "state": "failed", "feed": "https://example.com/...",
-  "private": true, "show_path": null,
+  "title": null, "private": true, "show_path": null,
   "error": {"code": "request_expired", "message": "The follow request expired. Follow the feed again."},
   "created_at": "2026-10-20T08:00:00Z", "updated_at": "2026-10-20T08:01:00Z"
 }
@@ -1779,6 +1782,38 @@ A **Request**:
 
 `feed` is a redacted display address. `library_id` and `show_path` may be
 `null`; `error` is `null` unless failed. Follow requests use the Bridge job states.
+
+From 2.7.0 `title` is the show's name as the follower gave it: the `title` of a
+[follow by URL](#podcast-actions), or the outline's name when an
+[OPML import](#post-apiv1podcastsopmlimport) queued the request. It is cleaned
+to one line of at most 1,000 bytes, and any URL in it is redacted as `feed` is.
+It is `null` when none was given and always `null` for a private feed (the
+server never keeps a private feed's title). An older server omits the key, so
+treat absent as `null`. Use it as the row's label until the show is added, then
+the show's own title.
+
+#### Dismissing a follow request
+
+`DELETE /api/v1/podcasts/requests/{id}` takes the caller's own follow request
+off their list once it has failed or been cancelled (from 2.7.0, capability
+`podcast_request_dismiss`). *Session, not demo.* It is not the Podcasts
+module's: it works while the module is off. The
+[client gate](../auth-and-security.md#podcast-visibility) applies, as on every
+podcast route.
+
+The request is hidden from the caller's
+[`GET /me/podcasts`](#podcast-read-routes), not deleted: the console's job list
+keeps it, with its error and who asked. A dismissed failure no longer counts as
+a recent failure, so the next [OPML import](#post-apiv1podcastsopmlimport) may
+queue that feed again.
+
+| Status/code | Meaning |
+|---|---|
+| `204` | dismissed: a request of the caller's that ended `failed` or `cancelled`, once the server has recorded its outcome, or ended over a day ago |
+| `403 demo_account` | the demo account |
+| `403 no_library_access` | a client the podcast gate turns away (an older or unidentified player) |
+| `404 request_not_found` | no such request, another user's (the answer never says which), one already dismissed, or an id that is not a number |
+| `409 request_open` | the request is still open, ended `done` (its row opens the show), or ended under a day ago and its outcome is not recorded yet; ask again shortly |
 
 ### Podcast actions
 
@@ -1791,7 +1826,7 @@ body, never in query strings.
 
 | Route | Body/query | Success |
 |---|---|---|
-| `POST /api/v1/podcasts/follow` | `{library_id, path}` **or** `{library_id, feed_url, private?}` | `200 {state:"following", show:Show}` for an existing show; `202 {state:"subscribing", request:Request}` when queued |
+| `POST /api/v1/podcasts/follow` | `{library_id, path}` **or** `{library_id, feed_url, private?, title?}` | `200 {state:"following", show:Show}` for an existing show; `202 {state:"subscribing", request:Request}` when queued |
 | `DELETE /api/v1/podcasts/follow` | `?library_id=3&path=<show>` | `204`, also when already unfollowed |
 | `POST /api/v1/podcasts/check` | `{library_id, path}` | `202 {request:{id,state}}`, returning an open poll when one exists |
 
@@ -1800,7 +1835,12 @@ whole library and matches current/previous URL hashes before queuing; knowing
 a private URL supplies proof to follow that show. An existing follow is
 idempotent. A missing private credential queues a restoring subscribe when
 the URL is supplied. `private:true` forces privacy; `false` cannot override
-automatic detection. Each user can have five open subscribe requests; a second
+automatic detection. `title` (from 2.7.0, with `feed_url` only) is the show's
+name as a directory or list gave it. It labels a new request, cleaned as
+[`Request.title`](#podcast-follow-requests) says; a request the follow joins keeps its
+own title. Send `title` only when `podcast_request_dismiss` is `true`, since an
+older server refuses the unknown field with `400 invalid_request`. Each user can
+have five open subscribe requests; a second
 request for their same library/hash and the same privacy returns the open one.
 An [OPML import](#opml-import-and-export) row answers the same way as a
 follow by URL. Manual check requires
@@ -1811,7 +1851,7 @@ toward the feed's failing run and leaves the scheduled polls' backoff as it was
 
 | Status/code | Meaning |
 |---|---|
-| `400 invalid_request` | missing/invalid library, both or neither path and URL, private with path, an invalid unfollow/check show path, or unknown body fields |
+| `400 invalid_request` | missing/invalid library, both or neither path and URL, private or title with path, an invalid unfollow/check show path, or unknown body fields |
 | `400 invalid_feed_url` | malformed, non-HTTP(S), hostless or over-2,048-byte feed URL, a host over 253 characters, or one whose normalized form changes when normalized again. The server refuses it whatever the Bridge's state, and also when the follow would only join a request already open |
 | `403 no_library_access` | no accessible library, or URL follow without a whole-library grant |
 | `404 show_not_found` | missing, hidden or invalid show on follow by path, or check without following (from 2.7.0 also a check whose show was re-subscribed under a new identity the caller doesn't follow) |
@@ -1845,8 +1885,9 @@ sends a finished/failed notification. See [the Bridge implementation](../../brid
 
 *Session, adult, not demo; Podcasts module.* Directory search finds public
 shows by name. Following one is the ordinary
-[`POST /podcasts/follow`](#podcast-actions) with `{library_id, feed_url}`.
-There is no provider-id follow and no new follow field. The player's Add shows
+[`POST /podcasts/follow`](#podcast-actions) with `{library_id, feed_url}`, plus
+the result's `title` on a server with `podcast_request_dismiss`.
+There is no provider-id follow. The player's Add shows
 page calls these routes (the player from 2.4.0; see
 [Player: discovery and OPML](../../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2)).
 The console does not.
@@ -2086,8 +2127,11 @@ changes nothing:
 | `400 invalid_opml` | not well-formed; a DOCTYPE, DTD or other directive (even unused); a processing instruction other than the initial XML declaration; an encoding other than UTF-8; an unknown entity; a duplicated attribute (including `xmlUrl` in another letter case); not exactly one unnamespaced `<opml>` root with `version` `1.0` or `2.0`, with at most one `<head>` and exactly one `<body>`; content after the root |
 
 A leading UTF-8 byte order mark is accepted. Entities, includes and linked
-OPML are never fetched. Titles, groups and `htmlUrl` are ignored: only the
-`<body>` outline tree is read, flattened in document order. An outline with an
+OPML are never fetched. Groups and `htmlUrl` are ignored: only the
+`<body>` outline tree is read, flattened in document order. From 2.7.0 a
+subscription outline's `title` attribute, else its `text`, labels the request it
+queues for a public feed (`Request.title`); the answer's rows never carry it. An
+outline with an
 `xmlUrl` attribute (any letter case) is a subscription, whatever its `type`;
 one whose `xmlUrl` is blank, or a `type="rss"` outline without one, is a row
 with `missing_feed_url` (`htmlUrl` or `url` is never used instead); any other
@@ -2096,9 +2140,9 @@ Within an upload the first outline with a given normalized URL wins.
 
 From 2.7.0 an import has its own bound of 5 minutes instead of the 30 s
 [request timeout](index.md#status-codes), and it outlives its client: a player
-that gives up waiting (a shipped one waits 45 s) does not cancel it, and it keeps
-its slot until it ends. When the bound or the server stopping ends it first, the
-answer is `503 {"error":"request timed out"}`: the rows reached are followed and
+that gives up waiting (a 2.6 player after 45 s, a 2.7.0 player after 330 s) does
+not cancel it, and it keeps its slot until it ends. When the bound or the server
+stopping ends it first, the answer is `503 {"error":"request timed out"}`: the rows reached are followed and
 the rest untouched, and uploading again is safe (done rows answer
 `already_following` or `already_queued`).
 
@@ -2179,7 +2223,8 @@ slots. Only a failure of the feed itself counts (its address, its answer, the
 network): a request that ended `request_expired` (a server restart),
 `bridge_lost`, `library_not_writable`, `not_podcast_library`, `write_failed`,
 `feed_secret_missing` or `identity_changed` does not (`notFeedFailures` in
-`internal/bridge`), nor one the caller has asked again since. A single [`POST /podcasts/follow`](#podcast-actions) by
+`internal/bridge`), nor one the caller has asked again since or
+[dismissed](#dismissing-a-follow-request). A single [`POST /podcasts/follow`](#podcast-actions) by
 address always retries; that is the player's Try again. Older players show the
 row as a plain error.
 
@@ -2194,10 +2239,6 @@ document again is the retry: rows already done answer `already_following` or
 `limited` rows are admitted. A private URL lives only in the server's memory
 until the Bridge claims its request; a restart before that ends the request as
 `request_expired`, and re-uploading recovers it.
-
-The import runs under the server's 30-second request timeout. If that or a
-dropped connection ends it, rows already committed stay and the rest are not
-attempted; a re-upload continues safely.
 
 #### `GET /api/v1/podcasts/opml/export`
 
