@@ -9413,7 +9413,8 @@ minutes (and never past server shutdown), so on a slow share it is still saved
 even if the response times out; the book's next look shows it. From 2.7.0, when
 the re-read is still going 5 seconds before the request timeout (25 seconds in),
 the server answers `202` `{"still_reading": true}` and the re-read goes on. A
-failure after that answer goes to the server log as a warning. Another
+failure after that answer goes to the server log as a warning (the server's
+stop, or no book at the path any more, is not logged). Another
 read of the book already under way (a second click, a scan's) is waited on for
 as long as it moves on, then the re-read reads the book itself, so a change
 made since that read began is picked up. The console uses
@@ -9776,7 +9777,8 @@ by shares (admin view).
       "title": "The Final Empire",
       "author": "Brandon Sanderson",
       "started_at": "2026-09-12T20:03:10Z",
-      "finished_at": null
+      "finished_at": null,
+      "cover_version": "3f9a1c07be"
     }
   ]
 }
