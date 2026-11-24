@@ -1,6 +1,8 @@
-// What the page checks share (check-admonitions.mjs, stale-names.mjs): the
-// docs pages, and a page's lines outside fenced code blocks.
+// What the page checks share (check-admonitions.mjs, stale-names.mjs,
+// external-anchors.mjs): the docs pages, a page's lines outside fenced code
+// blocks, and reading another repo's tree with git.
 
+import {execFileSync} from 'node:child_process';
 import {globSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
@@ -40,4 +42,19 @@ export function linesOutsideFences(text) {
     if (fence === null) out.push({line: i + 1, text: line});
   });
   return out;
+}
+
+/** Runs git in dir and returns its output. */
+export function git(dir, ...args) {
+  return execFileSync('git', ['-C', dir, ...args], {encoding: 'utf8', maxBuffer: 64 << 20});
+}
+
+/** git grep's output lines at ref (grepArgs: flags and patterns), none when nothing matches. */
+export function gitGrep(dir, ref, grepArgs, ...paths) {
+  try {
+    return git(dir, 'grep', ...grepArgs, ref, '--', ...paths).split('\n').filter(Boolean);
+  } catch (e) {
+    if (e.status === 1) return []; // no match
+    throw e;
+  }
 }

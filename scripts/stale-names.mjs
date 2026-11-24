@@ -25,11 +25,10 @@
 // route, another repo's variable) goes in scripts/stale-names-allow.json with
 // why. npm run names:sync re-pins after a server change.
 
-import {execFileSync} from 'node:child_process';
 import {readFileSync, realpathSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {ROOT, docsPages, linesOutsideFences} from './pages.mjs';
+import {ROOT, docsPages, git, gitGrep, linesOutsideFences} from './pages.mjs';
 
 const SNAPSHOT = join(ROOT, 'scripts', 'server-names.json');
 const ALLOW = join(ROOT, 'scripts', 'stale-names-allow.json');
@@ -38,21 +37,8 @@ const OTHER_SERVICES = /^docs-developers\/(bridge|meta)\//;
 
 // ---- reading the server -------------------------------------------------
 
-function git(dir, ...args) {
-  return execFileSync('git', ['-C', dir, ...args], {encoding: 'utf8', maxBuffer: 64 << 20});
-}
-
-function gitGrep(dir, ref, pattern, ...paths) {
-  try {
-    // -h drops the "<ref>:<path>:" prefix: one bare match per line.
-    return git(dir, 'grep', '-hoE', pattern, ref, '--', ...paths)
-      .split('\n')
-      .filter(Boolean);
-  } catch (e) {
-    if (e.status === 1) return []; // no match
-    throw e;
-  }
-}
+// -h drops the "<ref>:<path>:" prefix: one bare match per line.
+const grepMatches = (dir, ref, pattern, ...paths) => gitGrep(dir, ref, ['-hoE', pattern], ...paths);
 
 /**
  * Every route the server's mux registers, as a path (methods dropped): each
@@ -126,13 +112,13 @@ function readServer(server, rev) {
   walk(golden.shape, '');
   const goFiles = ['internal/*.go', ':!*_test.go'];
   const constants = Object.fromEntries(
-    gitGrep(server, ref, '[A-Za-z0-9_]+[[:space:]]+= "/[^"]*"', ...goFiles).map((m) => {
+    grepMatches(server, ref, '[A-Za-z0-9_]+[[:space:]]+= "/[^"]*"', ...goFiles).map((m) => {
       const [, name, value] = m.match(/(\w+)\s+= "([^"]*)"/);
       return [name, value];
     }),
   );
   const routes = routesFrom(
-    gitGrep(server, ref, '"(GET|POST|PUT|PATCH|DELETE|HEAD) (/[A-Za-z0-9_./{}$-]*"|"[[:space:]]*\\+[[:space:]]*[A-Za-z0-9_]+)', ...goFiles),
+    grepMatches(server, ref, '"(GET|POST|PUT|PATCH|DELETE|HEAD) (/[A-Za-z0-9_./{}$-]*"|"[[:space:]]*\\+[[:space:]]*[A-Za-z0-9_]+)', ...goFiles),
     constants,
   );
   const configFiles = git(server, 'ls-tree', '--name-only', `${ref}:internal/config`)
@@ -145,17 +131,17 @@ function readServer(server, rev) {
   // GET /admin/settings adds ("metadata.region_chosen"), which pages name too.
   const settings = [
     ...new Set([
-      ...gitGrep(server, ref, 'setting: *"[a-z0-9_]+\\.[a-z0-9_]+"', 'internal/config/settings.go').map(
+      ...grepMatches(server, ref, 'setting: *"[a-z0-9_]+\\.[a-z0-9_]+"', 'internal/config/settings.go').map(
         (m) => m.match(/"(.*)"/)[1],
       ),
-      ...gitGrep(server, ref, 'sections\\["[a-z_]+"\\]\\["[a-z_]+"\\]', 'internal/api/handlers_settings.go').map(
+      ...grepMatches(server, ref, 'sections\\["[a-z_]+"\\]\\["[a-z_]+"\\]', 'internal/api/handlers_settings.go').map(
         (m) => m.replace(/sections\["([a-z_]+)"\]\["([a-z_]+)"\]/, '$1.$2'),
       ),
     ]),
   ].sort();
   // Code, tests and config, not prose: a variable the server dropped can live on
   // in its own README or CHANGELOG.
-  const env = [...new Set(gitGrep(server, ref, 'AUDIOSILO_[A-Z0-9_]*[A-Z0-9]', '.', ':!*.md'))].sort();
+  const env = [...new Set(grepMatches(server, ref, 'AUDIOSILO_[A-Z0-9_]*[A-Z0-9]', '.', ':!*.md'))].sort();
   return {repo: REPO, ref, capabilities, routes, config, settings, serverFields: serverFields.sort(), env};
 }
 

@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {test} from 'node:test';
 import {checkAnchors, linkTargets} from './external-anchors.mjs';
+import {ROOT} from './pages.mjs';
 
 function guide(t, files) {
   const dir = mkdtempSync(join(tmpdir(), 'external-anchors-'));
@@ -29,15 +30,25 @@ test('sync collects full URLs, bare paths and template paths, including multiple
   ]);
 });
 
-test('renamed headings and files keep their published links with explicit ids and slugs', async (t) => {
+test('a renamed heading keeps its published link with an explicit id', (t) => {
   const dir = guide(t, {
-    'admin/renamed.mdx': '---\nslug: /admin/server\n---\n## A new heading {/* #modules */}',
+    'admin/server.md': '## A new heading {/* #modules */}',
     'index.md': '---\nslug: /\n---\n### Overview {/* #overview */}',
   });
-  assert.deepEqual(await checkAnchors(['/users/admin/server#modules', '/users#overview'], dir), []);
+  assert.deepEqual(checkAnchors(['/users/admin/server#modules', '/users#overview'], dir), []);
 });
 
-test('a generated id or an example of the explicit id cannot satisfy the check', async (t) => {
+test('every User Guide page is routed by its file name', () => {
+  // checkAnchors maps a link to its file; a slug or id front matter would move the page.
+  const pages = globSync('**/*.{md,mdx}', {cwd: join(ROOT, 'docs-users')});
+  const moved = pages.filter((page) => {
+    const front = readFileSync(join(ROOT, 'docs-users', page), 'utf8').match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+    return page !== 'index.md' && /^(slug|id):/m.test(front);
+  });
+  assert.deepEqual(moved, []);
+});
+
+test('a generated id or an example of the explicit id cannot satisfy the check', (t) => {
   const dir = guide(t, {'faq.md': [
     '## Privacy',
     'A paragraph {/* #privacy */}',
@@ -46,12 +57,12 @@ test('a generated id or an example of the explicit id cannot satisfy the check',
     '## Inline code `{/* #privacy */}`',
     '## Another heading {/* #private */}',
   ].join('\n\n')});
-  assert.deepEqual(await checkAnchors(['/users/faq#privacy'], dir), [
+  assert.deepEqual(checkAnchors(['/users/faq#privacy'], dir), [
     '/users/faq#privacy: missing explicit heading id',
   ]);
 });
 
-test('a missing page fails even when another page declares the id', async (t) => {
-  const dir = guide(t, {'faq.md': '---\nslug: /questions\n---\n## Privacy {/* #privacy */}'});
-  assert.deepEqual(await checkAnchors(['/users/faq#privacy'], dir), ['/users/faq#privacy: page missing']);
+test('a missing page fails even when another page declares the id', (t) => {
+  const dir = guide(t, {'questions.md': '## Privacy {/* #privacy */}'});
+  assert.deepEqual(checkAnchors(['/users/faq#privacy'], dir), ['/users/faq#privacy: page missing']);
 });
