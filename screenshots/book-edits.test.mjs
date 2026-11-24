@@ -6,7 +6,7 @@ import {apiClient} from './lib.mjs';
 
 const book = '/admin/libraries/1/book?path=Holmes';
 const revert = {revert: ['asin']};
-const unlink = {...revert, source: 'community', match: {work_id: ''}};
+const unlink = {match: {work_id: ''}};
 
 test('Hound cleanup retries the whole edit if the first PATCH fails', async () => {
   const calls = [];

@@ -1,12 +1,10 @@
 import {sleep} from './lib.mjs';
 
-// Both edits are safe to repeat if the server saved the first PATCH but its reply was lost.
+// Takes back a capture's ASIN: a revert of the admin edit, or with unlink the book's
+// community match, which takes its community ASIN with it. Both edits are safe to repeat
+// if the server saved the first PATCH but its reply was lost.
 export async function revertCaptureAsin(api, token, book, {unlink = false} = {}) {
-  const body = {revert: ['asin']};
-  if (unlink) {
-    body.source = 'community';
-    body.match = {work_id: ''};
-  }
+  const body = unlink ? {match: {work_id: ''}} : {revert: ['asin']};
   try {
     await api(token, 'PATCH', book, body);
   } catch {
