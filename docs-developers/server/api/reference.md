@@ -11696,10 +11696,8 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
   kind that promotes takes them and loses the flag.
 - `progress` and `result` - JSON objects the Bridge reported, `{}` until it does.
   The server stores them as they are, and answers `null` for one that is damaged.
-  Every progress has a `step`, usually an English `message`, and from Bridge
-  v0.7.0 an optional `message_code` and `message_params` naming the sentence, which
-  the console words in the admin's language
-  ([Job progress](../../bridge/pairing-and-jobs.md#job-progress)). Their shapes are documented per kind:
+  [Job progress](../../bridge/pairing-and-jobs.md#job-progress) has the fields
+  every progress shares. Their shapes are documented per kind:
   - `sidecars.generate`'s in [Characters and recaps](../../bridge/generating.md#progress);
   - `sidecars.describe`'s in
     [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe);
@@ -12299,7 +12297,7 @@ result, an error. Every report renews the lease.
 |---|---|
 | `attempt` | **required**: the `attempts` its claim returned. A report from an earlier claim (one whose lease ran out and was claimed again) is refused |
 | `state` | optional: `running`, `done`, `failed`, `needs_attention` or `cancelled` (from `claimed`, `running` or `needs_attention`) |
-| `progress` | optional: a JSON object, at most 16 KiB, stored as sent: `step`, `message`, an optional `message_code` and `message_params` ([Job progress](../../bridge/pairing-and-jobs.md#job-progress)), `done`, `total` and the kind's own fields. A parked job's progress names its park, `park {code, hint, retry_at?, message?}`, where `message` is the park's sentence without the `<code>: ` the job's `error` may lead with. The server stores it with the rest of the progress. [Progress](../../bridge/generating.md#progress) says who reads it. An older Bridge sends no `message` |
+| `progress` | optional: a JSON object, at most 16 KiB, stored as sent: `step`, `message`, an optional `message_code` and `message_params` ([Job progress](../../bridge/pairing-and-jobs.md#job-progress)), `done`, `total` and the kind's own fields. A parked job's progress names its park, `park {code, hint, retry_at?, message?}`, where `message` is the park's sentence without the `<code>: ` the job's `error` may lead with. [Progress](../../bridge/generating.md#progress) says who reads it. An older Bridge sends no park `message` |
 | `result` | optional: a JSON object, at most 64 KiB |
 | `error` | optional: text, cleaned rather than refused (control characters become spaces, line breaks are kept, cut at 2 KiB) |
 

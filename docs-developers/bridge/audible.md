@@ -688,8 +688,8 @@ job.
 
 **Progress** is `{"step", "message", "message_code", "done", "total"}`
 ([Job progress](pairing-and-jobs.md#job-progress)). A park on a library that is
-not mapped and writable has the code `library_not_writable`, with the library's
-name in `message_params.library`. `step` runs through these in order:
+not mapped and writable has the progress code `library_not_writable`. `step` runs
+through these in order:
 
 1. `license`, also while the job waits for the account's gate or the mapping check;
 2. `download`;

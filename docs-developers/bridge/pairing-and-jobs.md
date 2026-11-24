@@ -379,9 +379,9 @@ fields beside these:
 | Field | Meaning |
 |---|---|
 | `step` | always set: the kind's step, a short machine word (`download`, `stat`, `waiting`) |
-| `message` | the step in English words, always sent while there are some |
-| `message_code` | optional: the code of the sentence `message` says, when it is one of the Bridge's fixed sentences (from v0.7.0) |
-| `message_params` | optional: the values the coded sentence fills in, only for a code that has them |
+| `message` | the step as an English sentence |
+| `message_code` | optional: the code of `message`'s sentence, when it is one of the Bridge's fixed sentences (from Bridge v0.7.0) |
+| `message_params` | optional: the values (strings or numbers) the coded sentence fills in, only for a code that has them |
 | `done`, `total` | the step's counts, when it has some |
 
 ```json
@@ -395,30 +395,26 @@ fields beside these:
 }
 ```
 
-The codes are stable snake_case names, 69 of them, listed with their English
-sentences in the Bridge's `internal/jobs/phrases.go` (the `Say*` constants). A
-sentence's placeholders are i18next's `{{name}}`. Two codes have params:
+The codes are stable snake_case names, listed with their English sentences in
+the Bridge's `internal/jobs/phrases.go` (the `Say*` constants). A sentence's
+placeholders are i18next's `{{name}}`. Two codes have params:
 
 - `library_not_writable` fills in `library` (the library's name);
 - `downloading_section` fills in `section` and `sections` (numbers).
 
 A handler names a sentence by its code (`Progress.Code`, with `Params`), and the
 Bridge fills in `message` from the code's English (`Progress.Text`), so every
-report still carries the English. Text that is not a fixed sentence is sent
-without a code: an engine stage's label in `sidecars.generate` ("Transcribing
-(12 of 40)"), and a park reason built from an error. A progress over 16 KiB is
-sent without the kind's own fields, and one still over it without
-`message_params` too (the code stays), so the console then shows the English
-`message`.
+report carries the English. Text that is not a fixed sentence is sent without a
+code: an engine stage's label in `sidecars.generate` ("Transcribing (12 of 40)"),
+and a park reason built from an error. When a progress is over 16 KiB, the Bridge
+drops the kind's own fields, then `message_params`, and keeps the code; the
+console shows a code without its params as the English `message`.
 
 Who reads it:
 
-- The admin console words a code it knows in the admin's language
-  (`bridge.progress.<code>` in its six locales, numbers formatted for that
-  language) and shows `message` for anything else: an older Bridge, which sends
-  no code, a code it does not know, or a code whose params are missing or not a
-  string or number. Without a `message` it shows `step`
-  ([The job list](../server/web-ui.md#the-job-list)).
+- The admin console words a code it knows in the admin's language and shows
+  `message`, else `step`, for anything else
+  ([The job list](../server/web-ui.md#the-job-list) has the detail).
 - The Bridge's own page shows `message`, in English.
 - The player never shows a job's message: it words its jobs from `step`,
   `stage`, the park's code and the counts.
@@ -989,12 +985,17 @@ What the Bridge does:
 5. Holds for `hold_seconds`, reporting each second.
 
 Progress is `{ step, message, message_code, done?, total? }`
-([Job progress](#job-progress)), with the steps `mapping` (`finding_library`,
-"Finding the library"), `lookup` (`book_files_lookup`, "Asking the server for the
-book's files"), `stat` (`comparing_files`, "Comparing the files", then
-`compared_files`, "Compared the files", with the count), `writable`
-(`checking_writable`, "Checking the book's folder can be written") and `hold`
-(`holding`, "Holding, as asked", with the seconds). The result:
+([Job progress](#job-progress)), with these steps:
+
+| Step | Code | Message |
+|---|---|---|
+| `mapping` | `finding_library` | Finding the library |
+| `lookup` | `book_files_lookup` | Asking the server for the book's files |
+| `stat` | `comparing_files`, then `compared_files` | Comparing the files, then Compared the files, with the count |
+| `writable` | `checking_writable` | Checking the book's folder can be written |
+| `hold` | `holding` | Holding, as asked, with the seconds |
+
+The result:
 
 ```json
 {

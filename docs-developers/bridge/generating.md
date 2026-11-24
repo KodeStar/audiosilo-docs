@@ -324,8 +324,8 @@ server stores it opaquely; at most 16 KiB):
 The console and the player word the stages themselves (`bridge.stage.*` in both
 UIs; `describing` is "Writing the description", `chapter_detecting` "Finding the
 chapters in the narration") and show `done/total`, the time left and the cost. For
-a step without a stage label, the console's generate card shows the message,
-worded from `message_code` in the admin's language when it knows the code.
+a step without a stage label, the console's generate card shows the message as
+[the job list](../server/web-ui.md#the-job-list) words it (`progressText`).
 
 ### States
 
