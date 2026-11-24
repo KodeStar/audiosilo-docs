@@ -188,9 +188,9 @@ not the module and the Bridge are available. The other three:
 |---|---|---|
 | `podcast_discovery` | `podcasts.discovery.enabled` at start **and** the Podcasts module's toggle on; sent `false` otherwise. It does not depend on the Bridge or on a directory key | [directory search](#podcast-discovery) (check `providers` for Podcast Index) |
 | `podcast_opml` | always `true` | the [OPML import and export](#opml-import-and-export) protocol, even offline or module-off; the import still needs the module (`404 module_off`), the export does not |
-| `podcast_request_dismiss` | always `true` (from 2.7.0) | [dismissing a follow request](#dismissing-a-follow-request), which works with the module off, and the optional `title` on [`POST /podcasts/follow`](#podcast-actions). An older server refuses that field with `400 invalid_request`, so send it only when this flag is `true` |
+| `podcast_request_dismiss` | always `true` (from 2.7.0) | [dismissing a follow request](#dismissing-a-follow-request), which works with the module off, and the optional `title` on [`POST /podcasts/follow`](#podcast-actions) |
 
-Both describe the server's configuration, not the caller's permissions. The
+All three describe the server's configuration, not the caller's permissions. The
 routes still refuse a kid, a demo account or an unrecognized client.
 
 The reader and read-along, always `true` on a server that has them and absent on
@@ -1835,11 +1835,11 @@ a private URL supplies proof to follow that show. An existing follow is
 idempotent. A missing private credential queues a restoring subscribe when
 the URL is supplied. `private:true` forces privacy; `false` cannot override
 automatic detection. `title` (from 2.7.0, with `feed_url` only) is the show's
-name as a directory or list gave it, which labels a new request (`Request.title`).
-It is cleaned to one line, cut to 1,000 bytes, any URL in it redacted, and
-dropped for a private feed. A request the follow joins keeps its own title.
-Send `title` only when `podcast_request_dismiss` is `true`: an older server
-refuses the unknown field. Each user can have five open subscribe requests; a second
+name as a directory or list gave it. It labels a new request, cleaned as
+[`Request.title`](#podcast-follow-requests) says; a request the follow joins keeps its
+own title. Send `title` only when `podcast_request_dismiss` is `true`, since an
+older server refuses the unknown field with `400 invalid_request`. Each user can
+have five open subscribe requests; a second
 request for their same library/hash and the same privacy returns the open one.
 An [OPML import](#opml-import-and-export) row answers the same way as a
 follow by URL. Manual check requires
@@ -2129,8 +2129,8 @@ A leading UTF-8 byte order mark is accepted. Entities, includes and linked
 OPML are never fetched. Groups and `htmlUrl` are ignored: only the
 `<body>` outline tree is read, flattened in document order. From 2.7.0 a
 subscription outline's `title` attribute, else its `text`, labels the request it
-queues for a public feed (`Request.title`, cleaned to one line of at most 1,000
-bytes); the answer's rows never carry it. An outline with an
+queues for a public feed (`Request.title`); the answer's rows never carry it. An
+outline with an
 `xmlUrl` attribute (any letter case) is a subscription, whatever its `type`;
 one whose `xmlUrl` is blank, or a `type="rss"` outline without one, is a row
 with `missing_feed_url` (`htmlUrl` or `url` is never used instead); any other
@@ -2139,9 +2139,9 @@ Within an upload the first outline with a given normalized URL wins.
 
 From 2.7.0 an import has its own bound of 5 minutes instead of the 30 s
 [request timeout](index.md#status-codes), and it outlives its client: a player
-that gives up waiting (a 2.6 player waits 45 s; from 2.7.0 the player waits
-330 s, past the bound) does not cancel it, and it keeps its slot until it ends. When the bound or the server stopping ends it first, the
-answer is `503 {"error":"request timed out"}`: the rows reached are followed and
+that gives up waiting (a 2.6 player after 45 s, a 2.7.0 player after 330 s) does
+not cancel it, and it keeps its slot until it ends. When the bound or the server
+stopping ends it first, the answer is `503 {"error":"request timed out"}`: the rows reached are followed and
 the rest untouched, and uploading again is safe (done rows answer
 `already_following` or `already_queued`).
 
@@ -2237,10 +2237,6 @@ document again is the retry: rows already done answer `already_following` or
 `limited` rows are admitted. A private URL lives only in the server's memory
 until the Bridge claims its request; a restart before that ends the request as
 `request_expired`, and re-uploading recovers it.
-
-When the import's 5 minute bound or the server stopping ends it, rows already
-committed stay and the rest are not attempted; a re-upload continues safely. A
-dropped connection does not end it (above).
 
 #### `GET /api/v1/podcasts/opml/export`
 

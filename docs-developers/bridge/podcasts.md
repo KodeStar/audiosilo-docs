@@ -771,13 +771,13 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   reuses the held results.
 - `useFollowPodcastByUrl` and `useCheckPodcast` are
   `useCapabilityMutation('podcasts', ...)`. `useExportOpml` is
-  `useCapabilityMutation('podcast_opml', ...)`, and `useDismissPodcastRequest`
-  `useCapabilityMutation('podcast_request_dismiss', ...)`, which takes the
-  request out of the cached `['myPodcasts', cid]` once it resolves.
+  `useCapabilityMutation('podcast_opml', ...)`. `useDismissPodcastRequest` is
+  `useCapabilityMutation('podcast_request_dismiss', ...)`. It takes the request
+  out of the cached `['myPodcasts', cid]` once it resolves.
   - `useFollowPodcastByUrl` sends `title` only while the connection's
     `podcast_request_dismiss` is `true`. The server's decoder refuses unknown
     fields, so an older server would answer the follow `400` and follow
-    nothing; with the flag unknown the follow goes without it.
+    nothing.
   - A `200 following` goes into the cached show list (`storeFollowing`), and
     `['myPodcasts', cid]` is read again. The show list is read again when it lacks
     the show.
@@ -807,7 +807,7 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   - Export needs `podcast_opml` and not the demo. It works with the module off.
   - Check for new episodes is for a followed show, under the same rule as adding.
   - Dismiss on a follow request needs `podcast_request_dismiss`, which works with
-    the module off. The same flag gates the follow's `title` (above).
+    the module off.
 
   The flags don't describe the caller, so the refusals (`kid_account`,
   `demo_account`, `no_library_access`, `module_off`, `discovery_off`,
@@ -835,8 +835,8 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   the same URL (`artworkRetryDelay`, four tries in all, then the placeholder):
   - at once when the probe got the image;
   - never after a refusal no wait mends, such as a `404` (an expired id);
-  - after a `429`/`503`'s `Retry-After` when that is longer than the schedule's
-    wait, at most 60 s, never shorter;
+  - after the `Retry-After` of a `429`/`503` when that is longer than the
+    schedule's wait (at most 60 s);
   - otherwise after 3, 10 and 30 seconds.
 - **Follow by address** checks the address first: http or https with a host, at
   most 2,048 bytes. So a bad address sends nothing. A result's Follow is the same
@@ -846,10 +846,10 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   `null` gives "Exported your shows", and `413 opml_export_limit` has its own
   message. How the file is saved is in
   [Entry points](../frontend/podcasts.md#entry-points).
-- **Check for new episodes** never polls the poll job, which is not a follow
-  request. After the `202` it reads the show list every 3 s until the show's
-  `status.last_checked` moves (two minutes at most), then the show's episodes.
-  `429 checked_recently` and `bridge_unavailable` have their own wording. The button and its timer are in
+- **Check for new episodes** does not poll its job (a check is not a follow
+  request). It watches the show's `status.last_checked` instead.
+  `429 checked_recently` and `bridge_unavailable` have their own wording. The
+  button and its timings are in
   [Check for new episodes](../frontend/podcasts.md#check-for-new-episodes).
 - **Copy** never shows the server's English and never says "Bridge". It covers
   all six locales.
@@ -907,7 +907,7 @@ done.") only once none is still being added and none failed.
 **Row names.** The server's answer never echoes the list, so the rows are named
 from the picked bytes (`outlineEntries` in `opml-feeds.ts`: an outline's `title`,
 else its `text`, in the same walk as the addresses). `useOpmlImport` also
-remembers each follow request it saw end while the import is the page's
+remembers each follow request it saw end while the page holds the import
 (`rememberEnded`). A row whose request was dismissed since, in the requests list
 or on another device, keeps the state it ended in (`withEndedRequests`) and is
 never read as queued again.
@@ -932,13 +932,13 @@ flag rule as any follow.
 - `429 opml_rate_limited` and `503 opml_busy` wait their `Retry-After`, else 30 s
   and 2 s. Five such answers in a row stop the import.
 - Any other refusal stops as `failed` with its code.
-- An upload with no answer (a network failure, the client's 330 s timeout, a
-  gateway's `502`/`504`: `isServerAwayError`) stops as `failed` with the player's
-  own `no_answer`. The server carries an import on when its upload is given up,
-  so this never says the list failed: the copy says the server may still be
-  adding the shows, and the shows and follow requests are read again.
+- An upload with no answer (a network failure, the client's timeout, a
+  gateway's `502` or `504`, by `isServerAwayError`) stops as `failed` with the
+  player's own `no_answer`. The server carries on with an import whose upload was
+  given up, so the copy never says the list failed. It says the server may still
+  be adding the shows, and the player reads the shows and follow requests again.
 - The server's own `503` with no code (its 5 minute bound, or it stopping) stops
-  as `failed` with `server_timeout`: the rows it reached are done, and Try again
+  as `failed` with `server_timeout`. The rows it reached are done, and Try again
   adds the rest.
 - Try again re-uploads, which is safe: rows already done answer
   `already_following` or `already_queued`. The server gives back the rate-limit

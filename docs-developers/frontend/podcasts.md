@@ -195,8 +195,8 @@ library. The page has:
 - `usePodcastFetchStatus` while the episode is not on its server. From 2.7.0 the
   server's `409 show_unreadable` (it can't read the show's folder) reads as an
   `unavailable` status with that code (`unreadableShowStatus` in `hooks.ts`), so
-  the page says why ("Your server can't read this show's folder...") and offers
-  no Try again, where the read used to fail.
+  the page says why ("Your server can't read this show's folder..."), as in
+  [Phases](#phases), where the read used to fail.
 
 When `timeline_changed === true` and the listener has a position, a Notice says the
 audio changed and the place is kept. Nothing is rescaled.
@@ -434,7 +434,7 @@ form, the results and, as its footer, the follow requests. The form has a provid
 - **Follow**. It becomes **Adding** on a `202` (a request), or **Following** with
   **Open show** on a `200`. The follow sends the result's `title`, so its request
   row is named (on a server with `podcast_request_dismiss` only, see
-  [Follow requests](#follow-requests)).
+  [the hooks](../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2)).
 
 A show the listener already follows in this library reads **Following** with
 **Open show** from the start. `DirectorySearch` reads the library's shows
@@ -505,10 +505,6 @@ Each has:
 It polls through `useFollowRequests` only while one is open and the page is
 focused.
 
-`useFollowPodcastByUrl` sends `title` only while `podcast_request_dismiss` is
-`true`: the flag came in the same server change, and an older server refuses the
-unknown field with a `400` and follows nothing.
-
 #### Import a list
 
 **Import a list** (`opml-import-panel.tsx`) starts with an intro and **Choose a
@@ -533,15 +529,15 @@ Once a file is picked, the panel shows:
   and a `503` one "Your server is busy.";
 - **Stop** while it runs;
 - **Try again** once it stopped, stalled or failed, or ended `done` with
-  `unavailable` rows (`canRetryImport`). A failed upload's line reads through
-  `importFailureKey`. An upload with no answer (`no_answer`: no connection, the
-  330 s wait, a gateway's `502`/`504`) reads "Your server didn't answer in time,
-  but it may still be adding the list's shows. Look in Shows in a few minutes, or
-  try again: shows already added are skipped." and reads the shows and requests
-  again. The server's own `503` with no code (`server_timeout`) reads "Your server
-  stopped before the end of the list. Shows already added stay. Try again to add
-  the rest.";
+  `unavailable` rows (`canRetryImport`);
 - one row per subscription, by `outline_index`.
+
+A failed upload's line reads through `importFailureKey`. `no_answer` (which
+failures count is in [Stopping](../bridge/podcasts.md#the-import-waves)) reads
+"Your server didn't answer in time, but it may still be adding the list's shows.
+Look in Shows in a few minutes, or try again: shows already added are skipped."
+`server_timeout` reads "Your server stopped before the end of the list. Shows
+already added stay. Try again to add the rest."
 
 **The rows.** Each row reads `Entry {{index}}`, its name and a state
 (`importRowKey`). The name is the list's own (`outlineEntries`: the outline's
@@ -609,17 +605,17 @@ beside Follow. It shows only for a followed show, and only when `useAddShowsAcce
 is `allowed`.
 
 After a `202` the button reads "Asked the server to check" while the check runs.
-The poll job isn't the listener's to read, so the end is seen on the show: the
-show list is read every 3 s (`CHECK_POLL_MS`) until the show's
-`status.last_checked` moves, then the show's episodes are read again. It stops
-waiting after two minutes (`CHECK_WAIT_MS`) either way, and with the page.
+The listener can't read the poll job, so the player watches the show. It reads
+the show list every 3 s (`CHECK_POLL_MS`) until the show's `status.last_checked`
+moves, then reads the show's episodes again. It stops after two minutes
+(`CHECK_WAIT_MS`), or when the page closes.
 
 A caption beside the button says what the check found once it ended: `{{count}}
 new episodes` (the show's `episode_count` now, less its count when the check was
 asked) or "No new episodes". A failed check has no caption, since the show page's
 own line says it failed. Otherwise, while no check runs, it reads
-`Checked {{when}}`, the relative time of `last_checked`. A retention prune in the same poll can make the
-count read low; it never reads below "No new episodes".
+`Checked {{when}}`, the relative time of `last_checked`. A retention prune in the
+same poll can make the count read low; it never reads below "No new episodes".
 
 Refusals read through `checkErrorKey`, such as "Checked less than a minute ago.
 Try again shortly." for `checked_recently`.

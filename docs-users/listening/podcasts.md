@@ -85,7 +85,7 @@ Every podcast has a feed address, usually ending in `.xml` or `/rss`. Find it on
 3. For a paid or members-only feed, turn on **Private feed**.
 4. Tap **Follow**.
 
-A show the library already has says you follow it, with **Open show**. A new one says **Adding the show** until your server has fetched it. Then the line says you follow it, or why it couldn't be added, or that adding it was cancelled.
+If the library already has the show, the page says you follow it and offers **Open show**. Otherwise it says **Adding the show** until your server has fetched it. Then it says you follow the show, why it couldn't be added, or that adding it was cancelled.
 
 ### Import a list from another app {/* #importing-a-list-from-another-app */}
 
