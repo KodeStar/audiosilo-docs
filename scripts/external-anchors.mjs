@@ -1,7 +1,8 @@
-// npm run anchors:sync [-- --workspace <parent of sibling repos>] updates the
-// snapshot from each sibling repo's origin branch as last fetched (no network).
+// npm run anchors:sync [-- --workspace <parent of sibling repos>] adds to the
+// snapshot the links on each sibling repo's origin branch as last fetched (no
+// network). It never removes one: a shipped app may still link to it.
 // The prebuild check reads only that snapshot and the User Guide.
-import {existsSync, readFileSync, realpathSync, writeFileSync} from 'node:fs';
+import {existsSync, globSync, readFileSync, realpathSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
@@ -41,33 +42,46 @@ function collectAnchors(workspace) {
     const lines = gitGrep(dir, ref, ['-hI', '-e', '/users', '--and', '-e', '#'], '.');
     for (const target of linkTargets(lines.join('\n'))) targets.add(target);
   }
-  return [...targets].sort();
+  return [...targets];
 }
+
+/** The snapshot after a sync: every kept entry and every link found, sorted. */
+export const mergeTargets = (kept, found) => [...new Set([...kept, ...found])].sort();
 
 // An h2-h6 heading ending in the explicit id comment, `## Title {/* #id */}`
 // (the theme gives h1 no id).
 const explicitId = /^#{2,6}\s.*\{\/\*\s*#([^\s*]+)\s*\*\/\}\s*$/;
 
+// A page's explicit heading ids, and those given to more than one heading.
 function explicitIds(file) {
-  const content = readFileSync(file, 'utf8');
-  return new Set(linesOutsideFences(content).map(({text}) => text.match(explicitId)?.[1]).filter(Boolean));
+  const ids = new Set();
+  const repeated = new Set();
+  for (const {text} of linesOutsideFences(readFileSync(file, 'utf8'))) {
+    const id = text.match(explicitId)?.[1];
+    if (id) (ids.has(id) ? repeated : ids).add(id);
+  }
+  return {ids, repeated};
 }
 
 // Every User Guide page is routed by its file name: index.md is /users, and no
 // other page sets slug or id front matter (a moved page gets a redirect).
 export function checkAnchors(targets, usersDir) {
   const errors = [];
-  const ids = new Map(); // file -> its explicit ids, each page read once
+  const pages = new Map(); // file -> its explicit ids, each page read once
+  for (const page of globSync('**/*.{md,mdx}', {cwd: usersDir}).sort()) {
+    const file = join(usersDir, page);
+    pages.set(file, explicitIds(file));
+    for (const id of pages.get(file).repeated) {
+      errors.push(`${page}: two headings have the explicit id #${id}; give one of them another id`);
+    }
+  }
   for (const target of targets) {
     const [page, anchor] = target.split('#');
     const rel = page.replace(/^\/users\/?/, '') || 'index';
-    const file = [`${rel}.md`, `${rel}.mdx`].map((f) => join(usersDir, f)).find(existsSync);
+    const file = [`${rel}.md`, `${rel}.mdx`].map((f) => join(usersDir, f)).find((f) => pages.has(f));
     if (!file) {
       errors.push(`${target}: page missing; another repo links here, so restore the page or redirect it and change that link`);
-      continue;
-    }
-    if (!ids.has(file)) ids.set(file, explicitIds(file));
-    if (!ids.get(file).has(decodeURIComponent(anchor))) {
+    } else if (!pages.get(file).ids.has(decodeURIComponent(anchor))) {
       errors.push(`${target}: missing explicit heading id; another repo links here, so end the heading with {/* #${anchor} */}`);
     }
   }
@@ -77,15 +91,16 @@ export function checkAnchors(targets, usersDir) {
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const {values} = parseArgs({options: {sync: {type: 'boolean'}, workspace: {type: 'string'}}});
   if (values.sync) {
-    const targets = collectAnchors(values.workspace ?? defaultWorkspace());
+    const kept = JSON.parse(readFileSync(snapshot, 'utf8'));
+    const targets = mergeTargets(kept, collectAnchors(values.workspace ?? defaultWorkspace()));
     writeFileSync(snapshot, JSON.stringify(targets, null, 2) + '\n');
-    console.log(`external-anchors.json: ${targets.length} distinct targets`);
+    console.log(`external-anchors.json: ${targets.length} targets, ${targets.length - kept.length} added`);
   } else {
     const targets = JSON.parse(readFileSync(snapshot, 'utf8'));
     const errors = checkAnchors(targets, join(ROOT, 'docs-users'));
     if (errors.length) {
       console.error(errors.join('\n'));
-      console.error('If that link moved or went away in the other repo, fetch it and run npm run anchors:sync.');
+      console.error('An entry stays even after the other repo drops its link, since a shipped app may still use it. Remove one from scripts/external-anchors.json only by hand, with the reason in the commit.');
       process.exitCode = 1;
     } else {
       console.log(`external-anchors: ${targets.length} explicit heading ids verified`);

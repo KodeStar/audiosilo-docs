@@ -3,7 +3,7 @@ import {globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} f
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {test} from 'node:test';
-import {checkAnchors, linkTargets} from './external-anchors.mjs';
+import {checkAnchors, linkTargets, mergeTargets} from './external-anchors.mjs';
 import {ROOT} from './pages.mjs';
 
 function guide(t, files) {
@@ -67,5 +67,19 @@ test('a missing page fails even when another page declares the id', (t) => {
   const dir = guide(t, {'questions.md': '## Privacy {/* #privacy */}'});
   assert.deepEqual(checkAnchors(['/users/faq#privacy'], dir), [
     '/users/faq#privacy: page missing; another repo links here, so restore the page or redirect it and change that link',
+  ]);
+});
+
+test('sync keeps an entry no longer found on main, since a shipped app may still link to it', () => {
+  const kept = ['/users/faq#privacy', '/users/admin/server#modules'];
+  assert.deepEqual(mergeTargets(kept, ['/users/admin/server#modules', '/users/admin/books#series']), [
+    '/users/admin/books#series', '/users/admin/server#modules', '/users/faq#privacy',
+  ]);
+});
+
+test('two headings on one page with the same explicit id fail', (t) => {
+  const dir = guide(t, {'faq.md': '## Privacy {/* #privacy */}\n\n### Privacy again {/* #privacy */}'});
+  assert.deepEqual(checkAnchors([], dir), [
+    'faq.md: two headings have the explicit id #privacy; give one of them another id',
   ]);
 });

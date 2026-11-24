@@ -232,7 +232,10 @@ The build fails when a heading another repo links to loses its explicit id (the
 `scripts/external-anchors.json`). After such a link changes in another repo,
 fetch that repo and run `npm run anchors:sync`: it reads the sibling repos at
 their `origin` branch, next to the main checkout (`-- --workspace <dir>` for
-another folder), and needs no network.
+another folder), and needs no network. The sync only adds links, since a
+shipped app may still use one its repo has since dropped; remove an entry from
+the snapshot by hand, with the reason in the commit. The check also fails when
+two headings on a page share an explicit id.
 
 The Developer Docs follow rules 2, 3, 6, 7 and 9 too, and the "Keep links
 working" note. They may name code. Under rule 7 they keep a version only where
