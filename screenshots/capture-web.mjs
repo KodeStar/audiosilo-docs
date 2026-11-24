@@ -1720,7 +1720,7 @@ async function routeFindShows(ctx, pod, stand) {
   const at = (p) => (url) => url.origin === origin && url.pathname === `/api/v1${p}`;
   const json = (route, status, body) => route.fulfill({status, contentType: 'application/json', body: JSON.stringify(body)});
   await routeServerInfo(ctx, (info) => {
-    info.capabilities = {...info.capabilities, podcasts: true, podcast_discovery: true, podcast_opml: true};
+    info.capabilities = {...info.capabilities, podcasts: true, podcast_discovery: true, podcast_opml: true, podcast_request_dismiss: true};
   });
   await ctx.route(at('/podcasts/discovery/providers'), (route) =>
     json(route, 200, {providers: [{id: 'itunes', available: true}, {id: 'podcast_index', available: false}]}),
@@ -1736,13 +1736,16 @@ async function routeFindShows(ctx, pod, stand) {
   });
   await ctx.route(at('/podcasts/follow'), (route) => {
     if (route.request().method() !== 'POST') return route.continue();
-    const {feed_url: feedUrl, private: isPrivate} = route.request().postDataJSON() ?? {};
+    const {feed_url: feedUrl, private: isPrivate, title} = route.request().postDataJSON() ?? {};
     const seeded = pod.shows.find((s) => s.feed.feed_url === feedUrl);
     if (seeded) {
       const show = stand.shows.find((s) => s.path === seeded.folder);
       return json(route, 200, {state: 'following', show: {...show, following: true}});
     }
-    const request = stand.request(stand.nextId++, 'queued', feedLabel(feedUrl), 0, {private: isPrivate === true});
+    // A private feed's title is never kept, as on the server.
+    const request = stand.request(stand.nextId++, 'queued', feedLabel(feedUrl), 0, {
+      private: isPrivate === true, title: isPrivate === true ? null : (title ?? null),
+    });
     stand.requests.unshift(request);
     return json(route, 202, {state: 'subscribing', request});
   });
@@ -1759,12 +1762,12 @@ async function routeFindShows(ctx, pod, stand) {
 }
 
 // The stand-in's state: the library's real shows (for a 200 follow), the follow requests
-// `/me/podcasts` lists (one being added and one that failed to start with), and the
-// import's first wave.
+// `/me/podcasts` lists (one followed by address, being added, and one a directory result
+// named that failed, with its Dismiss, to start with), and the import's first wave.
 async function findShowsStand(pod) {
   const shows = (await api(pod.admin, 'GET', `/libraries/${pod.library.id}/podcasts`, undefined, PODCAST_CLIENT))?.shows ?? [];
   const request = (id, state, feed, ago, extra = {}) => ({
-    id, library_id: pod.library.id, state, feed, private: false, show_path: null, error: null,
+    id, library_id: pod.library.id, state, feed, title: null, private: false, show_path: null, error: null,
     created_at: stamp(Date.now() - ago), updated_at: stamp(Date.now() - Math.max(0, ago - MIN)), ...extra,
   });
   const imported = [
@@ -1801,7 +1804,7 @@ async function findShowsStand(pod) {
     nextId: 92,
     requests: [
       request(91, 'running', 'https://feeds.harbourlights.example/...', 4 * MIN),
-      request(88, 'failed', 'https://www.oldmill.example/...', 40 * MIN, {error: {code: 'not_a_feed', message: 'not a podcast feed'}}),
+      request(88, 'failed', 'https://www.oldmill.example/...', 40 * MIN, {title: 'Tales from the Old Mill', error: {code: 'not_a_feed', message: 'not a podcast feed'}}),
     ],
     importRequests,
     importRows,
@@ -1851,10 +1854,14 @@ async function captureFindShows(ctx, pod, cid) {
         // The queued request the search shot's follow adds, when that shot didn't run.
         if (!stand.requests.some((r) => r.state === 'queued')) {
           const feed = feedLabel(stand.directory.results.find((r) => r.title === newResult(pod).title).feed_url);
-          stand.requests.unshift(stand.request(stand.nextId++, 'queued', feed, 0));
+          stand.requests.unshift(stand.request(stand.nextId++, 'queued', feed, 0, {title: newResult(pod).title}));
         }
         await p.goto(findUrl('address'), {waitUntil: 'networkidle', timeout: 45000});
+        // As this context's first page (the search shot left out with SHOTS_ONLY), the first
+        // load read adding shows as unavailable; a reload reads the stand-in's flags.
+        await p.reload({waitUntil: 'networkidle', timeout: 45000});
         await tid(p, 'follow-requests').waitFor({timeout: 15000});
+        await tid(p, 'follow-request-dismiss-88').waitFor({timeout: 15000});
         await tid(p, 'feed-address').fill('https://members.example.net/rss/8f3a2c');
         await tid(p, 'private-feed').click({timeout: 8000});
         await sleep(SETTLE_MS);
