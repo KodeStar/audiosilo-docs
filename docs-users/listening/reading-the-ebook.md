@@ -37,7 +37,7 @@ Your server notices a new ebook at its next library scan. An admin can press **R
 1. Open the book's page and tap **Read the ebook**.
 2. The reader opens where you left off, on any device. The first time, it opens at the start.
 3. Turn pages by tapping the right or left **edge** of the page, swiping, or pressing **→** and **←**.
-4. Close the reader with the **×** at the top left, or **Esc** in the web player. If the [top bar](#show-the-top-bar) is hidden, tap the middle of the page to show it.
+4. Close the reader with the **×** at the left of the [top bar](#show-the-top-bar), or **Esc** in the web player.
 
 A book written right to left turns the other way.
 
@@ -77,7 +77,7 @@ For a book with a read-along, the reader can follow the audio. It needs your ser
 
 While it follows:
 
-- **Tap a sentence** to move the audiobook to it. In the middle of the page, this shows the top bar too.
+- **Tap a sentence** to move the audiobook to it.
 - **Play** and **Pause** in the reader's top bar control the book.
 - **Turn the page yourself** to look back or ahead. The button then reads **Back to narration**.
 

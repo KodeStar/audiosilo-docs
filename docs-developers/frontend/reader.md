@@ -396,8 +396,8 @@ reader), it lies over the page rather than above it, so showing it never lays th
 book out again. The room above the page takes the page's colour. Its height is the
 largest top inset seen for the window size (`useHeldTopInset` in
 `src/lib/held-top-inset.ts`, keyed by `useSafeAreaFrame`), because the window's top
-inset drops when Android's status bar hides. With the setting off or a screen
-reader on, the bar sits above the page as before.
+inset drops when Android's status bar hides. Otherwise the bar sits above the
+page.
 
 **In the apps** the bar is an `Animated.View` that slides, with no slide under
 reduce motion. expo-status-bar hides the status bar with the bar, only while the
