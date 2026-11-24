@@ -541,8 +541,10 @@ already added stay. Try again to add the rest."
 
 **The rows.** Each row reads `Entry {{index}}`, its name and a state
 (`importRowKey`). The name is the list's own (`outlineEntries`: the outline's
-`title`, else its `text`), else the show's folder, else its redacted address. The
-state is one of:
+`title`, else its `text`), with any web address in it redacted as the server
+redacts a follow's title (`feed-redact.ts`, read as the file is read, so Try again
+sends the redacted name too). A name that is only an address gives way to the
+show's folder, else the row's redacted address. The state is one of:
 Following, Already following, Being added, In the list twice, No usable feed
 address, Waiting for the next batch, Can't be added right now, Couldn't add, or
 Cancelled.
