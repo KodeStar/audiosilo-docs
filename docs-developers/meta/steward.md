@@ -384,17 +384,22 @@ key or a collision stays blocked until that is settled.
 With `SYNC_STEWARD_DEPENDABOT_REPOS` naming repositories, the steward also
 handles their Dependabot pull requests, through a gate of its own:
 
-- **Eligible** means every commit is Dependabot's, committed and signed by
-  GitHub, and every file is a dependency manifest, lockfile, Dockerfile,
-  compose file or workflow. In the data and community repositories an
+- **Eligible** means it was opened by `dependabot[bot]` from a branch of the
+  repository itself into its default branch and is not a draft, every commit
+  is Dependabot's, committed and signed by GitHub, and every file is a
+  dependency manifest, lockfile, Dockerfile, compose file, workflow or
+  `action.yml`. In the data and community repositories an
   ineligible one is reviewed as code like any other; elsewhere it is listed
   with the reason.
 - A **patch or minor** update merges once every check suite and check run on
-  its exact head passed, GitHub calls it `clean`, the head has sat still for
-  two minutes, and it is up to date with its base. At most one merges per
-  repository per tick.
-- A **major** update is reviewed by the sandboxed agent first, read-only, and
-  merges only on a safe verdict.
+  its exact head passed, no commit status failed or is pending, GitHub calls it
+  `clean`, the head has sat still for two minutes, and it is up to date with
+  its base. One with no CI on its head (no check suite holding a check run, or
+  every run skipped) is never merged. At most one merges per repository per
+  tick.
+- A **major** update, or one whose metadata states no update type (a Docker
+  tag, say), is reviewed by the sandboxed agent first, read-only, and merges
+  only on a safe verdict.
 - **Red CI** is re-run once, then `@dependabot recreate`, then listed as stuck.
 
 **Behind or conflicting.** A branch that is behind or conflicts gets
@@ -410,8 +415,9 @@ since the merge base. The two changes cannot overlap, so the tree outside
 `main`'s. The steward reads `main`'s net change since the merge base, and skips
 the exception when GitHub's comparison lists nothing or may be cut short (more
 than 250 commits, or 300 files or more). Any other case, such as `main`
-changing `.github/` or `go.mod`, or a head that changes `data/`, goes through
-the rebase steps above.
+changing `.github/` or `go.mod`, a head that changes `data/`, or GitHub calling
+it `behind` because branch protection requires an up-to-date branch, goes
+through the rebase steps above.
 
 The steward never updates a Dependabot branch itself. That update would run as
 the steward's token, and the branch's next CI would get the repository's full
