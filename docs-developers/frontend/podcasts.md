@@ -118,8 +118,12 @@ tab and renders:
   [`CheckEpisodesButton`](#check-for-new-episodes). It adds "Last check failed"
   when `status.error` is set, with no codes for listeners. When
   [`status.secret_missing`](../server/api/reference.md#podcast-read-routes) is
-  `true`, it shows "This feed's private address is missing. Follow it again by
-  its address." in place of "Last check failed" (`podcasts.show.secretMissing`).
+  `true`, the show is `following` and `useAddShowsAccess` is `'allowed'`
+  (`FollowButton`'s rule), it shows "This feed's private address is missing. Follow
+  it again by its address." in place of "Last check failed"
+  (`podcasts.show.secretMissing`). Anyone else, a kid's account or the demo
+  included, reads "Last check failed", since the note asks for a follow they cannot
+  make.
 - **The order control:** `defaultEpisodeOrder(show)` is `oldest` for a `serial`
   show and `newest` otherwise. The segmented control writes `?order=`. The client
   never re-sorts. The server (from 2.4.0) orders by published date, then season and

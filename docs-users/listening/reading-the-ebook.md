@@ -116,7 +116,7 @@ The reader says what went wrong, and offers **Try again** where that can help. Y
 
 ## Good to know
 
-In the apps, a book you read without downloading it is kept on the device so it opens faster next time. These copies take up to 512 MB in all. When they're full, the app removes the oldest first.
+In the apps, a book you read without downloading it is kept on the device so it opens faster next time. These copies take up to 512 MB in all. When they're full, the app removes the ones you opened longest ago first.
 
 In the apps, each time the app starts, a page turn shows the top bar for 4 seconds rather than hiding it, until you first tap the middle of the page.
 

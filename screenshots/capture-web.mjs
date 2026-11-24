@@ -3055,6 +3055,27 @@ if (wanted(...Object.values(PROXY_SHOTS))) {
   }));
 }
 
+// ── Settings: a server that was reset ───────────────────────────────────────
+// `routeServerInfo` reports another install's `server_id`, so the connection shows Server
+// reset. It uses a fresh context, because that flag lives only in the player's memory.
+const ACCOUNTS_SHOT = 'web-player/settings-accounts.png';
+if (wanted(ACCOUNTS_SHOT)) {
+  await step('settings accounts: server reset', async () => {
+    const ctx = await newCaptureContext({storageState: AUTH});
+    try {
+      await routeServerInfo(ctx, (info) => {
+        info.server_id = 'another-install';
+      });
+      const page = await ctx.newPage();
+      await page.goto(BASE + 'settings?section=accounts', {waitUntil: 'networkidle', timeout: 45000});
+      await firstVisible(page.getByText('Server reset', {exact: true})).waitFor({timeout: 20000});
+      await settleShoot(page, ACCOUNTS_SHOT, SETTLE_MS);
+    } finally {
+      await ctx.close();
+    }
+  });
+}
+
 // ── Unauthenticated screens ─────────────────────────────────────────────────
 console.log('== public screens ==');
 // The connect flow on a fresh browser: the start screen with the probe card (the served

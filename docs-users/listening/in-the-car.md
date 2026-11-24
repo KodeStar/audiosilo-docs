@@ -78,7 +78,7 @@ This works even if you never opened the app on your phone:
 
 - The book is marked finished and leaves [Up next](up-next.md).
 - With **Automatically play next book** on, the next book starts in the car. See [Playing on automatically](end-of-book.md#playing-on-automatically).
-- The [end credits](end-of-book.md#the-end-credits) wait until you next open the app on your phone, unless you have started another book by then.
+- The [end credits](end-of-book.md#the-end-credits) wait until you next open the app on your phone, unless you have started another book by then. If several books ended, only the last one's credits open.
 
 [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) downloads your next books while you drive, as it does on the phone.
 
