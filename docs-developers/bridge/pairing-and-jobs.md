@@ -373,7 +373,8 @@ job back in the queue.
 ### Job progress
 
 A job's progress is one flat JSON object (`jobs.Progress`), at most 16 KiB. The
-server stores it as sent and never reads its keys, so each kind can add its own
+server stores it as sent and reads none of its keys but a parked job's `park`
+(which it keeps when a later report names none), so each kind can add its own
 fields beside these:
 
 | Field | Meaning |
@@ -406,9 +407,11 @@ A handler names a sentence by its code (`Progress.Code`, with `Params`), and the
 Bridge fills in `message` from the code's English (`Progress.Text`), so every
 report carries the English. Text that is not a fixed sentence is sent without a
 code: an engine stage's label in `sidecars.generate` ("Transcribing (12 of 40)"),
-and a park reason built from an error. When a progress is over 16 KiB, the Bridge
-drops the kind's own fields, then `message_params`, and keeps the code; the
-console shows a code without its params as the English `message`.
+and the park reasons of the book jobs' own parks (`sidecars.generate`,
+`sidecars.describe`, `chapters.detect`), each a sentence with the library's name
+or an error in it. When a progress is over 16 KiB, the Bridge drops the kind's
+own fields, then `message_params`, and keeps the code; the console shows a code
+without its params as the English `message`.
 
 Who reads it:
 
@@ -417,14 +420,15 @@ Who reads it:
   ([The job list](../server/web-ui.md#the-job-list) has the detail).
 - The Bridge's own page shows `message`, in English.
 - The player never shows a job's message: it words its jobs from `step`,
-  `stage`, the park's code and the counts.
+  `stage`, the park's code (a code it doesn't know shows the park's `hint`) and
+  the counts.
 
 The codes are part of the wire: a code is never renamed or reused. A new
 sentence gets a new code, added in the same change to `phrases.go`, to the
 console's `PROGRESS_CODES` (in `admin-ui/src/features/bridge/bridge-model.ts`,
 each code with its param names) and to all six of the console's locales. The
-Bridge's `testdata/phrases.json` pins the shipped codes and their English
-(`TestPhrasesShipped`), and the console's tests check that every code in
+Bridge's `internal/jobs/testdata/phrases.json` pins the shipped codes and their
+English (`TestPhrasesShipped`), and the console's tests check that every code in
 `PROGRESS_CODES` has an English sentence naming exactly its params and that the
 other five locales keep the same placeholders.
 
