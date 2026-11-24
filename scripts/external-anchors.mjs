@@ -42,7 +42,7 @@ function collectAnchors(workspace) {
     const lines = gitGrep(dir, ref, ['-hI', '-e', '/users', '--and', '-e', '#'], '.');
     for (const target of linkTargets(lines.join('\n'))) targets.add(target);
   }
-  return [...targets];
+  return targets;
 }
 
 /** The snapshot after a sync: every kept entry and every link found, sorted. */
@@ -92,12 +92,13 @@ export function checkAnchors(targets, usersDir) {
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const {values} = parseArgs({options: {sync: {type: 'boolean'}, workspace: {type: 'string'}}});
   if (values.sync) {
-    const kept = JSON.parse(readFileSync(snapshot, 'utf8'));
+    const kept = existsSync(snapshot) ? JSON.parse(readFileSync(snapshot, 'utf8')) : [];
     const found = collectAnchors(values.workspace ?? defaultWorkspace());
     const targets = mergeTargets(kept, found);
     writeFileSync(snapshot, JSON.stringify(targets, null, 2) + '\n');
-    console.log(`external-anchors.json: ${targets.length} targets, ${targets.length - kept.length} added`);
-    const unlinked = kept.filter((target) => !found.includes(target));
+    const had = new Set(kept);
+    console.log(`external-anchors.json: ${targets.length} targets, ${targets.filter((target) => !had.has(target)).length} added`);
+    const unlinked = [...had].filter((target) => !found.has(target));
     if (unlinked.length) {
       console.log(`Kept, though no repo's origin links to them now (remove by hand once no shipped app does):\n${unlinked.join('\n')}`);
     }
@@ -106,7 +107,8 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
     const errors = checkAnchors(targets, join(ROOT, 'docs-users'));
     if (errors.length) {
       console.error(errors.join('\n'));
-      console.error('An entry stays even after the other repo drops its link, since a shipped app may still use it. Remove one from scripts/external-anchors.json only by hand, with the reason in the commit.');
+      // Only a snapshot entry's error starts with its /users link.
+      if (errors.some((error) => error.startsWith('/users'))) console.error('An entry stays even after the other repo drops its link, since a shipped app may still use it. Remove one from scripts/external-anchors.json only by hand, with the reason in the commit.');
       process.exitCode = 1;
     } else {
       console.log(`external-anchors: ${targets.length} explicit heading ids verified`);

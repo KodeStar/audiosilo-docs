@@ -83,3 +83,13 @@ test('two headings on one page with the same explicit id fail', (t) => {
     'faq.md: two headings have the explicit id #privacy; give one of them another id',
   ]);
 });
+
+test('an id repeated in a fence or on the h1 is no second heading, and a third use reports once', (t) => {
+  const dir = guide(t, {
+    'faq.md': ['# Title {/* #privacy */}', '## Privacy {/* #privacy */}', '```md', '## Sample {/* #privacy */}', '```'].join('\n\n'),
+    'admin/server.md': ['## One {/* #modules */}', '## Two {/* #modules */}', '## Three {/* #modules */}'].join('\n\n'),
+  });
+  assert.deepEqual(checkAnchors(['/users/faq#privacy'], dir), [
+    'admin/server.md: two headings have the explicit id #modules; give one of them another id',
+  ]);
+});
