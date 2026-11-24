@@ -313,6 +313,7 @@ server stores it opaquely; at most 16 KiB):
 |---|---|
 | `step` | always set: the engine state (`inspecting`, `asr`, `chapter_detecting`, `fact_pass`, `synthesizing`, `auditing`, `contributing`...), or the job's own `waiting` (the engine book is queued, or the job waits on the engine, the server or the mapping), `writing` (writing into `.audiosilo/`), `rescanning` (asking the server to read them) and `describing` (the description step) |
 | `message` | the step in words ("Transcribing (12 of 40)"; "Needs attention: ..." while parked, "Paused: ..." while paused) |
+| `message_code`, `message_params` | the code of a fixed sentence (`starting`, `book_lookup`, `saving_sidecars`, `rescan_them`, `finished`...) and its values; absent for an engine stage's label and the job's own park reasons (the library's name or an error in a sentence) ([Job progress](pairing-and-jobs.md#job-progress)) |
 | `done`, `total` | the current stage's counts, when it has some |
 | `stage` | the engine state |
 | `eta_seconds` | the engine's whole-book estimate of the time left, when it has one (never while parked or paused) |
@@ -322,7 +323,9 @@ server stores it opaquely; at most 16 KiB):
 
 The console and the player word the stages themselves (`bridge.stage.*` in both
 UIs; `describing` is "Writing the description", `chapter_detecting` "Finding the
-chapters in the narration") and show `done/total`, the time left and the cost.
+chapters in the narration") and show `done/total`, the time left and the cost. For
+a step without a stage label, the console's generate card shows the message as
+[the job list](../server/web-ui.md#the-job-list) words it (`progressText`).
 
 ### States
 
@@ -638,8 +641,8 @@ rescan. It fails, with a sentence the console shows as it is, when:
 | validation exhausted | Couldn't write a description that passed the checks. |
 | the engine keeps the book | The engine is busy with this book; try again in a minute. |
 
-Its progress is `{step: describing | writing | rescanning | done, message, done,
-total, stage: "describing", source, cost_usd, park?}`, and its result:
+Its progress is `{step: describing | writing | rescanning | done, message,
+message_code, done, total, stage: "describing", source, cost_usd, park?}`, and its result:
 
 ```json
 {

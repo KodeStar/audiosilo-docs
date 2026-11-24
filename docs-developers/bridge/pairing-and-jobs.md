@@ -1,6 +1,6 @@
 ---
 title: Pairing and jobs
-description: "How a Bridge pairs with a server, the bridge token, the heartbeat and the bridge capability, and the job model: states, leases, attempts, cancelling, resuming after a restart, the double allow-list, lanes, notifications and bridge.verify."
+description: "How a Bridge pairs with a server, the bridge token, the heartbeat and the bridge capability, and the job model: states, progress and its message codes, leases, attempts, cancelling, resuming after a restart, the double allow-list, lanes, notifications and bridge.verify."
 ---
 
 How the Bridge and the server find each other, how the server knows the Bridge is
@@ -369,6 +369,68 @@ so a second press of the same button returns the open job (`200`, not `201`).
 The Bridge may report a job it holds (`claimed`, `running` or `needs_attention`) as
 `running`, `done`, `failed`, `needs_attention` or `cancelled`; it can never put a
 job back in the queue.
+
+### Job progress
+
+A job's progress is one flat JSON object (`jobs.Progress`), at most 16 KiB. The
+server stores it as sent and reads none of its keys but a parked job's `park`
+(which it keeps when a later report names none), so each kind can add its own
+fields beside these:
+
+| Field | Meaning |
+|---|---|
+| `step` | always set: the kind's step, a short machine word (`download`, `stat`, `waiting`) |
+| `message` | the step as an English sentence |
+| `message_code` | optional: the code of `message`'s sentence, when it is one of the Bridge's fixed sentences (from Bridge v0.7.0) |
+| `message_params` | optional: the values (strings or numbers) the coded sentence fills in, only for a code that has them |
+| `done`, `total` | the step's counts, when it has some |
+
+```json
+{
+  "step": "download",
+  "message": "Downloading section 2 of 3 from archive.org",
+  "message_code": "downloading_section",
+  "message_params": { "section": 2, "sections": 3 },
+  "done": 1,
+  "total": 3
+}
+```
+
+The codes are stable snake_case names, listed with their English sentences in
+the Bridge's `internal/jobs/phrases.go` (the `Say*` constants). A sentence's
+placeholders are i18next's `{{name}}`. Two codes have params:
+
+- `library_not_writable` fills in `library` (the library's name);
+- `downloading_section` fills in `section` and `sections` (numbers).
+
+A handler names a sentence by its code (`Progress.Code`, with `Params`), and the
+Bridge fills in `message` from the code's English (`Progress.Text`), so every
+report carries the English. Text that is not a fixed sentence is sent without a
+code: an engine stage's label in `sidecars.generate` ("Transcribing (12 of 40)"),
+and the park reasons of the book jobs' own parks (`sidecars.generate`,
+`sidecars.describe`, `chapters.detect`), each a sentence with the library's name
+or an error in it. When a progress is over 16 KiB, the Bridge drops the kind's
+own fields, then `message_params`, and keeps the code; the console shows a code
+without its params as the English `message`.
+
+Who reads it:
+
+- The admin console words a code it knows in the admin's language and shows
+  `message`, else `step`, for anything else
+  ([The job list](../server/web-ui.md#the-job-list) has the detail).
+- The Bridge's own page shows `message`, in English.
+- The player never shows a job's message: it words its jobs from `step`,
+  `stage`, the park's code (a code it doesn't know shows the park's `hint`) and
+  the counts.
+
+The codes are part of the wire: a code is never renamed or reused. A new
+sentence gets a new code, added in the same change to `phrases.go`, to the
+console's `PROGRESS_CODES` (in `admin-ui/src/features/bridge/bridge-model.ts`,
+each code with its param names) and to all six of the console's locales. The
+Bridge's `internal/jobs/testdata/phrases.json` pins the shipped codes and their
+English (`TestPhrasesShipped`), and the console's tests check that every code in
+`PROGRESS_CODES` has an English sentence naming exactly its params and that the
+other five locales keep the same placeholders.
 
 ### Job results
 
@@ -926,11 +988,18 @@ What the Bridge does:
    library root allows them).
 5. Holds for `hold_seconds`, reporting each second.
 
-Progress is `{ step, message, done?, total? }`, with the steps `mapping`
-("Finding the library"), `lookup` ("Asking the server for the book's files"),
-`stat` ("Comparing the files", with the count), `writable` ("Checking the book's
-folder can be written") and `hold` ("Holding, as asked", with the seconds). The
-result:
+Progress is `{ step, message, message_code, done?, total? }`
+([Job progress](#job-progress)), with these steps:
+
+| Step | Code | Message |
+|---|---|---|
+| `mapping` | `finding_library` | Finding the library |
+| `lookup` | `book_files_lookup` | Asking the server for the book's files |
+| `stat` | `comparing_files`, then `compared_files` | Comparing the files, then Compared the files, with the count |
+| `writable` | `checking_writable` | Checking the book's folder can be written |
+| `hold` | `holding` | Holding, as asked, with the seconds |
+
+The result:
 
 ```json
 {

@@ -85,7 +85,10 @@ list. The Bridge ignores it.
 
 ### Progress
 
-`progress.step` is one of these, in order:
+`progress.step` is one of these, in order. Each report also carries `message`
+and its `message_code` ([Job progress](pairing-and-jobs.md#job-progress)). During
+`download` the code is `downloading_section`, with `section` (counting from 1)
+and `sections` in `message_params`, then `downloaded_archive`.
 
 | Step | What the Bridge does |
 |---|---|
@@ -98,8 +101,8 @@ list. The Bridge ignores it.
 The job waits while its library has no mapping check yet. A new job whose library
 is checked but not mapped and writable fails `not_writable`. A resumed job, or one
 already downloading, **parks** instead (`needs_attention`, park code
-`not_writable`), and it carries on once a mapping check reports the library
-writable again.
+`not_writable`, progress code `library_not_writable`), and it carries on once a
+mapping check reports the library writable again.
 
 #### Parked fetches
 
