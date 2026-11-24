@@ -46,7 +46,7 @@ Neither bar takes you right to the end: a tap there stops 30 seconds short, so a
 
 Wherever AudioSilo shows the time left, it's real time at the speed you listen to that book: *"5h 12m left at 1.25×"*. Each book uses its own speed. A book you haven't started uses your default speed from [Settings](settings.md#playback).
 
-## Undo a jump
+## Undo a jump {/* #undo-a-jump */}
 
 ![The player bar just after a chapter skip, with the Back to button above it](/img/screenshots/web-player/dock-undo.png)
 

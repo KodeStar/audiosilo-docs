@@ -16,7 +16,7 @@ Work through these in order:
 3. **Check the firewall.** If it works on the server itself but not from your phone, allow the port through the server's firewall.
 4. **From outside your home?** See [Reach your server from outside your home](./getting-started/remote-access.md).
 
-### The container stops at start-up with "pthread_create failed"
+### The container stops at start-up with "pthread_create failed" {/* #the-container-stops-at-start-up-with-pthread_create-failed */}
 
 Your Docker is older than **20.10.10** and blocks something the server needs. Update Docker (on a NAS, update its container app or system), then start the container again. `docker version` shows your version.
 
@@ -178,7 +178,7 @@ If the episode says your server can't read this show's folder, the server can't 
 
 No podcasts at all? Update the app, and ask your admin whether you can see the podcast library.
 
-### An episode download says the server couldn't get it
+### An episode download says the server couldn't get it {/* #an-episode-download-says-the-server-couldnt-get-it */}
 
 If the server cannot read the show folder, check its permissions before retrying. If the Bridge logs that an old folder still holds a download, check both folders for a copy of the same show before moving or deleting any files.
 

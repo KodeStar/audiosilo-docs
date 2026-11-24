@@ -27,7 +27,7 @@ When the book reaches someone new, a message tells you, such as *"New in Who's w
 
 A line under both tabs credits the people who wrote them. Tap it to open the book's page on AudioSilo Meta, or tap the licence to read its terms.
 
-## Text
+## Text {/* #text */}
 
 For a book with a **read-along**, the **Text** tab shows the ebook following what you hear. It highlights the sentence being read and turns the pages by itself. An admin makes a book's read-along with a Bridge (see [Make a read-along](../admin/making-read-along.md)).
 

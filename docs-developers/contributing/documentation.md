@@ -233,6 +233,15 @@ Guide pages and headings. When you rename a heading, keep its old anchor with
 an explicit id: `## Download a book {/* #downloading-a-book */}`. Cross-referenced
 headings use a colon or rephrase rather than a dash, so their anchors stay clean.
 Moving or renaming a page file needs a redirect, so prefer changing only its `title:`.
+The build fails when a heading another repo links to loses its explicit id (the
+`prebuild`'s `scripts/external-anchors.mjs`, against the snapshot
+`scripts/external-anchors.json`), and when two headings on one page share an
+explicit id. After such a link is added or changed in another repo,
+fetch that repo and run `npm run anchors:sync`: it reads the sibling repos at
+their `origin` branch, next to the main checkout (`-- --workspace <dir>` for
+another folder), and needs no network. The sync only adds links, since a
+shipped app may still use one its repo has since dropped; remove an entry from
+the snapshot by hand, with the reason in the commit.
 
 The Developer Docs follow rules 2, 3, 6, 7 and 9 too, and the "Keep links
 working" note. They may name code. Under rule 7 they keep a version only where

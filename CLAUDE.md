@@ -27,7 +27,13 @@ admonition syntax: write `:::note[Title]`; and the stale-name check
 (`scripts/stale-names.mjs`) fails on a capability flag, route, config key or
 `AUDIOSILO_*` variable the server no longer has, against the snapshot
 `scripts/server-names.json` (re-pin with `npm run names:sync` after a server
-change; deliberate exceptions in `scripts/stale-names-allow.json`). `npm start` for the live dev loop.
+change; deliberate exceptions in `scripts/stale-names-allow.json`); the
+external-anchor check (`scripts/external-anchors.mjs`) fails when a User Guide
+heading another repo links to (snapshot `scripts/external-anchors.json`) has
+no explicit id `{/* #id */}`, or a page gives two headings one id (add links
+with `npm run anchors:sync`, which never removes one; see
+`docs-developers/contributing/documentation.md`). `npm start` for the live dev
+loop.
 Node 24 (workspace convention; `.nvmrc` in the sibling repos).
 
 ## Rules

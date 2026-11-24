@@ -5,7 +5,7 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
-    "prebuild": "node scripts/check-admonitions.mjs && node --test scripts/stale-names.test.mjs screenshots/book-edits.test.mjs && node scripts/stale-names.mjs",
+    "prebuild": "node scripts/check-admonitions.mjs && node --test scripts/*.test.mjs screenshots/book-edits.test.mjs && node scripts/stale-names.mjs && node scripts/external-anchors.mjs",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
@@ -16,7 +16,9 @@
     "typecheck": "tsc",
     "postinstall": "node scripts/patch-search-link.mjs",
     "names:sync": "node scripts/stale-names.mjs --sync",
-    "names:check": "node scripts/stale-names.mjs"
+    "names:check": "node scripts/stale-names.mjs",
+    "anchors:sync": "node scripts/external-anchors.mjs --sync",
+    "anchors:check": "node scripts/external-anchors.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "3.10.2",

@@ -68,7 +68,7 @@ journalctl -u audiosilo
 
 Your data folder and your books are not changed. When an update changes the database, the server first saves a [backup](../admin/backups.md#before-an-upgrade) of it. **Server > About** in the admin console tells you when a new version is out.
 
-## ffmpeg and ffprobe
+## ffmpeg and ffprobe {/* #ffmpeg-and-ffprobe */}
 
 AudioSilo uses ffprobe to read lengths and chapters, and ffmpeg to convert audio a browser can't play. They are not in the download, but you usually have nothing to do:
 

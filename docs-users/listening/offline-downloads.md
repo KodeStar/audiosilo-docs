@@ -38,7 +38,7 @@ Here the server is getting one episode, and **Retry** starts the stopped one aga
 
 Downloads belong to each device. What you downloaded on your phone isn't on your tablet.
 
-## Automatic downloads
+## Automatic downloads {/* #automatic-downloads */}
 
 The **Automatic downloads** card holds four settings. They're the same ones as in [Settings](settings.md#up-next-and-downloads).
 
@@ -80,7 +80,7 @@ Each download belongs to the server you downloaded it from, and to the person wh
 
 A watch has its own downloads, separate from your phone's. See [Apple Watch](apple-watch.md#storage) or [Wear OS](wear-os.md#storage).
 
-## How downloaded playback differs
+## How downloaded playback differs {/* #how-downloaded-playback-differs */}
 
 - A downloaded book plays from the device, so it starts instantly and never buffers.
 - Chapters, the sleep timer and speed all work the same. So do bookmarks and notes while the app can reach your server (see [With no connection](#with-no-connection)).
@@ -109,7 +109,7 @@ When your server has [community metadata](book-page.md#about-this-book) switched
 
 A book you haven't downloaded keeps the community details the app has already loaded. Until they load, **About** says they'll load when you reconnect, and so does a **Previous books** row you open. They load by themselves once you're back online.
 
-## Downloads in a web browser
+## Downloads in a web browser {/* #downloads-in-a-web-browser */}
 
 The web player can download books too, no app needed. Downloads are kept in the browser's own storage, so a laptop can play them with no connection.
 
@@ -148,7 +148,7 @@ If audio files were added to a book on your server after you downloaded it, your
 
 To hear the rest offline, remove the download and download the book again.
 
-### Books in MKA files
+### Books in MKA files {/* #books-in-mka-files */}
 
 A book in `.mka` (Matroska) files with MP3 inside downloads as MP3 when your server has ffmpeg. It then plays offline in the apps and the web player.
 

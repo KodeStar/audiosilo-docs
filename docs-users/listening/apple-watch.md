@@ -155,7 +155,7 @@ The watch uses home and away addresses, like the iOS and Android apps (see [At h
 
 A download that started at home keeps using the home address, with the watch's sign-in, until you next open AudioSilo. This holds even after the watch leaves home. Opening the app moves the download to your away address.
 
-### A self-signed server
+### A self-signed server {/* #a-self-signed-server */}
 
 The watch can't accept a self-signed certificate. So, as on your phone:
 

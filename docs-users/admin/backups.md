@@ -41,7 +41,7 @@ folder at another disk, or download a backup now and then and keep it
 elsewhere.
 :::
 
-### A backups folder on another disk
+### A backups folder on another disk {/* #a-backups-folder-on-another-disk */}
 
 Under Docker, mount the other disk at a path of its own, such as `/backups`,
 and set `AUDIOSILO_BACKUP_DIR` to that path:
@@ -81,7 +81,7 @@ Docker) is named as read-only.
 When the server can't read the backups folder at all, the Backups page shows
 the same folder, user and fix in place of the list.
 
-## Before an upgrade
+## Before an upgrade {/* #before-an-upgrade */}
 
 When a new version of the server needs to change the database, it copies the
 database first. The copy shows in the list as **Before an upgrade**. The newest

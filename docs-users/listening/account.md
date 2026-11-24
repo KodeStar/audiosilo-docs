@@ -49,7 +49,7 @@ If the server has home and away addresses, an **At home and away** card lists th
 
 If the server doesn't answer, the card still shows the addresses saved on this device. With no network, it shows only for a server the player has already seen offer home and away addresses.
 
-## Proxy headers
+## Proxy headers {/* #proxy-headers */}
 
 For a server behind a sign-in proxy, the **Proxy headers** card holds the headers this device sends with its requests. See [Behind a sign-in proxy](../getting-started/remote-access.md#behind-a-sign-in-proxy) for what they are for.
 
@@ -73,7 +73,7 @@ The web player keeps the last device list for this account, so you can reload th
 
 If the list can't load while you're online, **Retry** asks this server again. If the card offers **Reconnect** or names a sign-in proxy, see [Getting back in](connecting.md#getting-back-in-after-signing-out).
 
-## Listening sync
+## Listening sync {/* #listening-sync */}
 
 The **Listening sync** card shows whether what you heard on this device has reached the server, and when it last synced. Listening waits on the device while you're offline and goes by itself when the server is reachable. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 

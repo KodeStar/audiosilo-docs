@@ -61,7 +61,7 @@ Three names come up across these docs:
 - **The community database** is the data: the descriptions, characters, recaps, series and chapters.
 - **Community metadata** is what your server looks up in the database and shows with your books. It is also the name of the settings section where your admin turns the lookups on or off.
 
-### Does my server tell anyone which books I have?
+### Does my server tell anyone which books I have? {/* #does-my-server-tell-anyone-which-books-i-have */}
 
 Only what a lookup needs:
 

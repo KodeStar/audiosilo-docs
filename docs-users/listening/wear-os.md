@@ -159,7 +159,7 @@ If the server is older than 2.6 or has no ffmpeg, the watch says so instead of s
 
 The watch uses home and away addresses, like the iOS and Android apps (see [At home and away](connecting.md#at-home-and-away)). The address in use is under **Server** on [Sync](#sync-status).
 
-### A self-signed server
+### A self-signed server {/* #a-self-signed-server */}
 
 The watch can't accept a self-signed certificate. So, as on your phone:
 
@@ -180,7 +180,7 @@ To switch accounts, tap **Set up your watch** on the other account's card on you
 
 Signing out on your phone leaves the watch signed in. To cut off a lost watch, tap **Sign out** on its row under [Signed-in devices](account.md#signed-in-devices).
 
-## Install both apps from the same place
+## Install both apps from the same place {/* #install-both-apps-from-the-same-place */}
 
 A watch and a phone only talk to each other when both apps come from Google Play, or both from [GitHub](mobile-apps.md#android-without-google-play). Each app release on GitHub has a watch APK, like `AudioSilo-wear-2.7.0.apk`, beside the phone's.
 

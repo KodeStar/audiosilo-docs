@@ -50,7 +50,7 @@ of the text lined up.
 
 The Bridge makes read-alongs one book at a time.
 
-### From the player
+### From the player {/* #from-the-player */}
 
 As an admin, play the book and open the companion's
 [Text tab](../listening/companion.md#text). When there is no read-along yet,

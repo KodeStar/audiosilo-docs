@@ -44,7 +44,7 @@ Keep each recording in its own folder, such as `The Hobbit (Rob Inglis)/` and `T
 
 With community metadata on, the players still show them together: one spine on a series page and an **Other recordings in your library** card on the book's page. That works once each recording is matched to the same book in the community database, by its ASIN or ISBN or by an admin. See [Recordings of the same book](../admin/books.md#recordings-of-the-same-book).
 
-## Supported formats
+## Supported formats {/* #supported-formats */}
 
 AudioSilo plays these audio files:
 

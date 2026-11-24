@@ -65,7 +65,7 @@ Tap **Reading settings**, the sun or moon at the right of the top bar. Its setti
 
 ![The Reading settings menu open in the reader, with Page colours and Hide while reading](/img/screenshots/web-player/reader-settings.png)
 
-## Follow the narration
+## Follow the narration {/* #follow-the-narration */}
 
 For a book with a read-along, the reader can follow the audio. It needs your server on version 2.6.0 or later and, on a phone or tablet, the app on 2.6.0 or later.
 
