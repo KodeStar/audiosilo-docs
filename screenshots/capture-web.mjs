@@ -27,6 +27,7 @@ import {cp, mkdir, rm} from 'node:fs/promises';
 import {existsSync, readFileSync, statSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {createHash, randomUUID} from 'node:crypto';
+import {revertCaptureAsin} from './book-edits.mjs';
 import {
   CACHE,
   DAY,
@@ -2760,7 +2761,7 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
     }
   } finally {
     if (holmesEdit) {
-      await step('upcoming: revert the ASIN', () => asAdmin((token) => api(token, 'PATCH', holmesEdit, {revert: ['asin']})));
+      await step('upcoming: revert the ASIN', () => asAdmin((token) => revertCaptureAsin(api, token, holmesEdit)));
     }
   }
 }
