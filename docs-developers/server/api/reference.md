@@ -5247,7 +5247,7 @@ The fields mean what they mean in the admin's
   newest first, up to 100.
 - `playback` and `clients` - the caller's listening by codec and transcoding,
   and the caller's devices that listened, by app build. `clients` is never split
-  by API key: a key that named no app counts in the `app: ""` row, and no row has
+  by API key. A key that named no app counts in the `app: ""` row, and no row has
   the `api_key` field the admin
   [Activity page](#range-listening-activity) adds.
 
@@ -7733,14 +7733,14 @@ book path).
   are its own). Each carries its `file_path`, in-file `start` and `end`, and
   `book_offset`.
 - `dormant_renames` - from 2.7.0, the chapter renames that rename no chapter
-  the book has now: each was made for a chapter at a file and start the files
+  the book has now. Each was made for a chapter at a file and start the files
   no longer have (re-encoded with moved chapter marks, say). Each is
-  `{file, start, title}`: the file relative to the book (`""` for a single-file
-  book's own file), the chapter's start in seconds in that file, and the title
-  it gives. A rename is kept and applies again if its chapter comes back.
-  Omitted when there are none, and while an edited list applies (`chapter_edit`
-  `state: "applied"`: its titles are the edit's, so every rename waits). The
-  console lists them in a notice on the Chapters card.
+  `{file, start, title}`, with the file relative to the book (`""` for a
+  single-file book's own file), the chapter's start in seconds in that file, and
+  the title it gives. A rename is kept and applies again if its chapter comes
+  back. Omitted when there are none, and while an edited list applies
+  (`chapter_edit` `state: "applied"`), whose titles are the edit's, so every
+  rename waits. The console lists them in a notice on the Chapters card.
 - `files` - each audio file (a single-file book lists itself), with its own
   `codec` and a derived `bitrate` in bits per second (`0` when the duration is
   unknown).
@@ -9410,10 +9410,10 @@ returns its book page, the same body as
 required. It runs outside the job queue (one book is quick), so it never waits
 behind a library scan. The re-read runs detached from the request, for up to 10
 minutes (and never past server shutdown), so on a slow share it is still saved
-even if the response times out; the book's next look shows it. From 2.7.0 a
-re-read still going 5 seconds before the request timeout (25 seconds in) is
-answered `202` `{"still_reading": true}` and goes on: it is saved when it ends,
-and a failure after that answer goes to the server log as a warning. Another
+even if the response times out; the book's next look shows it. From 2.7.0, when
+the re-read is still going 5 seconds before the request timeout (25 seconds in),
+the server answers `202` `{"still_reading": true}` and the re-read goes on. A
+failure after that answer goes to the server log as a warning. Another
 read of the book already under way (a second click, a scan's) is waited on for
 as long as it moves on, then the re-read reads the book itself, so a change
 made since that read began is picked up. The console uses
@@ -10341,9 +10341,8 @@ and only the part inside the period counts.
   named itself (released before the header). From 2.7.0 the personal API keys
   that named no app are their own row with `api_key: true` (omitted on every
   other row), which the console calls "Personal API key"; a key whose script
-  sends an app header counts under that app. This split is admin-only:
-  [`GET /me/stats`](#get-apiv1mestats)'s `clients` never has an `api_key` row or
-  field.
+  sends an app header counts under that app. Only this admin view splits them
+  ([`GET /me/stats`](#get-apiv1mestats) does not).
 - `growth` - the number of books indexed now that had appeared on disk by each
   sample `date` (RFC 3339): daily for a period up to a month, weekly up to a
   quarter, monthly beyond, ending at `to`. Books removed since aren't counted

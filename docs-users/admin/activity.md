@@ -35,8 +35,7 @@ Below the tiles:
 - **How it played**: how much listening played directly and how much was
   transcoded.
 - **Apps in use**: the apps and versions people listen with. A notice points out
-  devices running an older build. Personal API keys whose scripts don't name
-  their app share one **Personal API key** row.
+  devices running an older build.
 - **Library growth** and **Storage and coverage**: how your collection grew,
   the space it takes, and how many books are matched, have chapters and have a
   cover.
