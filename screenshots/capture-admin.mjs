@@ -9,9 +9,10 @@
 // Before capturing it provisions a little demo state through the admin API
 // (a listener account, an invite, a share, some listening progress, one
 // metadata edit, a scan schedule and skip rules on the seeded library) so the
-// console looks lived-in. Three more listeners sign in with a password and keep
-// saving progress in the background while the shots are taken, which is what
-// makes real listening sessions (Activity, Live now, Sessions, Devices); those
+// console looks lived-in. Three more listeners sign in with a password (and one
+// of them also plays through a personal API key) and keep saving progress in the
+// background while the shots are taken, which is what makes real listening
+// sessions (Activity, Live now, Sessions, Devices); those
 // screens are captured last, once each listener has a few minutes of listening.
 // It also names the server and adds a trusted proxy through PATCH
 // /admin/settings, so the top bar and Server > Settings show values, makes a
@@ -56,6 +57,7 @@ import {
   silence,
   sleep,
   shoot,
+  sqlQuote,
   sqliteAt,
   stamp,
   step,
@@ -310,7 +312,9 @@ await step('provision notification destinations', async () => {
 // AudioSilo Apple Watch (its app id and platform), so Live now and Sessions read
 // her session as the watch's downloaded AAC copy. Theo's device fetches
 // a transcoded stream first, so his session counts as transcoded, and he has a
-// personal API key that was never used.
+// personal API key that was never used. Maya also plays a book on her living
+// room speaker through a personal API key of hers (KEY_LISTENER): a script that
+// sends no app header, so Activity names its app as a Personal API key.
 const HEARTBEAT_MS = 15000;
 // Nora's last save, before the Activity shots: past the server's 150 s playing window.
 const PAUSE_EARLY_MS = 3 * MIN;
@@ -321,6 +325,7 @@ const LISTENERS = [
   {username: 'theo', device: 'Pixel 8', client: 'AudioSilo/1.4.2 (android)', speed: 1, at: 0.58, transcode: true},
   {username: 'nora', device: "Nora's Apple Watch", client: 'audiosilo-watch/2.6.0 (watchos)', speed: 1, at: 0.12, pauseEarly: true},
 ];
+const KEY_LISTENER = {username: 'maya', device: 'Living room speaker', speed: 1, at: 0.4, deviceId: 'maya-speaker'};
 let mayaId = null;
 let heartbeats = null;
 // Maya's household (see README.md): a kid on a collection maya shares with them and a
@@ -348,9 +353,9 @@ const saveProgress = async (l) => {
       playback_speed: l.speed,
       updated_at: new Date(now).toISOString(),
       version: now,
-      device_id: `${l.username}-device`,
+      device_id: l.deviceId ?? `${l.username}-device`,
     },
-    {'x-audiosilo-client': l.client},
+    l.client ? {'x-audiosilo-client': l.client} : {},
   );
 };
 
@@ -360,7 +365,7 @@ await step('provision listening sessions', async () => {
   // Books 0 and 1 carry the admin's own progress (above); the listeners take the next ones.
   const books = byAuthorThenTitle((await api(token, 'GET', `/libraries/${library.id}/books?limit=12`))?.books ?? [])
     .filter((b) => b.duration > 0);
-  if (books.length < 6) throw new Error(`only ${books.length} books to listen to`);
+  if (books.length < 7) throw new Error(`only ${books.length} books to listen to`);
   for (const [i, l] of LISTENERS.entries()) {
     let user;
     try {
@@ -395,6 +400,14 @@ await step('provision listening sessions', async () => {
   abort.abort();
   if (!stream?.ok) console.log(`  ! transcoded stream not available (${stream?.status ?? 'no response'})`);
   await api(theo.token, 'POST', '/auth/tokens', {label: 'Home Assistant'}).catch(() => {});
+  // books[5] is the one maya finished (below), so her speaker plays books[6].
+  try {
+    const key = await api(LISTENERS[0].token, 'POST', '/auth/tokens', {label: KEY_LISTENER.device});
+    const book = books[6];
+    LISTENERS.push(Object.assign(KEY_LISTENER, {token: key.token, book, pos: book.duration * KEY_LISTENER.at}));
+  } catch (e) {
+    console.log(`  ! maya's speaker key not provisioned: ${e.message}`);
+  }
 
   for (const l of LISTENERS) await saveProgress(l);
   await sleep(HEARTBEAT_MS);
@@ -412,7 +425,7 @@ await step('provision listening sessions', async () => {
   heartbeats = setInterval(() => {
     for (const l of LISTENERS) {
       if (l.pauseEarly && Date.now() > listenUntil - PAUSE_EARLY_MS) continue;
-      saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.username}: ${e.message}`));
+      saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.device}: ${e.message}`));
     }
   }, HEARTBEAT_MS);
 
@@ -433,7 +446,7 @@ await step('provision listening sessions', async () => {
       console.log(`  ! maya's household not provisioned: ${e.message}`);
     }
   }
-  console.log(`  ✓ provisioned (maya, theo and nora listening${memberId ? "; maya's household" : ''})`);
+  console.log(`  ✓ provisioned (maya, theo and nora listening${KEY_LISTENER.token ? ", maya's speaker key too" : ''}${memberId ? "; maya's household" : ''})`);
 });
 
 // ── Capture ────────────────────────────────────────────────────────────────
@@ -541,6 +554,68 @@ await step('a book page', async () => {
   await open(page, bookRoute(firstBook), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
   await sleep(1000); // the hero's full-size cover and its tint
   await shoot(page, 'admin/book.png');
+});
+
+// ── Chapter renames waiting for their chapters ──────────────────────────────
+// A Christmas Carol's second and third staves renamed, each at a start a few
+// seconds into its file where no chapter starts now: what renames made before
+// the files were re-encoded with moved chapter marks look like. The seeded
+// files stay as they are, so the renames go straight into the capture
+// database's chapter_overrides (the rows a click on a chapter title saves) and
+// are removed after the shot.
+const STAVES = ['Stave Two: The First of the Three Spirits', 'Stave Three: The Second of the Three Spirits'];
+await step('book: dormant chapter renames', async () => {
+  if (!wanted('admin/book-dormant-renames.png')) return;
+  const book = await bookBy('Charles Dickens', 'Christmas Carol');
+  if (!book) throw new Error('no seeded A Christmas Carol');
+  const detail = await api(token, 'GET', `/admin/libraries/${book.library_id}/book${pathQuery(book.path)}`);
+  const inFiles = (detail.chapters ?? []).filter((c) => c.file_path.startsWith(`${book.path}/`)).slice(1, 3);
+  if (inFiles.length < 2) throw new Error('A Christmas Carol needs three chapters in files of its folder');
+  const rows = inFiles.map((c, i) => ({
+    file: c.file_path.slice(book.path.length + 1),
+    startMS: Math.round((c.start + 4.5 + i) * 1000),
+    title: STAVES[i],
+  }));
+  sqlite(rows.map((r) => `INSERT OR REPLACE INTO chapter_overrides (library_id, path, file, start_ms, title, updated_by, updated_at)
+    VALUES (${book.library_id}, ${sqlQuote(book.path)}, ${sqlQuote(r.file)}, ${r.startMS}, ${sqlQuote(r.title)},
+      (SELECT id FROM users WHERE username = 'admin'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-30 days'));`).join('\n'));
+  try {
+    await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+    const card = page.locator('section[aria-labelledby="chapters-title"]');
+    await card.getByText('2 chapter renames are waiting for their chapters', {exact: true}).waitFor({timeout: 15000});
+    await card.scrollIntoViewIfNeeded();
+    await sleep(800);
+    await shoot(page, 'admin/book-dormant-renames.png', {clip: around([await card.boundingBox()])});
+  } finally {
+    sqlite(rows.map((r) => `DELETE FROM chapter_overrides WHERE library_id = ${book.library_id} AND path = ${sqlQuote(book.path)}
+      AND file = ${sqlQuote(r.file)} AND start_ms = ${r.startMS};`).join('\n'));
+  }
+});
+
+// ── A Re-read still going when its answer is due ────────────────────────────
+// On a slow share the server answers Read the files again with 202
+// {"still_reading": true} once the read outlasts the request, and the read goes
+// on. The seeded library answers in milliseconds, so the book's Re-read runs for
+// real and its answer reaches the console as a slow share's would.
+await step('book: re-read still going', async () => {
+  if (!wanted('admin/book-still-reading.png')) return;
+  if (!firstBook) throw new Error('no book was provisioned');
+  const route = '**/api/v1/admin/libraries/*/book/rescan?**';
+  await page.route(route, async (r) => {
+    await r.fetch(); // the real Re-read; only its answer is replaced
+    await r.fulfill({status: 202, json: {still_reading: true}});
+  });
+  try {
+    await open(page, bookRoute(firstBook), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+    await page.getByRole('button', {name: 'More book actions'}).click();
+    await page.getByRole('menuitem', {name: 'Read the files again'}).click();
+    await page.getByText(/^Still reading “/).waitFor({timeout: 15000});
+    await page.mouse.move(0, 0);
+    await sleep(600);
+    await shoot(page, 'admin/book-still-reading.png');
+  } finally {
+    await page.unroute(route);
+  }
 });
 
 await step('match with community metadata', async () => {
@@ -1809,6 +1884,18 @@ await step('activity overview', async () => {
   } finally {
     await page.setViewportSize(DESKTOP_CONTEXT.viewport);
   }
+});
+
+// The Apps in use card, with maya's speaker key as its own Personal API key row.
+await step('activity: apps in use', async () => {
+  if (!wanted('admin/activity-apps.png')) return;
+  if (!KEY_LISTENER.token) throw new Error("maya's speaker key was not provisioned");
+  await open(page, '/activity');
+  const card = page.locator('[aria-labelledby="apps-title"]');
+  await card.getByText('Personal API key', {exact: true}).waitFor({timeout: 15000});
+  await card.scrollIntoViewIfNeeded();
+  await sleep(800);
+  await shoot(page, 'admin/activity-apps.png', {clip: around([await card.boundingBox()])});
 });
 
 await step('activity: live now', async () => {

@@ -35,6 +35,7 @@ import {
   shoot,
   showDockerPaths,
   sleep,
+  sqlQuote,
   sqliteAt,
   stamp,
   step,
@@ -89,7 +90,6 @@ const discoveryServer = http.createServer((req, res) => {
 await new Promise((resolve) => discoveryServer.listen(Number(idp.port), idp.hostname, resolve));
 
 const sqlite = sqliteAt(DB);
-const q = (s) => `'${String(s).replaceAll("'", "''")}'`;
 
 // ── State ────────────────────────────────────────────────────────────────
 const api = apiClient(ORIGIN);
@@ -105,16 +105,16 @@ await api(token, 'POST', '/admin/users', {username: 'robin', role: 'user', email
 const now = Date.now();
 sqlite(`
 INSERT INTO user_identities(user_id, issuer, subject, email, username, link_method, linked_by, linked_at, last_sign_in_at, groups_seen)
-  VALUES(${sam.id}, ${q(ISSUER)}, '3f9c2a71-5d0e-4b8a-9e61-0c7d2b4f8a15', 'sam@example.com', 'sam', 'admin', ${login.user.id},
-         ${q(stamp(now - 9 * 24 * HOUR))}, ${q(stamp(now - 2 * HOUR))}, 1);
+  VALUES(${sam.id}, ${sqlQuote(ISSUER)}, '3f9c2a71-5d0e-4b8a-9e61-0c7d2b4f8a15', 'sam@example.com', 'sam', 'admin', ${login.user.id},
+         ${sqlQuote(stamp(now - 9 * 24 * HOUR))}, ${sqlQuote(stamp(now - 2 * HOUR))}, 1);
 INSERT INTO tokens(user_id, token_hash, kind, device_name, created_at, last_seen, client_app)
-  VALUES(${sam.id}, 'capture-oidc-sam-web', 'session', 'Web player', ${q(stamp(now - 2 * HOUR))}, ${q(stamp(now - 2 * HOUR))}, 'audiosilo-web');
+  VALUES(${sam.id}, 'capture-oidc-sam-web', 'session', 'Web player', ${sqlQuote(stamp(now - 2 * HOUR))}, ${sqlQuote(stamp(now - 2 * HOUR))}, 'audiosilo-web');
 INSERT INTO oidc_pending(issuer, subject, email, email_verified, username, name, groups, reason, first_seen_at, last_seen_at, attempts)
-  VALUES(${q(ISSUER)}, 'b2e4d8c0-7a1f-4c35-8d92-6e0f1a3c5b77', 'jo.reed@example.com', 0, 'jo', 'Jo Reed',
-         '["family","audiobooks"]', 'no_match', ${q(stamp(now - 50 * MIN))}, ${q(stamp(now - 12 * MIN))}, 2);
+  VALUES(${sqlQuote(ISSUER)}, 'b2e4d8c0-7a1f-4c35-8d92-6e0f1a3c5b77', 'jo.reed@example.com', 0, 'jo', 'Jo Reed',
+         '["family","audiobooks"]', 'no_match', ${sqlQuote(stamp(now - 50 * MIN))}, ${sqlQuote(stamp(now - 12 * MIN))}, 2);
 INSERT INTO oidc_pending(issuer, subject, email, email_verified, username, name, groups, reason, first_seen_at, last_seen_at, attempts)
-  VALUES(${q(ISSUER)}, 'e7a1c3f5-2b9d-4e60-a8c4-91d3f0b6e2a8', 'alex@example.com', 1, 'alex', 'Alex Moreno',
-         '["family"]', 'auto_create_off', ${q(stamp(now - 3 * 24 * HOUR))}, ${q(stamp(now - 3 * 24 * HOUR))}, 1);
+  VALUES(${sqlQuote(ISSUER)}, 'e7a1c3f5-2b9d-4e60-a8c4-91d3f0b6e2a8', 'alex@example.com', 1, 'alex', 'Alex Moreno',
+         '["family"]', 'auto_create_off', ${sqlQuote(stamp(now - 3 * 24 * HOUR))}, ${sqlQuote(stamp(now - 3 * 24 * HOUR))}, 1);
 `);
 console.log('  ✓ oidc state');
 
