@@ -7648,8 +7648,10 @@ book path).
   "description": "Six days ago, astronaut Mark Watney became one of the first people to walk on Mars.",
   "fields": {
     "title": { "value": "The Martian: Classroom Edition", "source": "edited", "scanned": "The Martian",
-               "locked": true, "edited_by": "admin", "edited_at": "2026-10-03T09:30:12.48Z" },
-    "author": { "value": "Andy Weir", "source": "tag", "scanned": "Andy Weir", "locked": false },
+               "scanned_source": "abs", "locked": true, "edited_by": "admin",
+               "edited_at": "2026-10-03T09:30:12.48Z" },
+    "author": { "value": "Andy Weir", "source": "tag", "scanned": "Andy Weir", "scanned_source": "tag",
+                "locked": false },
     "series_index": { "value": "", "source": "", "scanned": "", "locked": false },
     "asin": { "value": "B00B5HZGUG", "source": "community", "scanned": "", "locked": false }
   },
@@ -7702,7 +7704,7 @@ book path).
   table above (the example shows four).
   Each has the effective `value`, its `source`, the `scanned` value (what the
   scan found, the revert target unless `enrichment` below names another),
-  `locked` (an admin edit holds it), and for an
+  `scanned_source`, `locked` (an admin edit holds it), and for an
   edit `edited_by` (the username; omitted once that account is deleted) and
   `edited_at`. `series_index` is a string here (`"2.5"`, `"1-3"` for a range,
   `""` for none), `abridged` `"true"` / `"false"` / `""`, and `genres` / `tags`
@@ -7710,6 +7712,13 @@ book path).
   From 2.7.0 an `asin` or `isbn` whose override (edited or community) hides the
   Bridge's enrichment also carries that value as `enrichment`: what the field
   falls back to, ahead of `scanned`, once the override goes.
+  From 2.7.0 `scanned_source` says where `scanned` came from, by the
+  [source](#admin-catalog) rules: `tag`, `path` or `abs`. It
+  is omitted when the scan found nothing, and it stays the scanned value's own
+  source while an edit or a community value hides it. The console's Revert hint
+  names that source ("Audiobookshelf file: ...", "Folder and file names: ...",
+  "File tag: ..."), or "Community: ..." when `enrichment` is the revert target,
+  or "Empty once reverted" when there is nothing to go back to.
 - `chapters` - every chapter with its effective `title`, the `scanned_title`
   and whether an edit renames it (never while an edited list applies: its titles
   are its own). Each carries its `file_path`, in-file `start` and `end`, and

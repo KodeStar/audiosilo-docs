@@ -1522,7 +1522,9 @@ alone were written (`recordLengths`) record revision 2 as they are
 
 The same scan [checks affected book names](#books-already-indexed) and reads each
 [Audiobookshelf metadata.json](#audiobookshelf-metadatajson) once more, for
-the reader's [name joining](data-model.md#the-audiobookshelf-layer). After
+the reader's [name joining and series names](data-model.md#the-audiobookshelf-layer)
+(reader revision 3: a series name holding `" #"`, such as "The #1 Ladies
+Detective Agency", is no longer split into a series "The"). After
 these reads succeed, a second scan of the unchanged library skips both the
 audio and those metadata files. If a part's length changes, later
 parts start at new offsets on the whole-book timeline. Saved places,
