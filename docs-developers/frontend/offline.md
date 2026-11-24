@@ -332,8 +332,11 @@ file the manifest lists with the same `relPath` that still exists on disk, where
 the server's list now puts it, under the name it was saved by. So a list that
 gained, lost or reordered a file fetches only the new files. Each file still to
 fetch gets a name no kept file holds: its index when that is free, else the next
-free number past the list (`storedIndex` reads either). If the retry fails again,
-the manifest still lists the kept files it had not reached.
+free number past the list (`storedIndex` reads either). A kept file whose path the
+server's list no longer holds (`unlisted`) is deleted before the fetches
+(`engine.removeFile`), since no later manifest names it and nothing else would delete
+it. A file stored under a kept file's name is never deleted. If the retry fails again, the manifest
+still lists the kept files it had not reached.
 
 `runOne` lists each finished file in the persisted entry as it lands, so this
 survives a restart too (`reviveEntry` in
@@ -1373,13 +1376,14 @@ reached means it plans nothing this time.
     sixth server and on fold into "N more servers";
   - an **Other apps** segment on a device (`capacity - free - ours`). A browser can't
     see other apps;
-  - `used`: the larger of the registry's sum plus what the running downloads have
-    written (`growingBytes`), and the engine's measure (`totalBytesUsed`) plus each
+  - `used`: the larger of the registry's sum plus what the unfinished downloads
+    hold (`growingBytes`: a running download's `heldBytes`, a failed or waiting
+    one's finished files in `manifest.files`), and the engine's measure (`totalBytesUsed`) plus each
     download's own growth since the measure was read (`grownSince`, against
     `heldByKey` taken with it). Both are in whole megabytes, so the figure grows
     while a download runs without changing on every progress tick, also past a
-    device-wide measure larger than the listed books. A retried download counts only
-    past the files its failed attempt kept, so it is not counted twice;
+    device-wide measure larger than the listed books. A retried download counts
+    only past the files its failed attempt kept, so it is not counted twice;
   - Other apps is read against the disk as it was at the measure, so its share stays
     steady while a download grows.
 
@@ -1424,8 +1428,10 @@ durable local mirror and the offline queue (see [Playback](playback.md)).
 A downloaded book's server place is kept in that mirror, so a book downloaded at 70%
 opens offline at 70%, not 0:
 
-- The download's start seeds the mirror from a `getProgress`, else from the cached
-  `qk.progress` (`keepServerPlace`).
+- The download's start reads the server's place (`fetchServerProgress`, which
+  writes it to the mirror once the book has a downloads entry). When that read
+  fails, the cached `qk.progress` row seeds the mirror instead
+  (`keepCachedServerPlace`).
 - `fetchBookProgress` writes each online answer for a book kept offline
   (`setKeptOfflineCheck`, `writeMirror(progressToSave(...))`). The write keeps the
   newest record, so a newer local save is never regressed.
@@ -1650,10 +1656,13 @@ has exactly two jobs.
    - Navigations are **network-first**. They fall back to the cached response for
      that route, then to the cached scope root (a shell that boots the SPA), then to
      a 503.
-   - The build's own content-hashed files (`<base>/_expo/static/`) are served
-     **cache-first** and never written again.
-   - Other static assets with destinations `script | style | font | image |
-     manifest` are **stale-while-revalidate**.
+   - The build's own content-hashed files (`<base>/_expo/static/`) and its fonts
+     (destination `font`, whose names the export hashes too) are served
+     **cache-first** and never fetched or written again (`serveAsset`). Reading a
+     font again behind every load would cost two requests, one for its preload and
+     one for its `@font-face`.
+   - Other static assets with destinations `script | style | image | manifest` are
+     **stale-while-revalidate**.
    - The `install` step precaches the scope root and the ebook reader's document
      (`<scope>reader.html`, `readerDocumentUrl`). So a downloaded book's EPUB opens
      offline even when the reader never opened online. Each is added on its own, and
@@ -1753,7 +1762,7 @@ pins both paths.
 |---|---|
 | Launching the installed PWA, or revisiting routes | network-first navigation falling back to the cached shell |
 | Opening a page never opened online | every chunk of the build, precached per deploy (`precacheBuild`) |
-| The app's JS, CSS, fonts and icons | cache-first for the hashed build files, stale-while-revalidate for the rest |
+| The app's JS, CSS, fonts and icons | cache-first for the hashed build files and the fonts, stale-while-revalidate for the rest |
 | A language other than English | its catalog chunk is part of the precached build |
 | Playing **downloaded** books, including seeking | `_offline/` URLs and Range slicing from the media cache |
 | Book and chapter metadata for downloaded books | manifests seeded into the React Query cache on hydrate |

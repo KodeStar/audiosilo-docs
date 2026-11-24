@@ -95,6 +95,11 @@ On the edge it records whether a sleep timer was running for the book
     `src/lib/when-active.ts`) and a root layout reports its route (`whenRouted`),
     unless another book is loaded by then.
 
+  Each end while away takes the waiting place (`waitingCredits`), even one that
+  plays on in place and so leaves no credits waiting, and an earlier book's credits
+  then never open. So a car session that plays several books to their end opens one
+  credits screen at most, for the latest.
+
 ### Moving on (`end-of-book.ts`)
 
 `end-of-book.ts` holds the moving-on logic. It is framework-free, because the
@@ -250,6 +255,12 @@ books off Up next. It acts only on a server the cache knows has `queue`.
   is, and is kept that long even with Up next closed. So starts in a row read
   `/queue` at most once a window. An older read is read again, so a book queued
   on another device meanwhile still leaves.
+- In the app with no network once the read is done (a fresh read, answered from the
+  cache), it sends no removes, since the app's client refuses a request with no
+  network. A read that is not fresh waits for the network, so its removes go once
+  the network is back. On the web it always sends them, since a web write waits for
+  the network
+  ([the online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets)).
 
 **The finished book always leaves Up next where it is finished**, whether or not
 the next one starts. That is when the credits open with `ended`, on a Play now

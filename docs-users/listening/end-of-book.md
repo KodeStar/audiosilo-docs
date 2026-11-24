@@ -21,6 +21,8 @@ The finished book leaves *Continue listening* and Up next. The end credits show:
 
 You can also open the end credits early, from the full player's [three-dot menu](full-player.md#the-three-dot-menu). This is handy for skipping long spoken credits. The book keeps playing until it really ends. If you tap **Play now** there, the book you were in keeps your place and stays unfinished.
 
+If a book ends while the app is in the background, such as [in the car](in-the-car.md), its credits wait until you next open the app, unless you have started another book by then. If several books ended, only the last one's credits open.
+
 A [podcast episode](podcasts.md#when-an-episode-ends) doesn't show end credits.
 
 ## What plays next
