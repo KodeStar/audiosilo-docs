@@ -554,7 +554,7 @@ Renaming or dropping `check` leaves both waiting for a check that never comes.
 
 ## A pull request from a fork
 
-Because a fork's `ai-verify` run is a skip, a pull request from your fork
+Because `ai-verify` does not run on a fork, a pull request from your fork
 cannot pass the merge gate by itself. When the maintainer has fork mirroring
 on, the [steward](./steward.md#pull-requests-from-forks) copies it
 into a mirror pull request that goes through the gate for you. The same
@@ -568,7 +568,7 @@ applies in audiosilo-meta-community, through that repository's own gate.
    and links back, and your pull request gets one comment pointing at it.
 3. **The mirror goes through the usual gate.** The checks and `ai-verify` run
    on it. If it is flagged or red, the steward fixes the data on the mirror, as
-   for any other data pull request. A large change may land in parts.
+   for any other data pull request.
 4. **The mirror merges.** It merges squashed, with the steward's own commit
    message, which credits you in plain prose ("Contributed by @you in #N.").
    Your commit messages are not carried, so a closing keyword in one closes no
@@ -577,18 +577,32 @@ applies in audiosilo-meta-community, through that repository's own gate.
    is on `main`, the steward closes it with a link to the mirror and its merge
    commit. If GitHub already shows it merged, it is left as merged.
 
+A change larger than the steward merges whole is usually carried in parts: the
+mirror is split, each part merges through the gate, and the mirror is closed
+once every part has landed. Steps 4 and 5 then do not happen. The parts carry
+no credit line, and your pull request stays open for a maintainer with one
+comment saying its mirror closed without merging. The same holds when a
+maintainer closes the mirror. A new push is judged afresh.
+
 If you push again while the mirror is open, your new head is checked again and
 replaces the mirror's content (a steward fix on your earlier head is dropped).
-If you close your pull request, the steward closes the mirror too.
+If you close your pull request, the steward closes the mirror too, and reopening
+it mirrors it again. While the maintainer has mirroring off, a new push is not
+checked or carried over: an open mirror goes on with the head it holds, and may
+merge with it, and your pull request then stays open for a maintainer.
 
-**When a fork is not mirrored.** The steward leaves one comment saying why, and
-your pull request waits for a maintainer. That happens when:
+**When a fork is not mirrored.** With mirroring on, the steward leaves one
+comment saying why, and your pull request waits for a maintainer. That happens
+when:
 
 - any commit touches a file outside `data/`, even one a later commit reverts;
 - any commit writes something under `data/` that is not a plain `.json` file: a
   script, a dotfile, a symbolic link, a submodule or an executable bit;
 - the change is too large for the steward to read whole (the bounds are on
-  [the steward's page](./steward.md#pull-requests-from-forks)).
+  [the steward's page](./steward.md#pull-requests-from-forks)), or its commits
+  since it parted from `main` could not all be read;
+- it changes nothing against `main`;
+- it carries one of the steward's own secrets.
 
 To try again, rewrite your branch so no commit touches anything but plain
 `data/**/*.json` files, and push. The new head is judged afresh. A pull request

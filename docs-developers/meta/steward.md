@@ -55,8 +55,8 @@ The steward classifies every open pull request on audiosilo-meta on each tick
 |---|---|
 | The sync bot's own (`bot-sync`, `sync/` branch) | Nothing. |
 | Draft | Nothing, and it never pushes to or deletes the branch. |
-| Code: any file outside `data/`, or a symlink or submodule in the tree | Never merged, never pushed to. The steward posts one agent-written review per head, and a maintainer decides. |
-| Fork into `main` | Mirrored to a `steward/fork-N` pull request when `SYNC_STEWARD_FORKS=on` and the head is eligible, otherwise listed on the report (see [Pull requests from forks](#pull-requests-from-forks)). |
+| Code from a branch of the repository: any file outside `data/`, or a symlink or submodule in the tree | Never merged, never pushed to. The steward posts one agent-written review per head, and a maintainer decides. |
+| Fork into `main` | Mirrored to a `steward/fork-N` pull request when `SYNC_STEWARD_FORKS=on` and the head is eligible, otherwise listed on the report (see [Pull requests from forks](#pull-requests-from-forks)). A fork that changes code gets no agent review: with the switch on, one comment says why it is not mirrored. |
 | A base other than `main` | Listed on the report. |
 | Oversize: a data change larger than the merge review bound | Split into parts within the bound, each merged through the gate (see [Splitting an oversize pull request](#splitting-an-oversize-pull-request)). |
 | Data | Merged through [the gate](#the-gate), or fixed. |
@@ -201,11 +201,13 @@ then does the steward close the original with a link.
 
 ### Pull requests from forks
 
-A fork's own checks and `ai-verify` run without the repository's secrets, so
-its pull request cannot pass the gate. With `SYNC_STEWARD_FORKS=on` the steward
-carries it there through a **mirror**. With it off (the default), a fork is
-listed on the report and waits for a maintainer, and a mirror already open
-carries on as an ordinary steward pull request.
+A fork's own checks run without the repository's secrets and `ai-verify` does
+not run on it at all, so its pull request cannot pass the gate. With
+`SYNC_STEWARD_FORKS=on` the steward carries it there through a **mirror**. With
+it off (the default), a fork is listed on the report and waits for a maintainer.
+A mirror already open carries on as an ordinary steward pull request with the
+head it holds: a later push to the fork is neither judged nor carried over, so
+the mirror may merge the earlier head, and the fork then stays open.
 
 **Which heads are eligible.** Before any push, the service (never the agent)
 checks the fork's exact head against its merge base with `main`. The head is
@@ -230,17 +232,19 @@ eligible only when:
 **The mirror.** An eligible head is pushed unchanged to `steward/fork-N`, and
 the steward opens a pull request with the fork's title followed by
 "(mirrored from #N)". Its body credits the contributor and links the fork's
-pull request, and copies nothing else from the fork's body. A closing keyword in the title is
-neutralized ("Fixes #12" reads "ref #12"). The fork gets one comment pointing
-at the mirror.
+pull request, and copies nothing else from the fork's body. A closing keyword
+in the title is neutralized ("Fixes #12" reads "ref #12"). The fork gets one
+comment pointing at the mirror.
 
 From then on the mirror is an ordinary steward pull request: rebased, fixed,
 split and merged through [the gate](#the-gate) like any other, under the
 [community layer](#the-community-layer)'s delete-only rule in that repository.
-It always merges **squashed** (never as a merge commit), with the steward's own
-commit message, which credits the contributor in plain prose ("Contributed by
-@login in #N."). The fork's commit messages never reach `main`, so neither they
-nor the mirror's merge close an issue.
+When the steward merges it whole, it merges **squashed** (never as a merge
+commit), with the steward's own commit message, which credits the contributor in
+plain prose ("Contributed by @login in #N."). The fork's commit messages do not
+reach `main` that way, so neither they nor the mirror's merge close an issue. A
+mirror carried in parts merges part by part, with no credit line, and ends as
+the next list says.
 
 What happens next:
 
@@ -251,10 +255,11 @@ What happens next:
   and the fork stays open for a maintainer. An open mirror of an earlier head
   is withdrawn: closed with its branch deleted.
 - **The contributor closes the fork unmerged.** The mirror is withdrawn the
-  same way.
+  same way. Reopening the fork mirrors it again.
 - **The mirror closes without merging whole.** A maintainer closed it, or its
-  split carried it to `main` in parts. The steward does not open it again for that head: the fork gets one
-  comment and waits for a maintainer. A new push is judged afresh.
+  split carried it to `main` in parts. The steward does not open it again for
+  that head, and does not close the fork: the fork gets one comment and waits
+  for a maintainer. A new push is judged afresh.
 - **The mirror merges.** Once every entry the fork changed is verified on
   `main`, the steward closes the fork's pull request as superseded, with a
   comment linking the mirror and its merge commit. A fork GitHub already shows
