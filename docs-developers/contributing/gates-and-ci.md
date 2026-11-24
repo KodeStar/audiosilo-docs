@@ -69,9 +69,10 @@ cd ~/dev/audiosilo/audiosilo-docs
 npm run build
 ```
 
-The build's `prebuild` runs the admonition check and the stale-name check (see
-[The stale-name check](#the-stale-name-check)), then the build fails on broken
-links, anchors and images.
+The build's `prebuild` runs the admonition check, the checks' own tests, the
+stale-name check (see [The stale-name check](#the-stale-name-check)) and the
+external-anchor check (see [Keep links working](documentation.md)), then the
+build fails on broken links, anchors and images.
 
 ## What CI actually runs
 
@@ -141,7 +142,7 @@ and the in-process probe's live comparison run in both jobs.
 
 | Workflow | Name | Triggers | What it does |
 |---|---|---|---|
-| `ci.yml` | `ci` | every PR; push to `main` | Job **build**: `npm ci`, `npm run typecheck`, then `npm run build`, whose `prebuild` runs the admonition check, the stale-name check's own tests and the [stale-name check](#the-stale-name-check). |
+| `ci.yml` | `ci` | every PR; push to `main` | Job **build**: `npm ci`, `npm run typecheck`, then `npm run build`, whose `prebuild` runs the admonition check, the checks' own tests (`scripts/*.test.mjs`), the [stale-name check](#the-stale-name-check) and the external-anchor check. |
 | `deploy.yml` | `deploy` | push to `main`; manual dispatch | Builds the site and publishes it to GitHub Pages. |
 
 ### audiosilo-meta
@@ -228,6 +229,11 @@ API route, config key or `AUDIOSILO_` variable the server no longer has. What th
 server has is `scripts/server-names.json`, read by `npm run names:sync` at a
 pinned server commit, so the build needs no network. How it reads a page and
 where a deliberate exception goes:
+[Maintaining these docs](documentation.md).
+
+The external-anchor check fails the build when a User Guide heading that the
+player, server, Bridge, site or metadata repo links to has no explicit id, so
+renaming it can't break the link. Re-pinning its snapshot:
 [Maintaining these docs](documentation.md).
 
 ## The green-baseline lint policy

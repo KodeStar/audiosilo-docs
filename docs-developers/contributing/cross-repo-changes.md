@@ -59,8 +59,9 @@ everywhere: a field rename is a multi-repo edit.
 10. **The Bridge, when applicable.** Mirror the shape in its `internal/link` and
     test it there too.
 11. **Update the docs.** This site's API and seam pages follow the contract. Run
-    `npm run names:sync` to re-pin the server names snapshot. See
-    [Documentation](documentation.md).
+    `npm run names:sync` to re-pin the server names snapshot, and
+    `npm run anchors:sync` when a repo's link to a User Guide heading changed.
+    See [Documentation](documentation.md).
 12. **Run every touched repo's full gate** ([Gates and CI](gates-and-ci.md)),
     then ship.
 
