@@ -860,14 +860,14 @@ restart. The importer licenses once more, and a second one fails
 `offline_url_expired`.
 
 **Partial download.** A shutdown, an interrupted claim after a token refusal,
-or a lost lease keeps the encrypted partial and its state. Cancellation, a failed attempt or an ended
-pairing removes them.
+or a lost lease keeps the encrypted partial and its state. Cancellation, a
+failed attempt or an ended pairing removes them.
 
 **Completed decrypt.** A shutdown, a token refusal or a lost lease keeps the
-ready file and its metadata.
-So does every failure except the three below,
-such as `exists`, `not_writable`, a network error, a rate limit or a 404 for
-the job at the lease check (a proxy answers one while the server restarts). On
+ready file and its metadata. So does every failure except an ended pairing and
+the three below, such as `exists`, `not_writable`, a network error, a rate
+limit or a 404 for the job at the lease check (a proxy answers one while the
+server restarts). On
 the next claim for that account and title, `readStaged` checks the record
 against the file, the server and the pairing (the size and modification time
 exactly). A valid stage skips the Audible title lookup, license, download and

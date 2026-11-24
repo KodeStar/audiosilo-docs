@@ -309,11 +309,12 @@ It asks before its first write, in every mapping look above (parked ones
 included), and once more right before the rename, after the staging folder is
 swept to the manifest's files, since that sweep can take a while on a slow mount.
 Once the pairing has ended, the run ends (`errPairingGone`) and writes nothing
-more. However the run then ends, it removes its own staging folder (through the
-mount it took at the claim) and then its state, so a claim under the next
-pairing starts clean. A folder it can't remove keeps its
-state. A run that finds the pairing gone at its first mapping look, before it
-has read its state, ends without touching either.
+more. Until the book is placed, however the run then ends, it removes its own
+staging folder (through the mount it took at the claim) and then its state, so a
+claim under the next pairing starts clean. A folder it can't remove keeps its
+state, and a placed book keeps its state as a failed rescan does. A run that
+finds the pairing gone before it has read its state (at its link to the server
+or its first mapping look) ends without touching either.
 
 The state file records the library, the paired server's id, the parent, the
 destination, the partials' validators and, once placed, the count and bytes. So:
@@ -352,8 +353,9 @@ and the check. The sweep:
 - keeps a state whose library isn't a checked writable mapping now, or whose
   staging folder can't be removed. When the library's mapping is gone, the state
   records when that was seen (`Unmapped`) and ends 7 days later, its staging
-  folder left in place. A run, or a sweep whose check finds the library mapped
-  again (writable or not), clears that time without changing the state's age;
+  folder left in place. A sweep whose check finds the library mapped again
+  (writable or not) clears that time without changing the state's age. A run of
+  the fetch clears it too, and its use makes the state new again;
 - otherwise removes the state, its staging folder and the author folder it made.
   For a placed book or another server's state it drops only the state file;
 - removes other old regular files in the state folder, never a folder.
@@ -368,9 +370,9 @@ A mapping counts as gone (`mappingGone`) only on a definite answer:
   - is missing, while no mapping is configured for the library, so the folder is
     the server's own path ([the fallback](mappings.md#where-the-bridge-looks)).
 
-Anything else leaves the clock alone, an empty folder included: a share that
-isn't mounted leaves an empty mount point, at the server's own path too. An
-unwritable library's mapping is not gone either.
+Nothing else counts as gone, an empty folder included: a share that isn't
+mounted leaves an empty mount point, at the server's own path too. An unwritable
+library's mapping is not gone either.
 
 **Stray staging folders.** A staging folder whose state is gone is out of the
 sweep's reach. Once a day (`strayWalkEvery`), `sweepStrays` looks in the root and
@@ -392,7 +394,8 @@ First the sweep holds the project in every library (`beginProject`), so no fetch
 of it starts anywhere between the look that finds it unknown and the removal,
 since another library's mount may reach the same folder. A fetch of the project
 waits meanwhile. If a fetch already holds the project, the sweep leaves the
-folder for the next walk. The mapping is checked again then, and the author folder is never removed.
+folder for the next walk. The mapping is checked again then, and the author
+folder is never removed.
 `clearStray` opens the folder once, through the mount's root, as a root of its own,
 and looks and removes through that, so nothing outside it can go. It removes what
 it saw, each file by its name and a folder only when empty, never recursively. So a
