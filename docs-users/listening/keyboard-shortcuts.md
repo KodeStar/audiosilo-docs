@@ -30,7 +30,8 @@ While the [ebook reader](reading-the-ebook.md) is open, these keys work instead:
 |---|---|
 | **→** / **←** | Next or previous page |
 | **Page Down** / **Page Up** | Next or previous page, once you've clicked into the text |
-| **Esc** | Close the Contents, then the reader |
+| **Tab** / **Shift+Tab** | Show the [top bar](reading-the-ebook.md#show-the-top-bar) and move through its buttons. Once you've clicked into the text, **Shift+Tab** reaches them |
+| **Esc** | Close the Contents or Reading settings, then the reader |
 
 ## When they don't work
 
