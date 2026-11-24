@@ -115,7 +115,7 @@ internal/
               index whose WHERE is unfinishedBook's word for word, so the
               periodic passes scan only the books the engine may act on)
   -- Phase 2b --
-  ghauth/     the GitHub App's device flow, refresh, revoke and /user; a leaf
+  ghauth/     the GitHub App's device flow, refresh, revoke and /user
   accounts/   the Accounts tab: the GitHub sign-in and the agent credentials (vault-sealed)
   setup/      the setup checklist the heartbeat and the Status tab show; pure
   correct/    meta.correct: an admin's corrections as one correction-batch issue
@@ -129,6 +129,9 @@ internal/
   toolfetch/ audio/ asr/ transcript/ ebook/ scratch/ qa/ spelling/ agent/ repair/
   pipeline/ contrib/ state/ eta/ scheduler/ supervisor/ metaops/ events/ pricing/ fsutil/
   chapterdetect/ (Phase 1d: a chapterless book's chapters from its narration; pure)
+  -- shared helpers --
+  timeutil/   cancellable waits and HTTP Retry-After parsing
+  transfer/   book download staging, waits for writable mappings, no-replace file installs
 web/          the page: Vite + React 19 + TypeScript + Tailwind v4
 docker/       entrypoint.sh (owns /bridge-data, umask 022, drops to PUID:PGID)
 Dockerfile    the slim, full, cuda and agent targets
@@ -140,12 +143,13 @@ compose.example.yaml  the server, the Bridge and the agent container
 - `app` depends on everything in the shell.
 - `api` calls only the Backend interface `app` implements. It imports the other
   packages for their types.
-- `verify -> {jobs, link, mapping}`; `jobs -> {link, store}`; `mapping -> link`;
-  `generate -> {jobs, link, mapping, store, engine}`.
+- `verify -> {fsutil, jobs, link, mapping, timeutil}`, `jobs -> {link, store, timeutil}`,
+  `mapping -> {fsutil, link, timeutil}`, and `generate -> {jobs, link, mapping, store, engine, timeutil}`.
 - `accounts -> {agentproto, ghauth, secrets, store}`;
   `correct -> {contrib, jobs, metaops}`; `setup -> link`.
-- `agentbox -> {agent, agentproto}`; `agentrun -> agentproto`.
-- `link` and `agentproto` are leaves.
+- `agentbox -> {agent, agentproto, fsutil, timeutil}` and `agentrun -> agentproto`.
+- `transfer -> {fsutil, jobs, link, mapping, progress}`.
+- Both `ghauth` and `link` import `timeutil`. `timeutil` and `agentproto` are leaves.
 
 The engine keeps the directions it had in audiosilo-sidecars, which the Bridge's
 `PACKAGES.md` records.

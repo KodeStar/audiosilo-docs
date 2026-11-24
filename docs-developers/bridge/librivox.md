@@ -341,8 +341,9 @@ minutes for it, then fails. Abandon leaves a running fetch alone.
 
 ### The 7-day sweep
 
-Like `audible.import`'s, a sweep (`librivoxjob`'s `Handler.Sweep`) clears states unused for 7
-days (`StagingMaxAge`). A run touches its state when it loads it and when it ends.
+`librivoxjob.Handler.Sweep` uses `transfer.PrivateDir.Sweep` to check for states
+unused for 7 days (`transfer.StagingMaxAge`). A run touches its state when it
+loads it and when it ends.
 The app runs the sweep after each mapping check, not at start-up, because the
 staging folders are inside the libraries, which are known only after a heartbeat
 and the check. The sweep:
@@ -374,14 +375,14 @@ Nothing else counts as gone, an empty folder included: a share that isn't
 mounted leaves an empty mount point, at the server's own path too. An unwritable
 library's mapping is not gone either.
 
-**Stray staging folders.** A staging folder whose state is gone is out of the
-sweep's reach. Once a day (`strayWalkEvery`), `sweepStrays` looks in the root and
-author folders of every checked writable books library, each folder read bounded
-(`fsutil.ReadDirWithin`), for folders named exactly `.audiosilo-librivox-<id>`.
+**Stray staging folders.** Once a day (`strayWalkEvery`), `Handler.Sweep` calls `sweepStrays`,
+which uses `transfer.StagedProjects` to find folders named exactly
+`.audiosilo-librivox-<id>` in the root and author folders of each checked writable
+books library. Each folder read is bounded (`fsutil.ReadDirWithin`).
 The author folders' reads share a limit of 2 minutes per library
 (`strayWalkTime`), and the walk takes them in a random order, so a library walked
-only part of the way on a slow mount gets other folders looked at next time. It
-removes one only when all of these hold:
+only part of the way on a slow mount gets other folders looked at next time.
+`librivoxjob` removes a staging folder only when all of these hold:
 
 - no state in any library, run or held job knows the project (`projectKnown`);
 - it holds only what a fetch writes there (`stagingContents`: the

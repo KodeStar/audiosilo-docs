@@ -28,8 +28,8 @@ The Bridge signs in to the **AudioSilo Contributions** GitHub App (id `5387686`,
 slug `audiosilo-contributions`) with the **device flow**, which needs only the
 App's public client ID. The App and its settings are in
 [Configuration](configuration.md#contributing-github). The code is the Bridge's
-`internal/ghauth` (a leaf: standard library only, every base URL injectable) and
-`internal/accounts`.
+`internal/ghauth` and `internal/accounts`. The `ghauth` package uses
+`internal/timeutil` to wait between polls. Every base URL is injectable.
 
 ### Starting and polling
 
