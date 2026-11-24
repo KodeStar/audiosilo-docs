@@ -151,10 +151,9 @@ chapters".
   the frontend. A shape change without a matching test update fails the
   corresponding CI.
 - By the wire goldens: the server's `TestWireGolden` records the shape of
-  the player's main envelopes. The player's parity test checks the response
-  types used in `client.ts` against a pinned copy, including fields from
-  different union members in the same array. CI verifies the copied bytes
-  with `npm run wire:check`. See
+  the player's main envelopes and their variants, and the player's parity test
+  checks `types.ts` against a pinned copy of them (`npm run wire:check` in its
+  CI). See
   [The wire goldens](../contributing/gates-and-ci.md#the-wire-goldens).
 
 ## 5. Secure by default

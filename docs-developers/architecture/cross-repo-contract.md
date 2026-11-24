@@ -100,10 +100,10 @@ frontend's sign-out warning.
 - `src/api/hooks.ts` exposes React Query hooks.
 
 **Checked by:** the server's wire goldens (`internal/api/testdata/wire/`,
-`TestWireGolden`) and the player's `src/api/wire-parity.test.ts`. Each copied golden names
-its response type in the test. Separate fixtures exercise alternate responses,
-including matched and unmatched metadata and errors with and without a code.
-CI's `npm run wire:check` verifies the copy against its pin. See
+`TestWireGolden`) and the player's parity test over a pinned copy of them
+(`src/api/wire-parity.test.ts`, `npm run wire:check` in CI): see
+[The wire goldens](../contributing/gates-and-ci.md#the-wire-goldens) for what
+they catch and
 [The order for a wire change](../contributing/cross-repo-changes.md#the-order-for-a-wire-change).
 
 **A change requires:** the full [wire-change checklist](#the-wire-change-checklist).

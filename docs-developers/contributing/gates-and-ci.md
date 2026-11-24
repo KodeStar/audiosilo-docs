@@ -59,8 +59,7 @@ committing.
 `npm test` includes the wire parity test (`src/api/wire-parity.test.ts`), which
 checks `types.ts` against the copy of the server's goldens in
 `src/api/__wire__/`. `npm run wire:check` checks that copy still matches the
-server commit it pins and reports how far a stale pin trails main. It reads
-GitHub by default. Use `-- --server <dir>` to check against a local checkout.
+server commit it pins (see [The wire goldens](#the-wire-goldens)).
 
 **audiosilo-docs**
 
@@ -196,31 +195,34 @@ the order to run them in.
 
 They catch drift between the server's JSON and the player's `types.ts`:
 
-- **The server's goldens.** `TestWireGolden` calls the API with seeded data
-  and compares each response with `internal/api/testdata/wire/<name>.json`.
-  The 41 cases include signed-in and anonymous callers, a podcast episode,
-  search results with other copies, diverged progress, matched and unmatched
-  metadata, and errors with and without a code. Each golden records field
-  names and JSON types. A shape change fails with its field path. Each case
-  must account for empty arrays, empty objects and lone `null` values.
-  The coverage check also reports fields of the registered Go types and keys
-  of the registered maps that none of their cases exercise. Each exception in
-  `wireUnseen` gives a reason.
-- **The player's parity test.** `npm run wire:sync` fetches server main, copies
-  the goldens from the requested revision (default `origin/main`) into
-  `src/api/__wire__/` and pins the commit in `source.json`.
-  `src/api/wire-parity.test.ts` checks each shape against the named response
-  type used by `client.ts`. Each metadata variant checks its own branch of
-  `BookMeta`. When the server combines several array elements into one shape,
-  the test checks fields from each represented union member. It reports
-  missing required fields, incompatible JSON types and unknown server fields.
-  Each deliberately skipped field needs a path and reason in `UNMIRRORED`.
-- **`wire:check` in the player's CI.** A missing, extra or changed golden
-  fails the comparison with the pinned commit's git blob ids. The check also
-  warns when server main has at least 50 commits beyond the pin. Review and
-  re-sync a stale pin. Commit distance alone is advisory because server
-  changes can leave the wire untouched. With `-- --server <dir>`, the check
-  reads that checkout's last fetched `origin/main`.
+- **The server's goldens.** `TestWireGolden` calls the API against seeded
+  data and compares each answer's shape with
+  `internal/api/testdata/wire/<name>.json`. A shape records each field's name
+  and JSON type, never a value, so ids and times don't churn it. A removed,
+  retyped or added field fails with its path. The cases cover the player's main
+  envelopes and their variants: signed-in and anonymous callers, a podcast
+  episode, search results with other copies, diverged progress, matched and
+  unmatched metadata, and errors with and without a code. An empty array, an
+  empty object or a lone `null` fails unless the case lists that path as empty.
+  A coverage check also fails on a field of a case's Go types, or a key its
+  functions write into a map, that no golden carries, unless `wireUnseen` gives
+  the reason.
+- **The player's parity test.** `src/api/__wire__/` is a byte copy of those
+  goldens, made by `npm run wire:sync`, with `source.json` pinning the server
+  commit. `src/api/wire-parity.test.ts` maps each golden, in its `ENVELOPES`
+  list, to the type `client.ts` reads that answer as, and reads `types.ts` with
+  the TypeScript compiler. It fails on a required field the server does not
+  send, a field sent with a JSON type the type does not allow, and a field the
+  server sends that `types.ts` does not know. Where a golden merges array rows
+  of a union type, each field is checked against the members that can hold it. A
+  field the player deliberately does not read goes in the test's `UNMIRRORED`
+  list with the reason.
+- **`wire:check` in the player's CI.** It compares the copy with the goldens at
+  the pinned commit by git blob id, so a hand-edited, missing or extra golden
+  fails. It also warns, without failing, when server main is 50 or more commits
+  past the pin: most server commits leave the wire alone, so re-sync and read
+  the goldens' diff. With `-- --server <dir>` it reads that checkout instead of
+  GitHub, up to its last fetched `origin/main`.
 
 The goldens cover the player's envelopes only. The Bridge's `internal/link` and
 the admin console's `admin-ui/src/api/types.ts` are still checked by review.
