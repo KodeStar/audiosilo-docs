@@ -30,14 +30,14 @@ The listener's view is on [Reading the ebook](/users/listening/reading-the-ebook
 | The reader document's source, and foliate-js vendored unmodified | `reader/src/` (`reader.js`, `epub-open.js`, `reader.html`, `reader.css`), `reader/vendor/foliate-js` + `FOLIATE_PIN.txt` |
 | Its build | `scripts/build-reader.mjs` writes `public/reader.html` (web) and `src/reader/reader-html.native.ts` (the app's variant, a string module); `npm run reader:build`, `reader:check` in `npm test` |
 | The route | `src/app/read.tsx` (`/read`, a root `fullScreenModal`), `readerHref` in `src/lib/paths.ts` |
-| The screen | `src/reader/reader-screen.tsx` (`ReaderScreen`: top bar, page edges, Contents sheet, the offer, failures) |
+| The screen | `src/reader/reader-screen.tsx` (`ReaderScreen`: top bar, page edges, Contents sheet, the offer, failures); immersive mode's rules in `reader-chrome.ts` (`useReaderChrome`), the reader document's centre tap in `reader/src/taps.js` |
 | The hosts | `src/reader/reader-host.web.tsx` (the iframe), `reader-host.native.tsx` (the WebView, react-native-webview); `reader-host.tsx` re-exports the native one for type resolution; shared controls in `use-reader-controls.ts` |
 | The app's book | `src/reader/ebook-file.native.ts` (`localEbook`: the download's copy, else the cache file; `hasLocalEbook`; `clearEbookCache`; the web's `ebook-file.ts` has the last two), `book-chunks.ts` (`sendInChunks`, `CHUNK_BYTES`), the reader's `reader/src/chunks.js` |
 | The protocol | `src/reader/protocol.ts` (`parseReaderMessage`, `acceptReaderMessage`, `createHostChannel`) |
 | The place | `src/reader/reading-progress.ts` (queue, mirror, `lookupReadingPlace`, `jumpOffer`, `adoptServerPlace`) |
 | Read on the book page | `canRead` (`src/reader/can-read.ts`) in `src/components/book/hero-actions.tsx` |
 | The EPUB in downloads | `manifest.ebookUri` (`book.epub`) in `src/downloads/store.ts`; see [Offline & PWA](offline.md#lifecycle) |
-| Text size | `src/reader/reader-settings.ts` (`audiosilo.readerFontScale`, per device, not synced); the theme and size both screens use, `use-reader-appearance.ts` |
+| Text size and reading settings | `src/reader/reader-settings.ts` (per device, not synced: `audiosilo.readerFontScale`, the page colours `audiosilo.readerTheme`, Hide while reading `audiosilo.readerAutoHide`); the theme and size both screens use, `use-reader-appearance.ts` |
 | One session setup (both hosts) | `src/reader/reader-session.ts` (`startReaderSession`), `use-place-gate.ts` (`usePlaceGate`), `page-edge.tsx` (`PageEdges`, `narrowPageEdges`, `FollowPill`) |
 | Read-along | the reader's `reader/src/readalong.js` (the core); `src/reader/readalong-map.ts` (`parseReadalongMap`, `readerMapOf`, `cfiAt`), `readalong-gating.ts`, `use-book-readalong.ts`, `narration.ts`, `use-reader-readalong.ts`; the Text tab in `src/components/player/companion/` ([Player UI](player-ui.md#the-text-tab-read-along)); the map in downloads in `src/downloads/readalong-file.ts` ([Offline](offline.md#the-read-along-map-in-downloads)) |
 
@@ -136,14 +136,15 @@ the app they are JSON strings over the WebView's bridge (see
 | Direction | Messages |
 |---|---|
 | host -> reader | `open {book (ArrayBuffer), name, at?: {cfi?, fraction?}, theme, fontScale}` (web) or `open {size, chunks, name, at?, theme, fontScale}` then `chunk {seq, data (base64)}` for `seq` 0 to `chunks - 1` (app), `goto {href \| cfi \| fraction}`, `appearance {theme, fontScale}`, `next`, `prev`; read-along: `readalong {map}`, `position {t, rate, playing}`, `follow` (see [The read-along messages](#the-read-along-messages)) |
-| reader -> host | `ready`, `opened {title, toc: [{label, href, depth}], rtl}`, `progress {cfi, fraction, sectionLabel}`, `loading {value}`, `error {code: drm \| unreadable \| section \| runtime, message}`, `escape`, `csp {directive, blocked}`; read-along: `seek {t}`, `following {value}`, `readalong {state, unresolved}` |
+| reader -> host | `ready`, `opened {title, toc: [{label, href, depth}], rtl}`, `progress {cfi, fraction, sectionLabel}`, `loading {value}`, `error {code: drm \| unreadable \| section \| runtime, message}`, `escape`, `centreTap`, `csp {directive, blocked}`; read-along: `seek {t}`, `following {value}`, `readalong {state, unresolved}` |
 
 The reader's messages describe a book nobody vetted. So `acceptReaderMessage` takes
 a message only from **that frame's** `contentWindow` on our own origin, and
 `parseReaderMessage` checks it field by field (types, the CFI's length, text and
 TOC sizes). Anything else is dropped. `escape` exists because a key pressed in the
 book stays in the frame. The reader turns pages itself and sends Escape back so the
-screen can close.
+screen can close. `centreTap` exists for the same reason: a tap in the book never
+reaches the screen (see [Immersive mode](#immersive-mode)).
 
 **One session setup.** Both hosts start each reader document's session with
 `startReaderSession` (`reader-session.ts`). It owns the channel, the
@@ -317,10 +318,14 @@ The top bar holds:
 - close;
 - the title;
 - the section label and percentage;
+- Play or Pause, while the reader follows the narration;
 - Contents, a `Sheet` of the TOC. The current entry is the first one named as the
   section on screen. It is bold on a muted row with `aria-current="location"`, and
   the list opens scrolled to it.
-- the text size steps (A- and A+, `FONT_SCALES` 0.8 to 1.8).
+- the text size steps (A- and A+, `FONT_SCALES` 0.8 to 1.8);
+- Reading settings (`ReaderMenu`, a `DropdownMenu`): the page colours
+  (`READER_THEMES`: like the app, light, dark, black) and Hide while reading. Its
+  glyph is a sun or a moon for the colours' scheme.
 
 The page edges (`PageEdges`) are 44 px tap targets over the margins. They narrow to
 24 px when the reader's **measured** width is under `TABLET_MIN_WIDTH`
@@ -356,6 +361,65 @@ failure's included. It never offers a Try again that can't work.
 page's foot (`NotSavedCard`, stacked with the Jump offer) until a save of the book
 goes through. OK puts it away. With the sign-in ended, the card carries the compact
 sign-in row with Reconnect instead.
+
+### Immersive mode
+
+With Hide while reading on (`loadAutoHide`, on when nothing is saved), the top bar
+hides while the listener reads. `useReaderChrome` runs pure rules (`mayHide`,
+`nextChrome`, `settleChrome`, `chromeTimerRuns`) with one timer:
+
+- The bar hides `CHROME_HIDE_MS` (4 s) after it shows or after the last press on it
+  (each one bumps the state's `epoch`, which restarts the wait).
+- It hides at once on the reader's own page turn: a `progress` that is not the
+  landing, not a relayout and not the narration's while the reader follows. A turn
+  away from followed narration counts (`onFollowing`).
+- A `centreTap` shows a hidden bar and hides a shown one.
+
+It never hides while `mayHide` is false: the setting off, a screen reader on
+(`useScreenReader` in `src/lib/screen-reader.ts`, VoiceOver or TalkBack, always false
+on the web), no book on the page (opening, or a failure shown), or something holding
+it. The holds are the Contents sheet, the Reading settings menu and, on the web,
+focus. A bar that is hidden when a hold arrives shows at once (`settleChrome`).
+
+**The centre tap.** `watchTaps` in `reader/src/taps.js` listens for `click` on the
+reader document and on each section's document, the same path as the read-along's
+sentence tap. A click counts when it lands in the middle half of the reader's width
+(`isCentre`; a section's click is placed by its frame, `frameViewportX`, since the
+frame scrolls sideways under the page). It is judged a tick later, so a link that
+took it is seen whatever order the listeners ran in. A link, a selection
+(`clickTaken`), a move over `TAP_SLOP` (10 px) or a modified click never counts. A
+read-along sentence tap still counts: it seeks and leaves the click alone. The page
+edges are the host's own views over the book, so a centre tap is never a page turn.
+
+**Layout.** While the bar can hide (`immersive`: the setting on and no screen
+reader), it lies over the page rather than above it, so showing it never lays the
+book out again. The room above the page takes the page's colour. Its height is the
+largest top inset seen for the window size (`useHeldTopInset` in
+`src/lib/held-top-inset.ts`, keyed by `useSafeAreaFrame`), because the window's top
+inset drops when Android's status bar hides. With the setting off or a screen
+reader on, the bar sits above the page as before.
+
+**In the apps** the bar is an `Animated.View` that slides, with no slide under
+reduce motion. expo-status-bar hides the status bar with the bar, only while the
+reader is the focused screen, so Reconnect's sign-in opened over it keeps its status
+bar. The Android navigation bar stays. Until a centre tap has arrived in this run of
+the app (`centreTapArrived`), a page turn shows the bar with a fresh wait instead of
+hiding it (`turnShows`). So a WebView that never delivers the tap cannot leave the
+reader without its bar.
+
+**On the web** the hidden bar stays mounted before the book in the DOM, slid off
+the top by a CSS transform (`-translate-y-full`, no transition under
+`prefers-reduced-motion`). It is never `display: none`, `aria-hidden` or `inert`,
+because the web cannot tell a screen reader is on. A virtual cursor still reaches
+Close and Contents, Close is the first Tab stop, and Shift+Tab out of the book lands
+on Reading settings. Keyboard focus (`keyboardFocus`, `:focus-visible`) on the
+screen's own controls holds the bar: the bar, the page edges and the cards, never
+the book's frame. Any focus that arrives in the bar while it is hidden shows and
+holds it too (`focusHoldsBar`). The hold ends when focus leaves those controls
+(`focusStaysIn`), not as it moves between them. A mouse click leaves focus on the
+button it pressed without holding the bar.
+
+The companion's Text tab has no top bar and is unaffected.
 
 ### Read on the book page
 

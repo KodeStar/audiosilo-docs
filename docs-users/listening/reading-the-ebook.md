@@ -37,13 +37,33 @@ Your server notices a new ebook at its next library scan. An admin can press **R
 1. Open the book's page and tap **Read the ebook**.
 2. The reader opens where you left off, on any device. The first time, it opens at the start.
 3. Turn pages by tapping the right or left **edge** of the page, swiping, or pressing **→** and **←**.
-4. Close the reader with the **×** at the top left, or **Esc** in the web player.
+4. Close the reader with the **×** at the top left, or **Esc** in the web player. If the [top bar](#show-the-top-bar) is hidden, tap the middle of the page to show it.
 
 A book written right to left turns the other way.
 
-At the top right, **Contents** lists the chapters. The **−** and **+** buttons change the text size, which is remembered on this device.
+In the top bar, **Contents** lists the chapters. The **−** and **+** buttons change the text size, which is remembered on this device.
 
 ![The reader's Contents, with the chapter being read marked](/img/screenshots/web-player/reader-contents.png)
+
+## Show the top bar
+
+The top bar hides while you read, so only the page is on screen. It hides 4 seconds after it shows or after you last tap one of its buttons, and when you turn the page. In the apps, the status bar hides with it.
+
+![The reader with its top bar hidden: only the page of the book](/img/screenshots/web-player/reader-immersive.png)
+
+- **Tap the middle of the page** to show the top bar. Tap the middle again to hide it.
+- **On a keyboard**, press **Tab**. The bar stays while the keyboard is on one of the reader's buttons.
+
+The bar stays on screen while **Contents** or **Reading settings** is open, and while VoiceOver or TalkBack is on.
+
+## Reading settings
+
+Tap **Reading settings**, the sun or moon at the right of the top bar. Its settings are remembered on this device.
+
+- **Page colours**: **Like the app**, **Light**, **Dark** or **Black**. The companion's [Text tab](companion.md#text) uses them too.
+- **Hide while reading**: on at first. Turn it off to keep the top bar on screen.
+
+![The Reading settings menu open in the reader, with Page colours and Hide while reading](/img/screenshots/web-player/reader-settings.png)
 
 ## Follow the narration
 
@@ -57,13 +77,13 @@ For a book with a read-along, the reader can follow the audio. It needs your ser
 
 While it follows:
 
-- **Tap a sentence** to move the audiobook to it.
+- **Tap a sentence** to move the audiobook to it. In the middle of the page, this shows the top bar too.
 - **Play** and **Pause** in the reader's top bar control the book.
 - **Turn the page yourself** to look back or ahead. The button then reads **Back to narration**.
 
 While the reader follows the narration, it doesn't save your reading place.
 
-**Follow narration** only appears while the book is in the player, and only when its read-along still matches the ebook and the audio. A downloaded book keeps its own read-along (see [Text](companion.md#text)). The same text follows the narration in the player too, in the companion's [Text tab](companion.md#text).
+**Follow narration** only appears while the book is in the player, and only when its read-along still matches the ebook and the audio. A downloaded book keeps its own read-along (see [Text](companion.md#text)).
 
 ## Your place, on every device
 
@@ -97,5 +117,7 @@ The reader says what went wrong, and offers **Try again** where that can help. Y
 ## Good to know
 
 In the apps, a book you read without downloading it is kept on the device so it opens faster next time. These copies take up to 512 MB in all. When they're full, the app removes the oldest first.
+
+In the apps, each time the app starts, a page turn shows the top bar for 4 seconds rather than hiding it, until you first tap the middle of the page.
 
 The reader opens EPUB files only, not MOBI, AZW3 or PDF. It can't search the text or keep highlights. Your [bookmarks and notes](bookmarks-and-notes.md) stay with the audiobook.
