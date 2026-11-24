@@ -61,26 +61,28 @@ series batch has its own rule ([Queueing it](#queueing-it)).
 Regenerate when the book has the generated file **and** the community lacks that
 part, so `/meta` lays it in. A file the community's own part masks shows nowhere,
 so it counts for neither Regenerate nor sharing: a book whose only generated file
-is masked offers Generate.
+is masked offers Generate, unless the community has both parts (`covered`).
 
 A whole-book summary alone isn't recaps, on either side. A community work with
 only a `recap_summary` keeps it, and generated recaps fill the list beside it (see
 [generated content](../server/api/reference.md#generated-content) for how
 `work.generated.recap_summary` keeps the summary's credit). A generated
-`recaps.json` with only a summary counts as no recaps, so the book offers
-Generate.
+`recaps.json` with only a summary counts as no recaps, so on its own it leaves
+the book on Generate.
 
 The console decides from the estimate's `has`: `generateAction` calls
 `generatedShown`, which is `has.local[d] && !has.community[d]`. The player
 decides from the book's `/meta` work: `generateOffer` reads
-`work.generated.characters`, or `work.generated.recaps` with a non-empty `recaps`
-list (a masked file never reaches `/meta`). The server pins the two readings
+`work.generated.characters` with a non-empty `characters` list, or
+`work.generated.recaps` with a non-empty `recaps` list (a masked file never
+reaches `/meta`). The server pins the two readings
 together (`TestGeneratedShownAgrees`).
 
 `has.local` keeps the masked files because other checks need them. The dialog's
-"This replaces the characters and recaps generated before" shows whenever the
-book has either file, since a job rewrites a masked one too, and Write a
-description reads them.
+"This replaces the characters and recaps generated before" shows whenever
+`has.local` has characters or recaps, a masked file included, since a job
+rewrites that too (a `recaps.json` with only a summary shows no line), and
+Write a description reads them.
 
 The console's covered line links to the book page's Characters and recaps card;
 the player's, shown only to an admin `mayGenerate` allows, opens the book page's

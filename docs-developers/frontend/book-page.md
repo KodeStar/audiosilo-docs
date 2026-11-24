@@ -201,8 +201,8 @@ reduced motion). `generateOffer` never gives `covered` without `mayGenerate`, so
 listener never sees the line.
 
 `regenerate` follows the shared [generated and shown](../bridge/generating.md#who-sees-the-action)
-rule (`generatedShown` in `bridge-model.ts`: `generated.characters`, or
-`generated.recaps` with a non-empty `recaps` list).
+rule (`generatedShown` in `bridge-model.ts`: `generated.characters` with a non-empty
+`characters` list, or `generated.recaps` with a non-empty `recaps` list).
 
 No offer shows until the book's `/meta` and its jobs are known (`metaAnswered`; a
 failed lookup is no answer). No offer shows while a job shows its status either.

@@ -405,8 +405,9 @@ to the material where one is practical; its screen-reader name is
 text. On the web the link opens a new tab, on a phone the in-app browser
 (`openExternalUrl`). That covers every `Attribution`: the book page's Characters and
 Recaps tabs and their earlier books' rows (each crediting its own work), the companion's
-Who's who and Story so far, About, and Previously on. Search's character credits and the
-end credits' Community row follow the same rule.
+Who's who and Story so far, About, and Previously on. Search's character credits follow the same
+rule. The end credits' Community row is one link instead: the credit and the licence
+together open the work's page (`source_url`), plain text without an http(s) one.
 A dimension generated on this server gets the "Generated on this server" mark
 instead (`communityCredit`, `GeneratedMark`). Story so far places its chips by
 `recapMarks` (see [Enriched book metadata](state-and-data.md#enriched-book-metadata)):

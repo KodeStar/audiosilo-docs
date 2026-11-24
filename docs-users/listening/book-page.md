@@ -51,7 +51,7 @@ If your server keeps ratings, tap a star to rate the book. It's the same rating 
 
 ## About this book
 
-The **About** card describes the book. The description comes from the community database, [AudioSilo Meta](../community/meta-site.md), when your server has that switched on and the book is matched. A book is matched by its ASIN or ISBN, or by an admin in the console. Otherwise it's the one your server holds. A description from the community database has a credit line under it: tap the credit to open the book's page on AudioSilo Meta, or tap the licence to read its terms.
+The **About** card describes the book. The description comes from the community database, [AudioSilo Meta](../community/meta-site.md), when your server has that switched on and the book is matched. A book is matched by its ASIN or ISBN, or by an admin in the console. Otherwise it's the one your server holds. A description the community wrote has a credit line under it: tap the credit to open the book's page on AudioSilo Meta, or tap the licence to read its terms.
 
 If neither has one, your server's [Bridge](../admin/generating-characters-and-recaps.md#a-description-for-the-book) may have written a spoiler-free one, marked **Generated on this server**.
 
