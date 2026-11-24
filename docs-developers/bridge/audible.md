@@ -759,7 +759,7 @@ A download over `DownloadOptions.MaxBytes` (`audible.DefaultMaxDownloadBytes`,
 `bridge.AudibleImportCodes` lists every code above, and the console words each one.
 
 **Not writable while running.** The job waits for a mapping check the mount hasn't
-had yet (`mappingPoll`, 1 s), with no park. When the mapping isn't writable:
+had yet (`transfer.MappingPoll`, 1 s), with no park. When the mapping isn't writable:
 
 - A new job without a staged book fails before downloading.
 - A resumed job, a new job with a valid stage, or a job about to place its
@@ -893,9 +893,10 @@ title nobody backs up again keeps its stage until the start-up sweep below. For
 a job that ends before running, `Importer.Abandon` removes the files unless the
 claim was lost or another import holds the account's gate.
 
-**Startup cleanup.** In the private temp folder, `audiblejob.SweepTmp` keeps
-partial downloads with their state, completed decrypts with their metadata, and
-placement markers while the corresponding files are younger than seven days.
+**Startup cleanup.** `audiblejob.SweepTmp` calls `transfer.PrivateDir.Sweep` on
+the private temp folder. It keeps partial downloads with their state, completed
+decrypts with their metadata, and placement markers while the corresponding files
+are younger than seven days (`transfer.StagingMaxAge`).
 Everything else in the folder goes, whatever its age: incomplete decrypts, a
 state or metadata file without its audio, and an older Bridge's
 `<account>-<asin>.m4b`. Before expiring old records, it collects the recorded
@@ -933,7 +934,9 @@ now keeps the marker and fails, to try again. The result removes the marker.
 
 ### The hardened transfer (`internal/transfer`)
 
-`transfer.Local.Place` installs the finished audio in the mapped library.
+Audible imports and LibriVox fetches use `transfer.PrivateDir` for private staging
+files and `transfer.MappingWait.Mapped` to wait for a writable library mapping.
+`transfer.Local.Place` installs the finished Audible audio in the mapped library.
 
 - **Contained.** It opens the mapping's root first as an `os.Root`. A missing root,
   or a root that is a file, fails before the source is read. Every call goes
