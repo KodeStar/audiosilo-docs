@@ -227,11 +227,12 @@ export const silence = (file, seconds, meta = {}, codec = ['-c:a', 'libmp3lame',
   ]);
 
 // A JSON client for a server's /api/v1 (or another `prefix` on `origin`):
-// api(token, method, path, body?, headers?) returns the parsed body (null when empty
+// api(token, method, path, body?, headers?, signal?) returns the parsed body (null when empty
 // or not JSON) and throws on a non-2xx, with the code as err.status.
-export const apiClient = (origin, prefix = '/api/v1') => async (token, method, p, body, headers = {}) => {
+export const apiClient = (origin, prefix = '/api/v1') => async (token, method, p, body, headers = {}, signal) => {
   const res = await fetch(`${origin}${prefix}${p}`, {
     method,
+    signal,
     headers: {
       'content-type': 'application/json',
       ...(token ? {authorization: `Bearer ${token}`} : {}),
