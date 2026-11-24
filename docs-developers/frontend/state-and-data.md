@@ -74,6 +74,14 @@ endpoints themselves.
   - `version` is the book's `cover_version`, appended as `v=` purely as a cache
     buster; the server ignores it. It is not a content hash (`Book.cover_version`
     in `types.ts` says when it moves). An empty version adds nothing.
+  - A `/me/progress` row, a `Favourite` and a `HouseListeningRow` carry their
+    book's `cover_version` too (server 2.7.0), so those covers are versioned
+    without reading the book. A progress row's cover (Home's tiles, the Now and
+    Previously on cards, the Finish what you started shelf, See all, Up next's
+    suggestions, the command palette and the car artwork) uses the row's version
+    before the book's, so its URL does not change as the book loads. A progress
+    edit's answer carries none, so the listed row keeps its version. `FsEntry`
+    mirrors the field for wire parity only: folder rows draw no cover.
 
 ### Error mapping
 
