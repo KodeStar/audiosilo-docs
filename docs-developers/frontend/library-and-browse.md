@@ -248,7 +248,9 @@ live in `src/components/library/`:
    160, 320 or 640), only when the server advertises `cover_sizes`;
 3. the full art, which is also the fallback for a thumbnail that fails.
 
-`cover_version` rides along as the cache buster. While the server's flags are
+`cover_version` rides along as the cache buster: a progress, favourite or
+household row's own, else the book's (see
+[the API client](state-and-data.md#the-api-client-srcapiclientts)). While the server's flags are
 unknown, the cover shows an empty frame rather than fetching the full art first.
 
 ### CoverTile

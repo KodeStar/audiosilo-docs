@@ -143,7 +143,8 @@ No session token is ever written outside expo-secure-store for the car.
 
 - A downloaded book uses its own cover file.
 - Any other book uses a file under `Paths.document/car-artwork/`, named from a hash of the
-  `contentKey` and `cover_version` (`artworkName`). The file is fetched once. It is the
+  `contentKey` and `cover_version` (`artworkName`): the progress row's version, else
+  the book's. The file is fetched once. It is the
   320 px thumbnail when the server's cached flags say `cover_sizes`, else the full cover,
   kept as it is. It downloads to a `.part` file and moves into place when complete.
 - A cover file is pruned once no snapshot names it.
