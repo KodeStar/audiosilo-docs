@@ -197,7 +197,7 @@ again.
 
 On a slow disk or network share, the read can take longer than the console
 waits for an answer. The console then says **Still reading**. The server goes
-on reading, and the book's page shows the result once the files are read.
+on reading and saves the result. Open the book's page again later to see it.
 
 ![A book's page with the Still reading message after Read the files again](/img/screenshots/admin/book-still-reading.png)
 
