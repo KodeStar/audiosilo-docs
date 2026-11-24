@@ -219,7 +219,17 @@ swap places.
 
 Each value has a marker saying where it came from: **File tag**, **Path** (the
 folder names), **Audiobookshelf**, **Edited** or **Community**. An edited or
-community value has a **Revert** button that puts back what the files say.
+community value has a **Revert** button. Point at it to see the value it puts
+back and where that value comes from:
+
+- **Audiobookshelf file**: the book's Audiobookshelf `metadata.json`.
+- **Folder and file names**: the names of the book's folders and files.
+- **File tag**: the tags inside the audio files.
+- **Community**: an ASIN the Bridge added to the book, for example from your
+  [Audible titles](audible.md#how-titles-are-matched), when your edit covers it.
+
+**Empty once reverted** means nothing is underneath, so the field is left
+blank. After a revert, rescans can change the value again.
 
 #### Numbering an omnibus or box set
 

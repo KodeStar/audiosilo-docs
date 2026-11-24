@@ -480,7 +480,7 @@ dates from 0001. Later migrations added these columns:
 - `abs_file`: what an Audiobookshelf `metadata.json` in a folder book's folder
   says, as JSON mapping each field to its value, normalized like an edit
   (`''` for nothing). `abs_sig` records the file's size, mtime and reader
-  revision (`size:mtime_ns@2`, or `''` for no file). `abs_indexed_at` is the
+  revision (`size:mtime_ns@3`, or `''` for no file). `abs_indexed_at` is the
   `indexed_at` it was read for, `NULL` until a scan has read it. See
   [Metadata overrides and effective values](#metadata-overrides-and-effective-values).
 - `attachments_sig`: the signature of the Bridge's `.audiosilo/` files for the
@@ -2285,7 +2285,8 @@ reverts after the fill planned its changes. Reverting that edit lets fills
 change the title again. If the restored title fails validation, the server
 removes the community override and stores no edit.
 
-Per field, `resolve` yields the effective value, its source, the scanned value,
+Per field, `resolve` yields the effective value, its source, the scanned value
+and that value's own source (`ScannedSource`, the API's `scanned_source`),
 whether it is locked, and who last edited it. Sources are not stored. `resolve`
 works them out:
 
@@ -2299,6 +2300,12 @@ works them out:
 - An ASIN or ISBN from enrichment is `community`.
 - An override carries its own source (`edited` or `community`).
 - `""` means no value.
+
+`ScannedSource` is the source the scanned value would show with nothing over
+it (`tag`, `path` or `abs`, `""` for no scanned value), kept while enrichment or
+an override hides it. The console's Revert hint names the layer a revert goes
+back to from it: the Bridge's `enrichment` when an override hides one (an ASIN
+or ISBN, shown as Community), else the scanned value and `ScannedSource`.
 
 A series position read from the title (`titlePosition`, for a book with a series
 and no position) takes the title's source: `abs` when the ABS file gave the
@@ -2324,9 +2331,27 @@ may be at most 4 MiB. The parse reads:
 - `authors` and `narrators`, joined with ", " (from 2.7.0 with "; " when a
   name holds a comma, `Le Guin, Ursula K.`, so the credit splits back into the
   people the file lists: `joinCredit`);
-- `series` as `"Name #seq"`. The first is the main series with its position,
-  and the rest are `more_series`. A series without a position keeps the
-  scanned position only while it is the same series, by `seriesKey`.
+- `series` as `"Name #seq"`, or a `{name, sequence}` object. The first is the
+  main series with its position, and the rest are `more_series`. A series
+  without a position keeps the scanned position only while it is the same
+  series, by `seriesKey`. From 2.7.0 one parser reads the string,
+  `metadata.SplitABSSeries`, which the listening import shares for an item's
+  `seriesName`. It cuts at the last `" #"` only when what follows reads as a
+  sequence (`absSequence`): one word (`3`, `1.5`, `1-3`, `2b`), or a numeric
+  range spaced on either side of its dash (`1 - 3`, `1 -3`), either of them
+  optionally followed by one bracketed note (`1 (Omnibus)`, `1-3 [Box set]`).
+  Otherwise the whole string is the name. A `" #"` inside the closing note
+  belongs to the note.
+
+  | `series` item | Series | Position |
+  |---|---|---|
+  | `The Expanse #2.5` | The Expanse | `2.5` |
+  | `Arc #1 - 3` | Arc | `1 - 3` (stored as `1-3`) |
+  | `The #1 Ladies Detective Agency` | The #1 Ladies Detective Agency | none |
+  | `The #1 Ladies Detective Agency #3` | The #1 Ladies Detective Agency | `3` |
+  | `Discworld #1 (Omnibus)` | Discworld | `1 (Omnibus)`, not a number, so none is stored |
+  | `Discworld #1 (Rincewind #1)` | Discworld | `1 (Rincewind #1)`, none stored |
+  | `Discworld #1 Omnibus` | Discworld #1 Omnibus | none |
 - `publishedDate`, else `publishedYear`, as `published`;
 - the HTML `description`, as plain text;
 - `publisher` and `language`;

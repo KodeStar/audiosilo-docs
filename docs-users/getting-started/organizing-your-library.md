@@ -110,6 +110,10 @@ Audiobookshelf can leave a `metadata.json` file in each book's folder. It does s
 
 - Its title, authors, narrators, series, description, genres, ASIN, ISBN and similar details win over the tags.
 - Authors or narrators listed separately in the file stay separate, even when a name holds a comma (`Le Guin, Ursula K.`).
+- Audiobookshelf writes a series with its number after `#`, like `The Expanse #2.5`. AudioSilo takes the text after the last `#` as the number only when it looks like one: a single word such as `3`, `1.5` or `2b`, or a range such as `1-3` or `1 - 3`, which may be followed by one note in brackets. Otherwise the whole text is the series name:
+  - `The #1 Ladies Detective Agency` is a series with no number.
+  - `The #1 Ladies Detective Agency #3` is book 3 of that series.
+  - `Discworld #1 (Omnibus)` is in the Discworld series. "1 (Omnibus)" isn't a plain number, so the book gets no series number.
 - A book with an ASIN or ISBN in the file counts as [matched](../admin/books.md#matching-with-community-metadata) straight away.
 - Your edits in the admin console still win over the file.
 - When the file changes, the next scan picks it up.
