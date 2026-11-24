@@ -468,6 +468,8 @@ under an open tab gets its own reader. It is the reader host with
   listener turns a page away while the book is placed, a **Back to narration** pill
   (`FollowPill`) shows.
 - A tapped sentence moves the narration to its start.
+- It draws the book in the reader's colours and text size (`useReaderAppearance`), so
+  page colours chosen in the reader's Reading settings show here at once.
 - **It never saves the reading place.** The tab follows the narration; the
   full-screen reader is where a reading place is made.
 

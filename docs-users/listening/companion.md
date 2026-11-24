@@ -37,6 +37,8 @@ For a book with a **read-along**, the **Text** tab shows the ebook following wha
 - **Turn the page** yourself to look back or ahead. **Back to narration** takes you back to the sentence being read.
 - Pausing, skipping and changing the speed move the highlight too.
 
+The Text tab uses the page colours and text size you chose in the reader (see [Reading settings](reading-the-ebook.md#reading-settings)).
+
 On a phone, the **Text** chip under the player's actions opens it.
 
 ![The player on a phone with a Text chip](/img/screenshots/web-player/phone-player-text-chip.png)
