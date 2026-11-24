@@ -23,7 +23,9 @@
 // pages (docs-developers/bridge/, docs-developers/meta/): those name their own
 // services' routes and settings. A name a page means to keep (a planned
 // route, another repo's variable) goes in scripts/stale-names-allow.json with
-// why. npm run names:sync re-pins after a server change.
+// why, as the exact name or as a `pattern:` key (a regular expression over the
+// whole name) for a family of names. npm run names:sync re-pins after a server
+// change.
 
 import {execFileSync} from 'node:child_process';
 import {readFileSync, realpathSync, writeFileSync} from 'node:fs';
@@ -274,13 +276,15 @@ export function staleNames(file, text, names) {
 
 // ---- the commands ---------------------------------------------------------
 
-/** Literal keys take precedence. A pattern: key is a regular expression over the whole name. */
+const PATTERN = 'pattern:';
+
+/** Exact keys take precedence. A pattern: key is a regular expression over the whole name. */
 export function allowList(entries) {
-  const unused = new Set(Object.keys(entries));
-  const patterns = [...unused].filter((key) => key.startsWith('pattern:')).map((key) => ({
-    key,
-    re: new RegExp(`^(?:${key.slice('pattern:'.length)})$`, 'u'),
-  }));
+  const keys = Object.keys(entries);
+  const unused = new Set(keys);
+  const patterns = keys
+    .filter((key) => key.startsWith(PATTERN))
+    .map((key) => ({key, re: new RegExp(`^(?:${key.slice(PATTERN.length)})$`, 'u')}));
   return {
     unused,
     allows(name) {
@@ -307,7 +311,7 @@ function lint() {
   }
   for (const key of allow.unused) {
     failures++;
-    console.error(`scripts/stale-names-allow.json: \`${key}\` is unused: remove it`);
+    console.error(`scripts/stale-names-allow.json: \`${key}\` is named by no page now (or the server has it): remove it`);
   }
   if (failures > 0) {
     console.error(

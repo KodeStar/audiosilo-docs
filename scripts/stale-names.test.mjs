@@ -181,7 +181,7 @@ test('staleNames: each alternative of a/b|c is checked', () => {
 });
 
 test('allow-list literals stay exact and patterns match the whole name', () => {
-  const pattern = 'pattern:(?:/api/v1)?/works/[^/]+';
+  const pattern = 'pattern:(?:/api/v1)?/works/(?:match|\\{id\\})';
   const unused = 'pattern:/elsewhere/.+';
   const allow = allowList({
     'metadata.health': 'response field',
@@ -197,6 +197,7 @@ test('allow-list literals stay exact and patterns match the whole name', () => {
   assert.equal(allow.allows('/works/{id}'), true);
   assert.equal(allow.allows('/api/v1/works/match'), true);
   assert.equal(allow.allows('/other/works/match'), false);
+  assert.equal(allow.allows('/works/serach'), false);
   assert.equal(allow.allows('/works/{id}/typo'), false);
   assert.deepEqual([...allow.unused], [unused]);
 });

@@ -1,7 +1,7 @@
 {
   "/uploads": "planned, not shipped: the pages say so (POST /uploads)",
   "/lookup": "the metadata service's route (audiosilo-meta), not the server's",
-  "pattern:(?:/api/v1)?/works/[^/]+": "the metadata service's work lookup and match routes (audiosilo-meta)",
+  "pattern:(?:/api/v1)?/works/(?:match|\\{id\\})": "the metadata service's work lookup and match routes (audiosilo-meta), not the server's",
   "/api/v1/works/{id}/recordings/{rid}/chapters": "the metadata service's route (audiosilo-meta), not the server's",
   "/api/v1/intake/unknown-asins": "the metadata service's intake route (audiosilo-meta), not the server's",
   "/api/users": "Audiobookshelf's API, which the listening import reads",
