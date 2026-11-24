@@ -106,19 +106,21 @@ The server sends search terms to AudioSilo Meta only when you open **Match
 with community metadata** (or **Compare with community**) or run
 [Match automatically](health.md#matching-every-book-at-once):
 
-- the book's tagged title, author and series, and its length
-- its ASIN or ISBN and any search terms you type
+- the book's tagged title, author, series, narrators and language, and its
+  length
+- its ASIN or ISBN, else one from an
+  [Audiobookshelf import](import.md#match-your-books-after-an-import) or its
+  tags, and any search terms you type
 - up to three names from its path (the author, series and book folders), never
   the full path
+- the community ID of the book's current match, if any, so the dialog can show
+  it and [Fill in matched books](health.md#filling-in-books-that-are-already-matched)
+  can find it when its ASIN or ISBN isn't recognised
 
-On server version 2.6.0 or later, matching also uses narrators and language.
-If the book has no ASIN or ISBN, matching can use one from its tags.
-
-Server version 2.7.0 or later tries identifiers from an
-[Audiobookshelf import](import.md#match-your-books-after-an-import) before those
-in the book's tags.
-If the search misses the book's current match, the dialog can look it up by its
-community ID.
+A server older than version 2.6.0 sends no narrators, language or identifiers
+from tags, and Fill in matched books sends no community ID. Identifiers from an
+Audiobookshelf import, and the community ID in the dialog, need version 2.7.0
+or later.
 
 It sends nothing about your server or who listens. With a
 [local copy](server.md#keeping-a-local-copy), lookups use the copy when it can
