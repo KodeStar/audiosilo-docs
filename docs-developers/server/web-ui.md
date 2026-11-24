@@ -970,8 +970,9 @@ library through the Bridge's `librivox.fetch`. The design is in
   (`jobPollMs`), and stops for a job that is gone (`404`, `jobGone`). The work
   itself is not polled. When the job ends it asks the work again and, for a done
   job, once more after `DONE_RECHECK_MS` (2 s), since the fold commits just after
-  the job reads done. A parked or failed job keeps its reason on the row
-  (`fetchReason`).
+  the job reads done. While the job is open the row shows its progress
+  sentence (`progressText`, see the job list below). A parked or failed job
+  keeps its reason on the row (`fetchReason`).
 
 #### Library > Libraries
 
@@ -1644,7 +1645,14 @@ The job list (`bridge-jobs.tsx`) has a state filter and cancel. It sums up the
 result with `resultSummary` and shows the raw JSON under Details. A job's
 progress shows while it is open, and a failed or cancelled job keeps the last
 step it reported as "Last step: *step*" (`listedProgress`), the clue to where
-it stopped; a done job shows none. A cancelled
+it stopped; a done job shows none. The progress sentence is the console's own when the
+progress names a code it knows (`message_code`, from Bridge v0.7.0): `progressOf`
+reads it with its `message_params`, and `progressText` words it as
+`bridge.progress.<code>` in the admin's language, its numbers formatted for that
+language. An older Bridge's progress, an unknown code, or a code whose params
+are missing shows the Bridge's English `message`, else its `step`. The codes the
+console knows are `PROGRESS_CODES` in `bridge-model.ts`, kept in step with the
+Bridge (see [Job progress](../bridge/pairing-and-jobs.md#job-progress)). A cancelled
 row of any kind is `CancelledStatus` (see
 [Cancelling](../bridge/pairing-and-jobs.md#cancelling)), never its raw `error`.
 

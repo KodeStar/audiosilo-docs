@@ -273,8 +273,10 @@ it). New work binds the expected show id, and the Bridge checks it before
 writing. The Bridge drops URL-bearing or overlong validator values before
 returning them to the server.
 
-**Progress** uses `step` and `message`. The steps are `fetching`, `parsing`,
-`writing` and `indexing`, and `waiting` while an initial mapping check is pending.
+**Progress** uses `step`, `message` and `message_code`
+([Job progress](pairing-and-jobs.md#job-progress)). The steps are `fetching`,
+`parsing`, `writing` and `indexing`, and `waiting` while an initial mapping check
+is pending.
 
 Successful results:
 
@@ -325,7 +327,7 @@ is shared, and promoted to the maximum priority, never demoted.
 prefix. They may reset to zero after a restart. An unknown total is `null`:
 
 ```json
-{"step":"fetching","bytes_received":1048576,"bytes_total":314572800,"message":"Fetching episode"}
+{"step":"fetching","bytes_received":1048576,"bytes_total":314572800,"message":"Fetching episode","message_code":"fetching_episode"}
 ```
 
 Reports and keepalives follow the usual
@@ -360,7 +362,8 @@ Bridge's own and which the host's is in
 
 `podcast.retain` requires the show `path` and `{"show_id":"<16 lowercase hex>"}`.
 It has priority `-20` and no requester, and is deduped by kind, library and path.
-Progress is `{step:"retaining",message:"Checking retained episodes"}`. Success is
+Progress is
+`{step:"retaining",message:"Checking retained episodes",message_code:"checking_retained"}`. Success is
 `{library_id,show_path,show_id,deleted:2,skipped:1}`. Protected, busy and stale
 candidates count as skipped. Mapping, feed and identity failures fail the job.
 
