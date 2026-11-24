@@ -262,7 +262,8 @@ EPUB into the reader's cache. The cache has one folder per **connection, library
 and book** under the app's cache directory
 (`<Paths.cache>/reader/<connectionId>/<libraryId>/<pathSlug(rel_path)>/`). The
 folder holds `book-<size>.epub`, **named by the server's `ebook.size`** it was
-fetched for.
+fetched for, and an `opened` mark: an open of the cached copy (never the download's
+own) writes it, so its `modificationTime` is the copy's last open.
 
 The fetch is `api.ebookRequest` with the Authorization header, because the route
 takes no `?token=`. It runs through `File.createDownloadTask`. On iOS that is a
@@ -278,14 +279,12 @@ becomes an `ApiError` (a 404 is the screen's `missing`).
   instead of fetching the EPUB again. It fetches only when there is none.
 - **A new `ebook.size`** (a scan saw the ebook change) misses the cache.
   `localEbook` fetches it again and drops the folder's other files (an older size, a dead fetch's
-  part).
+  part, the `opened` mark).
 - **Held to 512 MB in all.** After each fetch `trimCache` holds the whole cache,
   every connection's copies together, to `MAX_EBOOK_BYTES`, so one book of the
   largest size the reader opens always fits. The copies opened longest ago go
-  first, never the one just fetched or a live part. An open of a cached copy (never
-  the download's own) writes the book folder's `opened` mark, whose
-  `modificationTime` is the copy's last open. A copy with no mark goes by its own
-  `modificationTime`, its fetch. A folder the trim leaves empty goes too, and so do
+  first (the later of the `opened` mark and the copy's own fetch), never the one
+  just fetched or a live part. A folder the trim leaves empty goes too, and so do
   its parents up to the cache's root, unless a fetch is writing under them. A copy
   dropped is fetched again on its next open.
 - **Dropped with its connection**: `clearEbookCache(connectionId)` deletes the
@@ -303,8 +302,8 @@ becomes an `ApiError` (a 404 is the screen's `missing`).
   local copy is, a downloaded `book.epub` included. A fetch that comes out longer than that is not
   kept.
 - When free space (`engine.storageEstimate`) is less than the server's size, the
-  cache drops its copies opened longest ago until there is room. When dropping every
-  copy it may drop would still not make the room, it drops none, and the open is an
+  cache trims in the same order until there is room. If dropping every copy it may
+  drop would still leave too little room, it drops none, and the open is an
   `EbookStorageError` before any fetch. So is a fetch the disk refused (a download
   failure of kind `storage`), or a cache folder or move that failed. None leaves a
   partial file.

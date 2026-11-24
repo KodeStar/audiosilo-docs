@@ -334,8 +334,8 @@ gained, lost or reordered a file fetches only the new files. Each file still to
 fetch gets a name no kept file holds: its index when that is free, else the next
 free number past the list (`storedIndex` reads either). A kept file whose path the
 server's list no longer holds (`unlisted`) is deleted before the fetches
-(`engine.removeFile`), since no later manifest names it and nothing else would. It never
-deletes a name a kept file is stored under. If the retry fails again, the manifest
+(`engine.removeFile`), since no later manifest names it and nothing else would delete
+it. A file stored under a kept file's name is never deleted. If the retry fails again, the manifest
 still lists the kept files it had not reached.
 
 `runOne` lists each finished file in the persisted entry as it lands, so this
@@ -1377,15 +1377,13 @@ reached means it plans nothing this time.
   - an **Other apps** segment on a device (`capacity - free - ours`). A browser can't
     see other apps;
   - `used`: the larger of the registry's sum plus what the unfinished downloads
-    hold (`growingBytes`), and the engine's measure (`totalBytesUsed`) plus each
+    hold (`growingBytes`: a running download's `heldBytes`, a failed or waiting
+    one's finished files in `manifest.files`), and the engine's measure (`totalBytesUsed`) plus each
     download's own growth since the measure was read (`grownSince`, against
     `heldByKey` taken with it). Both are in whole megabytes, so the figure grows
     while a download runs without changing on every progress tick, also past a
-    device-wide measure larger than the listed books. `growingBytes` counts a running
-    download's `heldBytes` and a failed or waiting one's finished files
-    (`manifest.files`), which stay on the device. A retried
-    download counts only past the files its failed attempt kept, so it is not counted
-    twice;
+    device-wide measure larger than the listed books. A retried download counts
+    only past the files its failed attempt kept, so it is not counted twice;
   - Other apps is read against the disk as it was at the measure, so its share stays
     steady while a download grows.
 
@@ -1658,8 +1656,8 @@ has exactly two jobs.
      a 503.
    - The build's own content-hashed files (`<base>/_expo/static/`) and its fonts
      (destination `font`, whose names the export hashes too) are served
-     **cache-first** and never fetched or written again (`serveAsset`). A font read
-     again behind every load would cost two requests each, one for its preload and
+     **cache-first** and never fetched or written again (`serveAsset`). Reading a
+     font again behind every load would cost two requests, one for its preload and
      one for its `@font-face`.
    - Other static assets with destinations `script | style | image | manifest` are
      **stale-while-revalidate**.

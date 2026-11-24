@@ -254,8 +254,7 @@ The Accounts and devices pane is `ConnectionsSection`
 `SettingsContent` owns that flow, so its dialog state survives the layout switch.
 A connection with `needsReconnect` shows a badge (`Badge` `warning`) and a
 **Reconnect** button beside the row. The badge names the reason: **Server reset** for
-`'server-reset'` (the server now reports another install's `server_id`), else **Signed
-out**. The button is the same for both (`reconnectConnection`, the banner's own
+`'server-reset'`, else **Signed out**. The button is the same for both (`reconnectConnection`, the banner's own
 flow). The row's accessibility label carries the badge, since it stands for the row's
 text.
 

@@ -29,7 +29,7 @@ The **Downloads** tab shows everything stored on the device you're using.
 
 Here the server is getting one episode, and **Retry** starts the stopped one again. **Ready offline** shows how much space the downloaded book uses.
 
-- **Storage**: how much room your downloads take, by server, and how much is still free. The figure grows while a download runs. A finished download shows the space its files actually use. A download that stopped still counts the files it finished, because they stay on the device.
+- **Storage**: how much room your downloads take, by server, and how much is still free. The figure grows while a download runs. A finished download shows the space its files actually use. A stopped download still counts the files it finished, which stay on the device.
 - **Automatic downloads**: the rules for downloads you don't start yourself (below).
 - **In progress**: downloads running now, waiting, or stopped.
 - **On your Apple Watch** in the iPhone app, or **On your watch** in the Android app, with a paired watch: the books on your watch and the ones on their way to it. See [Apple Watch](apple-watch.md#in-downloads-on-your-iphone) or [Wear OS](wear-os.md#in-downloads-on-your-phone).

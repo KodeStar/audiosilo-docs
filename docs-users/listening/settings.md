@@ -61,9 +61,11 @@ Choose **Light**, **Dark**, or **System** to follow your device. On a tablet or 
 
 ## Language
 
-Choose English, Español, Français, Deutsch, Português (European Portuguese) or Italiano, or **System** to follow your device.
+Choose English, Español, Français, Deutsch, Português or Italiano, or **System** to follow your device. Português is European Portuguese.
 
-Dates and numbers follow your device's region for that language. English on a British phone reads **12 Nov 2026**, and on an American one **Nov 12, 2026**. A language that isn't your device's keeps its own style: German chosen on an English phone shows German dates. Times such as **3 hours ago** follow the same rule. If you change your device's region, the app uses it from the next time you come back to the app.
+Dates and numbers follow your device's region for that language. English on a British phone reads **12 Nov 2026**, and on an American one **Nov 12, 2026**. A language that isn't your device's keeps its own style: German chosen on an English phone shows German dates.
+
+Times such as **3 hours ago** follow the same rule. If you change your device's region, the app uses it when you next come back to the app.
 
 ## Household
 

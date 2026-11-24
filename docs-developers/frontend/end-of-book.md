@@ -96,9 +96,8 @@ On the edge it records whether a sleep timer was running for the book
     unless another book is loaded by then.
 
   Only the last book to end while away keeps its credits waiting
-  (`waitingCredits`). Each end takes the earlier one's place, one that played on in
-  place included, so a car session that plays several books to their end opens one
-  credits screen, the latest, instead of one stacked over another.
+  (`waitingCredits`), even when that book played on in place. So a car session that
+  plays several books to their end opens one credits screen, for the latest.
 
 ### Moving on (`end-of-book.ts`)
 
@@ -255,9 +254,10 @@ books off Up next. It acts only on a server the cache knows has `queue`.
   is, and is kept that long even with Up next closed. So starts in a row read
   `/queue` at most once a window. An older read is read again, so a book queued
   on another device meanwhile still leaves.
-- In the app with no network (`isDeviceOnline`) it sends nothing once the read is
-  done, since `ApiClient.send` would refuse the removes unsent. On the web it still
-  asks them, because a web write waits for the network and goes out on reconnect.
+- In the app with no network it sends no removes once the read is done, since the
+  app's client refuses a request with no network. On the web it still sends them,
+  since a web write waits for the network
+  ([the online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets)).
 
 **The finished book always leaves Up next where it is finished**, whether or not
 the next one starts. That is when the credits open with `ended`, on a Play now
