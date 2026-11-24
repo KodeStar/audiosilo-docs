@@ -595,15 +595,17 @@ async function leaveReader(page, read) {
 // slid off its top, so its buttons still count as visible for Playwright but can't be
 // clicked. waitReaderBar waits until the bar is fully off the top (`hidden`) or fully on
 // screen; a reader with no hiding bar counts as shown.
+const READER_BAR = '[data-testid="reader-top-bar"]';
+
 async function waitReaderBar(page, hidden, timeout = 15000) {
   await page.waitForFunction(
-    (want) => {
-      const bar = document.querySelector('[data-testid="reader-top-bar"]');
+    ([sel, want]) => {
+      const bar = document.querySelector(sel);
       if (!bar) return !want;
       const box = bar.getBoundingClientRect();
       return want ? box.bottom <= 0 : box.top >= 0;
     },
-    hidden,
+    [READER_BAR, hidden],
     {timeout},
   );
 }
@@ -611,10 +613,10 @@ async function waitReaderBar(page, hidden, timeout = 15000) {
 // Shows the reader's top bar with a click in the middle of the page when it is hidden, so
 // its buttons can be clicked (and shot) within the bar's 4 s.
 async function showReaderBar(page) {
-  const off = await page.evaluate(() => {
-    const bar = document.querySelector('[data-testid="reader-top-bar"]');
+  const off = await page.evaluate((sel) => {
+    const bar = document.querySelector(sel);
     return !!bar && bar.getBoundingClientRect().top < 0;
-  });
+  }, READER_BAR);
   if (off) {
     // A hiding bar in mid-slide finishes first, so the click shows it rather than hiding it.
     await waitReaderBar(page, true);
@@ -784,14 +786,11 @@ async function captureWide(name, viewport, shots) {
         if (wanted(shots.readerImmersive)) {
           // The jump was a page turn: the bar slid off, the page alone.
           await waitReaderBar(page, true);
-          await sleep(SETTLE_MS);
-          await shoot(page, shots.readerImmersive);
+          await settleShoot(page, shots.readerImmersive, SETTLE_MS);
         }
         if (wanted(shots.reader)) {
           await showReaderBar(page);
-          await page.mouse.move(0, 0);
-          await sleep(SETTLE_MS);
-          await shoot(page, shots.reader);
+          await settleShoot(page, shots.reader, SETTLE_MS);
         }
         if (wanted(shots.readerContents)) {
           // Contents again: it opens on the entry being read, marked as the current one.
@@ -810,9 +809,7 @@ async function captureWide(name, viewport, shots) {
           await showReaderBar(page);
           await firstVisible(page.getByRole('button', {name: 'Reading settings', exact: true})).click({timeout: 8000});
           await firstVisible(page.getByText('Hide while reading', {exact: true})).waitFor({timeout: 8000});
-          await page.mouse.move(0, 0);
-          await sleep(SETTLE_MS);
-          await shoot(page, shots.readerSettings);
+          await settleShoot(page, shots.readerSettings, SETTLE_MS);
         }
       } finally {
         await leaveReader(page, read);
@@ -1336,9 +1333,7 @@ async function captureReadalong() {
             // The top bar hides 4 s after the last press on the reader (immersive mode):
             // the page alone, so the shot never catches it in mid-slide.
             await waitReaderBar(page, true);
-            await sleep(SETTLE_MS);
-            await page.mouse.move(0, 0);
-            await shoot(page, READALONG_SHOTS.reader);
+            await settleShoot(page, READALONG_SHOTS.reader, SETTLE_MS);
           } finally {
             await leaveReader(page, read);
           }
