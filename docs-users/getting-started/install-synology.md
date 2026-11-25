@@ -14,7 +14,7 @@ These steps are written for Container Manager on DSM 7.2 and haven't been checke
 1. Install **Container Manager** from **Package Center**. It creates a shared folder called `docker`.
 2. In **File Station**, open `docker` and create a folder `audiosilo`, then a folder `data` inside it.
 
-The data folder is now `/volume1/docker/audiosilo/data`. It holds the database, settings and backups. Your audiobooks stay where they are, for example in a shared folder `/volume1/audiobooks`.
+The data folder holds the database, settings and backups. Keep it on a local disk in the NAS, such as `/volume1/docker/audiosilo/data`. For a data folder on another machine's share, see [The data folder is on a network share](../troubleshooting.md#the-data-folder-is-on-a-network-share). Your audiobooks can stay in their own shared folder, such as `/volume1/audiobooks`.
 
 ## 2. Pick the user the server runs as
 

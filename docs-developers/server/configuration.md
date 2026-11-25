@@ -95,8 +95,10 @@ package does for a bad flag.
   calling user. It writes warnings to stderr and exits `0` even when a folder
   fails a check.
 - `audiosilo [--data <dir>] chowndata UID:GID` changes ownership of the data
-  folder's contents on Linux. It exits `0` on success, `1` if the walk fails
-  and `2` for an invalid pair. See [Under Docker](#under-docker).
+  folder's contents on Linux. It exits `0` on success, `1` on a walk error,
+  `2` for invalid arguments and `3` after 30 seconds without progress
+  (stderr: `audiosilo: chowndata: no progress for 30s`). See
+  [Ownership at startup](#ownership-at-startup).
 
 `reset-admin` picks the one named, or the only enabled admin (a disabled
 admin neither counts nor is listed). It exits `2` (a `launcher.UsageError`,
@@ -1550,6 +1552,9 @@ configuration or records a server ID, also stops startup and names the file.
 the explanation includes the server's numeric user and group IDs and, when
 available, the owner's IDs. For a root-owned path it suggests granting the
 server account access. For a read-only mount it explains how to enable writes.
+When the owner or group is unmapped (`65534` or `4294967294`), the hint
+points to the NFS export's squash settings and user ID mapping. A path owned
+by root or by the server user still gets advice specific to that owner.
 On a native install it can suggest running the server as the owner.
 
 If the existing backups folder refuses writes, the launcher warns that
@@ -1578,8 +1583,25 @@ setting.
 The entrypoint first tries to change the owner of the data folder itself
 (`--data`, normally `/data`). This step has a five-second limit. If the folder
 times out, the entrypoint skips its contents. Otherwise it calls
-`audiosilo --data <folder> chowndata UID:GID`. The walk has no time limit,
-so a large data folder can finish.
+`audiosilo --data <folder> chowndata UID:GID`. The walk can take as long as
+it needs while it makes progress. Each entry it checks and each batch of
+names it reads from a directory restarts the 30-second timer.
+
+After 30 seconds without progress, `chowndata` exits with status `3`. The
+entrypoint logs a warning naming the data folder and the intended user and
+group, runs the access checks and starts the server. On the next container
+start, the walk skips ownership changes for entries that already have the
+requested user and group.
+
+In each folder, the walk first changes the owner of every entry that is not a
+folder or a mount point. It then enters each subfolder, changing the
+subfolder's owner as it enters, and looks at the mount points in the folder
+last. So the walk finishes the files at the top of the data folder before any
+subfolder: the database, its `-wal` and `-shm` files and `config.yaml` (unless
+`config.yaml` is mounted on its own, which makes it a mount point). The walk reads a mount point's cached
+attributes, so a share mounted inside the data folder whose server is gone
+doesn't stall it. Where `statx` is refused and the walk falls back to
+`fstatat`, that read is not cached.
 
 - The walk stays on the data folder's mount, including btrfs subvolumes on
   that mount. It skips other filesystems, nested directory mounts (even on
@@ -1607,6 +1629,14 @@ folder the server will use. It takes the backups path from
 `AUDIOSILO_BACKUP_DIR`, then `backups.dir` in `config.yaml`, then
 `<data>/backups`. Reading the configuration for this lookup has its own
 five-second limit.
+
+If the data folder is on a network share, `checkdirs` logs the folder and
+the filesystem type even when the write check passes. It uses the nearest
+visible mount in the container's mount table. Unraid's `/mnt/user` (shfs)
+pools local disks and gets no network-share warning.
+
+The advice for users is in [The data folder is on a network share](/users/troubleshooting#the-data-folder-is-on-a-network-share).
+The NFS crash it warns of is [server#626](https://github.com/KodeStar/audiosilo-server/issues/626).
 
 For each existing data or backups folder, the command creates and removes a
 private temporary file to check write access. It tries to list an entry from

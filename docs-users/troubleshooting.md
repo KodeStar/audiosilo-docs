@@ -30,9 +30,17 @@ Open the container log and find the path in the warning. The server needs to wri
 audiosilo: WARNING: the server can't write to /data: permission denied. The server runs as user 1000:1000 and the folder belongs to 1026:100. Set PUID=1026 and PGID=100 (the folder's owner) on the container, or give user 1000:1000 read and write access to the folder. Changing its owner to 1000:1000 failed.
 ```
 
-Give the server account read and write access on the host. You can also set the container's `PUID` and `PGID` to the data folder's non-root owner and recreate the container. If you set a non-root Compose `user:` or Docker `--user`, change that setting instead. For the owner in this example, use `user: "1026:100"`. If the owner is `0:0` (root), grant your existing server account access. If the IDs already match, check the folder permissions on the host.
+Give the server account read and write access on the host. You can also set `PUID` and `PGID` to the IDs the warning suggests and recreate the container. With a non-root Compose `user:` or Docker `--user`, change that setting instead. For the owner in this example, use `user: "1026:100"`.
+
+If the owner is `0:0` (root), grant your existing server account access. If the IDs already match, check the folder permissions on the host.
 
 The warning lets startup continue. If the server then reports `the data folder isn't usable`, it can't start until you fix that path. On Synology, see [Give that user access](./getting-started/install-synology.md#3-give-that-user-access).
+
+**The owner or group is nobody.** If the log shows `65534` or `4294967294`, keep `PUID` and `PGID` set to your server account's real IDs and follow the warning's advice.
+
+```text
+audiosilo: WARNING: the server can't write to /data: permission denied. The server runs as user 1000:1000 and the folder belongs to 4294967294:65534. Its owner or group is nobody, an ID that maps to no account. If the folder is on an NFS share, check the export's root_squash or all_squash setting and that the NAS and this computer map user IDs the same way. Otherwise give user 1000:1000 read and write access to the folder. Changing its owner to 1000:1000 failed.
+```
 
 **Read-only backups.** A share mounted at the default `/data/backups` can have different permissions from `/data`. The log can show:
 
@@ -57,6 +65,24 @@ Give the server account read access to that file. A readable configuration file 
 ```text
 audiosilo: WARNING: /library didn't answer within 5s. Check the network share.
 ```
+
+**The data folder stopped answering during startup.** If the container makes no progress changing file ownership for 30 seconds, it logs:
+
+```text
+audiosilo: WARNING: /data stopped answering while its files were being given to user 1000:1000, so some may still belong to another user. If the folder is on a network share, check that the share is up. Starting the server anyway.
+```
+
+Once the folder is available, restart the container. It keeps the ownership changes already made and tries the remaining files again.
+
+### The data folder is on a network share
+
+Your audiobooks can stay on a share, but keep the data folder on a local disk. The container logs this at startup, even when it can write to the data folder:
+
+```text
+audiosilo: WARNING: The data folder /data is on a network share (nfs4). Keep it on a local disk if you can: the server's database needs file locking a share may not give (an SMB share needs the nobrl mount option), and the server can crash when the share stops answering.
+```
+
+On SMB, mount the share on the host with the `nobrl` option, or SQLite reports `database is locked`. On Unraid, a user share under `/mnt/user` counts as a local disk and gets no warning. See [Appdata on a user share](./getting-started/install-unraid.md#appdata-on-a-user-share).
 
 ### My browser warns about the certificate
 

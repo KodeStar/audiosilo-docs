@@ -11,7 +11,7 @@ On Unraid, install AudioSilo from **Community Applications** (the Apps tab). The
 2. Pick the one from **linuxserver's Repository** and click **Install**.
 3. Set **Audiobooks** (`/audiobooks`) to your audiobooks share, for example `/mnt/user/audiobooks`. It is mounted read-only.
 4. Leave **WebUI** (the port) at `8080` unless it's taken.
-5. Click **Show more settings** and check **Appdata** (`/config`). This is where the database and settings live. A cache or pool path such as `/mnt/cache/appdata/audiosilo` is quickest; the default `/mnt/user/appdata/audiosilo` works too.
+5. Click **Show more settings** and keep **Appdata** (`/config`) on a local disk. It holds the database and settings. A cache or pool path such as `/mnt/cache/appdata/audiosilo` is quickest. The default `/mnt/user/appdata/audiosilo` also works.
 6. Set **PUID** (user ID) and **PGID** (group ID) to the account that can write to **Appdata** and read **Audiobooks**. The usual Unraid values are `99` and `100`.
 7. Click **Apply**.
 
@@ -71,7 +71,9 @@ Most settings can also be set with an `AUDIOSILO_*` variable, such as `AUDIOSILO
 
 ### Appdata on a user share
 
-When appdata is on a user share (`/mnt/user/...`), AudioSilo maps its database into memory, which makes browsing quicker there. It stays off on network storage. To turn it off, add this to `config.yaml` in your appdata folder and restart the container:
+Unraid's `/mnt/user` pools local disks, so appdata there counts as a local disk.
+
+When appdata is on a user share, AudioSilo maps its database into memory, which makes browsing quicker there. It stays off on network storage. To turn it off, add this to `config.yaml` in your appdata folder and restart the container:
 
 ```yaml
 database:

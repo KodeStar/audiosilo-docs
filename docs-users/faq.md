@@ -40,6 +40,8 @@ Yes. Download a book and it plays with no connection, in the apps and in the web
 
 Yes. Mount the share on the server machine, then point the library at the mounted folder. If the share drops, the server keeps your books and progress until it's back.
 
+Keep the server's data folder on a local disk, though. See [The data folder is on a network share](./troubleshooting.md#the-data-folder-is-on-a-network-share).
+
 ### Is my listening progress safe if I reorganize or re-tag my files?
 
 Yes. Re-tagging changes nothing. If you move or rename a book, the server notices and moves your progress and bookmarks with it.

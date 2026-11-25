@@ -38,7 +38,7 @@ services:
 
 Change `/srv/audiobooks` to your books folder. The two mounts:
 
-- **`/data`** holds the server's database, `config.yaml`, certificates and [backups](../admin/backups.md). Keep it, and back it up.
+- **`/data`** holds the server's database, `config.yaml`, certificates and [backups](../admin/backups.md). Keep its host folder (`./data` in this example) on a local disk and back it up.
 - **`/library`** is your books, mounted read-only (`:ro`). The server never writes to your books.
 
 Set `PUID` to the numeric user ID and `PGID` to the numeric group ID of the account that owns the data folder. On Linux, run `id -u` and `id -g` as that account. Give it read access to your books.
@@ -132,7 +132,8 @@ This updates the server and the web player together. Your books are never change
   ```
 
   The check waits 10 minutes after a start before a failure counts, so an update that changes the database on a large library isn't restarted part way through. After you change the port or HTTPS settings in the console, restart the container. Until you do, the check looks for the server at the new address and fails.
-- **Books on a network share (SMB/NFS):** mount the share on the Docker host, then mount that path into the container. If the share goes away, the server keeps your books and progress; they come back when the share does.
+- **Books on a network share.** Mount the SMB or NFS share on the Docker host, then mount that path at `/library`. If the share goes offline, the server keeps your books and listening progress until it comes back.
+- **Data on a network share.** Before you put `/data` on SMB or NFS, see [The data folder is on a network share](../troubleshooting.md#the-data-folder-is-on-a-network-share).
 - **HTTPS with a reverse proxy from the start:** follow the [Caddy](https://audiosilo.app/blog/audiosilo-with-caddy/), [SWAG](https://audiosilo.app/blog/audiosilo-with-swag/) or [Traefik](https://audiosilo.app/blog/audiosilo-with-traefik/) guide. Each has a Compose file with both AudioSilo and the proxy.
 
 ## Testing unreleased builds
