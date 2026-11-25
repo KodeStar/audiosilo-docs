@@ -140,6 +140,28 @@ backend.
 One ASR lane still runs one segment at a time, so a second worker is a standby, not
 a second lane.
 
+### What decoded each segment
+
+On the first transcription pass, the Bridge writes each segment's record to
+`asr.json` before it publishes the completed raw transcript. Each entry in
+`segments` records the backend, device, model, whether the decode was remote,
+and the decode time (`decode_seconds`) when available. A worker reports its own
+decode time, which excludes the wait for a claim and the audio transfer.
+The scheduler uses these times for its [transcription estimates](generating.md#the-bridges-figures).
+
+A resumed pass keeps the records for its completed segments. The top-level
+backend, model and language describe the run's configured settings. Older raw
+transcripts without a segment record use those defaults. When chapter detection
+builds new chapters, it preserves the original segment numbers under `windows`.
+
+If a resumed pass keeps raw transcripts and decodes another segment with a
+changed configured language, or decodes locally with a changed configured
+model, it sets `settings_changed` in `asr.json`. A worker can use its own
+model without setting that flag.
+`KeptTranscription` never reuses a flagged transcript to start a new run.
+If the ASR stage starts with no complete raw transcript, it records the current
+settings and clears the flag, segment records and list of empty chapters.
+
 ## The worker
 
 `audiosilo-bridge worker --bridge <url> --token <t> [--data DIR] [--backend

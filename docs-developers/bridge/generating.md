@@ -186,20 +186,25 @@ scan (`earlier: []`).
 
 ### The Bridge's figures
 
-The heartbeat's `estimates.sidecars` block (`PUT /bridge/status`) is computed by
-`generate.Estimates` from the Bridge's store, again every 5 minutes or as soon as
-a job finishes, and only once the engine has started (until then the heartbeat
-carries none):
+Once the engine starts, the heartbeat can include `estimates.sidecars`
+(`PUT /bridge/status`). The Bridge reads the transcription rate on every heartbeat.
+It refreshes the cached spend figures every 5 minutes or when a job finishes.
 
 | Field | Where it comes from |
 |---|---|
-| `asr_seconds_per_audio_hour` | the ASR stage's learned rate (seconds per chapter) scaled by the finished audio books' chapters per hour; the seed `900` (a quarter of the audio's length) before there is one |
+| `asr_seconds_per_audio_hour` | Decode seconds per hour of audio on the route the next segment would use. The scheduler uses that route for job and queue ETAs too. |
 | `agent_usd_per_audio_hour` | the finished audio books' agent spend over their hours (a long book weighs more); `null` before the first |
 | `agent_usd_per_ebook` | the finished ebook books' average spend; `null` before the first |
-| `samples` | the finished books those come from |
+| `samples` | The number of finished books used for the agent spend estimates. |
 | `agent_backend`, `agent_ready`, `subscription` | the agent container's state ([runner.json](agent-container.md#runner-liveness)): the CLI the Bridge runs, whether it is available (a fresh heartbeat, the CLI present with a credential the provider hasn't refused) and whether that credential is a subscription login |
 | `can_contribute` | a GitHub token resolves and isn't refused (below); the `setup` block carries the same answer, which the server prefers |
 | `monthly_budget_usd`, `month_spent_usd` | `agent.monthly_budget_usd`, and this calendar month's (UTC) agent spend across every book |
+
+The scheduler keeps separate rates for local and worker decodes. Each starts at
+900 seconds per audio hour. On the first transcription pass, a completed segment
+qualifies if it contains at least 60 seconds of audio and has a positive decode
+time. The first qualifying segment sets its route's rate. Each later sample
+updates the stored moving average as soon as the segment finishes.
 
 The server validates the block on its own: a number below 0 or past its (far)
 bound, or a block that doesn't decode, drops the block, never the heartbeat (a
@@ -316,7 +321,7 @@ server stores it opaquely; at most 16 KiB):
 | `message_code`, `message_params` | the code of a fixed sentence (`starting`, `book_lookup`, `saving_sidecars`, `rescan_them`, `finished`...) and its values; absent for an engine stage's label and the job's own park reasons (the library's name or an error in a sentence) ([Job progress](pairing-and-jobs.md#job-progress)) |
 | `done`, `total` | the current stage's counts, when it has some |
 | `stage` | the engine state |
-| `eta_seconds` | the engine's whole-book estimate of the time left, when it has one (never while parked or paused) |
+| `eta_seconds` | The engine's estimate of time left for the whole book, when available. Parked and paused books omit it, as does a book [waiting for its ASR turn](pairing-and-jobs.md#job-progress). |
 | `cost_usd` | the agent spend so far: the budgets' basis (each run's provider-reported cost, else its complete API-price estimate), rounded to cents |
 | `source` | `audio` or `ebook` |
 | `park` | while parked only: `code`, `hint` (the Bridge's English advice), `retry_at` (RFC 3339) when the park resumes by itself, and `message`, the park's sentence for people: the job's error without the `<code>: ` it may lead with, absent when only the code is left (`jobs.withParkMessage`). The Bridge's own page shows `message`, or the job's `error` without its code for a job parked by an older Bridge. That page never shows the code |
@@ -671,6 +676,11 @@ of those:
   over. A book this job's own cancel had stopped (the server took the job back,
   then handed it out again) is re-admitted, unless its transcripts were swept
   meanwhile, in which case it starts over.
+- **Round limits survive a crash.** On startup, `Scheduler.Reconcile` checks each
+  open stage run. If the book is still at that stage and the stage wrote its
+  completion sentinel before the crash, the scheduler records the run as
+  successful. A completed paid round counts toward its cap, and the book can
+  resume from the sentinel. Otherwise the scheduler closes the open run as interrupted.
 - **The server's identity**: `server_jobs.server_id` records which server handed
   each job out (the pairing's `server_id`); an open row of another server is
   treated as lost, never reported to the wrong one.
@@ -768,8 +778,9 @@ fails the job instead, to be tried again):
   start, not only by the sweep;
 - the audio is unchanged (`pipeline.AudioCurrent`) and the manifest matches the
   fingerprint `asr.json` recorded, when it recorded one;
-- the ASR model and language `asr.json` recorded match the Bridge's `asr`
-  settings now; a setting it never recorded (an older run) doesn't count;
+- the [ASR record](workers.md#what-decoded-each-segment) is eligible for reuse,
+  and its configured model and language match the current settings wherever both
+  values are known;
 - every chapter's or window's raw transcript is there and complete.
 
 The other shortcuts (a read-along going on from an earlier run, a generate job
@@ -788,7 +799,8 @@ fact notes a [`sidecars.describe`](#a-description-on-its-own-sidecarsdescribe)
 reads, the description step's `chapter_positions.json`, the manifest and the
 sidecars (`description.json` included). It also removes `windows/` (a
 chapterless book's window transcripts and detection) and keeps
-`chapters_detected.json` (titles only, which `chapters.detect` reuses).
+`chapters_detected.json` (titles only, which `chapters.detect` reuses). For
+alignment files, see [read-along scratch and transcript retention](readalong.md#transcript-retention).
 
 Each purge takes the engine's hold on the book. The daily sweep leaves a held book
 (a description being written) for its next run.

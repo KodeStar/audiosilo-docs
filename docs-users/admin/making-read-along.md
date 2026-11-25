@@ -43,12 +43,16 @@ offline or too old, the card says so.
 
 ![The Make a read-along confirmation](/img/screenshots/admin/readalong-dialog.png)
 
-The card shows the job's progress, with **Cancel**. If the server cancels the
-job, the card says why. The job also shows in
-[Server > Settings > Bridge > Jobs](bridge.md#jobs). When it is done, the card says how much
-of the text lined up.
+The card shows progress and lets you **Cancel**. If the server cancels the job, the card says why.
+You can also follow the job in [Server > Settings > Bridge > Jobs](bridge.md#jobs).
 
-The Bridge makes read-alongs one book at a time.
+When another book is using speech recognition, the Bridge's **Jobs** tab says
+**Waiting for a turn to use speech recognition**. The row shows no count or
+time estimate while your book waits.
+
+Once transcription starts, the row shows progress and an estimate of the time
+left when available. When the read-along is ready, the book's card says how much
+of the text lined up.
 
 ### From the player {/* #from-the-player */}
 
@@ -73,8 +77,8 @@ recently, for characters and recaps, for
 [Detect chapters](chapter-detection.md)
 or for an earlier read-along, making the read-along takes minutes, not hours.
 
-The Bridge runs one of these jobs at a time for a book. While one runs, start the
-others once it has finished.
+If the Bridge is detecting chapters or generating characters and recaps for the
+same book, let that job finish first.
 
 ## How much lines up
 
