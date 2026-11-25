@@ -570,7 +570,8 @@ applies in audiosilo-meta-community, through that repository's own gate.
    on it. If it is flagged or red, the steward fixes the data on the mirror, as
    for any other data pull request.
 4. **The mirror merges.** It merges squashed, with the steward's own commit
-   message, which credits you in plain prose ("Contributed by @you in #N.").
+   message, which credits you in plain prose ("Contributed by @you in #N.") and
+   names you as co-author, so the commit on `main` shows on your GitHub profile.
    Your commit messages are not carried, so a closing keyword in one closes no
    issue.
 5. **Your pull request is closed as superseded.** Once everything you changed
