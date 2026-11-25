@@ -19,7 +19,7 @@ While a book plays, a small player stays with you on every screen.
 
 After a jump, an [undo button](full-player.md#undo-a-jump) floats just above the bar.
 
-In a narrow window, the player bar hides some of these buttons. The full player still has them. The bookmark button marks where you are. See [Add bookmarks and notes](bookmarks-and-notes.md).
+In a narrow window, the player bar hides some of these buttons. With [larger text](settings.md#text-size), the play and skip buttons can move below the book. The full player still has all the controls. The bookmark button marks where you are. See [Add bookmarks and notes](bookmarks-and-notes.md).
 
 ## Play to another speaker (AirPlay and Chromecast)
 

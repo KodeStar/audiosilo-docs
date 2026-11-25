@@ -95,18 +95,22 @@ The player follows your device's text size, contrast setting and screen reader. 
 
 ### Text size
 
-Set the text size on your device:
+- On **iPhone and iPad**, open **Settings > Accessibility > Display & Text Size > Larger Text**.
+- On **Android**, change the font size in your display or accessibility settings.
+- In the **web player**, change your browser's font size. The player adjusts while it's open.
 
-- **iPhone and iPad**: Settings > Accessibility > Display & Text Size > Larger Text.
-- **Android**: the font size in Android's display or accessibility settings.
-- **Web player**: your browser's font size setting. Reload the player after you change it.
+With large text, a setting's control moves below its name. Large headings, such as the title on a book's page, grow up to twice their usual size.
 
-With large text, the layout changes shape to make room for the words:
+In the Library, titles and authors' names can wrap under their covers. Long folder names wrap too, and you can scroll the folder trail sideways. On a book's **Details** tab, each filename appears above its format, bitrate and length.
 
-- A setting's name moves above its control instead of beside it.
-- Most labels wrap onto more lines instead of ending in "...".
-- On Android, the tab bar at the bottom names only the tab you are on. TalkBack still reads every tab's name.
-- In the full player, the play, skip and chapter buttons and the scrubber grow with the text, up to one and a half times their size. On a narrow screen the buttons take only the room there is, a little smaller than usual if they must.
+The play, skip and chapter buttons grow up to one and a half times their usual size. In the full player, the buttons and seek bar fit the width of your screen. On a tablet or computer, the buttons move below the book when they need more room.
+
+![Book details with large text. Each filename has its details underneath, and the play and skip buttons sit below the book.](/img/screenshots/web-player/book-details-large-text.png)
+
+- On **Android**, a long tab name can end in three dots. With large text, only the selected tab shows its name, sized to fit. TalkBack still reads every name in full.
+- In a **phone browser**, all five tabs keep their names. With large text, a long name can wrap.
+- On **iPhone**, text in the tab bar's player can grow by up to 30% so both lines fit. A long **Back** label can wrap beside the page title.
+- The squares in your [listening calendar](you.md#the-charts) grow with the weekday labels.
 
 In the ebook reader, the reader's **−** and **+** buttons also change the text size (see [Read the ebook](reading-the-ebook.md)).
 
@@ -124,7 +128,7 @@ With high contrast on:
 
 - Text, borders and field outlines get darker in Light and lighter in Dark. Grey secondary text changes the most.
 - Pink text and status colours, such as warnings and errors, get stronger.
-- Progress bars and sliders, such as the speed slider, get an outline, so their full length shows. The full player's scrubber keeps its bars.
+- Outlines show the full length of progress bars and sliders, including the book timeline and series progress. In **Downloads**, a line marks where used storage ends.
 
 The layout stays the same, and Light, Dark and System work as before.
 

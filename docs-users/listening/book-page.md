@@ -121,4 +121,6 @@ The tab first says how the book plays on this device:
 - **Plays from this device** - it's downloaded.
 - **Converted for this browser** - your server converts it as you listen. See [Books a browser can't play directly](playback.md#books-a-browser-cant-play-directly).
 
-Then it lists the book's files, with codec, bitrate and length, and the book's path on your server. Your progress, bookmarks and notes are tied to that path, so they survive re-tagging and rescans.
+Then it lists the book's files with their codec, bitrate and length. With [large text](settings.md#text-size), these details sit below each filename.
+
+The book's path on your server appears below the files. Your progress, bookmarks and notes are tied to that path, so they survive re-tagging and rescans.

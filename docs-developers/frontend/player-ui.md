@@ -28,6 +28,9 @@ pill). iOS renders the accessory twice: `regular` above the bar and `inline` bes
 the minimised bar. So the component is stateless, and everything comes from the
 player and sleep-timer stores and its placement.
 
+The system sets the pill height. `ACCESSORY_TEXT_MAX_SCALE` caps the chapter,
+subtitle and episode-fetch text at 1.3x so the regular pill can fit both lines.
+
 `ACCESSORY_SUPPORTED` (`accessory-support.ts`) gates it. It renders nothing while
 nothing is loaded, and nothing on a tablet or desktop, where iOS mounts both
 placements behind the hidden bar. The `regular` pill publishes its top edge
@@ -62,7 +65,7 @@ Content scrolls behind the card, so scroll screens reserve room with
 ### The docked player (tablet and desktop)
 
 `DockedPlayer` (`src/components/shell/docked-player.tsx`) has the whole-book
-progress line across the top, and three columns:
+progress line across the top. At the default text size it has three columns.
 
 - **Left:** the cover, chapter, book and sync state. A tap opens the full player.
 - **Middle:** `TransportControls size="sm"` over the dock's `ChapterScrubber`. The
@@ -85,31 +88,25 @@ multi-chapter item, keeps the chapter heading. Two other places use the same rul
 - the Up next panel's now-playing line, which drops a chapter name that `sameTitle`
   matches.
 
-**Three columns.** The book and the actions are equal side columns (`flex-1
-basis-0`, the same padding on both sides) and the transport sits between them. So
-the transport is centred on the bar whatever the title, the actions or the sleep
-countdown. The one exception is a bar from 640 to 731 px wide, where equal side
-columns would be narrower than the actions need (`dockLayout`'s `centred` is
-false). There the actions column is sized to its content, the book column takes the
-squeeze and the transport sits off centre, so a running sleep timer never covers the
-next-chapter button. The side widths are estimates at the default text size; with
-much larger text the actions can still reach the transport.
+**At default text size**, equal side columns centre the transport. On a 640 to
+731 px bar, the actions take their content width and the transport sits off
+centre. The measured width of the bar determines which controls appear.
 
-**What fits.** `dockLayout` works from the bar's **measured** width, not the window
-class. It decides the middle column's width (`centre`, 300-560 with the scrubber)
-and what fits:
+- From 1144 px, the dock shows every available action. Each side column has room
+  for the widest sleep pill (a running "10:05:00" or "Keep going").
+- Below 1144 px, the actions are sleep, Up next and expand.
+- The chapter scrubber appears from 800 px.
 
-- every action from 1144, with both side columns sized for them and the sleep pill
-  at its widest (a running "10:05:00" or "Keep going");
-- the tablet set (sleep, Up next, expand) below that;
-- no scrubber below 800.
+**With larger text**, `dockLayout(width, fontScale)` scales the side-column
+estimates and reserves room for the transport, whose buttons grow up to 1.5x.
+When equal columns no longer fit, it checks the space left for the book. Above
+1x it stacks the transport if that space would fall below `BOOK_MIN` (128 px).
+From 1.3x it stacks whenever the sides cannot be equal. The book and actions
+share the first row, with the transport beneath. All controls remain available
+in the full player.
 
-Everything the dock drops is in the full player.
-
-**The undo chip.** The `UndoChip` **floats above the bar**, centred on the bar. That
-puts it over the transport, except on a 640 to 731 px bar, where the transport sits
-off centre. Nothing in the bar lays out around the chip, so a jump never moves or
-resizes the scrubber under the pointer that made it.
+The `UndoChip` floats above the centre of the bar. A jump leaves the scrubber in
+place under the pointer.
 
 Speed and sleep open through `usePlayerSheets`. The dock mounts **no sheets** and
 no grace card; `ShellPlayerOverlays` does ([below](#player-sheets-and-overlays)).
@@ -656,6 +653,11 @@ decorative**. `seek-texture.ts` seeds a speech-like envelope from the book and
 chapter, so a chapter always looks the same without pretending to show the sound.
 A `peaks` prop takes real peaks if the server ever computes them.
 
+`PlayerView` measures its controls column inside the page padding.
+`controlScale` fits the transport to that width, with a 1.5x cap and a 0.9x
+floor. `PlayerSeekBar` receives the same scale. Its waveform grows taller while
+the controls have room to grow and keeps at least its default height.
+
 The bars are drawn once per width, and a UI-thread clip reveals the played layer. So
 a tick moves transforms, not colours. Gesture and accessibility come from
 `useSliderControl`, shared with `Slider`. `SeekTimes` is the row under the bar.
@@ -667,7 +669,9 @@ The whole-book timeline is `book-timeline.tsx` with the pure
 
 - **Runs.** Chapters are merged into runs like the Now card's `scaleRuns`. Each run
   is placed by time with `runBox`, the one mapping that the playhead, taps and pins
-  use.
+  use. Past segments use `bg-foreground/35`. Current and future segments use
+  `bg-track`, with the heard part of the current chapter in `bg-brand`. In high
+  contrast, `TrackOutline` draws under the fill on current and future segments.
 - **Chapter names.** At the playhead, `BookTimeline` uses the current chapter or
   row supplied by its caller for the hover tip and slider value text. Elsewhere it
   calls `chapterAtSecond`. The player uses `chapterAt` and keeps the playing

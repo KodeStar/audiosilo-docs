@@ -76,7 +76,9 @@ sides (24 each), the narrowest tab column worth having (440, a chapter row with 
 start time and length), the column gap (40) and the narrowest aside (300). An 834
 portrait tablet takes the two columns.
 
-`roomy` (600 and up) adds the chapter rows' start time and the files table's columns.
+`roomy` (600 and up) adds the chapter rows' start time. The Details tab uses file
+columns only when `roomy && !large`. With large text, even on desktop, each filename
+wraps onto as many lines as it needs, with codec, bitrate and duration underneath.
 `titleScale` steps the title down once past 48 characters. The tab panel renders inside
 the page's own `ScrollView`, never a nested vertical scroller.
 

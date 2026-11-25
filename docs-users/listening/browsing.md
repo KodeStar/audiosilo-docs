@@ -68,7 +68,7 @@ Connected to more than one server? Home combines them. A book from another serve
 
 The **Library** tab holds everything on your server. Its sections are **Books**, **Authors**, **Series**, **Narrators**, **Collections** and **Folders**. On a phone, swipe the row of sections sideways.
 
-![The Library's Books section: the sections and controls along the top, and the cover grid](/img/screenshots/web-player/library.png)
+![The Books grid with large text. Long titles and authors' names wrap beneath the covers.](/img/screenshots/web-player/library.png)
 
 If you have more than one library or server, use the **Library** picker beside the controls. Every section except Folders shows one library at a time. A [podcast library](podcasts.md#shows-in-the-library) has just **Shows** and **Folders**.
 
