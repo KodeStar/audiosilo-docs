@@ -60,7 +60,9 @@ has a ready map is allowed.
 
 The ebook is **the server's pick**, never the Bridge's own. It is the book route's
 `book.ebook {path, size}`, by the [scanner's rule](../server/scanner.md#a-books-ebook),
-the same file the reader opens. Before any work the job checks it:
+the same file the reader opens. Before transcription, `readalong.CheckEPUB`
+uses random access to check the ZIP directory, DRM metadata, container and
+package. This lets the job reject an unusable EPUB without reading all its media.
 
 | The ebook | The job fails with |
 |---|---|
@@ -117,21 +119,38 @@ the plan instead:
 - every other chapter is accepted;
 - there is never a tail or mid clip, since spliced text has no word timings.
 
-`retranscribing` runs the plan (NoContext, as for a whole run) with its own adopt
-rule, `repair.AdoptFreshReadalong`. A loop's words are noise, not narration. So the
-whole run's `AdoptFresh`, which keeps the longer run, would keep a looped original.
-Generate keeps `AdoptFresh`. The re-run replaces the original unless:
+`retranscribing` decodes the flagged chapters again with `NoContext`.
+`qa.ReadalongNoise` estimates filler in each transcript. It takes the largest
+of the following counts because the checks can flag the same words.
 
-- its word rate is implausible (`AdoptFresh`'s check; the heal takes that span);
-- it loops over more words (`qa.LoopWords`: the words a 6-gram repeated 5 or more
-  times covers);
-- it dropped narration: under 80% of a looped original's words outside its loops,
-  or fewer words than a loop-free original.
+- Words covered by a six-token sequence repeated at least five times.
+- Words in the extra copies of a segment repeated three or more times in a row.
+- The final 12 words if the tail-rate check flags a burst.
 
-**One round only.** The second sweep goes on to `readalong_aligning` clean or not,
-with a stage note naming the chapters left. The heal (step 5 of
-[the stage](#the-readalong_aligning-stage)) covers what remains. The spike's single
-NoContext re-run took one book from 56% to 99.96% coverage.
+The loop count uses the transcript's own whitespace-separated words. For example,
+"don't" counts as one word even when the loop detector splits it into two tokens.
+
+Generate uses `repair.AdoptFresh` for a whole chapter. A read-along uses
+`repair.AdoptFreshReadalong` and adopts the new transcript only when it passes
+all three checks.
+
+1. With a known duration, the new transcript is at most 300 words per minute.
+   If the original reached 70 words per minute, the new one must also reach 70.
+   Two sparse readings, such as music with a few spoken words, can pass.
+   An unknown duration skips the rate check.
+2. The new transcript has at most as many filler words as the original.
+3. After subtracting each transcript's filler, any loss in word count is at
+   most the smaller of the original's filler count and 20% of its non-filler
+   words. An original with no filler allows no loss.
+
+**One repair round.** `CountStageSuccesses` counts successful `retranscribing`
+runs for the book that have not been superseded. After one success the sweep
+advances to `readalong_aligning`, names any chapters still flagged and leaves
+those gaps to the [heal](#the-readalong_aligning-stage). A read-along that goes
+on at `sanitizing`, `splitting` or `inspecting` supersedes the previous repair
+([the reuse table](#the-reuse-table)), so its new sweep can run one round. The same
+[restart rule](generating.md#resuming-after-a-restart) counts a round completed
+just before a crash.
 
 ## The reuse table
 
@@ -169,14 +188,17 @@ audio run.
 | one another open job follows | refused: "A generate job is working on this book; make the read-along once it has finished.", "job N is already making this book's read-along", else "job N is working on this book; let it finish or cancel it first". The job first waits up to 30 s for one the server has just cancelled ([Cancelling](pairing-and-jobs.md#cancelling)) |
 | one a stage is running on | refused: "the engine is still busy with this book's earlier run; try again in a minute" |
 
-`store.ContinueReadalong` moves the book on in one transaction: the goal set, its
-kind kept, the status cleared, the job mapped. It refuses an ebook run. Before it
-runs:
+`store.ContinueReadalong` keeps the audio book's kind, sets its goal, clears its
+status and maps the new job in one transaction. Both this transaction and
+`store.ContinueChapters` clear all earlier stage progress before dispatch, so
+the next job shows only counts from its own stages.
 
-- the sentinels of the stage the book goes on at, and of the read-along stages
-  after it, are removed;
-- a book going on from `inspecting` forgets its old manifest's transcription;
-- a book going on before `qa_sweep` gets its loop-repair round again.
+Before continuing, the Bridge removes the restart stage's sentinel (except for
+`splitting`) and the later read-along stages' sentinels, and supersedes those
+stages' recorded successes, which gives a book going on before `retranscribing`
+its [repair round](#the-mechanical-loop-repair) again. It also supersedes the
+successes of any stage whose sentinel a purge took. A book starting again at `inspecting` also drops its old
+manifest's transcription record.
 
 Other jobs meet the same engine books:
 
@@ -200,7 +222,8 @@ Other jobs meet the same engine books:
 `readalong_aligning` is a mechanical stage, ordered after `retranscribing`, with
 `Next` `[done]`. It runs in the **ASR lane**, because its heal re-transcribes. So
 the lane cap, the worker router, the ETA and parks such as `asr_worker_waiting` all
-apply. The ETA seeds it at 180 s per book.
+apply. The alignment estimate starts at 180 s per book. The scheduler multiplies
+the time for one alignment by the fraction of heal progress still to go.
 
 The job writes its request first, `readalong/request.json`. It holds the ebook's
 Bridge path, the server's files in the server's order (book-relative, with their
@@ -211,7 +234,8 @@ first looks, or when the server moved the job with its book.
    the 16 kHz audio, and the done-time purge removes `chapters/`.
 2. **Read the words** from `transcripts-json/` only, never `transcripts-repaired/`,
    which has no word timings.
-3. **Open the EPUB** and walk its text. It walks every content document, skipping
+3. **Read and hash the whole EPUB.** The aligner walks every content document
+   from those same bytes, skipping
    script and style, with the block set of the reader's walk and a source newline
    read as a space. It splits the text into sentences and normalises them: NFKD,
    apostrophes out, digits spelled out, years in pairs.
@@ -225,19 +249,25 @@ first looks, or when the server moved the job with its book.
    - every unaligned run between two aligned sentences, as the window
      `[previous end - 0.5 s, next start + 0.5 s]` (2 to 600 s);
    - a section's **trailing** unaligned run, such as a loop that took its chapter's
-     end. Its window starts at the previous end - 0.5 s and lasts as long as its
-     text could take (10 characters a second + 10 s), at most 600 s. It never runs
-     past its chapter's end, nor past the next section's first aligned sentence;
+     end. Its window starts at the previous end - 0.5 s and runs until its text
+     could have been read from that end (10 characters a second + 10 s), at most
+     600 s long. The window
+     stops at the end of the chapter where the last aligned sentence ended,
+     even when the padding starts in the previous chapter. An earlier limit
+     applies if the next section's first aligned sentence starts sooner
+     (with 0.5 s of padding).
    - every `tail_verdicts.json` window, since a clip-repaired chapter's
      `transcripts-json` still holds its loop;
-   - every cross-segment loop the transcript check (`qa.CrossSegment`) finds in the
-     aligned transcripts (2 to 600 s). So a re-align from kept transcripts heals
-     too.
+   - each local run of repeated words that `qa.LoopSpans` finds in a chapter's
+     transcript, including a kept transcript. Two loops separated by narration
+     get separate windows. Each gets 0.5 s of padding within the chapter and
+     must span at least 2 s after padding.
 
-   A window crossing a file boundary is cut there, and overlapping or touching
-   windows merge. Each window's clip (`readalong/heal/`) is transcribed again
-   **NoContext** through the engine's speech recognition, on a worker when one is
-   connected. The words are spliced in, and the book is aligned again.
+   The Bridge cuts windows at file boundaries and merges touching or overlapping
+   windows within each file. It divides a merged window over 600 s evenly into
+   clips of at most 600 s, so a long loop can be healed in full. It transcribes
+   each clip with `NoContext`, using a worker when one is connected, splices in
+   the words and aligns the book again.
 6. **Snap** each sentence's start to its speech onset. The stage reads 10 ms frame
    energies from an `ffmpeg` f32le pipe per chapter FLAC, keeping only the
    energies. The threshold is p10 + 0.3 x (p95 - p10).
@@ -285,8 +315,9 @@ The job reads the map from the work folder and:
    nothing**. N is rounded down, so 49.7% says "49%", never "50%". Such a match is
    another edition, or another book.
 2. Refuses a map over 16 MiB, which the server wouldn't read.
-3. **Hashes the ebook again.** A sha256 that differs from the map's fails "the
-   ebook changed while aligning; run it again".
+3. **Hashes the current EPUB again.** If the digest differs from the one recorded
+   during alignment, the job fails "the ebook changed while aligning; run it
+   again" before it replaces any existing map.
 4. Saves `readalong.json` (a single-file book's `<stem>.readalong.json`) into the
    book's `.audiosilo/` where the book is **now**, by the
    [attachment write rules](attachments.md#how-the-bridge-writes-them).
@@ -295,8 +326,8 @@ The job reads the map from the work folder and:
    job.
 5. Asks for the attachments rescan.
 
-The job's progress is generate's without `cost_usd`: `stage` (including
-`readalong_aligning`), `done`/`total`, the ETA, and a park's code and hint. Parks
+The job reports the same [progress fields](generating.md#progress) as generate,
+including the `readalong_aligning` stage. It omits `cost_usd`. Parks
 use the existing codes only: `asr_worker_waiting`, `asr_unavailable`,
 `asr_decode_timeout`, `book_not_writable` and `library_not_writable`. Its
 result:
@@ -345,7 +376,9 @@ earlier run's transcript was reused (the console says "the transcript was reused
   server's order, with the server's lengths. For a folder book they are inside its
   folder, and for a single-file book it is its name. A moved book keeps a fresh
   map.
-- `generator.asr` is the speech model's name, and `aligner` is `whisper-words/1`.
+- `generator.asr` names the model from the [first-pass segment records](workers.md#what-decoded-each-segment),
+  or `mixed` when their models differ. The Bridge uses the configured model if
+  the records supply none. The `aligner` is `whisper-words/1`.
 - `coverage.text` is the share of the **read body**'s sentence characters lined
   up. The read body runs from the first aligned sentence to the last, so front and
   back matter the narrator skips don't count. `coverage.audio` is the share of the
@@ -421,14 +454,16 @@ job's end, as for [generate](generating.md#transcript-retention). A read-along
 job's end records `ended_at` on its engine book, so **each use restarts the
 clock**. A book re-aligned within the month keeps its transcript.
 
-- The purge also removes the `readalong/` files that quote the transcript:
-  `words.json`, and the heal's `heal/` clips and raws.
-- It keeps `readalong/map.json`, which holds CFIs and times only, so a write that a
-  park held up still finishes. It also keeps `align_report.json` and
-  `request.json`.
+The audio scratch purge (`scratch.Purge`) removes `readalong/heal/`, including
+its clips and raw transcripts, along with the split audio. It tries every
+scratch directory for the book inside its work folder and returns the combined
+errors. Even after a partial purge the scheduler drops the affected stage
+sentinels so it can rebuild missing files.
 
-A read-along after the purge transcribes again (the reuse table's "from
-`inspecting`" row).
+When transcript retention expires, the Bridge also deletes `readalong/words.json`.
+Both purges keep `readalong/map.json` (CFIs and times), so a parked job can still
+publish its map. They also keep `align_report.json` and `request.json`. A later
+read-along follows the [reuse table](#the-reuse-table).
 
 ## How long it takes
 
