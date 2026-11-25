@@ -47,10 +47,11 @@ Click a card to open its list.
 If the server rejects a file as invalid audio, scans skip it until its size
 or modification time changes, or the server restarts.
 
-A slow disk or network share can time out a scan. Its books show **reading it
-timed out** and keep their length and chapters. Each row under **Files that
-couldn't be read**, and the result of **Read again**, says why. A file that
-**took too long to read as audio** timed out, which is not a damaged file. A
+A slow disk or network share can leave a book marked **reading it timed out**.
+See [what the scan counts as changed](#history).
+
+Each row under **Files that couldn't be read**, and the result of **Read
+again**, says why. A file that **took too long to read as audio** timed out. A
 file that **couldn't be read as audio** may be damaged or not an audio file.
 **Details** has the original message. The next
 scan tries a timed-out file again.
@@ -319,6 +320,11 @@ compete for the disk.
 it, how long it took and what it found. Click **Log** to see a scan's details:
 books found, moved and removed, and every file it couldn't read and why.
 AudioSilo keeps the last 100 scans of each library.
+
+On server version 2.7.0 or later, if only the tags time out, the scan can
+keep the book's name and save new lengths and chapters. That counts as
+**Changed**. If the scan keeps all the book's previous details, the history
+counts only the read problem.
 
 ### What a removed book leaves behind
 
