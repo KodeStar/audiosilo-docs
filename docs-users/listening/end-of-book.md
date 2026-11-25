@@ -54,7 +54,7 @@ Two related settings are **Automatic downloads** and **Remove a download when yo
 
 To finish a book early, open the **...** menu on its cover or book page and select **Mark as finished**. If the book is playing, it stops and remembers the place the player showed at that moment.
 
-Tap **Undo** in the **Marked as finished** message to return to that place. If this device already has a place further on, perhaps from another tab, you keep the later place.
+Tap **Undo** in the **Marked as finished** message to return to that place. If a place further on is already saved, on this device, in another tab or on another device, you keep the later place.
 
 To take a finish back later, select **Mark as not finished** in the same menu. Its message has **Undo** too.
 

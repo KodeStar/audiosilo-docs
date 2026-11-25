@@ -772,7 +772,9 @@ Retry keep the place saved as it stopped, listening since the last save included
 When that save was held back, `placeLeftUnsaved` takes the furthest of the place
 shown (a pending seek's or tab move's target, or a loading book's resume floor),
 the unfinished mirror record and the unfinished position the page read from the
-server. A book that was not loaded uses the page's progress.
+server. A book that was not loaded uses `heldPlace`: the further of the page's
+progress (this device's newer record) and the server's own row, so Undo never
+moves another device's further place back.
 `undoFinish` takes the finish back as in
 [Taking a finish back](offline.md#taking-a-finish-back).
 
