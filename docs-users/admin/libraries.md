@@ -17,8 +17,10 @@ fiction and one for kids, and use [shares](sharing.md) to choose who sees which.
    **Browse** to pick it.
 5. Click **Add library and scan**.
 
-The library appears straight away and its first scan starts. Listeners don't
-have to wait: books appear as the scan finds them.
+The library appears straight away and its first scan starts. Books appear
+as the scan finds them. Listeners can already open and play a book from
+[Folders in the player](../listening/browsing.md#folders) while the scan runs. Such a book still counts as **New** and is included in the
+**New books added** notice when the scan finishes.
 
 A **Books** library usually has a folder of its own. When the folder is
 another books library's, sits inside one or holds one, the console asks first.
