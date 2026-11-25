@@ -1127,7 +1127,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_SESSION_DAYS` | `activity.session_days` | integer, 30-3650 |
 | `AUDIOSILO_BACKUP_SCHEDULE` | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` |
 | `AUDIOSILO_BACKUP_KEEP` | `backups.keep` | integer, 1-365 |
-| `AUDIOSILO_BACKUP_DIR` | `backups.dir` | Absolute path. The Docker entrypoint also prepares ownership when every part of the path is free of symbolic links. See [Under Docker](#under-docker). |
+| `AUDIOSILO_BACKUP_DIR` | `backups.dir` | absolute path; the Docker entrypoint also prepares its ownership (see [Under Docker](#under-docker)) |
 | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | `modules.podcasts.enabled` | `strconv.ParseBool` (`true`/`1`/…); locks the console toggle when set |
 | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | `modules.contributions.enabled` | `strconv.ParseBool` (`true`/`1`/…); each module's toggle is `AUDIOSILO_MODULES_<ID>_ENABLED` |
 | `AUDIOSILO_OIDC_ENABLED` | `auth.oidc.enabled` | `strconv.ParseBool` (`true`/`1`/…); read at start |
@@ -1562,9 +1562,9 @@ A library folder the server can't list is [unavailable](scanner.md#the-unavailab
 
 The AudioSilo image starts as root to prepare ownership. It then runs the
 folder checks and the server as `PUID:PGID` using `su-exec`. The defaults are
-`1000:1000`. Supply numeric user and group IDs. The ownership command accepts
-decimal values from 0 through 4294967294 for each ID. The final unsigned 32-bit
-value, 4294967295, is reserved. Only the specified group is set.
+`1000:1000`. Both are numeric, 0 through 4294967294 each (4294967295 is
+reserved). Only that group is set, so access a host user has through another
+group doesn't reach the server.
 
 A non-root Compose `user:` or Docker `--user` skips ownership preparation.
 The checks and the server run as that account. The entrypoint sets
@@ -1581,7 +1581,8 @@ so a large data folder can finish.
 
 - The walk stays on the data folder's mount, including btrfs subvolumes on
   that mount. It skips other filesystems, nested directory mounts (even on
-  the same disk) and automounts. It also skips folders named `.snapshots`,
+  the same disk, so a share mounted at `/data/backups` keeps its owner) and
+  automounts. It also skips folders named `.snapshots`,
   `@snapshots`, `#snapshot`, `.snapshot` or `.zfs`.
 - The walk never follows symbolic links. It can change the owner of the
   link itself. A writable mounted regular file, such as `/data/config.yaml`,
@@ -1595,8 +1596,7 @@ so a large data folder can finish.
   access. Each backups preparation step has its own five-second limit.
 
 The entrypoint excludes the container root and paths containing `..` from
-ownership preparation. With the default settings, a separate share mounted
-at `/data/backups` keeps its own owner.
+ownership preparation.
 
 #### Access checks at startup
 
@@ -1614,8 +1614,7 @@ folder. A warning for a file names that file.
 
 The probes run concurrently and share one five-second deadline, including
 owner lookups. Each path still waiting at the deadline gets a network-share
-warning. Startup can take longer because the ownership steps and configuration
-lookup have separate limits. The entrypoint continues to the server even if
+warning. The entrypoint continues to the server even if
 `checkdirs` itself fails. The server still needs usable data to start.
 
 `scripts/test-entrypoint.sh` exercises these cases in Docker.

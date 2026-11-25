@@ -6972,8 +6972,7 @@ filesystem root (`/`, or the working directory's drive on Windows).
 
 On a `404 folder_unreadable`, the response can include the same
 `folder_access` object as an [offline admin library](#get-apiv1adminlibraries).
-For example, a folder the server can identify but lacks permission to list
-can return the following JSON.
+For example:
 
 ```json
 {
@@ -11227,15 +11226,10 @@ A failed delivery is not an HTTP error here: the answer is `200` either way,
 }
 ```
 
-A `library_unavailable` event carries `library`, `library_id` and the scan's
-reason in `data.detail`. The bell and **Server > Events** append the reason
-to the offline notice. A permission error names the path, the server account
-and the owner when known. The webhook appends the same reason to `message`.
-Its `data` contains only `library` and `library_id`. Consecutive unavailable
-scans generate one notification.
-
-See [Events](../backups-and-notifications.md#events) for the other kinds.
-A failed scan (`scan_failed`) keeps its detail in the admin feed.
+`data` per kind is in [Events](../backups-and-notifications.md#events). A
+failed scan's `detail` is here, for the bell, but never sent to a destination;
+a `library_unavailable` event's `detail` is the scan's reason, which the bell
+and **Server > Events** append to the offline notice.
 `next_before` is `0` on the last page. Podcast events never carry the feed's
 address, and a private show's carry `private: true` instead of its name
 ([Podcast events](../backups-and-notifications.md#podcast-events)). A `before` that isn't a non-negative
@@ -11492,9 +11486,7 @@ only (never a file's contents) and is not audited.
 
 - The server checks that it can open and list the absolute folder path.
   On success, `root` comes back cleaned. On `404 folder_unreadable` the
-  response uses the [folder picker's error body](#get-apiv1adminfsdirs),
-  including `folder_access.server_user` on Unix and `folder_access.owner`
-  when known.
+  response uses the [folder picker's error body](#get-apiv1adminfsdirs).
 - **The root** is checked against the other libraries as library create checks
   it, so a folder inside, or containing, a podcast library's folder is refused
   with `409 root_overlaps`. Two books libraries at one folder are allowed, so
