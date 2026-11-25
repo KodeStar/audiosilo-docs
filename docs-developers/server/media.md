@@ -193,9 +193,11 @@ scope.
    - On server version 2.7.0 or later, a primary `.mka` can supply an image
      attachment up to 16 MiB. `metadata.MatroskaCover` prefers an image named
      `cover.<ext>` (case-insensitive), then the first supported image attachment.
-   - `metadata.CoverMIME` checks the picture's bytes to identify JPEG, PNG, GIF,
-     WebP or BMP. The handler serves the detected type. An attachment with
-     other content cannot supply a cover, whatever its name or declared type.
+   - The `Content-Type` comes from the picture's **bytes** (`metadata.CoverMIME`,
+     an allow-list: JPEG, PNG, GIF, WebP, BMP), never from the type the tag or
+     attachment declares. Data that sniffs as anything else is treated as no art.
+     The response comes from this origin, so trusting the tag would let a
+     crafted audio file declare `text/html` and have the server serve a page.
    - It is served with `Cache-Control: private, max-age=86400`.
 
 When no tier has a cover, the answer is `404 {"error":"no cover"}`.
@@ -226,9 +228,17 @@ cover, instead of full-size art.
   original is kept.
 - **Small JPEGs served as received.** `Thumbnail` keeps the original bytes for
   a small CMYK JPEG or one with an EXIF orientation other than 1 or an ICC
-  colour profile (`readJPEGRendering`). This preserves how a viewer renders
-  the image. It also keeps a small JPEG whose segments or pixels it cannot
-  fully decode.
+  colour profile (`readJPEGRendering`). Go's encoder writes neither, so a
+  re-encode would show it turned or in other colours. It also keeps a small
+  JPEG whose segments or pixels it cannot fully decode.
+- **Orientation.** On server version 2.7.0 or later, a scaled thumbnail is
+  turned upright by the source's EXIF orientation (PNG and WebP included), and
+  `media.ThumbnailRev` is `t3`.
+- **Community previews.** On server version 2.7.0 or later, a community cover's
+  preview ([`/meta/cover`](api/reference.md#get-apiv1librariesidmetacover) and
+  [`POST /admin/meta/covers`](api/reference.md#post-apiv1adminmetacovers)) goes
+  through `media.ThumbnailJPEG`, which always re-encodes, a small JPEG too, so
+  no byte of an upstream's file reaches a client.
 - **Size limit.** `Thumbnail` reads the image header first and refuses anything
   over `MaxThumbnailSourcePixels` (40 megapixels) before decoding, so a small
   file that claims huge dimensions can't exhaust memory.
@@ -568,15 +578,19 @@ ffmpeg -nostdin -loglevel error -xerror -protocol_whitelist fd -f matroska -i fd
 - `-xerror` fails the run on a read error rather than leaving a short copy.
 
 **Codec check.** On server version 2.7.0 or later, the remuxer makes a bounded
-read of the first audio track's header before reserving disk space. A known
-non-MP3 codec gives `ErrRefused`. If a cold `HEAD` identifies AAC, the server
-remembers the refusal too. A header read error leaves the next `GET` free to try again.
-See the [stream response for each codec](api/reference.md#get-apiv1librariesidstream).
+read of the first audio track's header (`metadata.MatroskaAudioCodec`) before
+reserving disk space. A known codec other than MP3 is `ErrRefused`, so the
+stored file is the answer even on a server short of disk. A cold `HEAD` reads
+the header too and remembers a refusal. A header that can't be read now is no
+refusal: the next `GET` tries again.
 
-If the header leaves the codec unknown, ffmpeg tries the stream copy. If its
-MP3 muxer rejects the codec before writing output, that also counts as a refusal.
-The server remembers a refusal in memory for an hour per cache key
-(`cacheRefusalTTL`, up to 1,024 keys). A changed key is eligible immediately.
+If the header leaves the codec unknown, ffmpeg tries the stream copy. Its mp3
+muxer refuses anything but exactly one MP3 audio stream, which also covers
+folder parts whose codec the index doesn't hold; that refusal is `ErrRefused`
+too. The server remembers a refusal in memory per cache key for an hour
+(`cacheRefusalTTL`, up to 1,024 keys). The memory expires because what looks
+like the file's fault may be the environment's, such as an ffmpeg missing an
+encoder. A changed file is a new key, and the server tries it again at once.
 
 These are not refusals:
 
@@ -734,8 +748,10 @@ ffmpeg -nostdin -loglevel error -protocol_whitelist fd -i fd: \
   copy that fails is not cached, and the server remembers it as a refusal for an
   hour.
 
-**The cache.** Watch copies live at `<data>/cache/renditions/watch/<key>.m4a`.
-See [Remux and watch cache keys](#remux-and-watch-cache-keys) for the key inputs.
+**The cache.** Watch copies live at `<data>/cache/renditions/watch/<key>.m4a`,
+a `FileCache` like the remux's (keyed as in
+[Remux and watch cache keys](#remux-and-watch-cache-keys)), with its own bounds.
+A source that changes while it is read is never cached under the old key.
 
 | | Watch renditions | Remux (for comparison) |
 |---|---|---|

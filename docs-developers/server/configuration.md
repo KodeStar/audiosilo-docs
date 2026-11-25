@@ -612,7 +612,7 @@ server never contacts the metadata service, nor, in mirror mode, GitHub for a ne
 copy. Every player connected to it stops showing the section, because players
 gate on the `metadata` capability.
 
-The same switch controls the [community chapter checks](community-chapters.md#kicks).
+The same switch controls the [community chapter checks](community-chapters.md).
 
 - While it is on, the background pass checks matched books. It sends only their
   ASIN or ISBN, then the community's work and recording ids. In mirror mode the
@@ -698,12 +698,12 @@ audiosilo-meta's public packages:
 Remote mode stays the default. Players see no difference: no wire change and no
 capability change.
 
-On server version 2.7.0 or later, the mirror signals when its first usable
-copy opens, whether from disk at startup or from a download
-(`metamirror.Mirror.Loaded`). The first scheduled checks for community
-chapters and upcoming releases wait up to ten minutes for that signal,
-then proceed. A due unknown-ASIN report waits until the copy is usable and
-wakes as soon as it loads.
+**Waiting for the first copy.** The mirror signals when its first usable copy
+opens, from disk at startup or from a download (`metamirror.Mirror.Loaded`).
+The first [community chapter](community-chapters.md) pass and the first
+upcoming-releases run wait up to ten minutes for it, then proceed. A due
+unknown-ASIN report waits until the copy is usable; on server version 2.7.0
+or later it runs as soon as the copy loads, not an hour later.
 
 **Parity by construction.** `meta.Service.SetMirror` swaps the metadata client's
 transport for `fallbackTransport` (`internal/meta/mirror.go`). The client still

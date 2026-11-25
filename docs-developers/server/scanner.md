@@ -1922,8 +1922,6 @@ The `.epub` is never audio.
 
 ## Covers
 
-The scanner looks for a sidecar image and records whether the book has cover art.
-
 **During enrichment**, `findCover` looks for a conventionally named sibling
 image: `cover.jpg`, `cover.jpeg`, `cover.png`, `folder.jpg` or `folder.png`.
 
@@ -1944,8 +1942,8 @@ The result is stored in `books.cover_path`.
 
 The scanner sets `books.has_cover` when it finds a sidecar or embedded art.
 The catalog's cover filter also includes books with a custom cover.
-On server version 2.7.0 or later, it checks the signature of an MKA image
-attachment during indexing. The cover handler reads the full image when
+On server version 2.7.0 or later, the scan reads only the signature of an MKA
+image attachment. The cover handler reads the full image when
 requested. See [cover resolution](media.md#covers-handlecover) for the
 attachment names and formats it accepts.
 

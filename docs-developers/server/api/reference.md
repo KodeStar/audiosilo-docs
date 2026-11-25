@@ -3404,21 +3404,20 @@ The fetch keeps the guards of
 addresses only, at most three redirects and never from HTTPS to HTTP, no user
 info, 15 seconds and 16 MiB.
 
-A `200` returns an `image/jpeg` preview with a longest side of at most `size`
-pixels. On server version 2.7.0 or later, the server applies the image's EXIF
-orientation and encodes a fresh JPEG even if the source is already a small
-JPEG. The server never enlarges the image. It discards upstream metadata and
-trailing bytes. For colour profiles on saved covers, see
-[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity).
+Response `200`: `image/jpeg`, the image decoded and re-encoded within `size` x
+`size` pixels (never scaled up), so the upstream's bytes and content type never
+reach the client. On server version 2.7.0 or later this holds for a small JPEG
+too, and the preview is turned upright by the image's EXIF orientation (see
+[Thumbnails](../media.md#thumbnails-for-the-admin-console-post-admincovers)).
 
 - Thumbnails come from the server's in-memory thumbnail cache, the one
   [`POST /admin/meta/covers`](#post-apiv1adminmetacovers) uses (keyed by URL and
   size). Requests for the same thumbnail at once share one fetch.
-- `ETag` is `"community-<size>-<rev>-<hash>"`. The hash identifies the URL.
-  The thumbnail encoding revision changed to `t3` in 2.7.0, so a client
-  revalidating an older preview receives a fresh JPEG.
-  `Cache-Control` is `private, max-age=86400`. A matching `If-None-Match`
-  returns `304` without fetching the image.
+- `ETag` is `"community-<size>-<rev>-<hash>"`, the hash of the URL (`rev` names
+  how the server makes thumbnails, as on [`?size=`](#get-apiv1librariesidcover)), and
+  `Cache-Control` is `private, max-age=86400` (a community cover URL names one
+  image; a new cover is a new URL). A matching `If-None-Match` is a `304` without
+  the image being fetched.
 - **A failed fetch is not cached, but it is remembered for 1 minute**: until then
   the same URL is answered `502 cover_unavailable` straight away, without asking
   its host again, so a broken or hung host isn't fetched on every render. The
@@ -3564,7 +3563,9 @@ of its audio as plain MP3:
 - chapters as ID3 `CHAP` frames;
 - a strong `ETag: "remux-<key>"` and (from 2.7.0) no `Last-Modified`, so a
   validator kept from the stored Matroska never earns a `304` or a spliced range,
-  and an `If-Range` with the ETag resumes with a `206`.
+  and an `If-Range` with the ETag resumes with a `206`. On server version 2.7.0
+  or later the key changes once (see
+  [Remux and watch cache keys](../media.md#remux-and-watch-cache-keys)).
 
 It is the same URL that served the Matroska before, so shipped clients stream the
 MP3 with no change. A podcast library's stream is never remuxed.
@@ -3578,12 +3579,12 @@ busy keep waiting for a copy still being made, up to 45 seconds
 transcode, and a busy server doesn't answer `503`. Past that wait they are
 transcoded after all.
 
-On server version 2.7.0 or later, when the MKA header identifies AAC or
-another known non-MP3 codec, a plain `GET` returns the stored file as
-`audio/x-matroska`. A plain `HEAD` returns its headers. This applies even on
-the first request with too little disk space for a cached copy. To request
-live MP3, use `transcode=1` with ffmpeg enabled. See
-[how the remuxer checks the codec](../media.md#remuxing-matroska-medianewremuxer).
+An `.mka` holding another codec (AAC, Opus, FLAC) is served as stored,
+`audio/x-matroska`; `transcode=1` asks for the live MP3. On server version
+2.7.0 or later the server reads the codec from the file's header first, so such
+a file is served as stored on its first request too, even on a server short of
+disk, never transcoded. See the
+[codec check](../media.md#remuxing-matroska-medianewremuxer).
 
 **A share that stops answering** (from 2.7.0). Every look a stream makes at
 its file shares one bound of 45 seconds from the request's start
@@ -3697,8 +3698,9 @@ one file), each `path` as `/stream` takes it, with its `state`:
 2. an indexed sibling cover file (served with
    `Cache-Control: private, max-age=86400`);
 3. [embedded art](../media.md#covers-handlecover) from the book's primary audio
-   file, including a supported MKA attachment. The server identifies the
-   `Content-Type` from the image bytes and sends `Cache-Control: private, max-age=86400`.
+   file (on server version 2.7.0 or later, an `.mka` file's image attachment
+   too), with its `Content-Type` sniffed from the image bytes and
+   `Cache-Control: private, max-age=86400`.
 
 The path is authorized against the caller's share scope before any of the
 three is tried, custom covers included.

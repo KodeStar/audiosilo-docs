@@ -95,9 +95,7 @@ which an `indexed_at` in the basis would.
 
 ### Kicks
 
-On server version 2.7.0 or later, switching community metadata from off to on
-in settings schedules a pass for due books. A `Kick` also follows every
-committed book change. The API registers it with
+A `Kick` follows every committed book change. The API registers it with
 `Catalog.OnBookChange`. These fire it after their transaction:
 
 - `UpsertBooks` and `UpsertBook` (a scan);
@@ -111,6 +109,9 @@ They fire to every listener, so the
 [cover colour pass](media.md#the-background-colour-pass) hears them too. A kick
 waits 5 s for the kicks behind it, because a scan kicks once per book. A burst
 is therefore one pass, and the pass only checks what is due.
+
+On server version 2.7.0 or later, switching metadata on in settings
+(`PATCH /admin/settings`) kicks the pass too, so due books are checked at once.
 
 ### On-demand checks
 

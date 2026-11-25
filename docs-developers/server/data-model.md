@@ -473,10 +473,10 @@ dates from 0001. Later migrations added these columns:
 - `has_cover`: whether the book has a sidecar image or embedded art. It is
   `NULL` until a scan has checked, and always true when `cover_path` is set
   (`UpsertBook` enforces that).
-  On server version 2.7.0 or later, migration `0096` resets this flag to
-  `NULL` only for books with `format = 'mka'` and `has_cover = 0`. The next
-  scan [checks those books for embedded art](scanner.md#backfills-for-a-skipped-book)
-  even when their audio is unchanged.
+  On server version 2.7.0 or later, migration `0096` resets it to `NULL` only
+  where `format = 'mka'` and `has_cover = 0`, so the
+  [skipped-book backfill](scanner.md#backfills-for-a-skipped-book) looks for an
+  MKA file's attached art.
 - `format`, `size`, `mtime`, `indexed_at`.
 - `codec`: ffprobe `codec_name`, `""` when unknown. It drives the
   `direct_playable` API flag.
