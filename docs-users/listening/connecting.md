@@ -98,7 +98,7 @@ If you go back one screen, you can enter the same code for the same server and c
 
 ![The invite code form says “This device may already have used the invite” and suggests using a password or asking for a new invite.](/img/screenshots/web-player/connect-invite-maybe-used.png)
 
-*If an older server's reply never arrived, the player can't tell whether the device used the invite.*
+*If a reply never arrived, the player can't always tell whether this device used the invite. Then it says the device may have, and the same two options work.*
 
 ### "Your library is ready."
 

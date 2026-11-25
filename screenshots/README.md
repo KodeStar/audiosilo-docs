@@ -592,16 +592,16 @@ finds its own server and shows the App Store, Google Play and APK links.
 `connect-ready.png` signs in by password. For `connect-headers.png`, the browser
 receives the 404 a static web host returns for the server probe. Its local storage
 holds a saved set for the HTTPS address typed into the form.
-`connect-wrong-api.png` opens the served player through the local TLS proxy below,
-and the browser receives an HTML 404 page for `/api/v1/server` only.
+`connect-wrong-api.png` opens the served player through the local TLS proxy from the
+Cast capture, and the browser receives an HTML 404 page for `/api/v1/server` only.
 
 A temporary listener takes `phone-book-finish-pending.png` and the two invite shots.
 For the pending finish, the player is told the server has `progress_edit` but not
 `listening_sync`, so Mark as finished waits for its `PATCH`. The real reply is held
-until the notice is in the shot. The invite shots redeem a real two-use invite in
-fresh contexts and drop the successful exchange reply. For `connect-invite-used.png`
-the same device retries after the server's one-minute window, which costs the run a
-minute. For `connect-invite-maybe-used.png` the browser first answers the exchange
+until the notice is in the shot. The invite shots redeem a real two-use invite
+through the same TLS proxy, in fresh contexts, and drop the successful exchange
+reply. For `connect-invite-used.png` the same device retries after the server's
+one-minute window, which costs the run a minute. For `connect-invite-maybe-used.png` the browser first answers the exchange
 with an older server's 400, so the player resends without `device_id`. The
 listener, its invite and sessions are removed after the capture.
 
