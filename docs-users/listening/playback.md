@@ -68,9 +68,7 @@ Until it reaches the server, your listening waits on the device. Home says how m
 
 If you're signed in to the same account on the same server in two browser tabs, press **Play** in the tab you want to hear. The other pauses and says **Playback started in another tab** when you look at it. Other accounts and devices can keep playing.
 
-With the same book open in two windows side by side, the paused player follows each saved place while the other keeps playing. If your server [converts the audio for your browser](#books-a-browser-cant-play-directly), the paused tab catches up when you return to it or press **Play**.
-
-Press **Play** to listen from the shared place without an extra auto-rewind. If the player can't move there, press **Retry** to load the book at that place.
+With the same book open in two windows side by side, the paused one keeps up with the playing one's place. If your server [converts the audio for your browser](#books-a-browser-cant-play-directly), the paused tab catches up when you return to it or press **Play** instead. Press **Play** to carry on from there. If the player can't move to that place, press **Retry** to load the book there.
 
 ## Listening while offline
 
