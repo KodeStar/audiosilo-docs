@@ -99,14 +99,10 @@ secrets.
 | `asr.worker_fallback` | `AUDIOSILO_BRIDGE_ASR_WORKER_FALLBACK` | `local` | what a segment does when no [ASR worker](workers.md) is connected. `local` uses the Bridge's own `asr.*` backend, and a Bridge with none waits anyway. With `wait` the book parks `asr_worker_waiting` until a worker connects. Unlike the rest of `asr.*` it applies live, to the next segment. The page's **Settings** edits it, and it is locked when the environment sets it |
 | `asr.threads` | `AUDIOSILO_BRIDGE_ASR_THREADS` | `0` | whisper.cpp's thread count for the Bridge's own (CPU) transcription. `0` keeps whisper.cpp's default of 4. On a 20-core Mac Studio in Docker, 16 threads ran 3x faster (1.4x real time against 0.4x to 0.5x). Leave room for what else the machine runs. Read at the start |
 
-When you update a service with `worker install`, explicit flags override its
-saved settings.
-
-| Setting | How the worker chooses it |
-|---|---|
-| Data folder | `worker install` uses `--data` first, then a nonempty `AUDIOSILO_WORKER_DATA`, then the installed service's data folder. The default is `~/.audiosilo-bridge-worker`. A foreground worker skips the service's saved setting. |
-| Token | The worker uses `--token`, then `worker.token` in the selected data folder, then `AUDIOSILO_WORKER_TOKEN`. |
-| Bridge and speech recognition | An update keeps the service's `--bridge`, `--backend`, `--model` and `--whisper-cli` values when you omit those flags. Use `worker install --reset-model` to return to the backend's default model. Combining it with a nonempty `--model` is an error. |
+The worker itself takes flags, not this file: `--bridge`, `--token`, `--data`,
+`--backend`, `--model` and `--whisper-cli`, plus `AUDIOSILO_WORKER_DATA` and
+`AUDIOSILO_WORKER_TOKEN`. How an update chooses each of them is in
+[the service](workers.md#the-service).
 
 ## Characters and recaps
 

@@ -71,8 +71,7 @@ relative to the segment.
 
 For a no-context decode (`no_context`), the whisper.cpp backend passes `-mc 0`.
 In v1.9.1 this also makes the decoder ignore `initial_prompt`, even on the first
-window. Repair retries that request no context therefore get no vocabulary hints
-from the prompt.
+window, so a no-context repair retry gets no vocabulary hints.
 
 The id is a hash of the audio's sha256 and the decode options. So the same segment
 is the same task across a restart of the Bridge: its ASR stage asks for the same
@@ -222,14 +221,17 @@ plist's `ProgramArguments`, converting a binary plist to XML through
 `carryForward` in `cmd/audiosilo-bridge/worker.go` parses those arguments with
 the worker's flag set.
 
-- Explicit flags override saved values. An update keeps the service's
-  `--bridge`, `--backend`, `--model` and `--whisper-cli` when you omit them.
-  Use `worker install --reset-model` to clear the saved model and use the
-  backend's default.
+- An update keeps the service's `--bridge`, `--backend`, `--model` and
+  `--whisper-cli` unless you pass them. An explicit flag wins, an empty one
+  included. `worker install --reset-model` drops the saved model for the
+  backend's default; combining it with a nonempty `--model` is an error.
 - For the data folder, `--data` wins, followed by a nonempty
   `AUDIOSILO_WORKER_DATA`, the service's saved `--data` and finally
-  `~/.audiosilo-bridge-worker`. The worker looks for its saved token in the
-  folder it selects.
+  `~/.audiosilo-bridge-worker`. A foreground `worker` skips the service's
+  folder. When `AUDIOSILO_WORKER_DATA` replaces a different saved folder, the
+  installer says so and tells you to unset it to keep the saved one.
+- The token is `--token`, then `worker.token` in the selected data folder, then
+  `AUDIOSILO_WORKER_TOKEN`.
 - The installer reports which flags it kept, except with `--print`. A missing
   file means a first install. If the installer can't read the file, for example
   because a systemd argument contains a variable it can't resolve, it reports
@@ -351,9 +353,8 @@ script takes:
 - `--dir <path>`: where the program goes.
 - `-h`.
 
-**The program folder.** An explicit `--dir` selects where the script puts the
-program. Otherwise the script reads the program path from the installed service.
-On macOS it uses `plutil` to read the first entry in the plist's
+**The program folder.** Without `--dir`, the script reads the program path from
+the installed service. On macOS it uses `plutil` to read the first entry in the plist's
 `ProgramArguments`. On Linux it reads the first word of the unit's `ExecStart`.
 The script reuses that folder, including for `--run`, if the path is absolute,
 the folder exists and is writable, and the program path needs no unescaping.
@@ -366,11 +367,14 @@ starts only after the whole script arrives.
    Silicon Mac under Rosetta, it selects the native `arm64` build for Metal.
 2. It downloads the program to a temporary file beside the target and runs
    `version` to check that the program works.
-3. If the script needs the installed service's data folder to find the saved
-   token, it runs the downloaded program's `worker install --check-token`.
-   This checks for a local token using the same settings as the install, even
-   when the data path contains spaces or escaped characters. If the check
-   fails, the script exits before replacing the installed program.
+3. On an update with no token given (no `--token`, no `AUDIOSILO_WORKER_TOKEN`,
+   no `AUDIOSILO_WORKER_DATA`, not `--run`), the token lives in the installed
+   service's data folder, so the script runs the downloaded program's
+   `worker install --check-token`. That applies the install's own folder rules,
+   so a path with spaces or escapes still works. With no token there, it stops
+   with "this update needs --token ... the installed worker is unchanged"
+   before replacing the installed program. In the other cases the script checks
+   `worker.token` in `AUDIOSILO_WORKER_DATA` or the default folder itself.
 4. The script moves the program into place and prints a hint if its folder is
    missing from `PATH`.
 5. It runs `worker install --bridge <addr> [--token ...]`, or starts `worker`
