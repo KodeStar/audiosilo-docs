@@ -22,6 +22,11 @@
 // says it is in Britain (locale en-GB), so the metadata step preselects the
 // United Kingdom marketplace the way a real admin's browser would. Run once
 // per fresh --setup server: the account it makes closes the wizard.
+//
+// Two permission shots make the books folder unreadable (chmod 0) for a moment
+// and restore its mode afterwards: setup/folder-unreadable.png (step 2's Check
+// folder) and admin/library-offline.png (the library's card after a rescan,
+// shot here because this capture owns that books folder).
 import {chmod, mkdir, rm, stat} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
@@ -97,6 +102,8 @@ const tall = async (file, min = 900, max = 2400) => {
 };
 const heading = (name) => page.getByRole('heading', {level: 1, name, exact: true});
 const button = (name) => page.getByRole('button', {name, exact: true});
+// The owner line of a refused folder's notice ("The folder belongs to 0:0.").
+const OWNER_LINE = /The folder belongs to \d+:\d+/;
 // Only the books created by this capture lose access. Restore their original
 // permissions even when the browser cannot capture the notice.
 const withUnreadableBooks = async (capture) => {
@@ -148,7 +155,7 @@ await step('the console flow', async () => {
   if (wanted('setup/folder-unreadable.png')) {
     await step('check an unreadable books folder', () => withUnreadableBooks(async () => {
       await button('Check folder').click();
-      await page.getByText(/The folder belongs to \d+:\d+/).waitFor();
+      await page.getByText(OWNER_LINE).waitFor();
       await shoot(page, 'setup/folder-unreadable.png');
     }));
   }
@@ -215,7 +222,7 @@ if (wanted('admin/library-offline.png')) {
     await page.goto(`${wizard.origin}/admin/library/libraries`);
     const library = page.getByRole('listitem', {name: 'Audiobooks', exact: true});
     await library.getByRole('button', {name: /^(Rescan|Retry)$/}).click();
-    await library.getByText(/The folder belongs to \d+:\d+/).waitFor({timeout: 30000});
+    await library.getByText(OWNER_LINE).waitFor({timeout: 30000});
     await library.getByRole('button', {name: 'Retry', exact: true}).waitFor();
     await shoot(page, 'admin/library-offline.png', {clip: around([await library.boundingBox()])});
   }));
