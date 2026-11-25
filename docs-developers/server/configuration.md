@@ -453,8 +453,8 @@ Podcast libraries are configured outside this file too:
 |---|---|---|
 | `scan.concurrency` | int, `0` | How many audio files a scan reads at once, `0` to `64`. Reading a file means its tags and the in-process probe, then ffprobe for a file the probe leaves to it. `0` means one per CPU, up to 8 (`library.DefaultScanReaders`). CPUs are counted by `GOMAXPROCS`, so in a container that is its CPU limit, not the host's cores. Discovery lists folders and looks files up 8 at once, or fewer when this is set below 8 (see [A rescan that finds nothing changed](scanner.md#a-rescan-that-finds-nothing-changed)). Lower it for a library on a slow disk or a busy share. Raise it for a fast disk on a machine with cores to spare. Read once at start (`Scanner.SetConcurrency`), with **no console setting**. `AUDIOSILO_SCAN_CONCURRENCY` sets it too |
 
-The index comes out the same however many files a scan reads at once (see
-[Reading several files at once](scanner.md#reading-several-files-at-once)).
+For how the scanner schedules reads and writes, see
+[Reading several files at once](scanner.md#reading-several-files-at-once).
 The cap of 8 for the default is deliberate: past about eight, each ffprobe
 run costs more CPU as they contend. On a 20-core machine, 20 at once finished
 the same scan sooner than 8 (8.0 s against 13.4 s) but took about a third more
