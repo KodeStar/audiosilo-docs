@@ -192,10 +192,10 @@ It refreshes the cached spend figures every 5 minutes or when a job finishes.
 
 | Field | Where it comes from |
 |---|---|
-| `asr_seconds_per_audio_hour` | Decode seconds per hour of audio on the route the next segment would use. The scheduler uses that route for job and queue ETAs too. |
+| `asr_seconds_per_audio_hour` | the decode seconds per hour of audio on the route the next segment would use (below), the same rate the job and queue ETAs use |
 | `agent_usd_per_audio_hour` | the finished audio books' agent spend over their hours (a long book weighs more); `null` before the first |
 | `agent_usd_per_ebook` | the finished ebook books' average spend; `null` before the first |
-| `samples` | The number of finished books used for the agent spend estimates. |
+| `samples` | the finished books the two spend figures come from |
 | `agent_backend`, `agent_ready`, `subscription` | the agent container's state ([runner.json](agent-container.md#runner-liveness)): the CLI the Bridge runs, whether it is available (a fresh heartbeat, the CLI present with a credential the provider hasn't refused) and whether that credential is a subscription login |
 | `can_contribute` | a GitHub token resolves and isn't refused (below); the `setup` block carries the same answer, which the server prefers |
 | `monthly_budget_usd`, `month_spent_usd` | `agent.monthly_budget_usd`, and this calendar month's (UTC) agent spend across every book |
@@ -321,7 +321,7 @@ server stores it opaquely; at most 16 KiB):
 | `message_code`, `message_params` | the code of a fixed sentence (`starting`, `book_lookup`, `saving_sidecars`, `rescan_them`, `finished`...) and its values; absent for an engine stage's label and the job's own park reasons (the library's name or an error in a sentence) ([Job progress](pairing-and-jobs.md#job-progress)) |
 | `done`, `total` | the current stage's counts, when it has some |
 | `stage` | the engine state |
-| `eta_seconds` | The engine's estimate of time left for the whole book, when available. Parked and paused books omit it, as does a book [waiting for its ASR turn](pairing-and-jobs.md#job-progress). |
+| `eta_seconds` | the engine's whole-book estimate of the time left, when it has one (never while parked, paused or [waiting for its ASR turn](pairing-and-jobs.md#job-progress)) |
 | `cost_usd` | the agent spend so far: the budgets' basis (each run's provider-reported cost, else its complete API-price estimate), rounded to cents |
 | `source` | `audio` or `ebook` |
 | `park` | while parked only: `code`, `hint` (the Bridge's English advice), `retry_at` (RFC 3339) when the park resumes by itself, and `message`, the park's sentence for people: the job's error without the `<code>: ` it may lead with, absent when only the code is left (`jobs.withParkMessage`). The Bridge's own page shows `message`, or the job's `error` without its code for a job parked by an older Bridge. That page never shows the code |

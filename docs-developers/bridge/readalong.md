@@ -128,7 +128,7 @@ of the following counts because the checks can flag the same words.
 - The final 12 words if the tail-rate check flags a burst.
 
 The loop count uses the transcript's own whitespace-separated words. For example,
-“don't” counts as one word even when the loop detector splits it into two tokens.
+"don't" counts as one word even when the loop detector splits it into two tokens.
 
 Generate uses `repair.AdoptFresh` for a whole chapter. A read-along uses
 `repair.AdoptFreshReadalong` and adopts the new transcript only when it passes

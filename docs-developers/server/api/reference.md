@@ -12368,7 +12368,7 @@ result, an error. Every report renews the lease.
 |---|---|
 | `attempt` | **required**: the `attempts` its claim returned. A report from an earlier claim (one whose lease ran out and was claimed again) is refused |
 | `state` | optional: `running`, `done`, `failed`, `needs_attention` or `cancelled` (from `claimed`, `running` or `needs_attention`) |
-| `progress` | Optional JSON object up to 16 KiB, stored as sent. It carries `step`, `message` and any `message_code`, `message_params`, counts (`done`, `total`) or kind-specific fields. [Job progress](../../bridge/pairing-and-jobs.md#job-progress) describes the codes, including `asr_turn_wait`. A parked job's progress names its park, `park {code, hint, retry_at?, message?}`, where `message` is the park's sentence without the `<code>: ` the job's `error` may lead with. [Progress](../../bridge/generating.md#progress) says who reads it. An older Bridge sends no park `message` |
+| `progress` | optional: a JSON object, at most 16 KiB, stored as sent: `step`, `message`, an optional `message_code` and `message_params` ([Job progress](../../bridge/pairing-and-jobs.md#job-progress), which lists the codes, `asr_turn_wait` among them), `done`, `total` and the kind's own fields. A parked job's progress names its park, `park {code, hint, retry_at?, message?}`, where `message` is the park's sentence without the `<code>: ` the job's `error` may lead with. [Progress](../../bridge/generating.md#progress) says who reads it. An older Bridge sends no park `message` |
 | `result` | optional: a JSON object, at most 64 KiB |
 | `error` | optional: text, cleaned rather than refused (control characters become spaces, line breaks are kept, cut at 2 KiB) |
 

@@ -43,8 +43,8 @@ offline or too old, the card says so.
 
 ![The Make a read-along confirmation](/img/screenshots/admin/readalong-dialog.png)
 
-The card shows progress and lets you **Cancel**. If the server cancels the job, the card says why.
-You can also follow the job in [Server > Settings > Bridge > Jobs](bridge.md#jobs).
+The card shows progress and lets you **Cancel**. If the server cancels the job,
+the card says why. You can also follow the job in [Server > Settings > Bridge > Jobs](bridge.md#jobs).
 
 When another book is using speech recognition, the Bridge's **Jobs** tab says
 **Waiting for a turn to use speech recognition**. The row shows no count or
