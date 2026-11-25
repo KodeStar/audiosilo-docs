@@ -3049,11 +3049,16 @@ async function pendingFinish(page, user) {
   await notice.getByText('Marked as finished', {exact: true}).waitFor();
 }
 
+// The two invite failures. The current server refuses the same device's retry
+// after its one-minute window. An older one first refuses the device_id field.
+const INVITE_FAILURES = [
+  {file: INVITE_USED, legacy: false, reason: 'This invite was already used by this device.'},
+  {file: INVITE_MAYBE_USED, legacy: true, reason: 'This device may already have used the invite.'},
+];
+
 // Redeem a real invite. Lose a successful exchange on the return trip, after
-// the server has spent the use. The current server gets the same device's
-// retry after one minute. An older one first refuses the device_id field.
-async function inviteFailure(page, origin, code, file) {
-  const legacy = file === INVITE_MAYBE_USED;
+// the server has spent the use.
+async function inviteFailure(page, origin, code, {file, legacy, reason}) {
   const exchange = '/api/v1/auth/exchange';
   await page.route(origin + exchange, async (route) => {
     if (legacy && route.request().postDataJSON().device_id) {
@@ -3075,7 +3080,6 @@ async function inviteFailure(page, origin, code, file) {
     await sleep(MIN + 1000);
     await submit.click();
   }
-  const reason = legacy ? 'This device may already have used the invite.' : 'This invite was already used by this device.';
   await alert.filter({hasText: reason + ' Sign in with your password or ask your admin for a new invite.'}).waitFor();
   const form = page.getByRole('img', {name: 'Step 2 of 3'}).locator('..');
   await shootElement(page, form, file, 20);
@@ -3099,10 +3103,10 @@ if (wanted(FINISH_PENDING, INVITE_USED, INVITE_MAYBE_USED)) {
       if (wanted(INVITE_USED, INVITE_MAYBE_USED)) {
         const {auth_code} = await api(admin, 'POST', `/admin/users/${user.id}/authcode`, {max_uses: 2});
         await withHttpsPlayer(PROXY_HOST, async (on, origin) => {
-          for (const file of [INVITE_USED, INVITE_MAYBE_USED].filter((f) => wanted(f))) {
+          for (const failure of INVITE_FAILURES.filter((f) => wanted(f.file))) {
             const ctx = await newCaptureContext({ignoreHTTPSErrors: true, serviceWorkers: 'block'}, on);
             try {
-              await step(file, async () => inviteFailure(await ctx.newPage(), origin, auth_code, file));
+              await step(failure.file, async () => inviteFailure(await ctx.newPage(), origin, auth_code, failure));
             } finally {
               await ctx.close();
             }
