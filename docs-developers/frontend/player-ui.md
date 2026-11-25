@@ -65,7 +65,7 @@ Content scrolls behind the card, so scroll screens reserve room with
 ### The docked player (tablet and desktop)
 
 `DockedPlayer` (`src/components/shell/docked-player.tsx`) has the whole-book
-progress line across the top. At the default text size it has three columns.
+progress line across the top, and three columns:
 
 - **Left:** the cover, chapter, book and sync state. A tap opens the full player.
 - **Middle:** `TransportControls size="sm"` over the dock's `ChapterScrubber`. The

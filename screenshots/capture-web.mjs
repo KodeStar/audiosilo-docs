@@ -519,15 +519,19 @@ async function scrollToTop(locator) {
 // A short pause for an entrance animation to finish after the state it waits on.
 const SETTLE_MS = 600;
 
+// Chromium's default font size, and the doubled size the large-text shots use.
+const DEFAULT_FONT_PX = 16;
+const LARGE_FONT_PX = 32;
+
 // Change Chromium's default font while the page is open, as in the browser's settings.
 async function withLargeText(page, capture) {
   const session = await page.context().newCDPSession(page);
   try {
-    await session.send('Page.setFontSizes', {fontSizes: {standard: 32}});
-    await page.waitForFunction(() => getComputedStyle(document.documentElement).fontSize === '32px');
+    await session.send('Page.setFontSizes', {fontSizes: {standard: LARGE_FONT_PX}});
+    await page.waitForFunction((px) => getComputedStyle(document.documentElement).fontSize === `${px}px`, LARGE_FONT_PX);
     await capture();
   } finally {
-    await session.send('Page.setFontSizes', {fontSizes: {standard: 16}});
+    await session.send('Page.setFontSizes', {fontSizes: {standard: DEFAULT_FONT_PX}});
     await session.detach();
   }
 }
@@ -723,21 +727,22 @@ async function captureWide(name, viewport, shots) {
           await scrollToTop(tid(page, 'book-tab-details'));
           await shoot(page, shots.bookDetails);
         }
-      }
-      if (wanted(shots.bookDetailsLarge)) {
-        const details = tid(page, 'book-tab-details');
-        await page.setViewportSize({width: 800, height: 1060});
-        try {
-          await withLargeText(page, async () => {
-            await page.waitForFunction(() => {
-              const row = document.querySelector('[data-testid="dock-row"]');
-              return row && getComputedStyle(row).flexDirection === 'column';
+        if (wanted(shots.bookDetailsLarge)) {
+          // A tablet-width window, where large text stacks the dock's transport.
+          await page.setViewportSize({width: 800, height: 1060});
+          try {
+            await withLargeText(page, async () => {
+              await page.waitForFunction(() => {
+                const row = document.querySelector('[data-testid="dock-row"]');
+                return row && getComputedStyle(row).flexDirection === 'column';
+              });
+              await scrollToTop(tid(page, 'book-tab-details'));
+              await page.mouse.move(0, 0);
+              await shoot(page, shots.bookDetailsLarge);
             });
-            await scrollToTop(details);
-            await settleShoot(page, shots.bookDetailsLarge, SETTLE_MS);
-          });
-        } finally {
-          await page.setViewportSize(viewport);
+          } finally {
+            await page.setViewportSize(viewport);
+          }
         }
       }
     });
