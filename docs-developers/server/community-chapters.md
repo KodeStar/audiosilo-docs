@@ -111,7 +111,8 @@ waits 5 s for the kicks behind it, because a scan kicks once per book. A burst
 is therefore one pass, and the pass only checks what is due.
 
 On server version 2.7.0 or later, switching metadata on in settings
-(`PATCH /admin/settings`) kicks the pass too, so due books are checked at once.
+(`PATCH /admin/settings`) kicks the pass too, so due books are checked after
+the kick's 5 s wait rather than at the next interval.
 
 ### On-demand checks
 

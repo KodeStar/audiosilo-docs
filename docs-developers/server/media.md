@@ -231,8 +231,9 @@ cover, instead of full-size art.
   colour profile (`readJPEGRendering`). Go's encoder writes neither, so a
   re-encode would show it turned or in other colours. It also keeps a small
   JPEG whose segments or pixels it cannot fully decode.
-- **Orientation.** On server version 2.7.0 or later, a scaled thumbnail is
-  turned upright by the source's EXIF orientation (PNG and WebP included), and
+- **Orientation.** On server version 2.7.0 or later, every re-encoded
+  thumbnail (any PNG or WebP, and a JPEG larger than the size) is turned
+  upright by the source's EXIF orientation, and
   `media.ThumbnailRev` is `t3`.
 - **Community previews.** On server version 2.7.0 or later, a community cover's
   preview ([`/meta/cover`](api/reference.md#get-apiv1librariesidmetacover) and
@@ -698,7 +699,8 @@ modification time in nanoseconds. On Unix the ID is the inode alone. The
 device number can change on remount, so the key omits it. On Windows the ID
 is the volume serial number and file index. If the filesystem supplies no ID,
 the server uses the exact path spelling with the size and modification time.
-Watch renditions also include the encode version (`watch-v1`, from `renditionVersion`).
+Watch renditions also include their encode tag, `watch-v1` (the kind and
+`renditionVersion`).
 
 The key is the first 32 hex digits of the SHA-256 hash. Case or Unicode
 variants of the same path share one copy and ETag when they resolve to the same

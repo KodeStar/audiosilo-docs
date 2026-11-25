@@ -1900,8 +1900,9 @@ an ebook, and a digest that is not current.
   disk.
 - `SetEbookDigest` updates the digest only while the row still names the
   same ebook and holds the signature the caller read before hashing.
-- On server version 2.7.0 or later, if a scan and a request race to save
-  digests for different EPUB signatures, the losing writer rereads the row.
+- On server version 2.7.0 or later, if two writers (a scan and a request, or
+  two requests) race to save digests for different EPUB signatures, the losing
+  writer rereads the row.
   It retries the conditional write only if the file on disk still matches
   the signature it hashed. If the file changed again or disappeared, the
   competing digest stands.
@@ -1942,10 +1943,13 @@ The result is stored in `books.cover_path`.
 
 The scanner sets `books.has_cover` when it finds a sidecar or embedded art.
 The catalog's cover filter also includes books with a custom cover.
-On server version 2.7.0 or later, the scan reads only the signature of an MKA
-image attachment. The cover handler reads the full image when
-requested. See [cover resolution](media.md#covers-handlecover) for the
-attachment names and formats it accepts.
+On server version 2.7.0 or later, indexing an MKA file reads only the
+signature of its image attachment (`mkvPicture`), and the cover handler reads
+the full image when requested. The
+[skipped-book backfill](#backfills-for-a-skipped-book), which migration `0096`
+queues for MKA books, goes through `media.EmbeddedCoverBelow` and so reads the
+whole attachment once. See [cover resolution](media.md#covers-handlecover) for
+the attachment names and formats it accepts.
 
 ## What a scan notices for the Health page
 

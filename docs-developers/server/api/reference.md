@@ -3564,7 +3564,7 @@ of its audio as plain MP3:
 - a strong `ETag: "remux-<key>"` and (from 2.7.0) no `Last-Modified`, so a
   validator kept from the stored Matroska never earns a `304` or a spliced range,
   and an `If-Range` with the ETag resumes with a `206`. On server version 2.7.0
-  or later the key changes once (see
+  or later the key changes once where the filesystem gives a file ID (see
   [Remux and watch cache keys](../media.md#remux-and-watch-cache-keys)).
 
 It is the same URL that served the Matroska before, so shipped clients stream the
@@ -9093,9 +9093,10 @@ server checks the pixel limit from the image header. It saves images up to
 5 MiB as fetched. For a larger image it makes a JPEG within 1600 x 1600 pixels.
 
 On server version 2.7.0 or later, resizing applies EXIF orientation to the
-pixels and preserves a compatible ICC colour profile. A CMYK cover keeps its
-CMYK profile and ink channels. If the source is CMYK but the profile specifies
-RGB, the server drops the profile. If the JPEG with its profile still exceeds
+pixels and preserves a compatible ICC colour profile. A CMYK cover with a CMYK
+profile keeps that profile and its ink channels; one without a profile is
+converted to RGB. If the source is CMYK but the profile specifies RGB, the
+server drops the profile. If the JPEG with its profile still exceeds
 5 MiB, or the server cannot encode the profile in a JPEG, it saves a plain
 JPEG thumbnail without the profile.
 

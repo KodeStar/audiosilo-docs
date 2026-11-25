@@ -145,9 +145,9 @@ AudioSilo looks for a cover in this order:
 2. Any image in the book's own folder. (A loose single-file book only uses the names above.)
 3. Artwork inside the audio file. On server version 2.7.0 or later this includes a picture attached to an MKA file.
 
-A [cover you upload in the admin console](../admin/books.md#covers) takes priority over all three.
+So embedded art shows with no setup, and a `cover.jpg` in the book's folder overrides it. A [cover you upload in the admin console](../admin/books.md#covers) takes priority over all three.
 
-After you update to 2.7.0, the next library scan finds the art in MKA books that showed no cover before.
+After you update to 2.7.0, a picture attached to an MKA file shows straight away. The next library scan also counts those books as having a cover in the admin console.
 
 ## Renaming and moving are safe
 
