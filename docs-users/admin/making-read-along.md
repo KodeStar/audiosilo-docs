@@ -48,8 +48,9 @@ the card says why. You can also follow the job in [Server > Settings > Bridge > 
 
 When another book is using speech recognition, your book waits its turn. The
 **Jobs** tab on the Bridge's own page says **Waiting for a turn to use speech
-recognition**, and the console's job row shows the step it is waiting to start.
-Neither shows a count or time estimate while your book waits.
+recognition**. In the console, the book's card and its row in **Jobs** show the
+step it is waiting to start instead. None of them shows a count or time
+estimate while your book waits.
 
 Once transcription starts, the row shows progress and an estimate of the time
 left when available. When the read-along is ready, the book's card says how much
