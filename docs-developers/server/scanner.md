@@ -332,8 +332,11 @@ row holds:
 - On server version 2.7.0 or later, a new book that a player opens during the
   scan counts once in `added`, even if the player indexed it first. The
   [new-books notice](backups-and-notifications.md#events) includes it in its total.
-- A [read problem](#read-problems) increments `errors`. If the scan still
-  saves fresh lengths for the book, it increments `updated` too.
+- A [read problem](#read-problems) increments `errors`. An already-indexed
+  book whose read was cut short and that the catalog kept as stored counts
+  nowhere else. It counts in `updated` when the scan still saved fresh
+  lengths for it (`Book.LengthsRead`). Any other book with a problem is
+  written and counts in `added` or `updated` as usual.
 
 `ScanProgress` carries the same counters live (`added`, `updated`, `moved`,
 `removed`). Its `indexed` is `added + updated`.
@@ -556,13 +559,15 @@ time (`library/scanread.go`).
   [Configuration](configuration.md#library-scans-scan).
 - **Books read ahead.** Each book to index gets its own goroutine. `enrich` reads the
   primary file first, then `readFiles` uses the slots for the remaining parts.
-  It can stop early on a [read problem](#read-problems). The scan reads up
+  For an already-indexed book, it stops scheduling parts once its
+  [read problems](#read-problems) mean the book is kept as stored. The scan reads up
   to twice as many books ahead as it has slots (`2 * slots.size()`).
 - **A player opens a book during the scan.** The scan normally batches books
   in discovery order (`writeNext`). On server version 2.7.0 or later, a
   request that joins the scan's read can claim the finished book and write it
-  ahead of a slower book (`bookRead.publish`). The batch and the request
-  share one write. The scan records its outcome in discovery order.
+  ahead of a slower book (`bookRead.publish`). Whichever of the batch and the
+  request claims the book first writes it, once. The scan records its outcome
+  in discovery order.
 - **The player indexed the book first.** The scan checks the book's stored
   signature against discovery (`matchesOpenedBook`) and reuses a matching
   read with no recorded problem. See [scan counts](#counts).
@@ -2018,8 +2023,10 @@ that timed out while others ran is retried on its own (`readSlots.extract`):
 On a very slow share where many files time out, the retries make the scan
 slower than reading one file at a time would. Lower `scan.concurrency` there.
 
-**A read cut short on a hung share.** A tag read that times out, or a length
-read that times out even on its own, sets `Book.ReadCutShort`. The scanner
+**A read cut short on a hung share.** A tag read that times out or is refused
+at the per-mount limit, a length read that times out even on its own, a part
+that is not a regular file, or an open that fails as a share fails (EIO, a
+permission) sets `Book.ReadCutShort`. The scanner
 records the affected file so the next scan can check it. In a folder book,
 that file takes precedence over an earlier part with a lasting problem.
 
@@ -2293,9 +2300,9 @@ probes the book, while the other waits for it and loads what it stored.
   `indexTimeout`, callers receive the same 503 without starting another read.
 - At shutdown the server cancels the base context and closes admission to new
   detached reads. Favourite and admin Re-read workers (`API.WaitMediaCaches`)
-  and on-demand reads (`Scanner.WaitReads`) get to wind down before the
-  server closes the database. A request whose read ends at shutdown receives
-  `503 stopping` (`library.ErrStopping`), as do a Re-read and a Bridge rescan.
+  and on-demand reads (`Scanner.WaitReads`) are given time to wind down
+  before the server closes the database. A request whose read ends at
+  shutdown receives `503 stopping` (`library.ErrStopping`), as do a Re-read and a Bridge rescan.
 - The read stays inside the per-mount bounds of
   [the in-process probe](#the-in-process-probe).
 
