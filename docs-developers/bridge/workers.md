@@ -150,8 +150,10 @@ decode time, which excludes the wait for a claim and the audio transfer.
 The scheduler uses these times for its [transcription estimates](generating.md#the-bridges-figures).
 
 A resumed pass keeps the records for its completed segments. The top-level
-backend, model and language describe the run's configured settings. Older raw
-transcripts without a segment record use those defaults. When chapter detection
+backend, model and language describe the run's configured settings. Sanitizing
+stamps an older raw transcript that has no segment record with those settings.
+The read-along map's `generator.asr` ignores such a transcript and falls back to
+the configured model only when no segment record names one. When chapter detection
 builds new chapters, it preserves the original segment numbers under `windows`.
 
 If a resumed pass keeps raw transcripts and decodes another segment with a
