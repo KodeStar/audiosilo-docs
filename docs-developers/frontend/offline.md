@@ -1666,16 +1666,12 @@ reader forward if the server cannot supply a fresh copy. Chrome can keep the
 compiled code for scripts cached during install.
 
 The worker writes the root last, once all required files are in the cache. If a
-required transfer or the root write fails, it discards the newly created cache.
-What happens next depends on whether the registration already has an active
-worker.
+required transfer or the root write fails, it discards the newly created cache:
 
 - **First visit.** The worker still activates so it can serve downloaded media.
-  The next online visit to an app page of the same build can complete the cache.
 - **Update.** The browser keeps the active worker and can retry on a later visit.
-  If the failed replacement leaves a pre-manifest worker active (its URL has a
-  `build` parameter), the page sends that worker a `precache` message so it can
-  fetch the new build's chunks.
+  A kept pre-manifest worker is asked to fetch the new build
+  (see [Registration wiring](#registration-wiring)).
 
 On a successful online navigation to an app page of the same build,
 `repairBuild` checks for the cached root. If it is missing after a failed first
@@ -1686,16 +1682,17 @@ On activation, `retireBuilds` leaves cleanup to the newer worker if one is
 already installing. Otherwise it deletes older build caches and keeps only
 immutable files from the previous build, so an open tab can still load its chunks.
 For the legacy `audiosilo-shell-v1` cache, this clears stale pages, one-time
-URLs and the old build record. Downloads stay in `audiosilo-media-v1`, which
-also survives [admin console updates](../server/web-ui.md#the-service-worker).
+URLs and the old build record. Downloads stay in `audiosilo-media-v1` (the
+[console's worker](../server/web-ui.md#the-service-worker) leaves it alone).
 
 #### Serving requests
 
 - **Pages.** Navigation tries the network first. If the fetch throws, the worker
-  tries the cached page, then the cached root, then returns 503. The reader
-  document uses only its own cached copy as a fallback. Online, an app page
-  from a different build can render without replacing the offline shell. Pages
-  carrying a pairing `token` or a sign-on `flow` stay out of Cache Storage.
+  tries the cached page, then the cached root, then returns 503. The
+  [reader document](reader.md#the-reader-document) falls back only to its own
+  cached copy. Online, an app page from a different build can render without
+  replacing the offline shell. A page with a one-time `token` or `flow` is never
+  cached ([why](connect-and-addresses.md#single-sign-on)).
 - **Assets.** The worker serves content-hashed build files and fonts cache-first.
   Other same-origin scripts, styles, images and the PWA manifest use
   stale-while-revalidate. Token-bearing asset URLs, API calls and server-streamed
@@ -1730,6 +1727,10 @@ In production the URL is `<base>/sw.js`. If the [language preference](i18n.md#la
 resolves to a language other than English, registration appends `?lang=<code>`
 so the installer knows which catalog to fetch. Under Metro, `?dev=1` enables
 only offline media and leaves app pages to the dev server for hot reloading.
+
+When a new worker fails to install and the active worker is a pre-manifest one
+(its URL has a `build` parameter), the page sends that worker a `precache`
+message, so its offline shell takes the new build's chunks rather than a mix.
 
 ### What offline actually covers on web
 

@@ -65,10 +65,10 @@ identify the page, the connection and any server capability a read needs.
 | Destination | What the gate requests if the query cache lacks an answer |
 |---|---|
 | Every signed-in page | Server info and libraries for each visible connection. |
-| Home | Progress, Recently added and favourites for each connection. Other Home reads depend on the server capabilities below. |
-| Library in Books mode | Progress for each connection. The gate requests the grid's first page only when the saved selection appears as a book library in that connection's library list. It skips podcast and missing libraries. With no saved selection, the grid chooses its library when it mounts. |
+| Home | Progress, Recently added and favourites for each connection. |
+| Library in Books mode | Progress for each connection, plus the grid's first page when the saved selection is a book library in that connection's list. With no saved selection, the grid picks its library when it mounts. |
 
-On Home, the gate checks each connection's capabilities in its `/server` answer.
+On Home it also requests, by each connection's capabilities in its `/server` answer:
 
 - With `user_stats`, it requests 30-day stats. For the default connection it
   also requests a year of listening data and the listening goal for **This week**.
@@ -128,8 +128,8 @@ before the app switches to it (see
 During `npx expo export -p web`, the Metro serializer passes the final artifacts
 and assets to `scripts/web-precache.cjs`. It embeds a manifest in `sw.js`
 listing startup scripts and CSS, route and other deferred chunks, language
-catalogs by code, and fonts. The manifest's hash identifies the build. A change
-to the manifest changes the worker's bytes, so the browser detects the update.
+catalogs by code, and fonts. Its hash identifies the build, so a new build
+changes `sw.js`'s bytes and the browser installs the update.
 See [Installing the offline build](offline.md#installing-the-offline-build).
 
 ## The `baseUrl: "/web"` coupling
@@ -150,6 +150,6 @@ its own. That subpath runs through the build:
   bake a pinned web image into the server's Docker image, web image first (see
   the [release pipeline](../architecture/release-pipeline.md)).
 
-The server serves the generated worker at `<base>/sw.js` and the static PWA
-install manifest from `public/manifest.json` at `<base>/manifest.json`.
-The worker's scope is `<base>/`.
+The static PWA install manifest, `public/manifest.json`, is served at
+`<base>/manifest.json`; the worker's URL and scope are in
+[Registration wiring](offline.md#registration-wiring).
