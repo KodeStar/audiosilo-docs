@@ -670,9 +670,10 @@ The whole-book timeline is `book-timeline.tsx` with the pure
 
 - **Runs.** Chapters are merged into runs like the Now card's `scaleRuns`. Each run
   is placed by time with `runBox`, the one mapping that the playhead, taps and pins
-  use. Past segments use `bg-foreground/35`. Current and future segments use
-  `bg-track`, with the heard part of the current chapter in `bg-brand`. In high
-  contrast, `TrackOutline` draws under the fill on current and future segments.
+  use. Past segments use `bg-foreground/35`. The current segment is a pink tint
+  (`bg-brand/25`) with its heard part in solid `bg-brand`. Segments ahead use
+  `bg-track`. In high contrast, `TrackOutline` draws under the fill on the current
+  segment and those ahead.
 - **Chapter names.** At the playhead, `BookTimeline` uses the current chapter or
   row supplied by its caller for the hover tip and slider value text. Elsewhere it
   calls `chapterAtSecond`. The player uses `chapterAt` and keeps the playing
