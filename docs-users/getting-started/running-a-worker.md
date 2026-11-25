@@ -91,15 +91,30 @@ If the worker stops in the middle of a piece, only that piece is transcribed aga
 
 ## Updating
 
-After you update the Bridge, paste the command again on the worker computer. The
-installed worker keeps the token, so you can leave out `--token` and what follows:
+After you update the Bridge, run its install command again on the worker
+computer to download the matching worker. You can leave out `--token` and its
+value. The update reuses the token saved in the worker's data folder.
 
 ```bash
 curl -fsSL http://192.168.1.20:8091/worker/install.sh | sh -s
 ```
 
-The worker and the Bridge must be the same version. A worker that doesn't match
-says so in its log and waits.
+The installer chooses the worker's data folder in this order.
+
+1. The folder you give the installed program with `worker install --data PATH`.
+2. The folder you set in the `AUDIOSILO_WORKER_DATA` environment variable.
+3. The folder your installed service already uses.
+4. The default folder, `~/.audiosilo-bridge-worker`.
+
+If you choose a different folder and it has no saved token, you can supply the
+worker's token again with `--token`.
+
+To switch from a custom speech model back to the default, run this command on
+the worker computer. Use the path where you installed the program.
+
+```bash
+~/.audiosilo-bridge-worker/bin/audiosilo-bridge worker install --reset-model
+```
 
 ## Installing it by hand
 
@@ -144,7 +159,7 @@ again.
 |---|---|
 | *Failed to connect*, *Could not resolve host*, *timed out* or *the download failed* | Check the address in the command is your Bridge's (IP address and port `8091`), the Bridge is running, and both computers are on the same network. |
 | *only serves the worker install to its local network* | Run the command from a computer on the same network, not over the internet or a VPN. |
-| *--token is required* | Copy the whole command from the **Workers** tab. |
+| The installer asks for a token | On an update, check that you're using the data folder with the saved token. For a new worker, copy the whole command from the **Workers** tab. |
 | *this Bridge has no worker downloads* | The Bridge isn't running from its Docker image: [install by hand](#installing-it-by-hand). |
 | *a worker runs on macOS or Linux only* | Windows can't run a worker. Use a Mac or a Linux computer. |
 | *systemctl --user ...* (Linux) | Log in as that user directly (not through `su` or `sudo`) and paste the command again. |

@@ -69,6 +69,11 @@ A chapter is one kind of segment. The duration windows for chapterless books are
 another, through the same worker with no version bump. The transcript's times stay
 relative to the segment.
 
+For a no-context decode (`no_context`), the whisper.cpp backend passes `-mc 0`.
+In v1.9.1 this also makes the decoder ignore `initial_prompt`, even on the first
+window. Repair retries that request no context therefore get no vocabulary hints
+from the prompt.
+
 The id is a hash of the audio's sha256 and the decode options. So the same segment
 is the same task across a restart of the Bridge: its ASR stage asks for the same
 segment again, under the same id.
@@ -210,23 +215,25 @@ whisper.cpp binary and model) and the **spool**:
   decode included. Run `loginctl enable-linger` to keep it running while the user
   is logged out.
 
-**An update keeps the service's flags.** Before it writes the file,
-`worker install` reads the installed one back into its argv
-(`worker.Service.InstalledArgs`). That is the inverse of `Render`: it reads the
-plist's `ProgramArguments` or the unit's first `ExecStart`. Then it parses the argv
-with the same flag set that wrote it (`carryForward` in
-`cmd/audiosilo-bridge/worker.go`).
+**Updating the service.** Before rewriting the service file, `worker install`
+reads its arguments with `worker.Service.InstalledArgs`. On macOS it reads the
+plist's `ProgramArguments`, converting a binary plist to XML through
+`/usr/bin/plutil` on stdout. On Linux it reads the unit's first `ExecStart`.
+`carryForward` in `cmd/audiosilo-bridge/worker.go` parses those arguments with
+the worker's flag set.
 
-- Each written flag the command line didn't give keeps its installed value. Those
-  are `--bridge`, `--data`, `--backend`, `--model` and `--whisper-cli`, never
-  `--token`, which is never in the file.
-- The command prints which flags it kept, except with `--print`. Unless they were
-  given, the list always holds `--data` and `--bridge`, since `Render` writes both.
-- An explicit flag wins, an empty one included.
-- No file means a first install.
-- A file that doesn't read back the way `worker install` writes it keeps nothing.
-  That is a file with a specifier, a `$VAR`, another escape, or a word the parse
-  refuses. The command says so on stderr, before any `--bridge` refusal.
+- Explicit flags override saved values. An update keeps the service's
+  `--bridge`, `--backend`, `--model` and `--whisper-cli` when you omit them.
+  Use `worker install --reset-model` to clear the saved model and use the
+  backend's default.
+- For the data folder, `--data` wins, followed by a nonempty
+  `AUDIOSILO_WORKER_DATA`, the service's saved `--data` and finally
+  `~/.audiosilo-bridge-worker`. The worker looks for its saved token in the
+  folder it selects.
+- The installer reports which flags it kept, except with `--print`. A missing
+  file means a first install. If the installer can't read the file, for example
+  because a systemd argument contains a variable it can't resolve, it reports
+  the problem and uses the supplied settings and defaults.
 
 `worker uninstall` names the kept `--data` folder when it knows it.
 
@@ -331,45 +338,43 @@ The Workers tab's command is
 `curl -fsSL http://<bridge>/worker/install.sh | sh -s -- --token asw_...`. The
 script takes:
 
-- `--token`, required unless the worker's data dir already holds a saved token or
-  `$AUDIOSILO_WORKER_TOKEN` is set. Re-running the script without one is how a
-  worker updates.
-  - The data dir it checks is the installed service's `--data` when the service's
-    file names one plainly, since `worker install` keeps it. Otherwise, and for a
-    `--run` start, it is `$AUDIOSILO_WORKER_DATA` or `~/.audiosilo-bridge-worker`,
-    as `worker` finds it.
-  - The script reads the file more loosely than `InstalledArgs`: its words up to
-    the first escape. So a file `worker install` refuses can still pass this check.
-    `worker install` then looks in the default data dir, and asks for `--token`
-    when that has none and `$AUDIOSILO_WORKER_TOKEN` is unset.
-- `--run`: exec the worker in the foreground instead of installing the service. It
-  saves no token. When `--token` was passed, the script says a later re-run needs
-  it again. When the program lands in the folder the installed service runs from,
-  the script says the service keeps the old program until it restarts, and prints
+- `--token` supplies the worker token. You can omit it when the selected data
+  folder holds a saved token or `AUDIOSILO_WORKER_TOKEN` is set.
+- `--run` starts the worker in the foreground. It uses `AUDIOSILO_WORKER_DATA`
+  or the default data folder. If you supply `--token`, supply it again on the
+  next run because a foreground worker never saves it.
+  When the program lands in the folder the installed service runs from,
+  the script says the service keeps the old program until it restarts and prints
   the restart command (`launchctl kickstart -k
   gui/<uid>/app.audiosilo.bridge-worker` or `systemctl --user restart
   audiosilo-bridge-worker.service`).
 - `--dir <path>`: where the program goes.
 - `-h`.
 
-**The folder.** Without `--dir` the script reuses the installed service's folder:
-the folder of the program in the launch agent's `ProgramArguments` (macOS), or the
-first word of the systemd user unit's `ExecStart` (Linux), as `worker install`
-writes them. It reuses it, for a `--run` start too, when that is an existing,
-writable absolute folder with no character the file would have had to escape. It
-prints the folder it reused. Otherwise it falls back to
-`~/.audiosilo-bridge-worker/bin`. An explicit `--dir` always wins.
+**The program folder.** An explicit `--dir` selects where the script puts the
+program. Otherwise the script reads the program path from the installed service.
+On macOS it uses `plutil` to read the first entry in the plist's
+`ProgramArguments`. On Linux it reads the first word of the unit's `ExecStart`.
+The script reuses that folder, including for `--run`, if the path is absolute,
+the folder exists and is writable, and the program path needs no unescaping.
+Otherwise it uses `~/.audiosilo-bridge-worker/bin`.
 
-**What it does.** The script's body is one `main` called on the last line, so a
-download cut short runs nothing. The script:
+**What it does.** The script calls `main` on its last line, so installation
+starts only after the whole script arrives.
 
-1. maps `uname -s`/`uname -m` to the platform. An Apple Silicon Mac under Rosetta
-   takes the native `arm64` build, the one with Metal;
-2. downloads to a temp file beside the target;
-3. checks that the program runs (`version`);
-4. moves it into place;
-5. prints a `PATH` hint when its folder isn't on `PATH`;
-6. runs `worker install --bridge <addr> [--token ...]`.
+1. The script selects the build using `uname -s` and `uname -m`. On an Apple
+   Silicon Mac under Rosetta, it selects the native `arm64` build for Metal.
+2. It downloads the program to a temporary file beside the target and runs
+   `version` to check that the program works.
+3. If the script needs the installed service's data folder to find the saved
+   token, it runs the downloaded program's `worker install --check-token`.
+   This checks for a local token using the same settings as the install, even
+   when the data path contains spaces or escaped characters. If the check
+   fails, the script exits before replacing the installed program.
+4. The script moves the program into place and prints a hint if its folder is
+   missing from `PATH`.
+5. It runs `worker install --bridge <addr> [--token ...]`, or starts `worker`
+   directly for `--run`.
 
 A file `curl` writes carries no quarantine attribute, so Gatekeeper doesn't stop
 the unsigned binary on macOS. A browser download does carry one; the user guide's
