@@ -1321,12 +1321,14 @@ each `start`, it fetches the full item and chapters and calls
 `download(..., 'keep-ahead')`. It skips a book that was registered meanwhile, an
 errored entry too, because keep-ahead never retries a failure.
 
-After a series lookup or a held read, `currentPlan` checks the loaded book,
-`keepAhead` and `autoDownloadNext` before the controller publishes slots or
-starts a download. If the listener switched books, the old run stops and the
-controller plans from the new book. Since a query can wait offline and resume
+After a series lookup or a held read, `currentPlan` checks that the controller
+still runs and that the loaded book, `keepAhead` and `autoDownloadNext` are
+unchanged, before the controller publishes slots or starts a download. If the
+listener switched books, the old run stops and the controller plans from the
+new book. Since a query can wait offline and resume
 on mobile data, `startOne` checks the network rule again just before queuing
-each download, and a book the rule no longer allows is `declined`. See [The online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets).
+each download, and a book the rule no longer allows, or whose plan is no
+longer current, is `declined`. See [The online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets).
 
 - A `transcoded` outcome marks the book `unavailable`.
 - A `no-space` outcome marks it `tooBig` until the registry changes.

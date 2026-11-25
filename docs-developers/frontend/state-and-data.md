@@ -354,15 +354,16 @@ imports `watchDeviceOnline`.
 #### Starting a downloaded book
 
 If the connection has a client and its server is not marked down,
-`startBookInPlace` allows up to 750 ms for the first native network reading
-when choosing the book and chapters. An offline or still-unknown reading
+`startBookInPlace` waits for the first native network reading when choosing
+the book and chapters, until at most 750 ms after the network monitor started
+(`waitForDeviceOnline`). An offline or still-unknown reading
 selects the download's manifest. Inside `playBook`, only a resume or a
 download that [ends early](offline.md#a-download-that-ends-early) needs this
-wait. An explicit chapter or position in a complete download skips it there.
+wait. An explicit position or file in a complete download skips it there.
 
 On a resume, `readPlaceEarly` asks the server for the saved place as source
 selection begins, even if the network is still unknown. Only a `false`
-reading skips that request. `loadInitialProgress`
+reading, or a server marked down, skips that request. `loadInitialProgress`
 waits up to 3 s from the start of the read (`DOWNLOADED_PLACE_WAIT_MS`) before
 using this device's records. The read continues, so a late answer can still
 bring in [another device's newer place](playback.md#picking-up-another-devices-place-place-reconcilets).
@@ -1391,7 +1392,7 @@ The models:
     date.
   - The Now card shows [the saved place](#the-place-resume-plays) until the
     player reports a position past zero. For a loaded book it uses the
-    player's queue length and real chapters.
+    player's queue total and real chapters.
   - `nextCandidates` is the Now book, other books in progress, then recently
     finished books, at most `NEXT_CANDIDATES` (6). Each takes one `/next` on the
     candidate's own server.
@@ -2245,7 +2246,7 @@ See [the place readers](playback.md#what-a-kill-leaves-behind).
   `useProgressLookup` indexes the resulting rows for the active profile.
 - **Home's Now card and Up next's continue suggestion** use `savedTimeline`
   for their saved percentage. It maps the saved position within a file onto
-  the file order in the chapters cache. The total comes from the cached
+  the file order of the book's chapters. The total comes from those
   chapters when available, then the saved duration, then the catalog duration.
   Up next reads the cache without fetching chapters.
 
