@@ -90,7 +90,7 @@ Keep the player open on the same device. Once you're back online, tap **Try the 
 
 You can retry once, within a minute of the first attempt, without using up another of the invite's uses.
 
-If you go back one screen, you can enter the same code for the same server and carry on. If you leave sign-in altogether or reload the page, the retry is lost.
+If you go back one screen, you can enter the same code for the same server and carry on. If you were signing in with a code and leave sign-in altogether or reload the page, the retry is lost.
 
 If the player says this device already used the invite, sign in with your password or ask your admin for a new invite. Sometimes it says the device *may* have used the invite because the reply never arrived. The same two options work then.
 

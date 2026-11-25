@@ -145,8 +145,10 @@ client uses its older-server classification. The step's bare client keeps a
 wrong password from flagging a saved connection for reconnect. The form
 prompts for missing fields before sending a request.
 
-After an unanswered invite exchange, `keepUnansweredInvite` retains the pairing
-token in memory by server address and normalized code. Back, reopening the step
+After an invite exchange that fails without a final refusal (no answer, a `408`,
+a `429`, a `5xx` or a proxy's answer, as `isRefusedForGood` reads it), or any
+failed retry, `keepUnansweredInvite` retains the pairing token in memory by
+server address and normalized code. Back, reopening the step
 and trying another code all preserve it. If the exchange included the key and
 the player cannot save the resulting session, it keeps the pairing token too.
 Submitting that code again sends the same token and key. The server can replace
@@ -352,8 +354,9 @@ When `pairFailure` returns **refused**, the player stops retrying the link.
 - A `408` or no answer is "Could not reach the server to finish pairing.", or the
   self-signed certificate sentence where that may be why (`selfSignedMayBeWhy`).
 
-After a refusal the player removes the route's `token`. On a separate static host
-it keeps the link's target address in the field. A temporary failure offers
+After a refusal the player removes the route's `token`. The server's own player
+shows its card again for a link to its own origin. Elsewhere (the app, a static
+host, a link to another server) the field keeps the link's address. A temporary failure offers
 **Try the link again**. Once the first exchange has been sent, this button
 uses the original address, token and sign-in key.
 
