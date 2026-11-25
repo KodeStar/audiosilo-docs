@@ -533,6 +533,9 @@ async function withLargeText(page, capture) {
   } finally {
     await session.send('Page.setFontSizes', {fontSizes: {standard: DEFAULT_FONT_PX}});
     await session.detach();
+    // The next shot on this page must not catch the large layout on its way out.
+    await page.waitForFunction((px) => getComputedStyle(document.documentElement).fontSize === `${px}px`, DEFAULT_FONT_PX);
+    await sleep(SETTLE_MS);
   }
 }
 
@@ -983,10 +986,8 @@ async function captureWide(name, viewport, shots) {
       const books = await ctx.newPage();
       try {
         await books.goto(BASE + 'library?mode=books', {waitUntil: 'networkidle'});
-        await withLargeText(books, async () => {
-          await firstVisible(books.getByRole('button', {name: /^Alice in Wonderland, Lewis Carroll/})).waitFor();
-          await settleShoot(books, shots.library);
-        });
+        await firstVisible(books.getByRole('button', {name: /^Alice in Wonderland, Lewis Carroll/})).waitFor();
+        await settleShoot(books, shots.library);
       } finally {
         await books.close();
       }

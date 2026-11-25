@@ -101,15 +101,15 @@ The player follows your device's text size, contrast setting and screen reader. 
 
 With large text, a setting's control moves below its name. Large headings, such as the title on a book's page, grow up to twice their usual size.
 
-In the Library, titles and authors' names can wrap under their covers. Long folder names wrap too, and you can scroll the folder trail sideways. On a book's **Details** tab, each filename appears above its format, bitrate and length.
+In the Library, titles and authors' names can wrap under their covers. Long folder names wrap too, and you can scroll the folder trail sideways. On a book's [Details](book-page.md#details) tab, each filename appears above its codec, bitrate and length.
 
-The play, skip and chapter buttons grow up to one and a half times their usual size. In the full player, the buttons and seek bar fit the width of your screen. On a tablet or computer, the buttons move below the book when they need more room.
+The play, skip and chapter buttons grow up to one and a half times their usual size. In the full player, the buttons and seek bar fit the width of your screen. On a tablet or computer, the [player bar](playback.md#the-mini-player-and-the-player-bar) can move them below the book.
 
 ![Book details with large text. Each filename has its details underneath, and the play and skip buttons sit below the book.](/img/screenshots/web-player/book-details-large-text.png)
 
 - On **Android**, a long tab name can end in three dots. With large text, only the selected tab shows its name, sized to fit. TalkBack still reads every name in full.
 - In a **phone browser**, all five tabs keep their names. With large text, a long name can wrap.
-- On **iPhone**, text in the tab bar's player can grow by up to 30% so both lines fit. A long **Back** label can wrap beside the page title.
+- On **iPhone**, text in the tab bar's player can grow by up to 30% so both lines fit. The back button shows the name of the page you came from, and a long name can wrap beside the page title.
 - The squares in your [listening calendar](you.md#the-charts) grow with the weekday labels.
 
 In the ebook reader, the reader's **−** and **+** buttons also change the text size (see [Read the ebook](reading-the-ebook.md)).

@@ -99,8 +99,9 @@ centre. The measured width of the bar determines which controls appear.
 
 **With larger text**, `dockLayout(width, fontScale)` scales the side-column
 estimates and reserves room for the transport, whose buttons grow up to 1.5x.
-When equal columns no longer fit, it checks the space left for the book. Above
-1x it stacks the transport if that space would fall below `BOOK_MIN` (128 px).
+So above 1x the bar needs more width for every action and for the chapter
+scrubber. When equal columns no longer fit, it checks the space left for the
+book. Above 1x it stacks the transport if that space would fall below `BOOK_MIN` (128 px).
 From 1.3x it stacks whenever the sides cannot be equal. The book and actions
 share the first row, with the transport beneath. All controls remain available
 in the full player.

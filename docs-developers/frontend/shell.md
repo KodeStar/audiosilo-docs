@@ -71,8 +71,8 @@ minimum target per tab.
 - The banners sit under the sub-nav.
 - The page is capped at 1480 wide (`CONTENT_WIDTH`).
 - **`DockedPlayer`** appears when a book is loaded and has an 84 px minimum row
-  height. When larger playback controls leave too little room for the book,
-  they move below the book and actions. See
+  height. With larger text, when the bar is too narrow for equal side columns,
+  the transport can move below the book and actions. See
   [the docked player](player-ui.md#the-docked-player-tablet-and-desktop).
 - Up next opens as a bottom sheet.
 
