@@ -174,7 +174,7 @@ The first onboarding step offers:
 - the server address with its probe ("Found &lt;name&gt;", Sign in, Try the
   demo);
 - Scan a QR code (native) or a pasted pairing link (web);
-- a pairing `token` arriving by deep link or QR `web_url`, exchanged at once;
+- a pairing `token` from a deep link or QR `web_url`, exchanged after discovery at the chosen address;
 - one-tap **Reconnect** rows for remembered servers the person listening isn't
   signed in to (`knownToOffer` over `useProfileConnections`, `src/lib/known-servers.ts`).
   For Add someone (`?profile=new`), every remembered server gets a row.

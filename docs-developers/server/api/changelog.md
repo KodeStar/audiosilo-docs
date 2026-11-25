@@ -1,6 +1,6 @@
 ---
 title: API changelog
-description: "Per release, the additions and deprecations on the Stable routes of the AudioSilo server API, with a capability flag for each new behaviour."
+description: "Additions, deprecations and capability flags on the Stable routes of the AudioSilo server API, by release."
 ---
 
 This page lists, for each server release, what changed on the
@@ -32,8 +32,13 @@ Additions:
   400 `invalid_request`.
 - **Recognizing the server’s 401.** With capability `unauthorized_mark`, every 401 from the server
   carries the CORS-exposed header `X-AudioSilo-Unauthorized`. Its value is the body’s code or
-  `unauthorized`. A session token that cannot be checked because the database is unavailable gets
-  503.
+  `unauthorized`. A session token that the server cannot check, because the database is unavailable or it
+  cannot record the session's first use, gets 503.
+- **Recovering an invite sign-in.** `POST /auth/exchange` accepts an optional
+  `device_id`. Within 60 seconds, one retry with the same invite-derived pairing
+  token and sign-in key replaces an unused bearer on the original session without
+  spending another invite use. A bearer already used stays valid. There is no new
+  capability flag. See the [exchange reference](reference.md#post-apiv1authexchange).
 - **Single sign-on.** `GET /auth/oidc/start`, `GET /auth/oidc/callback` and
   `POST /auth/oidc/finish` ([Single sign-on](reference.md#single-sign-on)),
   for a page on the server's own origin. Capability `oidc`. While it is `true`,
@@ -94,6 +99,8 @@ Additions:
   there.
 - **Error codes.** `POST /auth/exchange` answers `401` with `code`
   `invite_used` or `invite_expired` for a token the invite minted.
+  A recognized device whose exchange can no longer be retried gets
+  `401 invite_used_by_this_device`, with the same code in `X-AudioSilo-Unauthorized`.
   `POST /auth/password` answers `401 current_password_incorrect` for a wrong
   `current_password`, which a client tells apart from a session that ended.
   `POST /auth/oidc/finish` answers `401` with `oidc_no_sign_in` or

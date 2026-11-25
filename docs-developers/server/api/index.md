@@ -115,8 +115,11 @@ Sessions have **no expiry**. They end only when something revokes them:
 - a password change or reset, which keeps only the caller's session (see
   [Password changes and Sign out everywhere end sessions](../auth-and-security.md#password-changes-and-sign-out-everywhere-end-sessions)).
 
-Every authenticated request bumps the token's `last_seen`, which is what
-surfaces as a user's "last activity". The request also records its address
+Authenticated requests update the token's `last_seen`, shown as the user's
+"last activity". A session token's first use is recorded before the request is
+authorized, and a failed write is a `503`
+([Resolving a request](../auth-and-security.md#resolving-a-request)). Later
+activity updates are best effort. The request also records its address
 (`last_ip`) on the token, and its app when it names one (see
 [Client identification](#client-identification-x-audiosilo-client)).
 
@@ -130,8 +133,9 @@ There are five ways to obtain a session token:
    `POST /auth/exchange` trades the pairing token for a durable session token
    (`{ token, user }`) and claims one invite use per device that pairs. An
    invite-derived pairing token stays valid for as long as the invite has uses
-   left, so one QR can pair several devices. A recovery-derived one lasts 10
-   minutes.
+   left, so one QR can pair several devices. A client that sends its sign-in key
+   as `device_id` can [recover a lost invite exchange](reference.md#post-apiv1authexchange)
+   once within 60 seconds. A recovery-derived token lasts 10 minutes.
 2. **Password login**. `POST /auth/login` with `username` and `password` returns
    `{ token, user }` directly. Passwords are optional for non-admin accounts, so
    this only works for accounts that have one.
@@ -317,6 +321,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`), or renaming one to it (`PATCH /admin/users/{id}`) |
 | `username_required` | `400` | an empty username on `POST /admin/users` or `PATCH /admin/users/{id}` (from 2.7.0) |
 | `invite_used` / `invite_expired` | `401` | an invite with no uses left, or past its expiry: `POST /auth/redeem` (from 2.5.0) and `POST /auth/exchange` for a token the invite minted (from 2.7.0) |
+| `invite_used_by_this_device` | `401` | `POST /auth/exchange` from a device that already exchanged this pairing token and can no longer [retry](reference.md#post-apiv1authexchange) (from 2.7.0) |
 | `current_password_incorrect` | `401` | `POST /auth/password` with a wrong `current_password` (from 2.7.0). A client tells this `401` apart from a session that ended, and keeps the session |
 | `name_taken` | `409` | a library or share name already in use (create, rename) |
 | `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: a `POST`, or a `DELETE` of the grant's own whole-library rule. Its rules change only by granting or revoking the library |
@@ -541,7 +546,7 @@ Status mapping is consistent across handlers:
 | `429` | a rate limiter tripped (see [Rate limiting](#rate-limiting)) |
 | `500` | unexpected internal failure. The message is generic, and details go to the server log only |
 | `502` | an upstream service failed: the community metadata service (`/meta` unless the book has [generated content](reference.md#generated-content), `/meta/cover`, `/meta/work`, the admin match search), or a community cover's own host (`PUT /admin/libraries/{id}/cover/community`, and `GET /libraries/{id}/meta/cover`, which answers a URL whose fetch failed less than a minute ago with the same `502` without asking its host again) |
-| `503` | database unreachable (`/healthz`), transcoding requested without ffmpeg, demo at capacity, a Bridge's token that couldn't be checked, or the request timeout (below) |
+| `503` | database unreachable (`/healthz`), transcoding requested without ffmpeg, demo at capacity, a token the server couldn't check (including a session whose first use it couldn't record), or the request timeout (below) |
 
 **Request timeout.** `http.TimeoutHandler` bounds non-streaming requests at
 **30 s**. A request that exceeds it gets `503 {"error":"request timed out"}`.

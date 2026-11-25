@@ -338,7 +338,7 @@ Response `200`: the pairing payload (`PairingPayload` in `internal/api/qr.go`):
 `/auth/exchange`.
 
 - Redeemed from an invite, it inherits the invite's remaining uses and expiry. One
-  QR can pair several devices, and each exchange claims one use.
+  QR can pair several devices. Each new session claims one use.
 - Redeemed from a recovery code, it lasts 10 minutes. Recovery codes are
   unlimited, so several devices can scan it within that window.
 
@@ -446,6 +446,28 @@ It refuses a single sign-on's token, which only
 |---|---|---|---|
 | `pairing_token` | string | yes | from `/auth/redeem`, `/auth/pair`, or a scanned QR |
 | `device_name` | string | no | label shown in session listings, e.g. `"Pixel 9"` |
+| `device_id` | string | no | random sign-in key for this server address, matching `^[A-Za-z0-9_-]{16,64}$`. An absent key or a string outside this format gets the ordinary exchange with no retry protection. |
+
+**Recovering a lost invite exchange.** Send one exchange at a time. If the reply
+is lost, resend the same invite-derived `pairing_token` and `device_id` within
+60 seconds of the first successful exchange. Redeeming the invite again gives
+you a different pairing token.
+
+The server allows one retry while the invite is valid and the original session
+is live and unused. It returns a new bearer for the same device session.
+The old bearer immediately fails with `401`. The retry costs no additional
+invite use, even if the first exchange claimed the last one.
+
+Once the session has been used, a retry leaves its bearer in place. The server
+records that first use before authorizing the request
+([Resolving a request](../auth-and-security.md#resolving-a-request)).
+
+**Older servers.** An older server's strict decoder rejects an exchange
+containing `device_id` with `400` and `"pairing_token is required"`, even when
+the token is present. That rejection spends nothing. A client can resend once
+without `device_id`, but should never repeat that request: with no key, each
+exchange can spend another use. The player's handling is in
+[Step 2: Sign in](/developers/frontend/connect-and-addresses#step-2-sign-in).
 
 Response `200`:
 
@@ -475,6 +497,7 @@ connection id is `<server_id>.<user_id>` with the answer's `user`
 |---|---|
 | `400` | `pairing_token` missing |
 | `401` | `code: "invite_used"`: the parent invite's use cap is spent (from 2.7.0) |
+| `401` | `invite_used_by_this_device` in both the JSON `code` and the `X-AudioSilo-Unauthorized` header. The server recognizes this pairing token and sign-in key, but the retry was spent or late, the session was used or ended, or the invite expired (from 2.7.0). |
 | `401` | `code: "invite_expired"`: the parent invite expired after the redeem (from 2.7.0) |
 | `401` | `invalid or expired pairing token`, no `code` (anything else: bogus/revoked token, single-use token already exchanged, code owner disabled) |
 | `429` | redeem lockout tripped, with `Retry-After` |
@@ -485,9 +508,13 @@ everywhere, a password change or a disable that commits first refuses the
 exchange (`401`), and one that commits after it ends the new session with the
 rest.
 
-A refused exchange never burns an invite use. Its `401`s carry the same codes as
-`/auth/redeem`'s. An older server sends them with no `code`: tell those apart
-only by the English `error`, or not at all.
+A refused exchange costs no invite use. The device-specific refusal is
+available while the pairing token and its exchange record still exist, even if
+the invite has uses left. Once the server removes the token, it returns the
+generic pairing-token refusal.
+An exchange with a different sign-in key claims a remaining use, or gets
+`invite_used` when none is left. Servers before 2.7.0 return exchange refusals without a
+`code`.
 
 ### `POST /api/v1/auth/login`
 

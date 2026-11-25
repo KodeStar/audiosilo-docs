@@ -75,11 +75,10 @@ drops what nothing took when the flow is left (`dropConnectHandoffs`).
 Both also take the console's **invite link**,
 `https://<base>/connect#code=XXXX-XXXX-XXXX-XXXX`. `parseInviteScan` in
 `src/lib/pairing.ts` reads it, and the server builds it in `inviteURL`. A `/web/connect`
-link is a pairing link, never an invite. An invite link sets the pending server and
-opens the sign-in step, which fills the code in and signs in with it at once, once
-(`initialCode`). The code is handed over in memory (`holdInvite` and `takeInviteCode` in
-`invite-handoff.ts`), taken once and only for that server. It never goes in the route,
-where it would stay in the browser's history.
+link carries a pairing token. An invite link sets the pending server and opens the
+sign-in step with its code filled in (`initialCode`). Opening the link again while
+the step opens reuses that handoff. The code stays in memory and the step submits it
+once discovery settles, provided the listener has left the field alone.
 
 On the served player, a pasted pairing or invite link for **another server** sends
 nothing. The player's CSP would block the call, and the failure would read as "Could not
@@ -87,7 +86,9 @@ reach the server". Instead the screen says the link is for another server and of
 **Open the link** (`Linking.openURL`).
 
 A route `token` comes from a pairing link or QR. It carries `server` on native, and
-`home` and `away` when the server sent them. The flow exchanges it at once.
+`home` and `away` when the server sent them. Before exchanging the token, the
+player reads `GET /server` at the chosen address to learn whether it marks its
+`401`s. Concurrent attempts for the same link and reconnect share one exchange.
 
 #### Remembered servers
 
@@ -102,45 +103,63 @@ A reconnect goes straight to sign-in unless the server runs a demo.
 
 #### The served player
 
-**The served player** is a production web build whose origin is the server
-(`servedOrigin()` in `src/lib/base-url.ts`). Its CSP, `connect-src 'self'`, reaches no
-other origin, so the person types nothing:
+The production web player probes its own origin (`productionWebOrigin()`).
+When `GET /server` returns a server ID, the player shows that server's sign-in
+card with no address field or remembered servers. AudioSilo serves the player
+with the CSP `connect-src 'self'`.
 
-- On open it asks its own origin, with a spinner meanwhile, and shows the found card
-  with no address field and no remembered servers.
-- Only when that probe fails does the field show, filled in with the origin.
 - "Add a server" is hidden while every connection is at the page's origin
   (`onlyOwnServer`).
 - The sign-in step's "Another server" reads "Back" and goes back.
 
-The Metro dev server (`npm run web`) is not the server, so it keeps the field.
+On a first visit, a `403`, `404` or successful response without a server ID
+could also come from a static host. The player makes a same-origin `HEAD`
+request for its own document (`playerAllowsOtherServers`). A readable document
+without the server's CSP leaves the field free for another server.
+If the CSP is present or the check fails, the player shows its own address
+and the probe error. A reverse proxy that misroutes the API and strips the
+CSP could look like a static host on first visit.
+The Metro dev server (`npm run web`) keeps the address field.
 
 ### Step 2: Sign in
 
 `/connect/sign-in` renders `SignInStep`. It signs in against the address in
 `pendingServerUrl`, read once when the screen opens, in one of two ways:
 
-- **An invite code**: `redeemCode`, then `exchange` (`signInWithCode`). A code handed
-  over by an invite link is submitted at once, and a refused one stays in the field
-  with the reason. A redeem can spend one of the invite's uses, so when the exchange
-  gets no answer (the network, a `5xx`, a `408` or a `429`), the step keeps the
-  pairing token, keyed on the server and the code. The next try of the same code at
-  the same server exchanges that token again instead of redeeming a second time,
-  which would spend another use and refuse a single-use invite as used. A token the
-  server refuses for good (`isRefusedForGood`) is never kept, and a kept one refused
-  that way is dropped and the code redeemed.
-- **A username and password**: `login`. Its `device_id` is this install's own random
-  sign-in key for that server address (`getSignInKey`, `src/lib/sign-in-key.ts`,
-  stored under `audiosilo.signInKeys`), so signing in again from it is not announced
-  to the admin as a new device. It is one key per address because the server keeps
-  it as a secret, so no server is sent the key another knows this install by. It is
-  never the progress `device_id`, which goes with every save and comes back in
-  progress answers. A server older than the field answers `400`, so the sign-in is
-  sent once more without it (never after a `401` or a `429`).
+- **Invite code.** `redeemCode` gets a pairing token. The following `exchange`
+  claims an invite use. A refused code stays in the field with the reason.
+- **Username and password.** `login` sends the trimmed username. An older
+  server that rejects the sign-in key with `400` gets one login without it.
 
-The step uses a bare client, because this is not a saved connection yet and a wrong
-password's `401` must never flag a reconnect. The username is sent trimmed. An empty
-code, username or password is prompted for under its field, and nothing is sent.
+`exchange` and `login` both send `device_id`. The player generates a
+random 16-byte sign-in key for each server address and stores its hex value in
+`audiosilo.signInKeys` (`getSignInKey`). This lets the server recognize a
+repeat password sign-in and lets the player recover an unanswered invite
+exchange. Progress sync uses a separate device ID.
+
+The step waits for discovery at the chosen address before enabling **Sign in**
+or submitting a link's code. When the server advertises `unauthorized_mark`,
+a marked `401` identifies the server's refusal even if a proxy replaced the
+body. An unmarked `401` then identifies the proxy. If discovery fails, the
+client uses its older-server classification. The step's bare client keeps a
+wrong password from flagging a saved connection for reconnect. The form
+prompts for missing fields before sending a request.
+
+After an invite exchange that fails without a final refusal (no answer, a `408`,
+a `429`, a `5xx` or a proxy's answer, as `isRefusedForGood` reads it), or any
+failed retry, `keepUnansweredInvite` retains the pairing token in memory by
+server address and normalized code. Back, reopening the step
+and trying another code all preserve it. If the exchange included the key and
+the player cannot save the resulting session, it keeps the pairing token too.
+Submitting that code again sends the same token and key. The server can replace
+the unused session bearer once within 60 seconds. Leaving the connect flow or reloading clears
+the saved attempts.
+
+On an older server's `400 "pairing_token is required"`, or a proxy's replacement
+`400` page, the client resends once without `device_id`. If that reply is lost
+or the session cannot be saved, the player remembers the failure and stops
+there. A second exchange without a key could claim another use. See the
+[exchange reference](../server/api/reference.md#post-apiv1authexchange).
 
 #### How a refusal reads
 
@@ -149,10 +168,13 @@ status and the request that failed (`SignInStage`):
 
 | Answer | Says |
 |---|---|
-| `401` or `400` at `redeem` | The code didn't work. |
-| `401` or `400` at `exchange` | The invite is used up or expired. |
-| `401` or `400` at `login` | Wrong name or password. |
-| `invite_used` or `invite_expired` on a redeem | Its own sentence. These codes need server 2.5.0; an older server's bare `401` reads as a code that didn't work. |
+| Server `401` or `400` with no recognized reason at `redeem` | The code didn't work. |
+| Unclassified server `401` or `400` on the first exchange | The invite is used up or expired. |
+| Server `401` or `400` with no recognized reason at `login` | Wrong name or password. |
+| `invite_used` or `invite_expired` on redeem or first exchange | All the invite's uses are taken, or the invite expired. |
+| `invite_used_by_this_device` | This device already used the invite. Sign in with a password or ask for a new invite. |
+| A retry gets a server `401` with no code or `invite_used`, or a keyless exchange to an older server got no answer | This device *may* already have used the invite. The player offers the same two alternatives. |
+| The proxy refuses sign-in | Check the proxy headers for this address. |
 | `member_disabled` | Its own sentence. |
 | `429` | The wait in seconds under a minute, otherwise in minutes, from `Retry-After` when the server sent one (`connect.signIn.errors.wait`), else "Too many tries". |
 | Anything else, such as no answer or a `5xx` | "Sign in failed". |
@@ -165,7 +187,7 @@ addresses are known only once the code is redeemed, and that is the sign-in itse
 
 #### Single sign-on
 
-The served player signing in to its own server (`onlyOwnServer(servedOrigin(),
+The served player signing in to its own server (`onlyOwnServer(productionWebOrigin(),
 [server])`) asks that server's `GET /server` once. While its `oidc` capability is
 `true`, the step adds "Sign in with &lt;name&gt;" under the sign-in button
 (`oidcButtonName`: `auth.oidc.name`, else "Sign in with single sign-on"). The app,
@@ -215,7 +237,7 @@ step leaves for the provider, `holdOidcIntent` writes the flow's intent to the t
 `sessionStorage`, stamped: a grown-up's pass through kids mode
 (`kidsConnectAllowed`), "Add someone", a signed-out visit's book, and a reconnect's
 connection with the address its sign-in step signed in through. The connect layout
-takes it once as it opens, and only on the return (`takeOidcIntent`, when
+reads it as it opens, and only on the return (`peekOidcIntent`, when
 `oidcReturnOnLoad` reads `/connect?oidc=1` and no other route of the flow). The
 stamp lasts 10 minutes (`MAX_AGE_MS`, the server's ten-minute trip limit), and the
 layout drops the intent as the flow is left. `resumeConnectIntent` puts "Add
@@ -308,13 +330,13 @@ A link's failed exchange is described in the app's words, never the server's. **
 classifier** (`pairFailure` in `use-pairing.ts`) reads the error once for both the words
 and what the failure means for the link (`PairOutcome`), so the two can't disagree.
 
-**Refused** means the link is dead. It covers every `4xx` except `408` and `429`:
+When `pairFailure` returns **refused**, the player stops retrying the link.
 
-- When the server names a code (`invite_used`, `invite_expired`, `member_disabled`),
-  `sharedRefusalText` words it. `/auth/exchange` names `invite_used` or
-  `invite_expired` for a token whose invite has no uses left or has expired. Any
-  other `401`, and every `401` from a server older than 2.7.0, takes the next rule.
-- A `401` or `410` is "This pairing link has expired or was already used..."
+- `sharedRefusalText` names the server's reason, including
+  `invite_used_by_this_device` for a recognized device whose retry is over.
+  If a keyless exchange to an older server got no answer, the player
+  says this device may already have used the invite.
+- A server `401` without a recognized reason, or a `410`, is "This pairing link has expired or was already used..."
   (`pairingRefused`).
 - Any other, a `409` without a code among them, is "This pairing link can't be used..."
   (`pairingUnusable`).
@@ -324,6 +346,7 @@ and what the failure means for the link (`PairOutcome`), so the two can't disagr
 
 **Temporary** means the same link can work later:
 
+- A proxy's `401` or `403` points to the proxy headers for this address.
 - A `429` names the remaining seconds under a minute, otherwise minutes. When the wait ends the
   text invites another try. Without `Retry-After` it says "Too many tries".
 - A `5xx` or another non-`4xx` status is "The server couldn't finish pairing..."
@@ -331,9 +354,11 @@ and what the failure means for the link (`PairOutcome`), so the two can't disagr
 - A `408` or no answer is "Could not reach the server to finish pairing.", or the
   self-signed certificate sentence where that may be why (`selfSignedMayBeWhy`).
 
-Only a refusal drops the route's `token`, so a reload doesn't try it again, and shows the
-served player's card. A temporary failure keeps the token for a reload and offers **Try
-the link again** (`connect-start.tsx`).
+After a refusal the player removes the route's `token`. The server's own player
+shows its card again for a link to its own origin. Elsewhere (the app, a static
+host, a link to another server) the field keeps the link's address. A temporary failure offers
+**Try the link again**. Once the first exchange has been sent, this button
+uses the original address, token and sign-in key.
 
 ### A link that names a book
 
@@ -506,10 +531,10 @@ network ([Home HTTP](../server/configuration.md#home-http-tlshome_http)). Its pa
 links carry `home=http://<host:port>` beside an `https://` base, plus the server's id as
 `sid=`, which `parsePairingScan` reads into `PairingScan.serverId`.
 
-The app can't trust the certificate, so `useLinkPairing` exchanges at the base first.
-Only when that couldn't connect does it ask `pairingFallback` whether to try the home
-address once. `withFallback` never falls back after an `ApiError`, because that is the
-server's own answer. `pairingFallback` says yes only when all of these hold:
+Before sending the pairing token, `useLinkPairing` asks the HTTPS base for
+`GET /server`. If discovery fails to connect, `pairingFallback` considers the
+home address. An HTTP error from the base rules the home address out. Home qualifies
+when all of these hold:
 
 - The app is native, because an https page can't call http.
 - The failure is not a timeout, because a host that never answered would only time out
@@ -519,7 +544,8 @@ server's own answer. `pairingFallback` says yes only when all of these hold:
 - The link carries a `sid`.
 - A tokenless `GET <home>/api/v1/server` answers with exactly that id.
 
-The exchange's own `server_id` must match too. The connection is stored with the https
+The app then uses the verified home's sign-in key for the exchange and any
+retry. The exchange's own `server_id` must match too. The connection is stored with the https
 base as `serverUrl`, which fails safely by TLS on another network, and the home as its
 address. `finishConnect` sets the home pick (`answeredAt`) before the connection is
 stored, so its first requests go home. The address runner then keeps that pick by the
