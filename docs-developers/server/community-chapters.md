@@ -76,10 +76,8 @@ which an `indexed_at` in the basis would.
 
 - Due books come oldest check first, 50 at a time, with two checked at once
   (`internal/pool`'s `Each`, shared with bulk matching).
-- In [mirror mode](configuration.md#mirror-mode-metadatamode-mirror) the first
-  pass after a start (the first with metadata on, since no copy loads while it
-  is off) waits for the local copy, at most 10 minutes (`mirrorReady`), so a
-  start sends no lookups to the service while the copy loads.
+- In mirror mode the first pass with metadata on
+  [waits for the local copy](configuration.md#mirror-mode-metadatamode-mirror).
 - A check gets 5 minutes. Pause searches stop 4 minutes in, counted from the
   check's start (the community list's fetch included), which leaves time to
   save the fit on any book. Boundaries not snapped by then keep their placed
@@ -97,7 +95,9 @@ which an `indexed_at` in the basis would.
 
 ### Kicks
 
-A `Kick` follows every committed book change. The API registers it with
+On server version 2.7.0 or later, switching community metadata from off to on
+in settings schedules a pass for due books. A `Kick` also follows every
+committed book change. The API registers it with
 `Catalog.OnBookChange`. These fire it after their transaction:
 
 - `UpsertBooks` and `UpsertBook` (a scan);

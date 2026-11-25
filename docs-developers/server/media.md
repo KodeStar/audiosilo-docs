@@ -188,16 +188,14 @@ scope.
      lifetime, a browser keeps a sidecar image fresh by heuristic (a tenth of
      the file's age), and a custom cover uploaded later could go unseen for
      weeks.
-3. **Embedded** (`media.EmbeddedCover`). The handler reads the book's primary
-   audio file with `dhowden/tag` and returns its embedded picture. The primary
-   file is the first `files` entry for a folder book, and the file itself
-   otherwise.
-   - The `Content-Type` comes from the picture's **bytes** (`coverMIME`,
-     `http.DetectContentType` against an allow-list: JPEG, PNG, GIF, WebP,
-     BMP), never from the MIME type the tag declares. Data that sniffs as
-     anything else is treated as no art. The response comes from this origin,
-     so trusting the tag would let a crafted audio file declare `text/html` and
-     have the server serve a page.
+3. **Embedded** (`media.EmbeddedCoverBelow`). The handler reads the book's
+   primary audio file (the first `files` entry for a folder book).
+   - On server version 2.7.0 or later, a primary `.mka` can supply an image
+     attachment up to 16 MiB. `metadata.MatroskaCover` prefers an image named
+     `cover.<ext>` (case-insensitive), then the first supported image attachment.
+   - `metadata.CoverMIME` checks the picture's bytes to identify JPEG, PNG, GIF,
+     WebP or BMP. The handler serves the detected type. An attachment with
+     other content cannot supply a cover, whatever its name or declared type.
    - It is served with `Cache-Control: private, max-age=86400`.
 
 When no tier has a cover, the answer is `404 {"error":"no cover"}`.
@@ -226,12 +224,11 @@ cover, instead of full-size art.
   `cover.jpg` is often saved near quality 95, about twice the bytes for a 180 px
   tile. One saved at a lower quality comes out larger from the re-encode, so the
   original is kept.
-- **Returned as is.** `Thumbnail` returns the source unchanged in these cases:
-  - it is CMYK, or carries an EXIF orientation other than 1 or an ICC colour
-    profile (`ownRendering`). Go's encoder writes neither, so a re-encode would
-    show it turned or in other colours.
-  - it doesn't decode fully;
-  - its segments can't be read.
+- **Small JPEGs served as received.** `Thumbnail` keeps the original bytes for
+  a small CMYK JPEG or one with an EXIF orientation other than 1 or an ICC
+  colour profile (`readJPEGRendering`). This preserves how a viewer renders
+  the image. It also keeps a small JPEG whose segments or pixels it cannot
+  fully decode.
 - **Size limit.** `Thumbnail` reads the image header first and refuses anything
   over `MaxThumbnailSourcePixels` (40 megapixels) before decoding, so a small
   file that claims huge dimensions can't exhaust memory.
@@ -570,13 +567,16 @@ ffmpeg -nostdin -loglevel error -xerror -protocol_whitelist fd -f matroska -i fd
   `If-Range` still matches after the copy was evicted and made again.
 - `-xerror` fails the run on a read error rather than leaving a short copy.
 
-**Is it MP3?** The server decides this by trying. ffmpeg's mp3 muxer refuses
-anything but exactly one MP3 audio stream, which also covers folder parts whose
-codec the index doesn't hold. That refusal is `ErrRefused`. The server answers
-it with the stored bytes and remembers it in memory per cache key for an hour
-(`cacheRefusalTTL`, up to 1,024 keys). The memory expires because what looks
-like the file's fault may be the environment's, such as an ffmpeg missing an
-encoder. A changed file is a new key, and the server tries it again at once.
+**Codec check.** On server version 2.7.0 or later, the remuxer makes a bounded
+read of the first audio track's header before reserving disk space. A known
+non-MP3 codec gives `ErrRefused`. If a cold `HEAD` identifies AAC, the server
+remembers the refusal too. A header read error leaves the next `GET` free to try again.
+See the [stream response for each codec](api/reference.md#get-apiv1librariesidstream).
+
+If the header leaves the codec unknown, ffmpeg tries the stream copy. If its
+MP3 muxer rejects the codec before writing output, that also counts as a refusal.
+The server remembers a refusal in memory for an hour per cache key
+(`cacheRefusalTTL`, up to 1,024 keys). A changed key is eligible immediately.
 
 These are not refusals:
 
@@ -590,10 +590,9 @@ A run that its own timeout killed **is** a refusal, in either cache
 (`timedOut`), so a copy that can't finish in time isn't started from zero on
 every request.
 
-**The cache.** The cache lives in `<data>/cache/remux/` (`0700`, made again if it
-went). It holds one file per source, named by the first 32 hex digits of a
-SHA-256 of the absolute path, size and mtime. A changed source is therefore a
-new key, and its old copy ages out.
+**The cache.** The server keeps each copy at `<data>/cache/remux/<key>.mp3`
+and recreates the directory with mode `0700` if needed. Both media caches
+use the same [source identity](#remux-and-watch-cache-keys).
 
 - A remux writes `<key>.<rand>.part`, syncs it and renames it into place. It
   never renames it under the key when the source changed while it was read.
@@ -677,6 +676,26 @@ book still reads as needing transcoding there:
 - the book page's playback line and Files card;
 - the Health `transcode` issue.
 
+### Remux and watch cache keys
+
+On server version 2.7.0 or later, `media.FileCache` hashes the case-folded,
+NFC-normalized absolute path, the filesystem's file ID, the size and the
+modification time in nanoseconds. On Unix the ID is the inode alone. The
+device number can change on remount, so the key omits it. On Windows the ID
+is the volume serial number and file index. If the filesystem supplies no ID,
+the server uses the exact path spelling with the size and modification time.
+Watch renditions also include the encode version (`watch-v1`, from `renditionVersion`).
+
+The key is the first 32 hex digits of the SHA-256 hash. Case or Unicode
+variants of the same path share one copy and ETag when they resolve to the same
+file ID. Distinct inodes keep case-sensitive files apart. On a FUSE mount with
+unstable inodes, an unchanged file can get a new key and ETag.
+
+Where a file ID is available, the server rebuilds each copy under its new key
+when next needed after the upgrade. Older copies age out under the usual
+cache limits. A request with the old ETag in `If-Range` gets the whole new
+copy (`200`).
+
 ## Watch renditions: `media.NewRenditionCache`
 
 Capability `renditions`. A watch downloads a book to play it away from the
@@ -715,21 +734,16 @@ ffmpeg -nostdin -loglevel error -protocol_whitelist fd -i fd: \
   copy that fails is not cached, and the server remembers it as a refusal for an
   hour.
 
-**The cache.** `<data>/cache/renditions/watch/<key>.m4a`, a `FileCache` like the
-remux's (above) with its own bounds:
+**The cache.** Watch copies live at `<data>/cache/renditions/watch/<key>.m4a`.
+See [Remux and watch cache keys](#remux-and-watch-cache-keys) for the key inputs.
 
 | | Watch renditions | Remux (for comparison) |
 |---|---|---|
-| Key | SHA-256 of the absolute path, size, mtime and `watch-v1` | the absolute path, size and mtime |
 | Size cap (LRU by mtime) | **10 GiB** | 8 GiB |
 | At once | 1 encode (an encoder pins a core) | 2 stream copies |
 | Timeout from its slot | 2 hours | 30 minutes |
 | Waiting or running | at most 256 files, server-wide | warms: 16 books queued |
 | Disk guard | 1 GiB left free, one reservation shared with the remux | the same |
-
-The encode version (`renditionVersion`) is part of the key and the ETag, so a
-change to the encode is a new key, and old copies age out of the LRU. A source
-that changes while it is read is never cached under the old key.
 
 A refusal is remembered for an hour, or until the file changes. A refusal is
 ffmpeg's exit before writing anything, a trackless or short copy, or an encode

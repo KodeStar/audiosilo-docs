@@ -450,13 +450,12 @@ unchanged one, and still reads the metadata files beside it.
 
 ### Backfills for a skipped book
 
-A skipped book can still get cheap backfills, each for rows indexed before a
-given migration:
+A scan can fill missing values on a skipped book.
 
-- **Embedded cover** (`has_cover` unset, a row indexed before migration
-  `0016`). The scan checks the primary file for embedded art with a tag read
-  (`media.EmbeddedCover`, no ffprobe) and notes the answer without re-indexing
-  the book.
+- **Embedded cover.** When `has_cover` is unset, the scan checks the primary
+  audio file with `media.EmbeddedCoverBelow` without re-indexing the book.
+  This includes rows from before migration `0016` and MKA books queued by
+  [migration 0096](data-model.md#file-and-source-columns).
   - Only books that are really skipped are checked. A book re-indexed anyway
     gets its flag from the upsert.
   - A file that can't be opened right now (a flaky mount) is skipped. The flag
@@ -606,10 +605,9 @@ several files at a time, and writes the index in one place
   stopped counts as the problem still there, and the scan ends at its next
   check.
 
-Every tag read goes through `metadata.ReadTags` (`tagreader.go`, used by
-`Extract` and `media.EmbeddedCover`). There, `dhowden/tag` reads an ID3v2 tag
-through a buffer up to the tag's end, not with one read system call per byte.
-That difference counts on a spinning disk or a network share.
+For a cover stored in an ID3v2 tag, `media.EmbeddedCoverBelow` reads the tag
+through `metadata.ReadTags` (`tagreader.go`). It buffers reads up to the tag's
+end, which reduces read calls on a spinning disk or network share.
 
 ### A rescan that finds nothing changed
 
@@ -1900,10 +1898,13 @@ an ebook, and a digest that is not current.
 - The hash goes through `library.EbookDigest` (`OpenEbook`).
 - The post-pass skips a book whose stored digest is already of the file on
   disk.
-- `SetEbookDigest` records the digest with the signature of the file it
-  hashed, and only while the row still names that ebook and still
-  holds the digest its caller read as stale, so a slow hash of an older file
-  never overwrites a newer one recorded meanwhile.
+- `SetEbookDigest` updates the digest only while the row still names the
+  same ebook and holds the signature the caller read before hashing.
+- On server version 2.7.0 or later, if a scan and a request race to save
+  digests for different EPUB signatures, the losing writer rereads the row.
+  It retries the conditional write only if the file on disk still matches
+  the signature it hashed. If the file changed again or disappeared, the
+  competing digest stands.
 
 A request ([`/item`](api/reference.md#get-apiv1librariesiditem)'s `readalong`,
 [`/readalong`](api/reference.md#get-apiv1librariesidreadalong)) trusts the
@@ -1921,8 +1922,7 @@ The `.epub` is never audio.
 
 ## Covers
 
-Cover resolution has two stages: an indexed **sidecar** path, and an
-**embedded-art** fallback at request time.
+The scanner looks for a sidecar image and records whether the book has cover art.
 
 **During enrichment**, `findCover` looks for a conventionally named sibling
 image: `cover.jpg`, `cover.jpeg`, `cover.png`, `folder.jpg` or `folder.png`.
@@ -1942,18 +1942,12 @@ image: `cover.jpg`, `cover.jpeg`, `cover.png`, `folder.jpg` or `folder.png`.
 
 The result is stored in `books.cover_path`.
 
-**At request time**, `handleCover` serves, in order:
-
-1. a **custom cover** that an admin uploaded (stored in the database,
-   `book_covers`);
-2. the sidecar, through `media.ServeFile`, when `cover_path` is set;
-3. **embedded art** extracted from the book's primary audio file
-   (`media.EmbeddedCover`, through `dhowden/tag`);
-4. a 404 if none exists.
-
-The scanner records `books.has_cover` (a sidecar was found, or the tags carry a
-picture), so the admin catalog can filter on it without opening files. The
-catalog's "has a cover" is `has_cover` or a custom cover.
+The scanner sets `books.has_cover` when it finds a sidecar or embedded art.
+The catalog's cover filter also includes books with a custom cover.
+On server version 2.7.0 or later, it checks the signature of an MKA image
+attachment during indexing. The cover handler reads the full image when
+requested. See [cover resolution](media.md#covers-handlecover) for the
+attachment names and formats it accepts.
 
 ## What a scan notices for the Health page
 

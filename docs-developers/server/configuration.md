@@ -612,7 +612,7 @@ server never contacts the metadata service, nor, in mirror mode, GitHub for a ne
 copy. Every player connected to it stops showing the section, because players
 gate on the `metadata` capability.
 
-The same switch gates the [community chapter checks](community-chapters.md):
+The same switch controls the [community chapter checks](community-chapters.md#kicks).
 
 - While it is on, the background pass checks matched books. It sends only their
   ASIN or ISBN, then the community's work and recording ids. In mirror mode the
@@ -643,9 +643,11 @@ them. A run:
   (`meta.Service.KnownASIN`). A candidate qualifies when it was never looked up,
   or was looked up 30+ days ago. Only a 404 counts as unknown. Any other failure
   stops the lookups until the next day. The run is then `failed`, but the
-  unknown ASINs already confirmed are still reported. In mirror mode the run
-  waits until the local copy is ready. The copy answers the lookups, and only
-  the report goes to `base_url`.
+  unknown ASINs already confirmed are still reported. In
+  [mirror mode](#mirror-mode-metadatamode-mirror) the copy answers the lookups
+  and the report goes to `base_url`. On server version 2.7.0 or later, a
+  remote-mode run checks the service's health before looking up any ASINs.
+  If the service is unreachable, the run records `failed`.
 - **The report**: the unknown ASINs not sent in the last 30 days, shuffled, 200
   to a `POST <base_url>/api/v1/intake/unknown-asins` with the body exactly
   `{"asins":[...]}`. A run sends at most 5 of these, and none within 23 hours of
@@ -682,8 +684,6 @@ lookups that find them stop.
 
 #### Mirror mode (`metadata.mode: mirror`)
 
-Upcoming waits until the local metadata copy is ready before resolving ownership. Changing or unlinking a recorded work is reflected on a later resolution pass.
-
 In mirror mode the server keeps a local copy of the metadata service's own
 database and answers its metadata questions in-process, so no book is looked up
 over the internet. The copy is audiosilo-meta's data release artifact: the
@@ -697,6 +697,13 @@ audiosilo-meta's public packages:
 
 Remote mode stays the default. Players see no difference: no wire change and no
 capability change.
+
+On server version 2.7.0 or later, the mirror signals when its first usable
+copy opens, whether from disk at startup or from a download
+(`metamirror.Mirror.Loaded`). The first scheduled checks for community
+chapters and upcoming releases wait up to ten minutes for that signal,
+then proceed. A due unknown-ASIN report waits until the copy is usable and
+wakes as soon as it loads.
 
 **Parity by construction.** `meta.Service.SetMirror` swaps the metadata client's
 transport for `fallbackTransport` (`internal/meta/mirror.go`). The client still

@@ -3404,18 +3404,21 @@ The fetch keeps the guards of
 addresses only, at most three redirects and never from HTTPS to HTTP, no user
 info, 15 seconds and 16 MiB.
 
-Response `200`: `image/jpeg`, the image decoded and re-encoded within `size` x
-`size` pixels (never scaled up), so the upstream's bytes and content type never
-reach the client.
+A `200` returns an `image/jpeg` preview with a longest side of at most `size`
+pixels. On server version 2.7.0 or later, the server applies the image's EXIF
+orientation and encodes a fresh JPEG even if the source is already a small
+JPEG. The server never enlarges the image. It discards upstream metadata and
+trailing bytes. For colour profiles on saved covers, see
+[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity).
 
 - Thumbnails come from the server's in-memory thumbnail cache, the one
   [`POST /admin/meta/covers`](#post-apiv1adminmetacovers) uses (keyed by URL and
   size). Requests for the same thumbnail at once share one fetch.
-- `ETag` is `"community-<size>-<rev>-<hash>"`, the hash of the URL (`rev` names
-  how the server makes thumbnails, as on [`?size=`](#get-apiv1librariesidcover)), and
-  `Cache-Control` is `private, max-age=86400` (a community cover URL names one
-  image; a new cover is a new URL). A matching `If-None-Match` is a `304` without
-  the image being fetched.
+- `ETag` is `"community-<size>-<rev>-<hash>"`. The hash identifies the URL.
+  The thumbnail encoding revision changed to `t3` in 2.7.0, so a client
+  revalidating an older preview receives a fresh JPEG.
+  `Cache-Control` is `private, max-age=86400`. A matching `If-None-Match`
+  returns `304` without fetching the image.
 - **A failed fetch is not cached, but it is remembered for 1 minute**: until then
   the same URL is answered `502 cover_unavailable` straight away, without asking
   its host again, so a broken or hung host isn't fetched on every render. The
@@ -3575,9 +3578,12 @@ busy keep waiting for a copy still being made, up to 45 seconds
 transcode, and a busy server doesn't answer `503`. Past that wait they are
 transcoded after all.
 
-An `.mka` holding another codec (AAC, Opus, FLAC) is served as stored,
-`audio/x-matroska`. See
-[Remuxing Matroska](../media.md#remuxing-matroska-medianewremuxer).
+On server version 2.7.0 or later, when the MKA header identifies AAC or
+another known non-MP3 codec, a plain `GET` returns the stored file as
+`audio/x-matroska`. A plain `HEAD` returns its headers. This applies even on
+the first request with too little disk space for a cached copy. To request
+live MP3, use `transcode=1` with ffmpeg enabled. See
+[how the remuxer checks the codec](../media.md#remuxing-matroska-medianewremuxer).
 
 **A share that stops answering** (from 2.7.0). Every look a stream makes at
 its file shares one bound of 45 seconds from the request's start
@@ -3618,7 +3624,8 @@ directory (never into the library) and keeps it in a size-capped cache
   Range and `If-Range`, a strong `ETag: "rw1-<key>-<size>"` and (from 2.7.0) no
   `Last-Modified`. The ETag names one encode, so a resumed download (`Range` with
   `If-Range`) never splices bytes of two encodes; `Content-Disposition` only with
-  `download=1`.
+  `download=1`. For ETag changes on upgrade, see
+  [Remux and watch cache keys](../media.md#remux-and-watch-cache-keys).
 - **Not ready:** the request waits up to 45 seconds for the encode, then answers
   `503` code `rendition_pending` with `Retry-After: 15` while the encode goes on in
   the background. A rendition is never a live transcode (a watch couldn't resume
@@ -3689,11 +3696,9 @@ one file), each `path` as `/stream` takes it, with its `state`:
    path inside a folder book gets that book's custom cover;
 2. an indexed sibling cover file (served with
    `Cache-Control: private, max-age=86400`);
-3. embedded art extracted from the book's primary audio file (served with
-   `Cache-Control: private, max-age=86400`). Its `Content-Type` is sniffed from
-   the image bytes (JPEG, PNG, GIF, WebP or BMP), never taken from the tag;
-   embedded data that isn't one of those images counts as no art, whatever the
-   tag claims.
+3. [embedded art](../media.md#covers-handlecover) from the book's primary audio
+   file, including a supported MKA attachment. The server identifies the
+   `Content-Type` from the image bytes and sends `Cache-Control: private, max-age=86400`.
 
 The path is authorized against the caller's share scope before any of the
 three is tried, custom covers included.
@@ -9082,9 +9087,17 @@ and refuses redirects from HTTPS to HTTP. The fetch has 15 seconds in total,
 reads at most 64 KiB of response headers and requires a final HTTP `200`.
 
 The image must be a JPEG, PNG or WebP within 16 MiB and 40 megapixels. The
-server checks the pixel limit from the image header. For an image over the
-5 MiB upload limit, it first re-encodes the image as a JPEG within
-1600 x 1600 pixels. Saving the cover records `book.cover_set` with
+server checks the pixel limit from the image header. It saves images up to
+5 MiB as fetched. For a larger image it makes a JPEG within 1600 x 1600 pixels.
+
+On server version 2.7.0 or later, resizing applies EXIF orientation to the
+pixels and preserves a compatible ICC colour profile. A CMYK cover keeps its
+CMYK profile and ink channels. If the source is CMYK but the profile specifies
+RGB, the server drops the profile. If the JPEG with its profile still exceeds
+5 MiB, or the server cannot encode the profile in a JPEG, it saves a plain
+JPEG thumbnail without the profile.
+
+Saving the cover records `book.cover_set` with
 `source: "community"` and updates the book's [`cover_version`](#get-apiv1librariesidbooks).
 
 Response `200`: `{ "status": "cover set", "path": "…" }`.
@@ -9198,8 +9211,8 @@ Response `200`, one entry per requested URL, in request order:
 { "covers": ["data:image/jpeg;base64,/9j/4AAQSkZJRg…", ""] }
 ```
 
-- Each entry is a JPEG thumbnail as a `data:` URL, scaled as for
-  [`POST /admin/covers`](#post-apiv1admincovers), or `""` when the image
+- Each entry is a [community JPEG preview](#get-apiv1librariesidmetacover)
+  as a `data:` URL, or `""` when the image
   couldn't be fetched or decoded (a URL that isn't http(s), one too large, or
   not an image, too).
 - Thumbnails are cached in the same server memory cache, keyed by URL and
