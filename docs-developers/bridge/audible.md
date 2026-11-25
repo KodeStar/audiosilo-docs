@@ -316,7 +316,7 @@ template change plans by the new one. A claimed poll runs as claimed.
    preorder from the orders carries `audible.PreorderReason` ("Not released yet
    (pre-order)");
 5. [matches the unmarked titles](#matching-rules) against the library's books,
-   applies the additional [preorder rules](#preorders) and settles
+   applies the [preorder rules](#preorders) and settles
    [competing claims](#contested-books). The poll reports `how` as `asin` for
    an exact ASIN match and `fuzzy` for a match by words.
 
@@ -365,42 +365,42 @@ competes under each name. `BookMatcher.MatchScored` passes the winning score
 #### Series positions in the books listing
 
 The server's books listing fills an empty main series position from a code at
-the start of the book's folder or file name. The Bridge's `folderCodeIs`
-follows the same [folder-code rules](../server/api/reference.md#get-apiv1bridgelibrariesidbooks)
+the start of the book's folder or file name (`DH06 - ...` in Dragon Heart is
+`"6"`, `LAM05-06 - Omnibus` is `"5-6"`). The scan and every other route keep the
+position empty. The Bridge's `folderCodeIs` applies the same
+[folder-code rules](../server/api/reference.md#get-apiv1bridgelibrariesidbooks)
 when it checks a single position.
-
-The code uses the series' initials or the volume marker `C` in any named
-series. A year or lettered suffix leaves `DH06-2019` and `DH06-07x` at 6.
-A doubled code or a pack word beside a single code gives no single position.
-A range keeps both ends, as in `LAM05-06 - Omnibus`. Only the books listing
-fills the missing position this way.
 
 #### Matching a range
 
-Bridge version 0.7.0 or later recognizes a pack by a range in any of the
-library book's series positions, or by a pack label in its title or folder
-name. The folder can identify a pack even when its tagged title is `End Credits`.
+The Bridge takes a library book for a pack when any of its series positions is
+a range (a listed range), or when its title or folder name carries a pack label
+(a labeled pack). A folder named `Iron Vale Box Set` marks a pack even when the
+tagged title has no label.
 
-- **Audible gives a range.** The matcher first tries folders whose listed range
-  starts at the same volume. For a publisher's pack numbered 3 but covering
-  volumes 5-6, it starts at 5. It then tries packs identified by label. If it
-  finds no pack, it can show a match to a single book at the starting volume.
-  For a range starting at 1, it skips an opening book titled only for the series.
-- **Only the Audible title identifies the pack.** A title such as
-  `Iron Vale Box Set` competes only against packs. With no series position,
-  it can match either a listed range or a labeled pack. A single stated
-  position limits it to labeled packs without a listed range.
-
-  `bestPackTitle` compares pack names after removing shared labels such as
-  `Box Set` and `Omnibus`. If both sides give bounds, both ends must agree.
-  For a pack without a listed range, the matcher reads bounds from both the
-  book title and its folder name. Distinct packs tied for best by name give
-  no match. For two copies with the same `twinKey` and folded pack label,
-  the first in the listing keeps the match.
+- **Audible gives a range.** The matcher first tries listed ranges that start
+  at the same volume. It goes by the volumes a pack covers, not the pack's own
+  number, so pack 3 holding volumes 5-6 starts at 5. Then it tries labeled
+  packs. With no pack found, it can keep a match to the single book at the
+  starting volume, but for a range starting at 1 it skips an opener titled
+  just the series name (see
+  [the series-named rule](../server/overview.md#matching-titles-and-series)).
+- **Only the Audible title marks the pack.** A title such as
+  `Iron Vale Box Set` competes only against packs.
+  - With no series position, it can match a listed range or a labeled pack.
+  - With a single position, it matches only a labeled pack with no listed range.
+  - `bestPackTitle` compares pack names without the shared labels such as
+    `Box Set` and `Omnibus`. When both sides give bounds, both ends must agree.
+    A labeled pack's bounds come from its title and its folder name alike.
+  - Distinct packs tied for the best name give no match. Two copies of one pack
+    (the same folded pack label, and alike under
+    [`importjob.Twins`](#asin-checks-for-an-existing-book)) are no tie. The
+    first in the listing keeps the match.
 - **Audible lists a single book.** A match by words excludes listed ranges.
-  If Audible omits a collection label, a book such as `Four` can still match
-  `Four: A Divergent Collection` when that candidate wins on score and listing
-  order. A series-named opener cannot use that fallback.
+  When Audible's title has no collection label, the Audible title `Four` can
+  still match the book `Four: A Divergent Collection` when that book wins on
+  score, then on listing order. An opener titled just the series name never
+  matches this way.
 
 #### ASIN checks for an existing book
 
@@ -408,24 +408,27 @@ The poll and a backup that joins an existing book apply the same checks before
 writing an ASIN. A book can keep its match in the console when a check prevents
 the write.
 
-- `importjob.SpanMismatch` checks which volumes the folder holds. An explicit
-  Audible range must match both ends of a listed range. A display match on
-  volume 1 or on books 1-3 cannot receive the ASIN for books 1-6. For a pack
-  identified by title, any bounds must agree with the folder's own range.
-  A pack title without bounds can supply an ASIN only for an opening pack
-  (starting at 1 or earlier). A labeled folder with no bounds of its own also
-  counts as the opening pack. The Bridge skips the write if only one side is a pack.
-- `importjob.OtherVolume` checks a title that names a series. Different
-  [series positions](#contested-books) block the write unless the titles clean
-  to the same words, such as `New Spring` numbered 0 and 0.5.
-  The series name or a volume number alone cannot establish that exception.
-  The library title can also give the volume number. For example,
-  `Iron Vale 3` rules out a different Audible position even if the library
-  calls the series `Iron Vale Saga`. An Audible title of just `Iron Vale`
-  with no position counts as volume 1 for that comparison.
-- `importjob.Twins` withholds the ASIN from duplicate copies with the same
-  title, authors, series and positions after normalization. Title matching cannot tell
-  which copy the ASIN belongs to.
+- `importjob.SpanMismatch` blocks the write when only one side is a pack, or
+  when the volumes differ:
+  - An Audible range must equal one of the book's listed ranges, both ends. A
+    single volume, or a narrower or wider range, keeps the match without the
+    ASIN.
+  - A pack marked only by its title needs its bounds to equal the book's own
+    range. With no bounds, it writes only onto an opening pack (one starting
+    at 1 or earlier). A labeled pack with no bounds of its own counts as the
+    opening pack.
+- `importjob.OtherVolume` blocks the write when the Audible title names a
+  series and its volume differs from the book's. The positions are compared as
+  in [`PositionAgrees`](#contested-books). Where they don't disagree, a book
+  titled just the Audible series name and a number gives that number
+  (`Iron Vale 3` is volume 3 even when the library spells the series
+  `Iron Vale Saga`), and an Audible title that is just the series name, with no
+  position, counts as volume 1. Different positions still write when both
+  titles clean to the same words (`New Spring` numbered 0 and 0.5), unless the
+  cleaned title is only a number or the Audible title is just the series name.
+- `importjob.Twins` withholds the ASIN from identical copies (the same folded
+  title, authors, series and positions), since a match by words cannot tell
+  which copy it belongs to.
 
 #### Contested books
 
@@ -451,7 +454,8 @@ the write.
 
 The losers go out in two ways:
 
-- A losing title with a different single position goes out unmatched, with no reason.
+- A losing title whose single position differs from the book's goes out
+  unmatched, with no reason.
 - The other losers are PUT with no `match`, `reason: "contested"`
   (`link.ReasonContested`, set only on a title with no other reason) and
   `contested_path` (the book's path, omitted otherwise). The console shows them as
@@ -819,11 +823,10 @@ another pairing may use them. `run`'s cleanup asks `jobs.Job.Under` again.
      series siblings' folder and code convention, else an existing author folder's
      spelling, else `Author/Title`. An empty author folder is dropped.
 
-   The planner passes Audible's title and series directly to the shared
-   [`match.CleanTitle`](../server/overview.md#matching-titles-and-series).
-   Auto uses the cleaned title for the book folder and keeps the supplied
-   filename. The placement test for `The Orchard Cycle: Books 1-3` expects
-   `Mara Quill/Orchard Cycle/Books 1-3/The Orchard Cycle: Books 1-3.m4b`.
+   Auto names the book folder by Audible's title cleaned of its series by the
+   shared [`match.CleanTitle`](../server/overview.md#matching-titles-and-series),
+   and keeps the file's own name. So `The Orchard Cycle: Books 1-3` by Mara Quill
+   lands in `Mara Quill/Orchard Cycle/Books 1-3/`.
 
    Without an explicit path, `booksFor` can reuse a listing for up to 15 minutes
    on the same server, pairing and library. After a rescan, the next planning

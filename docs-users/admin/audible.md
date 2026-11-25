@@ -110,13 +110,15 @@ except a title marked [**Not this book**](#not-this-book):
 2. **Then by title and author**, with the series and number to help. These show
    **Matched by title**. See [Folder codes for Audible matching](../getting-started/organizing-your-library.md#folder-codes-for-audible-matching).
 
-For a box set, the Bridge looks for a folder covering the same books. For
-example, `Iron Vale: Books 4-6` can match the folder for volumes 4 through 6.
-If Audible calls a title a Collection, Box Set or Omnibus, a single book of the
-same name doesn't count as a match by title.
+A box set matches a book that holds the same volumes, so `Iron Vale: Books 4-6`
+can match the book [numbered](books.md#numbering-an-omnibus-or-box-set) `4-6`.
+A title that Audible calls a Collection, Box Set or Omnibus never matches a
+single book of the same name.
 
-When the Bridge can identify the copy and its volumes, it fills in a missing
-ASIN so later checks can match the book exactly.
+When a book matched by title has no ASIN yet, the Bridge gives it the title's
+ASIN, so later checks match it exactly. It leaves the ASIN off when it can't be
+sure the book is that title: a contested book, two identical copies, or a book
+that holds other volumes.
 
 ### Contested titles
 
