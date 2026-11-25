@@ -41,7 +41,9 @@ Change `/srv/audiobooks` to your books folder. The two mounts:
 - **`/data`** holds the server's database, `config.yaml`, certificates and [backups](../admin/backups.md). Keep it, and back it up.
 - **`/library`** is your books, mounted read-only (`:ro`). The server never writes to your books.
 
-Set `PUID` and `PGID` to the user and group that should own the data folder. On Linux that's the output of `id -u` and `id -g`. The server runs as that user, so it also needs read access to your books folder. If it can't use a folder, the log says which one and how to fix it (see [Permission denied](../troubleshooting.md#permission-denied)).
+Set `PUID` to the numeric user ID and `PGID` to the numeric group ID of the account that owns the data folder. On Linux, run `id -u` and `id -g` as that account. Give it read access to your books.
+
+If you already set a non-root Compose `user:` or Docker `--user`, AudioSilo runs as that account and skips ownership changes. If a folder refuses the account, the log says which one (see [Permission denied](../troubleshooting.md#permission-denied)).
 
 A setting you give as an `AUDIOSILO_*` variable wins over the admin console, which then shows it as locked. Leave a setting out if you'd rather change it in [Server > Settings](../admin/server.md#settings).
 

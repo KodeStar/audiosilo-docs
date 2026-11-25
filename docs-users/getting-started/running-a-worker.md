@@ -91,8 +91,10 @@ If the worker stops in the middle of a piece, only that piece is transcribed aga
 
 ## Updating
 
-After you update the Bridge, paste the command again on the worker computer. The
-installed worker keeps the token, so you can leave out `--token` and what follows:
+After you update the Bridge, paste its install command again on the worker
+computer to download the matching worker. You can leave out `--token` and its
+value: the update reuses the token saved on the worker computer and keeps the
+worker's settings.
 
 ```bash
 curl -fsSL http://192.168.1.20:8091/worker/install.sh | sh -s
@@ -144,7 +146,7 @@ again.
 |---|---|
 | *Failed to connect*, *Could not resolve host*, *timed out* or *the download failed* | Check the address in the command is your Bridge's (IP address and port `8091`), the Bridge is running, and both computers are on the same network. |
 | *only serves the worker install to its local network* | Run the command from a computer on the same network, not over the internet or a VPN. |
-| *--token is required* | Copy the whole command from the **Workers** tab. |
+| *--token is required* or *this update needs --token* | The worker computer has no saved token. Paste the whole command, with `--token`, if you kept it. The **Workers** tab shows a token only once, so otherwise remove the worker there, add it again and paste its new command. |
 | *this Bridge has no worker downloads* | The Bridge isn't running from its Docker image: [install by hand](#installing-it-by-hand). |
 | *a worker runs on macOS or Linux only* | Windows can't run a worker. Use a Mac or a Linux computer. |
 | *systemctl --user ...* (Linux) | Log in as that user directly (not through `su` or `sudo`) and paste the command again. |

@@ -17,8 +17,10 @@ fiction and one for kids, and use [shares](sharing.md) to choose who sees which.
    **Browse** to pick it.
 5. Click **Add library and scan**.
 
-The library appears straight away and its first scan starts. Listeners don't
-have to wait: books appear as the scan finds them.
+The library appears straight away and its first scan starts. Books appear
+as the scan finds them. Listeners can already open and play a book from
+[Folders in the player](../listening/browsing.md#folders) while the scan runs. Such a book still counts as **New** and is included in the
+**New books added** notice when the scan finishes.
 
 A **Books** library usually has a folder of its own. When the folder is
 another books library's, sits inside one or holds one, the console asks first.
@@ -289,13 +291,10 @@ A library set in `config.yaml` can't be deleted here. Remove it from
 
 ## When a library folder goes missing
 
-If a library's folder can't be read, often because a network share unmounted,
-AudioSilo stops the scan and removes nothing. It does the same if the folder is
-suddenly empty while books are still indexed, since that almost always means a
-dropped mount.
+If the server can't read the folder, or a folder with indexed books suddenly looks empty, AudioSilo stops the scan. It keeps the books and everyone's progress. Listeners can still see the books, but playback needs the folder back.
 
-The library's card then says **Folder unavailable**, and the
-[overview](console-tour.md#the-overview) and
-[Health](health.md#when-a-library-is-offline) show a notice. Listeners still
-see its books, but they won't play until the folder is back. Mount the share
-again (or fix the permissions), then click **Retry**.
+The library card shows **Folder unavailable**. The notice names the folder and, on Linux and macOS, the server's user and group IDs. It also shows the folder owner's IDs when the server can read them. You can find the same notice on the [Overview](console-tour.md#the-overview) and in [Health](health.md#when-a-library-is-offline).
+
+![An offline library card showing the folder, the account IDs, the books kept and the Retry button](/img/screenshots/admin/library-offline.png)
+
+Mount the share again or give the server account permission to open and list the folder. Click **Retry**. After a successful scan the card shows **Online**.

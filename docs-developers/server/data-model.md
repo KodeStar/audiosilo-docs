@@ -650,6 +650,11 @@ of the upsert that wrote it. The snapshot is the revert target and what the
 admin console shows next to an edited value. Compared with the path, it also
 shows where a value came from.
 
+The optional `"@probe_unsure": "1"` records a completed read without ffprobe
+that left the duration or codec unknown. The scanner trusts the marker only
+when the snapshot's stamp matches the row's `indexed_at`. A cut-short read
+does not set it. See [With no ffprobe](scanner.md#with-no-ffprobe).
+
 The stamp guards against a **rollback**. A server older than migration 0016,
 run against this database, re-indexes rows with their scanned values in the
 columns and leaves `scanned` blank or stale. When the snapshot is blank or its
@@ -1617,11 +1622,8 @@ Its keys:
   failure stops the start, as a failed migration does, because every series
   filter reads only the keys (see `books.series_key` and `book_more_series` in
   [The rebuildable index](#the-rebuildable-index)).
-- `search_text`: the version of the search-text rule the `books_fts` rows were
-  written with (`searchTextVersion`: the rule's number and the Unicode
-  version). While it is missing or different, `Catalog.IndexSearchText`
-  rewrites the rows the rule changes, once, at start after `KeySeries` (see
-  [FTS design](#fts-design-books_fts)).
+- `search_text` records the rule and Unicode versions used by the
+  [full-text search index](#fts-design-books_fts).
 - `setup_state`: the admin console's
   [first-run setup flow](web-ui.md#the-first-run-setup-flow), for example
   `{"finished":false,"dismissed":false,"steps":{"folder":"done","naming":"skipped"}}`.
@@ -2442,11 +2444,12 @@ books from the database when the preference changes.
 - `UpdateLibrary` marks the library due in the edit's transaction
   (`markResolve`, the `server_state` key `library_resolve_due`: each due
   library's id and the generation of its last change).
-- `Catalog.ResolveSources` re-resolves each due library's books
-  (`refreshEffective` per book), 200 a transaction (`resolveBatch`), so the one
-  writer is never held long. A library switched again while it runs starts
-  over. What is due is in the database, so a run a stop cut short goes on at
-  the next start (`API.StartSourceResolves`).
+- On server version 2.7.0 or later, `Catalog.ResolveSources` gives each due
+  library one transaction of up to 200 books per round (`resolveBatch`).
+  Each round picks up newly due libraries. If a library switches source
+  again, it starts from its first book and discards any failure from the old
+  generation. The final batch clears its due mark. At startup,
+  `API.StartSourceResolves` picks up any libraries still marked due.
 - Every due library runs even when one fails. A failed run is run again after
   1 minute, doubling, 6 times (`resolveRetries`), then waits for the next edit
   or start. A panic counts as a failed run.
@@ -2456,8 +2459,8 @@ books from the database when the preference changes.
   (`recordScannedUnreadable`), which Health lists. The next scan finds that
   file reads, reads the whole book again and writes a new snapshot, which heals
   it.
-- The PATCH waits up to 20 seconds (`resolveWait`). Between the switch and the
-  end of the job, a reader can see the new setting with some books' old values.
+- While the job runs, a reader can see the new setting with some books' old
+  values. See the [library PATCH response](api/reference.md#patch-apiv1adminlibrariesid).
 
 ### Tag hints
 
@@ -2900,10 +2903,15 @@ sound and iteration marks) one character a token.
 
 So `猫` finds `吾輩は猫である`, and `吾輩` still does. A trigram tokenizer was
 rejected, because it can't match the one- and two-character words that CJK
-search mostly is. Hangul is spaced, so it stays as it is. Rows an older server
-wrote are rewritten once at start-up (`Catalog.IndexSearchText`, run after
-`KeySeries`), gated by `server_state` `search_text` (the rule version and the
-Unicode version), in one transaction and with no migration.
+search mostly is. Hangul is spaced, so it stays as it is.
+
+At startup, after `KeySeries`, `Catalog.IndexSearchText` checks the stored
+`search_text` version against `searchTextVersion`. A missing or outdated
+version triggers a rebuild. On server version 2.7.0 or later, the rebuild
+generates search text from each indexed book's effective fields. It uses the
+same `searchColumns` function as a normal write, including all series names
+and individual genre and tag labels. It replaces only FTS rows whose text
+differs and records the version in the same transaction.
 
 Results are scoped per-library by the caller's share rules and de-duplicated
 across libraries (see [Libraries & shares](#libraries--shares) for the
