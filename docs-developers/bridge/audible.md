@@ -454,8 +454,9 @@ the write.
 
 The losers go out in two ways:
 
-- A losing title whose single position differs from the book's goes out
-  unmatched, with no reason.
+- A losing title whose position disagrees with the book's under
+  `PositionAgrees` (step 2) is another volume. It goes out unmatched, with no
+  reason.
 - The other losers are PUT with no `match`, `reason: "contested"`
   (`link.ReasonContested`, set only on a title with no other reason) and
   `contested_path` (the book's path, omitted otherwise). The console shows them as
@@ -823,10 +824,12 @@ another pairing may use them. `run`'s cleanup asks `jobs.Job.Under` again.
      series siblings' folder and code convention, else an existing author folder's
      spelling, else `Author/Title`. An empty author folder is dropped.
 
-   Auto names the book folder by Audible's title cleaned of its series by the
-   shared [`match.CleanTitle`](../server/overview.md#matching-titles-and-series),
-   and keeps the file's own name. So `The Orchard Cycle: Books 1-3` by Mara Quill
-   lands in `Mara Quill/Orchard Cycle/Books 1-3/`.
+   Auto and the template name the book by Audible's title cleaned of its series
+   by the shared [`match.CleanTitle`](../server/overview.md#matching-titles-and-series),
+   and keep the file's own name. So in Auto, `The Orchard Cycle: Books 1-3` by
+   Mara Quill lands in `Mara Quill/Orchard Cycle/Books 1-3/`. A title that
+   cleans to a bare number (`The Mayor of Noobtown 3`) takes its siblings'
+   naming or its series name instead (`Mayor of Noobtown 3`).
 
    Without an explicit path, `booksFor` can reuse a listing for up to 15 minutes
    on the same server, pairing and library. After a rescan, the next planning
