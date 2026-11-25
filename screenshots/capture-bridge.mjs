@@ -1,6 +1,6 @@
 // Captures the Bridge's own page (the LAN page an AudioSilo Bridge serves) for the
-// User Guide: its sign-in, the Status tab before and after pairing, the Libraries tab
-// and the Accounts tab.
+// User Guide: its sign-in, the Status tab before and after pairing, the Libraries tab,
+// a staged job on the Jobs tab and the Accounts tab.
 //
 // run.sh starts each Bridge (the BRIDGE checkout with its page embedded) on fresh data
 // and passes the selected files and the one-time password to this script. Accounts and

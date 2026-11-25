@@ -592,6 +592,18 @@ finds its own server and shows the App Store, Google Play and APK links.
 `connect-ready.png` signs in by password. For `connect-headers.png`, the browser
 receives the 404 a static web host returns for the server probe. Its local storage
 holds a saved set for the HTTPS address typed into the form.
+`connect-wrong-api.png` opens the served player through the local TLS proxy below,
+and the browser receives an HTML 404 page for `/api/v1/server` only.
+
+A temporary listener takes `phone-book-finish-pending.png` and the two invite shots.
+For the pending finish, the player is told the server has `progress_edit` but not
+`listening_sync`, so Mark as finished waits for its `PATCH`. The real reply is held
+until the notice is in the shot. The invite shots redeem a real two-use invite in
+fresh contexts and drop the successful exchange reply. For `connect-invite-used.png`
+the same device retries after the server's one-minute window, which costs the run a
+minute. For `connect-invite-maybe-used.png` the browser first answers the exchange
+with an older server's 400, so the player resends without `device_id`. The
+listener, its invite and sessions are removed after the capture.
 
 The account shots use the local TLS proxy from the Cast capture. A temporary
 listener saves a sample header through the account card. A second password sign-in
@@ -656,7 +668,7 @@ and pause steps always run, so a partial run stages its shots as a full one does
 ## The Bridge's page
 
 The `bridge/` shots (`sign-in.png`, `status-unpaired.png`, `status-paired.png`,
-`libraries.png`, `accounts.png`, `settings-agent.png`) come from `capture-bridge.mjs`, which `run.sh`
+`libraries.png`, `jobs-asr-turn-wait.png`, `accounts.png`, `settings-agent.png`) come from `capture-bridge.mjs`, which `run.sh`
 runs after the setup captures when the `BRIDGE` checkout (default the sibling
 `audiosilo-bridge`) is there; without it, or with
 `SKIP_BRIDGE=1`, the shots keep their previous images. `run.sh` syncs the
@@ -687,6 +699,10 @@ For **Libraries**, the script presses **Check now** and stages the next
 the Bridge's `LibrariesTab.test.tsx`. The library id, name and mount path come
 from the paired Bridge. The fixture sets the failed five-second check and its
 time, which the page renders as **Waiting for the folder** and **Last check**.
+
+For **Jobs**, the script stages the `GET /api/jobs` response with one running
+`sidecars.generate` job on A Christmas Carol. Its progress carries the
+`asr_turn_wait` code and the Bridge's English for it. No speech recognition runs.
 
 For **Accounts** and **Settings > Agent**, `run.sh` starts a separate Bridge
 with its own data and home folders. Those two manifest entries have
