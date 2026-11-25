@@ -197,6 +197,10 @@ in 0044)* holds opaque bearer tokens. Its columns:
 - `last_seen`: bumped by authenticated requests, at most once a minute unless
   the request's address or `X-AudioSilo-Client` changed
   (`auth.touchInterval`). A progress save is then not also a token write.
+  A session's first use (`last_seen` still NULL) must be written before the
+  request is authorized
+  ([Resolving a request](auth-and-security.md#resolving-a-request)); later
+  bumps are best effort.
 - `expires_at` (NULL means no expiry) and `revoked`.
 - `auth_code_id`: FK CASCADE to `auth_codes`, NULL for sessions and unlinked
   pairing tokens. A pairing token minted by redeeming a code is linked to it,
@@ -234,8 +238,9 @@ request and never keeps a history.
 The daily retention job blanks `last_ip` on revoked tokens
 (`auth.ForgetRevokedAddresses`), so an address is kept only while the device is
 signed in. The same job deletes pairing tokens that can never pair again
-(`auth.PrunePairingTokens`): revoked, expired, or linked to an expired or
-used-up code.
+(`auth.PruneSingleUseTokens`): revoked, expired, or linked to an expired or
+used-up code. It keeps an invite's pairing token while an
+[`invite_exchanges`](#invite_exchanges) row for it still has its retry open.
 
 `created_on_token_id` *(0044; FK to `tokens` `ON DELETE SET NULL`, partial index
 `idx_tokens_created_on`)* is set on a household member's session made on their
@@ -292,6 +297,23 @@ redeemable codes:
 Both kinds redeem through the same path. See
 [Auth & security](auth-and-security.md#auth-codes-invite-vs-recovery) for the
 lifecycle (supersede-on-mint, rotate, atomic claim).
+
+#### `invite_exchanges`
+
+**`invite_exchanges`** *(0098)* records the session an invite's pairing token
+gave one device, so that device can
+[recover a lost exchange](api/reference.md#post-apiv1authexchange) once. A row
+is written only for an invite exchange that sent a valid `device_id`:
+
+- `pairing_id`: the pairing token. FK CASCADE to `tokens`, so removing the
+  token (daily retention included) removes the record.
+- `device_hash`: the SHA-256 of the `device_id`. The primary key is
+  `(pairing_id, device_hash)`.
+- `session_id`: the session the exchange issued. UNIQUE, FK CASCADE to
+  `tokens`. A retry replaces that session's `token_hash` in `tokens`
+  and keeps its id.
+- `retry_until`: 60 seconds after the exchange. A retry sets it to NULL, which
+  spends the one retry.
 
 #### Single sign-on tables
 
@@ -2672,6 +2694,7 @@ The migration history so far:
 | 0094 | `catalog_pass_indexes` | Adds `books.cover_color_art` with its trigger, start-up backfill and due index (see [Cover art columns](#cover-art-columns)), `idx_books_narrator` (see [FTS design](#fts-design-books_fts)) and `idx_bridge_jobs_fetch_requester` (see [`bridge_jobs`](#bridge_jobs)) |
 | 0095 | `books_matched` | Adds `books.matched` and backfills it once for existing books. Triggers on `books` and [`book_matches`](#book_matches) keep it current. |
 | 0096 | `mka_cover` | Data-only migration for the [MKA cover recheck](#file-and-source-columns). |
+| 0098 | `invite_exchanges` | The [`invite_exchanges`](#invite_exchanges) table, which lets a device recover a lost invite exchange once. No data moves. |
 
 `server_state.progress_feed` identifies the Audible progress feed. A restore renews this ID before
 clients can page it. The separate data-folder mark detects a database restored behind the last

@@ -497,7 +497,7 @@ connection id is `<server_id>.<user_id>` with the answer's `user`
 |---|---|
 | `400` | `pairing_token` missing |
 | `401` | `code: "invite_used"`: the parent invite's use cap is spent (from 2.7.0) |
-| `401` | `invite_used_by_this_device` in both the JSON `code` and the `X-AudioSilo-Unauthorized` header. The server recognizes this pairing token and sign-in key, but the retry was spent or late, the session was used or ended, or the invite expired. |
+| `401` | `invite_used_by_this_device` in both the JSON `code` and the `X-AudioSilo-Unauthorized` header. The server recognizes this pairing token and sign-in key, but the retry was spent or late, the session was used or ended, or the invite expired (from 2.7.0). |
 | `401` | `code: "invite_expired"`: the parent invite expired after the redeem (from 2.7.0) |
 | `401` | `invalid or expired pairing token`, no `code` (anything else: bogus/revoked token, single-use token already exchanged, code owner disabled) |
 | `429` | redeem lockout tripped, with `Retry-After` |
