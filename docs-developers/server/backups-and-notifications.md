@@ -774,7 +774,7 @@ non-ASCII titles encoded. With a secret, the service sends it as
 
 ```json
 { "topic": "hearthside-alerts", "title": "Books is offline",
-  "message": "Its folder can't be read, so the scan stopped. Nothing was removed: books and progress are kept until it is back.",
+  "message": "Its folder can't be read, so the scan stopped. Nothing was removed: books and progress are kept until it is back. \"/srv/books\" is not responding. The server runs as user 1000:1000.",
   "priority": 4, "tags": ["electric_plug"],
   "click": "https://books.example.com/admin/library/libraries" }
 ```

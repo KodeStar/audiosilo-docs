@@ -1542,9 +1542,9 @@ Before loading the configuration or opening SQLite, the launcher creates and
 removes a file in the data folder. It also tries to open any existing
 `audiosilo.db`, `audiosilo.db-wal` and `audiosilo.db-shm` for reading and
 writing. A failure stops startup with `the data folder isn't usable` and the
-path that failed. The launcher then reads `config.yaml`. If it needs to save
-a new configuration or record a server ID, a failure to write that file also
-stops startup and names the file.
+path that failed. The launcher then reads `config.yaml`. A permission error
+reading it, or a failure to write it when the launcher saves a new
+configuration or records a server ID, also stops startup and names the file.
 
 `internal/fsaccess` explains permission errors for files and folders. On Unix
 the explanation includes the server's numeric user and group IDs and, when
@@ -1563,8 +1563,10 @@ A library folder the server can't list is [unavailable](scanner.md#the-unavailab
 The AudioSilo image starts as root to prepare ownership. It then runs the
 folder checks and the server as `PUID:PGID` using `su-exec`. The defaults are
 `1000:1000`. Both are numeric, 0 through 4294967294 each (4294967295 is
-reserved). Only that group is set, so access a host user has through another
-group doesn't reach the server.
+reserved). The entrypoint doesn't check them itself: `chowndata` refuses any
+other value, and its walk of the data folder's contents is then skipped
+silently while the other steps still run. Only that group is set, so access a
+host user has through another group doesn't reach the server.
 
 A non-root Compose `user:` or Docker `--user` skips ownership preparation.
 The checks and the server run as that account. The entrypoint sets
