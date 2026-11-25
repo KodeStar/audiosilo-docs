@@ -52,10 +52,10 @@ The **Automatic downloads** card holds four settings. They're the same ones as i
 Choose **1**, **2** or **3** to download that many books ahead while a book is loaded. The setting starts at **Off**.
 
 - AudioSilo takes books from the top of [Up next](up-next.md) first, then from the series you're playing. It skips finished books.
-- It downloads only on a connection your **Automatic downloads** setting allows.
+- It follows the picker at the top of the card. With **Never**, it does nothing.
 - It leaves at least 1 GB free, or a tenth of your storage if that's more.
 
-If you switch books offline, AudioSilo keeps your existing downloads and picks the next books from your new place. Say Up next is empty and you switch from book one to book three with **2** selected. Books four and five download next when your connection allows it.
+If you switch books, it picks the next books after the new one and keeps the downloads you already have, even offline. Say Up next is empty, **2** is selected and you switch from book one to book three. Books four and five download next, once your connection allows it.
 
 A line under the setting says what it's doing. Books it downloaded are marked **Kept ahead**.
 
@@ -83,7 +83,8 @@ A watch has its own downloads, separate from your phone's. See [Apple Watch](app
 
 ## How downloaded playback differs {/* #how-downloaded-playback-differs */}
 
-- Offline, a download resumes from the place saved on this device. If your server answers in time with a newer place from another device, the player starts there.
+- A downloaded book plays from the device, so it never buffers.
+- It starts where you left off, even offline. A newer place from another device wins when your server answers within a few seconds, or when you've opened the app online since you listened there.
 - Chapters, the sleep timer and speed all work the same. So do bookmarks and notes while the app can reach your server (see [With no connection](#with-no-connection)).
 - Your listening is saved on the device and syncs the next time the app reaches your server. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 - If a book's chapters change on the server, the download picks them up next time you're online. The audio isn't downloaded again. See [When the book on the server has more files](#when-the-book-on-the-server-has-more-files).
