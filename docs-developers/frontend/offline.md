@@ -1665,8 +1665,9 @@ reader are optional. The worker reuses available fonts and carries a cached
 reader forward if the server cannot supply a fresh copy. Chrome can keep the
 compiled code for scripts cached during install.
 
-The worker writes the root last, once all required files are in the cache. If a
-required transfer or the root write fails, it discards the newly created cache:
+The worker writes the root last, once all required files are in the cache. The
+install fails when the root is refused, or when a required transfer or the root
+write fails. A cache this install created is then discarded:
 
 - **First visit.** The worker still activates so it can serve downloaded media.
 - **Update.** The browser keeps the active worker and can retry on a later visit.
@@ -1723,14 +1724,15 @@ immediately if the document is already complete. Registration requires service
 worker support and a secure context. On native, Metro selects the no-op
 `register-sw.ts`.
 
-In production the URL is `<base>/sw.js`. If the [language preference](i18n.md#language-selection-srci18nlanguage-providertsx)
+In production the URL is `<base>/sw.js`, so the worker's scope is `<base>/`. If the [language preference](i18n.md#language-selection-srci18nlanguage-providertsx)
 resolves to a language other than English, registration appends `?lang=<code>`
 so the installer knows which catalog to fetch. Under Metro, `?dev=1` enables
 only offline media and leaves app pages to the dev server for hot reloading.
 
-When a new worker fails to install and the active worker is a pre-manifest one
-(its URL has a `build` parameter), the page sends that worker a `precache`
-message, so its offline shell takes the new build's chunks rather than a mix.
+When the worker this registration starts installing fails and the active worker
+is a pre-manifest one (its URL has a `build` parameter), the page sends that
+worker a `precache` message, so its offline shell takes the new build's chunks
+rather than a mix.
 
 ### What offline actually covers on web
 

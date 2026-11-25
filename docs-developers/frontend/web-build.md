@@ -128,8 +128,10 @@ before the app switches to it (see
 During `npx expo export -p web`, the Metro serializer passes the final artifacts
 and assets to `scripts/web-precache.cjs`. It embeds a manifest in `sw.js`
 listing startup scripts and CSS, route and other deferred chunks, language
-catalogs by code, and fonts. Its hash identifies the build, so a new build
-changes `sw.js`'s bytes and the browser installs the update.
+catalogs by code, and fonts. A hash of those file names identifies the build,
+so a build whose files change changes `sw.js`'s bytes and the browser installs
+the update. A change only to another file in `public/` (such as `reader.html`)
+keeps the same worker.
 See [Installing the offline build](offline.md#installing-the-offline-build).
 
 ## The `baseUrl: "/web"` coupling
