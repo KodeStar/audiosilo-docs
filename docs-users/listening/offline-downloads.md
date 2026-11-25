@@ -111,9 +111,11 @@ A book you haven't downloaded keeps the community details the app has already lo
 
 ## Downloads in a web browser {/* #downloads-in-a-web-browser */}
 
-The web player can download books too, no app needed. Downloads are kept in the browser's own storage, so a laptop can play them with no connection.
+Before you go offline, open the web player once over **HTTPS** in the language you want to use. Your browser saves the player's pages during that visit. You can then reopen it offline, even on a page you've never visited.
 
-- It needs a **secure connection** (an `https://` address). On plain `http://`, the Downloads tab doesn't appear.
+Download each book or episode you want to play. Pages can show [details you've already loaded](#with-no-connection). If you choose a language the browser hasn't saved, the player shows English until you can load that language online.
+
+- On plain `http://`, the Downloads tab doesn't appear.
 - **Clearing the browser's site data deletes your downloads.** Your books and progress stay safe on the server.
 - A browser can clear stored data when the disk runs very low. Installing the web player as an app (below) makes the browser protect it more. For long trips, the [iOS or Android app](mobile-apps.md) is the safest choice.
 - On an **iPhone or iPad**, Safari stops playback in the background. Use the iOS app to listen with the screen off.
@@ -125,7 +127,7 @@ If a browser can't keep audio offline at all, the Downloads page says why.
 
 ## Installing the web player (PWA)
 
-You can install the web player as an app. It gets its own icon and window, and it opens even with no connection.
+Install the web player for its own icon and window. To use it without a connection, follow [Downloads in a web browser](#downloads-in-a-web-browser).
 
 - **Chrome or Edge on a computer**: click the **install icon** in the address bar.
 - **Android**: in Chrome's menu, choose **Add to Home screen** or **Install app**.

@@ -249,6 +249,8 @@ The PWA service worker (`/sw.js`) caches the console's shell:
   stale-while-revalidate (cached on first use), so the console works offline
   after one online visit.
 - It never intercepts `/api/` or `/web/`.
+- On activation it deletes only its own older `audiosilo-admin-*` caches.
+  The web player's offline build and downloaded media survive a console update.
 
 The web manifest (`manifest.webmanifest`, scope `/admin`) uses the Shelf
 colours.

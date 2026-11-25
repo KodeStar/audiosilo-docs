@@ -52,36 +52,41 @@ The [startup cache](state-and-data.md#the-startup-cache-web) puts the first
 screens' queries back into the query cache before anything renders, so a reload
 paints at once and then refreshes.
 
-### The first screen's answers, asked as the gate opens
+### The first signed-in screen {/* #the-first-screens-answers-asked-as-the-gate-opens */}
 
-Some starts can't be filled by the startup cache, such as a first visit or a
-private window. On those, `AuthGate` asks for the page's answers the moment it
-opens (`useStartupQueries` in `use-startup-queries.web.ts`). The list is
-`startupQueries` (`src/components/shell/startup-queries.ts`):
+`AuthGate` waits for the router to select the first signed-in destination.
+Connect, demo and profile selection keep Home from mounting underneath them.
+A direct link to the player or reader starts only the shared shell queries.
 
-- every server's `/server` and libraries;
-- on Home or the Library grid, their progress too;
-- plus Home's Recently added and favourites, or the selected library's first
-  page of books.
+`startupQueries` in `src/components/shell/startup-queries.ts` uses the same
+query options as the screens. Their declarations in `src/api/startup-reads.ts`
+identify the page, the connection and any server capability a read needs.
 
-`AuthGate` holds its spinner until the answers are in, for at most
-`STARTUP_WAIT_MS` (200 ms). So the screen renders once, with the answers, rather
-than first as a skeleton whose queries only then ask and again with the answers.
-It asks once per page load and only for what the cache lacks, so a reload the
-startup cache filled waits for nothing.
+| Destination | What the gate requests if the query cache lacks an answer |
+|---|---|
+| Every signed-in page | Server info and libraries for each visible connection. |
+| Home | Progress, Recently added and favourites for each connection. Other Home reads depend on the server capabilities below. |
+| Library in Books mode | Progress for each connection. The gate requests the grid's first page only when the saved selection appears as a book library in that connection's library list. It skips podcast and missing libraries. With no saved selection, the grid chooses its library when it mounts. |
 
-Each entry is built from the screen's own query spec (`serverInfoQuery`,
-`recentQuery`, `favouritesQuery`, `wholeLibraryQuery`...), so the screen finds
-it fresh. A new first-screen read joins through its spec, never through a
-hand-built key. Native never waits (`use-startup-queries.ts` returns true).
+On Home, the gate checks each connection's capabilities in its `/server` answer.
+
+- With `user_stats`, it requests 30-day stats. For the default connection it
+  also requests a year of listening data and the listening goal for **This week**.
+- With `household`, it requests that connection's household settings.
+- With `queue`, it requests the queue only for the connection **Up next** uses.
+
+A dependent read checks the connection and its token again after waiting for
+server info or libraries. Once per page load, the gate waits until the missing
+reads settle or `STARTUP_WAIT_MS` (200 ms) elapses. The screen can then render
+while a slow request continues. A fully restored page and native screens mount
+without this wait.
 
 ### Start scripts compiled off the main thread
 
-`scripts/web-start-chunks.cjs`, wrapped around Expo's serializer in
-`metro.config.js`, changes the web export only. It never changes the dev server,
-native, or an export with source maps.
+`scripts/web-start-chunks.cjs` wraps Expo's serializer in `metro.config.js`.
+It applies these compile hints and cuts only to web exports without source maps.
 
-- **The compile hint.** Every web script starts with V8's compile hint
+- **The compile hint.** Each JavaScript bundle starts with V8's compile hint
   `//# allFunctionsCalledOnLoad`. So Chrome compiles it whole on a background
   thread as it streams in, rather than function by function on the main thread as
   it runs.
@@ -93,10 +98,9 @@ native, or an export with source maps.
   compiles on its own (`vm.Script`). An async chunk is never cut, because the
   runtime loads it by its name.
 
-This matters where no service worker keeps compiled code
-([one worker per deploy](offline.md#publicswjs)): a page on plain http (a LAN
-address is not a secure context) or a private window. Measured on a real host
-over the LAN, with the startup queries above, the first cover went from
+This helps when the browser cannot reuse compiled scripts from
+[worker installation](offline.md#installing-the-offline-build), for example on
+a plain HTTP LAN address. In a LAN measurement, the first cover went from
 294-311 ms cold and 259-280 ms warm to about 180-205 ms in both (medians; one
 grid set under heavy load came to 225 ms). `npx expo export -p web` produces it
 directly, so CI and the server's web build need no change.
@@ -110,7 +114,7 @@ that loads within `FADE_AFTER_MS` (120 ms) of being drawn shows without the fade
 (`cover-image.web.tsx`), so these usually do; a late one still fades.
 
 The Library grid asks for its second page once the first has painted
-(`useAllLibraryBooks`, through `afterPaint`), so the rest of the library never
+(`useAllBookPages`, through `afterPaint`), so the rest of the library never
 holds the first page's covers back.
 
 ### Languages
@@ -121,9 +125,12 @@ before the app switches to it (see
 
 ### Offline
 
-A page's chunk loads when the page is first opened, so the service worker
-precaches the whole build. A page never opened online still boots offline (see
-[The PWA layer](offline.md#publicswjs)).
+During `npx expo export -p web`, the Metro serializer passes the final artifacts
+and assets to `scripts/web-precache.cjs`. It embeds a manifest in `sw.js`
+listing startup scripts and CSS, route and other deferred chunks, language
+catalogs by code, and fonts. The manifest's hash identifies the build. A change
+to the manifest changes the worker's bytes, so the browser detects the update.
+See [Installing the offline build](offline.md#installing-the-offline-build).
 
 ## The `baseUrl: "/web"` coupling
 
@@ -143,6 +150,6 @@ its own. That subpath runs through the build:
   bake a pinned web image into the server's Docker image, web image first (see
   the [release pipeline](../architecture/release-pipeline.md)).
 
-The export copies `public/` verbatim, which is how `sw.js` and `manifest.json`
-end up at `<base>/sw.js` and `<base>/manifest.json`. The service worker's scope
-is therefore `<base>/`. Details are in [Offline & PWA](offline.md).
+The server serves the generated worker at `<base>/sw.js` and the static PWA
+install manifest from `public/manifest.json` at `<base>/manifest.json`.
+The worker's scope is `<base>/`.
