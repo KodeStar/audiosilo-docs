@@ -104,16 +104,17 @@ So above 1x the bar needs more width for every action.
 - **With the scrubber** (from 800 px), its row needs `SCRUBBER_MIN` (100 px of
   track) plus `SCRUBBER_LABELS` (about 200 px of time labels, scaled with the
   text). When the side columns leave less than that between them, the bar
-  stacks rather than shrink or hide the scrubber.
+  stacks rather than shrink the scrubber.
 - **Without it** (below 800 px), when equal columns no longer fit, the bar
   checks the space left for the book. Above 1x it stacks if that space would
   fall below `BOOK_MIN` (128 px). From 1.3x it stacks whenever the sides cannot
   be equal.
 
-Stacked, the book and actions share the first row. The transport sits beneath,
-with the scrubber from 800 px, in a row `CENTRE_MAX` (560 px) wide or wider when
-the text needs it. Above 1x the row has 8 px of padding above and below
-(`GROWN_PAD_Y`), so the play button never sits on the window's bottom edge. All
+Stacked, the book and actions share the first row, with the transport beneath.
+From 800 px the transport and scrubber share a row `CENTRE_MAX` (560 px) wide,
+or wider when the text needs it. Below 800 px the transport is on its own.
+Above 1x the bar's row has 8 px of padding above and below (`GROWN_PAD_Y`),
+stacked or not, so the play button never sits on the window's bottom edge. All
 controls remain available in the full player.
 
 The `UndoChip` floats above the centre of the bar. A jump leaves the scrubber in

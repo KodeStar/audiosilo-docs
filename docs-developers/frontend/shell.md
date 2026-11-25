@@ -54,7 +54,7 @@ breaking. Each tab keeps a 44 px minimum target.
 ### Tablet
 
 - **`TopBar`** is at least 64 high (`min-h-[64px]`). With larger text it grows
-  with the mark and server line rather than cutting them. It holds:
+  taller, so the mark and server line keep their full height. It holds:
   - the mark with a server line;
   - the Home, Library, Downloads and You destinations as icons;
   - the omnisearch field, or a search icon button that does the same when the
