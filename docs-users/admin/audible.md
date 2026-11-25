@@ -113,12 +113,12 @@ except a title marked [**Not this book**](#not-this-book):
 A box set matches a book that holds the same volumes, so `Iron Vale: Books 4-6`
 can match the book [numbered](books.md#numbering-an-omnibus-or-box-set) `4-6`.
 A title that Audible calls a Collection, Box Set or Omnibus never matches a
-single book of the same name.
+single book of the same name by its title.
 
 When a book matched by title has no ASIN yet, the Bridge gives it the title's
 ASIN, so later checks match it exactly. It leaves the ASIN off when it can't be
-sure the book is that title: a contested book, two identical copies, or a book
-that holds other volumes.
+sure the book is that title: a book several titles matched, a preorder, two
+identical copies, or a book that holds other volumes.
 
 ### Contested titles
 
