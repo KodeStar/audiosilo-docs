@@ -12,8 +12,10 @@ On Unraid, install AudioSilo from **Community Applications** (the Apps tab). The
 3. Set **Audiobooks** (`/audiobooks`) to your audiobooks share, for example `/mnt/user/audiobooks`. It is mounted read-only.
 4. Leave **WebUI** (the port) at `8080` unless it's taken.
 5. Click **Show more settings** and check **Appdata** (`/config`). This is where the database and settings live. A cache or pool path such as `/mnt/cache/appdata/audiosilo` is quickest; the default `/mnt/user/appdata/audiosilo` works too.
-6. Leave **PUID / PGID** at `99` and `100`.
+6. Set **PUID** (user ID) and **PGID** (group ID) to the account that can write to **Appdata** and read **Audiobooks**. The usual Unraid values are `99` and `100`.
 7. Click **Apply**.
+
+Backups go in `/config/backups` by default. If you mount a share there, give that account read and write access to the share too.
 
 ## 2. Save your password
 
@@ -80,7 +82,7 @@ Or add a container variable `AUDIOSILO_DB_MMAP` with the value `off`.
 
 ### Moving from the AudioSilo image
 
-Already running `ghcr.io/kodestar/audiosilo-server` on Unraid? The data is the same. Only the paths inside the container differ: `/config` instead of `/data`, and `/audiobooks` instead of `/library`.
+The AudioSilo image (`ghcr.io/kodestar/audiosilo-server`) uses `/data` and checks its default backups folder at `/data/backups` on startup. If you ran it with a non-root Compose `user:` or Docker `--user`, that setting chose the server account. Use that account's numeric IDs in the Unraid template when you move the data. The LinuxServer.io image uses `/config` for data and `/audiobooks` for books.
 
 1. Note any `AUDIOSILO_*` variables the old container sets. They don't move on their own. (Skip `AUDIOSILO_WEB_DIR`: this image has the player built in.)
 2. Stop and remove the old container. Its data stays in its folder.

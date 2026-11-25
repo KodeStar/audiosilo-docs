@@ -54,15 +54,9 @@ and set `AUDIOSILO_BACKUP_DIR` to that path:
       AUDIOSILO_BACKUP_DIR: /backups
 ```
 
-- The server's user (`PUID` and `PGID`) needs read and write access to it, as
-  for the data folder. At start the container makes that user the owner of the
-  folder and of AudioSilo's own backups in it. A NAS share can refuse that, and
-  then the log names the folder and the fix (see
-  [Permission denied](../troubleshooting.md#permission-denied)).
-- A share mounted inside the data folder, such as at `/data/backups`, keeps its
-  owner. The container's ownership change at start stops at it. Give the
-  server's user access to it on the host, or mount it at a path of its own as
-  above.
+The AudioSilo image tries to give the server account the folder set by `AUDIOSILO_BACKUP_DIR` and AudioSilo's own backup files there. Use the real path. If any part of it is a symbolic link, the container skips that ownership change. With a non-root Compose `user:`, give the account access on the host.
+
+You can also mount a share directly at `/data/backups` and leave the setting unset. That share keeps its owner. Give the server account read and write access there. The startup check covers the backups folder in either location. See [Permission denied](../troubleshooting.md#permission-denied).
 
 ## Making and downloading backups
 
@@ -72,14 +66,9 @@ The **Backups** card lists every backup, newest first.
 - **Download** saves a backup to your computer.
 - The bin deletes a backup from the server.
 
-If a backup fails, a notice gives the reason, such as a full disk or a folder
-the server can't write to. You can also get it as a [notification](notifications.md).
-For a folder the server can't write to, the notification names the folder, the
-user the server runs as and the fix. A folder mounted read-only (`:ro` in
-Docker) is named as read-only.
+If the notice says the server can't write a backup, check that the mount allows writes and that the server account has read and write access. Open **Server > Logs** for the path and the cause.
 
-When the server can't read the backups folder at all, the Backups page shows
-the same folder, user and fix in place of the list.
+A [backup failure notification](notifications.md) includes the reason. A permission error names the server account and the owner when known. A read-only mount needs to be mounted read and write. If the server can't list the backups folder, the Backups page shows the error in place of the list.
 
 ## Before an upgrade {/* #before-an-upgrade */}
 

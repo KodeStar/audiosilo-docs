@@ -126,9 +126,7 @@ additional series keep their spelling. The limit, all-or-nothing rule and **Undo
 
 ### When a library is offline
 
-If a library's folder can't be read, a notice says "*name* is offline. Nothing
-was deleted." Once the folder is back, **Retry** scans it. See
-[When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing).
+In **Health > Issues**, the offline notice names the folder the server can't read. On Linux it shows the server account and the folder owner when known. Once that account can open the folder again, press **Retry** to rescan it. See [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing).
 
 ## Matching every book at once {/* #matching-every-book-at-once */}
 
@@ -333,6 +331,8 @@ A scan that couldn't read part of the library removes nothing. See
 
 **Health > System** lists everything the server depends on, one row each, with
 a status such as **Healthy**, **Needs attention**, **Missing** or **Off**.
+
+On Linux, the notice above the rows lists each offline folder and the server account. If it also shows the folder owner, compare those IDs when you check access on the host.
 
 ![Health > System](/img/screenshots/admin/system.png)
 

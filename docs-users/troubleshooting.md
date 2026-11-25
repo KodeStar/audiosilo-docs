@@ -22,28 +22,41 @@ Your Docker is older than **20.10.10** and blocks something the server needs. Up
 
 ### The container keeps restarting, or the log says the server can't write to a folder {/* #permission-denied */}
 
-The server runs as the user in `PUID` and `PGID`. It needs read and write access to its data and backups folders, and read access to your books. At start the container tries to make that user the owner of the data folder. A NAS share can refuse that, and the container's log then says so:
+Open the container log and find the path in the warning. The server needs to write to its data and backups folders and to read your books. Each pair of numbers is a user ID followed by a group ID.
+
+**Permission denied on the data folder.** This example shows a server running as `1000:1000` and a folder owned by `1026:100`.
 
 ```text
-audiosilo: WARNING: the server can't write to /data: it runs as user 1000:1000 and the folder belongs to 1026:100.
-audiosilo:   Changing its owner to 1000:1000 failed (a NAS share with ACLs or a read-only mount refuses it).
-audiosilo:   Fix: set PUID=1026 and PGID=100 (the folder's owner) on the container, or give user 1000:1000 read and write access to the folder on the host.
-error: the data folder isn't usable: the server can't write to /data: permission denied. The server runs as user 1000:1000 and the folder belongs to 1026:100. Set PUID=1026 and PGID=100 (the folder's owner) on the container, or give user 1000:1000 read and write access to the folder.
+audiosilo: WARNING: the server can't write to /data: permission denied. The server runs as user 1000:1000 and the folder belongs to 1026:100. Set PUID=1026 and PGID=100 (the folder's owner) on the container, or give user 1000:1000 read and write access to the folder. Changing its owner to 1000:1000 failed.
 ```
 
-The last line is the server stopping, so the container restarts and stops again. Do what the **Fix** line says. Either:
+Give the server account read and write access on the host. You can also set the container's `PUID` and `PGID` to the data folder's non-root owner and recreate the container. If you set a non-root Compose `user:` or Docker `--user`, change that setting instead. For the owner in this example, use `user: "1026:100"`. If the owner is `0:0` (root), grant your existing server account access. If the IDs already match, check the folder permissions on the host.
 
-- Set `PUID` and `PGID` to the owner the log names (here `1026` and `100`), then recreate the container.
-- Give the user the log names access to the folder on the host. On a Synology NAS, see [Give that user access](./getting-started/install-synology.md#3-give-that-user-access).
+The warning lets startup continue. If the server then reports `the data folder isn't usable`, it can't start until you fix that path. On Synology, see [Give that user access](./getting-started/install-synology.md#3-give-that-user-access).
 
-The same warning can name other folders:
+**Read-only backups.** A share mounted at the default `/data/backups` can have different permissions from `/data`. The log can show:
 
-- **The backups folder you set in `AUDIOSILO_BACKUP_DIR`.** The server starts, but backups fail until you fix it. For this folder and for the default one, the server's log warns `backups will fail` at start, and once a backup fails, the Backups notice in the console says why.
-- **A books folder**, which needs read access only. The warning ends with `Until then, a library in that folder shows as offline.` The library shows **Folder unavailable** in the console. After the fix, press **Retry** on the library.
+```text
+audiosilo: WARNING: the server can't write to /data/backups: read-only file system. It is on a read-only mount: mount it read and write (in Docker, without :ro).
+```
 
-A share that doesn't answer is a different problem. The log says `audiosilo: WARNING: /library didn't answer within 5 seconds: a network share that is slow, or whose server is gone.` Check that the share is mounted on the host.
+Allow writes on the backups mount and give the server account read and write access to the share. The server can start while backups are unavailable. See [A backups folder on another disk](./admin/backups.md#a-backups-folder-on-another-disk).
 
-Run the container with `user:` instead of `PUID` and `PGID`? Then the **Fix** line says to run it as the folder's owner, for example `user: "1026:100"`.
+**An unreadable file.** A mounted file such as `config.yaml` gets its own warning:
+
+```text
+audiosilo: WARNING: the server can't read /data/config.yaml: permission denied. The server runs as user 1000:1000 and the file belongs to 0:0. Give user 1000:1000 read access to the file, for example by making 1000:1000 its owner on the host.
+```
+
+Give the server account read access to that file. A readable configuration file can pass this check on a read-only mount.
+
+**An offline books folder.** A permission warning for a mounted books folder ends with `Until then, a library in that folder shows as offline.` Let the server account open and list the folder on the host. The books mount can stay read-only. In **Library > Libraries**, press **Retry**.
+
+**A share that doesn't answer.** Check that the share is online and mounted on the Docker host. The log names each path that timed out:
+
+```text
+audiosilo: WARNING: /library didn't answer within 5s. Check the network share.
+```
 
 ### My browser warns about the certificate
 

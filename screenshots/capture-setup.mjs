@@ -22,7 +22,7 @@
 // says it is in Britain (locale en-GB), so the metadata step preselects the
 // United Kingdom marketplace the way a real admin's browser would. Run once
 // per fresh --setup server: the account it makes closes the wizard.
-import {mkdir, rm} from 'node:fs/promises';
+import {chmod, mkdir, rm, stat} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
 import {
@@ -97,6 +97,17 @@ const tall = async (file, min = 900, max = 2400) => {
 };
 const heading = (name) => page.getByRole('heading', {level: 1, name, exact: true});
 const button = (name) => page.getByRole('button', {name, exact: true});
+// Only the books created by this capture lose access. Restore their original
+// permissions even when the browser cannot capture the notice.
+const withUnreadableBooks = async (capture) => {
+  const mode = (await stat(BOOKS)).mode & 0o7777;
+  try {
+    await chmod(BOOKS, 0);
+    await capture();
+  } finally {
+    await chmod(BOOKS, mode);
+  }
+};
 // Leaves the current step with `action` (Continue, Skip, ...) and waits for the next one.
 const leave = async (action, nextTitle) => {
   await button(action).click();
@@ -134,6 +145,13 @@ await step('the console flow', async () => {
 
   // 2. Books folder: typed, checked, named.
   await page.getByLabel('Books folder', {exact: true}).fill(SHOWN_BOOKS);
+  if (wanted('setup/folder-unreadable.png')) {
+    await step('check an unreadable books folder', () => withUnreadableBooks(async () => {
+      await button('Check folder').click();
+      await page.getByText(/The folder belongs to \d+:\d+/).waitFor();
+      await shoot(page, 'setup/folder-unreadable.png');
+    }));
+  }
   await button('Check folder').click();
   await page.getByText(/^Found \d+ audio files$/).waitFor({timeout: 30000});
   await page.getByLabel('Library name', {exact: true}).fill('Audiobooks');
@@ -191,6 +209,17 @@ await step('the console flow', async () => {
   await sleep(1500); // the toast fades, the covers load
   await shoot(page, 'setup/finish-card.png', {clip: around([await card.boundingBox()])});
 });
+
+if (wanted('admin/library-offline.png')) {
+  await step('offline library card', () => withUnreadableBooks(async () => {
+    await page.goto(`${wizard.origin}/admin/library/libraries`);
+    const library = page.getByRole('listitem', {name: 'Audiobooks', exact: true});
+    await library.getByRole('button', {name: /^(Rescan|Retry)$/}).click();
+    await library.getByText(/The folder belongs to \d+:\d+/).waitFor({timeout: 30000});
+    await library.getByRole('button', {name: 'Retry', exact: true}).waitFor();
+    await shoot(page, 'admin/library-offline.png', {clip: around([await library.boundingBox()])});
+  }));
+}
 
 await ctx.close();
 await browser.close();

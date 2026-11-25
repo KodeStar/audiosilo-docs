@@ -289,13 +289,10 @@ A library set in `config.yaml` can't be deleted here. Remove it from
 
 ## When a library folder goes missing
 
-If a library's folder can't be read, often because a network share unmounted,
-AudioSilo stops the scan and removes nothing. It does the same if the folder is
-suddenly empty while books are still indexed, since that almost always means a
-dropped mount.
+If the server can't read the folder, or a folder with indexed books suddenly looks empty, AudioSilo stops the scan. It keeps the books and everyone's progress. Listeners can still see the books, but playback needs the folder back.
 
-The library's card then says **Folder unavailable**, and the
-[overview](console-tour.md#the-overview) and
-[Health](health.md#when-a-library-is-offline) show a notice. Listeners still
-see its books, but they won't play until the folder is back. Mount the share
-again (or fix the permissions), then click **Retry**.
+The library card shows **Folder unavailable**. The notice names the folder and, on Linux, the server's user and group IDs. It also shows the folder owner's IDs when the server can read them. You can find the same notice on the [Overview](console-tour.md#the-overview) and in [Health](health.md#when-a-library-is-offline).
+
+![An offline library card showing the folder, the account IDs, the books kept and the Retry button](/img/screenshots/admin/library-offline.png)
+
+Mount the share again or give the server account permission to open and list the folder. Click **Retry**. After a successful scan the card shows **Online**.

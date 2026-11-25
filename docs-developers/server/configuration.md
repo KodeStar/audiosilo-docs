@@ -91,6 +91,12 @@ package does for a bad flag.
   `HEALTHCHECK`. It exits `0` when healthy, `1` when not (the reason on stderr),
   and `2` for an argument after the command. See
   [The health check](#the-health-check-audiosilo-healthcheck).
+- `audiosilo [--data <dir>] checkdirs` runs the Docker folder checks as the
+  calling user. It writes warnings to stderr and exits `0` even when a folder
+  fails a check.
+- `audiosilo [--data <dir>] chowndata UID:GID` changes ownership of the data
+  folder's contents on Linux. It exits `0` on success, `1` if the walk fails
+  and `2` for an invalid pair. See [Under Docker](#under-docker).
 
 `reset-admin` picks the one named, or the only enabled admin (a disabled
 admin neither counts nor is listed). It exits `2` (a `launcher.UsageError`,
@@ -1121,7 +1127,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_SESSION_DAYS` | `activity.session_days` | integer, 30-3650 |
 | `AUDIOSILO_BACKUP_SCHEDULE` | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` |
 | `AUDIOSILO_BACKUP_KEEP` | `backups.keep` | integer, 1-365 |
-| `AUDIOSILO_BACKUP_DIR` | `backups.dir` | absolute path; the Docker entrypoint also gives the folder to `PUID`/`PGID` (see [Under Docker](#under-docker)) |
+| `AUDIOSILO_BACKUP_DIR` | `backups.dir` | Absolute path. The Docker entrypoint also prepares ownership when every part of the path is free of symbolic links. See [Under Docker](#under-docker). |
 | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | `modules.podcasts.enabled` | `strconv.ParseBool` (`true`/`1`/…); locks the console toggle when set |
 | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | `modules.contributions.enabled` | `strconv.ParseBool` (`true`/`1`/…); each module's toggle is `AUDIOSILO_MODULES_<ID>_ENABLED` |
 | `AUDIOSILO_OIDC_ENABLED` | `auth.oidc.enabled` | `strconv.ParseBool` (`true`/`1`/…); read at start |
@@ -1532,58 +1538,84 @@ image's entrypoint checks them once more before the server starts.
 
 ### The server's own checks
 
-The server words a refused folder in `internal/fsaccess`. Before
-`config.Load` and `store.Open`, the launcher writes a probe file in the data
-folder and opens `audiosilo.db`, `-wal` and `-shm` read-write. A refusal stops
-the start with `the data folder isn't usable: ...`, naming the path, the user
-`uid:gid`, the owner and the fix, rather than SQLite's "unable to open database
-file". The fix (`fsaccess.Hint`) is `PUID` and `PGID` set to the owner only in a
-container (`/.dockerenv` or `/run/.containerenv`); outside one it is running the
-server as the owner. A container started with `--user` (the entrypoint exports
-`AUDIOSILO_STARTED_AS_USER=1`) gets `user: "<uid:gid>"` instead. A read-only
-mount (`EROFS`, docker's `:ro`) counts as refused, but its fix is to mount it
-read and write, never owner advice. It never advises running as root. It warns
-`backups will fail` at start when
-the backups folder exists and refuses it (`backup.Service.CheckFolder`). A
-refused backup is `permission_denied` (see
-[Backups](backups-and-notifications.md#status)), and so is a backups
-folder the server can't list (`GET /admin/backups` answers `500
-permission_denied` with that sentence). A library root the server can't list is
-[unavailable](scanner.md#the-unavailable-root-guard).
+Before loading the configuration or opening SQLite, the launcher creates and
+removes a file in the data folder. It also tries to open any existing
+`audiosilo.db`, `audiosilo.db-wal` and `audiosilo.db-shm` for reading and
+writing. A failure stops startup with `the data folder isn't usable` and the
+path that failed. The launcher then reads `config.yaml`. If it needs to save
+a new configuration or record a server ID, a failure to write that file also
+stops startup and names the file.
+
+`internal/fsaccess` explains permission errors for files and folders. On Unix
+the explanation includes the server's numeric user and group IDs and, when
+available, the owner's IDs. For a root-owned path it suggests granting the
+server account access. For a read-only mount it explains how to enable writes.
+On a native install it can suggest running the server as the owner.
+
+If the existing backups folder refuses writes, the launcher warns that
+`backups will fail`. A failed backup reports `permission_denied`. A backups
+folder the server can't list returns `500 permission_denied` from
+`GET /admin/backups`, with the path and the reason. See [Backup status](backups-and-notifications.md#status).
+A library folder the server can't list is [unavailable](scanner.md#the-unavailable-root-guard).
 
 ### Under Docker
 
-The image's `docker-entrypoint.sh` starts as root, gives the server's user its
-folders, checks them as that user, then drops to it with `su-exec PUID:PGID`
-(default `1000:1000`). The server runs as root only when `PUID` is `0`.
-`su-exec` sets only that group, so access a host user has through another group
-doesn't reach the server.
+The AudioSilo image starts as root to prepare ownership. It then runs the
+folder checks and the server as `PUID:PGID` using `su-exec`. The defaults are
+`1000:1000`. Supply numeric user and group IDs. The ownership command accepts
+decimal values from 0 through 4294967294 for each ID. The final unsigned 32-bit
+value, 4294967295, is reserved. Only the specified group is set.
 
-- **Ownership.** It gives the user the data folder (`--data`, `/data` by
-  default) with `chown -h`, skipping files the user already owns. The
-  chown stops at each mount point under the data folder, read from mountinfo
-  (a volume or bind mount from the same disk shares the device number, so
-  `-xdev` alone can't tell): a folder mounted there, a socket or a device node
-  (`/data/docker.sock`) keeps its owner, while a regular file mounted there
-  (`/data/config.yaml`) is chowned as before. When `AUDIOSILO_BACKUP_DIR` is an
-  absolute path, it gives the user that folder and only AudioSilo's own files in
-  it (`audiosilo-*.db` and `.audiosilo-*`, regular files, `chown -h`), since a
-  backups share may hold other apps' files. A path that is the container's root,
-  however spelled, or that holds a `..`, is skipped.
-- **Checks.** As the server's user, it writes a `mktemp` file in the data and
-  backups folders and reads one entry of every other mounted folder (the
-  audiobooks, by the rule of the setup's mount hints). For a folder that fails
-  it prints the folder, the user, the folder's owner and the fix (`PUID` and
-  `PGID` set to the owner, or giving the user access), and carries on. A data or
-  backups folder on a read-only mount (`:ro`, by mountinfo's options of the
-  mount holding it or of its filesystem) is reported as mounted read-only
-  instead of naming owners. Every
-  check and every step on the backups folder is bounded by `timeout 5`. A check
-  cut off says the folder didn't answer, with no owner advice.
-- **Under `--user`** (compose `user:`) it skips the chown, runs the same checks,
-  and its fix names `user:` instead of `PUID` and `PGID`. It exports
-  `AUDIOSILO_STARTED_AS_USER=1`, so the server's own hint says
-  `user: "<uid:gid>"` too (the image's `PUID` is in every container's
-  environment, so the server can't tell otherwise).
+A non-root Compose `user:` or Docker `--user` skips ownership preparation.
+The checks and the server run as that account. The entrypoint sets
+`AUDIOSILO_STARTED_AS_USER=1` so permission advice names the explicit user
+setting.
 
-`scripts/test-entrypoint.sh` tests the entrypoint in Docker. CI doesn't run it.
+#### Ownership at startup
+
+The entrypoint first tries to change the owner of the data folder itself
+(`--data`, normally `/data`). This step has a five-second limit. If the folder
+times out, the entrypoint skips its contents. Otherwise it calls
+`audiosilo --data <folder> chowndata UID:GID`. The walk has no time limit,
+so a large data folder can finish.
+
+- The walk stays on the data folder's mount, including btrfs subvolumes on
+  that mount. It skips other filesystems, nested directory mounts (even on
+  the same disk) and automounts. It also skips folders named `.snapshots`,
+  `@snapshots`, `#snapshot`, `.snapshot` or `.zfs`.
+- The walk never follows symbolic links. It can change the owner of the
+  link itself. A writable mounted regular file, such as `/data/config.yaml`,
+  can also change owner. Read-only file mounts, mounted sockets, pipes and
+  devices keep their owners.
+- The separate backups ownership step runs only for an explicit absolute
+  `AUDIOSILO_BACKUP_DIR`. It applies `chown -h` to the folder and to regular
+  files directly inside it matching `audiosilo-*.db` or `.audiosilo-*`.
+  If any path component is a symbolic link, including the folder itself, it
+  skips that ownership change. The write check warns if the account lacks
+  access. Each backups preparation step has its own five-second limit.
+
+The entrypoint excludes the container root and paths containing `..` from
+ownership preparation. With the default settings, a separate share mounted
+at `/data/backups` keeps its own owner.
+
+#### Access checks at startup
+
+`audiosilo --data <folder> checkdirs` checks the data folder and the backups
+folder the server will use. It takes the backups path from
+`AUDIOSILO_BACKUP_DIR`, then `backups.dir` in `config.yaml`, then
+`<data>/backups`. Reading the configuration for this lookup has its own
+five-second limit.
+
+For each existing data or backups folder, the command creates and removes a
+private temporary file to check write access. It tries to list an entry from
+each mounted content folder outside the data tree. It separately opens
+mounted regular files for reading, including files mounted inside the data
+folder. A warning for a file names that file.
+
+The probes run concurrently and share one five-second deadline, including
+owner lookups. Each path still waiting at the deadline gets a network-share
+warning. Startup can take longer because the ownership steps and configuration
+lookup have separate limits. The entrypoint continues to the server even if
+`checkdirs` itself fails. The server still needs usable data to start.
+
+`scripts/test-entrypoint.sh` exercises these cases in Docker.

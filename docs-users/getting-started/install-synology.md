@@ -23,7 +23,7 @@ The server runs as the user and group in `PUID` and `PGID`. Use your own DSM use
 - The first user you create on DSM is usually **1026**, and its group (`users`) is **100**.
 - To check, sign in over SSH and run `id yourname`. It prints `uid=` and `gid=`.
 
-No SSH? Start with 1026 and 100. If a folder then refuses that user, the container's log names the folder's owner and the values to set (see [Permission denied](../troubleshooting.md#permission-denied)).
+If you can't use SSH, start with 1026 and 100. A permission warning in the container log shows the server's user and group, then the folder owner's IDs when available. If your project sets a non-root Compose `user:`, that account runs the server and the container skips ownership changes.
 
 ## 3. Give that user access
 
@@ -97,6 +97,5 @@ In **Container Manager**, stop the `audiosilo` project, get the newest `ghcr.io/
 
 ## Good to know
 
-- **Backups** go to `backups` inside the data folder, so they need nothing more. To keep them on another volume, see [Backups](../admin/backups.md#a-backups-folder-on-another-disk).
-- **No File Station access to fix it?** Over SSH, `sudo chown -R 1026:100 /volume1/docker/audiosilo/data` gives the data folder to user 1026. Use your own IDs and path. Give your user read access to the books in **Shared Folder** (step 3).
+- **Backups** go to `/data/backups` by default. If you mount another share there, give your DSM user **Read/Write** on that share too. The container checks the backups folder at startup. See [A backups folder on another disk](../admin/backups.md#a-backups-folder-on-another-disk).
 - **HTTPS and access from outside** work as on any Docker host. See [Reach your server from outside your home](./remote-access.md).

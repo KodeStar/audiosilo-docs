@@ -6555,6 +6555,12 @@ admin-only fields:
   roots are probed in parallel, at most one probe per root runs at a time,
   each answer is cached for 15 seconds, and a probe already stuck past the
   timeout answers "not responding" at once for later requests.
+- `folder_access` is an optional object on an offline admin library.
+  For example, `{"server_user":"1234:2345","owner":"0:0"}` identifies the
+  server account and the folder owner as numeric UID:GID strings. The bounded
+  root check supplies `owner` when it can read it. A missing or unresponsive
+  folder may have only `server_user`. Online libraries and systems without
+  Unix IDs omit `folder_access`. The player library list also omits it.
 - `scan` - the library's scan progress, the same object as
   [`GET /admin/libraries/{id}/scan`](#get-apiv1adminlibrariesidscan). The
   console polls this list (every second while any library is scanning or
@@ -6624,9 +6630,9 @@ keep their order. This order is also the final de-duplication tiebreaker between
 otherwise-equal copies of the same book (see [`GET /api/v1/search`](#get-apiv1search)).
 
 Body: `{ "ids": [2, 1, 3] }`. Response `200`: `{ "libraries": [ … ] }` in the
-new order, in the same enriched shape as
-[`GET /admin/libraries`](#get-apiv1adminlibraries) (with `book_count`,
-`available`, `from_config`, `scan` and the scan settings).
+new order. Each entry has the same fields as
+[`GET /admin/libraries`](#get-apiv1adminlibraries), including optional
+`folder_access` on offline entries.
 
 ### `PATCH /api/v1/admin/libraries/{id}`
 
@@ -6963,6 +6969,19 @@ filesystem root (`/`, or the working directory's drive on Windows).
 | `400` | `path must be absolute` (`code: "path_not_absolute"`) - a relative `path` |
 | `404` | `folder not found or not readable` (`code: "folder_unreadable"`) - missing, not a folder, unreadable by the server, or not answering within 5 seconds (the OS error is not echoed) |
 | `401` / `403` | anonymous / non-admin |
+
+On a `404 folder_unreadable`, the response can include the same
+`folder_access` object as an [offline admin library](#get-apiv1adminlibraries).
+For example, a folder the server can identify but lacks permission to list
+can return the following JSON.
+
+```json
+{
+  "error": "folder not found or not readable",
+  "code": "folder_unreadable",
+  "folder_access": { "server_user": "1234:2345", "owner": "0:0" }
+}
+```
 
 Bounds rationale: an admin can already point a library at any folder and then
 browse it, so listing folder names reveals nothing new to that role.
@@ -10774,7 +10793,7 @@ What the console's Health > System, Server > About and Server > Logs show. All
 | `metadata.mode` | the mode the server **runs** with, `"remote"` or `"mirror"` (a saved change to the setting waits for a restart) |
 | `metadata.mirror` | mirror mode only (absent in remote mode, and when the server has no metadata service): the local copy's status, the object below |
 | `tls` | the boot `tls.mode` and `tls.hosts`, and the certificates it serves, read from their files (never generated or requested here): the self-signed pair, or one per host from the autocert cache (`issued: false` until Let's Encrypt has issued it). Empty for mode `off`. `error` is set when a certificate file couldn't be read |
-| `libraries[]` | each library's root, whether it answers (the same bounded probe as the scanner's), and `disk` (`total`, `free` to the server, in bytes) or `null` when the root isn't available or the OS doesn't say. From 2.7.0 both come from one look per root at the probe behind `available` on [`GET /admin/libraries`](#get-apiv1adminlibraries). That probe's answer is kept for 15 seconds and a new probe waits at most 2, so a root that goes offline shows here within about 17 seconds |
+| `libraries[]` | Each row has the library ID, name, root and `available`. The same probe as [`GET /admin/libraries`](#get-apiv1adminlibraries) supplies `disk` (total and free bytes, or `null` when unknown) and optional `folder_access` on an offline root. It caches answers for 15 seconds and waits up to 2 seconds for a fresh one. |
 | `web_player` | as in the settings envelope |
 | `update` | the [update status](#get-apiv1adminupdate) |
 | `backups` | the backups' `status` as in [`GET /admin/backups`](#get-apiv1adminbackups) (folder, running, last attempt, latest backup, next scheduled one); `null` only for a server built without the backup service (tests), never one the launcher starts |
@@ -11208,8 +11227,15 @@ A failed delivery is not an HTTP error here: the answer is `200` either way,
 }
 ```
 
-`data` per kind is in [Events](../backups-and-notifications.md#events) (a
-failed scan's `detail` is here, for the bell, but never sent to a destination);
+A `library_unavailable` event carries `library`, `library_id` and the scan's
+reason in `data.detail`. The bell and **Server > Events** append the reason
+to the offline notice. A permission error names the path, the server account
+and the owner when known. The webhook appends the same reason to `message`.
+Its `data` contains only `library` and `library_id`. Consecutive unavailable
+scans generate one notification.
+
+See [Events](../backups-and-notifications.md#events) for the other kinds.
+A failed scan (`scan_failed`) keeps its detail in the admin feed.
 `next_before` is `0` on the last page. Podcast events never carry the feed's
 address, and a private show's carry `private: true` instead of its name
 ([Podcast events](../backups-and-notifications.md#podcast-events)). A `before` that isn't a non-negative
@@ -11464,8 +11490,11 @@ only (never a file's contents) and is not audited.
 }
 ```
 
-- **The folder** is checked as the add-library folder picker checks it: an
-  absolute path the server can open and list. `root` comes back cleaned.
+- The server checks that it can open and list the absolute folder path.
+  On success, `root` comes back cleaned. On `404 folder_unreadable` the
+  response uses the [folder picker's error body](#get-apiv1adminfsdirs),
+  including `folder_access.server_user` on Unix and `folder_access.owner`
+  when known.
 - **The root** is checked against the other libraries as library create checks
   it, so a folder inside, or containing, a podcast library's folder is refused
   with `409 root_overlaps`. Two books libraries at one folder are allowed, so
