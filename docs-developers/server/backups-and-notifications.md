@@ -348,9 +348,9 @@ subscribed to its kind. A nil `*Service` does nothing, so callers don't check.
 |---|---|---|
 | `book_added` | `Scanner.OnRunFinished`: a scan job ending `ok` or `partial` that added books (once per scan), never for a podcast library, whose episodes are `podcast_episodes_new` | `library`, `library_id`, `count`, `titles` (the first five) |
 | `scan_failed` | a scan job ending `failed` | `library`, `library_id`, `run_id`, `detail` (the error, as the scan's log has it; **bell only**, see below) |
-| `library_unavailable` | a scan job ending `unavailable`, only when the library's previous scan that reached an answer wasn't unavailable. `catalog.PreviousRunStatus` passes over cancelled, interrupted and running scans, so a restart in between doesn't announce it again. | `library`, `library_id` |
-| `new_device` | every pairing exchange (`POST /auth/exchange`); a password sign-in (`POST /auth/login`) unless an earlier session of the same person already carried its `device_id` (`auth.IssueSession`), where a sign-in without a `device_id` always counts; and a household member signed in on their owner's device (`sign_in_here` on `POST /me/household/members`, or `POST /me/household/members/{id}/session`), always. Never for demo accounts. | `user`, `device` (the name the client sent, one plain line of at most 100 characters), `app` (from `X-AudioSilo-Client`, may be empty) |
-| `invite_redeemed` | a pairing exchange whose token came from an invite code | `user` (whose invite), `device` |
+| `library_unavailable` | A scan ends `unavailable` and the previous completed scan had a different outcome, or this is the first scan. `catalog.PreviousRunStatus` skips cancelled, interrupted and running scans. | `library`, `library_id`, `detail` (the scan's reason, appended to the bell and delivered message) |
+| `new_device` | every pairing exchange (`POST /auth/exchange`) except a [recovered invite exchange](api/reference.md#post-apiv1authexchange), which answers the original sign-in again; a password sign-in (`POST /auth/login`) unless an earlier session of the same person already carried its `device_id` (`auth.IssueSession`), where a sign-in without a `device_id` always counts; and a household member signed in on their owner's device (`sign_in_here` on `POST /me/household/members`, or `POST /me/household/members/{id}/session`), always. Never for demo accounts. | `user`, `device` (the name the client sent, one plain line of at most 100 characters), `app` (from `X-AudioSilo-Client`, may be empty) |
+| `invite_redeemed` | a pairing exchange whose token came from an invite code, never its recovered retry | `user` (whose invite), `device` |
 | `update_available` | `updates.Checker.OnAvailable` after a check that finds a newer release. Announced **once per version** (`dedup_key` is the version; see [Announced once](#announced-once)). | `version`, `name`, `url` (the release page) |
 | `backup_failed` | `backup.Service.OnFailure` (scheduled or manual) | `trigger`, `error` (`disk_full`, `permission_denied`, `failed`), and for `permission_denied` a `detail` sentence (the folder, the server's user, its owner and the fix) that the notification's text uses |
 | `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title`, plus per-kind fields. See [Bridge event data](#bridge-event-data). |
@@ -734,8 +734,9 @@ A webhook delivery is a JSON `POST` to the address, with
 - `id` and `at` are the feed's. A `test` sends `0` and the send time, and its
   `data` is `{}`.
 - `server.url` and `link` are `""` without a public address.
-- `data` is the event's facts from the [events table](#events), **without** a
-  failed scan's `detail`.
+- `data` contains the fields in the [events table](#events) with `detail`
+  removed. For `library_unavailable`, `message` ends with the scan's reason,
+  which can include the folder path and Unix account IDs.
 - For `book_added` with more books than the five titles listed, `message` ends
   with "and N more".
 
@@ -773,7 +774,7 @@ non-ASCII titles encoded. With a secret, the service sends it as
 
 ```json
 { "topic": "hearthside-alerts", "title": "Books is offline",
-  "message": "Its folder can't be read, so the scan stopped. Nothing was removed: books and progress are kept until it is back.",
+  "message": "Its folder can't be read, so the scan stopped. Nothing was removed: books and progress are kept until it is back. \"/srv/books\" is not responding. The server runs as user 1000:1000.",
   "priority": 4, "tags": ["electric_plug"],
   "click": "https://books.example.com/admin/library/libraries" }
 ```

@@ -329,6 +329,14 @@ row holds:
   split-up book count as `removed`.
 - A first scan counts a book split across disc folders once in `added`, and
   once among the titles it names, not once per disc.
+- On server version 2.7.0 or later, a new book that a player opens during the
+  scan counts once in `added`, even if the player indexed it first. The
+  [new-books notice](backups-and-notifications.md#events) includes it in its total.
+- A [read problem](#read-problems) increments `errors`. An already-indexed
+  book whose read was cut short and that the catalog kept as stored counts
+  nowhere else. It counts in `updated` when the scan still saved fresh
+  lengths for it (`Book.LengthsRead`). Any other book with a problem is
+  written and counts in `added` or `updated` as usual.
 
 `ScanProgress` carries the same counters live (`added`, `updated`, `moved`,
 `removed`). Its `indexed` is `added + updated`.
@@ -415,10 +423,10 @@ flowchart TD
     E --> F{"0 books found, index non-empty,<br/>and not all ignored?"}
     F -- yes --> U2["ErrLibraryUnavailable<br/>(abort, no prune)"]
     F -- no --> G["detectMoves<br/>fingerprint-match vanished → new paths,<br/>MoveDurableState (logged)"]
-    G --> H{"per book:<br/>mtime+size unchanged<br/>and probe data present?"}
+    G --> H{"per book:<br/>can the scan reuse the stored reading?"}
     H -- "yes (skip; backfill has_cover /<br/>suspect_parts if unset)" --> H
     H -- no --> I["enrich: path heuristic + tags + probe<br/>(in-process, ffprobe the fallback),<br/>chapters, cover, fingerprint,<br/>read problems, suspect parts"]
-    I --> J["catalog.UpsertBooks (up to 64 books a tx,<br/>a savepoint each): scanned values + files + chapters,<br/>then enrichment + overrides layered on, FTS"]
+    I --> J["Write the batch (UpsertBooks) or the requested book (UpsertBook):<br/>scanned values + files + chapters,<br/>then enrichment + overrides layered on, FTS"]
     J --> H
     H -- done --> HC["SetHasCover + SetSuspectParts<br/>noted backfills, one tx each"]
     HC --> P{"discovery saw<br/>the whole tree?"}
@@ -431,15 +439,11 @@ flowchart TD
 
 ### The unchanged-skip
 
-A book is skipped when its stored mtime and size match **and** one of these
-holds:
-
-- ffprobe is disabled;
-- a prior probe already stored both a duration and a codec.
-
-The second clause is a backfill mechanism. Books indexed before the `codec`
-column existed (migration `0008`) are probed again once, even though their
-files haven't changed.
+The scanner compares the book's mtime and size and, for a folder book, the
+order of its files. With matching files and a current duration revision, it
+can skip the audio if it already has both a duration and a codec. An older
+book missing either gets another probe, subject to the rules for
+[a scan without ffprobe](#with-no-ffprobe) and [stored read problems](#read-problems).
 
 One more book passes the skip: a book with one audio file whose recorded
 `unreadable` or `probe_failed` [read problem](#read-problems) names that file
@@ -544,9 +548,8 @@ characters and recaps) are backfilled the same way, from the same walk (see
 
 ### Reading several files at once
 
-A scan reads the books it has to index (new, changed, or missing probe data)
-several files at a time, and writes the index in one place
-(`library/scanread.go`):
+A scan can read several books and several parts of one book at the same
+time (`library/scanread.go`).
 
 - **Slots.** `readSlots` bounds how many audio files are read at once. Each
   read holds a slot: tags and the [in-process probe](#the-in-process-probe),
@@ -554,25 +557,29 @@ several files at a time, and writes the index in one place
   There are `scan.concurrency` slots, by default one per CPU up to
   `DefaultScanReaders` (8). See
   [Configuration](configuration.md#library-scans-scan).
-- **Books read ahead.** Each book to index is read (`enrich`) on its own
-  goroutine: its primary file first, then its other parts with the slots
-  (`readFiles`). Reads run up to a window of twice as many books as slots ahead
-  of the next book written.
-- **One writer, in order.** The scan's own goroutine writes each book once its
-  read is done, in discovery order (`writeNext`), on the one writer
-  connection. The rows, their ids, the file order, the chapter offsets and the
-  scan's log come out exactly as a scan reading one file at a time would write
-  them.
+- **Books read ahead.** Each book to index gets its own goroutine. `enrich` reads the
+  primary file first, then `readFiles` uses the slots for the remaining parts.
+  For an already-indexed book, it stops scheduling parts once its
+  [read problems](#read-problems) mean the book is kept as stored. The scan reads up
+  to twice as many books ahead as it has slots (`2 * slots.size()`).
+- **A player opens a book during the scan.** The scan normally batches books
+  in discovery order (`writeNext`). On server version 2.7.0 or later, a
+  request that joins the scan's read can claim the finished book and write it
+  ahead of a slower book (`bookRead.publish`). Whichever of the batch and the
+  request claims the book first writes it, once. The scan records its outcome
+  in discovery order.
+- **The player indexed the book first.** The scan checks the book's stored
+  signature against discovery (`matchesOpenedBook`) and reuses a matching
+  read with no recorded problem. See [scan counts](#counts).
 - **Several books a transaction.** The books read wait in a batch, and
   `catalog.UpsertBooks` writes them together. A transaction's begin and commit
   cost about as much as a book's own writes: 0.6 of 1.5 ms a book on a
   synthetic library, 1.3 of 3.9 ms on a real one.
   - *When a batch is written.* A batch is written once it holds `writeBatch`
     (64) books, once the first book has waited `writeBatchAge` (250 ms), when
-    the writer would otherwise wait on a read, or when the scan ends or stops.
-    The writer never waits on a read while holding books. So a scan whose
-    reads are slower than its writes (ffprobe on every file) still writes each
-    book as its read is done.
+    the writer would otherwise wait for the next book, or when the scan ends
+    or stops. The scan also writes the batch before starting a batch of tag
+    backfill reads, so a slow tag read leaves completed books available.
   - *How long it holds the writer.* The same 250 ms is `UpsertBooks`' budget.
     A transaction takes another book only while it has run for less than that.
     A batch therefore holds the writer, and every other write (a listener's
@@ -583,18 +590,15 @@ several files at a time, and writes the index in one place
     again one at a time (`UpsertBook`).
 - **Stopping.** A Stop, or the scan's time limit, ends the in-process probes
   and the ffprobe runs through the scan's context.
-  - The scan waits for the reads under way and drops them, because a read cut
-    short would record a false [read problem](#read-problems). It also drops a
-    finished read that the writer had not yet taken into the batch.
-  - From 2.7.0 it waits for a read still under way (held in a call nothing
-    bounds, on a share that stopped answering) for at most 2 s (`stopGrace`),
-    then leaves it to end on its own, its book's flight with it. The read is
-    counted in `Scanner.readsLeft` and logged, so the scan ends and the next one
-    runs. No later read waits on that flight (`errReadLeft`): a later scan keeps
-    the book as stored with an `unreadable` problem and scans the rest, and an
-    on-demand read (Re-read, a move, a share) answers `503 share_not_answering`.
-  - It writes the books already in the batch, whose reads finished before the
-    Stop.
+  - The scan writes its existing batch. If a request has already claimed a
+    finished read, that request saves the whole book even if a Stop arrives
+    during the write. The scan waits for that write. It drops other unbatched reads, so an
+    interrupted read cannot record a false [read problem](#read-problems).
+  - On server version 2.7.0 or later, all outstanding reads share one
+    2-second grace period (`stopGrace`). The scan logs and counts reads
+    still running after that (`Scanner.readsLeft`), then lets the next scan
+    start. For how later callers handle those reads, see
+    [on-demand indexing](#on-demand-indexing-indexpath).
   - It reads nothing more, and keeps the backfills read so far.
 - **On-demand indexing** ([`IndexPath`](#on-demand-indexing-indexpath)) reads
   with one slot, a file at a time, on a goroutine of the book's shared read.
@@ -1704,10 +1708,12 @@ rules (`noFFprobeRules`, the release the Docker images ship).
   alone, as an ffprobe time-out is.
 - The start-up log says the probe is on with no ffprobe.
 
-A scan reads an unchanged book with no stored duration or codec again once per
-server run (`Scanner.rereadUnprobed`, remembered in memory). So a server that
-ran without ffprobe gets its books' lengths on the first scan after the
-upgrade, and a file the probe is unsure of isn't re-indexed on every scan.
+On server version 2.7.0 or later, a completed read that could not determine
+the duration or codec leaves the `@probe_unsure` [snapshot marker](data-model.md#effective-values-and-the-scanned-snapshot).
+While ffprobe is unavailable, later scans can skip the same files, even after
+a restart. The scanner tries again when the files change, when ffprobe becomes
+available, or when an older index lacks the marker for a missing value.
+
 `metadata.ExtractTags` reads tags alone, for the one tags-only caller
 (`suspectFromTags`).
 
@@ -2017,45 +2023,42 @@ that timed out while others ran is retried on its own (`readSlots.extract`):
 On a very slow share where many files time out, the retries make the scan
 slower than reading one file at a time would. Lower `scan.concurrency` there.
 
-**A read cut short on a hung share.** Any file of an already-indexed book can
-come back with its read cut short, or refused at its mount's abandoned-read cap
-(`Metadata.TagsUnread`, `ReadRefused`; see
-[Bounded reads on a hung share](#bounded-reads-on-a-hung-share)). A file whose
-length ran out of time even when read alone counts too: an ffprobe time-out, or with no ffprobe the in-process read's `ProbeTimedOut`
-(`library.readCutShort`). The scan then sets `Book.ReadCutShort`, and the
-book's row is not rewritten at all (`catalog.recordReadProblem`). Names,
-length, codec, chapters, cover flag, mtime and size stay as the last full read
-left them. Only the problem is recorded, with ffprobe or without, so the next
-scan reads the file again (`problemCleared` never clears a read still cut
-short). The problem is `unreadable`, with the detail:
+**A read cut short on a hung share.** A tag read that times out or is refused
+at the per-mount limit, a length read that times out even on its own, a part
+that is not a regular file, or an open that fails as a share fails (EIO, a
+permission) sets `Book.ReadCutShort`. The scanner
+records the affected file so the next scan can check it. In a folder book,
+that file takes precedence over an earlier part with a lasting problem.
 
-- "reading it timed out" (an in-process length read out of time says this
-  too); or
-- for a refused read, "too many earlier reads from the same drive or share are
-  stuck, so it wasn't tried", because the cap is per mount.
+An in-process timeout records `unreadable` with the detail "reading it timed
+out". At the [per-mount read limit](#bounded-reads-on-a-hung-share), the
+detail is "too many earlier reads from the same drive or share are stuck, so
+it wasn't tried". An ffprobe timeout records `probe_failed`.
 
-An ffprobe time-out records `probe_failed` (above) instead. A folder book
-records the problem of the part that was cut short, even over an earlier
-part's lasting problem, so the next scan asks the right file again.
+On server version 2.7.0 or later, what the catalog writes for an existing
+book depends on what the scanner could read.
 
-A length out of time can repeat on every scan, for example on a damaged part,
-and so can a file that is no regular file (from 2.7.0 a FIFO left in a book's
-folder: an open error with an unread length, `library.lengthUnread`). So when one
-of those is the only problem (`Book.LengthOnly`: every file's tags were read,
-none was cut short or refused), the stored book is kept only while its files
-are the stored ones (`catalog.sameFiles`): the same paths in the same order,
-and the same sizes except for the parts whose length timed out or that are no
-regular file (`BookFile.LengthUnread`). With a part added, gone, renamed or changed, the
-book is written whole with the part's problem and counted as updated. This
-holds for an on-demand index too. A cut-short or refused read keeps the book
-whatever its files, because rewriting it would store names built from its
-paths alone.
+- **Only the tags timed out.** If ffprobe supplies the missing length and the
+  scanner has reliable lengths for every part, `catalog.recordLengths` checks
+  the file paths in order. If they match, it keeps the stored names and cover
+  and saves the lengths, codecs and chapters. It also saves the book's mtime
+  and size and each part's size. The next scan of the same files checks the
+  part with unread tags and reads the whole book once those tags are readable.
+  If the paths or their order differ, the catalog keeps the stored book intact.
+- **Only a length was unreadable.** A timeout or a non-regular file such as a
+  FIFO can leave a part without a length (`Book.LengthOnly`).
+  `catalog.sameFiles` compares paths, order and sizes, ignoring the sizes of
+  parts marked `BookFile.LengthUnread`. A match keeps the stored book.
+  A difference makes the scan write the whole book with the part's problem.
+  An on-demand index uses the same rule.
+- **Both tags and a reliable length are missing.** The missing readings can
+  belong to different parts. Once `readFiles` has seen both, it skips the
+  remaining parts because the scan must keep the stored book intact.
+  The catalog records only the problem (`catalog.recordReadProblem`).
 
-A new book read this way is written with its path's names.
-
-Extraction stays best-effort. A problem never stops a scan, and the book is
-still indexed with what could be read. Each book with a problem adds a
-`problem` line to the scan's log and counts in its `errors`.
+For a new book, the scan continues through the parts and writes what it could
+read, using names from the path where tags are missing. It logs a `problem`
+event and continues to the next book. See [scan counts](#counts).
 
 ### Folders that may hold several books
 
@@ -2281,24 +2284,25 @@ probes the book, while the other waits for it and loads what it stored.
 
 - Each request resolves the book and passes its own scope check before it
   joins.
-- From 2.7.0 the read runs on its own goroutine for up to 10 minutes
-  (`indexTimeout`), ended by the server's base context at shutdown, not by the
-  request that began it. A request that ends gets its context error, and the
-  read still finishes and is saved, so its probes aren't thrown away.
-- A waiter whose own request ends stops waiting.
+- On server version 2.7.0 or later, an on-demand read can outlive its
+  request: it runs for up to 10 minutes (`indexTimeout`), and a favourite's
+  background worker can lead it. If the request ends first, the read still
+  finishes and stores the book.
 - A Re-read waits for a held flight, then reads the book afresh.
-- From 2.7.0 no read waits on another read of the book for longer than one
-  look's time (`lookTimeout`: 10 seconds for an on-demand read, the probe's
-  time for a scan's) while that read has not returned, and never on a
-  read a stopped scan left behind (`waitFlight`). A scan's read that has
-  returned is waited on until its batch write. A scan then keeps the book as
-  stored with an `unreadable` problem (`keepLeft`); an on-demand read gives up
-  with `503 share_not_answering`.
-- A request still waiting when the server's shutdown ends the read answers
-  `503 stopping` (`library.ErrStopping`), as do a Re-read and the Bridge's
-  rescan, not a `500`.
-- A waiter whose flight was given up (a scan that stopped, a read past
-  `indexTimeout`) reads the book itself.
+- A caller can join a [scan's read and write](#reading-several-files-at-once).
+  While the read is in progress, `waitFlight` measures time since its last
+  progress. An on-demand read allows 10 seconds, or the probe timeout while
+  ffprobe runs. The request's overall wait cap still applies during the write.
+- If the shared read stalls or a stopped scan has left it behind, a scan
+  keeps the stored book with an `unreadable` problem (`keepLeft`). An
+  on-demand request returns `503 share_not_answering`. A waiter can retry a
+  read the scan dropped before writing. If a detached read used its full
+  `indexTimeout`, callers receive the same 503 without starting another read.
+- At shutdown the server cancels the base context and closes admission to new
+  detached reads. Favourite and admin Re-read workers (`API.WaitMediaCaches`)
+  and on-demand reads (`Scanner.WaitReads`) are given time to wind down
+  before the server closes the database. A request whose read ends at
+  shutdown receives `503 stopping` (`library.ErrStopping`), as do a Re-read and a Bridge rescan.
 - The read stays inside the per-mount bounds of
   [the in-process probe](#the-in-process-probe).
 
@@ -2399,8 +2403,8 @@ next scan's prune. A request made once the share answers carries the state.
 ### Reading one book again
 
 `POST /admin/libraries/{id}/book/rescan?path=` (the console's "Read the files
-again" and Health's "Read again") calls `IndexPath` for an already-indexed book
-too. It re-reads that one book's files now (tags, ffprobe, cover, read
+again" and Health's "Read again") calls `ReindexPath` for an already-indexed
+book. It re-reads that one book's files now (tags, ffprobe, cover, read
 problems) **outside** the job queue, since one book shouldn't wait behind a
 library scan, and answers with the book page.
 
@@ -2456,9 +2460,11 @@ unavailable", from two signals.
 [`GET /admin/libraries/{id}/scan`](api/reference.md#get-apiv1adminlibrariesidscan)
 reports it as `unavailable: true` until a later scan finishes without it.
 
-**A live probe.** `Scanner.RootsAvailable(libs, indexed)` backs the
+**A live probe.** `Scanner.RootStatuses(libs, indexed)` backs the
 `available` field of
-[`GET /admin/libraries`](api/reference.md#get-apiv1adminlibraries). A root is
+[`GET /admin/libraries`](api/reference.md#get-apiv1adminlibraries), and on an
+offline root its `folder_access` (`fsaccess.IdentityOf` of the probe's stat:
+the server's `uid:gid`, and the owner's when the stat answered). A root is
 unavailable when the last scan stopped at the guard, or when it is missing,
 unreadable, not answering, or empty while books are still indexed under it.
 

@@ -2219,7 +2219,10 @@ bridge phone` (`SETUP_STEPS`). Each step has Skip and, after the first, Back
    - the counts;
    - `same_root`, shown as a warning;
    - `path_not_absolute`, `folder_unreadable` (worded for the Docker host-path
-     mistake) and `root_overlaps`, in plain words (`folderErrorKey`).
+     mistake) and `root_overlaps`, in plain words (`folderErrorKey`). A
+     `folder_unreadable` answer's `folder_access` is appended as the server's
+     account and the folder's owner (`folderAccessText`, also used by the
+     libraries' offline notice and Health > System).
 
    The envelope's `mount_hints` show as chips. Libraries the server has are
    listed as already added, and rows with `from_config: true` are marked

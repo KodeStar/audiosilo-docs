@@ -27,7 +27,7 @@ Each device can scan the same invite's QR code, up to the invite's number of use
 ## If someone invited you
 
 1. Open the invite link you were sent. It looks like `https://books.example.com/connect#code=…`.
-2. The server's connect page signs the invite in.
+2. The invite page shows your sign-in options. Opening it doesn't use up the invite.
 3. Choose where to listen:
    - The QR code: scan it with the app on your phone, as above.
    - **Open in app**: sign in the app on this device. If nothing happens, the app isn't installed.
@@ -43,7 +43,7 @@ Opened on a phone, the page leads with getting the app instead of a QR code. Ins
 Anyone who opens your invite link can sign in as you, so don't post it publicly.
 :::
 
-If the invite has expired or is used up, the page says so. Ask for a new one. The admin's side is in [Invite people](../admin/users-and-invites.md).
+If the connection drops during sign-in, you can [retry the invite on this device](#if-the-connection-drops-during-invite-sign-in). If the invite page says the invite has expired or is used up, ask your admin for a [new invite](../admin/users-and-invites.md).
 
 ## Connecting from the app
 
@@ -83,6 +83,16 @@ An **invite code** looks like `9M4K-P2TQ-WX7V-3RHD`. Many accounts have no passw
 | The username or password is wrong | Check both and try again. |
 | Your account is turned off | Ask your admin to turn it back on. |
 | Too many tries from this network | Wait as long as it says, then try again. |
+
+### If the connection drops during invite sign-in
+
+Keep the player open on the same device. Once you're back online, tap **Try the link again**. If you're on the invite code screen, tap **Sign in** again.
+
+You can retry once, within a minute of the first attempt, without using up another of the invite's uses.
+
+If you go back one screen, you can enter the same code for the same server and carry on. If you were signing in with a code and leave sign-in altogether or reload the page, the retry is lost.
+
+If the player says this device already used the invite, sign in with your password or ask your admin for a new invite. Sometimes it says the device *may* have used the invite because the reply never arrived. The same two options work then.
 
 ### "Your library is ready."
 

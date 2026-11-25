@@ -503,7 +503,11 @@ and two URL carriers.
   - `uri` (`audiosilo://connect?server=<base>&token=<pairing_token>`) uses the custom
     scheme.
 - The flow is `POST /auth/redeem` (a code for a pairing payload), then
-  `POST /auth/exchange` (a pairing token for a device-scoped session).
+  `POST /auth/exchange` (a pairing token for a device-scoped session). The
+  player sends its per-address sign-in key as `device_id`. If an invite
+  exchange reply is lost, the player can
+  [recover the session once](../server/api/reference.md#post-apiv1authexchange)
+  by resending the same token and key.
 - The redeem payload adds two optional fields for the connect page: `admin`
   (true when the code pairs an admin's account) and `links.apk` beside
   `links.ios` and `links.android` (the store links). The player reads neither.

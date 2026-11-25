@@ -197,6 +197,10 @@ in 0044)* holds opaque bearer tokens. Its columns:
 - `last_seen`: bumped by authenticated requests, at most once a minute unless
   the request's address or `X-AudioSilo-Client` changed
   (`auth.touchInterval`). A progress save is then not also a token write.
+  A session's first use (`last_seen` still NULL) must be written before the
+  request is authorized
+  ([Resolving a request](auth-and-security.md#resolving-a-request)); later
+  bumps are best effort.
 - `expires_at` (NULL means no expiry) and `revoked`.
 - `auth_code_id`: FK CASCADE to `auth_codes`, NULL for sessions and unlinked
   pairing tokens. A pairing token minted by redeeming a code is linked to it,
@@ -234,8 +238,9 @@ request and never keeps a history.
 The daily retention job blanks `last_ip` on revoked tokens
 (`auth.ForgetRevokedAddresses`), so an address is kept only while the device is
 signed in. The same job deletes pairing tokens that can never pair again
-(`auth.PrunePairingTokens`): revoked, expired, or linked to an expired or
-used-up code.
+(`auth.PruneSingleUseTokens`): revoked, expired, or linked to an expired or
+used-up code. It keeps an invite's pairing token while an
+[`invite_exchanges`](#invite_exchanges) row for it still has its retry open.
 
 `created_on_token_id` *(0044; FK to `tokens` `ON DELETE SET NULL`, partial index
 `idx_tokens_created_on`)* is set on a household member's session made on their
@@ -292,6 +297,23 @@ redeemable codes:
 Both kinds redeem through the same path. See
 [Auth & security](auth-and-security.md#auth-codes-invite-vs-recovery) for the
 lifecycle (supersede-on-mint, rotate, atomic claim).
+
+#### `invite_exchanges`
+
+**`invite_exchanges`** *(0097)* records the session an invite's pairing token
+gave one device, so that device can
+[recover a lost exchange](api/reference.md#post-apiv1authexchange) once. A row
+is written only for an invite exchange that sent a valid `device_id`:
+
+- `pairing_id`: the pairing token. FK CASCADE to `tokens`, so removing the
+  token (daily retention included) removes the record.
+- `device_hash`: the SHA-256 of the `device_id`. The primary key is
+  `(pairing_id, device_hash)`.
+- `session_id`: the session the exchange issued. UNIQUE, FK CASCADE to
+  `tokens`. A retry replaces that session's `token_hash` in `tokens`
+  and keeps its id.
+- `retry_until`: 60 seconds after the exchange. A retry sets it to NULL, which
+  spends the one retry.
 
 #### Single sign-on tables
 
@@ -627,6 +649,11 @@ holds an `@indexed_at` stamp (`catalog.scannedStampKey`) with the `indexed_at`
 of the upsert that wrote it. The snapshot is the revert target and what the
 admin console shows next to an edited value. Compared with the path, it also
 shows where a value came from.
+
+The optional `"@probe_unsure": "1"` records a completed read without ffprobe
+that left the duration or codec unknown. The scanner trusts the marker only
+when the snapshot's stamp matches the row's `indexed_at`. A cut-short read
+does not set it. See [With no ffprobe](scanner.md#with-no-ffprobe).
 
 The stamp guards against a **rollback**. A server older than migration 0016,
 run against this database, re-indexes rows with their scanned values in the
@@ -1595,11 +1622,8 @@ Its keys:
   failure stops the start, as a failed migration does, because every series
   filter reads only the keys (see `books.series_key` and `book_more_series` in
   [The rebuildable index](#the-rebuildable-index)).
-- `search_text`: the version of the search-text rule the `books_fts` rows were
-  written with (`searchTextVersion`: the rule's number and the Unicode
-  version). While it is missing or different, `Catalog.IndexSearchText`
-  rewrites the rows the rule changes, once, at start after `KeySeries` (see
-  [FTS design](#fts-design-books_fts)).
+- `search_text` records the rule and Unicode versions used by the
+  [full-text search index](#fts-design-books_fts).
 - `setup_state`: the admin console's
   [first-run setup flow](web-ui.md#the-first-run-setup-flow), for example
   `{"finished":false,"dismissed":false,"steps":{"folder":"done","naming":"skipped"}}`.
@@ -2420,11 +2444,12 @@ books from the database when the preference changes.
 - `UpdateLibrary` marks the library due in the edit's transaction
   (`markResolve`, the `server_state` key `library_resolve_due`: each due
   library's id and the generation of its last change).
-- `Catalog.ResolveSources` re-resolves each due library's books
-  (`refreshEffective` per book), 200 a transaction (`resolveBatch`), so the one
-  writer is never held long. A library switched again while it runs starts
-  over. What is due is in the database, so a run a stop cut short goes on at
-  the next start (`API.StartSourceResolves`).
+- On server version 2.7.0 or later, `Catalog.ResolveSources` gives each due
+  library one transaction of up to 200 books per round (`resolveBatch`).
+  Each round picks up newly due libraries. If a library switches source
+  again, it starts from its first book and discards any failure from the old
+  generation. The final batch clears its due mark. At startup,
+  `API.StartSourceResolves` picks up any libraries still marked due.
 - Every due library runs even when one fails. A failed run is run again after
   1 minute, doubling, 6 times (`resolveRetries`), then waits for the next edit
   or start. A panic counts as a failed run.
@@ -2434,8 +2459,8 @@ books from the database when the preference changes.
   (`recordScannedUnreadable`), which Health lists. The next scan finds that
   file reads, reads the whole book again and writes a new snapshot, which heals
   it.
-- The PATCH waits up to 20 seconds (`resolveWait`). Between the switch and the
-  end of the job, a reader can see the new setting with some books' old values.
+- While the job runs, a reader can see the new setting with some books' old
+  values. See the [library PATCH response](api/reference.md#patch-apiv1adminlibrariesid).
 
 ### Tag hints
 
@@ -2672,6 +2697,7 @@ The migration history so far:
 | 0094 | `catalog_pass_indexes` | Adds `books.cover_color_art` with its trigger, start-up backfill and due index (see [Cover art columns](#cover-art-columns)), `idx_books_narrator` (see [FTS design](#fts-design-books_fts)) and `idx_bridge_jobs_fetch_requester` (see [`bridge_jobs`](#bridge_jobs)) |
 | 0095 | `books_matched` | Adds `books.matched` and backfills it once for existing books. Triggers on `books` and [`book_matches`](#book_matches) keep it current. |
 | 0096 | `mka_cover` | Data-only migration for the [MKA cover recheck](#file-and-source-columns). |
+| 0097 | `invite_exchanges` | The [`invite_exchanges`](#invite_exchanges) table, which lets a device recover a lost invite exchange once. No data moves. |
 
 `server_state.progress_feed` identifies the Audible progress feed. A restore renews this ID before
 clients can page it. The separate data-folder mark detects a database restored behind the last
@@ -2877,10 +2903,15 @@ sound and iteration marks) one character a token.
 
 So `猫` finds `吾輩は猫である`, and `吾輩` still does. A trigram tokenizer was
 rejected, because it can't match the one- and two-character words that CJK
-search mostly is. Hangul is spaced, so it stays as it is. Rows an older server
-wrote are rewritten once at start-up (`Catalog.IndexSearchText`, run after
-`KeySeries`), gated by `server_state` `search_text` (the rule version and the
-Unicode version), in one transaction and with no migration.
+search mostly is. Hangul is spaced, so it stays as it is.
+
+At startup, after `KeySeries`, `Catalog.IndexSearchText` checks the stored
+`search_text` version against `searchTextVersion`. A missing or outdated
+version triggers a rebuild. On server version 2.7.0 or later, the rebuild
+generates search text from each indexed book's effective fields. It uses the
+same `searchColumns` function as a normal write, including all series names
+and individual genre and tag labels. It replaces only FTS rows whose text
+differs and records the version in the same transaction.
 
 Results are scoped per-library by the caller's share rules and de-duplicated
 across libraries (see [Libraries & shares](#libraries--shares) for the

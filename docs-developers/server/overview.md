@@ -287,10 +287,8 @@ Two filesystem subsystems:
   must pass.
 - `scanner.go`: the background scanner that builds the index. It covers
   discovery, book detection, metadata enrichment, chapter normalization, move
-  detection and pruning. `scanread.go` reads several files at once while the
-  scanner writes the index in order.
-
-See [Scanner](scanner.md).
+  detection and pruning. `scanread.go` reads several files at once. See
+  [Scanner](scanner.md).
 
 ### `internal/metadata`
 

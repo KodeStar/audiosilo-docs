@@ -41,6 +41,10 @@ Point at or tap a chart to see a value.
 - **Your listening clock** - when in the day you listen most.
 - **Hours per week** - your last 12 weeks.
 
+With large text, scroll the listening calendar sideways to see earlier weeks. The weekday labels stay in place.
+
+![Listening calendar with large text. The weekday labels line up with the larger squares, and today's square has an outline.](/img/screenshots/web-player/listening-calendar-large-text.png)
+
 Below the charts are your **Top authors**, **Top narrators** and **Top series** this year. Tap a name to open its page.
 
 ### Finished this year

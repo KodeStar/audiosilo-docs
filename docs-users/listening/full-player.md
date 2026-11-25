@@ -52,7 +52,7 @@ Wherever AudioSilo shows the time left, it's real time at the speed you listen t
 
 After any jump of more than a minute, a **Back to 17:26:50** button appears. It stays while the jump loads, and for 10 seconds after it lands. Tap it to go back. This works for the seek bar, chapter skips and bookmarks, and even for a scrub on the lock screen, headphones or a car.
 
-In the full player the button replaces the status line. On a tablet or computer, it floats just above the player bar, over the play controls.
+In the full player the button replaces the status line. On a tablet or computer, it floats just above the centre of the player bar.
 
 ## The three-dot menu
 

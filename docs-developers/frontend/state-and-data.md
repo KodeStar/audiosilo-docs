@@ -105,7 +105,8 @@ server's English and is never shown. `apiErrorKind` returns:
 | `discovery_off`, `provider_unavailable`, `invalid_query`, `invalid_country`, `discovery_rate_limited`, `provider_rate_limited`, `discovery_busy`, `discovery_timeout`, `provider_rejected`, `discovery_unavailable` | podcast directory search |
 | `opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`, `unsupported_opml_type`, `opml_export_limit` | OPML import and export |
 | `not_a_book` | `POST /cast/token` for an item that is not a book |
-| `invite_used`, `invite_expired` | redeeming an invite code |
+| `invite_used`, `invite_expired` | redeeming an invite code or exchanging its pairing token |
+| `invite_used_by_this_device` | retrying an invite exchange that the server recognizes for this device |
 
 A new code needs a case in the list and its words in the screens. Without them it
 reads by its status.

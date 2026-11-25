@@ -115,8 +115,11 @@ Sessions have **no expiry**. They end only when something revokes them:
 - a password change or reset, which keeps only the caller's session (see
   [Password changes and Sign out everywhere end sessions](../auth-and-security.md#password-changes-and-sign-out-everywhere-end-sessions)).
 
-Every authenticated request bumps the token's `last_seen`, which is what
-surfaces as a user's "last activity". The request also records its address
+Authenticated requests update the token's `last_seen`, shown as the user's
+"last activity". A session token's first use is recorded before the request is
+authorized, and a failed write is a `503`
+([Resolving a request](../auth-and-security.md#resolving-a-request)). Later
+activity updates are best effort. The request also records its address
 (`last_ip`) on the token, and its app when it names one (see
 [Client identification](#client-identification-x-audiosilo-client)).
 
@@ -130,8 +133,9 @@ There are five ways to obtain a session token:
    `POST /auth/exchange` trades the pairing token for a durable session token
    (`{ token, user }`) and claims one invite use per device that pairs. An
    invite-derived pairing token stays valid for as long as the invite has uses
-   left, so one QR can pair several devices. A recovery-derived one lasts 10
-   minutes.
+   left, so one QR can pair several devices. A client that sends its sign-in key
+   as `device_id` can [recover a lost invite exchange](reference.md#post-apiv1authexchange)
+   once within 60 seconds. A recovery-derived token lasts 10 minutes.
 2. **Password login**. `POST /auth/login` with `username` and `password` returns
    `{ token, user }` directly. Passwords are optional for non-admin accounts, so
    this only works for accounts that have one.
@@ -317,6 +321,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`), or renaming one to it (`PATCH /admin/users/{id}`) |
 | `username_required` | `400` | an empty username on `POST /admin/users` or `PATCH /admin/users/{id}` (from 2.7.0) |
 | `invite_used` / `invite_expired` | `401` | an invite with no uses left, or past its expiry: `POST /auth/redeem` (from 2.5.0) and `POST /auth/exchange` for a token the invite minted (from 2.7.0) |
+| `invite_used_by_this_device` | `401` | `POST /auth/exchange` from a device that already exchanged this pairing token and can no longer [retry](reference.md#post-apiv1authexchange) (from 2.7.0) |
 | `current_password_incorrect` | `401` | `POST /auth/password` with a wrong `current_password` (from 2.7.0). A client tells this `401` apart from a session that ended, and keeps the session |
 | `name_taken` | `409` | a library or share name already in use (create, rename) |
 | `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: a `POST`, or a `DELETE` of the grant's own whole-library rule. Its rules change only by granting or revoking the library |
@@ -338,7 +343,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, a work-id batch over 100, or a match run apply or [apply preview](reference.md#post-apiv1adminmatch-runsidpreview) including more than 20,000 items (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`); a [listening sync](reference.md#post-apiv1melisteningsync) body over 1 MiB (`413`) |
 | `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
 | `cover_unavailable` | `502` | `PUT /admin/libraries/{id}/cover/community`, `GET /libraries/{id}/meta/cover` or [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) when the server couldn't fetch the image (the latter two also for a minute after a failed fetch, without asking again) |
-| `share_not_answering` | `503` | from 2.7.0, with `Retry-After: 30`: a library file on a drive or share that stopped answering. A look at the share waited its bound: 45 seconds for a [stream](reference.md#get-apiv1librariesidstream), 10 seconds for a cover, thumbnail or show artwork, a [renditions](reference.md#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions) or [read-along](reference.md#get-apiv1librariesidreadalong) answer, and a read of a book (a Re-read, the Bridge's rescan, or any book route that reads a book not yet indexed, such as `/item`), whether on its own look or on another read of the book that has not returned. Also a Re-read or Bridge rescan that kept the book as stored because a file did not answer, a move that can't be checked now (nothing carried), and a read not tried because enough reads on that share are stuck already. The bounded looks: [the scanner](../scanner.md#bounded-reads-on-a-hung-share) |
+| `share_not_answering` | `503` | On server version 2.7.0 or later, the server sends `Retry-After: 30` when a file lookup or a wait for [on-demand indexing](../scanner.md#on-demand-indexing-indexpath) times out. File lookups allow 45 seconds for a [stream](reference.md#get-apiv1librariesidstream) and 10 seconds for covers, thumbnails, show artwork, [renditions](reference.md#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions), [read-along](reference.md#get-apiv1librariesidreadalong) and on-demand book lookups. The same code covers a Re-read or Bridge rescan that kept the book because a file did not answer, a move the server could not check, or a share already at its [stuck-read limit](../scanner.md#bounded-reads-on-a-hung-share). |
 | `stopping` | `503` | from 2.7.0, with `Retry-After: 10`: the server's shutdown ended the read of the book the request was waiting on (`POST /admin/libraries/{id}/book/rescan`, `POST /bridge/rescan`, or a book route reading a book not yet indexed, such as `/item`); before, a `500` |
 | `not_found` | `404` | an [unknown API route](#error-envelope-and-status-conventions) (below), `DELETE /admin/libraries/{id}` for a library that doesn't exist, `GET /admin/authors`, `/narrators` and `/series` with a `library_id` that names no library (from 2.7.0), and [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) for a work the caller's upcoming list doesn't hand out a cover for (not listed for them, or listed without one); also `GET /admin/librivox/work` for an unknown work and `POST /admin/librivox/fetch` for a LibriVox project the community metadata doesn't know, and [`GET /admin/books/match-proposal`](reference.md#get-apiv1adminbooksmatch-proposal) for a work, or a recording of it, the community doesn't have |
 | `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
@@ -541,7 +546,7 @@ Status mapping is consistent across handlers:
 | `429` | a rate limiter tripped (see [Rate limiting](#rate-limiting)) |
 | `500` | unexpected internal failure. The message is generic, and details go to the server log only |
 | `502` | an upstream service failed: the community metadata service (`/meta` unless the book has [generated content](reference.md#generated-content), `/meta/cover`, `/meta/work`, the admin match search), or a community cover's own host (`PUT /admin/libraries/{id}/cover/community`, and `GET /libraries/{id}/meta/cover`, which answers a URL whose fetch failed less than a minute ago with the same `502` without asking its host again) |
-| `503` | database unreachable (`/healthz`), transcoding requested without ffmpeg, demo at capacity, a Bridge's token that couldn't be checked, or the request timeout (below) |
+| `503` | database unreachable (`/healthz`), transcoding requested without ffmpeg, demo at capacity, a token the server couldn't check (including a session whose first use it couldn't record), or the request timeout (below) |
 
 **Request timeout.** `http.TimeoutHandler` bounds non-streaming requests at
 **30 s**. A request that exceeds it gets `503 {"error":"request timed out"}`.

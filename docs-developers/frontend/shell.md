@@ -33,11 +33,28 @@ follow the same split: on a phone they rise from the bottom like a sheet.
 - Each page's Stack header is `PhoneHeader`. On a tab root it shows a large
   display title. On a pushed page it shows an inline back button: named after
   the page it returns to on iOS, a bare arrow on Android and the web.
+  With large text, the iOS back label wraps. Beside a page title the button takes
+  at most half the bar. Without a title it can use the available width.
 - The reconnect and offline banners sit under the header.
+
+On Android, `useAndroidTabLabels` measures the widest translated name in the
+system typeface. Below the 1.3x large-text threshold, all five labels show.
+Their minimum is the system's 12 sp base, scaled down only when the user sets
+text below 1x. A long name ends in an ellipsis. With large text, only the
+selected label shows. It grows up to 1.3x and can shrink to 10 sp to fit its
+slot. A name that still exceeds the slot ends in an ellipsis.
+TalkBack gets each tab's full name.
+
+On the web, `PhoneTabBar` gives each tab one fifth of the width below large text.
+Long labels stay on one line and end in an ellipsis. At large text all five
+labels remain visible. They can share the space unevenly and wrap, but only
+between words. A word wider than its slot ends in an ellipsis rather than
+breaking. Each tab keeps a 44 px minimum target.
 
 ### Tablet
 
-- **`TopBar`** is 64 high. It holds:
+- **`TopBar`** is at least 64 high (`min-h-[64px]`). With larger text it grows
+  taller, so the mark and server line keep their full height. It holds:
   - the mark with a server line;
   - the Home, Library, Downloads and You destinations as icons;
   - the omnisearch field, or a search icon button that does the same when the
@@ -55,7 +72,10 @@ follow the same split: on a phone they rise from the bottom like a sheet.
   it shows a Back button. Home has no sub-nav.
 - The banners sit under the sub-nav.
 - The page is capped at 1480 wide (`CONTENT_WIDTH`).
-- **`DockedPlayer`** (84 high) shows whenever a book is loaded.
+- **`DockedPlayer`** appears when a book is loaded and has an 84 px minimum row
+  height. With larger text, the transport and chapter scrubber can move below
+  the book and actions. See
+  [the docked player](player-ui.md#the-docked-player-tablet-and-desktop).
 - Up next opens as a bottom sheet.
 
 ### Desktop
@@ -290,7 +310,7 @@ plus their name on desktop. The menu holds:
   wins over "offline", else "Signed in as &lt;user&gt;";
 - **Add a server** (`/connect?add=1`). As in Settings' accounts pane, it is
   hidden when the served web player is signed in only to its own server
-  (`onlyOwnServer(servedOrigin(), ...)`);
+  (`onlyOwnServer(productionWebOrigin(), ...)`);
 - **Journal** (`openJournal()`);
 - **Household** (`openHousehold()`);
 - **Settings** (`openSettings()`);
