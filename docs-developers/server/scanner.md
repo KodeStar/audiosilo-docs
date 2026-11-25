@@ -2460,9 +2460,11 @@ unavailable", from two signals.
 [`GET /admin/libraries/{id}/scan`](api/reference.md#get-apiv1adminlibrariesidscan)
 reports it as `unavailable: true` until a later scan finishes without it.
 
-**A live probe.** `Scanner.RootsAvailable(libs, indexed)` backs the
+**A live probe.** `Scanner.RootStatuses(libs, indexed)` backs the
 `available` field of
-[`GET /admin/libraries`](api/reference.md#get-apiv1adminlibraries). A root is
+[`GET /admin/libraries`](api/reference.md#get-apiv1adminlibraries), and on an
+offline root its `folder_access` (`fsaccess.IdentityOf` of the probe's stat:
+the server's `uid:gid`, and the owner's when the stat answered). A root is
 unavailable when the last scan stopped at the guard, or when it is missing,
 unreadable, not answering, or empty while books are still indexed under it.
 
