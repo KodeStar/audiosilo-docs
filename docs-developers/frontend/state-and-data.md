@@ -274,23 +274,26 @@ every dead request.
 
 ### The online flag (`src/lib/device-online.ts`)
 
-`useDeviceOnline()` and `watchDeviceOnline(listener)` say whether the device has a
-network at all. They never say whether the internet answers.
+On native, `isDeviceOnline()` returns `true` for a network, `false` for no
+network and `undefined` while the state is unknown. It reads expo-network's
+`isConnected`. A phone on Wi-Fi can reach a server on the same network even
+when the internet is down.
 
-- **On the web** the signal is the browser's `online` and `offline` events.
-- **In the app** it is expo-network's `isConnected`. `isInternetReachable` is not
-  read. A phone on Wi-Fi with no internet still reaches a server on the same
-  network. Calling that phone offline would hide Retry and the Library.
-- **Unknown counts as online.** That covers a state not yet read, a read that
-  failed, and a network Android can't name (`type: UNKNOWN`, which Android reports
-  with `isConnected: false`).
-- **The first read never undoes a change the listener already reported.** iOS can
-  answer `getNetworkStateAsync` up to 5 s late.
+- The initial state stays unknown if the first read fails. Android's
+  `isConnected: false` with `type: UNKNOWN` also means unknown. On iOS a
+  negative result at or after the one-shot probe's 5 s timeout is inconclusive.
+- A network monitor event takes precedence over the initial probe. An HTTP
+  response, including an error status, confirms a network unless the monitor
+  has reported a disconnect. A response received during the probe takes
+  precedence over its result.
+- The last subscriber to leave stops the monitor and clears the reading. An HTTP
+  response received while nobody is watching can set the state online, but the
+  next probe can correct it.
 
-In the app the same source drives TanStack's `onlineManager`
-(`onlineManager.setEventListener(watchDeviceOnline)` in `provider.tsx`). The web
-keeps TanStack's own window listeners, which are the same events. So every
-platform follows these rules:
+On the web, the signal starts at `navigator.onLine` and follows the browser's
+`online` and `offline` events. On every platform, the UI (`useDeviceOnline`) and
+TanStack's `onlineManager` (`watchDeviceOnline` in `provider.tsx`) treat an
+unknown state as online.
 
 - **A query waits while the device has no network** (`fetchStatus: 'paused'`,
   `isPaused`) and is asked again when the network returns. A screen treats a
@@ -322,20 +325,12 @@ platform follows these rules:
 - **The web keeps TanStack's default for writes.** A write waits for the browser
   to come back online. A write that must work offline on the web too says so
   itself (`useMarkFinished`).
-- **In the app the API client refuses a request with no network.** While
-  `isDeviceOnline()` reads false, `ApiClient.send` throws the `NetworkError` of no
-  answer before any fetch. Sent, a request could wait out its whole timeout first
-  (iOS in airplane mode): a bookmark's error came 20-30 s after the tap, and a
-  downloaded book's resume lookup held its start. Every request path gets it:
-  queries, writes, `fetchFailFast`, the save loops and the car's kept bookmarks,
-  which keep a `NetworkError` like any request with no answer. Unknown counts as
-  online, so a server on the same Wi-Fi is always asked. The web leaves it to the
-  browser, whose fetch fails at once offline.
-- **`isDeviceOnline()`** reads the same signal once, outside React. In the app it
-  is what the system said last (the query wiring always watches it there); on the
-  web it is `navigator.onLine`. A reconnect's reachability check
-  (`deviceNetworkChanged`) runs a microtask later, once every listener has heard
-  the new state, so the client does not refuse it on the old "no network".
+- **Native API requests can proceed while the state is unknown.** Only a
+  `false` reading makes `ApiClient.send` raise a `NetworkError` before fetching.
+  The same check applies to writes, including the car's queued bookmarks.
+  The web leaves the request to the browser.
+- A reconnect's reachability check (`deviceNetworkChanged`) runs a microtask
+  later, once every listener has heard the new state.
 
 A held request neither fails nor marks its server down. So a surface that says
 "offline" asks this signal too, and not reachability alone (Search's results,
@@ -346,6 +341,22 @@ The tests are `src/lib/device-online.test.ts` and `src/api/online-wiring.test.ts
 A test that mocks this module spreads `jest.requireActual`, because the provider
 imports `watchDeviceOnline`.
 
+#### Starting a downloaded book
+
+If the connection has a client and its server is not marked down,
+`startBookInPlace` allows up to 750 ms for the first native network reading
+when choosing the book and chapters. An offline or still-unknown reading
+selects the download's manifest. Inside `playBook`, only a resume or a
+download that [ends early](offline.md#a-download-that-ends-early) needs this
+wait. An explicit chapter or position in a complete download skips it there.
+
+On a resume, `readPlaceEarly` asks the server for the saved place as source
+selection begins, even if the network is still unknown. Of the three network
+states, only a known “no network” skips that request. `loadInitialProgress`
+waits up to 3 s from the start of the read (`DOWNLOADED_PLACE_WAIT_MS`) before
+using this device's records. The read continues, so a late answer can still
+bring in [another device's newer place](playback.md#picking-up-another-devices-place-place-reconcilets).
+
 ### Offline states (`src/lib/offline-state.ts`)
 
 One rule says what a read with nothing to show is:
@@ -353,7 +364,7 @@ One rule says what a read with nothing to show is:
 
 | Answer | When | What the screen shows |
 |---|---|---|
-| `'offline'` | The read waits for the network (`isPaused`), or it failed with no network on the device. On a reload with no network the request is sent, and fails, before the query library hears there is none. | The offline state, with no Retry. The read is asked again by itself. |
+| `'offline'` | The read waits for the network (`isPaused`), or it failed and the device has no network. | The offline state, with no Retry. The read is asked again by itself. |
 | `'failed'` | The read failed with a network on the device, so the trouble is the server's. | The server's error, with Retry. |
 | `null` | The read is loading, or loaded. | The screen's own states. |
 
@@ -1368,13 +1379,9 @@ The models:
     being down says nothing about the place. The greeting's servers pill names
     that server, on a phone too, where the pill gets a row of its own under the
     date.
-  - The progress list is read through `useWithLocalPlaces`
-    (`src/playback/use-local-places.ts`, over `withLocalPlaces`), read again as the
-    outbox changes, so a book this device played on since shows its newer place
-    ([The place Resume plays](#the-place-resume-plays)). The Now card reads a loaded
-    book on the player's own queue (its chapters and total, never its synthetic
-    slices), so Home's percent is the player's after an offline run and after a
-    server reorder.
+  - The Now card shows [the saved place](#the-place-resume-plays) until the
+    player reports a position past zero. For a loaded book it uses the
+    player's queue length and real chapters.
   - `nextCandidates` is the Now book, other books in progress, then recently
     finished books, at most `NEXT_CANDIDATES` (6). Each takes one `/next` on the
     candidate's own server.
@@ -2043,12 +2050,13 @@ So the hooks `usePlayer(selector)` and `useSleepTimer(selector)` read what is
 **shown**, not the live state (`quietOffScreen` in `src/lib/visible-store.ts`):
 
 - **In front**, the two are the same object.
-- **Off screen**, a change that is only a tick is not shown: no listener runs, no
-  selector runs, nothing renders. Off screen is `isOffScreen` in
-  `src/lib/app-activity.ts`: `AppState` is `background`, which on the web is a
-  hidden tab.
-- **iOS's `inactive` is not off screen.** The app is still seen behind the app
-  switcher, Control Centre or a system alert.
+- **On Android**, `AudiosiloActivityVisibility` counts started React activities.
+  While any activity is visible, the seek bar and sleep countdown keep moving,
+  including behind a permission dialog or in split screen. The last activity's
+  `onStop` suspends tick-only redraws.
+- **On iOS, web and Android builds without the module**, `isOffScreen` uses
+  `AppState`. Only `background` suspends tick-only redraws. This includes a
+  hidden browser tab. An iOS app in the `inactive` state remains visible.
 - **Coming back** shows the live state at once.
 
 A tick is one field moving and nothing else:
@@ -2083,10 +2091,8 @@ naming its ticking field. In a test, `driveAppState()` (`src/testing/app-state.t
 sets the app's state. React Native's jest `AppState` is otherwise never
 `background`, so every other suite sees the hook show everything.
 
-**Known limit.** Android reports `background` while the activity is paused but
-still visible, behind a permission dialog or a share sheet. The seek bar holds
-still behind it until the app is in front again.
-
+The [periodic save](playback.md#the-periodic-saves-pace) follows its own
+`AppState` rule.
 
 ## Progress sync (`src/playback/progress-sync.ts`)
 
@@ -2192,12 +2198,11 @@ The offline-safe write path for listening progress:
 
 ### The place Resume plays
 
-The book's page, Home and every other reader of a book's saved place show the place
-Resume would play from, never only the server's row. So a page never shows another
-device's older row while Resume starts at this device's newer place, and Home's
-percent after an offline run is the player's. The readers a play starts from (the
-book page's `fetchBookProgress` among them) first wait up to 2 s for a span a kill
-left open to reach the mirror ([the place readers](playback.md#what-a-kill-leaves-behind)).
+The book page and the profile's progress lists use the place Resume would
+choose, including a newer place saved on this device. The readers a play starts
+from, including `fetchBookProgress`, first wait up to 2 s for a span left open
+when the app closed to reach the mirror.
+See [the place readers](playback.md#what-a-kill-leaves-behind).
 
 - **`bookPlace(server, cid, lib, path)`** (`progress-sync.ts`) is the resume lookup's
   pick of the server's row and this device's own records (the mirror and the offline
@@ -2217,7 +2222,16 @@ left open to reach the mirror ([the place readers](playback.md#what-a-kill-leave
   seconds). After a server reorder with a download in the old order, the book and
   episode pages, the end credits, the companion, the reveal listener and `usePlaceIn`
   then all show the place Resume plays. Read its `.position`, never the raw record's.
-- **Home's progress list** is read the same way, row by row (`withLocalPlaces`).
+- **Home, Library and search** share the progress rows from `useAllProgressAll`.
+  `useWithLocalPlaces` matches each listed row by connection, library and path.
+  A local save can update an existing row only. List changes and outbox
+  notifications within 100 ms share one storage read across subscribers.
+  `useProgressLookup` indexes the resulting rows for the active profile.
+- **Home's Now card and Up next's continue suggestion** use `savedTimeline`
+  for their saved percentage. It maps the saved position within a file onto
+  the file order in the chapters cache. The total comes from the cached
+  chapters when available, then the saved duration, then the catalog duration.
+  Up next reads the cache without fetching chapters.
 
 :::note[No realtime sync]
 Progress sync is REST-only. The server advertises a `websocket` capability flag

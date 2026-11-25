@@ -407,13 +407,18 @@ puts the line at about 41 hours of audio in one file, against about 4 without it
 The heap varies by device. Known limit: two very long files that meet at a
 boundary can still overflow, since the budget counts one file's extractors.
 
-**A queue replaced by `load` is released first.** Setting new items on a prepared
-player keeps the old items' extractors alive while the new ones load, a heap peak a
-small device can't hold. So `load` `stop`s a prepared player before it sets the new
-queue. That stop's events (an idle, the old place) are the old queue's and never reach
-JS (`replacing`). The controller reports the stop as an idle only, with no
-`onIsPlayingChanged(false)` for a queue that was playing, so `load` stops the 1 s
-progress loop itself; the new queue's `playing` starts it again.
+**Replacing a prepared queue releases the old extractors first.** Otherwise
+Media3 can hold both books' extractors in memory while loading the new items.
+
+- The app's `load` stops the prepared player and the 1 s progress loop before
+  setting the new queue. The `replacing` flag suppresses the old queue's idle
+  and position events. The loop restarts when the new queue plays or buffers
+  with playback requested.
+- Android Auto and media resumption can set the queue directly through Media3.
+  For a nonempty replacement on a prepared engine, `AudiobookPlayer.replaceQueue`
+  stops the engine, sets the items and prepares it again. An idle engine takes
+  its usual prepare path. When the service marks an identical car queue for
+  reuse, the player keeps its place and its pause time for auto-rewind.
 
 - **`TimelineMap` keeps the bridge contract file-based.** The JS store and iOS
   think in `(fileIndex, positionInFile)`; the Android engine plays clip items.
@@ -798,8 +803,9 @@ stops an engine still waiting in error, and another tab taking over pauses it.
 The player enforces "never restart an in-progress book from 0" twice: once on the
 way in and once on the way out.
 
-**On the way in.** `loadInitialProgress` (`progress-sync.ts`) returns a
-discriminated `ResumeLookup`. `resumeLookupOf` reconciles three sources by
+**On the way in.** For a downloaded book, the [startup network check](state-and-data.md#starting-a-downloaded-book)
+determines when the player asks for the server's place. `loadInitialProgress`
+(`progress-sync.ts`) returns a discriminated `ResumeLookup`. `resumeLookupOf` reconciles three sources by
 `updated_at`, and the newest wins. The sources are the server's row, a **durable
 local mirror** and the offline replay queue. All three are compared on this
 device's clock. A server timestamp (the live row, or a mirror record marked

@@ -25,7 +25,7 @@ There's one card for each day you listened, newest first. Each card says how lon
 - **A 24 hour bar**, with each stretch of listening drawn where it happened in the day.
 - **The sessions**: the book, when you started, how long you listened, and where you went in the book.
 
-Listening this device hasn't synced to your server yet shows too, marked **Waiting to sync**. Once it syncs, the server's own session takes its place.
+After you listen offline, look for **Waiting to sync** in the Diary or the book's History on that device. Each shows the session once, even if you reopen the web player offline. When your server records the session, its entry replaces the waiting row.
 
 Tap a cover to open that book's [History tab](book-page.md#history).
 
