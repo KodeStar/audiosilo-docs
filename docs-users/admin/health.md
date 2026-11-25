@@ -48,7 +48,8 @@ If the server rejects a file as invalid audio, scans skip it until its size
 or modification time changes, or the server restarts.
 
 A slow disk or network share can leave a book marked **reading it timed out**.
-The book keeps its details. If only its tags timed out, the scan keeps its
+A book already in the library keeps its details. If only its tags timed out
+and the server could still read its length with ffprobe, the scan keeps its
 name and saves new lengths and chapters (see [History](#history) for how
 that is counted).
 
@@ -323,8 +324,10 @@ it, how long it took and what it found. Click **Log** to see a scan's details:
 books found, moved and removed, and every file it couldn't read and why.
 AudioSilo keeps the last 100 scans of each library.
 
-A book that timed out counts as **Changed** only when the scan saved new
-lengths for it. Otherwise the history counts only the read problem.
+A book already in the library that timed out counts as **Changed** only
+when the scan saved new lengths for it, or saved the whole book because its
+files changed. Otherwise the history counts only the read problem. A new
+book that timed out counts as **New**.
 
 ### What a removed book leaves behind
 
