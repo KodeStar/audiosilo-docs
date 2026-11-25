@@ -241,7 +241,9 @@ split and merged through [the gate](#the-gate) like any other, under the
 [community layer](#the-community-layer)'s delete-only rule in that repository.
 When the steward merges it whole, it merges **squashed** (never as a merge
 commit), with the steward's own commit message, which credits the contributor in
-plain prose ("Contributed by @login in #N."). The fork's commit messages do not
+plain prose ("Contributed by @login in #N.") and, for a person rather than a bot
+account, ends in GitHub's co-author trailer at their noreply address, so GitHub
+attributes the merged commit to them. The fork's commit messages do not
 reach `main` that way, so neither they nor the mirror's merge close an issue. A
 mirror carried in parts merges part by part, with no credit line, and ends as
 the next list says.
