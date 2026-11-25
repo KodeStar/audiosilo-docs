@@ -36,7 +36,7 @@ If the owner is `0:0` (root), grant your existing server account access. If the 
 
 The warning lets startup continue. If the server then reports `the data folder isn't usable`, it can't start until you fix that path. On Synology, see [Give that user access](./getting-started/install-synology.md#3-give-that-user-access).
 
-**The owner or group is nobody.** If the log shows `65534` or `4294967294`, keep `PUID` and `PGID` set to your server account's real IDs. On NFS, check the share's `root_squash` or `all_squash` setting and how the NAS and Docker host map user IDs.
+**The owner or group is nobody.** If the log shows `65534` or `4294967294`, keep `PUID` and `PGID` set to your server account's real IDs and follow the warning's advice.
 
 ```text
 audiosilo: WARNING: the server can't write to /data: permission denied. The server runs as user 1000:1000 and the folder belongs to 4294967294:65534. Its owner or group is nobody, an ID that maps to no account. If the folder is on an NFS share, check the export's root_squash or all_squash setting and that the NAS and this computer map user IDs the same way. Otherwise give user 1000:1000 read and write access to the folder. Changing its owner to 1000:1000 failed.
@@ -66,7 +66,7 @@ Give the server account read access to that file. A readable configuration file 
 audiosilo: WARNING: /library didn't answer within 5s. Check the network share.
 ```
 
-**The data folder stopped answering during startup.** If the container makes no progress changing file ownership for 30 seconds, it logs this warning and starts the server.
+**The data folder stopped answering during startup.** If the container makes no progress changing file ownership for 30 seconds, it logs:
 
 ```text
 audiosilo: WARNING: /data stopped answering while its files were being given to user 1000:1000, so some may still belong to another user. If the folder is on a network share, check that the share is up. Starting the server anyway.
@@ -74,17 +74,15 @@ audiosilo: WARNING: /data stopped answering while its files were being given to 
 
 Once the folder is available, restart the container. It keeps the ownership changes already made and tries the remaining files again.
 
-#### The data folder is on a network share
+### The data folder is on a network share
 
-Keep the data folder on a local disk. Your audiobooks can stay on a share. The container logs the share type at startup, even if it can write to the data folder.
+Your audiobooks can stay on a share, but keep the data folder on a local disk. The container logs this at startup, even when it can write to the data folder:
 
 ```text
 audiosilo: WARNING: The data folder /data is on a network share (nfs4). Keep it on a local disk if you can: the server's database needs file locking a share may not give (an SMB share needs the nobrl mount option), and the server can crash when the share stops answering.
 ```
 
-If you keep the data folder on SMB, mount the share with the `nobrl` option on the host. Without it, SQLite reports `database is locked`. If you keep the data folder on NFS, a long outage can crash the server.
-
-On Unraid, `/mnt/user` (shfs) uses local disks. You can keep the data folder there without triggering this warning.
+On SMB, mount the share on the host with the `nobrl` option, or SQLite reports `database is locked`. On Unraid, `/mnt/user` gets no warning: see [Appdata on a user share](./getting-started/install-unraid.md#appdata-on-a-user-share).
 
 ### My browser warns about the certificate
 

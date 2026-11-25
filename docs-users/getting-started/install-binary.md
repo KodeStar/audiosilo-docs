@@ -20,7 +20,7 @@ Download your system's file from [GitHub releases](https://github.com/KodeStar/a
 
 ## Run it from a terminal
 
-Choose a folder on a local disk for the database and settings. The command below uses `./data`. For network storage, see [using SMB or NFS for the data folder](../troubleshooting.md#the-data-folder-is-on-a-network-share).
+Choose a folder on a local disk for the database and settings. The command below uses `./data`. For network storage, see [The data folder is on a network share](../troubleshooting.md#the-data-folder-is-on-a-network-share).
 
 ```bash
 ./audiosilo --data ./data

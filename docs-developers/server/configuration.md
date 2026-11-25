@@ -95,10 +95,10 @@ package does for a bad flag.
   calling user. It writes warnings to stderr and exits `0` even when a folder
   fails a check.
 - `audiosilo [--data <dir>] chowndata UID:GID` changes ownership of the data
-  folder's contents on Linux. It exits `0` on success, `1` on a walk error
-  or `2` for invalid arguments. After 30 seconds without progress, it prints
-  `audiosilo: chowndata: no progress for 30s` to stderr and exits with status
-  `3`. See [Ownership at startup](#ownership-at-startup).
+  folder's contents on Linux. It exits `0` on success, `1` on a walk error,
+  `2` for invalid arguments and `3` after 30 seconds without progress
+  (stderr: `audiosilo: chowndata: no progress for 30s`). See
+  [Ownership at startup](#ownership-at-startup).
 
 `reset-admin` picks the one named, or the only enabled admin (a disabled
 admin neither counts nor is listed). It exits `2` (a `launcher.UsageError`,
@@ -1634,9 +1634,8 @@ the filesystem type even when the write check passes. It uses the nearest
 visible mount in the container's mount table. Unraid's `/mnt/user` (shfs)
 pools local disks and gets no network-share warning.
 
-Keep the data folder on a local disk. On SMB, SQLite needs the `nobrl`
-mount option or it reports `database is locked`. On NFS, a long outage can
-crash the running server. See [the NFS outage report](https://github.com/KodeStar/audiosilo-server/issues/626).
+The advice for users is in [The data folder is on a network share](/users/troubleshooting#the-data-folder-is-on-a-network-share).
+The NFS crash it warns of is [server#626](https://github.com/KodeStar/audiosilo-server/issues/626).
 
 For each existing data or backups folder, the command creates and removes a
 private temporary file to check write access. It tries to list an entry from
