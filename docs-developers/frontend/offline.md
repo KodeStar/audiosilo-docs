@@ -929,8 +929,7 @@ writes never resumes at a stale file.
 A queued finish updates the [local progress shown in lists and tiles](state-and-data.md#the-place-resume-plays).
 The server queries refresh on delivery. For sync events, the reply that first
 removes a `finish` or `unfinish` ID announces the affected books through
-`finishDelivered`. A normal flush and a page-hide reply can overlap.
-If the reply arrives before the event reaches storage, it marks the waiting
+`finishDelivered`, since a normal flush and a page-hide reply can overlap. If the reply arrives before the event reaches storage, it marks the waiting
 copy acknowledged so a later append cannot queue it again.
 
 A successful legacy progress PUT also announces a finish. On reconnect,
@@ -938,10 +937,8 @@ A successful legacy progress PUT also announces a finish. On reconnect,
 that connection. A failed send leaves the refresh for the successful replay.
 
 `refreshDeliveredFinishes` invalidates the connection's progress list, listening
-stats and goal once per batch. For each affected book it also invalidates
-progress and spoiler-filtered metadata. Before invalidating, `refreshProgressQuery`
-cancels an active query's in-flight first read if it has no data yet. This lets
-its observer fetch the post-finish state while unobserved first reads complete.
+stats and goal once per batch, and each affected book's progress row and
+[the queries that depend on it](state-and-data.md#the-listeners-own-state-player-redesign-phase-1b).
 
 On the web, delivery and Undo send the same book identity to sibling tabs on
 `audiosilo-undone-finish`. The receiving service, `startFinishChangesElsewhere`,
@@ -961,8 +958,9 @@ finish the book again. So `undoFinish` (`finish-route.ts`) first calls
   another ([Across tabs](#across-tabs)). The web's page-hide request counts too
   (`sendingNow`), since a page that was only hidden comes back from the
   back-forward cache with it still out;
-- immediately before sending, the sender checks that each finish in the chunk
-  still belongs to its local queue. On the web it also checks the shared outbox.
+- a send that read its chunk before the withdrawal drops the withdrawn finishes: just
+  before sending, it checks each finish is still in its local queue and, on the web,
+  in the shared outbox.
 
 A withdrawal that storage would not keep (`writeOutbox` says so) takes nothing back
 and fails the Undo with no edit, since the finish would still be sent after a
@@ -1031,7 +1029,7 @@ could not be read. Any other HTTP error is the server's own answer. The web's
 page-close keepalive send (`sendOnPageHide`) counts as no answer as soon as it
 leaves, because the page is going and its answer may never be seen.
 
-Such finishes are noted in `maybeReached` for this launch, only when the request left
+Such finishes are noted in `maybeReached` while the event waits, only when the request left
 while the server looked reachable (`looksReachable`: not marked down, and the browser
 not offline). On the web the stored entry is marked too, for an Undo in another tab
 ([Across tabs](#across-tabs)). A finish counts as `carried` when it has that mark or
@@ -1043,11 +1041,13 @@ a place. A finish written again over its own finished record keeps the place it
 carried. The Undo and Retry actions for that Mark also keep its prior record
 (`UndoRef.before`) in case a server read replaces the mirror record.
 
-**The mirror going back** (`unrecordFinish`, `store.ts`). Under the mirror's lock
-(`updateMirror`), an Undo that sent an edit restores its requested position.
-It keeps the prior file and offset when the unfinished record is within one
-second of the edit's position. Otherwise it drops the stale file coordinates.
-An edit from Mark as not finished uses its own position.
+**The mirror going back** (`unrecordFinish`, `store.ts`), after an edit or an Undo
+done on the device. Under the mirror's lock (`updateMirror`), a finished record goes
+back to the record before the finish (its `before`, else `UndoRef.before`) when that
+is an unfinished place within one second of the Undo's position. Otherwise the record
+is rewritten unfinished at the Undo's position, without the end-of-book file place.
+Mark as not finished always takes its own position, and a record saved since the
+finish is left alone.
 
 - It is stamped one millisecond after the record it replaces. For a downloaded book
   that may be the server's row for the finish, newer than the finish's own time. The
@@ -1072,13 +1072,13 @@ triggers the same [cross-tab refresh as delivery](#finish-delivery).
 back to its record before the finish, or removes the finish's own record when the book
 had none. The book the finish left is then loaded again
 ([Playback](playback.md#listening-spans-sync-v2)). While a slow finish waits on its
-server, the book page shows a "Marking as finished..." toast.
+server, the book menu shows [a pending toast](state-and-data.md#mark-as-finished-and-undo).
 
 ### Across tabs
 
 The tabs of a browser are one device. They share the three documents and the device
-id. Each tab tracks its own in-flight sends in `sendingNow` and keeps its
-in-memory `maybeReached` mark only while the event is pending.
+id, but not each other's memory. `sendingNow` (this tab's requests out now) and the
+`maybeReached` set (kept while its event waits) exist only in that tab's memory.
 
 The saved place is shared the same way. A tab that another tab has played past saves
 nothing of its own, and takes the mirror's place before it plays again
@@ -1148,9 +1148,8 @@ It starts a flush for any other recovered connection. The sweep runs:
 - before the sign-out count.
 
 **Known limit.** An Undo can wait up to 45 s when the browser crashes or
-discards the tab that sent the finish. Once the mark expires, the server may
-already have the finish. Undo sends an edit if the server is reachable or
-offers **Retry** if it is offline.
+discards the tab that sent the finish. Once the mark runs out the finish counts as
+`carried`, and the Undo goes as in [Taking a finish back](#taking-a-finish-back).
 
 A page that goes with a `pagehide` writes its 5 s mark over its own 45 s one for the
 finishes its keepalive request carries.

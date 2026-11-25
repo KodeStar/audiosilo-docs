@@ -221,9 +221,9 @@ across connections.
     finished" reconciles with playback progress under the same last-write-wins
     rules.
 
-  Both routes run offline (`networkMode: 'always'`). The mutation signals
-  `refreshLocalPlaces` so the [lists, tiles and book page](#the-place-resume-plays)
-  can show a queued finish. The server's listening totals refresh
+  Both routes run offline (`networkMode: 'always'`). A queued finish shows at
+  once in [the lists, tiles and book page](#the-place-resume-plays)
+  (`refreshLocalPlaces`), and the server's queries refresh
   [on delivery](offline.md#finish-delivery).
 
   The book menu (`onFinish` in `book-actions.tsx`) calls the hook only where the
@@ -766,15 +766,20 @@ finished with Undo. Without it, Mark as finished is `useMarkFinished`, with no
 Undo. With `progress_edit` and `listening_sync` both, the finish is
 `useMarkFinished`'s event.
 
-The menu keeps the [place captured when the loaded book stopped](playback.md#listening-spans-sync-v2)
-for its Undo and Retry actions. For a book that was already unloaded, it uses
-the page's progress. `undoFinish` withdraws a waiting event and sends a progress edit
-when the server has or may have the finish. See [Taking a finish back](offline.md#taking-a-finish-back).
+**The place Undo goes back to.** Mark as finished first stops the loaded book
+([`leaveFinishedBook`](playback.md#listening-spans-sync-v2)), and its Undo and
+Retry keep the place saved as it stopped, listening since the last save included.
+When that save was held back, `placeLeftUnsaved` takes the furthest of the place
+shown (a pending seek's or tab move's target, or a loading book's resume floor),
+the unfinished mirror record and the unfinished position the page read from the
+server. A book that was not loaded uses the page's progress.
+`undoFinish` takes the finish back as in
+[Taking a finish back](offline.md#taking-a-finish-back).
 
-If Undo or Mark as not finished is still pending after 600 ms, `pendingBookAction`
-shows “Marking as not finished...” with the book title. This includes time spent
-waiting for a send in another tab. The toast has no timeout. The menu dismisses
-it when the operation settles and offers Retry if the server is unreachable.
+**The pending toast** (`pendingBookAction`). A Mark as finished, an Undo or a
+Mark as not finished still running after 600 ms shows "Marking as finished..."
+or "Marking as not finished..." with the book title, until it settles. That
+includes a wait on another tab's send.
 
 #### Writes from screens
 
@@ -942,8 +947,11 @@ connection-scoped like the rest (`qk.queue`, `qk.collections`, `qk.collection`,
 - **`useSetRating` replaces the whole rating.** Leaving the note out clears a
   saved one.
 - **Progress changes refresh what depends on them.** A successful progress edit
-  or [finish delivery](offline.md#finish-delivery) refreshes the queries
-  affected by the change. `useEditProgress` is server-side only. It
+  or [finish delivery](offline.md#finish-delivery) refreshes the listening stats
+  and the goal when it can move a finish, and the book's `spoilers=hide` metadata
+  when it can move the place (`invalidateProgressDependents`). `refreshProgressQuery`
+  first cancels an observed first read that has no data yet, so its observer
+  fetches the state after the change. `useEditProgress` is server-side only. It
   does **not** touch the player's local progress mirror or the offline queue, so
   a device with the book loaded overrides the edit on its next save, as
   last-write-wins intends. Creating or revoking an API key refreshes My devices.
@@ -2239,10 +2247,10 @@ See [the place readers](playback.md#what-a-kill-leaves-behind).
   episode pages, the end credits, the companion, the reveal listener and `usePlaceIn`
   then all show the place Resume plays. Read its `.position`, never the raw record's.
 - **Home, Library and search** share the progress rows from `useAllProgressAll`.
-  `useWithLocalPlaces` matches rows by resolved connection ID, library and path.
-  A pending finish from the event outbox or legacy PUT queue can add a missing
-  row to its connection's list, even on an offline launch. A row under the
-  connection's old ID counts as the same book. Ordinary saves update listed rows.
+  `useWithLocalPlaces` matches rows by resolved connection ID, library and path,
+  so a row under the connection's old ID counts as the same book. A pending
+  finish from the event outbox or legacy PUT queue can add a missing row to its
+  connection's list, even on an offline launch. Ordinary saves update listed rows.
   List changes and outbox notifications within 100 ms share one storage read.
   `useProgressLookup` indexes the resulting rows for the active profile.
 - **Tiles and the book page** read the same pending finish through

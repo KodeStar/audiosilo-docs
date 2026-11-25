@@ -1114,13 +1114,10 @@ A span's life:
     closes during the wait still sends it. The store holds nothing back meanwhile.
     A paused move's still span (`sendStill`) is appended the same way, behind the
     close of the span before it.
-  - The book menu's **Mark as finished** calls `leaveFinishedBook` before
-    recording the finish. It closes the loaded book's span, saves where playback
-    stopped and unloads the book. Undo uses that position, including listening
-    since the previous save. If the save was held back, `placeLeftUnsaved`
-    takes the furthest of the position shown, the unfinished mirror record and
-    the unfinished position the page read from the server. A pending seek uses
-    its target. A book still loading uses its own resume floor.
+  - The book menu's **Mark as finished** first stops the loaded book on every
+    route (`leaveFinishedBook`): it closes the span, saves where playback stopped
+    and unloads the book, so nothing records past the finish. That place is
+    [the one Undo goes back to](state-and-data.md#mark-as-finished-and-undo).
   - On a sync server, `recordFinishEvent` queues the finish after that close.
     If the finish fails, `reloadLeftBook` reloads the book paused unless another
     book has since started. See [Taking a finish back](offline.md#taking-a-finish-back).
@@ -1302,10 +1299,10 @@ clock.
 5. It clears the play request and pauses the engine, even while the audio loads.
    A play whose first engine event has not arrived must not go on to `playing`,
    which would read as a new play and take the connection back. On Cast the
-   store asks the receiver to pause again on a late `playing` report for up to
-   3 s (`CAST_GIVE_WAY_FENCE_MS`). If the receiver rejects the pause, the tab
-   tells the listener to use the receiver's controls. It keeps asking for a pause
-   on stale reports until the receiver pauses or the listener requests a new play.
+   store asks the receiver to pause again on each late `playing` report until it
+   reports `paused` or 3 s pass (`CAST_GIVE_WAY_FENCE_MS`). If the receiver
+   rejects the pause, the tab tells the listener to use the receiver's controls,
+   and the asking goes on until the receiver pauses or a new play is asked here.
 6. It tells the listener (`onGaveWayToTab`).
 
 The tab keeps its book, and a play there claims the connection back.
@@ -1320,7 +1317,7 @@ It describes the takeover even if the other tab has since closed.
 - It is shown once the tab is looked at (`whenActive`), since the tab is usually
   hidden behind the one that plays.
 - It is one notice, however often the tab gave way while hidden.
-- A returning tab already playing or loading a new play suppresses the takeover notice.
+- A tab that is playing, or loading a new play, by the time it is looked at shows none.
 - On the web the root's services start after the first paint. The store keeps
   the latest notice in `gaveWayNotice` until the service registers.
 
@@ -1388,8 +1385,8 @@ nothing moves. Another device's record is left to the
   That Undo is the listener's own `seekBook`.
 - A book the other tab finished starts again from 0, as a `restart` with the
   `unfinish` owed, as a fresh load of a finished book does. Not when this tab is
-  at the end itself, and not in a paused tab brought to the front, which stays
-  where it is.
+  at the end itself, and not in a paused tab following the shared place
+  (`showOtherTabsPlace`), which stays where it is.
 - If the engine refuses the seek, the store pauses it and shows the shared
   position in the error state. **Retry** reloads the book at that position.
 - After 5 s without an answer (`TAB_MOVE_MAX_MS`), a newer hand-off answer
@@ -1399,10 +1396,10 @@ nothing moves. Another device's record is left to the
   the file is missing (`moveLateTabSeek`).
 - If the seek lands late, `landTabPlaceLate` starts listening at the target.
   A Cast receiver can confirm the move before it reports its new position.
-  At 10 s from the original request (`ASK_SETTLE_MAX_MS`), a confirmed seek
-  also counts as landed if playback has advanced from the target by an amount
-  consistent with elapsed time and speed (`playedOnFromLateTabPlace`). Otherwise
-  the store pauses the engine and offers **Retry** at the shared place.
+  At 10 s from the request (`ASK_SETTLE_MAX_MS`), a confirmed seek also
+  counts as landed when playback has moved on from the target by about the
+  elapsed time at the current speed (`playedOnFromLateTabPlace`). Otherwise
+  the store pauses as for a refused seek.
 - A book switch drops a move still out (`switchBook` clears `catchingUp`), so it
   holds none of the next book's saves or spans.
 
