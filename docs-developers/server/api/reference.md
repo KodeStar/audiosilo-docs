@@ -3406,7 +3406,9 @@ info, 15 seconds and 16 MiB.
 
 Response `200`: `image/jpeg`, the image decoded and re-encoded within `size` x
 `size` pixels (never scaled up), so the upstream's bytes and content type never
-reach the client.
+reach the client. On server version 2.7.0 or later this holds for a small JPEG
+too, and the preview is turned upright by the image's EXIF orientation (see
+[Thumbnails](../media.md#thumbnails-for-the-admin-console-post-admincovers)).
 
 - Thumbnails come from the server's in-memory thumbnail cache, the one
   [`POST /admin/meta/covers`](#post-apiv1adminmetacovers) uses (keyed by URL and
@@ -3561,7 +3563,9 @@ of its audio as plain MP3:
 - chapters as ID3 `CHAP` frames;
 - a strong `ETag: "remux-<key>"` and (from 2.7.0) no `Last-Modified`, so a
   validator kept from the stored Matroska never earns a `304` or a spliced range,
-  and an `If-Range` with the ETag resumes with a `206`.
+  and an `If-Range` with the ETag resumes with a `206`. On server version 2.7.0
+  or later the key changes once where the filesystem gives a file ID (see
+  [Remux and watch cache keys](../media.md#remux-and-watch-cache-keys)).
 
 It is the same URL that served the Matroska before, so shipped clients stream the
 MP3 with no change. A podcast library's stream is never remuxed.
@@ -3576,8 +3580,11 @@ transcode, and a busy server doesn't answer `503`. Past that wait they are
 transcoded after all.
 
 An `.mka` holding another codec (AAC, Opus, FLAC) is served as stored,
-`audio/x-matroska`. See
-[Remuxing Matroska](../media.md#remuxing-matroska-medianewremuxer).
+`audio/x-matroska`; `transcode=1` asks for the live MP3. On server version
+2.7.0 or later the server reads the codec from the file's header first, so such
+a file is served as stored on its first request too, even on a server short of
+disk, never transcoded. See the
+[codec check](../media.md#remuxing-matroska-medianewremuxer).
 
 **A share that stops answering** (from 2.7.0). Every look a stream makes at
 its file shares one bound of 45 seconds from the request's start
@@ -3618,7 +3625,8 @@ directory (never into the library) and keeps it in a size-capped cache
   Range and `If-Range`, a strong `ETag: "rw1-<key>-<size>"` and (from 2.7.0) no
   `Last-Modified`. The ETag names one encode, so a resumed download (`Range` with
   `If-Range`) never splices bytes of two encodes; `Content-Disposition` only with
-  `download=1`.
+  `download=1`. For ETag changes on upgrade, see
+  [Remux and watch cache keys](../media.md#remux-and-watch-cache-keys).
 - **Not ready:** the request waits up to 45 seconds for the encode, then answers
   `503` code `rendition_pending` with `Retry-After: 15` while the encode goes on in
   the background. A rendition is never a live transcode (a watch couldn't resume
@@ -3689,11 +3697,10 @@ one file), each `path` as `/stream` takes it, with its `state`:
    path inside a folder book gets that book's custom cover;
 2. an indexed sibling cover file (served with
    `Cache-Control: private, max-age=86400`);
-3. embedded art extracted from the book's primary audio file (served with
-   `Cache-Control: private, max-age=86400`). Its `Content-Type` is sniffed from
-   the image bytes (JPEG, PNG, GIF, WebP or BMP), never taken from the tag;
-   embedded data that isn't one of those images counts as no art, whatever the
-   tag claims.
+3. [embedded art](../media.md#covers-handlecover) from the book's primary audio
+   file (on server version 2.7.0 or later, an `.mka` file's image attachment
+   too), with its `Content-Type` sniffed from the image bytes and
+   `Cache-Control: private, max-age=86400`.
 
 The path is authorized against the caller's share scope before any of the
 three is tried, custom covers included.
@@ -9082,9 +9089,18 @@ and refuses redirects from HTTPS to HTTP. The fetch has 15 seconds in total,
 reads at most 64 KiB of response headers and requires a final HTTP `200`.
 
 The image must be a JPEG, PNG or WebP within 16 MiB and 40 megapixels. The
-server checks the pixel limit from the image header. For an image over the
-5 MiB upload limit, it first re-encodes the image as a JPEG within
-1600 x 1600 pixels. Saving the cover records `book.cover_set` with
+server checks the pixel limit from the image header. It saves images up to
+5 MiB as fetched. For a larger image it makes a JPEG within 1600 x 1600 pixels.
+
+On server version 2.7.0 or later, resizing applies EXIF orientation to the
+pixels and preserves a compatible ICC colour profile. A CMYK cover with a CMYK
+profile keeps that profile and its ink channels; one without a profile is
+converted to RGB. If the source is CMYK but the profile specifies RGB, the
+server drops the profile. If the JPEG with its profile still exceeds
+5 MiB, or the server cannot encode the profile in a JPEG, it saves a plain
+JPEG thumbnail without the profile.
+
+Saving the cover records `book.cover_set` with
 `source: "community"` and updates the book's [`cover_version`](#get-apiv1librariesidbooks).
 
 Response `200`: `{ "status": "cover set", "path": "…" }`.
@@ -9198,8 +9214,8 @@ Response `200`, one entry per requested URL, in request order:
 { "covers": ["data:image/jpeg;base64,/9j/4AAQSkZJRg…", ""] }
 ```
 
-- Each entry is a JPEG thumbnail as a `data:` URL, scaled as for
-  [`POST /admin/covers`](#post-apiv1admincovers), or `""` when the image
+- Each entry is a [community JPEG preview](#get-apiv1librariesidmetacover)
+  as a `data:` URL, or `""` when the image
   couldn't be fetched or decoded (a URL that isn't http(s), one too large, or
   not an image, too).
 - Thumbnails are cached in the same server memory cache, keyed by URL and

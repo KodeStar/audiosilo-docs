@@ -76,10 +76,8 @@ which an `indexed_at` in the basis would.
 
 - Due books come oldest check first, 50 at a time, with two checked at once
   (`internal/pool`'s `Each`, shared with bulk matching).
-- In [mirror mode](configuration.md#mirror-mode-metadatamode-mirror) the first
-  pass after a start (the first with metadata on, since no copy loads while it
-  is off) waits for the local copy, at most 10 minutes (`mirrorReady`), so a
-  start sends no lookups to the service while the copy loads.
+- In mirror mode the first pass with metadata on
+  [waits for the local copy](configuration.md#mirror-mode-metadatamode-mirror).
 - A check gets 5 minutes. Pause searches stop 4 minutes in, counted from the
   check's start (the community list's fetch included), which leaves time to
   save the fit on any book. Boundaries not snapped by then keep their placed
@@ -111,6 +109,10 @@ They fire to every listener, so the
 [cover colour pass](media.md#the-background-colour-pass) hears them too. A kick
 waits 5 s for the kicks behind it, because a scan kicks once per book. A burst
 is therefore one pass, and the pass only checks what is due.
+
+On server version 2.7.0 or later, switching metadata on in settings
+(`PATCH /admin/settings`) kicks the pass too, so due books are checked after
+the kick's 5 s wait rather than at the next interval.
 
 ### On-demand checks
 

@@ -339,7 +339,7 @@ Serves audiobook bytes:
   decode.
 - `DirectPlayable`: the codec allow-list that clients use to decide whether to
   request `?transcode=1`.
-- `EmbeddedCover` extraction.
+- `EmbeddedCoverBelow` reads [embedded cover art](media.md#covers-handlecover).
 
 See [Media & streaming](media.md).
 
