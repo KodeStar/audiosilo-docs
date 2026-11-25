@@ -84,7 +84,7 @@ A watch has its own downloads, separate from your phone's. See [Apple Watch](app
 ## How downloaded playback differs {/* #how-downloaded-playback-differs */}
 
 - A downloaded book plays from the device, so it never buffers.
-- It starts where you left off, even offline. A newer place from another device wins when your server answers within a few seconds, or when you've opened the app online since you listened there.
+- It starts where you left off, even offline. If you listened later on another device, it starts at that place when you've opened the app online since, and otherwise moves there once your server answers. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 - Chapters, the sleep timer and speed all work the same. So do bookmarks and notes while the app can reach your server (see [With no connection](#with-no-connection)).
 - Your listening is saved on the device and syncs the next time the app reaches your server. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 - If a book's chapters change on the server, the download picks them up next time you're online. The audio isn't downloaded again. See [When the book on the server has more files](#when-the-book-on-the-server-has-more-files).
