@@ -152,8 +152,8 @@ to invalidate and seed queries.
 
 ### Query keys
 
-All keys come from the `qk` factory and are **scoped by connection id** as their
-first coordinate. The app can be signed in to several servers at once, and two of
+The `qk` factory lives in `src/api/query-keys.ts`. Each connection's query keys
+include its id. The app can be signed in to several servers at once, and two of
 them can each have a "library 1". With scoped keys, mutations can invalidate
 precisely and one server's cache never shadows another's. Content keys are
 `(connectionId, libraryId, path)` tuples, which extends the path-is-identity rule
@@ -385,7 +385,7 @@ A signed-out refusal is decided before the rule and is never "offline".
 the Library's server state
 ([Library selection](#library-selection-srcstoreslibrary-selectionts)), Folders
 (per server, over `LibrariesOfServer.paused`), Books mode (over
-`useAllLibraryBooks().offline`) and the read-along map (`useBookReadalong`).
+`useWholeLibrary().offline`) and the read-along map (`useBookReadalong`).
 
 **A page or a list over one query** asks `useUnreadQuery(query)` with the query's
 `{ data, isPaused, error }`:
@@ -483,22 +483,19 @@ failed server and no sign-in state, offline is the page's own state.
 
 ### The startup cache (web)
 
-`src/api/startup-cache.ts` keeps the answers the first screens paint from. A
-reload of the web player paints from them at once and asks again behind them (a
-"stale while revalidate" start). Without the cache, a reload waited for
-`/server`, the libraries and the first page of books before it drew a single
-cover. A start with nothing kept (a first visit, a private window) asks for the
-same first answers as the gate opens instead (see
-[the web start](web-build.md#the-web-start-a-split-build)).
+`src/api/startup-cache.ts` restores saved answers before the first screen
+renders. To keep a small first-screen answer, declare its query options with
+`declareRead` in `src/api/startup-reads.ts` and set `meta.startup`. For stored
+keys and manually seeded queries without options, `startupMeta` recognises only
+the exact keys those declarations produce, so a `meta.startup` query declared
+anywhere else is saved but never restored.
 
-- **What is kept** (`isStartupQuery`): `/server`, the libraries, favourites, the
-  queue, collections, signed-in devices (`myDevices`), the listening goal, the
-  household, the author, narrator and series lists, and Home's shelves and cards
-  (Recently added, Continue listening, the Now card's and This week's ranges).
-  Of the whole-library list
-  (`useWholeLibrary`, the one the Library grid paints from), only the first page
-  is kept. It never keeps a book's detail or anything per book. A new
-  first-screen query joins the list only if it is small.
+- **What is kept.** The cache keeps answers used by [the first signed-in
+  screen](web-build.md#the-first-screens-answers-asked-as-the-gate-opens),
+  including only the first page of the Library grid. Declarations without a
+  startup page can also keep answers, such as collections, signed-in devices,
+  and author, narrator and series lists. Per-book detail queries stay out.
+  Compact book records from progress rows supply their titles offline.
 - **Restore.** `provider.tsx` calls `restore(queryClient, { dropOnError })` at
   module load, before anything renders. Each kept answer goes into the query
   cache invalidated, so it shows until the new answer lands. A query already in
@@ -515,8 +512,8 @@ same first answers as the gate opens instead (see
   queue and the downloads registry, whose writes fail quietly once it is full.
 - **Scope.** The cache lives under `STARTUP_CACHE_KEY` (`audiosilo.startupCache`),
   one of the scoped keys, so a storage reset wipes it. Signing out or removing a
-  connection drops its entries (`forget`). Every key carries its connection id,
-  so the cache never reads another connection's entry or a signed-out one's. A
+  connection drops its entries (`forget`). Every startup key carries its connection
+  id, so signing in to another server or account cannot reuse these answers. A
   document written by another app version or another document version is
   removed when read, since the answers' shapes may have changed.
 - **Device rows without addresses.** The signed-in devices (`myDevices`) are

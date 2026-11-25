@@ -113,8 +113,8 @@ plugins/            config plugins (CarPlay scenes, Cast, the watch scheme, the 
                     and build-properties.test.ts pins the expo-build-properties options
 index.ts            the app entry (package.json main): registers the car's headless
                     task, then expo-router/entry
-public/             sw.js (service worker) + manifest.json (PWA), copied verbatim
-                    into the web export
+public/             sw.js (source for the exported worker) and manifest.json
+                    (the PWA install manifest)
 STYLEGUIDE.md       Stacks, the player's design system (authoritative for its look)
 ```
 

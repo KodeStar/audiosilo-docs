@@ -403,6 +403,14 @@ placeholders are i18next's `{{name}}`. Two codes have params:
 - `library_not_writable` fills in `library` (the library's name);
 - `downloading_section` fills in `section` and `sections` (numbers).
 
+A book waiting for its turn in the ASR lane stays `running`. The Bridge sends
+`step: "waiting"` and `message_code: "asr_turn_wait"`, with the English message
+"Waiting for a turn to use speech recognition". It keeps the engine's `stage`
+and omits `done`, `total` and `eta_seconds`. The rule covers the ASR lane's
+stages (`asr`, `retranscribing` and `readalong_aligning`) only, so a book still at
+the engine's `queued` step reports its `eta_seconds`. A book waiting for a
+worker to connect has a [worker park](workers.md#the-asr-router-and-its-fallback).
+
 A handler names a sentence by its code (`Progress.Code`, with `Params`), and the
 Bridge fills in `message` from the code's English (`Progress.Text`), so every
 report carries the English. Text that is not a fixed sentence is sent without a

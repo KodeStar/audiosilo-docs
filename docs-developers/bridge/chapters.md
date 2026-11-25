@@ -125,7 +125,7 @@ The stage runs these steps:
      `transcript.EncodeOpenAI`, times chapter-relative, frozen `0444`). A segment
      goes to the chapter holding its first word, and a boundary inside a segment
      splits it at the word;
-   - `asr.json`, rewritten with the new manifest's fingerprint, and
+   - [`asr.json`](workers.md#what-decoded-each-segment), rewritten with the new manifest's fingerprint, and
      `SetBookChapters`;
    - the chapter FLACs, **cut from the window FLACs** (`audio.CutFromWindows`): a
      seek inside one window, or a concat of trimmed parts across window edges,
@@ -359,7 +359,8 @@ windows on what it reads. Then, in one transaction:
 
 - the book becomes a whole-run book with the new job's identity, `contrib_mode`
   and `work_id`;
-- its status, error, park and retry are cleared;
+- the transaction clears its status, error, park and retry, along with the
+  [earlier run's progress](readalong.md#the-reuse-table);
 - the new job is mapped to it.
 
 A job cancelled meanwhile leaves the run as it was.
