@@ -31,7 +31,7 @@ Offline, Up next shows the last queue it loaded, or **You're offline** if it has
 
 - **Now playing** at the top.
 - **Your queue**, in order. Tap a book to open its page. Its **play** button plays it now, and its **X** removes it.
-- **Continue the series and more**: suggestions such as the next book in the series. Tap **+** to add one.
+- **Continue the series and more** suggests the next book in a series. It can also suggest a book you've started, at the same percentage [Home](browsing.md#the-home-screen) shows. Tap **+** to add a suggestion.
 - **Play the next book automatically**: when a book ends, start the next one. See [Playing on automatically](end-of-book.md#playing-on-automatically).
 
 ## Adding books

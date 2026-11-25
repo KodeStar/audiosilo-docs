@@ -884,12 +884,11 @@ open span while its server can't be reached.
 - The account page's Listening sync card (`useListeningSync`,
   [Account](you-and-settings.md#account-srccomponentsaccount)) shows the count, the
   last sync, and the couldn't-sync list with Discard.
-- A book's history merges this device's unsent listens as sessions marked "Waiting to
-  sync" (`usePendingListens`) until the server's rows replace them.
-- The Journal's Diary shows every connection's unsent listens the same way
-  (`useWaitingListens`, [The Diary](journal.md#the-diary)).
-- The book's page and Home show this device's newer place before it syncs
-  ([The place Resume plays](state-and-data.md#the-place-resume-plays)).
+- The Journal's Diary and a book's History tab show this device's unsent listens
+  as sessions marked "Waiting to sync" (`useWaitingListens`,
+  [The Diary](journal.md#the-diary)) until the server's rows replace them.
+- The book's page, Home, Library and search show this device's newer place before
+  it syncs ([The place Resume plays](state-and-data.md#the-place-resume-plays)).
 
 **Sign-out, removing a server and removing a person** first send what they can
 (`unsentListens`, when the server is reachable). When listens are still unsent, they
@@ -1322,10 +1321,14 @@ each `start`, it fetches the full item and chapters and calls
 `download(..., 'keep-ahead')`. It skips a book that was registered meanwhile, an
 errored entry too, because keep-ahead never retries a failure.
 
-Those reads are held while the device has no network
-([The online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets)), and the
-network that comes back may be mobile data. So `startOne` asks the network gate again
-after the reads, and a book the gate no longer allows is `declined`.
+After a series lookup or a held read, `currentPlan` checks that the controller
+still runs and that the loaded book, `keepAhead` and `autoDownloadNext` are
+unchanged, before the controller publishes slots or starts a download. If the
+listener switched books, the old run stops and the controller plans from the
+new book. Since a query can wait offline and resume
+on mobile data, `startOne` checks the network rule again just before queuing
+each download, and a book the rule no longer allows, or whose plan is no
+longer current, is `declined`. See [The online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets).
 
 - A `transcoded` outcome marks the book `unavailable`.
 - A `no-space` outcome marks it `tooBig` until the registry changes.
@@ -1560,31 +1563,33 @@ order made only of the download's own files (a JS restart after an offline start
 file is partial (`BookQueue.partial`, `{ bookDuration }`, set by `playBook` and the
 adoption):
 
-- `playBook` reads `endsBefore`. Started with no server to stream from (the device
-  offline, `isDeviceOnline`; no client for the connection; or the server marked
-  unreachable this launch, `isReachable`, where unknown counts as reachable), such a
-  download builds its queue from its own copy (its files and chapters) whatever
-  chapters its caller gave it (a cold start's cached server chapters name the files
-  it lacks, and streaming them would stall into a stream error at the downloaded
-  part's end). Online it plays the
-  chapters it was given, streams the rest, and is not partial. Given no chapters (the
-  chapters read failed), it plays the download's own copy, partial too.
+- `playBook` reads `endsBefore`. With no server to stream from, such a download
+  builds its queue from its own copy (the manifest's files and chapters),
+  whatever chapters its caller gave it. No server means no network, a network
+  still unknown after the
+  [startup network check](state-and-data.md#starting-a-downloaded-book), no
+  client for the connection, or the server marked unreachable. A cold start's
+  cached server chapters name the files it lacks, and streaming them would stall
+  at the downloaded part's end. With a server it plays the chapters it was given,
+  streams the rest, and is not partial. Given no chapters, it plays its own
+  copy, partial too.
 - `adoptLoaded` with no server answer reads the last file of the engine's order and
   `endsBefore`.
 
 Its end is the downloaded part's, so:
 
-- The engine's `ended` there reads as a pause, never a finish: no credits, no
-  `finishBook`, no finished save.
+- The engine's `ended` there reads as a pause, never a finish. There are no
+  credits, no `finishBook` and no finished save. Playback stops there unless it
+  streams on (below).
 - The listener is told "The rest of this book isn't downloaded"
   (`onPartialDownloadEnd`, shown as a toast by `partial-download-notice.ts` once the
   app is looked at). A stop with no listener yet, such as a car start before the root
   layout mounted, is told as the listener registers.
 - A place past that end lands short of it and stays paused, with the same notice.
-- Play pressed at that end (`toggle`, while the engine's last word is that `ended`:
-  `atPartialEnd`) starts no play attempt, since the ended engine never reports
-  `playing` and the [stall watchdog](playback.md#the-stall--error-watchdog) would call
-  it an error. It shows the notice again.
+- Play pressed at that end (`atPartialEnd`) starts no play attempt on the ended
+  engine, since it never reports `playing` and the
+  [stall watchdog](playback.md#the-stall--error-watchdog) would call it an error.
+  It streams on when it can, else it shows the notice again.
 - The end credits' Play never finishes such a book by its place
   (`queueEndsBook`): it stops, unfinished. Every check of whether a place ends the
   book goes through `placeEndsBook` (`queueEndsBook` for a queue), which never reads
@@ -1596,8 +1601,8 @@ Its end is the downloaded part's, so:
   down too, since the mark can predate the network coming back. When the chapters
   go on past the queue's last file, the book starts again (`playBook`) with them,
   at the next file (by index, since a file the server has not measured yet shares
-  its offset with the one after it). No network, no answer, or a book that ends
-  there now: the notice. A pause or a seek back while it asks stands.
+  its offset with the one after it). No network (an unknown one included), no
+  answer, or a book that ends there now: the notice. A pause or a seek back while it asks stands.
 - A span recovered after a kill in the last seconds (`mirrorSpanEnd`) never makes
   the record finished. Each mirror capture in a partial queue says so
   (`ProgressSave.partial`), and `mirrorSpanEnd` also asks the download

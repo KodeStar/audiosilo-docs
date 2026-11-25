@@ -407,13 +407,18 @@ puts the line at about 41 hours of audio in one file, against about 4 without it
 The heap varies by device. Known limit: two very long files that meet at a
 boundary can still overflow, since the budget counts one file's extractors.
 
-**A queue replaced by `load` is released first.** Setting new items on a prepared
-player keeps the old items' extractors alive while the new ones load, a heap peak a
-small device can't hold. So `load` `stop`s a prepared player before it sets the new
-queue. That stop's events (an idle, the old place) are the old queue's and never reach
-JS (`replacing`). The controller reports the stop as an idle only, with no
-`onIsPlayingChanged(false)` for a queue that was playing, so `load` stops the 1 s
-progress loop itself; the new queue's `playing` starts it again.
+**Replacing a prepared queue releases the old extractors first.** Otherwise
+Media3 can hold both books' extractors in memory while loading the new items.
+
+- The app's `load` stops the prepared player and the 1 s progress loop before
+  setting the new queue. The `replacing` flag suppresses the old queue's idle
+  and position events. The loop restarts when the new queue plays or buffers
+  with playback requested.
+- Android Auto and media resumption can set the queue directly through Media3.
+  For a nonempty replacement on a prepared engine, `AudiobookPlayer.replaceQueue`
+  stops the engine, sets the items and prepares it again. An idle engine takes
+  its usual prepare path. When the service marks an identical car queue for
+  reuse, the player keeps its place and its pause time for auto-rewind.
 
 - **`TimelineMap` keeps the bridge contract file-based.** The JS store and iOS
   think in `(fileIndex, positionInFile)`; the Android engine plays clip items.
@@ -807,7 +812,8 @@ device's clock. A server timestamp (the live row, or a mirror record marked
 outbox's `clockSkewMs`, [stored per connection](offline.md#the-three-storage-documents)).
 That skew is 0 until a sync answer has measured it, so before the first one a device
 whose clock is off from the server's compares the times as they are. A tie prefers the
-server's row, then the mirror.
+server's row, then the mirror. A downloaded book's read of the server's place has
+its own timing ([Starting a downloaded book](state-and-data.md#starting-a-downloaded-book)).
 
 With nothing pending for the book (no queued save, no events waiting), a finished
 server row beats a newer unfinished mirror record when its `finished_at` is newer
