@@ -32,11 +32,11 @@ Additions:
   400 `invalid_request`.
 - **Recognizing the server’s 401.** With capability `unauthorized_mark`, every 401 from the server
   carries the CORS-exposed header `X-AudioSilo-Unauthorized`. Its value is the body’s code or
-  `unauthorized`. A session token that cannot be checked because the database is unavailable gets
-  503. This also applies when the server cannot record a session's first use.
+  `unauthorized`. A session token that the server cannot check, because the database is unavailable or it
+  cannot record the session's first use, gets 503.
 - **Recovering an invite sign-in.** `POST /auth/exchange` accepts an optional
   `device_id`. Within 60 seconds, one retry with the same invite-derived pairing
-  token and device key replaces an unused bearer on the original session without
+  token and sign-in key replaces an unused bearer on the original session without
   spending another invite use. A bearer already used stays valid. There is no new
   capability flag. See the [exchange reference](reference.md#post-apiv1authexchange).
 - **Single sign-on.** `GET /auth/oidc/start`, `GET /auth/oidc/callback` and

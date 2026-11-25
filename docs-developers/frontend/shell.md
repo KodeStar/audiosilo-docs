@@ -290,7 +290,7 @@ plus their name on desktop. The menu holds:
   wins over "offline", else "Signed in as &lt;user&gt;";
 - **Add a server** (`/connect?add=1`). As in Settings' accounts pane, it is
   hidden when the served web player is signed in only to its own server
-  (`onlyOwnServer(productionWebOrigin(), ...)`).
+  (`onlyOwnServer(productionWebOrigin(), ...)`);
 - **Journal** (`openJournal()`);
 - **Household** (`openHousehold()`);
 - **Settings** (`openSettings()`);

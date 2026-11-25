@@ -529,7 +529,7 @@ sequenceDiagram
     Note over S: Claim one use and issue the session together
     S-->>C: { token, user }
     opt Invite exchange reply lost
-        C->>S: Retry with the same pairing token and device key
+        C->>S: Retry with the same pairing token and sign-in key
         S-->>C: Replacement bearer if the session is unused and within 60 seconds
     end
 ```

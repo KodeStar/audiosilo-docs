@@ -84,9 +84,9 @@ To connect an app through the proxy:
 
 The app stores the headers as securely as your sign-in. To change them, use the **Proxy headers** card on the [account page](../listening/account.md#proxy-headers).
 
-If the player names the proxy when you try an invite link, QR code or typed code, check your proxy sign-in. In the browser, sign in to the proxy again. In the app, check **Proxy headers** for that address, then [retry the invite](../listening/connecting.md#if-the-connection-drops-during-invite-sign-in).
+If the player blames the proxy when you try an invite link, QR code or typed code, check your proxy sign-in. In the browser, sign in to the proxy again. In the app, check **Proxy headers** for that address, then [retry the invite](../listening/connecting.md#if-the-connection-drops-during-invite-sign-in).
 
-If you're already signed in to AudioSilo, a proxy refusal keeps that sign-in. A banner or the page that couldn't load names the proxy.
+If the proxy turns the player away after you've signed in, you stay signed in to AudioSilo. A banner, or the page that couldn't load, says the proxy turned this device away.
 
 ![A phone’s proxy banner offering to check headers or sign in again](/img/screenshots/web-player/proxy-sign-in.png)
 

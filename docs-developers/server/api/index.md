@@ -116,9 +116,10 @@ Sessions have **no expiry**. They end only when something revokes them:
   [Password changes and Sign out everywhere end sessions](../auth-and-security.md#password-changes-and-sign-out-everywhere-end-sessions)).
 
 Authenticated requests update the token's `last_seen`, shown as the user's
-"last activity". On the first request that requires a session bearer, the server
-must record that time against the bearer before authorizing the request. A write
-failure returns `503`. Later activity updates are best effort. The request also records its address
+"last activity". A session token's first use is recorded before the request is
+authorized, and a failed write is a `503`
+([Resolving a request](../auth-and-security.md#resolving-a-request)). Later
+activity updates are best effort. The request also records its address
 (`last_ip`) on the token, and its app when it names one (see
 [Client identification](#client-identification-x-audiosilo-client)).
 
@@ -320,7 +321,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`), or renaming one to it (`PATCH /admin/users/{id}`) |
 | `username_required` | `400` | an empty username on `POST /admin/users` or `PATCH /admin/users/{id}` (from 2.7.0) |
 | `invite_used` / `invite_expired` | `401` | an invite with no uses left, or past its expiry: `POST /auth/redeem` (from 2.5.0) and `POST /auth/exchange` for a token the invite minted (from 2.7.0) |
-| `invite_used_by_this_device` | `401` | `POST /auth/exchange` recognizes the pairing token and `device_id` from an earlier exchange. The retry was spent or late, the bearer was used, the session ended, or the invite expired. The `X-AudioSilo-Unauthorized` header carries the same code. |
+| `invite_used_by_this_device` | `401` | `POST /auth/exchange` from a device that already exchanged this pairing token and can no longer [retry](reference.md#post-apiv1authexchange) (from 2.7.0) |
 | `current_password_incorrect` | `401` | `POST /auth/password` with a wrong `current_password` (from 2.7.0). A client tells this `401` apart from a session that ended, and keeps the session |
 | `name_taken` | `409` | a library or share name already in use (create, rename) |
 | `library_grant` | `409` | `POST`/`DELETE /admin/shares/{id}/paths` on a whole-library grant: a `POST`, or a `DELETE` of the grant's own whole-library rule. Its rules change only by granting or revoking the library |

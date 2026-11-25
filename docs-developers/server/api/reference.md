@@ -458,17 +458,16 @@ is live and unused. It returns a new bearer for the same device session.
 The old bearer immediately fails with `401`. The retry costs no additional
 invite use, even if the first exchange claimed the last one.
 
-On the first request that requires the session bearer, the server must record
-its use before authorizing the request. If the write fails, that request gets
-`503`. Once the write succeeds, an exchange retry leaves the bearer in place.
+Once the session has been used, a retry leaves its bearer in place. The server
+records that first use before authorizing the request
+([Resolving a request](../auth-and-security.md#resolving-a-request)).
 
-**Older servers.** A strict decoder rejects an exchange containing `device_id`
-with `400` and `"pairing_token is required"`, even when the token is present.
-That rejection spends nothing. The player resends once without `device_id` on
-that response or a proxy's replacement `400` page. If the player loses the
-reply to this second request or cannot save the session, it stops retrying and
-offers password sign-in or a new invite. Repeating that request could spend
-another use.
+**Older servers.** An older server's strict decoder rejects an exchange
+containing `device_id` with `400` and `"pairing_token is required"`, even when
+the token is present. That rejection spends nothing. A client can resend once
+without `device_id`, but should never repeat that request: with no key, each
+exchange can spend another use. The player's handling is in
+[Step 2: Sign in](/developers/frontend/connect-and-addresses#step-2-sign-in).
 
 Response `200`:
 
@@ -498,7 +497,7 @@ connection id is `<server_id>.<user_id>` with the answer's `user`
 |---|---|
 | `400` | `pairing_token` missing |
 | `401` | `code: "invite_used"`: the parent invite's use cap is spent (from 2.7.0) |
-| `401` | `invite_used_by_this_device` in both the JSON `code` and the `X-AudioSilo-Unauthorized` header. The server recognizes this pairing token and device key, but the retry was spent or late, the session was used or ended, or the invite expired. |
+| `401` | `invite_used_by_this_device` in both the JSON `code` and the `X-AudioSilo-Unauthorized` header. The server recognizes this pairing token and sign-in key, but the retry was spent or late, the session was used or ended, or the invite expired. |
 | `401` | `code: "invite_expired"`: the parent invite expired after the redeem (from 2.7.0) |
 | `401` | `invalid or expired pairing token`, no `code` (anything else: bogus/revoked token, single-use token already exchanged, code owner disabled) |
 | `429` | redeem lockout tripped, with `Retry-After` |
@@ -513,8 +512,8 @@ A refused exchange costs no invite use. The device-specific refusal is
 available while the pairing token and its exchange record still exist, even if
 the invite has uses left. Once the server removes the token, it returns the
 generic pairing-token refusal.
-A different device key can claim a remaining use, or gets `invite_used` if
-the invite is full. Servers before 2.7.0 return exchange refusals without a
+An exchange with a different sign-in key claims a remaining use, or gets
+`invite_used` when none is left. Servers before 2.7.0 return exchange refusals without a
 `code`.
 
 ### `POST /api/v1/auth/login`

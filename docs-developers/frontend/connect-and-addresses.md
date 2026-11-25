@@ -76,8 +76,8 @@ Both also take the console's **invite link**,
 `https://<base>/connect#code=XXXX-XXXX-XXXX-XXXX`. `parseInviteScan` in
 `src/lib/pairing.ts` reads it, and the server builds it in `inviteURL`. A `/web/connect`
 link carries a pairing token. An invite link sets the pending server and opens the
-sign-in step with its code filled in (`initialCode`). A second press while the
-step opens shares that handoff. The code stays in memory and the step submits it
+sign-in step with its code filled in (`initialCode`). Opening the link again while
+the step opens reuses that handoff. The code stays in memory and the step submits it
 once discovery settles, provided the listener has left the field alone.
 
 On the served player, a pasted pairing or invite link for **another server** sends
@@ -106,7 +106,7 @@ A reconnect goes straight to sign-in unless the server runs a demo.
 The production web player probes its own origin (`productionWebOrigin()`).
 When `GET /server` returns a server ID, the player shows that server's sign-in
 card with no address field or remembered servers. AudioSilo serves the player
-with the policy `connect-src 'self'`.
+with the CSP `connect-src 'self'`.
 
 - "Add a server" is hidden while every connection is at the page's origin
   (`onlyOwnServer`).
@@ -115,10 +115,10 @@ with the policy `connect-src 'self'`.
 On a first visit, a `403`, `404` or successful response without a server ID
 could also come from a static host. The player makes a same-origin `HEAD`
 request for its own document (`playerAllowsOtherServers`). A readable document
-without the server's connection policy leaves the field free for another server.
-If the policy is present or the check fails, the player shows its own address
+without the server's CSP leaves the field free for another server.
+If the CSP is present or the check fails, the player shows its own address
 and the probe error. A reverse proxy that misroutes the API and strips the
-document policy can therefore look like a static host on first visit (inferred).
+CSP could look like a static host on first visit.
 The Metro dev server (`npm run web`) keeps the address field.
 
 ### Step 2: Sign in
@@ -129,9 +129,9 @@ The Metro dev server (`npm run web`) keeps the address field.
 - **Invite code.** `redeemCode` gets a pairing token. The following `exchange`
   claims an invite use. A refused code stays in the field with the reason.
 - **Username and password.** `login` sends the trimmed username. An older
-  server that rejects the device key with `400` gets one login without it.
+  server that rejects the sign-in key with `400` gets one login without it.
 
-Both requests that issue a session send `device_id`. The player generates a
+`exchange` and `login` both send `device_id`. The player generates a
 random 16-byte sign-in key for each server address and stores its hex value in
 `audiosilo.signInKeys` (`getSignInKey`). This lets the server recognize a
 repeat password sign-in and lets the player recover an unanswered invite
@@ -171,7 +171,7 @@ status and the request that failed (`SignInStage`):
 | Server `401` or `400` with no recognized reason at `login` | Wrong name or password. |
 | `invite_used` or `invite_expired` on redeem or first exchange | All the invite's uses are taken, or the invite expired. |
 | `invite_used_by_this_device` | This device already used the invite. Sign in with a password or ask for a new invite. |
-| A retried exchange gets a server `401` with no code or `invite_used`, or the older server's exchange without a key went unanswered | This device *may* already have used the invite. The player offers the same two alternatives. |
+| A retry gets a server `401` with no code or `invite_used`, or a keyless exchange to an older server got no answer | This device *may* already have used the invite. The player offers the same two alternatives. |
 | The proxy refuses sign-in | Check the proxy headers for this address. |
 | `member_disabled` | Its own sentence. |
 | `429` | The wait in seconds under a minute, otherwise in minutes, from `Retry-After` when the server sent one (`connect.signIn.errors.wait`), else "Too many tries". |
@@ -332,7 +332,7 @@ When `pairFailure` returns **refused**, the player stops retrying the link.
 
 - `sharedRefusalText` names the server's reason, including
   `invite_used_by_this_device` for a recognized device whose retry is over.
-  If the older server's exchange without a key went unanswered, the player
+  If a keyless exchange to an older server got no answer, the player
   says this device may already have used the invite.
 - A server `401` without a recognized reason, or a `410`, is "This pairing link has expired or was already used..."
   (`pairingRefused`).
@@ -355,7 +355,7 @@ When `pairFailure` returns **refused**, the player stops retrying the link.
 After a refusal the player removes the route's `token`. On a separate static host
 it keeps the link's target address in the field. A temporary failure offers
 **Try the link again**. Once the first exchange has been sent, this button
-uses the original address, token and device key.
+uses the original address, token and sign-in key.
 
 ### A link that names a book
 
@@ -530,7 +530,7 @@ links carry `home=http://<host:port>` beside an `https://` base, plus the server
 
 Before sending the pairing token, `useLinkPairing` asks the HTTPS base for
 `GET /server`. If discovery fails to connect, `pairingFallback` considers the
-home address. An HTTP error from the base ends that choice. Home qualifies
+home address. An HTTP error from the base rules the home address out. Home qualifies
 when all of these hold:
 
 - The app is native, because an https page can't call http.
