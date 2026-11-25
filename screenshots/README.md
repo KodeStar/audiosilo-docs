@@ -444,9 +444,11 @@ so the tab says Plays from this device.
 `book-details-large-text.png` uses the same downloaded book in an 800 px wide
 window. The capture doubles Chromium's default font size while the page is open
 and waits for the playback controls to move below the book. The file details
-then appear below each filename. The same font setting shows the wrapped captions
-on **Library > Books** in `library.png` and the calendar card on **You > Stats**
-in `listening-calendar-large-text.png`.
+then appear below each filename. The same font setting shows the calendar card on
+**You > Stats** in `listening-calendar-large-text.png`.
+
+`library.png` opens **Library > Books** in a tab of its own, since the Library tab
+of the browsing session can still have a book page open.
 
 The You shots (`web-player/you-stats.png`, `year.png`, `phone-you-stats.png`,
 `phone-settings.png`) and Home's This week need a year of listening, and the server

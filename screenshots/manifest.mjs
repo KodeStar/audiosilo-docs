@@ -28,7 +28,7 @@
 export const SHOTS = [
   // ── Web player (desktop 1440x900, dark) ────────────────────────────────
   {file: 'web-player/home.png', capture: 'web', title: 'Web player - Home', hint: 'Home (Up next drawer hidden): greeting + sync pill, the Now card with its chapter scale, This week (if the server has user_stats), Continue listening and the shelves, docked player bar'},
-  {file: 'web-player/library.png', capture: 'web', title: 'Web player - Library', hint: 'Library > Books with the browser font doubled. Titles and bylines wrap beneath the covers in the grid.'},
+  {file: 'web-player/library.png', capture: 'web', title: 'Web player - Library', hint: 'Library > Books (the default section): Books / Authors / Series / Narrators / Collections / Folders in the sub-nav with sort + grid/list, the filter chips and the cover grid with progress bars'},
   {file: 'web-player/library-genre.png', capture: 'web', title: 'Web player - Genre filter', hint: 'Library > Books with the Genre filter chip opened: the dialog of the library\'s genres (the ones the run adds to the seeded books) with how many books each would show, and Any genre'},
   {file: 'web-player/library-series.png', capture: 'web', title: 'Web player - Library series', hint: 'Library > Series (/library?mode=series): series cards with their mini shelves (the seeded Sherlock Holmes series shows its gaps)'},
   {file: 'web-player/series.png', capture: 'web', title: 'Web player - Series page', hint: 'the Sherlock Holmes series page: hero with the progress track, the bookcase with the book in progress face-out and dashed gaps, the list below'},
