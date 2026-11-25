@@ -291,7 +291,7 @@ A library set in `config.yaml` can't be deleted here. Remove it from
 
 If the server can't read the folder, or a folder with indexed books suddenly looks empty, AudioSilo stops the scan. It keeps the books and everyone's progress. Listeners can still see the books, but playback needs the folder back.
 
-The library card shows **Folder unavailable**. The notice names the folder and, on Linux, the server's user and group IDs. It also shows the folder owner's IDs when the server can read them. You can find the same notice on the [Overview](console-tour.md#the-overview) and in [Health](health.md#when-a-library-is-offline).
+The library card shows **Folder unavailable**. The notice names the folder and, on Linux and macOS, the server's user and group IDs. It also shows the folder owner's IDs when the server can read them. You can find the same notice on the [Overview](console-tour.md#the-overview) and in [Health](health.md#when-a-library-is-offline).
 
 ![An offline library card showing the folder, the account IDs, the books kept and the Retry button](/img/screenshots/admin/library-offline.png)
 

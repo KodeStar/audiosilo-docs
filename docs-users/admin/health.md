@@ -332,7 +332,7 @@ A scan that couldn't read part of the library removes nothing. See
 **Health > System** lists everything the server depends on, one row each, with
 a status such as **Healthy**, **Needs attention**, **Missing** or **Off**.
 
-An offline library also shows its notice above the rows (see [When a library is offline](#when-a-library-is-offline)).
+When a library folder can't be reached, a notice above the rows says so and lists each folder with the server's account and, when known, the folder's owner. Nothing was deleted. Mount the folder again, then rescan it (see [When a library is offline](#when-a-library-is-offline)).
 
 ![Health > System](/img/screenshots/admin/system.png)
 

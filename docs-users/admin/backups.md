@@ -66,7 +66,7 @@ The **Backups** card lists every backup, newest first.
 - **Download** saves a backup to your computer.
 - The bin deletes a backup from the server.
 
-If a backup fails, a notice gives the reason, such as a full disk or a folder the server can't write to. You can also get it as a [notification](notifications.md). For a permission error it names the server account and, when known, the folder owner. Check that the mount allows writes (not `:ro` in Docker) and that the server account has read and write access. If the server can't list the backups folder, the Backups page shows the error in place of the list.
+If a backup fails, a notice gives the reason, such as a full disk or a folder the server can't write to. You can also get it as a [notification](notifications.md). For a permission error, the notification and **Server > Logs** name the folder, the server account and, when known, the folder owner. Check that the mount allows writes (not `:ro` in Docker) and that the server account has read and write access. If the server can't list the backups folder, the Backups page shows the error in place of the list.
 
 ## Before an upgrade {/* #before-an-upgrade */}
 

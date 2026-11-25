@@ -107,7 +107,7 @@ If the password saves but the server refuses the new username, the account step 
 Type the folder that holds your audiobooks and press **Check folder**. AudioSilo shows how many books it found before adding anything.
 
 - **Use the path as the server sees it.** In Docker that's the path inside the container, like `/library`, not the folder on your NAS. Folders mounted into the server are offered as buttons under the field. **Browse** lists the server's folders to pick from.
-- If **Check folder** can't read the path, the notice shows the server account and, when available, the folder owner. For example, “The server runs as 1234:2345. The folder belongs to 0:0.” Give the server account permission to open and list the folder, then press **Check folder** again.
+- If **Check folder** can't read the path, the notice shows the server account and, when available, the folder owner. For example, “The server runs as 1234:2345. The folder belongs to 0:0.” Give the server account permission to open and list the folder, then press **Check folder** again. If the two match, as in the picture below, the folder's own permissions shut that account out.
 - **No audio files found here** means the server could read the folder. Check that you picked the one containing your audio files.
 - **Library name** defaults to the folder's name.
 
