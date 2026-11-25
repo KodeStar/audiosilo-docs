@@ -2494,7 +2494,7 @@ indexed on its behalf. The same holds for `/chapters`, `/cover`, `/meta` and `/n
 | `400` | missing `path` / invalid library id |
 | `403` | `no access to this path`: the path, or the book it resolves to, is outside the caller's share scope |
 | `404` | `no book at that path` (not indexable) |
-| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the read of the book this request was waiting on; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book has not returned in time (its share stopped answering), when a look at the share while indexing a book not indexed yet waited 10 seconds, or when a move the book may have made can't be checked now (see [A move found on demand](../scanner.md#a-move-found-on-demand)) |
+| `503` | On server version 2.7.0 or later, `stopping` (`Retry-After: 10`) means shutdown ended the book read. `share_not_answering` (`Retry-After: 30`) means the request reached its wait limit for [on-demand indexing](../scanner.md#on-demand-indexing-indexpath), a file lookup timed out after 10 seconds, or the server could not check [a possible move](../scanner.md#a-move-found-on-demand). |
 
 From 2.7.0 `/item`'s looks at an indexed book's files wait at most 10 seconds
 each. On a share that stopped answering it answers with the stored book: the
@@ -6653,22 +6653,19 @@ Renaming another library to a declared name at another folder is
 
 A rescan is queued (trigger `change`) **only** when the root or the ignore rules
 change, since those make the index stale. A rename, a new default view or a new
-schedule doesn't rescan. Nor does a new `metadata_source`: every book of the
-library is re-resolved from what the last scan stored, with no disk access.
-Admin edits and accepted community values stay on top. From 2.7.0 the
-re-resolve is a resumable job that goes on after a restart (see
-[Data model](../data-model.md#a-librarys-metadata-source)). The PATCH waits for
-it up to 20 seconds, so a small library answers with its books re-resolved and a
-large one answers then while the rest goes on in the background. Until the job
-ends, a reader can see the new setting with some books' old values.
+schedule doesn't rescan. Changing `metadata_source` updates the books from
+their stored metadata. Admin edits and accepted community values stay on top.
+See [A library's metadata source](../data-model.md#a-librarys-metadata-source).
 
 Response `200`: the updated library (without the scan settings, as for
 create). When the edit queued a scan it adds `job`, the queued scan, as for
 [`POST …/scan`](#post-apiv1adminlibrariesidscan); otherwise `job` is omitted.
-From 2.7.0 a `metadata_source` edit adds `"resolving": true` (additive, omitted
-otherwise) when the books are still taking the new source as it answers: a large
-library past the 20-second wait, or a failed run waiting to be run again. The
-console's toast then says the switch finishes in the background.
+On server version 2.7.0 or later, a PATCH that changes `metadata_source`
+waits up to 20 seconds for the books to take the new source. Sending the
+current source again returns immediately, even during that update. The
+response includes `"resolving": true` while work is pending, including a
+failed run awaiting retry, and omits the field otherwise. The console then
+reports a pending switch as finishing in the background.
 Errors are `400` (including `invalid_schedule`, `invalid_pattern` and
 `invalid_metadata_source`), `404` and `409`, as for create.
 
@@ -7318,11 +7315,8 @@ is a `400` too (`too many format or codec values`).
   `scan_error_file` is the library-relative file. `scan_error_detail` is the OS's,
   the scan's or ffprobe's own message, and may be empty for `empty_file`. An
   ffprobe message keeps every distinct line ffprobe printed, joined with `"; "`, at
-  most 300 bytes, with FFmpeg's context address (`@ 0x...`) dropped. When a read of
-  an already-indexed book is cut short, the book keeps its stored length, chapters
-  and names, and only the problem is recorded. A recorded problem is re-checked on
-  every scan, so it clears once the file reads (fixed permissions, a share back
-  online). See [Read problems](../scanner.md#read-problems).
+  most 300 bytes, with FFmpeg's context address (`@ 0x...`) dropped. [Read problems](../scanner.md#read-problems)
+  covers which book details a scan can update and when it retries the file.
 - `suspect_parts` - set (to 2 or more) when a folder book's parts look like
   that many separate books (see
   [Folders that may hold several books](../scanner.md#folders-that-may-hold-several-books)).
