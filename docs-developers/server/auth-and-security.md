@@ -112,7 +112,7 @@ it to the code that minted it.
 
 | Origin | Lifetime and uses |
 |---|---|
-| An invite | Inherits the invite's uses and expiry. Each exchange claims one use per device, so one QR can pair several devices. It dies with the code: a delete or supersede cascades, and a rotate revokes it. |
+| An invite | Inherits the invite's uses and expiry. Each new device session claims one use. A [retry of a lost exchange](api/reference.md#post-apiv1authexchange) keeps that session and its one use. Deleting, superseding or rotating the code invalidates the pairing token. |
 | A recovery code | Lasts `pairingTTL` = 10 minutes. It can be scanned several times within that window, since recovery codes are unlimited. |
 | `/auth/pair`, a household member's code (`POST /me/household/members/{id}/pair`), demo tokens | Unlinked. Single-use (revoked on exchange), with the same 10-minute TTL. |
 
@@ -121,9 +121,10 @@ clamps to between 30 seconds and 10 minutes. The console's Listen in player
 asks for 120 seconds, because its token rides in a tab's URL and history.
 
 The daily retention job deletes the pairing tokens that can never pair again
-(`auth.PrunePairingTokens`). Those are tokens that are revoked, past their own
-expiry, or linked to an expired or used-up code. This keeps the table from
-growing by one row per QR shown. The code's own row is untouched.
+(`auth.PruneSingleUseTokens`). Those are tokens that are revoked, past their own
+expiry, or linked to an expired or used-up code. Pruning keeps a spent invite's
+pairing token while its retry window is open. Removing the token also removes
+its exchange record.
 
 ### API keys
 
@@ -431,8 +432,11 @@ accepts. `ResolveToken` wraps it for a single kind. It hashes the secret, looks
 up the row, and rejects a token that is revoked or expired or whose user is
 disabled.
 
-On success it bumps `tokens.last_seen`. A user's "last activity" is derived from
-that (`MAX(tokens.last_seen)`); there is deliberately no `last_login` column.
+A user's "last activity" comes from `MAX(tokens.last_seen)`. When a session's
+`last_seen` is still NULL, the server must record the first use against the
+bearer it checked before authorizing the request. If the write fails, the
+request gets `503`. If an invite retry already replaced the bearer, the
+request gets `401`. Once the write succeeds, a retry cannot replace that bearer.
 
 In the same write, `ResolveRequest` records what the request says about the
 device (`auth.Presence`):
@@ -511,32 +515,30 @@ mistyped entry still verifies.
 | Listable | Yes (`ListAuthCodes`, metadata only) | No. It shows only as `User.HasRecovery` |
 | Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin). A password change or reset, or Sign out everywhere, also removes a leaked code (see [Password changes and Sign out everywhere end sessions](#password-changes-and-sign-out-everywhere-end-sessions)). |
 
-Both kinds redeem through the same path. The full onboarding flow:
+Both kinds redeem through the same path. The player includes its sign-in key
+when it exchanges the resulting pairing token.
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant S as Server
     C->>S: POST /auth/redeem {code}
-    Note over S: redeemLimiter check<br/>RedeemAuthCode: resolve user first,<br/>then atomic use-claim
-    S-->>C: pairing payload (QR, web_url, audiosilo:// URI)<br/>+ pairing token (TTL 10 min)
-    C->>S: POST /auth/exchange {pairing_token, device_name}
-    Note over S: ResolveToken(kind=pairing)<br/>issue session, revoke pairing token
+    Note over S: Check the code, its uses and its owner
+    S-->>C: Pairing token, QR code and links
+    C->>S: POST /auth/exchange {pairing_token, device_name, device_id}
+    Note over S: Claim one use and issue the session together
     S-->>C: { token, user }
+    opt Invite exchange reply lost
+        C->>S: Retry with the same pairing token and device key
+        S-->>C: Replacement bearer if the session is unused and within 60 seconds
+    end
 ```
 
-`auth.RedeemAuthCode` has two correctness properties worth knowing before you
-touch it:
-
-- **Atomic claim.** The under-the-cap check is folded into the increment
-  (`UPDATE … SET uses = uses + 1 WHERE … AND (max_uses = 0 OR uses <
-  max_uses)`), so concurrent redemptions can't push `uses` past `max_uses`. The
-  same write stamps `redeemed_at` on the first redemption
-  (`COALESCE(redeemed_at, ?)`). It keeps an earlier stamp, since recovery codes
-  redeem repeatedly.
-- **No burn on a rejected user.** The function resolves the bound user, and
-  rejects a disabled or deleted account, *before* the claim. A rejected attempt
-  therefore never consumes a use or flips an invite to "accepted".
+`ResolveAuthCode` checks the code without spending a use. At exchange,
+`ConsumePairing` checks the account, claims a use under the code's cap, and
+issues the session in one transaction. The first claim sets `redeemed_at`.
+A refused exchange spends nothing. A successful invite retry replaces the
+bearer on the recorded session and keeps the original use count.
 
 **Invite hygiene.**
 

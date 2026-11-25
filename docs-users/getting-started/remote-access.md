@@ -63,6 +63,11 @@ trusted_proxies: ["127.0.0.1/32"]
 
 Trusted proxies matter. Without them, the server sees every visitor as the proxy, so one device retrying an old sign-in can lock everyone out for a while (see [Everyone gets "Too many tries" at once](../troubleshooting.md#everyone-gets-too-many-tries-at-once)).
 
+If the web player opens but says to check the server address and proxy settings, open
+`https://books.example.com/api/v1/server` using your own domain. You should see server details,
+including its name. If you see a web page or a missing-page error, check that the proxy
+forwards `/api/` to the same AudioSilo server as `/web/`.
+
 :::warning
 Only turn HTTPS off behind a proxy that handles HTTPS. Plain HTTP open to the internet sends passwords and audio unencrypted.
 :::
@@ -79,7 +84,9 @@ To connect an app through the proxy:
 
 The app stores the headers as securely as your sign-in. To change them, use the **Proxy headers** card on the [account page](../listening/account.md#proxy-headers).
 
-If the proxy turns the player away, you stay signed in to AudioSilo. A banner, or the page that couldn't load, says the sign-in proxy turned this device away. In the browser, sign in to the proxy again. In the apps, check the saved headers for that address.
+If the player names the proxy when you try an invite link, QR code or typed code, check your proxy sign-in. In the browser, sign in to the proxy again. In the app, check **Proxy headers** for that address, then [retry the invite](../listening/connecting.md#if-the-connection-drops-during-invite-sign-in).
+
+If you're already signed in to AudioSilo, a proxy refusal keeps that sign-in. A banner or the page that couldn't load names the proxy.
 
 ![A phone’s proxy banner offering to check headers or sign in again](/img/screenshots/web-player/proxy-sign-in.png)
 
