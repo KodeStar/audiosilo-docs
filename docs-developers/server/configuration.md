@@ -1593,11 +1593,12 @@ group, runs the access checks and starts the server. On the next container
 start, the walk skips ownership changes for entries that already have the
 requested user and group.
 
-In each folder, the walk changes the owner of the folder's own entries first,
-then enters its subfolders, then looks at the mount points in it. So the files
-at the top of the data folder are done before any subfolder: the database, its
-`-wal` and `-shm` files and `config.yaml` (unless `config.yaml` is mounted on
-its own, which makes it a mount point). The walk reads a mount point's cached
+In each folder, the walk first changes the owner of every entry that is not a
+folder or a mount point. It then enters each subfolder, changing the
+subfolder's owner as it enters, and looks at the mount points in the folder
+last. So the walk finishes the files at the top of the data folder before any
+subfolder: the database, its `-wal` and `-shm` files and `config.yaml` (unless
+`config.yaml` is mounted on its own, which makes it a mount point). The walk reads a mount point's cached
 attributes, so a share mounted inside the data folder whose server is gone
 doesn't stall it. Where `statx` is refused and the walk falls back to
 `fstatat`, that read is not cached.
