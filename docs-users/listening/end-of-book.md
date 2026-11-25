@@ -61,6 +61,6 @@ To take a finish back later, select **Mark as not finished** in the same menu. I
 ### Good to know
 
 - **Offline**, the book leaves **Continue listening** on Home. Your lists, its library cover and its book page show it as finished, even after you reopen the app. You can still use **Undo** or **Mark as not finished** while the finish is waiting to be sent. When you reconnect, AudioSilo sends the finish to your server, and your listening stats and goal update.
-- If a change takes a while, a message with the book's title says so until it goes through or fails. If a finish fails, the book loads again where you left it, paused.
+- If **Mark as finished**, **Mark as not finished** or the **Undo** of a finish takes a while, a message with the book's title says so until it goes through or fails. If a finish fails, the book loads again where you left it, paused.
 - If the server may already have the finish and you can't reach it, the book stays finished. Tap **Retry** when you can reach the server again.
 - **Undo** needs a recent server. On an older one the message has no Undo.

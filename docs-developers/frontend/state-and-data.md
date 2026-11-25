@@ -776,10 +776,11 @@ server. A book that was not loaded uses the page's progress.
 `undoFinish` takes the finish back as in
 [Taking a finish back](offline.md#taking-a-finish-back).
 
-**The pending toast** (`pendingBookAction`). A Mark as finished, an Undo or a
-Mark as not finished still running after 600 ms shows "Marking as finished..."
-or "Marking as not finished..." with the book title, until it settles. That
-includes a wait on another tab's send.
+**The pending toast** (`pendingBookAction`). A Mark as finished still running
+after 600 ms shows "Marking as finished...", and a Mark as not finished or the
+Undo of a Mark as finished (and their Retry) shows "Marking as not finished...",
+with the book title, until it settles. That includes a wait on another tab's
+send. The Undo of Mark as not finished (`finishAgain`) shows none.
 
 #### Writes from screens
 
@@ -2247,10 +2248,11 @@ See [the place readers](playback.md#what-a-kill-leaves-behind).
   episode pages, the end credits, the companion, the reveal listener and `usePlaceIn`
   then all show the place Resume plays. Read its `.position`, never the raw record's.
 - **Home, Library and search** share the progress rows from `useAllProgressAll`.
-  `useWithLocalPlaces` matches rows by resolved connection ID, library and path,
-  so a row under the connection's old ID counts as the same book. A pending
-  finish from the event outbox or legacy PUT queue can add a missing row to its
-  connection's list, even on an offline launch. Ordinary saves update listed rows.
+  `useWithLocalPlaces` matches each row to a pending finish by resolved
+  connection ID, library and path, so a row under the connection's old ID counts
+  as the same book. A pending finish from the event outbox or legacy PUT queue
+  can add a missing row to its connection's list, even on an offline launch.
+  Ordinary saves update listed rows only, matched by the row's own connection ID.
   List changes and outbox notifications within 100 ms share one storage read.
   `useProgressLookup` indexes the resulting rows for the active profile.
 - **Tiles and the book page** read the same pending finish through
