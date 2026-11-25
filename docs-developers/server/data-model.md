@@ -300,7 +300,7 @@ lifecycle (supersede-on-mint, rotate, atomic claim).
 
 #### `invite_exchanges`
 
-**`invite_exchanges`** *(0098)* records the session an invite's pairing token
+**`invite_exchanges`** *(0097)* records the session an invite's pairing token
 gave one device, so that device can
 [recover a lost exchange](api/reference.md#post-apiv1authexchange) once. A row
 is written only for an invite exchange that sent a valid `device_id`:
@@ -2694,7 +2694,7 @@ The migration history so far:
 | 0094 | `catalog_pass_indexes` | Adds `books.cover_color_art` with its trigger, start-up backfill and due index (see [Cover art columns](#cover-art-columns)), `idx_books_narrator` (see [FTS design](#fts-design-books_fts)) and `idx_bridge_jobs_fetch_requester` (see [`bridge_jobs`](#bridge_jobs)) |
 | 0095 | `books_matched` | Adds `books.matched` and backfills it once for existing books. Triggers on `books` and [`book_matches`](#book_matches) keep it current. |
 | 0096 | `mka_cover` | Data-only migration for the [MKA cover recheck](#file-and-source-columns). |
-| 0098 | `invite_exchanges` | The [`invite_exchanges`](#invite_exchanges) table, which lets a device recover a lost invite exchange once. No data moves. |
+| 0097 | `invite_exchanges` | The [`invite_exchanges`](#invite_exchanges) table, which lets a device recover a lost invite exchange once. No data moves. |
 
 `server_state.progress_feed` identifies the Audible progress feed. A restore renews this ID before
 clients can page it. The separate data-folder mark detects a database restored behind the last
