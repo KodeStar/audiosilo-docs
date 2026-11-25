@@ -82,7 +82,7 @@ Your audiobooks can stay on a share, but keep the data folder on a local disk. T
 audiosilo: WARNING: The data folder /data is on a network share (nfs4). Keep it on a local disk if you can: the server's database needs file locking a share may not give (an SMB share needs the nobrl mount option), and the server can crash when the share stops answering.
 ```
 
-On SMB, mount the share on the host with the `nobrl` option, or SQLite reports `database is locked`. On Unraid, `/mnt/user` gets no warning: see [Appdata on a user share](./getting-started/install-unraid.md#appdata-on-a-user-share).
+On SMB, mount the share on the host with the `nobrl` option, or SQLite reports `database is locked`. On Unraid, a user share under `/mnt/user` counts as a local disk and gets no warning. See [Appdata on a user share](./getting-started/install-unraid.md#appdata-on-a-user-share).
 
 ### My browser warns about the certificate
 

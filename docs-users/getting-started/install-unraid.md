@@ -71,7 +71,7 @@ Most settings can also be set with an `AUDIOSILO_*` variable, such as `AUDIOSILO
 
 ### Appdata on a user share
 
-Unraid's `/mnt/user` (shfs) pools local disks, so appdata there gets no network-share warning.
+Unraid's `/mnt/user` pools local disks, so appdata there counts as a local disk.
 
 When appdata is on a user share, AudioSilo maps its database into memory, which makes browsing quicker there. It stays off on network storage. To turn it off, add this to `config.yaml` in your appdata folder and restart the container:
 
