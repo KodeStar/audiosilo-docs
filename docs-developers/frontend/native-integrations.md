@@ -211,12 +211,12 @@ from arming in a car.
 failed one starts again like any other. It starts any other book through
 `startBookInPlace`, from its saved place. A downloaded book starts from its download when its
 server is slow or away (see [The end of a book](end-of-book.md#ending-a-book)). Its place
-lookup asks no server when none can be reached, and otherwise waits for the server's place for
-3 s at most (`DOWNLOADED_PLACE_WAIT_MS`) before it starts from this device's records, well
-inside the car's 10 s wait. Without the cap, a frozen server would hold a car's start for the
-whole request timeout. The read goes on, and a place that arrives after the wait gets the place reconcile's
-rule once the book is loaded (`onLatePlace`): a move to another device's newer place with
-Undo, or an offer on a `listening_sync` server. A seek the listener made meanwhile wins. A failure is
+lookup waits 3 s at most
+([Starting a downloaded book](state-and-data.md#starting-a-downloaded-book)), well inside the
+car's 10 s wait. Without the cap, a frozen server would hold a car's start for the whole
+request timeout. A place that arrives after the wait gets the place reconcile's rule once the
+book is loaded (`onLatePlace`): a move to another device's newer place with Undo, or an offer
+on a `listening_sync` server. A seek the listener made meanwhile wins. A failure is
 logged, and native times the request out.
 
 **A request native gave up on never plays** (Android, `onCarPlayCancel`). Native sends it when
