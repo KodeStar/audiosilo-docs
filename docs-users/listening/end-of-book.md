@@ -54,6 +54,10 @@ Two related settings are **Automatic downloads** and **Remove a download when yo
 
 To finish a book early, open the **...** menu on its cover or book page and select **Mark as finished**. If the book is playing, it stops and remembers the place the player showed at that moment.
 
+![The book page shows “Marking as finished...” with A Christmas Carol underneath.](/img/screenshots/web-player/phone-book-finish-pending.png)
+
+*If the request takes a moment, the message names the book until the change goes through or fails.*
+
 Tap **Undo** in the **Marked as finished** message to return to that place. If a place further on is already saved, on this device, in another tab or on another device, you keep the later place.
 
 To take a finish back later, select **Mark as not finished** in the same menu. Its message has **Undo** too.
@@ -61,6 +65,6 @@ To take a finish back later, select **Mark as not finished** in the same menu. I
 ### Good to know
 
 - **Offline**, the book leaves **Continue listening** on Home. Your lists, its library cover and its book page show it as finished, even after you reopen the app. You can still use **Undo** or **Mark as not finished** while the finish is waiting to be sent. When you reconnect, AudioSilo sends the finish to your server, and your listening stats and goal update.
-- If **Mark as finished**, **Mark as not finished** or the **Undo** of a finish takes a while, a message with the book's title says so until it goes through or fails. If a finish fails, the book loads again where you left it, paused.
+- **Mark as not finished** and the **Undo** of a finish also name the book while you wait. If a finish fails, the book loads again where you left it, paused.
 - If the server may already have the finish and you can't reach it, the book stays finished. Tap **Retry** when you can reach the server again.
 - **Undo** needs a recent server. On an older one the message has no Undo.

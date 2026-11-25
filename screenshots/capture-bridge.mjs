@@ -1,6 +1,6 @@
 // Captures the Bridge's own page (the LAN page an AudioSilo Bridge serves) for the
-// User Guide: its sign-in, the Status tab before and after pairing, the Libraries tab
-// and the Accounts tab.
+// User Guide: its sign-in, the Status tab before and after pairing, the Libraries tab,
+// a staged job on the Jobs tab and the Accounts tab.
 //
 // run.sh starts each Bridge (the BRIDGE checkout with its page embedded) on fresh data
 // and passes the selected files and the one-time password to this script. Accounts and
@@ -22,7 +22,7 @@
 import {chromium} from 'playwright';
 import path from 'node:path';
 import {mkdir, rm} from 'node:fs/promises';
-import {CACHE, DESKTOP_CONTEXT, apiClient, around, fitViewportToPage, fitted, pathQuery, shoot, silence, sleep, sqliteAt, step, submitSignIn, waitForScans, wanted} from './lib.mjs';
+import {CACHE, DESKTOP_CONTEXT, apiClient, around, fitViewportTo, fitViewportToPage, fitted, pathQuery, shoot, silence, sleep, sqliteAt, step, submitSignIn, waitForScans, wanted} from './lib.mjs';
 
 const BASE = (process.env.BRIDGE_BASE || '').replace(/\/?$/, '/');
 const PASSWORD = process.env.BRIDGE_PASSWORD || '';
@@ -34,6 +34,7 @@ const SHOTS = {
   unpaired: 'bridge/status-unpaired.png',
   paired: 'bridge/status-paired.png',
   libraries: 'bridge/libraries.png',
+  asrWait: 'bridge/jobs-asr-turn-wait.png',
   accounts: 'bridge/accounts.png',
   settingsAgent: 'bridge/settings-agent.png',
 };
@@ -453,6 +454,35 @@ try {
         await page.unroute(librariesURL);
       }
     });
+    if (wanted(SHOTS.asrWait)) {
+      await step('bridge: waiting for speech recognition', async () => {
+        const {books} = await server(admin, 'GET', '/admin/books?author=Charles%20Dickens&limit=50');
+        const book = books.find((b) => b.path.endsWith('/A Christmas Carol'));
+        if (!book) throw new Error('no seeded copy of A Christmas Carol');
+        const {pairing} = await bridgeApi(btoken, 'GET', '/status');
+        const message = 'Waiting for a turn to use speech recognition';
+        const now = new Date().toISOString();
+        // The running sidecars.generate progress from generate.describe while another book has the ASR lane.
+        const job = {id: 7, kind: 'sidecars.generate', library_id: book.library_id, path: book.path,
+          server_id: pairing.server_id, state: 'running', attempt: 1, claimed_at: now, updated_at: now,
+          finished_at: null, error: '', params: {}, result: null, reported: false,
+          progress: {step: 'waiting', stage: 'asr', source: 'audio', cost_usd: 0, message_code: 'asr_turn_wait', message}};
+        const jobsURL = (url) => url.pathname === '/api/jobs';
+        await page.route(jobsURL, (route) => route.fulfill({json: {jobs: [job]}}));
+        try {
+          await tab(page, 'Jobs');
+          const card = page.getByRole('article', {name: 'Job 7'});
+          await card.getByText(message, {exact: true}).waitFor();
+          await card.getByText('Running', {exact: true}).waitFor();
+          await fitted(page, async () => {
+            await page.setViewportSize({width: 960, height: 900});
+            await fitViewportTo(page, card, {min: 360, pad: 24});
+          }, () => shoot(page, SHOTS.asrWait));
+        } finally {
+          await page.unroute(jobsURL);
+        }
+      });
+    }
     if (wanted(SHOTS.accounts, SHOTS.settingsAgent)) {
       await step('bridge: endpoint credential', async () => {
         const settings = await bridgeApi(btoken, 'GET', '/settings/agent');
