@@ -146,9 +146,9 @@ all three checks.
 **One repair round.** `CountStageSuccesses` counts successful `retranscribing`
 runs for the book that have not been superseded. After one success the sweep
 advances to `readalong_aligning`, names any chapters still flagged and leaves
-those gaps to the [heal](#the-readalong_aligning-stage). Continuing from
-`sanitizing` rebuilds the transcripts from the raws and supersedes the previous
-repair, so the new sweep can run one round. The same
+those gaps to the [heal](#the-readalong_aligning-stage). A read-along that goes
+on at `sanitizing`, `splitting` or `inspecting` supersedes the previous repair
+([the reuse table](#the-reuse-table)), so its new sweep can run one round. The same
 [restart rule](generating.md#resuming-after-a-restart) counts a round completed
 just before a crash.
 
@@ -194,8 +194,11 @@ status and maps the new job in one transaction. Both this transaction and
 the next job shows only counts from its own stages.
 
 Before continuing, the Bridge removes the restart stage's sentinel (except for
-`splitting`) and the later read-along stages' sentinels. A book starting again
-at `inspecting` also drops its old manifest's transcription record.
+`splitting`) and the later read-along stages' sentinels, and supersedes those
+stages' recorded successes, which gives a book going on before `retranscribing`
+its [repair round](#the-mechanical-loop-repair) again. It also supersedes the
+successes of any stage whose sentinel a purge took. A book starting again at `inspecting` also drops its old
+manifest's transcription record.
 
 Other jobs meet the same engine books:
 
@@ -246,8 +249,9 @@ first looks, or when the server moved the job with its book.
    - every unaligned run between two aligned sentences, as the window
      `[previous end - 0.5 s, next start + 0.5 s]` (2 to 600 s);
    - a section's **trailing** unaligned run, such as a loop that took its chapter's
-     end. Its window starts at the previous end - 0.5 s and lasts as long as its
-     text could take (10 characters a second + 10 s), at most 600 s. The window
+     end. Its window starts at the previous end - 0.5 s and runs until its text
+     could have been read from that end (10 characters a second + 10 s), at most
+     600 s long. The window
      stops at the end of the chapter where the last aligned sentence ended,
      even when the padding starts in the previous chapter. An earlier limit
      applies if the next section's first aligned sentence starts sooner
@@ -312,7 +316,8 @@ The job reads the map from the work folder and:
    another edition, or another book.
 2. Refuses a map over 16 MiB, which the server wouldn't read.
 3. **Hashes the current EPUB again.** If the digest differs from the one recorded
-   during alignment, the job fails before it replaces any existing map.
+   during alignment, the job fails "the ebook changed while aligning; run it
+   again" before it replaces any existing map.
 4. Saves `readalong.json` (a single-file book's `<stem>.readalong.json`) into the
    book's `.audiosilo/` where the book is **now**, by the
    [attachment write rules](attachments.md#how-the-bridge-writes-them).
