@@ -37,18 +37,21 @@ player left open on the episode closes once the app is active. See
 
 ### `finishBook()`
 
-`finishBook()` (`store.ts`) is the single "this book is done" action. Both the
-natural end and the player's *Mark as Finished* menu item use it. It:
+`finishBook()` in `store.ts` handles the natural end and the full player's
+**Mark as Finished** menu item.
 
-1. captures a `FinishedBook` identity: the book's connection, library, path,
-   title, author and cover;
-2. clears playback intent and stops the save loop;
-3. does one forced `persist({ forceFinished: true })`. This is the last write,
-   and the server is last-write-wins. It records the book's length as both the
-   position and the duration (`bookLengthOf`; for a download that ends early,
-   [its length](offline.md#a-download-that-ends-early)), so the book reads 100%;
-4. invalidates the connection's `allProgress` query;
-5. **nulls `nowPlaying`**, which hides the mini player, and resets the snapshot.
+1. It captures the book's connection, library, path, title, author and cover
+   in a `FinishedBook` record.
+2. It clears playback intent and stops the save loop.
+3. It calls `sendFinish` to close the last span and queue the finish when the
+   connection uses listening sync.
+4. It starts `persist({ forceFinished: true })` with the book's length as both
+   position and duration, so it reads 100%. See [how a partial download gets
+   its length](offline.md#a-download-that-ends-early).
+5. It clears `nowPlaying`, which hides the mini player, and resets the snapshot.
+
+When the save completes, `refreshLocalPlaces` updates the local progress
+readers. The server queries refresh [on finish delivery](offline.md#finish-delivery).
 
 Then, best-effort and async, it tears the engine down. **Only if
 `autoDeleteFinished` is on and the book's download `status === 'downloaded'`**,
