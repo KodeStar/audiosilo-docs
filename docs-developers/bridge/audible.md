@@ -315,14 +315,10 @@ template change plans by the new one. A claimed poll runs as claimed.
    `Preorder` set is `preorder`, any other `unavailable` with the reason. Every
    preorder from the orders carries `audible.PreorderReason` ("Not released yet
    (pre-order)");
-5. matches the unmarked titles with `importjob.BookMatcher` over `[]link.LibraryBook`, then
-   settles books claimed by several titles with `importjob.KeepBest`. The matcher
-   is `audiosilo-server/pkg/match.BestWith` under `match.ImportOptions()`: ASIN
-   exact first, then author + series + title tokens. A book in several series is a
-   candidate under each, and narrators join the person gate (see
-   [Matching rules](#matching-rules); a preorder has two more rules, see
-   [Preorders](#preorders)). `how` is `asin` when the book's ASIN is the title's,
-   else `fuzzy`.
+5. [matches the unmarked titles](#matching-rules) against the library's books,
+   applies the additional [preorder rules](#preorders) and settles
+   [competing claims](#contested-books). The poll reports `how` as `asin` for
+   an exact ASIN match and `fuzzy` for a match by words.
 
    A book path goes out only as `.` (a library that is one book) or a clean path
    below the root, within the server's 4096-byte limit (`MaxBookPath`). A title
@@ -338,14 +334,10 @@ template change plans by the new one. A claimed poll runs as claimed.
 7. PUTs the titles in calls of 500 under **one** poll id (the job, the attempt and a
    random suffix), the last one `final` (an empty library sends one empty final
    call, so every title becomes `gone`), with each title's authors cut to 20;
-8. **backfills ASINs** (`PUT /bridge/libraries/{id}/enrichment`) for each matched
-   book without one. It skips:
-   - a book that is [contested](#contested-books), because nothing durable is
-     derived from a doubtful match;
-   - a preorder title, which is not out yet, so the book is another edition;
-   - a match by words to a book with an identical twin in the library
-     (`importjob.Twins`: the same folded title, authors and series). The match is
-     kept, but the ASIN isn't stamped on an arbitrary copy.
+8. **backfills ASINs** (`PUT /bridge/libraries/{id}/enrichment`) for matched
+   books that lack one. The poll skips preorders, books that
+   [several titles claimed](#contested-books) and matches that fail the
+   [ASIN checks for an existing book](#asin-checks-for-an-existing-book).
 
    `asin_set` and a moved book are skipped, and other failures counted. The PUTs
    are paced (see [Enrichment pacing](#enrichment-pacing)).
@@ -364,47 +356,80 @@ fails the job and leaves the account's row as it was.
 
 ### Matching rules
 
-`BookMatcher` runs the ASIN step over every candidate, then `match.BestWith` under
-`match.ImportOptions()` over the candidates past the person gate. The options turn
-on every opt-in rule of the server's `pkg/match` (the table is in
-[the server's `pkg/match`](../server/overview.md#matching-titles-and-series)); the server's own
-callers keep the default rules. The Bridge builds against a pinned server commit,
-so it reads the options as that commit wrote them: until its pin moves past
-server 2.7.0, `DropUnabridged` removes only `(Unabridged)` and
-`WordlessFallback` checks a series-named candidate's number only when the query
-states one. `BookMatcher.MatchScored` hands the winning score
-(`match.ScoreASIN` for an ASIN match) to the contested rule.
+`importjob.BookMatcher` checks every candidate for an exact ASIN first. For a
+match by words, it uses the [server matcher's import options](../server/overview.md#matching-titles-and-series)
+to score books that share an author or narrator. A book in several series
+competes under each name. `BookMatcher.MatchScored` passes the winning score
+(`match.ScoreASIN` for an ASIN match) to [`KeepBest`](#contested-books).
 
 #### Series positions in the books listing
 
-The server's books listing fills an empty main series position from a code
-leading the book's folder or file name (`DH06 - ...` in Dragon Heart is `"6"`,
-`LAM05-06 - Omnibus` is `"5-6"`). The scan and every other route keep the
-position empty. The rules are under
-[`GET /bridge/libraries/{id}/books`](../server/api/reference.md#get-apiv1bridgelibrariesidbooks).
+The server's books listing fills an empty main series position from a code at
+the start of the book's folder or file name. The Bridge's `folderCodeIs`
+follows the same [folder-code rules](../server/api/reference.md#get-apiv1bridgelibrariesidbooks)
+when it checks a single position.
+
+The code uses the series' initials or the volume marker `C` in any named
+series. A year or lettered suffix leaves `DH06-2019` and `DH06-07x` at 6.
+A doubled code or a pack word beside a single code gives no single position.
+A range keeps both ends, as in `LAM05-06 - Omnibus`. Only the books listing
+fills the missing position this way.
 
 #### Matching a range
 
-On the Bridge, a book with a range position in any of its series spans books:
+Bridge version 0.7.0 or later recognizes a pack by a range in any of the
+library book's series positions, or by a pack label in its title or folder
+name. The folder can identify a pack even when its tagged title is `End Credits`.
 
-- Its candidates sit at the range's start (`rangeStart`), and a title that is no
-  range never sees them. So a single Audible volume never matches an omnibus
-  folder, and never gives it that volume's ASIN.
-- An Audible title with a range position and no sequence is placed at the range's
-  start, so a number in its title ("Pack 3") never stands in for the position
-  Audible gave.
-- Such a title tries the spanning books that start where it does first, then the
-  single volumes, because a pack may be stored as a folder numbered as its first
-  volume. A spanning book that starts elsewhere is another pack.
-- A pack matched that way to a single-volume folder is kept as a match but not
-  enriched (`importjob.SpanMismatch`), so the folder never takes the pack's ASIN.
+- **Audible gives a range.** The matcher first tries folders whose listed range
+  starts at the same volume. For a publisher's pack numbered 3 but covering
+  volumes 5-6, it starts at 5. It then tries packs identified by label. If it
+  finds no pack, it can show a match to a single book at the starting volume.
+  For a range starting at 1, it skips an opening book titled only for the series.
+- **Only the Audible title identifies the pack.** A title such as
+  `Iron Vale Box Set` competes only against packs. With no series position,
+  it can match either a listed range or a labeled pack. A single stated
+  position limits it to labeled packs without a listed range.
 
-An ASIN match is never held back by any of this.
+  `bestPackTitle` compares pack names after removing shared labels such as
+  `Box Set` and `Omnibus`. If both sides give bounds, both ends must agree.
+  For a pack without a listed range, the matcher reads bounds from both the
+  book title and its folder name. Distinct packs tied for best by name give
+  no match. For two copies with the same `twinKey` and folded pack label,
+  the first in the listing keeps the match.
+- **Audible lists a single book.** A match by words excludes listed ranges.
+  If Audible omits a collection label, a book such as `Four` can still match
+  `Four: A Divergent Collection` when that candidate wins on score and listing
+  order. A series-named opener cannot use that fallback.
+
+#### ASIN checks for an existing book
+
+The poll and a backup that joins an existing book apply the same checks before
+writing an ASIN. A book can keep its match in the console when a check prevents
+the write.
+
+- `importjob.SpanMismatch` checks which volumes the folder holds. An explicit
+  Audible range must match both ends of a listed range. A display match on
+  volume 1 or on books 1-3 cannot receive the ASIN for books 1-6. For a pack
+  identified by title, any bounds must agree with the folder's own range.
+  A pack title without bounds can supply an ASIN only for an opening pack
+  (starting at 1 or earlier). A labeled folder with no bounds of its own also
+  counts as the opening pack. The Bridge skips the write if only one side is a pack.
+- `importjob.OtherVolume` checks a title that names a series. Different
+  [series positions](#contested-books) block the write unless the titles clean
+  to the same words, such as `New Spring` numbered 0 and 0.5.
+  The series name or a volume number alone cannot establish that exception.
+  The library title can also give the volume number. For example,
+  `Iron Vale 3` rules out a different Audible position even if the library
+  calls the series `Iron Vale Saga`. An Audible title of just `Iron Vale`
+  with no position counts as volume 1 for that comparison.
+- `importjob.Twins` withholds the ASIN from duplicate copies with the same
+  title, authors, series and positions after normalization. Title matching cannot tell
+  which copy the ASIN belongs to.
 
 #### Contested books
 
-`importjob.KeepBest` settles a path claimed by several titles
-(`Claim{Path, Score, Work, Agrees, Disagrees}`):
+`importjob.KeepBest` settles a path claimed by several titles.
 
 1. An ASIN match (`match.ScoreASIN`) keeps it.
 2. Otherwise, when some claims' series position agrees with the book's, only
@@ -412,14 +437,9 @@ An ASIN match is never held back by any of this.
    higher score (`MatchScored` itself is not gated by it).
    `importjob.PositionAgrees(rec, b)` compares the title's `SeriesPosition`, as
    one number, against the book's position in the title's series, else the book's
-   main series' position. That one counts only when the title names no series, or
-   when the book's folder code states it (`folderCodeIs`: the main series'
-   initials and the same single number). That check keeps the listing's rules
-   from before server 2.7.0: a suffix (`DH06-2019`, `DH06-07x`) gives no
-   number, `C` must be one of the initials like any other letter, and a pack
-   word or a doubled code (`DH01 - Omnibus`, `DH01-DH03`) still states 1. A
-   franchise's number says nothing. A range or a missing number on either side
-   neither agrees nor disagrees.
+   main series' position. That one counts only when the title names no series
+   or the [folder code](#series-positions-in-the-books-listing) confirms it.
+   The comparison needs a single number on each side.
 3. Then the single best score keeps the match.
 4. A tie for the best keeps none, unless every tied title is the same work
    (`WorkKey`: the folded title, the folded authors in any order and the series
@@ -431,8 +451,7 @@ An ASIN match is never held back by any of this.
 
 The losers go out in two ways:
 
-- A losing title whose position **disagrees** with the book's is another volume.
-  It goes out plainly unmatched, with no reason.
+- A losing title with a different single position goes out unmatched, with no reason.
 - The other losers are PUT with no `match`, `reason: "contested"`
   (`link.ReasonContested`, set only on a title with no other reason) and
   `contested_path` (the book's path, omitted otherwise). The console shows them as
@@ -800,6 +819,12 @@ another pairing may use them. `run`'s cleanup asks `jobs.Job.Under` again.
      series siblings' folder and code convention, else an existing author folder's
      spelling, else `Author/Title`. An empty author folder is dropped.
 
+   The planner passes Audible's title and series directly to the shared
+   [`match.CleanTitle`](../server/overview.md#matching-titles-and-series).
+   Auto uses the cleaned title for the book folder and keeps the supplied
+   filename. The placement test for `The Orchard Cycle: Books 1-3` expects
+   `Mara Quill/Orchard Cycle/Books 1-3/The Orchard Cycle: Books 1-3.m4b`.
+
    Without an explicit path, `booksFor` can reuse a listing for up to 15 minutes
    on the same server, pairing and library. After a rescan, the next planning
    pass refreshes the affected book from its listing page.
@@ -976,9 +1001,9 @@ See [Audible disc destinations](../server/api/reference.md#audible-disc-destinat
 The Bridge uses the book path returned by the rescan to decide where to write
 the ASIN.
 
-- For a book listed before placement, `joinedBooks` records whether the title
-  matched that book without a span mismatch or an identical twin. The placement
-  marker keeps that decision for retries. If the decision allows enrichment,
+- For a book listed before placement, `joinedBooks` records whether the matcher
+  picked that book and it passed the [ASIN checks for an existing book](#asin-checks-for-an-existing-book).
+  The placement marker keeps that decision for retries. If the decision allows enrichment,
   the Bridge rereads the account's rejections after the rescan and skips the
   write if the title is now marked. An older server's `405` reads as no marks.
   If the re-read fails, the import fails with the book already placed:
