@@ -14,7 +14,7 @@ These steps are written for Container Manager on DSM 7.2 and haven't been checke
 1. Install **Container Manager** from **Package Center**. It creates a shared folder called `docker`.
 2. In **File Station**, open `docker` and create a folder `audiosilo`, then a folder `data` inside it.
 
-The data folder is now `/volume1/docker/audiosilo/data`. It holds the database, settings and backups. Your audiobooks stay where they are, for example in a shared folder `/volume1/audiobooks`.
+Keep the data folder on a local disk in the NAS, such as `/volume1/docker/audiosilo/data`. It holds the database, settings and backups. Your audiobooks can stay in their own shared folder, such as `/volume1/audiobooks`.
 
 ## 2. Pick the user the server runs as
 
@@ -97,5 +97,6 @@ In **Container Manager**, stop the `audiosilo` project, get the newest `ghcr.io/
 
 ## Good to know
 
+- If the data folder is on another machine, see [using SMB or NFS for the data folder](../troubleshooting.md#the-data-folder-is-on-a-network-share).
 - **Backups** go to `backups` inside the data folder, so they need nothing more. To keep them on another share, see [A backups folder on another disk](../admin/backups.md#a-backups-folder-on-another-disk).
 - **HTTPS and access from outside** work as on any Docker host. See [Reach your server from outside your home](./remote-access.md).

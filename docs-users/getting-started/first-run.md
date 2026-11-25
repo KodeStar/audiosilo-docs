@@ -222,7 +222,7 @@ On a new server with this set, the message the server prints on its first start 
 
 ## What's in the data folder
 
-The data folder (`--data`, or `/data` under Docker) holds:
+Keep the data folder (`--data`, or `/data` under Docker) on a local disk.
 
 - `config.yaml`: the server's settings, written by the admin console. It holds only the settings that differ from the defaults, so on a new server it has little more than the server's ID.
 - `audiosilo.db`: accounts, listening progress, bookmarks and the index of your books. Back this up.
