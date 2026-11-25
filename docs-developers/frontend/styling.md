@@ -35,8 +35,8 @@ Stacks radius names: `rounded-control`, `rounded-menu`, `rounded-card`,
 
 ### rem
 
-**rem is 14px on native** (Uniwind's rem polyfill, NativeWind's old value) and
-the browser's 16px on the web, so layouts keep their size.
+Uniwind uses a 14 px rem on native. On the web, rem follows the browser's root
+font size, normally 16 px.
 
 ## Colour tokens
 
@@ -62,6 +62,7 @@ Never hand-edit either output. `npm test` starts with
 | Surfaces | `bg-card` (sheets and dialogs `bg-popover`) |
 | Quiet fills | `bg-muted` |
 | Text | `text-foreground`, `text-muted-foreground`, `text-subtle-foreground` |
+| Secondary text on an ink fill | `text-primary-muted-foreground` on `bg-primary` |
 | Hairlines | `border-border` |
 | Pressed and hover | `bg-accent` |
 | Status | `text-destructive`, `success`, `warning`, `info` |
@@ -117,9 +118,15 @@ over it. The overrides are not in the CSS.
 - **A fixed scheme's colours** (a surface that is always dark, such as the
   companion's) come from `themeColors(scheme, highContrast)`, with the flag from
   `useThemeScheme()`. Never read `colors.dark` directly.
-- **Tracks**: in high contrast `ProgressBar` and the slider draw a 1px `input`
-  outline on the track, under the fill (`TrackOutline`). Pass `ProgressBar`
-  `outline={false}` for a hairline under about 4px.
+- Secondary text on an ink fill uses `primary-muted-foreground`. Examples
+  include a selected filter's count, an option's caption, a toast description
+  and the book time in a seek tooltip. High contrast raises the pair to at least 7:1.
+- Use `bg-track` for the unfilled part of a progress bar. In high contrast,
+  `TrackOutline` draws a 1 px `input` border under the fill. Sliders, listening
+  rank bars, storage, and the unplayed portions of book and series tracks use
+  this outline. The storage bar also draws a 1 px `primary` edge at the end of
+  the used space in high contrast. For a hairline under about 4 px, pass
+  `outline={false}` to `ProgressBar`.
 
 The ratios each set holds are in the frontend `STYLEGUIDE.md` (sections 14 and 17).
 
@@ -292,16 +299,24 @@ The rules are in the frontend `CONVENTIONS.md` ("Large text", "Touch targets",
   system font scale on native and the root font size over 16px on the web.
   `useLargeText()` is true from `LARGE_TEXT_SCALE` (1.3). `scaleCapped(base, scale,
   max)` sizes a px-drawn control, and `linesFor(n, large)` lifts a `numberOfLines`
-  cap. Never read `fontScale` in a screen. The web reads a browser font size change
-  at the next render, not live (nothing fires for it).
-- **Under large text a layout changes shape, not size.** `SettingRow` puts every
-  control under its label, `ToggleGroup` and option tiles wrap, and fixed heights
-  become `min-h-*`. The full player's transport and scrubber scale up to
-  `CONTROL_MAX_SCALE` (1.5) and shrink back to fit (`controlScale` in
-  `transport-controls.tsx`). On iOS and Android, display titles stop at 2x
-  (`DISPLAY_MAX_FONT_SCALE`, as `maxFontSizeMultiplier`). Under large text the
-  Android tab bar labels only the selected tab, and that label grows to 1.3x at
-  most (`tab-label-size.ts`).
+  cap. Screens read the scale through these helpers. On the web, one
+  `ResizeObserver` watches a hidden element one rem wide
+  while any component subscribes. A browser font change updates mounted screens
+  immediately. The last unsubscribe removes the observer and element.
+- **Give the text room.** `SettingRow` puts the control below its label,
+  `TileCaption` lifts the title and byline limits, and each `BreadCrumbs`
+  label can wrap to the measured width of its horizontal scroller. `ToggleGroup`
+  and option tiles can wrap onto another row. Use minimum heights on rows that
+  may grow, as [the top bar](shell.md#tablet) does. The shell also adapts the
+  [phone tab labels](shell.md#phone) to the space available.
+- **Display titles share a 2x cap.** `Text` applies `DISPLAY_MAX_FONT_SCALE` to
+  `display` and `display-xl` through `maxFontSizeMultiplier` on native. On the
+  web it supplies `--display-px`, one sixteenth of a rem capped at 2 px.
+  Named sizes such as `text-3xl` use this unit on a display title. For a title
+  specified in design pixels, use `text-display-38 leading-display-42`.
+  Those utilities compile to native pixels and use the capped unit on the web,
+  including at breakpoints. A named size can keep its native rem leading and
+  cap it on the web, as in `text-2xl leading-7 web:leading-display-28`.
 - **px text needs a rem twin on the web.** px text does not follow the browser's
   font size, so every `text-[Npx]` and `leading-[Npx]` carries a `web:` twin of
   N/16 rem with the same variants (`text-[13px] web:text-[0.8125rem]`).

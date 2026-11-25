@@ -519,6 +519,26 @@ async function scrollToTop(locator) {
 // A short pause for an entrance animation to finish after the state it waits on.
 const SETTLE_MS = 600;
 
+// Chromium's default font size, and the doubled size the large-text shots use.
+const DEFAULT_FONT_PX = 16;
+const LARGE_FONT_PX = 32;
+
+// Change Chromium's default font while the page is open, as in the browser's settings.
+async function withLargeText(page, capture) {
+  const session = await page.context().newCDPSession(page);
+  try {
+    await session.send('Page.setFontSizes', {fontSizes: {standard: LARGE_FONT_PX}});
+    await page.waitForFunction((px) => getComputedStyle(document.documentElement).fontSize === `${px}px`, LARGE_FONT_PX);
+    await capture();
+  } finally {
+    await session.send('Page.setFontSizes', {fontSizes: {standard: DEFAULT_FONT_PX}});
+    await session.detach();
+    // The next shot on this page must not catch the large layout on its way out.
+    await page.waitForFunction((px) => getComputedStyle(document.documentElement).fontSize === `${px}px`, DEFAULT_FONT_PX);
+    await sleep(SETTLE_MS);
+  }
+}
+
 // Let the covers settle, then shoot `file` with the pointer out of the way.
 async function settleShoot(page, file, ms = 1500) {
   await sleep(ms);
@@ -667,7 +687,7 @@ async function captureWide(name, viewport, shots) {
   });
   await step('pause', () => pausePlayback(page));
 
-  if (wanted(shots.bookmarkEditor, shots.bookDetails)) {
+  if (wanted(shots.bookmarkEditor, shots.bookDetails, shots.bookDetailsLarge)) {
     // The playing book's page again (the full player's View book details, so the book
     // stays loaded and paused): its Bookmarks tab, the bookmark editor on the Quote
     // (Edit opens it as a dialog on a desktop; Cancel leaves it unchanged), and, once
@@ -698,7 +718,7 @@ async function captureWide(name, viewport, shots) {
           await dialog.waitFor({state: 'hidden', timeout: 8000});
         }
       }
-      if (wanted(shots.bookDetails)) {
+      if (wanted(shots.bookDetails, shots.bookDetailsLarge)) {
         // Download it here unless an automatic download already did, so Details says
         // Plays from this device.
         const download = firstVisible(page.getByRole('button', {name: /^download( for offline)?$/i}));
@@ -706,8 +726,27 @@ async function captureWide(name, viewport, shots) {
         await firstVisible(page.getByRole('button', {name: /^downloaded$/i})).waitFor({timeout: 120000});
         await tid(page, 'book-tab-details').click({timeout: 8000});
         await tid(page, 'book-playback-local').waitFor({timeout: 8000});
-        await scrollToTop(tid(page, 'book-tab-details'));
-        await shoot(page, shots.bookDetails);
+        if (wanted(shots.bookDetails)) {
+          await scrollToTop(tid(page, 'book-tab-details'));
+          await shoot(page, shots.bookDetails);
+        }
+        if (wanted(shots.bookDetailsLarge)) {
+          // A tablet-width window, where large text stacks the dock's transport.
+          await page.setViewportSize({width: 800, height: 1060});
+          try {
+            await withLargeText(page, async () => {
+              await page.waitForFunction(() => {
+                const row = document.querySelector('[data-testid="dock-row"]');
+                return row && getComputedStyle(row).flexDirection === 'column';
+              });
+              await scrollToTop(tid(page, 'book-tab-details'));
+              await page.mouse.move(0, 0);
+              await shoot(page, shots.bookDetailsLarge);
+            });
+          } finally {
+            await page.setViewportSize(viewport);
+          }
+        }
       }
     });
   }
@@ -843,7 +882,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (wanted(shots.bookmarkEditor, shots.bookDetails, shots.bookFinished, shots.journal, shots.journalBookmarks)) {
+  if (wanted(shots.bookmarkEditor, shots.bookDetails, shots.bookDetailsLarge, shots.bookFinished, shots.journal, shots.journalBookmarks)) {
     // Back to Home, where the pause left a partial run, so the palette and profile
     // menu are shot over Home on every run.
     await step('back home', async () => {
@@ -941,11 +980,17 @@ async function captureWide(name, viewport, shots) {
   }
 
   if (wanted(shots.library)) {
-    // Library > Books, the default section.
+    // Open the Books grid in its own tab. The browsing session may still have
+    // a book on the Library stack, and later shots use that session's player.
     await step('library', async () => {
-      await tid(page, 'top-bar-(library)').click({timeout: 8000});
-      await sleep(3000);
-      await shoot(page, shots.library);
+      const books = await ctx.newPage();
+      try {
+        await books.goto(BASE + 'library?mode=books', {waitUntil: 'networkidle'});
+        await firstVisible(books.getByRole('button', {name: /^Alice in Wonderland, Lewis Carroll/})).waitFor();
+        await settleShoot(books, shots.library);
+      } finally {
+        await books.close();
+      }
     });
   }
 
@@ -1009,7 +1054,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (wanted(shots.youStats, shots.year)) {
+  if (wanted(shots.youStats, shots.calendarLarge, shots.year)) {
     // You in the top bar: Your listening (Stats), then Year in listening. The context
     // reduces motion, so the story stays on its first card (a still frame).
     await step('you', async () => {
@@ -1021,6 +1066,13 @@ async function captureWide(name, viewport, shots) {
       await sleep(SETTLE_MS);
       await page.mouse.move(0, 0);
       await shoot(page, shots.youStats);
+      if (wanted(shots.calendarLarge)) {
+        await withLargeText(page, async () => {
+          const grid = firstVisible(page.getByRole('img', {name: /^Listening calendar for the last 12 months/}));
+          // The grid and its legend share a parent inside the calendar card.
+          await shootElement(page, grid.locator('xpath=../..'), shots.calendarLarge, 0);
+        });
+      }
       if (wanted(shots.year)) {
         await tid(page, 'shell-sub-nav')
           .getByRole('radio', {name: /^Year in listening/})
@@ -1128,6 +1180,7 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   book: 'web-player/book-detail.png',
   bookmarkEditor: 'web-player/bookmark-editor.png',
   bookDetails: 'web-player/book-details.png',
+  bookDetailsLarge: 'web-player/book-details-large-text.png',
   bookFinished: 'web-player/book-finished.png',
   bookAboutGenerated: 'web-player/book-about-generated.png',
   bookRecapsGenerated: 'web-player/book-recaps-generated.png',
@@ -1152,6 +1205,7 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   collection: 'web-player/collection.png',
   search: 'web-player/search.png',
   youStats: 'web-player/you-stats.png',
+  calendarLarge: 'web-player/listening-calendar-large-text.png',
   year: 'web-player/year.png',
   settings: 'web-player/settings.png',
   settingsAppearance: 'web-player/settings-appearance.png',

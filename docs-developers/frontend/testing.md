@@ -67,6 +67,11 @@ three fast Node checks before jest:
      (`web:text-[length:min(...)]`). Art drawn to a fixed box is exempt (the cover,
      the A-Z rail, the connect cascade). See
      [Styling](styling.md#large-text-targets-and-screen-readers).
+   - Every `text-display-N` and `leading-display-N` used in source, including
+     breakpoint variants, compiles to the capped display unit on the web and to
+     the specified pixels on iOS. A `web:` variant has no native rule. The
+     guard also checks that display leading sets `--tw-leading` and that named
+     display sizes match Tailwind's size steps.
 
    If a Uniwind upgrade renames the compiler internals it reads, the check fails
    loudly. Update the hook; don't delete the guard.
