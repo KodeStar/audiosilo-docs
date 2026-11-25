@@ -473,6 +473,10 @@ dates from 0001. Later migrations added these columns:
 - `has_cover`: whether the book has a sidecar image or embedded art. It is
   `NULL` until a scan has checked, and always true when `cover_path` is set
   (`UpsertBook` enforces that).
+  On server version 2.7.0 or later, migration `0096` resets it to `NULL` only
+  where `format = 'mka'` and `has_cover = 0`, so the
+  [skipped-book backfill](scanner.md#backfills-for-a-skipped-book) looks for an
+  MKA file's attached art.
 - `format`, `size`, `mtime`, `indexed_at`.
 - `codec`: ffprobe `codec_name`, `""` when unknown. It drives the
   `direct_playable` API flag.
@@ -524,7 +528,7 @@ dates from 0001. Later migrations added these columns:
   read-along map, `''` otherwise. Only those ebooks are hashed.
   `ebook_hashed_sig` is the `ebook_sig` the digest was computed for, so a
   digest whose file has changed since is known to be stale. See
-  [Read-along](../bridge/readalong.md#on-the-server).
+  [how the scanner records an ebook digest](scanner.md#hashing-for-read-along-only).
 
 #### Health columns
 
@@ -2667,6 +2671,7 @@ The migration history so far:
 | 0093 | `audible_fold_refusal` | Records why and when the server refused to match a completed backup on the [Audible title](#audible-accounts-and-titles). A trigger clears the refusal when the title gains a newly accepted match, or when an admin undoes "Not this book". |
 | 0094 | `catalog_pass_indexes` | Adds `books.cover_color_art` with its trigger, start-up backfill and due index (see [Cover art columns](#cover-art-columns)), `idx_books_narrator` (see [FTS design](#fts-design-books_fts)) and `idx_bridge_jobs_fetch_requester` (see [`bridge_jobs`](#bridge_jobs)) |
 | 0095 | `books_matched` | Adds `books.matched` and backfills it once for existing books. Triggers on `books` and [`book_matches`](#book_matches) keep it current. |
+| 0096 | `mka_cover` | Data-only migration for the [MKA cover recheck](#file-and-source-columns). |
 
 `server_state.progress_feed` identifies the Audible progress feed. A restore renews this ID before
 clients can page it. The separate data-folder mark detects a database restored behind the last

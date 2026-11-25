@@ -129,18 +129,23 @@ neither is ever shown.
    `SESSION_GAP_MS` (10 min), and picking up within 120 s (content) of where it stopped.
    Another book in between ends the session. A session carries the whole stretch's
    fields, `listened` (the spans' sum, without the pauses) and its parts.
-3. **Waiting listens** (`waitingSessions`, `diary-model.ts`): this device's listen
-   events still in the [outbox](offline.md#listening-sync-the-outbox) become sessions
-   of their own with `waiting` set.
-   - They come from every connection the Diary lists (`useWaitingListens` in
-     `src/playback/use-listening-sync.ts`, kept current as the outbox changes).
+3. **Waiting listens** (`waitingSessions`, `src/lib/listening-sessions.ts`): this
+   device's listen events still in the [outbox](offline.md#listening-sync-the-outbox)
+   become sessions of their own with `waiting` set. The Diary and the book's
+   History tab both read them through `useWaitingListens`. The Diary keeps its
+   listed connections, History the book's connection, library and path.
+   - After an offline web reload, they also preview a span left on disk while
+     [recovery checks its owner](playback.md#on-the-web-the-recovery-can-wait-30-s).
+     Only recovery queues that span, and its queued event replaces the preview
+     with the same id.
    - They are grouped among themselves, never into a server's session, since a
      session is one server's record.
-   - One the server's rows already hold is left out, so a listen whose answer is on
-     the way never shows twice: the same book, `from` and `to` within 2 s, started
-     within 5 minutes (the server corrects the device's clock).
-   - The server's sessions are grouped only when its rows change; an outbox change
-     regroups only the waiting ones.
+   - One the same connection's history already holds is left out, so a listen
+     whose answer is on the way never shows twice. It is the same book, `from`
+     and `to` within 2 s, started within 5 minutes (the server corrects the
+     device's clock).
+   - The server's sessions are grouped only when its rows change. An outbox
+     change regroups only the waiting ones.
 4. **Days** (`groupByDay`, `diary-model.ts`): sessions are grouped by the device's local
    day they started on, newest first, with the day's total. A session past midnight
    stays on its start day. `useDayLabel` names the days as of `useToday`: Today,
