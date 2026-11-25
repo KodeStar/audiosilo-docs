@@ -68,6 +68,10 @@ If the web player opens but says to check the server address and proxy settings,
 including its name. If you see a web page or a missing-page error, check that the proxy
 forwards `/api/` to the same AudioSilo server as `/web/`.
 
+![Connect shows https://books.example.test in the Server address field and asks you to check the address and proxy settings.](/img/screenshots/web-player/connect-wrong-api.png)
+
+*Here the proxy returned a missing-page error when the player asked for server details.*
+
 :::warning
 Only turn HTTPS off behind a proxy that handles HTTPS. Plain HTTP open to the internet sends passwords and audio unencrypted.
 :::

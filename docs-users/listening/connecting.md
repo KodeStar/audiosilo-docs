@@ -92,7 +92,13 @@ You can retry once, within a minute of the first attempt, without using up anoth
 
 If you go back one screen, you can enter the same code for the same server and carry on. If you were signing in with a code and leave sign-in altogether or reload the page, the retry is lost.
 
-If the player says this device already used the invite, sign in with your password or ask your admin for a new invite. Sometimes it says the device *may* have used the invite because the reply never arrived. The same two options work then.
+![The invite code form says “This invite was already used by this device” and offers password sign-in or a new invite.](/img/screenshots/web-player/connect-invite-used.png)
+
+*If the server confirms this device used the invite, sign in with your password or ask your admin for a new invite.*
+
+![The invite code form says “This device may already have used the invite” and suggests using a password or asking for a new invite.](/img/screenshots/web-player/connect-invite-maybe-used.png)
+
+*If an older server's reply never arrived, the player can't tell whether the device used the invite.*
 
 ### "Your library is ready."
 

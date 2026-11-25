@@ -411,6 +411,10 @@ stages (`asr`, `retranscribing` and `readalong_aligning`) only, so a book still 
 the engine's `queued` step reports its `eta_seconds`. A book waiting for a
 worker to connect has a [worker park](workers.md#the-asr-router-and-its-fallback).
 
+![The Bridge Jobs tab shows a running job for A Christmas Carol with the message “Waiting for a turn to use speech recognition”.](/img/screenshots/bridge/jobs-asr-turn-wait.png)
+
+*The job keeps its Running badge while another book uses speech recognition.*
+
 A handler names a sentence by its code (`Progress.Code`, with `Params`), and the
 Bridge fills in `message` from the code's English (`Progress.Text`), so every
 report carries the English. Text that is not a fixed sentence is sent without a

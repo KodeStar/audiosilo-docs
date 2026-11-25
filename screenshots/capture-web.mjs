@@ -3010,6 +3010,132 @@ const HEADERS_SHOT = 'web-player/connect-headers.png';
 const PROXY_HOST = 'books.example.test';
 const PROXY_HEADER = 'CF-Access-Client-Id';
 
+const FINISH_PENDING = 'web-player/phone-book-finish-pending.png';
+const INVITE_USED = 'web-player/connect-invite-used.png';
+const INVITE_MAYBE_USED = 'web-player/connect-invite-maybe-used.png';
+const WRONG_API = 'web-player/connect-wrong-api.png';
+
+// A server with progress edits but no listening-event outbox: Mark as finished
+// waits for its PATCH. Hold the real reply until the pending notice is in the shot.
+async function pendingFinish(page, user) {
+  await routeServerInfo(page.context(), (info) => {
+    info.capabilities.listening_sync = false;
+  });
+  await page.goto(BASE + 'connect');
+  await probeServer(page, new URL(BASE).origin);
+  await signInWithPassword(page, user.username, HOUSE_PASSWORD);
+  await tid(page, 'ready-screen').waitFor();
+  const {cid, token} = await playerSession(page);
+  const {lib, find} = await seededBooks(token);
+  const book = find('A Christmas Carol');
+  await page.goto(bookUrl(lib.id, cid, book.rel_path), {waitUntil: 'networkidle'});
+  await page.getByRole('button', {name: `More for ${book.title}`, exact: true}).click();
+  const release = Promise.withResolvers();
+  await page.route('**/progress?*', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.continue();
+    const response = await route.fetch();
+    await release.promise;
+    await route.fulfill({response});
+  });
+  const notice = page.getByRole('status', {name: 'Notifications'});
+  try {
+    await page.getByText('Mark as finished', {exact: true}).click();
+    await notice.getByText('Marking as finished...', {exact: true}).waitFor();
+    await notice.getByText(book.title, {exact: true}).waitFor();
+    await settleShoot(page, FINISH_PENDING);
+  } finally {
+    release.resolve();
+  }
+  await notice.getByText('Marked as finished', {exact: true}).waitFor();
+}
+
+// Redeem a real invite. Lose a successful exchange on the return trip, after
+// the server has spent the use. The current server gets the same device's
+// retry after one minute. An older one first refuses the device_id field.
+async function inviteFailure(page, origin, code, file) {
+  const legacy = file === INVITE_MAYBE_USED;
+  const exchange = '/api/v1/auth/exchange';
+  await page.route(origin + exchange, async (route) => {
+    if (legacy && route.request().postDataJSON().device_id) {
+      return route.fulfill({status: 400, json: {error: 'pairing_token is required'}});
+    }
+    const response = await route.fetch({url: new URL(exchange, BASE).href});
+    if (response.ok()) return route.abort('connectionreset');
+    await route.fulfill({response});
+  });
+  await page.goto(origin + '/web/connect');
+  await probeServer(page, origin);
+  await page.getByRole('button', {name: /^Sign in to /}).click();
+  await page.getByRole('textbox', {name: 'Invite code'}).fill(code);
+  const submit = page.getByRole('button', {name: 'Sign in', exact: true});
+  await submit.click();
+  const alert = page.getByRole('alert');
+  if (!legacy) {
+    await alert.filter({hasText: 'Sign in failed. Please try again.'}).waitFor();
+    await sleep(MIN + 1000);
+    await submit.click();
+  }
+  const reason = legacy ? 'This device may already have used the invite.' : 'This invite was already used by this device.';
+  await alert.filter({hasText: reason + ' Sign in with your password or ask your admin for a new invite.'}).waitFor();
+  const form = page.getByRole('img', {name: 'Step 2 of 3'}).locator('..');
+  await shootElement(page, form, file, 20);
+}
+
+if (wanted(FINISH_PENDING, INVITE_USED, INVITE_MAYBE_USED)) {
+  await step('finish and invite listener', () => asAdmin(async (admin) => {
+    const marks = feedMarks();
+    const user = await api(admin, 'POST', '/admin/users', {username: 'morgan', password: HOUSE_PASSWORD, role: 'user'});
+    try {
+      if (wanted(FINISH_PENDING)) {
+        const [lib] = (await api(admin, 'GET', '/libraries')).libraries;
+        await api(admin, 'POST', '/admin/library-access', {user_id: user.id, library_id: lib.id});
+        const ctx = await newCaptureContext({viewport: PHONE});
+        try {
+          await step('book: pending finish', async () => pendingFinish(await ctx.newPage(), user));
+        } finally {
+          await ctx.close();
+        }
+      }
+      if (wanted(INVITE_USED, INVITE_MAYBE_USED)) {
+        const {auth_code} = await api(admin, 'POST', `/admin/users/${user.id}/authcode`, {max_uses: 2});
+        await withHttpsPlayer(PROXY_HOST, async (on, origin) => {
+          for (const file of [INVITE_USED, INVITE_MAYBE_USED].filter((f) => wanted(f))) {
+            const ctx = await newCaptureContext({ignoreHTTPSErrors: true, serviceWorkers: 'block'}, on);
+            try {
+              await step(file, async () => inviteFailure(await ctx.newPage(), origin, auth_code, file));
+            } finally {
+              await ctx.close();
+            }
+          }
+        });
+      }
+    } finally {
+      await api(admin, 'DELETE', `/admin/users/${user.id}`);
+      dropFeedRows(marks);
+    }
+  }));
+}
+
+if (wanted(WRONG_API)) {
+  await step('connect: API route missing', () => withHttpsPlayer(PROXY_HOST, async (on, origin) => {
+    const ctx = await newCaptureContext({ignoreHTTPSErrors: true, serviceWorkers: 'block'}, on);
+    try {
+      const page = await ctx.newPage();
+      await page.route(origin + '/api/v1/server', (route) =>
+        route.fulfill({status: 404, contentType: 'text/html', body: '<h1>Page not found</h1>'}));
+      await page.goto(origin + '/web/connect', {waitUntil: 'networkidle'});
+      await page.getByText(/Check the address and the proxy settings/).waitFor();
+      if (await page.getByRole('textbox', {name: 'Server address'}).inputValue() !== origin) {
+        throw new Error('Connect did not show the served player’s own address');
+      }
+      const form = page.getByRole('img', {name: 'Step 1 of 3'}).locator('..');
+      await shootElement(page, form, WRONG_API, 20);
+    } finally {
+      await ctx.close();
+    }
+  }));
+}
+
 // The player served by an ordinary static host has no API at its own origin. Its
 // connect form recovers the kept set only once the matching address is typed.
 if (wanted(HEADERS_SHOT)) {
