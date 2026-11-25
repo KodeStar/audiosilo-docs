@@ -59,9 +59,9 @@ plain link stays `/library`.
 ### Books mode
 
 **Books mode** is the one place that loads a whole library.
-`useWholeLibrary(connectionId, libraryId)` (over `useAllLibraryBooks`) pages
-`GET /libraries/{id}/books` 200 at a time, always newest first, until
-`next_cursor` runs out. It has its own key under the `libraryBooks` prefix, so
+`useWholeLibrary(connectionId, libraryId)` uses `wholeLibraryQuery` and
+`useAllBookPages` to read `GET /libraries/{id}/books` 200 at a time, newest
+first, until `next_cursor` runs out. It has its own key under the `libraryBooks` prefix, so
 its pages never mix with the 100-book pages of `useLibraryBooks`. There is one
 cache entry per library whatever the screen's sort, because every sort happens
 on the device. The pages loaded so far are usable at once. A failed page keeps

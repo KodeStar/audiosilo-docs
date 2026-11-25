@@ -1653,83 +1653,60 @@ The regression tests are `store-adopt.test.ts` (play-on too),
 
 ### `public/sw.js`
 
-The service worker is hand-written, with no build step. Expo's static export copies
-`public/` verbatim, so the worker is served at `<base>/sw.js` with scope `<base>/`. It
-has exactly two jobs.
+The player's service worker serves app pages from a cache for the current build
+and downloaded audio from a separate media cache.
 
-1. **App shell.** All of the shell's files live in `audiosilo-shell-v1`.
-   - Navigations are **network-first**. They fall back to the cached response for
-     that route, then to the cached scope root (a shell that boots the SPA), then to
-     a 503.
-   - The build's own content-hashed files (`<base>/_expo/static/`) and its fonts
-     (destination `font`, whose names the export hashes too) are served
-     **cache-first** and never fetched or written again (`serveAsset`). Reading a
-     font again behind every load would cost two requests, one for its preload and
-     one for its `@font-face`.
-   - Other static assets with destinations `script | style | image | manifest` are
-     **stale-while-revalidate**.
-   - The `install` step precaches the scope root and the ebook reader's document
-     (`<scope>reader.html`, `readerDocumentUrl`). So a downloaded book's EPUB opens
-     offline even when the reader never opened online. Each is added on its own, and
-     a failure is skipped (a first install offline, or an older server with no
-     reader); runtime caching covers it. The reader's document never gets the shell
-     as its offline fallback.
-   - API calls (destination `''`), token-bearing URLs (`?token=`) and
-     server-streamed audio pass straight through to the network. The service worker
-     never caches API data.
-2. **Offline media.** Requests whose path contains `/_offline/` are answered from
-   `audiosilo-media-v1`.
-   - The worker answers a `Range` request by slicing the cached response's Blob into
-     a proper **206** with `Content-Range`, or a 416 for an unsatisfiable range.
-   - `blob.slice` is O(1) and streams only the requested bytes. Reading the whole
-     file into an ArrayBuffer stalled seeks for seconds.
-   - The 206 matters beyond seeking. Safari refuses a 200 for media, so without the
-     206 path downloaded books wouldn't play there at all.
+#### Installing the offline build
 
-**Precaching the split build** (`precacheBuild`). The web build is split by route
-(see [the web start](web-build.md#the-web-start-a-split-build)). A page's chunk loads
-when the page is first opened, so a page never opened online would not boot offline.
-The worker therefore:
+At install, `installBuild` fetches the scope root (`/web/` in production). It
+requires a successful, same-origin response that names every startup file in
+the [build manifest](web-build.md#offline). It refuses a redirected root
+because the browser cannot use that response for an offline navigation.
 
-1. fetches the shell (the scope's `index.html`, `cache: 'no-cache'`);
-2. caches every build script and stylesheet it names;
-3. caches every chunk those name, level by level;
-4. caches the shell itself once its own files are in, so offline it always boots.
+The worker fills `audiosilo-shell-build-<id>` with at most four file transfers
+at a time. It queues the selected non-English catalog first, then startup files,
+fonts, route and other deferred chunks, and finally `reader.html`. Fonts and the
+reader are optional. The worker reuses available fonts and carries a cached
+reader forward if the server cannot supply a fresh copy. Chrome can keep the
+compiled code for scripts cached during install.
 
-It runs at `install`, and again when the app sends a `precache` message
-(`askPrecache`). The app sends it `PRECACHE_DELAY_MS` (5 s) after the page has
-loaded, so the fetches never compete with the first screen.
+The worker writes the root last, once all required files are in the cache. The
+install fails when the root is refused, or when a required transfer or the root
+write fails. A cache this install created is then discarded:
 
-A record in the cache (`__precached-build`) names the build last precached. An ask
-whose shell names the same files is done at once, and a hashed file already cached
-isn't fetched again. Once a build is complete:
+- **First visit.** The worker still activates so it can serve downloaded media.
+- **Update.** The browser keeps the active worker and can retry on a later visit.
+  A kept pre-manifest worker is asked to fetch the new build
+  (see [Registration wiring](#registration-wiring)).
 
-- the build before it stays one deploy longer, because a tab still running it opens
-  its pages from those files;
-- older build files go;
-- every page an earlier build cached goes too. Offline such a page falls back to the
-  shell, which boots the new build.
+On a successful online navigation to an app page of the same build,
+`repairBuild` checks for the cached root. If it is missing after a failed first
+install or because another worker deleted the cache, the player worker runs
+`installBuild` again. Concurrent navigations share one repair.
 
-Offline, or failing part way, the worker stops without writing the record, so the
-next ask finishes it.
+On activation, `retireBuilds` leaves cleanup to the newer worker if one is
+already installing. Otherwise it deletes older build caches and keeps only
+immutable files from the previous build, so an open tab can still load its chunks.
+For the legacy `audiosilo-shell-v1` cache, this clears stale pages, one-time
+URLs and the old build record. Downloads stay in `audiosilo-media-v1` (the
+[console's worker](../server/web-ui.md#the-service-worker) leaves it alone).
 
-**One worker per deploy.** The app registers the worker under its build's name,
-`sw.js?build=<entry>.<common>` (`buildId` in `register-sw.web.ts`). The two parts are
-the names of the page's entry script and of the shared `__common` chunk, which the
-entry does not name. So each deploy installs a new worker even though `sw.js`'s bytes
-are the same. When the start scripts are cut into parts, these are the entry's last
-part and the shared chunk's first.
+#### Serving requests
 
-The worker's `install` writes every build file again. Chrome compiles a script that a
-worker caches while installing and keeps that code with the worker, which is most of
-a warm start's speed.
-
-`activate` deletes old shell cache versions but **never** the media cache, because
-downloads must survive service worker updates.
-
-When registered with `?dev=1` (the Metro dev server), the worker serves offline media
-only. It precaches nothing and leaves the shell to the network, so its caching can't
-fight hot reloading.
+- **Pages.** Navigation tries the network first. If the fetch throws, the worker
+  tries the cached page, then the cached root, then returns 503. The
+  [reader document](reader.md#the-reader-document) falls back only to its own
+  cached copy. Online, an app page from a different build can render without
+  replacing the offline shell. A page with a one-time `token` or `flow` is never
+  cached ([why](connect-and-addresses.md#single-sign-on)).
+- **Assets.** The worker serves content-hashed build files and fonts cache-first.
+  Other same-origin scripts, styles, images and the PWA manifest use
+  stale-while-revalidate. Token-bearing asset URLs, API calls and server-streamed
+  audio go straight to the network.
+- **Downloaded media.** For a Range request to `/_offline/`, the worker slices
+  the cached Blob and returns 206 with `Content-Range`, or 416 for an
+  unsatisfiable range. This lets Safari play downloaded audio and lets the
+  player seek without reading the whole file.
 
 ### `public/manifest.json`
 
@@ -1746,42 +1723,42 @@ The install manifest holds:
 
 ### Registration wiring
 
-`src/lib/register-sw.web.ts` registers the worker under its build's name (`workerUrl`,
-see [`public/sw.js`](#publicswjs)), or with `?dev=1` under the dev server. Outside
-dev it asks the worker to precache the build (`askPrecache`). It does nothing without
-`serviceWorker` support or a secure context.
+The root layout imports `@/lib/register-sw`. On the web, Metro selects
+`src/lib/register-sw.web.ts`. It registers the worker on page load, or
+immediately if the document is already complete. Registration requires service
+worker support and a secure context. On native, Metro selects the no-op
+`register-sw.ts`.
 
-It registers **at once when `document.readyState` is already `complete`**, else on
-`load`. The module runs when the root layout is first required, which in the static
-export is usually after `load` has fired. A `load` listener alone would then never
-run, and the exported player would never register its worker. That leaves no offline
-shell, and downloads that never become playable offline. `register-sw.web.test.ts`
-pins both paths.
+In production the URL is `<base>/sw.js`, so the worker's scope is `<base>/`. If the [language preference](i18n.md#language-selection-srci18nlanguage-providertsx)
+resolves to a language other than English, registration appends `?lang=<code>`
+so the installer knows which catalog to fetch. Under Metro, `?dev=1` enables
+only offline media and leaves app pages to the dev server for hot reloading.
 
-`register-sw.ts` is the native no-op twin. The root layout imports
-`@/lib/register-sw` for its side effect, and Metro picks the right file per platform.
+When the worker this registration starts installing fails and the active worker
+is a pre-manifest one (its URL has a `build` parameter), the page sends that
+worker a `precache` message, so its offline shell takes the new build's chunks
+rather than a mix.
 
 ### What offline actually covers on web
 
 | Works offline | How |
 |---|---|
 | Launching the installed PWA, or revisiting routes | network-first navigation falling back to the cached shell |
-| Opening a page never opened online | every chunk of the build, precached per deploy (`precacheBuild`) |
-| The app's JS, CSS, fonts and icons | cache-first for the hashed build files and the fonts, stale-while-revalidate for the rest |
-| A language other than English | its catalog chunk is part of the precached build |
+| Opening a page never opened online | the [installed build](#installing-the-offline-build) includes the route's chunks |
+| The app's JS, CSS, fonts and icons | the installed scripts and CSS, plus fonts and icons the worker has cached |
+| A language other than English | The installer fetches the selected catalog. The worker caches others on first use online. Choosing an uncached language offline shows English. |
 | Playing **downloaded** books, including seeking | `_offline/` URLs and Range slicing from the media cache |
+| A downloaded cover | The player loads the saved image from the media cache. |
 | Book and chapter metadata for downloaded books | manifests seeded into the React Query cache on hydrate |
 | Progress while offline | the offline replay queue and the durable mirror in `src/playback/progress-sync.ts` |
 | Reading a **downloaded** book's ebook | the reader host's `engine.readFile` on its `book.epub` in the media cache; the place in `src/reader/reading-progress.ts`'s queue and mirror |
 | The Text tab (read-along) for a **downloaded** book | its `readalong.json` (`readDownloadedReadalong`) with its `book.epub` |
 
-Not covered: live API data, such as browsing, search, and covers for books that are
-not downloaded. The service worker deliberately never caches API responses. A screen
-with nothing to show renders the shared offline state
-([Offline states](state-and-data.md#offline-states-srcliboffline-statets)) behind the
-offline banner, and everything refetches on reconnect. In the app the queries wait
-for the network the same way
-([The online flag](state-and-data.md#the-online-flag-srclibdevice-onlinets)).
+Opening a page offline gives it access to downloads and any answers in the
+[startup cache](state-and-data.md#the-startup-cache-web) or in memory. New
+browse and search results need the server. A screen with no answer shows the
+[offline state](state-and-data.md#offline-states-srcliboffline-statets)
+and asks again when the connection returns.
 
 ## Dialogs that read from the server
 
