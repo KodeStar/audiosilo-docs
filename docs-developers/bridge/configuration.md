@@ -363,8 +363,11 @@ publishes under the branch's name (`<branch>`, `<branch>-slim`, `<branch>-cuda`,
 fetch `whisper-cli` from the audiosilo-bridge release
 [`whisper-v1.9.1`](https://github.com/KodeStar/audiosilo-bridge/releases/tag/whisper-v1.9.1).
 Each downloads the archive for its platform and checks its SHA-256 against the
-release's `checksums.txt`. The Bridge downloads the speech model into its data
-folder on first use.
+release's `checksums.txt`. When the pinned tag changes, the native downloader
+keeps a cached `whisper-cli` whose SHA-256 the new release's `checksums.txt`
+lists for the same build, and re-stamps it with the new tag. Any other cached
+build, a CPU fallback included, is downloaded again. The Bridge downloads the
+speech model into its data folder on first use.
 
 **Worker builds.** `latest`, `latest-slim` and `latest-cuda` (not `agent`) also
 carry the gzipped ASR worker builds that the Bridge serves to the computers that

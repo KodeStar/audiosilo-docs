@@ -70,8 +70,9 @@ another, through the same worker with no version bump. The transcript's times st
 relative to the segment.
 
 For a no-context decode (`no_context`), the whisper.cpp backend passes `-mc 0`.
-In v1.9.1 this also makes the decoder ignore `initial_prompt`, even on the first
-window, so a no-context repair retry gets no vocabulary hints.
+In whisper.cpp v1.9.1 this also makes the decoder ignore `initial_prompt`, even
+on the first window, so a no-context decode gets no vocabulary hints. The
+Bridge's own stages send no `initial_prompt` either way.
 
 The id is a hash of the audio's sha256 and the decode options. So the same segment
 is the same task across a restart of the Bridge: its ASR stage asks for the same
@@ -354,30 +355,36 @@ script takes:
 - `-h`.
 
 **The program folder.** Without `--dir`, the script reads the program path from
-the installed service. On macOS it uses `plutil` to read the first entry in the plist's
-`ProgramArguments`. On Linux it reads the first word of the unit's `ExecStart`.
-The script reuses that folder, including for `--run`, if the path is absolute,
-the folder exists and is writable, and the program path needs no unescaping.
-Otherwise it uses `~/.audiosilo-bridge-worker/bin`.
+the installed service. On macOS it reads the first entry in the plist's
+`ProgramArguments`, through `/usr/bin/plutil` when it is there (else the XML as
+`worker install` writes it). On Linux it reads the first word of the unit's
+`ExecStart`. The script reuses that folder, including for `--run`, if the path
+is absolute, the folder exists and is writable, and the program path needs no
+unescaping, and it prints the folder it reused. Otherwise it uses
+`~/.audiosilo-bridge-worker/bin`.
 
 **What it does.** The script calls `main` on its last line, so installation
 starts only after the whole script arrives.
 
 1. The script selects the build using `uname -s` and `uname -m`. On an Apple
    Silicon Mac under Rosetta, it selects the native `arm64` build for Metal.
-2. It downloads the program to a temporary file beside the target and runs
+2. When no token is given (no `--token`, no `AUDIOSILO_WORKER_TOKEN`) for a
+   `--run` start, a first install or a run with `AUDIOSILO_WORKER_DATA` set, it
+   checks for `worker.token` in `AUDIOSILO_WORKER_DATA` or the default folder
+   before downloading anything, and stops with "--token is required" when there
+   is none.
+3. It downloads the program to a temporary file beside the target and runs
    `version` to check that the program works.
-3. On an update with no token given (no `--token`, no `AUDIOSILO_WORKER_TOKEN`,
+4. On an update with no token given (no `--token`, no `AUDIOSILO_WORKER_TOKEN`,
    no `AUDIOSILO_WORKER_DATA`, not `--run`), the token lives in the installed
    service's data folder, so the script runs the downloaded program's
    `worker install --check-token`. That applies the install's own folder rules,
    so a path with spaces or escapes still works. With no token there, it stops
    with "this update needs --token ... the installed worker is unchanged"
-   before replacing the installed program. In the other cases the script checks
-   `worker.token` in `AUDIOSILO_WORKER_DATA` or the default folder itself.
-4. The script moves the program into place and prints a hint if its folder is
+   before replacing the installed program.
+5. The script moves the program into place and prints a hint if its folder is
    missing from `PATH`.
-5. It runs `worker install --bridge <addr> [--token ...]`, or starts `worker`
+6. It runs `worker install --bridge <addr> [--token ...]`, or starts `worker`
    directly for `--run`.
 
 A file `curl` writes carries no quarantine attribute, so Gatekeeper doesn't stop
