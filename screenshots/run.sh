@@ -59,8 +59,6 @@
 #            BRIDGE=<dir> (the audiosilo-bridge checkout, default the sibling
 #              clone; without it the Bridge page shots keep
 #              their previous images), SKIP_BRIDGE=1 (skip them anyway),
-#            BRIDGE_BUILD_DIR=<dir> (a writable copy of BRIDGE at the same
-#              revision, for building the embedded page from a read-only checkout),
 #            BRIDGE_VERSION (the version the Bridge page shows, default the
 #              checkout's git describe; set the release's, e.g. 0.3.0),
 #            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT /
@@ -84,7 +82,6 @@ META="$(abspath "${META:-$WORKSPACE/audiosilo-meta}")"
 MIRROR_META="$(abspath "${MIRROR_META:-$META}")"
 META_COMMUNITY="$(abspath "${META_COMMUNITY:-$WORKSPACE/audiosilo-meta-community}")"
 BRIDGE="$(abspath "${BRIDGE:-$WORKSPACE/audiosilo-bridge}")"
-BRIDGE_BUILD_DIR="$(abspath "${BRIDGE_BUILD_DIR:-$BRIDGE}")"
 CACHE="$HERE/.cache"
 LIBRARY="$CACHE/library"
 DATA="$CACHE/data"
@@ -583,7 +580,7 @@ if [ "${SKIP_BRIDGE:-0}" != "1" ] && manifest_wanted capture bridge; then
     AUDIBLE_FAKE_URL=""
     if [ -d "$BRIDGE/cmd/audiblefake" ] && manifest_wanted audible true; then
       BRIDGE_TAGS=embedui,audiblefake
-      (cd "$BRIDGE_BUILD_DIR" && go build -tags audiblefake -o "$CACHE/audiblefake" ./cmd/audiblefake) \
+      (cd "$BRIDGE" && go build -tags audiblefake -o "$CACHE/audiblefake" ./cmd/audiblefake) \
         > "$CACHE/audiblefake-build.log" 2>&1 \
         || { echo "  ! the Audible fake build failed (see $CACHE/audiblefake-build.log)"; exit 1; }
       "$CACHE/audiblefake" --listen "127.0.0.1:$AUDIBLE_PORT" > "$CACHE/audiblefake.log" 2>&1 &
@@ -591,7 +588,7 @@ if [ "${SKIP_BRIDGE:-0}" != "1" ] && manifest_wanted capture bridge; then
       AUDIBLE_FAKE_URL="http://127.0.0.1:$AUDIBLE_PORT"
       wait_healthy "$AUDIBLE_FAKE_URL/_fake/calls" "$CACHE/audiblefake.log" "Audible fake"
     fi
-    (cd "$BRIDGE_BUILD_DIR" && scripts/build-web.sh --sync-only \
+    (cd "$BRIDGE" && scripts/build-web.sh --sync-only \
         && go build -tags "$BRIDGE_TAGS" -ldflags "-X main.version=${BRIDGE_VERSION:-dev}" \
           -o "$CACHE/audiosilo-bridge" ./cmd/audiosilo-bridge) > "$CACHE/bridge-build.log" 2>&1 \
       || { echo "  ! the Bridge build failed (see $CACHE/bridge-build.log)"; exit 1; }
