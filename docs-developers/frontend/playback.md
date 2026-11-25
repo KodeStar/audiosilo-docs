@@ -803,9 +803,8 @@ stops an engine still waiting in error, and another tab taking over pauses it.
 The player enforces "never restart an in-progress book from 0" twice: once on the
 way in and once on the way out.
 
-**On the way in.** For a downloaded book, the [startup network check](state-and-data.md#starting-a-downloaded-book)
-determines when the player asks for the server's place. `loadInitialProgress`
-(`progress-sync.ts`) returns a discriminated `ResumeLookup`. `resumeLookupOf` reconciles three sources by
+**On the way in.** `loadInitialProgress` (`progress-sync.ts`) returns a
+discriminated `ResumeLookup`. `resumeLookupOf` reconciles three sources by
 `updated_at`, and the newest wins. The sources are the server's row, a **durable
 local mirror** and the offline replay queue. All three are compared on this
 device's clock. A server timestamp (the live row, or a mirror record marked
@@ -813,7 +812,8 @@ device's clock. A server timestamp (the live row, or a mirror record marked
 outbox's `clockSkewMs`, [stored per connection](offline.md#the-three-storage-documents)).
 That skew is 0 until a sync answer has measured it, so before the first one a device
 whose clock is off from the server's compares the times as they are. A tie prefers the
-server's row, then the mirror.
+server's row, then the mirror. A downloaded book's read of the server's place has
+its own timing ([Starting a downloaded book](state-and-data.md#starting-a-downloaded-book)).
 
 With nothing pending for the book (no queued save, no events waiting), a finished
 server row beats a newer unfinished mirror record when its `finished_at` is newer
