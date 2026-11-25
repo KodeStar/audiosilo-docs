@@ -462,9 +462,11 @@ failed server and no sign-in state, offline is the page's own state.
 ### The startup cache (web)
 
 `src/api/startup-cache.ts` restores saved answers before the first screen
-renders. To keep a small first-screen answer, set `meta.startup` in its query
-options in `src/api/startup-reads.ts`. For stored keys and manually seeded queries without
-options, `startupMeta` recognises the exact keys those declarations produce.
+renders. To keep a small first-screen answer, declare its query options with
+`declareRead` in `src/api/startup-reads.ts` and set `meta.startup`. For stored
+keys and manually seeded queries without options, `startupMeta` recognises only
+the exact keys those declarations produce, so a `meta.startup` query declared
+anywhere else is saved but never restored.
 
 - **What is kept.** The cache keeps answers used by [the first signed-in
   screen](web-build.md#the-first-screens-answers-asked-as-the-gate-opens),

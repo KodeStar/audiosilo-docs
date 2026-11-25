@@ -78,8 +78,9 @@ On Home it also requests, by each connection's capabilities in its `/server` ans
 A dependent read checks the connection and its token again after waiting for
 server info or libraries. Once per page load, the gate waits until the missing
 reads settle or `STARTUP_WAIT_MS` (200 ms) elapses. The screen can then render
-while a slow request continues. A fully restored page and native screens mount
-without this wait.
+while a slow request continues. A dependent read whose server info or libraries
+arrive after the wait is not started by the gate. The screen asks for it when
+it mounts. A fully restored page and native screens mount without this wait.
 
 ### Start scripts compiled off the main thread
 
