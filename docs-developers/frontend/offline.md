@@ -760,8 +760,8 @@ end ([What a kill leaves behind](playback.md#what-a-kill-leaves-behind)). On the
 - A tab whose span another tab took that way plays on under a new id, from where the
   copy ended (`takenFrom`, `goingOnFrom`). So what it played since is not a
   `duplicate`.
-- A tab that closes a span another tab left (`sweepLeftBehind`) sends it at once
-  ([Across tabs](#across-tabs)).
+- A tab that closes a span another tab left (`sweepLeftBehind`) includes it in
+  the [next send for that connection](#across-tabs).
 
 **`audiosilo.listeningSync`.** Per connection, it holds:
 
@@ -924,6 +924,27 @@ stored `clockSkewMs`, 0 until a sync answer has measured it. So once the skew is
 known, a server clock that runs ahead keeps a timely file place, and a mirror that lost
 writes never resumes at a stale file.
 
+### Finish delivery
+
+A queued finish updates the [local progress shown in lists and tiles](state-and-data.md#the-place-resume-plays).
+The server queries refresh on delivery. For sync events, the reply that first
+removes a `finish` or `unfinish` ID announces the affected books through
+`finishDelivered`, since a normal flush and a page-hide reply can overlap. If the reply arrives before the event reaches storage, it marks the waiting
+copy acknowledged so a later append cannot queue it again.
+
+A successful legacy progress PUT also announces a finish. On reconnect,
+`flushGroup` collects successful finishes and announces them together for
+that connection. A failed send leaves the refresh for the successful replay.
+
+`refreshDeliveredFinishes` invalidates the connection's progress list, listening
+stats and goal once per batch, and each affected book's progress row and
+[the queries that depend on it](state-and-data.md#the-listeners-own-state-player-redesign-phase-1b).
+
+On the web, delivery and Undo send the same book identity to sibling tabs on
+`audiosilo-undone-finish`. The receiving service, `startFinishChangesElsewhere`,
+groups messages for 50 ms by resolved connection ID and deduplicates books by
+library and path. Each tab then refreshes its own queries once for that group.
+
 ### Taking a finish back
 
 Mark as finished on a `listening_sync` server is a `finish` event, but its Undo is a
@@ -937,7 +958,9 @@ finish the book again. So `undoFinish` (`finish-route.ts`) first calls
   another ([Across tabs](#across-tabs)). The web's page-hide request counts too
   (`sendingNow`), since a page that was only hidden comes back from the
   back-forward cache with it still out;
-- a chunk read before the withdrawal drops the withdrawn events.
+- a send that read its chunk before the withdrawal drops the withdrawn finishes: just
+  before sending, it checks each finish is still in its local queue and, on the web,
+  in the shared outbox.
 
 A withdrawal that storage would not keep (`writeOutbox` says so) takes nothing back
 and fails the Undo with no edit, since the finish would still be sent after a
@@ -956,7 +979,9 @@ restart. Otherwise one of three things happens.
   holds. So an offline Undo works. That needs the mirror's finished record to carry
   that place (`ProgressSave.before`, below). When it does not, as after the server's
   row was read back over it, the Undo goes to its own place with no edit
-  (`unrecordFinish`).
+  (`unrecordFinish`). If playback continued through this Undo,
+  `capturePlayingUndo` saves the live file position only when it advances
+  the restored unfinished record.
 - **The server may hold it, and looks down** (`unreachable`). A request carried the
   finish with no answer, and the server looks down now, so no edit can reach it.
   Nothing is taken back, and the Undo fails. The book page shows "Can't undo while
@@ -1004,7 +1029,7 @@ could not be read. Any other HTTP error is the server's own answer. The web's
 page-close keepalive send (`sendOnPageHide`) counts as no answer as soon as it
 leaves, because the page is going and its answer may never be seen.
 
-Such finishes are noted in `maybeReached` for this launch, only when the request left
+Such finishes are noted in `maybeReached` while the event waits, only when the request left
 while the server looked reachable (`looksReachable`: not marked down, and the browser
 not offline). On the web the stored entry is marked too, for an Undo in another tab
 ([Across tabs](#across-tabs)). A finish counts as `carried` when it has that mark or
@@ -1013,14 +1038,16 @@ an `out` mark that ran out.
 **The record before the finish.** The finished record the finish writes carries the
 record it replaced (`ProgressSave.before`, `writeFinishedMirror`), only when that was
 a place. A finish written again over its own finished record keeps the place it
-carried, so the Undo of a book marked finished twice never goes back to a place from
-before the first. The tab that marked it also keeps that place in memory
-(`placeBefore`), for when the server's row read back since has replaced the record.
+carried. The Undo and Retry actions for that Mark also keep its prior record
+(`UndoRef.before`) in case a server read replaces the mirror record.
 
-**The mirror going back** (`unrecordFinish`, `store.ts`). Under the mirror's lock
-(`updateMirror`), the record before the finish replaces the finished one, else the
-finished record is rewritten unfinished at the Undo's place. Mark as not finished
-always takes its own place.
+**The mirror going back** (`unrecordFinish`, `store.ts`), after an edit or an Undo
+done on the device. Under the mirror's lock (`updateMirror`), a finished record goes
+back to the record before the finish (its `before`, else `UndoRef.before`) when that
+is an unfinished place within one second of the Undo's position. Otherwise the record
+is rewritten unfinished at the Undo's position, without the end-of-book file place.
+Mark as not finished always takes its own position, and a record saved since the
+finish is left alone.
 
 - It is stamped one millisecond after the record it replaces. For a downloaded book
   that may be the server's row for the finish, newer than the finish's own time. The
@@ -1038,20 +1065,20 @@ way as the Undo was made lands after it, stamped later than the record the Undo
 replaced, and by the newest-wins rule alone it would finish the book again. A finish
 made after the Undo is stamped after it, so it still lands. On the web the hold is
 stored for every tab (`audiosilo.undoneFinishes`, under its own `tabLock`), because
-the tabs write one mirror. The undoing tab then tells the others on a tab channel
-(`tellUndoneElsewhere`), and their pages read the book again.
+the tabs write one mirror. Once the mirror is restored, `tellFinishChangedElsewhere`
+triggers the same [cross-tab refresh as delivery](#finish-delivery).
 
 **A finish that fails.** A `finish` event that could not be queued puts the mirror
 back to its record before the finish, or removes the finish's own record when the book
 had none. The book the finish left is then loaded again
 ([Playback](playback.md#listening-spans-sync-v2)). While a slow finish waits on its
-server, the book page shows a "Marking as finished..." toast.
+server, the book menu shows [a pending toast](state-and-data.md#mark-as-finished-and-undo).
 
 ### Across tabs
 
 The tabs of a browser are one device. They share the three documents and the device
-id, but not each other's memory. `sendingNow`, `withdrawn` and the `maybeReached` set
-are each tab's own, and exist only in that tab's memory.
+id, but not each other's memory. `sendingNow` (this tab's requests out now) and the
+`maybeReached` set (kept while its event waits) exist only in that tab's memory.
 
 The saved place is shared the same way. A tab that another tab has played past saves
 nothing of its own, and takes the mirror's place before it plays again
@@ -1078,10 +1105,10 @@ was meant to stop.
 2. It marks the rest `out` until 45 s from now. That is past the request's 15 s
    timeout and the read of its answer. So a mark that ran out was left by a tab
    that went away with its request, never by one still waiting.
-3. When the request ends, `markSettled` takes this tab's mark off the finishes
-   still stored (an answered one has left the outbox) and marks the ones that got
-   no answer `maybeReached`. One write does both, so a waiting Undo never reads a
-   finish as neither.
+3. Acknowledgement removes the finish and its mark under the same lock.
+   `markSettled` skips another lock when storage confirms the entries are gone.
+   For remaining finishes it clears this tab's mark and records a lost reply
+   as `maybeReached` in the same write.
 
 **An Undo** (`withdrawFinish`) reads the marks:
 
@@ -1095,8 +1122,9 @@ was meant to stop.
   server looks reachable.
 - A mark further ahead than 45 s (the clock was set back since) counts as run out.
   Read as live, it would make the Undo wait until the clock caught up.
-- `restore` puts a finish back with `maybeReached` when it had either mark, so every
-  tab still knows the server may hold it.
+- Withdrawal captures whether the server may have received the finish, including
+  a mark held only in memory. If the edit fails, `restore` puts the event back
+  in its original order with that information.
 
 **A page that is going** (`sendOnPageHide`) cannot wait for a lock, and nobody may
 see its request's answer:
@@ -1110,19 +1138,18 @@ see its request's answer:
   mark left standing as "the server may hold it" and sends its edit, which a finish
   landing later would have undone.
 
-**A swept span is sent.** A tab that closes the span another tab left
-(`sweepLeftBehind`) sends that connection's outbox at once. The tab that would have
-sent it is gone, so no send of its own follows. The sweep runs:
+**A swept span is sent.** When `sweepLeftBehind` closes a span another tab
+left open, it lets a caller already flushing that connection send the span.
+It starts a flush for any other recovered connection. The sweep runs:
 
 - on the tab's launch;
 - once another tab's live span would be stale;
 - before a flush of every outbox;
 - before the sign-out count.
 
-**Known limit.** An Undo can wait up to 45 s on the mark of a tab that died with its
-request out and sent nothing as it went. A crash does that, and so does a tab the
-browser discarded. The edit is then sent when the server looks reachable. Otherwise
-the Undo is done on this device, as for a finish no request carried.
+**Known limit.** An Undo can wait up to 45 s when the browser crashes or
+discards the tab that sent the finish. Once the mark runs out the finish counts as
+`carried`, and the Undo goes as in [Taking a finish back](#taking-a-finish-back).
 
 A page that goes with a `pagehide` writes its 5 s mark over its own 45 s one for the
 finishes its keepalive request carries.

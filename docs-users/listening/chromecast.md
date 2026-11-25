@@ -49,6 +49,7 @@ Most audio formats cast directly. Formats a Cast device can't play, such as Appl
 - Smart speed, Voice boost and auto-rewind don't apply while casting.
 - The sleep timer pauses the Cast device when it runs out.
 - You can also pause and play with the TV's remote or the Google Home app. Whichever you pressed last, on your phone or on the TV, counts. After a skip or a jump on your phone, the book plays or stays paused as you last left it.
+- If you [start playback in another browser tab](playback.md#switch-between-browser-tabs), the Cast device pauses. If AudioSilo says it couldn't pause it, use the TV remote or the Google Home app.
 
 **On an iPhone or iPad**, keep the app open while casting. iOS stops AudioSilo soon after you leave it, so your place only saves up to then. When you come back, it catches up.
 

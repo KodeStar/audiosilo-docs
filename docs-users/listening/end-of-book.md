@@ -52,15 +52,15 @@ Two related settings are **Automatic downloads** and **Remove a download when yo
 
 ## Mark a book finished yourself
 
-To finish a book without listening to the end, open its **...** menu, on its cover in a list or on its page, and select **Mark as finished**. If the book is playing, it stops first and keeps your place.
+To finish a book early, open the **...** menu on its cover or book page and select **Mark as finished**. If the book is playing, it stops and remembers the place the player showed at that moment.
 
-A message says **Marked as finished**, with **Undo**. **Undo** puts the book back at the place you were at.
+Tap **Undo** in the **Marked as finished** message to return to that place. If a place further on is already saved, on this device, in another tab or on another device, you keep the later place.
 
 To take a finish back later, select **Mark as not finished** in the same menu. Its message has **Undo** too.
 
 ### Good to know
 
-- **Offline**, Mark as finished waits on your device and reaches your server once it's back. While it waits, **Undo** and **Mark as not finished** work offline too.
-- **Once the finish has been sent to your server**, taking it back needs the server. If it can't be reached, the book stays finished and the message says so. Press **Retry** once the server is back.
-- **A slow server** shows **Marking as finished...** until it answers. If marking fails, the book loads again where you left it, paused.
+- **Offline**, the book leaves **Continue listening** on Home. Your lists, its library cover and its book page show it as finished, even after you reopen the app. You can still use **Undo** or **Mark as not finished** while the finish is waiting to be sent. When you reconnect, AudioSilo sends the finish to your server, and your listening stats and goal update.
+- If **Mark as finished**, **Mark as not finished** or the **Undo** of a finish takes a while, a message with the book's title says so until it goes through or fails. If a finish fails, the book loads again where you left it, paused.
+- If the server may already have the finish and you can't reach it, the book stays finished. Tap **Retry** when you can reach the server again.
 - **Undo** needs a recent server. On an older one the message has no Undo.

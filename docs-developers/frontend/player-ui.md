@@ -304,8 +304,10 @@ What must **not** read as a jump, and why it doesn't:
   app is not active and a book is loaded. A stalled heartbeat marks the return
   `unobserved`. Forward movement up to the allowance is then accepted even from a
   paused sample (a lock-screen play while suspended). Only the first sample just
-  after the return gets this, not one an hour later. Backward movement is never
-  natural.
+  after the return gets this, not one an hour later. A paused web tab
+  [following the playing tab's place](playback.md#the-tabs-stay-at-one-place)
+  skips that allowance (`followsOtherTab`). Returning to a shared place more
+  than a minute away still shows the chip. Backward movement is never natural.
 - **The undo itself**: `undoJump` marks its landing, which is then not recorded.
 
 Two jumps close together are one gesture, since a multi-file seek can land in two

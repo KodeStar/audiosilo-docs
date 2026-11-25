@@ -1114,20 +1114,20 @@ A span's life:
     closes during the wait still sends it. The store holds nothing back meanwhile.
     A paused move's still span (`sendStill`) is appended the same way, behind the
     close of the span before it.
-  - The book page's Mark as finished goes the same way (`recordFinishEvent` in
-    `finish-route.ts`). When the book is the one loaded, it first stops and
-    unloads it on every route, as its own end does (`leaveFinishedBook`): its
-    place is saved and its span closed ahead of the finish. Left loaded, it would
-    go on recording past the finish. The place it saved is the one the Undo goes
-    back to. A finish that then fails loads the book again, paused where it was
-    (`reloadLeftBook`), so a failure leaves the player as it found it. How the
-    Undo and Mark as not finished take a finish back is in
+  - The book menu's **Mark as finished** first stops the loaded book on every
+    route (`leaveFinishedBook`): it closes the span, saves where playback stopped
+    and unloads the book, so nothing records past the finish. That place is
+    [the one Undo goes back to](state-and-data.md#mark-as-finished-and-undo).
+  - On a sync server, `recordFinishEvent` queues the finish after that close.
+    If the finish fails on either route, `reloadLeftBook` reloads the book paused,
+    unless a book was loaded or started since. See
     [Taking a finish back](offline.md#taking-a-finish-back).
   - Either finish is dated after its span's end is stamped (`takeSpan`). The server
     applies a batch in time order, with request order only breaking ties, so a
     finish dated earlier would be applied before the book's last span. A seek still
     landing ends that span at its target, with the seek's reason. The finish clears
-    the reason, so a span of a book that plays on past it starts with `resume`.
+    the reason. If the book started playing again while the Mark was pending,
+    the next eligible span opens immediately at the close with `resume`.
   - **Listen again** on the finished book sends `unfinish`, then a `restart` span
     from 0.
   - The web's `pagehide` closes the span and sends what waits with `keepalive`.
@@ -1300,8 +1300,10 @@ clock.
 5. It clears the play request and pauses the engine, even while the audio loads.
    A play whose first engine event has not arrived must not go on to `playing`,
    which would read as a new play and take the connection back. On Cast the
-   store pauses any late `playing` report again until the receiver confirms the
-   pause or the 3 s `CAST_GIVE_WAY_FENCE_MS` runs out.
+   store asks the receiver to pause again on each late `playing` report until it
+   reports `paused` or 3 s pass (`CAST_GIVE_WAY_FENCE_MS`). If the receiver
+   rejects the pause, the tab tells the listener to use the receiver's controls,
+   and the asking goes on until the receiver pauses or a new play is asked here.
 6. It tells the listener (`onGaveWayToTab`).
 
 The tab keeps its book, and a play there claims the connection back.
@@ -1310,19 +1312,20 @@ A tab whose stream failed also pauses its engine on takeover, without a notice,
 because a stream that came back by itself would read as a new play.
 
 **The notice** (`startOtherTabNotice` in `other-tab-notice.ts`, one of the root's
-services) is a toast, "Playing in another tab" (`player.otherTab.title`).
+services) says "Playback started in another tab" (`player.otherTab.title`).
+It describes the takeover even if the other tab has since closed.
 
 - It is shown once the tab is looked at (`whenActive`), since the tab is usually
   hidden behind the one that plays.
 - It is one notice, however often the tab gave way while hidden.
-- A tab that was hidden and plays again by the time it is looked at shows none.
-- On the web the root's services start after the first paint. The store keeps a
-  give-way nobody was there to hear (`gaveWayUntold`) until the service registers.
+- A tab that is playing, or loading a new play, by the time it is looked at shows none.
+- On the web the root's services start after the first paint. The store keeps
+  the latest notice in `gaveWayNotice` until the service registers.
 
 #### The tabs stay at one place
 
-Two tabs are never at two places of one book (owner decision). A tab that plays
-after another tab played the same book first moves to the place the tabs share.
+A paused tab follows the saved position of the same book in the playing tab.
+It reads the shared place again when the listener presses Play.
 
 **The note** (`otherTabPlayed`). A tab with a book of the claim's connection
 loaded notes the claim when it gave way to it, or was not playing (paused by
@@ -1368,12 +1371,14 @@ nothing moves. Another device's record is left to the
 | is played by a press (`toggle`) | before the engine starts (`catchUpWithOtherTab`) |
 | is retried (`retry`) | by reloading there |
 | starts from a Media Session Play or the Cast receiver's own controls | as it plays (`catchUpPlaying`). The store waits for the move before opening a span, recording history or saving the place |
-| is paused and brought to the front | at once, still paused (`showOtherTabsPlace`, on the foreground from `other-tab-notice.ts`). The note stays, so the play that follows reads the place again |
+| is paused and visible | on writes to the shared progress mirror (`showOtherTabsPlace` in response to a storage event), except on a transcoded track |
+| becomes visible while paused | on foreground, including on a transcoded track. Seeking on every save could take the playing tab's transcode slot |
 
-**The move** (`moveToTabPlace`) is the engine's seek, not `seekBook`:
+**The move** (`moveToTabPlace`) seeks through the engine.
 
 - `adoptTabPlace` sets the [resume floor](#resume-protection) to the place, and
-  the next span begins there as a `resume`.
+  the next span begins there as a `resume`. It clears the web engine's local
+  pause time so auto-rewind does not run again on hand-off.
 - No `jump` or `moved_back` event is sent. The server is never told that the
   listener chose the place the tab was at.
 - The [Undo chip](player-ui.md#undo-a-jump-jump-undots) follows its own rule. It
@@ -1381,23 +1386,23 @@ nothing moves. Another device's record is left to the
   That Undo is the listener's own `seekBook`.
 - A book the other tab finished starts again from 0, as a `restart` with the
   `unfinish` owed, as a fresh load of a finished book does. Not when this tab is
-  at the end itself, and not in a paused tab brought to the front, which stays
-  where it is.
-- A seek the engine refuses puts back what `adoptTabPlace` set. The play goes on
-  from where the engine is, because a floor left at a place far ahead would refuse
-  its every save and span. A seek that has not settled within 5 s
-  (`TAB_MOVE_MAX_MS`) counts as refused too, so it stops holding the play's
-  spans and saves. If it lands after all, the tab takes it then
-  (`landTabPlaceLate`), before that report's save tick can cut the span. The floor
-  goes to the place and the span opens again there, so it never covers audio
-  nobody heard. A listener seek or book switch clears that pending landing.
-  Stay chooses the current place but cannot recall a seek already sent to the
-  engine. If the seek timed out and later lands, the floor follows it.
-  Playing on until the engine reaches the place does not count as landing.
-- On Cast, the receiver can report a move before it reports its position. A Cast
-  move to the place counts as that late landing within 10 s (`ASK_SETTLE_MAX_MS`)
-  of the ask, or at any time once the call has resolved. Otherwise a move there is
-  the listener's own.
+  at the end itself, and not in a paused tab following the shared place
+  (`showOtherTabsPlace`), which stays where it is.
+- If the engine refuses the seek, the store pauses it and shows the shared
+  position in the error state. **Retry** reloads the book at that position.
+- After 5 s without an answer (`TAB_MOVE_MAX_MS`), a newer hand-off answer
+  can take over. Until the seek lands, the tab suppresses saves, spans and
+  hand-off answers from the old place. A download that replaces the queue
+  during this late seek remaps the target by file, or by whole-book seconds if
+  the file is missing (`moveLateTabSeek`).
+- If the seek lands late, `landTabPlaceLate` starts listening at the target.
+  A Cast receiver can confirm the move before it reports its new position.
+  At 10 s from the request (`ASK_SETTLE_MAX_MS`), a confirmed seek also
+  counts as landed when playback has moved on from the target by about the
+  elapsed time at the current speed (`playedOnFromLateTabPlace`). Otherwise
+  the store pauses as for a refused seek. A move of the listener's own (a seek,
+  a track jump, a book started) or a later move the store asks of the engine
+  clears a late seek still out (`userMoved`, `askEngineTo`). Stay does not.
 - A book switch drops a move still out (`switchBook` clears `catchingUp`), so it
   holds none of the next book's saves or spans.
 
@@ -1450,7 +1455,7 @@ since.
 
 An answer is ignored when it:
 
-- answers an older play than the tab's current one, or comes more than 5 s
+- answers a play other than the one the tab last claimed, or comes more than 5 s
   (`GAVE_WAY_ANSWER_MS`) after that play's first claim;
 - is for another connection or another book, or comes while a book loads;
 - would move a place the listener chose here (`placeChosen`: an explicit start,
@@ -1473,11 +1478,6 @@ A new play or choice of place cancels the old move, and the answer keeps its own
 
 - A tab on a build before the rule (one left open across an update) neither
   claims nor gives way, and sends no answer.
-- Two windows both in view never get a foreground event. The paused one shows
-  the place it stopped at until it plays, and the play takes the other's place
-  exactly.
-- After a seek the engine refused (its `seekTo` or `skipToTrack` rejected), the
-  tab plays and saves from where it is, not from the shared place.
 - An Undo of a finish can wait on another tab's mark
   ([Offline](offline.md#across-tabs)).
 - The channel reaches one browser profile on one origin. Another browser, a

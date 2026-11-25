@@ -215,15 +215,17 @@ across connections.
     finish is dated after that span's end, because the server applies a batch in
     time order. The mirror records the book finished (`finishedSave`, the same
     record the `PUT` path sends). Offline, the event waits in
-    [the outbox](offline.md#listening-sync-the-outbox). The mutation runs
-    whatever the online flag says (`networkMode: 'always'`; both routes work
-    offline), so the toast with Undo shows offline too. The mutation resolves
-    once the event waits in the outbox. The store reads the lists and the book's
-    progress row again once the event is sent.
+    [the outbox](offline.md#listening-sync-the-outbox). The mutation resolves
+    once the event is queued. Its result carries the prior record for Undo.
   - **Elsewhere** it goes through the offline-aware `saveProgress` (see
     [Progress sync](#progress-sync-srcplaybackprogress-syncts)), so a "mark
     finished" reconciles with playback progress under the same last-write-wins
     rules.
+
+  Both routes run offline (`networkMode: 'always'`). A queued finish shows at
+  once in [the lists, tiles and book page](#the-place-resume-plays)
+  (`refreshLocalPlaces`), and the server's queries refresh
+  [on delivery](offline.md#finish-delivery).
 
   The book menu (`onFinish` in `book-actions.tsx`) calls the hook only where the
   finish goes as an event (`finishTakesEvent`) or the server has no
@@ -765,15 +767,23 @@ finished with Undo. Without it, Mark as finished is `useMarkFinished`, with no
 Undo. With `progress_edit` and `listening_sync` both, the finish is
 `useMarkFinished`'s event.
 
-The Undo goes through `undoFinish`, which first takes back a `finish` event that
-is still waiting. After that:
+**The place Undo goes back to.** Mark as finished first stops the loaded book
+([`leaveFinishedBook`](playback.md#listening-spans-sync-v2)), and its Undo and
+Retry keep the place saved as it stopped, listening since the last save included.
+When that save was held back, `placeLeftUnsaved` takes the furthest of the place
+shown (a pending seek's or tab move's target, or a loading book's resume floor),
+the unfinished mirror record and the unfinished position the page read from the
+server. A book that was not loaded uses `heldPlace`: the further of the page's
+progress (this device's newer record) and the server's own row, so Undo never
+moves another device's further place back.
+`undoFinish` takes the finish back as in
+[Taking a finish back](offline.md#taking-a-finish-back).
 
-- a finish that cannot be on the server is undone on the device, with no edit;
-- a finish the server has or may have (a request carried it and got no answer)
-  takes the edit. After the edit, the device's own record also goes back to the
-  place before.
-
-See [Taking a finish back](offline.md#taking-a-finish-back).
+**The pending toast** (`pendingBookAction`). A Mark as finished still running
+after 600 ms shows "Marking as finished...", and a Mark as not finished or the
+Undo of a Mark as finished (and their Retry) shows "Marking as not finished...",
+with the book title, until it settles. That includes a wait on another tab's
+send. The Undo of Mark as not finished (`finishAgain`) shows none.
 
 #### Writes from screens
 
@@ -940,9 +950,12 @@ connection-scoped like the rest (`qk.queue`, `qk.collections`, `qk.collection`,
   marked stale rather than removed.
 - **`useSetRating` replaces the whole rating.** Leaving the note out clears a
   saved one.
-- **Progress changes refresh what depends on them.** `useEditProgress` and the
-  existing `useMarkFinished` refresh the listening stats, the goal and the book's
-  `spoilers=hide` metadata variant. `useEditProgress` is server-side only. It
+- **Progress changes refresh what depends on them.** A successful progress edit
+  or [finish delivery](offline.md#finish-delivery) refreshes the listening stats
+  and the goal when it can move a finish, and the book's `spoilers=hide` metadata
+  when it can move the place (`invalidateProgressDependents`). `refreshProgressQuery`
+  first cancels an observed first read that has no data yet, so its observer
+  fetches the state after the change. `useEditProgress` is server-side only. It
   does **not** touch the player's local progress mirror or the offline queue, so
   a device with the book loaded overrides the edit on its next save, as
   last-write-wins intends. Creating or revoking an API key refreshes My devices.
@@ -2238,10 +2251,17 @@ See [the place readers](playback.md#what-a-kill-leaves-behind).
   episode pages, the end credits, the companion, the reveal listener and `usePlaceIn`
   then all show the place Resume plays. Read its `.position`, never the raw record's.
 - **Home, Library and search** share the progress rows from `useAllProgressAll`.
-  `useWithLocalPlaces` matches each listed row by connection, library and path.
-  A local save can update an existing row only. List changes and outbox
-  notifications within 100 ms share one storage read across subscribers.
+  `useWithLocalPlaces` matches each row to a pending finish by resolved
+  connection ID, library and path, so a row under the connection's old ID counts
+  as the same book. A pending finish from the event outbox or legacy PUT queue
+  can add a missing row to its connection's list, even on an offline launch.
+  Ordinary saves update listed rows only, matched by the row's own connection ID.
+  List changes and outbox notifications within 100 ms share one storage read.
   `useProgressLookup` indexes the resulting rows for the active profile.
+- **Tiles and the book page** read the same pending finish through
+  `useSavedProgress` and `useBookProgress`. `pendingFinishPlace` keeps a server
+  row that is at least as recent after clock correction. A server API error
+  excludes that book or connection from the local finish overlay.
 - **Home's Now card and Up next's continue suggestion** use `savedTimeline`
   for their saved percentage. It maps the saved position within a file onto
   the file order of the book's chapters. The total comes from those

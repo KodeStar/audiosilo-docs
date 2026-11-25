@@ -64,6 +64,12 @@ Until it reaches the server, your listening waits on the device. Home says how m
 
 **Places from Audible.** If your admin has turned on [Audible sync](../admin/audible.md#syncing-listening-places) for your Audible account, Audible counts as one more device. A place further on in Audible reaches you within about 15 minutes. Your place here goes back to Audible a few minutes after you stop. It never moves your place back.
 
+## Switch between browser tabs
+
+If you're signed in to the same account on the same server in two browser tabs, press **Play** in the tab you want to hear. The other pauses and says **Playback started in another tab** when you look at it. Other accounts and devices can keep playing.
+
+With the same book open in two windows side by side, the paused one keeps up with the playing one's place. If your server [converts the audio for your browser](#books-a-browser-cant-play-directly), the paused tab catches up when you return to it or press **Play** instead. Press **Play** to carry on from there. If the player can't move to that place, press **Retry** to load the book there.
+
 ## Listening while offline
 
 If the connection drops while you listen:
@@ -111,7 +117,6 @@ Many such books can get real chapters, from the community database or from your 
 
 ## Good to know {/* #good-to-know */}
 
-- **One tab plays at a time in a browser.** The tab where you pressed Play last plays, even if it is still loading the book or your computer's clock was set back by more than a minute, and the other pauses and says **Playing in another tab**. Press Play there to take it back. With the same book in both tabs, it carries on where the other got to. Tabs signed in to different servers or accounts can play at once, and your other devices aren't paused.
 - **Older servers** don't combine listening from several devices. The app saves your place as before, and the protections in [Your position follows you](#your-position-follows-you) still apply. On some, **Mark as finished** needs a connection.
 - **When Stay doesn't win.** It doesn't beat listening that went on more than two minutes after it, such as when you chose Stay offline a while ago. It doesn't beat a change made since, such as marking the book finished. Then the usual rules above apply. If another device's Stay got there first, you're asked again straight away.
 - **On servers before 2.7 that combine listening**, Stay wins only if the other device hasn't played on since yours asked, or your place is further on. A question you let go may not come back when you press Play or skip.
