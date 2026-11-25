@@ -1119,8 +1119,9 @@ A span's life:
     and unloads the book, so nothing records past the finish. That place is
     [the one Undo goes back to](state-and-data.md#mark-as-finished-and-undo).
   - On a sync server, `recordFinishEvent` queues the finish after that close.
-    If the finish fails, `reloadLeftBook` reloads the book paused unless another
-    book has since started. See [Taking a finish back](offline.md#taking-a-finish-back).
+    If the finish fails on either route, `reloadLeftBook` reloads the book paused,
+    unless a book was loaded or started since. See
+    [Taking a finish back](offline.md#taking-a-finish-back).
   - Either finish is dated after its span's end is stamped (`takeSpan`). The server
     applies a batch in time order, with request order only breaking ties, so a
     finish dated earlier would be applied before the book's last span. A seek still
@@ -1311,7 +1312,7 @@ A tab whose stream failed also pauses its engine on takeover, without a notice,
 because a stream that came back by itself would read as a new play.
 
 **The notice** (`startOtherTabNotice` in `other-tab-notice.ts`, one of the root's
-services) says “Playback started in another tab” (`player.otherTab.title`).
+services) says "Playback started in another tab" (`player.otherTab.title`).
 It describes the takeover even if the other tab has since closed.
 
 - It is shown once the tab is looked at (`whenActive`), since the tab is usually
@@ -1399,7 +1400,9 @@ nothing moves. Another device's record is left to the
   At 10 s from the request (`ASK_SETTLE_MAX_MS`), a confirmed seek also
   counts as landed when playback has moved on from the target by about the
   elapsed time at the current speed (`playedOnFromLateTabPlace`). Otherwise
-  the store pauses as for a refused seek.
+  the store pauses as for a refused seek. A move of the listener's own (a seek,
+  a track jump, a book started) or a later move the store asks of the engine
+  clears a late seek still out (`userMoved`, `askEngineTo`). Stay does not.
 - A book switch drops a move still out (`switchBook` clears `catchingUp`), so it
   holds none of the next book's saves or spans.
 
