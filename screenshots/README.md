@@ -93,8 +93,9 @@ console sends, in its shown spelling goes to the server as the real path, so
 the folder pickers and checks still work. A new capture path needs a pair in
 that script's `SHOWN` list.
 
-The first-run setup shots (`server/setup-wizard*.png` and `setup/*.png`)
-come from `capture-setup.mjs`, which `run.sh` runs after `capture-admin.mjs`
+The first-run setup shots (`server/setup-wizard*.png` and `setup/*.png`, plus
+`admin/library-offline.png`, which needs the setup's own books folder made
+unreadable for a moment) come from `capture-setup.mjs`, which `run.sh` runs after `capture-admin.mjs`
 against the `--setup` instance (a fresh data dir, no admin yet, started only
 when a setup shot is wanted). It creates the admin on the `--setup` page, then
 runs the console's eight steps through their real UI and ends on the Overview's

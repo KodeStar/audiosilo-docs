@@ -50,6 +50,7 @@ The workflows:
 | `.github/workflows/ci.yml` | every pull request and every push to `main` | a **go** job (build, vet, `go test -race`, the `audiblefake` steps above, golangci-lint) and a **web** job (`npm ci`, typecheck, lint, the prettier check, the tests and a production build) |
 | `image.yml` | `v*` tags and manual dispatch | builds and pushes the four images to the public GHCR package: `full`, `slim` and `agent` for amd64 and arm64, `cuda` for amd64. Which tags each publishes is in [the images](configuration.md#the-images) |
 | `release.yml` | `v*` tags | attaches the four worker archives and `checksums.txt` to the tag's GitHub release (see [Installing a worker](workers.md#installing-a-worker)) |
+| `whisper-binaries.yml` | manual dispatch only | builds whisper.cpp's `whisper-cli` from a pinned upstream tag for each platform and publishes the archives with `checksums.txt` as the release `whisper-<upstream tag>` (`-<rev>` appended for a rebuild; an existing tag fails). Publish it first, then bump `WhisperCLIReleaseTag` and the Dockerfile's `WHISPER_TAG` (see [the images](configuration.md#the-images)) |
 
 To run it locally:
 

@@ -63,7 +63,7 @@ Tick a box to send that event there. It saves as you tick.
 |---|---|
 | **New books added** | A scan found new books. A podcast library's new episodes come as **New podcast episodes** instead. |
 | **A scan failed** | A library couldn't be scanned. See [Health > Jobs](health.md#jobs). |
-| **A library went offline** | A library's folder can't be read, such as an unmounted drive. Nothing was removed. |
+| **A library went offline** | A scan stopped because the server couldn't read the library folder. The message ends with the reason, which names the folder and the server's account. Repeated offline scans send one notice until a scan of that library ends another way. |
 | **Someone signed in** | A sign-in from a new device or browser, including a household member signed in on someone else's device. |
 | **An invite was used** | A device was set up from an invite. |
 | **An update is available** | A new AudioSilo version is out. Needs **Check for new versions** on ([General](server.md#general)). |

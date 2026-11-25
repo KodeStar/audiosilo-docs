@@ -47,10 +47,14 @@ Click a card to open its list.
 If the server rejects a file as invalid audio, scans skip it until its size
 or modification time changes, or the server restarts.
 
-A slow disk or network share can time out a scan. Its books show **reading it
-timed out** and keep their length and chapters. Each row under **Files that
-couldn't be read**, and the result of **Read again**, says why. A file that
-**took too long to read as audio** timed out, which is not a damaged file. A
+A slow disk or network share can leave a book marked **reading it timed out**.
+A book already in the library keeps its details. If only its tags timed out
+and the server could still read its length with ffprobe, the scan keeps its
+name and saves new lengths and chapters (see [History](#history) for how
+that is counted).
+
+Each row under **Files that couldn't be read**, and the result of **Read
+again**, says why. A file that **took too long to read as audio** timed out. A
 file that **couldn't be read as audio** may be damaged or not an audio file.
 **Details** has the original message. The next
 scan tries a timed-out file again.
@@ -126,9 +130,7 @@ additional series keep their spelling. The limit, all-or-nothing rule and **Undo
 
 ### When a library is offline
 
-If a library's folder can't be read, a notice says "*name* is offline. Nothing
-was deleted." Once the folder is back, **Retry** scans it. See
-[When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing).
+If a library's folder can't be read, a notice says "*name* is offline. Nothing was deleted." and names the folder. Once the folder is back, **Retry** scans it. See [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing).
 
 ## Matching every book at once {/* #matching-every-book-at-once */}
 
@@ -320,6 +322,11 @@ it, how long it took and what it found. Click **Log** to see a scan's details:
 books found, moved and removed, and every file it couldn't read and why.
 AudioSilo keeps the last 100 scans of each library.
 
+A book already in the library that timed out counts as **Changed** only
+when the scan saved new lengths for it, or saved the whole book because its
+files changed. Otherwise the history counts only the read problem. A new
+book that timed out counts as **New**.
+
 ### What a removed book leaves behind
 
 When a book's files are gone, a scan removes it from the library and notes it in
@@ -333,6 +340,8 @@ A scan that couldn't read part of the library removes nothing. See
 
 **Health > System** lists everything the server depends on, one row each, with
 a status such as **Healthy**, **Needs attention**, **Missing** or **Off**.
+
+When a library folder can't be reached, a notice above the rows says so and lists each folder with the server's account and, when known, the folder's owner. Nothing was deleted. Mount the folder again, then rescan it (see [When a library is offline](#when-a-library-is-offline)).
 
 ![Health > System](/img/screenshots/admin/system.png)
 

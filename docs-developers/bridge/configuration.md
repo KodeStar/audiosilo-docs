@@ -99,12 +99,10 @@ secrets.
 | `asr.worker_fallback` | `AUDIOSILO_BRIDGE_ASR_WORKER_FALLBACK` | `local` | what a segment does when no [ASR worker](workers.md) is connected. `local` uses the Bridge's own `asr.*` backend, and a Bridge with none waits anyway. With `wait` the book parks `asr_worker_waiting` until a worker connects. Unlike the rest of `asr.*` it applies live, to the next segment. The page's **Settings** edits it, and it is locked when the environment sets it |
 | `asr.threads` | `AUDIOSILO_BRIDGE_ASR_THREADS` | `0` | whisper.cpp's thread count for the Bridge's own (CPU) transcription. `0` keeps whisper.cpp's default of 4. On a 20-core Mac Studio in Docker, 16 threads ran 3x faster (1.4x real time against 0.4x to 0.5x). Leave room for what else the machine runs. Read at the start |
 
-The worker itself takes flags, not this file:
-
-- `--bridge`;
-- `--token`, else `<data>/worker.token`, else `AUDIOSILO_WORKER_TOKEN`;
-- `--data`, else `AUDIOSILO_WORKER_DATA`, else `~/.audiosilo-bridge-worker`;
-- `--backend`, `--model` and `--whisper-cli`.
+The worker itself takes flags, not this file: `--bridge`, `--token`, `--data`,
+`--backend`, `--model` and `--whisper-cli`, plus `AUDIOSILO_WORKER_DATA` and
+`AUDIOSILO_WORKER_TOKEN`. How an update chooses each of them is in
+[the service](workers.md#the-service).
 
 ## Characters and recaps
 
@@ -361,15 +359,15 @@ pre-release such as `v1.2.3-rc.1`). A release tag also publishes `<tag>`,
 publishes under the branch's name (`<branch>`, `<branch>-slim`, `<branch>-cuda`,
 `<branch>-agent`), never over `latest`.
 
-**whisper.cpp.** The whisper.cpp builds are release assets of the archived
-audiosilo-sidecars repository, whose releases stay downloadable.
-
-- They are downloaded at image build time, pinned by release tag. That is the same
-  tag the Bridge's own downloader uses.
-- Each is checked against the sha256 that release's `checksums.txt` lists.
-- Each image fetches only the build it carries.
-- The speech models are not baked in. The Bridge downloads the one it needs into
-  its data folder on first use.
+**whisper.cpp.** The native downloader and the `full` and `cuda` image builds
+fetch `whisper-cli` from the audiosilo-bridge release
+[`whisper-v1.9.1`](https://github.com/KodeStar/audiosilo-bridge/releases/tag/whisper-v1.9.1).
+Each downloads the archive for its platform and checks its SHA-256 against the
+release's `checksums.txt`. When the pinned tag changes, the native downloader
+keeps a cached `whisper-cli` whose SHA-256 the new release's `checksums.txt`
+lists for the same build, and re-stamps it with the new tag. Any other cached
+build, a CPU fallback included, is downloaded again. The Bridge downloads the
+speech model into its data folder on first use.
 
 **Worker builds.** `latest`, `latest-slim` and `latest-cuda` (not `agent`) also
 carry the gzipped ASR worker builds that the Bridge serves to the computers that

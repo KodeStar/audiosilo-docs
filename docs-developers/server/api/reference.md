@@ -2494,7 +2494,7 @@ indexed on its behalf. The same holds for `/chapters`, `/cover`, `/meta` and `/n
 | `400` | missing `path` / invalid library id |
 | `403` | `no access to this path`: the path, or the book it resolves to, is outside the caller's share scope |
 | `404` | `no book at that path` (not indexable) |
-| `503` | from 2.7.0: `code: "stopping"` (`Retry-After: 10`) when the server's shutdown ended the read of the book this request was waiting on; `code: "share_not_answering"` (`Retry-After: 30`) when another read of the book has not returned in time (its share stopped answering), when a look at the share while indexing a book not indexed yet waited 10 seconds, or when a move the book may have made can't be checked now (see [A move found on demand](../scanner.md#a-move-found-on-demand)) |
+| `503` | On server version 2.7.0 or later, `stopping` (`Retry-After: 10`) means shutdown ended the book read. `share_not_answering` (`Retry-After: 30`) means the request reached its wait limit for [on-demand indexing](../scanner.md#on-demand-indexing-indexpath), a file lookup timed out after 10 seconds, or the server could not check [a possible move](../scanner.md#a-move-found-on-demand). |
 
 From 2.7.0 `/item`'s looks at an indexed book's files wait at most 10 seconds
 each. On a share that stopped answering it answers with the stored book: the
@@ -6555,6 +6555,12 @@ admin-only fields:
   roots are probed in parallel, at most one probe per root runs at a time,
   each answer is cached for 15 seconds, and a probe already stuck past the
   timeout answers "not responding" at once for later requests.
+- `folder_access` is an optional object on an offline admin library.
+  For example, `{"server_user":"1234:2345","owner":"0:0"}` identifies the
+  server account and the folder owner as numeric UID:GID strings. The bounded
+  root check supplies `owner` when it can read it. A missing or unresponsive
+  folder may have only `server_user`. Online libraries and systems without
+  Unix IDs omit `folder_access`. The player library list also omits it.
 - `scan` - the library's scan progress, the same object as
   [`GET /admin/libraries/{id}/scan`](#get-apiv1adminlibrariesidscan). The
   console polls this list (every second while any library is scanning or
@@ -6624,9 +6630,9 @@ keep their order. This order is also the final de-duplication tiebreaker between
 otherwise-equal copies of the same book (see [`GET /api/v1/search`](#get-apiv1search)).
 
 Body: `{ "ids": [2, 1, 3] }`. Response `200`: `{ "libraries": [ … ] }` in the
-new order, in the same enriched shape as
-[`GET /admin/libraries`](#get-apiv1adminlibraries) (with `book_count`,
-`available`, `from_config`, `scan` and the scan settings).
+new order. Each entry has the same fields as
+[`GET /admin/libraries`](#get-apiv1adminlibraries), including optional
+`folder_access` on offline entries.
 
 ### `PATCH /api/v1/admin/libraries/{id}`
 
@@ -6653,22 +6659,19 @@ Renaming another library to a declared name at another folder is
 
 A rescan is queued (trigger `change`) **only** when the root or the ignore rules
 change, since those make the index stale. A rename, a new default view or a new
-schedule doesn't rescan. Nor does a new `metadata_source`: every book of the
-library is re-resolved from what the last scan stored, with no disk access.
-Admin edits and accepted community values stay on top. From 2.7.0 the
-re-resolve is a resumable job that goes on after a restart (see
-[Data model](../data-model.md#a-librarys-metadata-source)). The PATCH waits for
-it up to 20 seconds, so a small library answers with its books re-resolved and a
-large one answers then while the rest goes on in the background. Until the job
-ends, a reader can see the new setting with some books' old values.
+schedule doesn't rescan. Changing `metadata_source` updates the books from
+their stored metadata. Admin edits and accepted community values stay on top.
+See [A library's metadata source](../data-model.md#a-librarys-metadata-source).
 
 Response `200`: the updated library (without the scan settings, as for
 create). When the edit queued a scan it adds `job`, the queued scan, as for
 [`POST …/scan`](#post-apiv1adminlibrariesidscan); otherwise `job` is omitted.
-From 2.7.0 a `metadata_source` edit adds `"resolving": true` (additive, omitted
-otherwise) when the books are still taking the new source as it answers: a large
-library past the 20-second wait, or a failed run waiting to be run again. The
-console's toast then says the switch finishes in the background.
+On server version 2.7.0 or later, a PATCH that changes `metadata_source`
+waits up to 20 seconds for the books to take the new source. Sending the
+current source again returns immediately, even during that update. The
+response includes `"resolving": true` while work is pending, including a
+failed run awaiting retry, and omits the field otherwise. The console then
+reports a pending switch as finishing in the background.
 Errors are `400` (including `invalid_schedule`, `invalid_pattern` and
 `invalid_metadata_source`), `404` and `409`, as for create.
 
@@ -6963,6 +6966,18 @@ filesystem root (`/`, or the working directory's drive on Windows).
 | `400` | `path must be absolute` (`code: "path_not_absolute"`) - a relative `path` |
 | `404` | `folder not found or not readable` (`code: "folder_unreadable"`) - missing, not a folder, unreadable by the server, or not answering within 5 seconds (the OS error is not echoed) |
 | `401` / `403` | anonymous / non-admin |
+
+On a `404 folder_unreadable`, the response can include the same
+`folder_access` object as an [offline admin library](#get-apiv1adminlibraries).
+For example:
+
+```json
+{
+  "error": "folder not found or not readable",
+  "code": "folder_unreadable",
+  "folder_access": { "server_user": "1234:2345", "owner": "0:0" }
+}
+```
 
 Bounds rationale: an admin can already point a library at any folder and then
 browse it, so listing folder names reveals nothing new to that role.
@@ -7318,11 +7333,8 @@ is a `400` too (`too many format or codec values`).
   `scan_error_file` is the library-relative file. `scan_error_detail` is the OS's,
   the scan's or ffprobe's own message, and may be empty for `empty_file`. An
   ffprobe message keeps every distinct line ffprobe printed, joined with `"; "`, at
-  most 300 bytes, with FFmpeg's context address (`@ 0x...`) dropped. When a read of
-  an already-indexed book is cut short, the book keeps its stored length, chapters
-  and names, and only the problem is recorded. A recorded problem is re-checked on
-  every scan, so it clears once the file reads (fixed permissions, a share back
-  online). See [Read problems](../scanner.md#read-problems).
+  most 300 bytes, with FFmpeg's context address (`@ 0x...`) dropped. [Read problems](../scanner.md#read-problems)
+  covers which book details a scan can update and when it retries the file.
 - `suspect_parts` - set (to 2 or more) when a folder book's parts look like
   that many separate books (see
   [Folders that may hold several books](../scanner.md#folders-that-may-hold-several-books)).
@@ -10774,7 +10786,7 @@ What the console's Health > System, Server > About and Server > Logs show. All
 | `metadata.mode` | the mode the server **runs** with, `"remote"` or `"mirror"` (a saved change to the setting waits for a restart) |
 | `metadata.mirror` | mirror mode only (absent in remote mode, and when the server has no metadata service): the local copy's status, the object below |
 | `tls` | the boot `tls.mode` and `tls.hosts`, and the certificates it serves, read from their files (never generated or requested here): the self-signed pair, or one per host from the autocert cache (`issued: false` until Let's Encrypt has issued it). Empty for mode `off`. `error` is set when a certificate file couldn't be read |
-| `libraries[]` | each library's root, whether it answers (the same bounded probe as the scanner's), and `disk` (`total`, `free` to the server, in bytes) or `null` when the root isn't available or the OS doesn't say. From 2.7.0 both come from one look per root at the probe behind `available` on [`GET /admin/libraries`](#get-apiv1adminlibraries). That probe's answer is kept for 15 seconds and a new probe waits at most 2, so a root that goes offline shows here within about 17 seconds |
+| `libraries[]` | Each row has the library ID, name, root and `available`. The same probe as [`GET /admin/libraries`](#get-apiv1adminlibraries) supplies `disk` (total and free bytes, or `null` when unknown) and optional `folder_access` on an offline root. It caches answers for 15 seconds and waits up to 2 seconds for a fresh one. |
 | `web_player` | as in the settings envelope |
 | `update` | the [update status](#get-apiv1adminupdate) |
 | `backups` | the backups' `status` as in [`GET /admin/backups`](#get-apiv1adminbackups) (folder, running, last attempt, latest backup, next scheduled one); `null` only for a server built without the backup service (tests), never one the launcher starts |
@@ -11208,8 +11220,10 @@ A failed delivery is not an HTTP error here: the answer is `200` either way,
 }
 ```
 
-`data` per kind is in [Events](../backups-and-notifications.md#events) (a
-failed scan's `detail` is here, for the bell, but never sent to a destination);
+`data` per kind is in [Events](../backups-and-notifications.md#events). A
+failed scan's `detail` is here, for the bell, but never sent to a destination;
+a `library_unavailable` event's `detail` is the scan's reason, which the bell
+and **Server > Events** append to the offline notice.
 `next_before` is `0` on the last page. Podcast events never carry the feed's
 address, and a private show's carry `private: true` instead of its name
 ([Podcast events](../backups-and-notifications.md#podcast-events)). A `before` that isn't a non-negative
@@ -11464,8 +11478,9 @@ only (never a file's contents) and is not audited.
 }
 ```
 
-- **The folder** is checked as the add-library folder picker checks it: an
-  absolute path the server can open and list. `root` comes back cleaned.
+- The server checks that it can open and list the absolute folder path.
+  On success, `root` comes back cleaned. On `404 folder_unreadable` the
+  response uses the [folder picker's error body](#get-apiv1adminfsdirs).
 - **The root** is checked against the other libraries as library create checks
   it, so a folder inside, or containing, a podcast library's folder is refused
   with `409 root_overlaps`. Two books libraries at one folder are allowed, so
