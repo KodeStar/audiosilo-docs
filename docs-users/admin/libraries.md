@@ -18,10 +18,8 @@ fiction and one for kids, and use [shares](sharing.md) to choose who sees which.
 5. Click **Add library and scan**.
 
 The library appears straight away and its first scan starts. Listeners can
-already open a book from [Folders in the player](../listening/browsing.md#folders).
-
-On server version 2.7.0 or later, a book opened this way can play while the scan
-is still reading an earlier book. It counts as **New** and is included in the
+already open and play a book from [Folders in the player](../listening/browsing.md#folders)
+while the scan runs. Such a book still counts as **New** and is included in the
 **New books added** notice when the scan finishes.
 
 A **Books** library usually has a folder of its own. When the folder is

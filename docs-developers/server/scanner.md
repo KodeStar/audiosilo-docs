@@ -332,9 +332,8 @@ row holds:
 - On server version 2.7.0 or later, a new book that a player opens during the
   scan counts once in `added`, even if the player indexed it first. The
   [new-books notice](backups-and-notifications.md#events) includes it in its total.
-- When a [read problem](#read-problems) leaves the stored book intact, the
-  scan increments only `errors`. If it saves fresh lengths for that book,
-  it also increments `updated`.
+- A [read problem](#read-problems) increments `errors`. If the scan still
+  saves fresh lengths for the book, it increments `updated` too.
 
 `ScanProgress` carries the same counters live (`added`, `updated`, `moved`,
 `removed`). Its `indexed` is `added + updated`.
@@ -557,16 +556,16 @@ time (`library/scanread.go`).
   [Configuration](configuration.md#library-scans-scan).
 - **Books read ahead.** Each book to index gets its own goroutine. `enrich` reads the
   primary file first, then `readFiles` uses the slots for the remaining parts.
-  It can stop early on a [read problem](#read-problems). With eight slots,
-  for example, the scan can read up to sixteen books ahead (`2 * slots.size()`).
+  It can stop early on a [read problem](#read-problems). The scan reads up
+  to twice as many books ahead as it has slots (`2 * slots.size()`).
 - **A player opens a book during the scan.** The scan normally batches books
   in discovery order (`writeNext`). On server version 2.7.0 or later, a
   request that joins the scan's read can claim the finished book and write it
   ahead of a slower book (`bookRead.publish`). The batch and the request
   share one write. The scan records its outcome in discovery order.
-  If the player indexed the book first, the scan checks its stored signature
-  against discovery (`matchesOpenedBook`). It reuses a matching read with no
-  recorded problem. See [scan counts](#counts).
+- **The player indexed the book first.** The scan checks the book's stored
+  signature against discovery (`matchesOpenedBook`) and reuses a matching
+  read with no recorded problem. See [scan counts](#counts).
 - **Several books a transaction.** The books read wait in a batch, and
   `catalog.UpsertBooks` writes them together. A transaction's begin and commit
   cost about as much as a book's own writes: 0.6 of 1.5 ms a book on a
@@ -587,8 +586,8 @@ time (`library/scanread.go`).
 - **Stopping.** A Stop, or the scan's time limit, ends the in-process probes
   and the ffprobe runs through the scan's context.
   - The scan writes its existing batch. If a request has already claimed a
-    finished read, it saves the whole book even if a Stop arrives during the
-    write. The scan waits for that write. It drops other unbatched reads, so an
+    finished read, that request saves the whole book even if a Stop arrives
+    during the write. The scan waits for that write. It drops other unbatched reads, so an
     interrupted read cannot record a false [read problem](#read-problems).
   - On server version 2.7.0 or later, all outstanding reads share one
     2-second grace period (`stopGrace`). The scan logs and counts reads
@@ -1705,7 +1704,7 @@ rules (`noFFprobeRules`, the release the Docker images ship).
 - The start-up log says the probe is on with no ffprobe.
 
 On server version 2.7.0 or later, a completed read that could not determine
-the duration or codec leaves a [snapshot marker](data-model.md#effective-values-and-the-scanned-snapshot).
+the duration or codec leaves the `@probe_unsure` [snapshot marker](data-model.md#effective-values-and-the-scanned-snapshot).
 While ffprobe is unavailable, later scans can skip the same files, even after
 a restart. The scanner tries again when the files change, when ffprobe becomes
 available, or when an older index lacks the marker for a missing value.
@@ -2279,9 +2278,9 @@ probes the book, while the other waits for it and loads what it stored.
 - Each request resolves the book and passes its own scope check before it
   joins.
 - On server version 2.7.0 or later, an on-demand read can outlive its
-  request. It runs for up to 10 minutes (`indexTimeout`). A favourite's
-  background worker can lead the read itself. A caller whose request ends
-  stops waiting while the read can still finish and store the book.
+  request: it runs for up to 10 minutes (`indexTimeout`), and a favourite's
+  background worker can lead it. If the request ends first, the read still
+  finishes and stores the book.
 - A Re-read waits for a held flight, then reads the book afresh.
 - A caller can join a [scan's read and write](#reading-several-files-at-once).
   While the read is in progress, `waitFlight` measures time since its last
@@ -2293,9 +2292,9 @@ probes the book, while the other waits for it and loads what it stored.
   read the scan dropped before writing. If a detached read used its full
   `indexTimeout`, callers receive the same 503 without starting another read.
 - At shutdown the server cancels the base context and closes admission to new
-  detached reads. It waits for favourite and admin Re-read workers
-  (`API.WaitMediaCaches`) and on-demand reads (`Scanner.WaitReads`) before
-  closing the database. A request whose read ends at shutdown receives
+  detached reads. Favourite and admin Re-read workers (`API.WaitMediaCaches`)
+  and on-demand reads (`Scanner.WaitReads`) get to wind down before the
+  server closes the database. A request whose read ends at shutdown receives
   `503 stopping` (`library.ErrStopping`), as do a Re-read and a Bridge rescan.
 - The read stays inside the per-mount bounds of
   [the in-process probe](#the-in-process-probe).

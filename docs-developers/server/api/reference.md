@@ -7315,9 +7315,8 @@ is a `400` too (`too many format or codec values`).
   `scan_error_file` is the library-relative file. `scan_error_detail` is the OS's,
   the scan's or ffprobe's own message, and may be empty for `empty_file`. An
   ffprobe message keeps every distinct line ffprobe printed, joined with `"; "`, at
-  most 300 bytes, with FFmpeg's context address (`@ 0x...`) dropped. For which
-  book details a scan can update and when it retries the file, see
-  [Read problems](../scanner.md#read-problems).
+  most 300 bytes, with FFmpeg's context address (`@ 0x...`) dropped. [Read problems](../scanner.md#read-problems)
+  covers which book details a scan can update and when it retries the file.
 - `suspect_parts` - set (to 2 or more) when a folder book's parts look like
   that many separate books (see
   [Folders that may hold several books](../scanner.md#folders-that-may-hold-several-books)).
