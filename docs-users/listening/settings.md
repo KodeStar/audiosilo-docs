@@ -103,12 +103,13 @@ With large text, a setting's control moves below its name. Large headings, such 
 
 In the Library, titles and authors' names can wrap under their covers. Long folder names wrap too, and you can scroll the folder trail sideways. On a book's [Details](book-page.md#details) tab, each filename appears above its codec, bitrate and length.
 
-The play, skip and chapter buttons grow up to one and a half times their usual size. In the full player, the buttons and seek bar fit the width of your screen. On a tablet or computer, the [player bar](playback.md#the-mini-player-and-the-player-bar) can move them below the book.
+The play, skip and chapter buttons grow up to one and a half times their usual size. In the full player, the buttons and seek bar fit the width of your screen. On a tablet or computer, the [player bar](playback.md#the-mini-player-and-the-player-bar) can move them below the book, together with the chapter scrubber, so the scrubber stays wide enough to drag.
 
-![Book details with large text. Each filename has its details underneath, and the play and skip buttons sit below the book.](/img/screenshots/web-player/book-details-large-text.png)
+![Book details with large text. Each filename has its details underneath, and the play and skip buttons and the chapter scrubber sit below the book.](/img/screenshots/web-player/book-details-large-text.png)
 
 - On **Android**, a long tab name can end in three dots. With large text, only the selected tab shows its name, sized to fit. TalkBack still reads every name in full.
-- In a **phone browser**, all five tabs keep their names. With large text, a long name can wrap.
+- In a **phone browser**, all five tabs keep their names. With large text, a long name can wrap onto another line between words. A single word too long for its space ends in three dots.
+- On a **tablet or computer**, the top bar grows taller to fit the larger text.
 - On **iPhone**, text in the tab bar's player can grow by up to 30% so both lines fit. The back button shows the name of the page you came from, and a long name can wrap beside the page title.
 - The squares in your [listening calendar](you.md#the-charts) grow with the weekday labels.
 

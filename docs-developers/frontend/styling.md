@@ -307,8 +307,9 @@ The rules are in the frontend `CONVENTIONS.md` ("Large text", "Touch targets",
   `TileCaption` lifts the title and byline limits, and each `BreadCrumbs`
   label can wrap to the measured width of its horizontal scroller. `ToggleGroup`
   and option tiles can wrap onto another row. Use minimum heights on rows that
-  may grow. The shell also adapts the
-  [phone tab labels](shell.md#phone) to the space available.
+  may grow, as the top bar's `min-h-[64px]` does. The shell also adapts the
+  [phone tab labels](shell.md#phone) to the space available: on the web they
+  wrap only between words, and a word too wide ends in an ellipsis.
 - **Display titles share a 2x cap.** `Text` applies `DISPLAY_MAX_FONT_SCALE` to
   `display` and `display-xl` through `maxFontSizeMultiplier` on native. On the
   web it supplies `--display-px`, one sixteenth of a rem capped at 2 px.

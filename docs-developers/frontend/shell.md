@@ -47,12 +47,15 @@ TalkBack gets each tab's full name.
 
 On the web, `PhoneTabBar` gives each tab one fifth of the width below large text.
 Long labels stay on one line and end in an ellipsis. At large text all five
-labels remain visible. They can share the space unevenly or wrap, with a 44 px
-minimum target per tab.
+labels remain visible. They can share the space unevenly and wrap, but only
+between words (`LARGE_LABEL_STYLE`: `wordWrap: normal` past react-native-web's
+`break-word`). A word wider than its slot ends in an ellipsis rather than
+breaking. Each tab keeps a 44 px minimum target.
 
 ### Tablet
 
-- **`TopBar`** is 64 high. It holds:
+- **`TopBar`** is at least 64 high (`min-h-[64px]`). With larger text it grows
+  with the mark and server line rather than cutting them. It holds:
   - the mark with a server line;
   - the Home, Library, Downloads and You destinations as icons;
   - the omnisearch field, or a search icon button that does the same when the
@@ -71,8 +74,9 @@ minimum target per tab.
 - The banners sit under the sub-nav.
 - The page is capped at 1480 wide (`CONTENT_WIDTH`).
 - **`DockedPlayer`** appears when a book is loaded and has an 84 px minimum row
-  height. With larger text, when the bar is too narrow for equal side columns,
-  the transport can move below the book and actions. See
+  height. With larger text, the transport (and from 800 px the chapter
+  scrubber with it) can move below the book and actions instead of shrinking
+  or hiding the scrubber. See
   [the docked player](player-ui.md#the-docked-player-tablet-and-desktop).
 - Up next opens as a bottom sheet.
 
