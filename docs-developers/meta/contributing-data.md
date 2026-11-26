@@ -438,9 +438,26 @@ Every pull request touching `data/**` is checked twice:
   dispatch runs from `main`, with the secret). The workflow passes the diff to the
   model as untrusted data and never executes it.
 
+  It judges a new series by who opened the pull request. The
+  [series-completion bot](./sync-bot.md#the-bound) never founds a series, so a
+  new one in its pull request gets a closer look. Its LibriVox lane never
+  founds, joins or edits one, so any new or changed series there is always a
+  finding. A person founding their book's series, even a series of one work,
+  is ordinary by any route (a fork's mirror, an issue form, the steward). Such
+  a series is judged by its own record: a series name rather than a
+  recording's or an edition's, authors that match its works, and sane
+  positions.
+
   When a rebase leaves what it judged unchanged, the workflow re-applies the last
   verdict without a model call. Each verdict comment carries a hidden key for
   this. A manual dispatch or a re-run always judges afresh.
+
+  A flag the [steward](./steward.md#confirming-a-flag) finds wrong gets a second
+  read. The steward posts a comment answering each flagged item with retailer
+  records its service fetched, and re-runs the workflow, which reads that
+  comment beside the change and says so in its verdict. It reads such a comment
+  only from the steward's account and only for the exact content it answers.
+  Only the new verdict clears the flag.
 
   It takes one of two repository secrets. `ANTHROPIC_API_KEY`, when set, is
   preferred: the script sends a Messages API request with `curl`, billed per pull
@@ -568,7 +585,10 @@ applies in audiosilo-meta-community, through that repository's own gate.
    and links back, and your pull request gets one comment pointing at it.
 3. **The mirror goes through the usual gate.** The checks and `ai-verify` run
    on it. If it is flagged or red, the steward fixes the data on the mirror, as
-   for any other data pull request.
+   for any other data pull request. If the steward finds the flag wrong, it may
+   answer it with the retailer's records instead of a fix, and `ai-verify`
+   reads the mirror again: a pass merges it, a second flag leaves it for a
+   maintainer (see [Confirming a flag](./steward.md#confirming-a-flag)).
 4. **The mirror merges.** It merges squashed, with the steward's own commit
    message, which credits you in plain prose ("Contributed by @you in #N.") and
    names you as co-author, so the commit on `main` shows on your GitHub profile.
