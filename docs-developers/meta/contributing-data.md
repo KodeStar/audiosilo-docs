@@ -438,14 +438,13 @@ Every pull request touching `data/**` is checked twice:
   dispatch runs from `main`, with the secret). The workflow passes the diff to the
   model as untrusted data and never executes it.
 
-  It reads a new series by who opened the pull request. The
-  [series-completion bot](./sync-bot.md) and its LibriVox lane never found a
-  series, so a new one in their pull requests is worth a closer look. A person
-  founding the series their book belongs to is ordinary, a series of one work
-  included, whether the change came from a fork (through its mirror), an issue
-  form or the steward. Such a series is judged by its own record: a series name
-  rather than a recording's or an edition's, authors that match its works, and
-  sane positions.
+  It judges a new series by who opened the pull request. The
+  [series-completion bot](./sync-bot.md#the-bound) and its LibriVox lane never
+  found a series, so a new one in their pull requests gets a closer look. A
+  person founding their book's series, even a series of one work, is ordinary
+  by any route (a fork's mirror, an issue form, the steward). Such a series is
+  judged by its own record: a series name rather than a recording's or an
+  edition's, authors that match its works, and sane positions.
 
   When a rebase leaves what it judged unchanged, the workflow re-applies the last
   verdict without a model call. Each verdict comment carries a hidden key for
@@ -455,9 +454,8 @@ Every pull request touching `data/**` is checked twice:
   read. The steward posts a comment answering each flagged item with retailer
   records its service fetched, and re-runs the workflow, which reads that
   comment beside the change and says so in its verdict. It reads such a comment
-  only from the account the `STEWARD_LOGIN` repository variable names, and only
-  for the exact content the comment answers. The evidence clears nothing by
-  itself: only the new verdict does.
+  only from the steward's account and only for the exact content it answers.
+  Only the new verdict clears the flag.
 
   It takes one of two repository secrets. `ANTHROPIC_API_KEY`, when set, is
   preferred: the script sends a Messages API request with `curl`, billed per pull
@@ -585,13 +583,10 @@ applies in audiosilo-meta-community, through that repository's own gate.
    and links back, and your pull request gets one comment pointing at it.
 3. **The mirror goes through the usual gate.** The checks and `ai-verify` run
    on it. If it is flagged or red, the steward fixes the data on the mirror, as
-   for any other data pull request. Founding the series your book belongs to
-   is fine: `ai-verify` judges the series by its own record, not by its being
-   new. If the steward finds a flag wrong,
-   a comment from it may appear on the mirror instead of a fix, answering each
-   flagged item with the retailer's records, and `ai-verify` then reads the
-   mirror again. A pass merges it; a second flag leaves it for a maintainer
-   (see [Confirming a flag](./steward.md#confirming-a-flag)).
+   for any other data pull request. If the steward finds the flag wrong, it may
+   answer it with the retailer's records instead of a fix, and `ai-verify`
+   reads the mirror again: a pass merges it, a second flag leaves it for a
+   maintainer (see [Confirming a flag](./steward.md#confirming-a-flag)).
 4. **The mirror merges.** It merges squashed, with the steward's own commit
    message, which credits you in plain prose ("Contributed by @you in #N.") and
    names you as co-author, so the commit on `main` shows on your GitHub profile.
