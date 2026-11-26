@@ -439,12 +439,14 @@ Every pull request touching `data/**` is checked twice:
   model as untrusted data and never executes it.
 
   It judges a new series by who opened the pull request. The
-  [series-completion bot](./sync-bot.md#the-bound) and its LibriVox lane never
-  found a series, so a new one in their pull requests gets a closer look. A
-  person founding their book's series, even a series of one work, is ordinary
-  by any route (a fork's mirror, an issue form, the steward). Such a series is
-  judged by its own record: a series name rather than a recording's or an
-  edition's, authors that match its works, and sane positions.
+  [series-completion bot](./sync-bot.md#the-bound) never founds a series, so a
+  new one in its pull request gets a closer look. Its LibriVox lane never
+  founds, joins or edits one, so any new or changed series there is always a
+  finding. A person founding their book's series, even a series of one work,
+  is ordinary by any route (a fork's mirror, an issue form, the steward). Such
+  a series is judged by its own record: a series name rather than a
+  recording's or an edition's, authors that match its works, and sane
+  positions.
 
   When a rebase leaves what it judged unchanged, the workflow re-applies the last
   verdict without a model call. Each verdict comment carries a hidden key for
