@@ -125,6 +125,67 @@ Nothing is left red or flagged, and nothing is closed unmerged:
    The agent then checks the libex listing and the publisher's or retailer's
    page, and sets the value they support. That is often the recorded one.
 
+   On audiosilo-meta, a FIX over an `ai-verify` flag may instead find that
+   every flagged item is right as it stands. It then confirms the flag rather
+   than changing anything (see [Confirming a flag](#confirming-a-flag)).
+
+### Confirming a flag
+
+Sometimes `ai-verify` flags items that are correct: a series removed with no
+tombstone because the retailer dropped it, or people it thinks are orphaned
+who are in fact credited. Changing nothing used to count as a failed fix, so
+three such attempts parked the pull request for a person, who then checked the
+retailer's listings and merged it by hand. By the maintainer's decision of
+2026-11-26, the steward now answers such a flag with evidence and a second
+`ai-verify` read:
+
+1. **The service fetches the retailer's records.** Before the FIX task starts,
+   the service (never the agent) looks up the Audible listings, through libex,
+   of the books and series the pull request adds, changes or removes. The
+   lookups are bounded (at most 15 works, 5 series, 40 requests and 3
+   minutes). The agent gets them as files beside the clone; it has no network
+   of its own for this.
+2. **The agent may confirm.** If it checks every flagged item and finds each
+   one correct, it changes nothing and answers each item, citing the records
+   the service fetched or the entries the pull request changes. The service
+   accepts the answers only when every item is answered as correct and every
+   citation is to a record it fetched or an entry in the change. A change to
+   the data wins over a confirmation, and a confirmation that fails these
+   rules is a failed attempt, like a fix that changes nothing.
+3. **The steward posts the evidence.** One comment on the pull request carries
+   the agent's answers and a table of the records the service fetched,
+   rendered by the service from what it fetched, bound to the exact content
+   that was flagged.
+4. **`ai-verify` reads the change again.** The steward re-runs the `verify` run
+   of the pull request's current head. That run reads the comment as a second
+   input: the records as evidence, the answers as the resolver's claims, and it
+   judges the change afresh. Its verdict comment says it read the evidence.
+5. **A pass merges through the gate as usual.** A second flag parks the pull
+   request for a person at once, since two independent reads disagree, and the
+   steward withdraws the evidence in its park comment, so no later run on that
+   content reads it. When no verdict arrives within 30 minutes the steward asks
+   once more; with still none, it withdraws the evidence and the flag goes back
+   to an ordinary fix.
+
+The bounds on it:
+
+- **The steward never applies `ai-verified` itself.** A flag clears only on
+  `ai-verify`'s own verdict, never on the agent's word.
+- **One confirmation per content.** The same flagged content is never confirmed
+  twice, a hand-back included. A new push or a fix that changes the data is new
+  content, and its flag is judged on its own.
+- **audiosilo-meta only.** A community layer flag is about prose no retailer
+  listing settles, so it is still fixed by deletion (see
+  [The community layer](#the-community-layer)).
+- **`ai-verify` reads only the steward's comment.** It takes the evidence only
+  from the account the `STEWARD_LOGIN` repository variable names (see
+  [Operating it](#operating-it)), only from an unedited comment that answers
+  the content being judged. Unset, it never reads the evidence: the second
+  read flags again without it, and the pull request goes back to the ordinary
+  fix.
+- **When libex cannot reach Audible,** the fix waits up to 2 hours for the
+  records, then runs without the option to confirm.
+
 ### Splitting an oversize pull request
 
 A data pull request larger than `SYNC_STEWARD_MERGE_MAX_ENTRIES` is not merged
@@ -280,6 +341,9 @@ never end in a closure.
   turns green merges whatever its backoff.
 - An item that has failed three times is listed as **stuck** on the report with
   its last evidence. That is the signal to find out why and fix the cause.
+- A [confirmation](#confirming-a-flag) counts as a successful fix attempt. A
+  second flag after `ai-verify` read its evidence lists the item as stuck at
+  once, whatever its count.
 
 ## The community layer
 
@@ -517,6 +581,21 @@ whenever it changes.
 
 With `SYNC_STEWARD` off none of these are read, and nothing of the steward
 exists: no goroutine, no clone, no state file, no `/status` section.
+
+One setting lives on audiosilo-meta rather than in the container: the
+repository variable `STEWARD_LOGIN`, the account whose PAT the service holds.
+`ai-verify` reads a [confirmation](#confirming-a-flag) only from a comment by
+that account (matched case-insensitively), and only while it is the
+repository's owner, a member or a collaborator:
+
+```sh
+gh variable set STEWARD_LOGIN --repo KodeStar/audiosilo-meta --body KodeStar
+```
+
+Unset, `ai-verify` never reads the evidence, so a confirmation always goes back
+to the ordinary fix. The PAT's Actions: read and write permission is what lets
+the steward ask `ai-verify` to read the change again; without it the first
+confirmation parks the pull request with a hint naming that permission.
 
 :::note[The kill switch]
 Set `SYNC_STEWARD=off` (or revoke the token, or stop the container). The sync
