@@ -312,8 +312,9 @@ plain prose ("Contributed by @login in #N.") and, for a person rather than a bot
 account, ends in GitHub's co-author trailer at their noreply address, so GitHub
 attributes the merged commit to them. The fork's commit messages do not
 reach `main` that way, so neither they nor the mirror's merge close an issue. A
-mirror carried in parts merges part by part, with no credit line, and ends as
-the next list says.
+mirror carried in parts merges part by part, with no credit line; once every
+part has merged, the steward closes the mirror and then the fork, as the next
+list says.
 
 What happens next:
 
@@ -325,14 +326,17 @@ What happens next:
   is withdrawn: closed with its branch deleted.
 - **The contributor closes the fork unmerged.** The mirror is withdrawn the
   same way. Reopening the fork mirrors it again.
-- **The mirror closes without merging whole.** A maintainer closed it, or its
-  split carried it to `main` in parts. The steward does not open it again for
+- **A maintainer closes the mirror.** The steward does not open it again for
   that head, and does not close the fork: the fork gets one comment and waits
-  for a maintainer. A new push is judged afresh.
-- **The mirror merges.** Once every entry the fork changed is verified on
-  `main`, the steward closes the fork's pull request as superseded, with a
-  comment linking the mirror and its merge commit. A fork GitHub already shows
-  as merged is left as it is.
+  for a maintainer. A new push is judged afresh. A split in which a maintainer
+  closed a part unmerged ends the same way.
+- **The mirror merges, whole or in parts.** Once what the mirror carried is
+  verified on `main` (the merged mirror, or each merged part), the steward
+  closes the fork's pull request as superseded, with a comment linking the
+  mirror and its merge commit or its parts. It checks the mirror rather than
+  the fork, so an entry a fix dropped on the way (two records folded into one,
+  say) does not hold the fork open. A fork GitHub already shows as merged is
+  left as it is, and a fork pushed to since is mirrored again.
 
 ### Attempts and backoff
 
